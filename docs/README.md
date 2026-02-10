@@ -41,7 +41,7 @@ Each document provides deep, implementable detail: aggregates, entities, value o
 |----------|-------------|
 | [Documento de Pesquisa de Campo.docx](./field-research/Documento%20de%20Pesquisa%20de%20Campo.docx) | Field research document (Portuguese) |
 | [Documento de Pesquisa de Campo.pdf](./field-research/Documento%20de%20Pesquisa%20de%20Campo.pdf) | PDF export |
-| [OSCAR](./www.oscar-app.com) | |
+| [OSCAR](www.oscar-app.com) | |
 
 ## Reading Order
 
