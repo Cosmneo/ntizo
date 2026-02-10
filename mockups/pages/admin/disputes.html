@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disputes | Ntizo Admin</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--gray-50);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+    /* ============================================
+       LAYOUT
+       ============================================ */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ============================================
+       SIDEBAR
+       ============================================ */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 260px;
+      background: var(--white);
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      z-index: 200;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: width 0.2s ease;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
+
+    .sidebar__header {
+      padding: 20px 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .sidebar__logo {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .sidebar__logo span {
+      color: var(--sky-400);
+    }
+
+    .sidebar__badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--blue-500);
+      background: var(--blue-50);
+      border: 1px solid var(--blue-100);
+      border-radius: var(--radius-full);
+    }
+
+    .sidebar__search {
+      padding: 16px 16px 12px;
+      flex-shrink: 0;
+    }
+
+    .sidebar__search-input {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      color: var(--gray-500);
+      font-size: 13px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .sidebar__search-input:hover {
+      border-color: var(--gray-300);
+      background: var(--gray-100);
+    }
+
+    .sidebar__search-input svg {
+      flex-shrink: 0;
+      color: var(--gray-400);
+    }
+
+    .sidebar__search-input span {
+      flex: 1;
+    }
+
+    .sidebar__search-kbd {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      color: var(--gray-400);
+      font-family: var(--font-sans);
+    }
+
+    .sidebar__nav {
+      flex: 1;
+      padding: 4px 0;
+      overflow-y: auto;
+    }
+
+    .sidebar__section {
+      margin-bottom: 4px;
+    }
+
+    .sidebar__section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--blue-500);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s;
+    }
+
+    .sidebar__section-title:hover {
+      color: var(--blue-600);
+    }
+
+    .sidebar__section-title svg {
+      width: 14px;
+      height: 14px;
+      color: var(--gray-300);
+      transition: transform 0.2s;
+    }
+
+    .sidebar__section.collapsed .sidebar__section-title svg {
+      transform: rotate(-90deg);
+    }
+
+    .sidebar__section.collapsed .sidebar__section-items {
+      display: none;
+    }
+
+    .sidebar__item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px 8px 20px;
+      margin: 1px 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--gray-600);
+      border-radius: var(--radius-sm);
+      transition: all 0.15s;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .sidebar__item:hover {
+      background: var(--gray-50);
+      color: var(--navy-900);
+    }
+
+    .sidebar__item:hover svg:not(.chevron) {
+      color: var(--gray-500);
+    }
+
+    .sidebar__item.active {
+      background: var(--blue-50);
+      color: var(--blue-600);
+      font-weight: 600;
+    }
+
+    .sidebar__item.active::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background: var(--blue-500);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .sidebar__item svg {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      color: var(--gray-400);
+    }
+
+    .sidebar__item.active svg:not(.chevron) {
+      color: var(--blue-500);
+    }
+
+    .sidebar__item-label { flex: 1; }
+
+    .sidebar__item-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-full);
+      background: var(--blue-50);
+      color: var(--blue-500);
+    }
+
+    .sidebar__item-badge.red {
+      background: var(--red-50);
+      color: var(--red-500);
+    }
+
+    .sidebar__item-badge.amber {
+      background: var(--amber-50);
+      color: #b45309;
+    }
+
+    .sidebar__sub {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.25s ease;
+    }
+
+    .sidebar__item.has-sub.expanded + .sidebar__sub {
+      max-height: 200px;
+    }
+
+    .sidebar__sub-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px 6px 50px;
+      margin: 0 8px;
+      font-size: 13px;
+      font-weight: 450;
+      color: var(--gray-500);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sidebar__sub-item:hover {
+      color: var(--navy-900);
+      background: var(--gray-50);
+    }
+
+    .sidebar__sub-item .sidebar__item-badge {
+      font-size: 10px;
+      padding: 0 6px;
+    }
+
+    .sidebar__item .chevron {
+      width: 16px;
+      height: 16px;
+      color: var(--gray-300);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .sidebar__item.expanded .chevron {
+      transform: rotate(90deg);
+    }
+
+    .sidebar__divider {
+      height: 1px;
+      background: var(--gray-100);
+      margin: 8px 20px;
+    }
+
+    .sidebar__footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--gray-100);
+      padding: 12px 16px;
+    }
+
+    .sidebar__user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: var(--radius-md);
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+
+    .sidebar__user:hover {
+      background: var(--gray-50);
+    }
+
+    .sidebar__user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: var(--gradient-brand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+
+    .sidebar__user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sidebar__user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy-900);
+      line-height: 1.3;
+    }
+
+    .sidebar__user-email {
+      font-size: 11.5px;
+      color: var(--gray-400);
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sidebar__user-settings {
+      color: var(--gray-400);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s;
+    }
+
+    .sidebar__user-settings:hover {
+      color: var(--gray-600);
+      background: var(--gray-100);
+    }
+
+    /* ============================================
+       MAIN CONTENT
+       ============================================ */
+    .main {
+      flex: 1;
+      margin-left: 260px;
+      min-height: 100vh;
+    }
+
+    .main__container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 0 48px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(249, 250, 251, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+    }
+
+    .topbar__inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .topbar__left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar__hamburger {
+      display: none;
+      width: 36px;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      color: var(--gray-600);
+      transition: all 0.15s;
+    }
+
+    .topbar__hamburger:hover {
+      background: var(--gray-100);
+      color: var(--navy-900);
+    }
+
+    .topbar__title-group {}
+
+    .topbar__title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy-900);
+    }
+
+    .topbar__subtitle {
+      font-size: 13px;
+      color: var(--gray-500);
+      font-weight: 400;
+    }
+
+    .topbar__right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar__cta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      background: var(--blue-500);
+      color: var(--white);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .topbar__cta:hover {
+      background: var(--blue-600);
+      box-shadow: var(--shadow-md);
+    }
+
+    .topbar__cta svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ============================================
+       PAGE CONTENT
+       ============================================ */
+    .page-content {
+      padding: 28px 0 48px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+    }
+
+    .metric-card__label {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+    }
+
+    .metric-card__value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--navy-900);
+    }
+
+    .metric-card__sub {
+      font-size: 11.5px;
+      margin-top: 6px;
+    }
+
+    .metric-card__sub.up { color: var(--green-600); }
+    .metric-card__sub.muted { color: var(--gray-400); }
+
+    .table-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .tab-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 14px 20px 12px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .tab-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--gray-500);
+    }
+
+    .tab-btn.active {
+      background: var(--blue-50);
+      color: var(--blue-600);
+      font-weight: 600;
+    }
+
+    .tab-bar__right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      color: var(--gray-400);
+    }
+
+    .filter-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--gray-500);
+    }
+
+    .grid-table__header {
+      display: grid;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .grid-table__header span {
+      padding: 10px 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-400);
+    }
+
+    .grid-table__row {
+      display: grid;
+      padding: 2px 20px;
+      align-items: center;
+      border-bottom: 1px solid var(--gray-50);
+      transition: background 0.1s;
+      cursor: pointer;
+    }
+
+    .grid-table__row:hover { background: var(--gray-50); }
+    .grid-table__row:last-child { border-bottom: none; }
+
+    .grid-table__row span,
+    .grid-table__row div {
+      padding: 12px 8px;
+      font-size: 13px;
+    }
+
+    .grid-table__row .primary { color: var(--navy-900); font-weight: 550; }
+    .grid-table__row .secondary { color: var(--gray-600); }
+    .grid-table__row .muted { color: var(--gray-400); font-size: 12.5px; }
+
+    /* Two-line cell pattern */
+    .cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      padding: 14px 8px;
+    }
+    .cell__primary {
+      font-size: 13.5px;
+      font-weight: 550;
+      color: var(--navy-900);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cell__secondary {
+      font-size: 12px;
+      color: var(--gray-400);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .grid-table__row .id { color: var(--blue-500); font-weight: 600; font-size: 12.5px; }
+    .grid-table__row .amount { font-weight: 600; color: var(--navy-900); font-variant-numeric: tabular-nums; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .badge.green { background: var(--green-50); color: var(--green-600); }
+    .badge.green::before { background: var(--green-500); }
+    .badge.blue { background: var(--blue-50); color: var(--blue-600); }
+    .badge.blue::before { background: var(--blue-500); }
+    .badge.amber { background: var(--amber-50); color: #b45309; }
+    .badge.amber::before { background: var(--amber-500); }
+    .badge.red { background: var(--red-50); color: var(--red-600); }
+    .badge.red::before { background: var(--red-500); }
+    .badge.gray { background: var(--gray-100); color: var(--gray-600); }
+    .badge.gray::before { background: var(--gray-400); }
+
+    /* Priority inline indicator */
+    .priority {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+
+    .priority__dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .priority.high { color: var(--red-600); }
+    .priority.high .priority__dot { background: var(--red-500); }
+    .priority.medium { color: #b45309; }
+    .priority.medium .priority__dot { background: var(--amber-500); }
+    .priority.low { color: var(--blue-600); }
+    .priority.low .priority__dot { background: var(--blue-500); }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-top: 1px solid var(--gray-100);
+    }
+
+    .pagination__info {
+      font-size: 12.5px;
+      color: var(--gray-500);
+    }
+
+    .pagination__buttons {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pagination__btn {
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      color: var(--gray-500);
+    }
+
+    .pagination__btn.active {
+      background: var(--blue-50);
+      color: var(--blue-600);
+    }
+
+    .action-link {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--blue-500);
+      cursor: pointer;
+    }
+
+    .action-link:hover {
+      color: var(--blue-700);
+    }
+
+    /* ============================================
+       MOBILE OVERLAY
+       ============================================ */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 190;
+    }
+
+    .sidebar-overlay.visible { display: block; }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .sidebar { width: 68px; }
+
+      .sidebar__header { padding: 16px 0; justify-content: center; }
+      .sidebar__logo { font-size: 18px; }
+      .sidebar__badge,
+      .sidebar__search,
+      .sidebar__section-title,
+      .sidebar__user-info,
+      .sidebar__user-settings,
+      .sidebar__item-label,
+      .sidebar__item-badge,
+      .sidebar__item .chevron,
+      .sidebar__sub { display: none; }
+
+      .sidebar__item {
+        justify-content: center;
+        padding: 10px;
+        margin: 2px 8px;
+      }
+
+      .sidebar__item svg { color: var(--gray-400); }
+      .sidebar__item.active svg { color: var(--blue-500); }
+      .sidebar__item:hover svg { color: var(--gray-500); }
+
+      .sidebar__user { justify-content: center; padding: 8px 0; }
+      .sidebar__user-avatar { width: 32px; height: 32px; font-size: 11px; }
+      .sidebar__footer { padding: 8px; }
+
+      .main { margin-left: 68px; }
+      .topbar { padding: 0 24px; }
+      .main__container { padding: 0 24px; }
+
+      .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 260px;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+      }
+
+      .sidebar.open { transform: translateX(0); }
+      .sidebar.open ~ .sidebar-overlay { display: block; }
+
+      .sidebar.open .sidebar__badge,
+      .sidebar.open .sidebar__search,
+      .sidebar.open .sidebar__section-title,
+      .sidebar.open .sidebar__user-info,
+      .sidebar.open .sidebar__user-settings,
+      .sidebar.open .sidebar__item-label,
+      .sidebar.open .sidebar__item-badge,
+      .sidebar.open .sidebar__item .chevron,
+      .sidebar.open .sidebar__sub { display: flex; }
+      .sidebar.open .sidebar__sub { display: block; }
+
+      .sidebar.open .sidebar__header { justify-content: flex-start; padding: 20px 20px 0; }
+      .sidebar.open .sidebar__logo { font-size: 24px; }
+      .sidebar.open .sidebar__item { justify-content: flex-start; padding: 8px 16px 8px 20px; }
+      .sidebar.open .sidebar__user { justify-content: flex-start; padding: 8px; }
+      .sidebar.open .sidebar__user-avatar { width: 34px; height: 34px; font-size: 12px; }
+      .sidebar.open .sidebar__footer { padding: 12px 16px; }
+
+      .main { margin-left: 0; }
+      .topbar { padding: 0 20px; }
+      .main__container { padding: 0 20px; }
+      .topbar__hamburger { display: flex; }
+
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .topbar__subtitle { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-layout">
+  <!-- ============================================
+       SIDEBAR
+       ============================================ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__header">
+      <a href="../landing.html" class="sidebar__logo">nti<span>zo</span></a>
+      <span class="sidebar__badge">Admin</span>
+    </div>
+
+    <div class="sidebar__search">
+      <div class="sidebar__search-input">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Search...</span>
+        <kbd class="sidebar__search-kbd">Cmd+K</kbd>
+      </div>
+    </div>
+
+    <nav class="sidebar__nav">
+      <div class="sidebar__section">
+        <!-- Dashboard -->
+        <a class="sidebar__item" href="dashboard.html">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="sidebar__item-label">Dashboard</span>
+        </a>
+
+        <!-- Users -->
+        <a class="sidebar__item has-sub" href="users.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sidebar__item-label">Users</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="users.html">All Users</a>
+          <a class="sidebar__sub-item" href="verification-queue.html">Verification Queue <span class="sidebar__item-badge">8</span></a>
+        </div>
+
+        <!-- Organizations -->
+        <a class="sidebar__item has-sub" href="organizations.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>
+          <span class="sidebar__item-label">Organizations</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="organizations.html">All Organizations</a>
+          <a class="sidebar__sub-item" href="org-verification.html">Org Verification <span class="sidebar__item-badge">3</span></a>
+        </div>
+
+        <!-- Services -->
+        <a class="sidebar__item has-sub" href="services.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span class="sidebar__item-label">Services</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="services.html">All Services</a>
+          <a class="sidebar__sub-item" href="categories.html">Categories</a>
+          <a class="sidebar__sub-item" href="service-approval.html">Service Approval <span class="sidebar__item-badge amber">12</span></a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Operations Section -->
+      <div class="sidebar__section" id="section-operations">
+        <div class="sidebar__section-title" onclick="toggleSection(this)">
+          Operations
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="sidebar__section-items">
+          <a class="sidebar__item" href="bookings.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span class="sidebar__item-label">Bookings</span>
+          </a>
+          <a class="sidebar__item active" href="disputes.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="sidebar__item-label">Disputes</span>
+            <span class="sidebar__item-badge red">2</span>
+          </a>
+          <a class="sidebar__item" href="reported-reviews.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <span class="sidebar__item-label">Reported Reviews</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Finance Section -->
+      <div class="sidebar__section" id="section-finance">
+        <div class="sidebar__section-title" onclick="toggleSection(this)">
+          Finance
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="sidebar__section-items">
+          <a class="sidebar__item" href="payments.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span class="sidebar__item-label">Payments</span>
+          </a>
+          <a class="sidebar__item" href="payouts.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 14h2"/><path d="M14 14h4"/></svg>
+            <span class="sidebar__item-label">Payouts</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Insights Section -->
+      <div class="sidebar__section" id="section-insights">
+        <div class="sidebar__section-title" onclick="toggleSection(this)">
+          Insights
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="sidebar__section-items">
+          <a class="sidebar__item" href="analytics.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span class="sidebar__item-label">Analytics</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Settings -->
+      <div class="sidebar__section">
+        <a class="sidebar__item has-sub" href="platform-settings.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="sidebar__item-label">Settings</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="platform-settings.html">Platform Settings</a>
+          <a class="sidebar__sub-item" href="content-management.html">Content Management</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="sidebar__user">
+        <div class="sidebar__user-avatar">SA</div>
+        <div class="sidebar__user-info">
+          <div class="sidebar__user-name">Super Admin</div>
+          <div class="sidebar__user-email">admin@ntizo.com</div>
+        </div>
+        <button class="sidebar__user-settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ============================================
+       MAIN CONTENT
+       ============================================ -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar__inner">
+        <div class="topbar__left">
+          <button class="topbar__hamburger" onclick="openSidebar()" aria-label="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="topbar__title-group">
+            <h1 class="topbar__title">Disputes</h1>
+            <div class="topbar__subtitle">Manage and resolve customer-provider disputes.</div>
+          </div>
+        </div>
+        <div class="topbar__right">
+          <button class="topbar__cta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Report
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main__container">
+      <div class="page-content">
+
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-card__label">Open Disputes</div>
+            <div class="metric-card__value">6</div>
+            <div class="metric-card__sub muted">Needs attention</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">In Review</div>
+            <div class="metric-card__value">4</div>
+            <div class="metric-card__sub muted">Being investigated</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Resolved</div>
+            <div class="metric-card__value">18</div>
+            <div class="metric-card__sub up">This month</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Avg Resolution</div>
+            <div class="metric-card__value">3.2 <span style="font-size: 14px; font-weight: 600; color: var(--gray-400);">days</span></div>
+            <div class="metric-card__sub up">-8% faster</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Escalated</div>
+            <div class="metric-card__value">2</div>
+            <div class="metric-card__sub muted">To admin</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card__label">Refunded</div>
+            <div class="metric-card__value">45,600 <span style="font-size: 14px; font-weight: 600; color: var(--gray-400);">MZN</span></div>
+            <div class="metric-card__sub muted">This month</div>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="table-card">
+          <div class="tab-bar">
+            <button class="tab-btn active">All (24)</button>
+            <button class="tab-btn">Open (6)</button>
+            <button class="tab-btn">In Review (4)</button>
+            <button class="tab-btn">Resolved (12)</button>
+            <button class="tab-btn">Closed (2)</button>
+            <div class="tab-bar__right">
+              <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Search disputes...
+              </div>
+              <button class="filter-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Filters
+              </button>
+            </div>
+          </div>
+
+          <!-- Table Header -->
+          <div class="grid-table__header" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <span>Dispute</span>
+            <span>Booking</span>
+            <span>Customer</span>
+            <span>Provider</span>
+            <span>Priority</span>
+            <span>Status</span>
+            <span>Actions</span>
+          </div>
+
+          <!-- Table Rows -->
+          <div class="grid-table__row" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <div class="cell">
+              <span class="cell__primary">Service not completed as described</span>
+              <span class="cell__secondary">#DSP-0052</span>
+            </div>
+            <span class="id">#BK-3447</span>
+            <div class="cell">
+              <span class="cell__primary">Beatriz Cossa</span>
+              <span class="cell__secondary">beatriz@email.com</span>
+            </div>
+            <div class="cell">
+              <span class="cell__primary">Quick Fix Electrical</span>
+              <span class="cell__secondary">Organization</span>
+            </div>
+            <div><span class="priority high"><span class="priority__dot"></span>High</span></div>
+            <div><span class="badge red">Open</span></div>
+            <span class="action-link">View</span>
+          </div>
+          <div class="grid-table__row" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <div class="cell">
+              <span class="cell__primary">Provider no-show</span>
+              <span class="cell__secondary">#DSP-0051</span>
+            </div>
+            <span class="id">#BK-3440</span>
+            <div class="cell">
+              <span class="cell__primary">Jorge Sitoe</span>
+              <span class="cell__secondary">jorge@email.com</span>
+            </div>
+            <div class="cell">
+              <span class="cell__primary">Paulo Guambe</span>
+              <span class="cell__secondary">Individual</span>
+            </div>
+            <div><span class="priority high"><span class="priority__dot"></span>High</span></div>
+            <div><span class="badge blue">In Review</span></div>
+            <span class="action-link">View</span>
+          </div>
+          <div class="grid-table__row" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <div class="cell">
+              <span class="cell__primary">Quality below expectations</span>
+              <span class="cell__secondary">#DSP-0050</span>
+            </div>
+            <span class="id">#BK-3435</span>
+            <div class="cell">
+              <span class="cell__primary">Ana Machava</span>
+              <span class="cell__secondary">ana@email.com</span>
+            </div>
+            <div class="cell">
+              <span class="cell__primary">Carlos Nhantumbo</span>
+              <span class="cell__secondary">Individual</span>
+            </div>
+            <div><span class="priority medium"><span class="priority__dot"></span>Medium</span></div>
+            <div><span class="badge amber">Open</span></div>
+            <span class="action-link">View</span>
+          </div>
+          <div class="grid-table__row" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <div class="cell">
+              <span class="cell__primary">Overcharged for service</span>
+              <span class="cell__secondary">#DSP-0049</span>
+            </div>
+            <span class="id">#BK-3430</span>
+            <div class="cell">
+              <span class="cell__primary">Fatima Nhaca</span>
+              <span class="cell__secondary">fatima@email.com</span>
+            </div>
+            <div class="cell">
+              <span class="cell__primary">Clean Home Maputo</span>
+              <span class="cell__secondary">Organization</span>
+            </div>
+            <div><span class="priority medium"><span class="priority__dot"></span>Medium</span></div>
+            <div><span class="badge blue">In Review</span></div>
+            <span class="action-link">View</span>
+          </div>
+          <div class="grid-table__row" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <div class="cell">
+              <span class="cell__primary">Late arrival, partial service</span>
+              <span class="cell__secondary">#DSP-0048</span>
+            </div>
+            <span class="id">#BK-3425</span>
+            <div class="cell">
+              <span class="cell__primary">Ricardo Langa</span>
+              <span class="cell__secondary">ricardo@email.com</span>
+            </div>
+            <div class="cell">
+              <span class="cell__primary">Bela Hair Studio</span>
+              <span class="cell__secondary">Organization</span>
+            </div>
+            <div><span class="priority low"><span class="priority__dot"></span>Low</span></div>
+            <div><span class="badge amber">Open</span></div>
+            <span class="action-link">View</span>
+          </div>
+          <div class="grid-table__row" style="grid-template-columns: 1.8fr 90px 1.2fr 1.2fr 80px 90px 70px;">
+            <div class="cell">
+              <span class="cell__primary">Damage during service</span>
+              <span class="cell__secondary">#DSP-0047</span>
+            </div>
+            <span class="id">#BK-3420</span>
+            <div class="cell">
+              <span class="cell__primary">Teresa Cossa</span>
+              <span class="cell__secondary">teresa@email.com</span>
+            </div>
+            <div class="cell">
+              <span class="cell__primary">Elite Plumbers</span>
+              <span class="cell__secondary">Organization</span>
+            </div>
+            <div><span class="priority high"><span class="priority__dot"></span>High</span></div>
+            <div><span class="badge blue">In Review</span></div>
+            <span class="action-link">View</span>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <span class="pagination__info">Showing 1-6 of 24</span>
+            <div class="pagination__buttons">
+              <button class="pagination__btn">&laquo;</button>
+              <button class="pagination__btn active">1</button>
+              <button class="pagination__btn">2</button>
+              <button class="pagination__btn">3</button>
+              <button class="pagination__btn">4</button>
+              <button class="pagination__btn">&raquo;</button>
+            </div>
+          </div>
+        </div>
+</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  function toggleSub(el, event) {
+    event.preventDefault();
+    el.classList.toggle('expanded');
+  }
+
+  function toggleSection(titleEl) {
+    const section = titleEl.parentElement;
+    section.classList.toggle('collapsed');
+  }
+
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarOverlay').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const activeItem = document.querySelector('.sidebar__item.active.has-sub');
+    if (activeItem) activeItem.classList.add('expanded');
+  });
+</script>
+
+</body>
+</html>

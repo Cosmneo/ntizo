@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ntizo - Search Results: Plumbing</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--gray-50);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+    .container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+    /* NAVBAR */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-100);
+      height: 64px; display: flex; align-items: center;
+    }
+    .navbar .container { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .navbar__logo { font-size: 26px; font-weight: 900; color: var(--blue-500); letter-spacing: -0.5px; }
+    .navbar__logo span { color: var(--sky-400); }
+    .navbar__links { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .navbar__links a { font-size: 13px; font-weight: 500; color: var(--gray-500); transition: color 0.2s; }
+    .navbar__links a:hover { color: var(--blue-500); }
+    .navbar__actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 9px 18px; font-size: 13px; font-weight: 600; font-family: inherit;
+      border-radius: var(--radius-md); border: none; cursor: pointer; transition: all 0.2s;
+    }
+    .btn--nav-ghost { background: transparent; color: var(--gray-600); }
+    .btn--nav-ghost:hover { color: var(--blue-500); }
+    .btn--nav-primary { background: var(--blue-500); color: var(--white); }
+    .btn--nav-primary:hover { background: var(--blue-400); box-shadow: 0 4px 16px rgba(0,122,255,0.25); }
+
+    /* PAGE HEADER */
+    .page-header {
+      padding-top: 64px;
+      background: linear-gradient(180deg, var(--white) 0%, var(--blue-50) 100%);
+      border-bottom: 1px solid var(--blue-100);
+    }
+    .page-header__inner { padding: 20px 0 28px; }
+
+    .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-400); }
+    .breadcrumb a { color: var(--gray-500); transition: color 0.2s; }
+    .breadcrumb a:hover { color: var(--blue-500); }
+    .breadcrumb__sep { color: var(--gray-300); font-size: 11px; }
+    .breadcrumb__current { color: var(--blue-500); font-weight: 600; }
+
+    .page-header__title-row {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 18px;
+    }
+    .page-header__title {
+      font-size: 28px; font-weight: 800; color: var(--navy-900); line-height: 1.2;
+    }
+    .page-header__title-highlight {
+      background: var(--gradient-brand);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .page-header__subtitle { font-size: 15px; color: var(--gray-500); margin-top: 4px; }
+    .page-header__subtitle strong { color: var(--navy-900); font-weight: 700; }
+
+    .page-header__pills { display: flex; align-items: center; gap: 8px; }
+    .page-header__pill {
+      display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px;
+      background: var(--white); color: var(--blue-600); font-size: 12px; font-weight: 600;
+      border-radius: var(--radius-full); border: 1px solid var(--blue-200);
+      box-shadow: var(--shadow-sm);
+    }
+    .page-header__pill svg { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
+    .page-header__pill svg:hover { opacity: 1; }
+
+    /* MAIN LAYOUT */
+    .main-layout { display: grid; grid-template-columns: 280px 1fr; gap: 28px; padding: 28px 0 80px; }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: sticky; top: 100px; align-self: start;
+      background: var(--white); border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100); padding: 24px; box-shadow: var(--shadow-sm);
+    }
+    .sidebar-search { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--gray-100); }
+    .sidebar-search__field { margin-bottom: 10px; }
+    .sidebar-search__field:last-child { margin-bottom: 0; }
+    .sidebar-search__label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 5px; display: block; }
+    .sidebar-search__input-wrap {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+      background: var(--white); transition: all 0.2s;
+    }
+    .sidebar-search__input-wrap:focus-within { border-color: var(--blue-300); box-shadow: var(--shadow-input-focus); }
+    .sidebar-search__input-wrap svg { flex-shrink: 0; width: 16px; height: 16px; color: var(--gray-400); }
+    .sidebar-search__input-wrap input {
+      border: none; outline: none; font-size: 14px; color: var(--navy-900);
+      background: transparent; width: 100%; font-family: inherit;
+    }
+    .sidebar-search__input-wrap input::placeholder { color: var(--gray-400); }
+    .sidebar-search__btn {
+      width: 100%; margin-top: 12px; padding: 10px 20px; background: var(--blue-500);
+      color: var(--white); border: none; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .sidebar-search__btn:hover { background: var(--blue-400); box-shadow: 0 4px 16px rgba(0,122,255,0.3); transform: translateY(-1px); }
+
+    .sidebar__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .sidebar__title { font-size: 16px; font-weight: 700; color: var(--navy-900); }
+    .sidebar__clear {
+      font-size: 13px; color: var(--blue-500); font-weight: 500; cursor: pointer;
+      background: none; border: none; font-family: inherit; transition: color 0.2s;
+    }
+    .sidebar__clear:hover { color: var(--blue-700); text-decoration: underline; }
+
+    .filter-group { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--gray-100); }
+    .filter-group:last-of-type { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .filter-group__label {
+      font-size: 13px; font-weight: 700; color: var(--navy-900); margin-bottom: 10px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .filter-select {
+      width: 100%; padding: 10px 14px; font-size: 14px; font-family: inherit;
+      border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+      color: var(--navy-900); background: var(--white); outline: none;
+      transition: all 0.2s; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+    }
+    .filter-select:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+
+    .filter-range { display: flex; align-items: center; gap: 8px; }
+    .filter-range__field { flex: 1; min-width: 0; }
+    .filter-range input {
+      width: 100%; min-width: 0; padding: 10px; font-size: 13px; font-family: inherit;
+      border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+      color: var(--navy-900); background: var(--white); outline: none;
+      transition: all 0.2s; text-align: center; -moz-appearance: textfield;
+    }
+    .filter-range input::-webkit-outer-spin-button,
+    .filter-range input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .filter-range input:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+    .filter-range__sep { font-size: 13px; color: var(--gray-400); font-weight: 500; flex-shrink: 0; }
+
+    .filter-radio-group { display: flex; flex-direction: column; gap: 8px; }
+    .filter-radio { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--gray-600); }
+    .filter-radio input[type="radio"] { width: 16px; height: 16px; accent-color: var(--blue-500); cursor: pointer; }
+
+    .filter-checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+    .filter-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--gray-600); }
+    .filter-checkbox input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue-500); cursor: pointer; border-radius: 3px; }
+
+    .filter-toggle-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-toggle {
+      display: flex; align-items: center; padding: 8px 12px; border-radius: var(--radius-md);
+      border: 1px solid var(--gray-200); font-size: 13px; color: var(--gray-600);
+      cursor: pointer; transition: all 0.2s; background: var(--white);
+    }
+    .filter-toggle:hover { border-color: var(--blue-200); }
+    .filter-toggle.active { border-color: var(--blue-500); background: var(--blue-50); color: var(--blue-500); font-weight: 600; }
+    .filter-toggle input { display: none; }
+
+    .sidebar__apply-btn {
+      width: 100%; margin-top: 24px; padding: 12px 20px; background: var(--blue-500);
+      color: var(--white); border: none; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .sidebar__apply-btn:hover { background: var(--blue-400); box-shadow: 0 4px 16px rgba(0,122,255,0.3); transform: translateY(-1px); }
+
+    /* RESULTS AREA */
+    .results-toolbar {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+      background: var(--white); padding: 14px 20px; border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+    }
+    .results-toolbar__count { font-size: 14px; color: var(--gray-500); }
+    .results-toolbar__count strong { color: var(--navy-900); font-weight: 700; }
+    .results-toolbar__actions { display: flex; align-items: center; gap: 16px; }
+    .sort-select {
+      padding: 8px 32px 8px 12px; font-size: 13px; font-family: inherit;
+      border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+      color: var(--gray-700); background: var(--white); outline: none; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    .sort-select:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+
+    .view-toggle { display: flex; align-items: center; border: 1px solid var(--gray-200); border-radius: var(--radius-md); overflow: hidden; }
+    .view-toggle__btn {
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      background: var(--white); border: none; cursor: pointer; color: var(--gray-400); transition: all 0.2s;
+    }
+    .view-toggle__btn:first-child { border-right: 1px solid var(--gray-200); }
+    .view-toggle__btn.active { background: var(--blue-50); color: var(--blue-500); }
+    .view-toggle__btn:hover { color: var(--blue-500); }
+
+    /* RESULTS GRID */
+    .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+    /* FEATURED CARD */
+    .provider-card--featured {
+      grid-column: 1 / -1;
+      background: var(--blue-50); border: 1.5px solid var(--blue-200);
+      border-radius: var(--radius-lg); padding: 28px 32px;
+      display: flex; align-items: center; gap: 32px;
+      position: relative; overflow: hidden; transition: all 0.3s ease;
+    }
+    .provider-card--featured:hover {
+      border-color: var(--blue-400);
+      box-shadow: 0 8px 24px rgba(0,122,255,0.1);
+      transform: translateY(-2px);
+    }
+    .provider-card--featured .featured-badge {
+      position: absolute; top: 16px; right: 16px;
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; background: var(--gradient-brand);
+      color: var(--white); font-size: 10px; font-weight: 800;
+      letter-spacing: 0.8px; text-transform: uppercase;
+      border-radius: var(--radius-full);
+    }
+    .provider-card--featured .featured-avatar {
+      width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; color: var(--white);
+      background: var(--navy-900);
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      box-shadow: 0 0 0 3px var(--blue-500), 0 0 0 6px rgba(0,122,255,0.15);
+    }
+    .provider-card--featured .featured-content { flex: 1; min-width: 0; }
+    .provider-card--featured .featured-name {
+      font-size: 18px; font-weight: 700; color: var(--navy-900);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .provider-card--featured .featured-name .verified-icon {
+      width: 18px; height: 18px; color: var(--blue-500); flex-shrink: 0;
+    }
+    .provider-card--featured .featured-service { font-size: 14px; color: var(--blue-600); font-weight: 500; margin-top: 2px; }
+    .provider-card--featured .featured-stars { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+    .provider-card--featured .featured-stars svg { color: var(--amber-500); }
+    .provider-card--featured .featured-rating-text { font-size: 13px; font-weight: 600; color: var(--gray-600); margin-left: 4px; }
+    .provider-card--featured .featured-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .provider-card--featured .featured-tag {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+      background: var(--white); border: 1px solid var(--blue-200); border-radius: var(--radius-full);
+      font-size: 11px; font-weight: 600; color: var(--blue-600);
+    }
+    .provider-card--featured .featured-tag svg { width: 12px; height: 12px; }
+    .provider-card--featured .featured-right {
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+    }
+    .provider-card--featured .featured-price-label { font-size: 12px; color: var(--gray-500); }
+    .provider-card--featured .featured-price-value {
+      font-size: 28px; font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .provider-card--featured .featured-price-unit { font-size: 14px; font-weight: 400; color: var(--gray-400); }
+    .provider-card--featured .featured-location {
+      font-size: 13px; color: var(--gray-400); display: flex; align-items: center; gap: 4px;
+    }
+    .featured-cta {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 24px; background: var(--blue-500); color: var(--white);
+      border: none; border-radius: var(--radius-md); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .featured-cta:hover { background: var(--blue-400); box-shadow: 0 4px 16px rgba(0,122,255,0.3); transform: translateY(-1px); }
+
+    /* REGULAR PROVIDER CARD */
+    .provider-card {
+      background: var(--white); border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100); transition: all 0.3s ease;
+      position: relative; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .provider-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: transparent; transition: background 0.3s ease;
+    }
+    .provider-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 8px 24px rgba(0,122,255,0.06);
+      transform: translateY(-4px);
+    }
+    .provider-card:hover::before { background: var(--gradient-brand); }
+
+    .provider-card__header-strip {
+      height: 48px; position: relative;
+      background: linear-gradient(135deg, rgba(0,122,255,0.04) 0%, rgba(56,182,255,0.06) 100%);
+    }
+    .provider-card__avatar-wrap {
+      position: absolute; left: 50%; bottom: -32px; transform: translateX(-50%);
+      width: 68px; height: 68px; border-radius: 50%;
+      padding: 3px;
+      background: var(--gradient-brand);
+    }
+    .provider-card__avatar {
+      width: 100%; height: 100%; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: var(--white);
+      border: 3px solid var(--white);
+    }
+
+    .provider-card__body {
+      padding: 44px 20px 20px; text-align: center;
+      flex: 1; display: flex; flex-direction: column;
+    }
+    .provider-card__name {
+      font-size: 16px; font-weight: 700; color: var(--navy-900);
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .provider-card__name .verified-icon { width: 16px; height: 16px; color: var(--blue-500); flex-shrink: 0; }
+    .provider-card__service { font-size: 13px; color: var(--blue-500); font-weight: 500; margin-top: 3px; }
+
+    /* Star rating row */
+    .provider-card__stars { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 10px; }
+    .provider-card__stars svg { width: 14px; height: 14px; }
+    .star-filled { color: var(--amber-500); }
+    .star-empty { color: var(--gray-200); }
+    .provider-card__rating-text { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-left: 6px; }
+
+    /* Tags row */
+    .provider-card__tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+    .provider-card__tag {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+      background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-full);
+      font-size: 11px; font-weight: 500; color: var(--gray-600);
+    }
+    .provider-card__tag--green {
+      background: var(--green-50); border-color: #bbf7d0; color: var(--green-600);
+    }
+    .provider-card__tag--blue {
+      background: var(--blue-50); border-color: var(--blue-100); color: var(--blue-600);
+    }
+    .provider-card__tag svg { width: 10px; height: 10px; }
+    .provider-card__tag .pulse-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green-500);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* Meta (location) */
+    .provider-card__meta {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      margin-top: 10px; font-size: 13px; color: var(--gray-400);
+    }
+    .provider-card__meta svg { width: 12px; height: 12px; }
+
+    /* Price */
+    .provider-card__price {
+      margin-top: auto; padding-top: 16px;
+      display: flex; align-items: baseline; justify-content: center; gap: 4px;
+    }
+    .provider-card__price-label { font-size: 12px; color: var(--gray-400); }
+    .provider-card__price-value {
+      font-size: 22px; font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .provider-card__price-unit { font-size: 13px; font-weight: 400; color: var(--gray-400); }
+
+    /* CTA Button */
+    .provider-card__cta {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; margin-top: 14px; padding: 10px 20px;
+      background: transparent; color: var(--blue-500);
+      border: 1.5px solid var(--blue-200); border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .provider-card__cta:hover {
+      border-color: var(--blue-500); background: var(--blue-50);
+    }
+    .provider-card__cta svg { transition: transform 0.2s; }
+    .provider-card__cta:hover svg { transform: translateX(3px); }
+
+    /* PAGINATION */
+    .pagination-wrapper {
+      margin-top: 32px; background: var(--white); border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100); box-shadow: var(--shadow-sm); padding: 18px 24px;
+    }
+    .pagination { display: flex; align-items: center; justify-content: space-between; }
+    .pagination__info { font-size: 13px; color: var(--gray-500); }
+    .pagination__info strong { color: var(--navy-900); font-weight: 600; }
+    .pagination__controls { display: flex; align-items: center; gap: 6px; }
+    .pagination__btn {
+      width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: var(--white);
+      color: var(--gray-600); font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .pagination__btn:hover { border-color: var(--blue-300); color: var(--blue-500); background: var(--blue-50); }
+    .pagination__btn.active {
+      background: var(--gradient-brand); color: var(--white);
+      border-color: transparent; box-shadow: 0 2px 8px rgba(0,122,255,0.25);
+    }
+    .pagination__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pagination__btn:disabled:hover { background: var(--white); border-color: var(--gray-200); color: var(--gray-600); }
+    .pagination__prev, .pagination__next { padding: 0 16px; width: auto; gap: 6px; font-size: 13px; }
+
+    /* MOBILE FILTER TOGGLE */
+    .mobile-filter-toggle {
+      display: none; width: 100%; padding: 12px 20px; background: var(--white);
+      border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 600; color: var(--navy-900); cursor: pointer;
+      margin-bottom: 16px; font-family: inherit; align-items: center; justify-content: center; gap: 8px;
+    }
+
+    /* FOOTER */
+    .footer { background: var(--gray-50); color: var(--gray-500); padding: 0; }
+    .footer__card { border-top: 1px solid var(--gray-200); padding: 56px 0 40px; }
+    .footer__grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 48px; align-items: start; }
+    .footer__brand { font-size: 24px; font-weight: 900; margin-bottom: 14px; }
+    .footer__brand a { color: var(--blue-500); }
+    .footer__brand a span { color: var(--sky-400); }
+    .footer__desc { font-size: 13px; line-height: 1.7; max-width: 300px; color: var(--gray-400); }
+    .footer__social { display: flex; gap: 10px; margin-top: 24px; }
+    .footer__social a {
+      width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--gray-200);
+      background: var(--white); display: flex; align-items: center; justify-content: center;
+      color: var(--gray-400); transition: all 0.2s; font-size: 12px; font-weight: 600;
+    }
+    .footer__social a:hover { border-color: var(--blue-500); color: var(--blue-500); }
+    .footer__col-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .footer__col-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: var(--radius-sm);
+      background: var(--blue-50); color: var(--blue-500); font-size: 10px; font-weight: 800;
+    }
+    .footer__title { font-size: 15px; font-weight: 700; color: var(--navy-900); }
+    .footer__links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__links a { font-size: 14px; color: var(--gray-500); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--blue-500); }
+    .footer__bottom {
+      margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: var(--gray-400);
+    }
+    .footer__legal { display: flex; gap: 24px; }
+    .footer__legal a { color: var(--blue-500); transition: color 0.2s; }
+    .footer__legal a:hover { color: var(--blue-600); }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .results-grid { grid-template-columns: repeat(2, 1fr); }
+      .provider-card--featured { grid-column: 1 / -1; }
+      .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+    @media (max-width: 768px) {
+      .navbar__links { display: none; }
+      .page-header__title-row { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .main-layout { grid-template-columns: 1fr; padding: 20px 0 60px; }
+      .sidebar { position: static; display: none; }
+      .sidebar.show { display: block; }
+      .mobile-filter-toggle { display: flex; }
+      .results-grid { grid-template-columns: repeat(2, 1fr); }
+      .provider-card--featured { flex-direction: column; align-items: flex-start; padding: 24px; gap: 20px; }
+      .provider-card--featured .featured-right { align-items: flex-start; flex-direction: row; gap: 16px; width: 100%; }
+      .results-toolbar { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .results-toolbar__actions { width: 100%; justify-content: space-between; }
+      .pagination-wrapper { padding: 14px 16px; }
+      .pagination { flex-direction: column; gap: 12px; }
+      .footer__grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer__bottom { flex-direction: column; gap: 12px; text-align: center; }
+    }
+    @media (max-width: 540px) {
+      .results-grid { grid-template-columns: 1fr; }
+      .provider-card--featured { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="../landing.html" class="navbar__logo">nt<span>izo</span></a>
+      <ul class="navbar__links">
+        <li><a href="search-results.html">Browse Services</a></li>
+        <li><a href="categories.html">Categories</a></li>
+        <li><a href="how-it-works.html">How It Works</a></li>
+        <li><a href="become-provider.html">Become a Provider</a></li>
+      </ul>
+      <div class="navbar__actions">
+        <button class="btn btn--nav-ghost" onclick="location.href='../auth/login.html'">Log In</button>
+        <button class="btn btn--nav-primary" onclick="location.href='../auth/register.html'">Sign Up</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="container">
+      <div class="page-header__inner">
+        <div class="breadcrumb">
+          <a href="../landing.html">Home</a>
+          <span class="breadcrumb__sep"><svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg></span>
+          <a href="categories.html">Categories</a>
+          <span class="breadcrumb__sep"><svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg></span>
+          <span class="breadcrumb__current">Plumbing</span>
+        </div>
+
+        <div class="page-header__title-row">
+          <div class="page-header__title-area">
+            <h1 class="page-header__title"><span class="page-header__title-highlight">Plumbing</span> in Maputo</h1>
+            <p class="page-header__subtitle"><strong>24</strong> providers found</p>
+          </div>
+          <div class="page-header__pills">
+            <span class="page-header__pill">
+              Plumbing
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+            <span class="page-header__pill">
+              Maputo
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+            <span class="page-header__pill">
+              4+ Stars
+              <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="container">
+    <div class="main-layout">
+
+      <button class="mobile-filter-toggle" onclick="document.querySelector('.sidebar').classList.toggle('show')">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
+        Filters
+      </button>
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="sidebar-search">
+          <div class="sidebar-search__field">
+            <label class="sidebar-search__label">Service</label>
+            <div class="sidebar-search__input-wrap">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+              <input type="text" value="Plumbing" placeholder="What service do you need?">
+            </div>
+          </div>
+          <div class="sidebar-search__field">
+            <label class="sidebar-search__label">Location</label>
+            <div class="sidebar-search__input-wrap">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              <input type="text" value="Maputo" placeholder="City or area">
+            </div>
+          </div>
+          <button class="sidebar-search__btn">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+            Search
+          </button>
+        </div>
+
+        <div class="sidebar__header">
+          <span class="sidebar__title">Filters</span>
+          <button class="sidebar__clear">Clear all</button>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group__label">Category</div>
+          <select class="filter-select">
+            <option>All Categories</option>
+            <option>Home Repairs</option>
+            <option>Beauty & Styling</option>
+            <option>Tutoring & Education</option>
+            <option>Transport & Delivery</option>
+            <option>Cleaning Services</option>
+            <option>Tech & IT Support</option>
+            <option>Catering & Events</option>
+            <option>Photography & Video</option>
+            <option selected>Plumbing</option>
+            <option>Electrical</option>
+            <option>Painting & Decor</option>
+            <option>Gardening & Landscaping</option>
+            <option>Auto Repair</option>
+            <option>Health & Wellness</option>
+            <option>Legal & Consulting</option>
+            <option>Fashion & Tailoring</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group__label">Price Range (MZN)</div>
+          <div class="filter-range">
+            <div class="filter-range__field"><input type="number" placeholder="Min" value="0"></div>
+            <span class="filter-range__sep">to</span>
+            <div class="filter-range__field"><input type="number" placeholder="Max" value="10000"></div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group__label">Rating</div>
+          <div class="filter-radio-group">
+            <label class="filter-radio"><input type="radio" name="rating" value="5"> 5 Stars only</label>
+            <label class="filter-radio"><input type="radio" name="rating" value="4" checked> 4+ Stars</label>
+            <label class="filter-radio"><input type="radio" name="rating" value="3"> 3+ Stars</label>
+            <label class="filter-radio"><input type="radio" name="rating" value="0"> Any rating</label>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group__label">Availability</div>
+          <div class="filter-toggle-group">
+            <label class="filter-toggle active" onclick="this.parentElement.querySelectorAll('.filter-toggle').forEach(t=>t.classList.remove('active'));this.classList.add('active')">
+              <input type="radio" name="availability" value="today"> Available today
+            </label>
+            <label class="filter-toggle" onclick="this.parentElement.querySelectorAll('.filter-toggle').forEach(t=>t.classList.remove('active'));this.classList.add('active')">
+              <input type="radio" name="availability" value="week"> This week
+            </label>
+            <label class="filter-toggle" onclick="this.parentElement.querySelectorAll('.filter-toggle').forEach(t=>t.classList.remove('active'));this.classList.add('active')">
+              <input type="radio" name="availability" value="any"> Any time
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group__label">Service Location</div>
+          <div class="filter-checkbox-group">
+            <label class="filter-checkbox"><input type="checkbox" checked> At my location</label>
+            <label class="filter-checkbox"><input type="checkbox"> At provider</label>
+            <label class="filter-checkbox"><input type="checkbox"> Remote</label>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group__label">Provider Type</div>
+          <div class="filter-checkbox-group">
+            <label class="filter-checkbox"><input type="checkbox" checked> Individual</label>
+            <label class="filter-checkbox"><input type="checkbox" checked> Organization</label>
+          </div>
+        </div>
+
+        <button class="sidebar__apply-btn">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
+          Apply Filters
+        </button>
+      </aside>
+
+      <!-- RESULTS AREA -->
+      <div class="results-area">
+        <div class="results-toolbar">
+          <span class="results-toolbar__count"><strong>24</strong> results</span>
+          <div class="results-toolbar__actions">
+            <select class="sort-select">
+              <option>Relevance</option>
+              <option>Rating (High to Low)</option>
+              <option>Price (Low to High)</option>
+              <option>Price (High to Low)</option>
+              <option>Distance</option>
+            </select>
+            <div class="view-toggle">
+              <button class="view-toggle__btn active" title="Grid view">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+              </button>
+              <button class="view-toggle__btn" title="List view">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="results-grid">
+
+          <!-- FEATURED: Provider 1 - FixaSol Reparos -->
+          <div class="provider-card--featured">
+            <span class="featured-badge">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              TOP RATED
+            </span>
+            <div class="featured-avatar" style="background: var(--navy-900);">FS</div>
+            <div class="featured-content">
+              <div class="featured-name">
+                FixaSol Reparos
+                <svg class="verified-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              </div>
+              <div class="featured-service">Plumbing & Electrical</div>
+              <div class="featured-stars">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="opacity:0.3"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span class="featured-rating-text">4.8 (89 reviews)</span>
+              </div>
+              <div class="featured-tags">
+                <span class="featured-tag" style="background:var(--green-50);border-color:#bbf7d0;color:var(--green-600);">
+                  <span style="width:6px;height:6px;border-radius:50%;background:var(--green-500);display:inline-block;"></span>
+                  Available today
+                </span>
+                <span class="featured-tag">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  At your location
+                </span>
+                <span class="featured-tag">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                  Responds in &lt;1hr
+                </span>
+              </div>
+            </div>
+            <div class="featured-right">
+              <span class="featured-location">
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Matola
+              </span>
+              <div>
+                <span class="featured-price-label">From</span>
+                <span class="featured-price-value"> 1,200</span>
+                <span class="featured-price-unit"> MZN</span>
+              </div>
+              <a href="provider-profile.html" class="featured-cta">
+                View Profile
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Provider 2 - Joao Machava -->
+          <div class="provider-card">
+            <div class="provider-card__header-strip">
+              <div class="provider-card__avatar-wrap">
+                <div class="provider-card__avatar" style="background: var(--blue-600);">JM</div>
+              </div>
+            </div>
+            <div class="provider-card__body">
+              <div class="provider-card__name">
+                Joao Machava
+                <svg class="verified-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              </div>
+              <div class="provider-card__service">Plumbing Specialist</div>
+              <div class="provider-card__stars">
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span class="provider-card__rating-text">4.9 (142)</span>
+              </div>
+              <div class="provider-card__tags">
+                <span class="provider-card__tag provider-card__tag--green"><span class="pulse-dot"></span> Available today</span>
+                <span class="provider-card__tag provider-card__tag--blue">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  At your location
+                </span>
+              </div>
+              <div class="provider-card__meta">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </div>
+              <div class="provider-card__price">
+                <span class="provider-card__price-label">From&nbsp;</span>
+                <span class="provider-card__price-value">800</span>
+                <span class="provider-card__price-unit">&nbsp;MZN</span>
+              </div>
+              <a href="provider-profile.html" class="provider-card__cta">
+                View Profile
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Provider 3 - Alberto Nunes -->
+          <div class="provider-card">
+            <div class="provider-card__header-strip">
+              <div class="provider-card__avatar-wrap">
+                <div class="provider-card__avatar" style="background: var(--sky-500);">AN</div>
+              </div>
+            </div>
+            <div class="provider-card__body">
+              <div class="provider-card__name">
+                Alberto Nunes
+                <svg class="verified-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              </div>
+              <div class="provider-card__service">Emergency Plumbing</div>
+              <div class="provider-card__stars">
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-empty" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span class="provider-card__rating-text">4.7 (56)</span>
+              </div>
+              <div class="provider-card__tags">
+                <span class="provider-card__tag provider-card__tag--blue">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  Flexible
+                </span>
+              </div>
+              <div class="provider-card__meta">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </div>
+              <div class="provider-card__price">
+                <span class="provider-card__price-label">From&nbsp;</span>
+                <span class="provider-card__price-value">1,500</span>
+                <span class="provider-card__price-unit">&nbsp;MZN</span>
+              </div>
+              <a href="provider-profile.html" class="provider-card__cta">
+                View Profile
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Provider 4 - Carlos Mondlane -->
+          <div class="provider-card">
+            <div class="provider-card__header-strip">
+              <div class="provider-card__avatar-wrap">
+                <div class="provider-card__avatar" style="background: var(--blue-700);">CM</div>
+              </div>
+            </div>
+            <div class="provider-card__body">
+              <div class="provider-card__name">Carlos Mondlane</div>
+              <div class="provider-card__service">Pipe Installation</div>
+              <div class="provider-card__stars">
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-empty" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span class="provider-card__rating-text">4.6 (38)</span>
+              </div>
+              <div class="provider-card__tags">
+                <span class="provider-card__tag provider-card__tag--green"><span class="pulse-dot"></span> Available today</span>
+                <span class="provider-card__tag provider-card__tag--blue">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  At provider
+                </span>
+              </div>
+              <div class="provider-card__meta">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Beira
+              </div>
+              <div class="provider-card__price">
+                <span class="provider-card__price-label">From&nbsp;</span>
+                <span class="provider-card__price-value">950</span>
+                <span class="provider-card__price-unit">&nbsp;MZN</span>
+              </div>
+              <a href="provider-profile.html" class="provider-card__cta">
+                View Profile
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Provider 5 - Reparos Pro Lda -->
+          <div class="provider-card">
+            <div class="provider-card__header-strip">
+              <div class="provider-card__avatar-wrap">
+                <div class="provider-card__avatar" style="background: var(--blue-800);">RP</div>
+              </div>
+            </div>
+            <div class="provider-card__body">
+              <div class="provider-card__name">
+                Reparos Pro Lda
+                <svg class="verified-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              </div>
+              <div class="provider-card__service">Full Plumbing Services</div>
+              <div class="provider-card__stars">
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span class="provider-card__rating-text">5.0 (23)</span>
+              </div>
+              <div class="provider-card__tags">
+                <span class="provider-card__tag provider-card__tag--green"><span class="pulse-dot"></span> Available today</span>
+                <span class="provider-card__tag provider-card__tag--blue">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  At your location
+                </span>
+              </div>
+              <div class="provider-card__meta">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </div>
+              <div class="provider-card__price">
+                <span class="provider-card__price-label">From&nbsp;</span>
+                <span class="provider-card__price-value">2,000</span>
+                <span class="provider-card__price-unit">&nbsp;MZN</span>
+              </div>
+              <a href="provider-profile.html" class="provider-card__cta">
+                View Profile
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Provider 6 - Samuel Macie -->
+          <div class="provider-card">
+            <div class="provider-card__header-strip">
+              <div class="provider-card__avatar-wrap">
+                <div class="provider-card__avatar" style="background: var(--blue-500);">SM</div>
+              </div>
+            </div>
+            <div class="provider-card__body">
+              <div class="provider-card__name">Samuel Macie</div>
+              <div class="provider-card__service">Water Systems & Pumps</div>
+              <div class="provider-card__stars">
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-filled" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg class="star-empty" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span class="provider-card__rating-text">4.5 (67)</span>
+              </div>
+              <div class="provider-card__tags">
+                <span class="provider-card__tag provider-card__tag--blue">
+                  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                  At your location
+                </span>
+              </div>
+              <div class="provider-card__meta">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Matola
+              </div>
+              <div class="provider-card__price">
+                <span class="provider-card__price-label">From&nbsp;</span>
+                <span class="provider-card__price-value">1,100</span>
+                <span class="provider-card__price-unit">&nbsp;MZN</span>
+              </div>
+              <a href="provider-profile.html" class="provider-card__cta">
+                View Profile
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+          <div class="pagination">
+            <span class="pagination__info">Showing <strong>1-6</strong> of <strong>24</strong> providers</span>
+            <div class="pagination__controls">
+              <button class="pagination__btn pagination__prev" disabled>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                Prev
+              </button>
+              <button class="pagination__btn active">1</button>
+              <button class="pagination__btn">2</button>
+              <button class="pagination__btn">3</button>
+              <button class="pagination__btn">4</button>
+              <button class="pagination__btn pagination__next">
+                Next
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__card">
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand"><a href="../landing.html">nt<span>izo</span></a></div>
+            <p class="footer__desc">Connecting customers with trusted service providers. Book the services you need, when you need them.</p>
+            <div class="footer__social">
+              <a href="#" title="Twitter">X</a>
+              <a href="#" title="Instagram">ig</a>
+              <a href="#" title="LinkedIn">in</a>
+              <a href="#" title="Facebook">f</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">01</span>
+              <h4 class="footer__title">Product</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="search-results.html">Browse Services</a></li>
+              <li><a href="categories.html">Categories</a></li>
+              <li><a href="task-board.html">Task Board</a></li>
+              <li><a href="become-provider.html">For Providers</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">02</span>
+              <h4 class="footer__title">Resources</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="how-it-works.html">How It Works</a></li>
+              <li><a href="#">Help Center</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Success Stories</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">03</span>
+              <h4 class="footer__title">Company</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="#">About Us</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer__bottom">
+          <span>&copy; 2026 Ntizo. All rights reserved.</span>
+          <div class="footer__legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

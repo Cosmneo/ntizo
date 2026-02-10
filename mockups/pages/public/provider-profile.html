@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maria Costa - Beauty & Styling | Ntizo</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-100);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .navbar__logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .navbar__logo span { color: var(--sky-400); }
+
+    .navbar__links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .navbar__links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.2s;
+    }
+
+    .navbar__links a:hover { color: var(--blue-500); }
+
+    .navbar__actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--nav-ghost {
+      background: transparent;
+      color: var(--gray-600);
+    }
+    .btn--nav-ghost:hover { color: var(--blue-500); }
+
+    .btn--nav-primary {
+      background: var(--blue-500);
+      color: var(--white);
+    }
+    .btn--nav-primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--blue-500);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--ghost:hover { background: var(--blue-50); }
+
+    .btn--primary {
+      background: var(--blue-500);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+
+    .btn--primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn--lg { padding: 14px 28px; font-size: 15px; }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--blue-500);
+      border: 1.5px solid var(--blue-200);
+    }
+
+    .btn--outline:hover {
+      border-color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    .btn--sm { padding: 8px 16px; font-size: 13px; }
+
+    .btn--white { background: var(--white); color: var(--navy-900); }
+    .btn--white:hover { box-shadow: var(--shadow-lg); }
+
+    .btn--white-outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.3);
+    }
+    .btn--white-outline:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
+
+    /* ============================================
+       PROFILE HEADER
+       ============================================ */
+    .profile-header {
+      padding-top: 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .profile-header__bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, var(--blue-50) 0%, var(--sky-50) 100%);
+      z-index: -2;
+    }
+
+    .profile-header__pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.025;
+      background-image: url('../../assets/Pattern/SVG/Pattern 1.svg');
+      background-size: 240px;
+      background-repeat: repeat;
+      z-index: -1;
+    }
+
+    .profile-header__content {
+      padding: 48px 0 56px;
+      display: flex;
+      align-items: flex-start;
+      gap: 28px;
+    }
+
+    .profile-header__avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--blue-500);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+      box-shadow: 0 6px 20px rgba(0, 122, 255, 0.2);
+    }
+
+    .profile-header__info {
+      flex: 1;
+    }
+
+    .profile-header__name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .profile-header__name {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -0.5px;
+    }
+
+    .profile-header__verified {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--green-500);
+      border-radius: 50%;
+      color: var(--white);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .profile-header__category {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      margin-bottom: 12px;
+    }
+
+    .profile-header__meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 14px;
+      color: var(--gray-500);
+      flex-wrap: wrap;
+    }
+
+    .profile-header__meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .profile-header__meta-item svg {
+      flex-shrink: 0;
+    }
+
+    .profile-header__stars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      color: var(--amber-500);
+    }
+
+    .profile-header__stars-text {
+      color: var(--gray-700);
+      font-weight: 600;
+    }
+
+    .profile-header__actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      padding-top: 12px;
+    }
+
+    /* ============================================
+       CONTENT LAYOUT
+       ============================================ */
+    .profile-content {
+      padding: 40px 0 80px;
+      background: var(--gray-50);
+    }
+
+    .profile-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 32px;
+      align-items: start;
+    }
+
+    .profile-main {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .profile-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 96px;
+    }
+
+    /* ============================================
+       CARDS (shared)
+       ============================================ */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+      padding: 28px;
+    }
+
+    .card__title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    .card__title--lg {
+      font-size: 20px;
+    }
+
+    /* ============================================
+       ABOUT
+       ============================================ */
+    .about__text {
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.75;
+    }
+
+    .about__text p + p {
+      margin-top: 12px;
+    }
+
+    /* ============================================
+       SERVICES
+       ============================================ */
+    .services-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .service-item {
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--gray-100);
+      transition: all 0.2s;
+    }
+
+    .service-item:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.06);
+    }
+
+    .service-item__info { flex: 1; }
+
+    .service-item__name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 4px;
+    }
+
+    .service-item__desc {
+      font-size: 13px;
+      color: var(--gray-500);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .service-item__tags {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .service-item__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--gray-500);
+    }
+
+    .service-item__tag--location {
+      color: var(--blue-500);
+      background: var(--blue-50);
+      border-color: var(--blue-100);
+    }
+
+    .service-item__right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .service-item__price {
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .service-item__price-value {
+      font-size: 20px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .service-item__price-unit {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--gray-400);
+    }
+
+    /* ============================================
+       PACKAGES
+       ============================================ */
+    .packages-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .package-card {
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      border: 1px solid var(--gray-100);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .package-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.08);
+      transform: translateY(-4px);
+    }
+
+    .package-card__name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 8px;
+    }
+
+    .package-card__price {
+      font-size: 28px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .package-card__duration {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-bottom: 16px;
+    }
+
+    .package-card__features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex: 1;
+    }
+
+    .package-card__features li {
+      font-size: 13px;
+      color: var(--gray-600);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.4;
+    }
+
+    .package-card__features li::before {
+      content: '';
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='%23007AFF'%3E%3Cpath fill-rule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clip-rule='evenodd'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .package-card .btn {
+      width: 100%;
+    }
+
+    /* ============================================
+       PORTFOLIO
+       ============================================ */
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .portfolio-item {
+      aspect-ratio: 1;
+      background: var(--gray-100);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-300);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .portfolio-item:hover {
+      background: var(--gray-200);
+    }
+
+    .portfolio-item svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    /* ============================================
+       REVIEWS
+       ============================================ */
+    .reviews-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 32px;
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .reviews-summary__score {
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .reviews-summary__number {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--navy-900);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .reviews-summary__stars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--amber-500);
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .reviews-summary__count {
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .reviews-summary__bars {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rating-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rating-bar__label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .rating-bar__track {
+      flex: 1;
+      height: 8px;
+      background: var(--gray-100);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .rating-bar__fill {
+      height: 100%;
+      background: var(--gradient-brand);
+      border-radius: var(--radius-full);
+      transition: width 0.5s ease;
+    }
+
+    .rating-bar__percent {
+      font-size: 12px;
+      color: var(--gray-400);
+      width: 32px;
+      flex-shrink: 0;
+    }
+
+    .reviews-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .review-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px;
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--gray-100);
+    }
+
+    .review-card__avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--blue-500);
+      flex-shrink: 0;
+    }
+
+    .review-card__content { flex: 1; }
+
+    .review-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .review-card__name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy-900);
+    }
+
+    .review-card__date {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+
+    .review-card__stars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--amber-500);
+      margin-bottom: 8px;
+    }
+
+    .review-card__text {
+      font-size: 13px;
+      color: var(--gray-600);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .review-card__service-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+
+    .reviews-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue-500);
+      transition: gap 0.2s;
+    }
+
+    .reviews-more:hover {
+      gap: 10px;
+    }
+
+    /* ============================================
+       SIDEBAR CARDS
+       ============================================ */
+    .quick-book {
+      padding: 24px;
+    }
+
+    .quick-book__category {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      margin-bottom: 12px;
+    }
+
+    .quick-book__price {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 14px;
+    }
+
+    .quick-book__price-value {
+      font-size: 28px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .quick-book__availability {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--green-600);
+      font-weight: 500;
+      margin-bottom: 18px;
+    }
+
+    .quick-book__dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green-500);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .quick-book .btn {
+      width: 100%;
+    }
+
+    /* Skills */
+    .skills-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .skill-tag {
+      display: inline-block;
+      padding: 6px 14px;
+      background: var(--blue-50);
+      color: var(--blue-600);
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-full);
+      transition: all 0.2s;
+    }
+
+    .skill-tag:hover {
+      background: var(--blue-100);
+    }
+
+    /* Service area */
+    .service-area__text {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .map-placeholder {
+      width: 100%;
+      height: 160px;
+      background: var(--gray-100);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* Certifications */
+    .cert-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .cert-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    .cert-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue-500);
+      flex-shrink: 0;
+    }
+
+    /* Share */
+    .share-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .share-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .share-btn:hover {
+      border-color: var(--blue-200);
+      color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    .share-btn--whatsapp:hover {
+      border-color: #25D366;
+      color: #25D366;
+      background: #F0FDF4;
+    }
+
+    .share-btn--facebook:hover {
+      border-color: #1877F2;
+      color: #1877F2;
+      background: var(--blue-50);
+    }
+
+    /* ============================================
+       SIMILAR PROVIDERS
+       ============================================ */
+    .similar-providers {
+      padding: 80px 0;
+      background: var(--white);
+    }
+
+    .section__header { text-align: center; margin-bottom: 48px; }
+
+    .section__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(0, 122, 255, 0.08);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius-full);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section__title {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+
+    .section__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      margin-top: 10px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .similar__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .provider-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-100);
+      transition: all 0.3s ease;
+    }
+
+    .provider-card:hover {
+      box-shadow: 0 12px 32px rgba(0, 36, 77, 0.08);
+      transform: translateY(-6px);
+    }
+
+    .provider-card__cover {
+      height: 130px;
+      background: linear-gradient(135deg, var(--blue-100), var(--sky-200));
+      position: relative;
+    }
+
+    .provider-card__badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--white);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green-500);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .provider-card__avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--blue-500);
+      border: 3px solid var(--white);
+      position: absolute;
+      bottom: -30px;
+      left: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--white);
+      box-shadow: var(--shadow-md);
+    }
+
+    .provider-card__body { padding: 42px 24px 24px; }
+
+    .provider-card__name { font-size: 17px; font-weight: 700; color: var(--navy-900); }
+
+    .provider-card__service { font-size: 13px; color: var(--blue-500); font-weight: 500; margin-top: 2px; }
+
+    .provider-card__meta { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+
+    .provider-card__rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .provider-card__rating svg { color: var(--amber-500); }
+
+    .provider-card__location {
+      font-size: 13px;
+      color: var(--gray-400);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .provider-card__price {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .provider-card__price-text { font-size: 13px; color: var(--gray-400); }
+
+    .provider-card__price-value {
+      font-size: 20px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .provider-card__price-unit { font-size: 13px; font-weight: 400; color: var(--gray-400); }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .footer {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      padding: 0;
+    }
+
+    .footer__card {
+      border-top: 1px solid var(--gray-200);
+      padding: 56px 0 40px;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .footer__brand {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .footer__brand a { color: var(--blue-500); }
+    .footer__brand a span { color: var(--sky-400); }
+
+    .footer__desc { font-size: 13px; line-height: 1.7; max-width: 300px; color: var(--gray-400); }
+
+    .footer__social {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .footer__social a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      transition: all 0.2s;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .footer__social a:hover { border-color: var(--blue-500); color: var(--blue-500); }
+
+    .footer__col-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .footer__col-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .footer__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .footer__links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__links a { font-size: 14px; color: var(--gray-500); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--blue-500); }
+
+    .footer__bottom {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .footer__legal { display: flex; gap: 24px; }
+    .footer__legal a { color: var(--blue-500); transition: color 0.2s; }
+    .footer__legal a:hover { color: var(--blue-600); }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .profile-layout {
+        grid-template-columns: 1fr 320px;
+      }
+
+      .packages-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      .navbar__links { display: none; }
+
+      .profile-header__content {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+      }
+
+      .profile-header__meta {
+        justify-content: center;
+      }
+
+      .profile-header__actions {
+        justify-content: center;
+        padding-top: 16px;
+      }
+
+      .profile-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-sidebar {
+        position: static;
+      }
+
+      .packages-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .portfolio-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .reviews-summary {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .reviews-summary__bars {
+        width: 100%;
+      }
+
+      .similar__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer__grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .footer__bottom {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+      }
+
+      .service-item {
+        flex-direction: column;
+      }
+
+      .service-item__right {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 16px;
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .section__title {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="../landing.html" class="navbar__logo">nt<span>izo</span></a>
+
+      <ul class="navbar__links">
+        <li><a href="search-results.html">Browse Services</a></li>
+        <li><a href="categories.html">Categories</a></li>
+        <li><a href="how-it-works.html">How It Works</a></li>
+        <li><a href="become-provider.html">Become a Provider</a></li>
+      </ul>
+
+      <div class="navbar__actions">
+        <button class="btn btn--nav-ghost" onclick="location.href='../auth/login.html'">Log In</button>
+        <button class="btn btn--nav-primary" onclick="location.href='../auth/register.html'">Sign Up</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== PROFILE HEADER ===================== -->
+  <section class="profile-header">
+    <div class="profile-header__bg"></div>
+    <div class="profile-header__pattern"></div>
+
+    <div class="container">
+      <div class="profile-header__content">
+        <div class="profile-header__avatar">MC</div>
+
+        <div class="profile-header__info">
+          <div class="profile-header__name-row">
+            <h1 class="profile-header__name">Maria Costa</h1>
+            <span class="profile-header__verified" title="Verified Provider">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            </span>
+          </div>
+          <span class="profile-header__category">Beauty & Styling</span>
+          <div class="profile-header__meta">
+            <span class="profile-header__meta-item">
+              <span class="profile-header__stars">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              </span>
+              <span class="profile-header__stars-text">4.9</span>
+              (127 reviews)
+            </span>
+            <span class="profile-header__meta-item">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--gray-400)"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Maputo, Mozambique
+            </span>
+            <span class="profile-header__meta-item">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--gray-400)"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+              Member since January 2024
+            </span>
+          </div>
+        </div>
+
+        <div class="profile-header__actions">
+          <button class="btn btn--outline">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+            Message
+          </button>
+          <button class="btn btn--primary">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+            Book Now
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PROFILE CONTENT ===================== -->
+  <section class="profile-content">
+    <div class="container">
+      <div class="profile-layout">
+
+        <!-- ---- MAIN COLUMN ---- -->
+        <div class="profile-main">
+
+          <!-- About -->
+          <div class="card">
+            <h2 class="card__title">About</h2>
+            <div class="about__text">
+              <p>With over 8 years of experience in the beauty industry, I specialize in hair styling, coloring, and bridal makeup. I graduated from the Maputo School of Beauty Arts and have worked with top salons across the city before becoming an independent provider on Ntizo.</p>
+              <p>My passion is helping people look and feel their best for every occasion. Whether it's an everyday cut, a bold new color, or the perfect bridal look, I bring creativity, precision, and care to every appointment. I work at your location for maximum convenience.</p>
+            </div>
+          </div>
+
+          <!-- Services -->
+          <div class="card">
+            <h2 class="card__title">Services</h2>
+            <div class="services-list">
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Hair Cut & Styling</div>
+                  <div class="service-item__desc">Professional haircut tailored to your face shape and personal style. Includes wash, cut, blow-dry, and styling.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      45 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      At your location
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">800</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Hair Coloring</div>
+                  <div class="service-item__desc">Full hair coloring service including consultation, color selection, application, and aftercare advice. Balayage and highlights available.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      90 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      At your location
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">2,500</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Bridal Makeup & Hair</div>
+                  <div class="service-item__desc">Complete bridal beauty package with trial session. Includes hairstyling, full makeup, touch-up kit, and on-site service on your wedding day.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      120 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      Flexible
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">8,000</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Packages -->
+          <div class="card">
+            <h2 class="card__title">Packages</h2>
+            <div class="packages-grid">
+
+              <div class="package-card">
+                <div class="package-card__name">Basic Cut</div>
+                <div class="package-card__price">800 MZN</div>
+                <div class="package-card__duration">45 minutes</div>
+                <ul class="package-card__features">
+                  <li>Wash & conditioning</li>
+                  <li>Precision haircut</li>
+                  <li>Blow-dry & finish</li>
+                </ul>
+                <button class="btn btn--outline btn--sm">Select Package</button>
+              </div>
+
+              <div class="package-card">
+                <div class="package-card__name">Full Styling</div>
+                <div class="package-card__price">2,200 MZN</div>
+                <div class="package-card__duration">90 minutes</div>
+                <ul class="package-card__features">
+                  <li>Wash & deep conditioning</li>
+                  <li>Haircut & styling</li>
+                  <li>Blow-dry & curling/straightening</li>
+                  <li>Finishing products included</li>
+                </ul>
+                <button class="btn btn--primary btn--sm">Select Package</button>
+              </div>
+
+              <div class="package-card">
+                <div class="package-card__name">Bridal Package</div>
+                <div class="package-card__price">8,000 MZN</div>
+                <div class="package-card__duration">3 hours (includes trial)</div>
+                <ul class="package-card__features">
+                  <li>Pre-wedding trial session</li>
+                  <li>Wedding day hair styling</li>
+                  <li>Full bridal makeup</li>
+                  <li>Touch-up kit & on-site support</li>
+                </ul>
+                <button class="btn btn--primary btn--sm">Select Package</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Portfolio -->
+          <div class="card">
+            <h2 class="card__title">Portfolio</h2>
+            <div class="portfolio-grid">
+              <div class="portfolio-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              </div>
+              <div class="portfolio-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              </div>
+              <div class="portfolio-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              </div>
+              <div class="portfolio-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              </div>
+              <div class="portfolio-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              </div>
+              <div class="portfolio-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reviews -->
+          <div class="card">
+            <h2 class="card__title">Reviews</h2>
+
+            <div class="reviews-summary">
+              <div class="reviews-summary__score">
+                <div class="reviews-summary__number">4.9</div>
+                <div class="reviews-summary__stars">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                </div>
+                <div class="reviews-summary__count">127 reviews</div>
+              </div>
+
+              <div class="reviews-summary__bars">
+                <div class="rating-bar">
+                  <span class="rating-bar__label">5 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 80%"></div></div>
+                  <span class="rating-bar__percent">80%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">4 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 15%"></div></div>
+                  <span class="rating-bar__percent">15%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">3 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 3%"></div></div>
+                  <span class="rating-bar__percent">3%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">2 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 1%"></div></div>
+                  <span class="rating-bar__percent">1%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">1 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 1%"></div></div>
+                  <span class="rating-bar__percent">1%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="reviews-list">
+              <div class="review-card">
+                <div class="review-card__avatar">AN</div>
+                <div class="review-card__content">
+                  <div class="review-card__header">
+                    <span class="review-card__name">Ana Nunes</span>
+                    <span class="review-card__date">Jan 28, 2026</span>
+                  </div>
+                  <div class="review-card__stars">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <div class="review-card__text">Maria was absolutely wonderful! She came to my home and did a fantastic job with my hair for a wedding I was attending. Very professional, on time, and the result was exactly what I wanted.</div>
+                  <span class="review-card__service-badge">Hair Styling</span>
+                </div>
+              </div>
+
+              <div class="review-card">
+                <div class="review-card__avatar">FN</div>
+                <div class="review-card__content">
+                  <div class="review-card__header">
+                    <span class="review-card__name">Fatima Nguema</span>
+                    <span class="review-card__date">Jan 15, 2026</span>
+                  </div>
+                  <div class="review-card__stars">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <div class="review-card__text">I got a full hair coloring done and it turned out amazing. Maria really knows her colors and gave me great advice on what would suit my skin tone. Highly recommend!</div>
+                  <span class="review-card__service-badge">Hair Coloring</span>
+                </div>
+              </div>
+
+              <div class="review-card">
+                <div class="review-card__avatar">SC</div>
+                <div class="review-card__content">
+                  <div class="review-card__header">
+                    <span class="review-card__name">Sofia Chambal</span>
+                    <span class="review-card__date">Dec 22, 2025</span>
+                  </div>
+                  <div class="review-card__stars">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="var(--gray-200)"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <div class="review-card__text">Maria did an excellent job on my bridal package. The trial session really helped me decide on the final look. On the wedding day, everything was perfect and she stayed for touch-ups. Worth every metical!</div>
+                  <span class="review-card__service-badge">Bridal Package</span>
+                </div>
+              </div>
+            </div>
+
+            <a href="#" class="reviews-more">
+              See all 127 reviews
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+            </a>
+          </div>
+
+        </div>
+
+        <!-- ---- SIDEBAR ---- -->
+        <div class="profile-sidebar">
+
+          <!-- Quick Book -->
+          <div class="card quick-book">
+            <span class="quick-book__category">Beauty & Styling</span>
+            <div class="quick-book__price">
+              From <span class="quick-book__price-value">800</span> MZN
+            </div>
+            <div class="quick-book__availability">
+              <span class="quick-book__dot"></span>
+              Available today
+            </div>
+            <button class="btn btn--primary btn--lg">Book Now</button>
+          </div>
+
+          <!-- Skills & Expertise -->
+          <div class="card">
+            <h3 class="card__title">Skills & Expertise</h3>
+            <div class="skills-list">
+              <span class="skill-tag">Hair Cutting</span>
+              <span class="skill-tag">Coloring</span>
+              <span class="skill-tag">Bridal Makeup</span>
+              <span class="skill-tag">Extensions</span>
+              <span class="skill-tag">Styling</span>
+            </div>
+          </div>
+
+          <!-- Service Area -->
+          <div class="card">
+            <h3 class="card__title">Service Area</h3>
+            <div class="service-area__text">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--blue-500)"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Maputo, Matola
+            </div>
+            <div class="map-placeholder">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
+              Map Preview
+            </div>
+          </div>
+
+          <!-- Certifications -->
+          <div class="card">
+            <h3 class="card__title">Certifications</h3>
+            <div class="cert-list">
+              <div class="cert-item">
+                <div class="cert-icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                </div>
+                <span>Maputo School of Beauty Arts</span>
+              </div>
+              <div class="cert-item">
+                <div class="cert-icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                </div>
+                <span>Certified Bridal Specialist</span>
+              </div>
+              <div class="cert-item">
+                <div class="cert-icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                </div>
+                <span>Advanced Color Techniques</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Share -->
+          <div class="card">
+            <h3 class="card__title">Share Profile</h3>
+            <div class="share-buttons">
+              <button class="share-btn">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"/></svg>
+                Copy
+              </button>
+              <button class="share-btn share-btn--whatsapp">
+                WA
+              </button>
+              <button class="share-btn share-btn--facebook">
+                FB
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SIMILAR PROVIDERS ===================== -->
+  <section class="similar-providers">
+    <div class="container">
+      <div class="section__header">
+        <span class="section__tag">Similar</span>
+        <h2 class="section__title">Similar Providers</h2>
+        <p class="section__subtitle">Other beauty professionals you might be interested in</p>
+      </div>
+
+      <div class="similar__grid">
+        <div class="provider-card">
+          <div class="provider-card__cover" style="background: linear-gradient(135deg, var(--sky-50), var(--sky-200));">
+            <span class="provider-card__badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Verified</span>
+            <div class="provider-card__avatar" style="background: var(--sky-500);">LS</div>
+          </div>
+          <div class="provider-card__body">
+            <div class="provider-card__name">Lucia Santos</div>
+            <div class="provider-card__service">Makeup & Skincare</div>
+            <div class="provider-card__meta">
+              <span class="provider-card__rating">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                5.0 (64)
+              </span>
+              <span class="provider-card__location">
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </span>
+            </div>
+            <div class="provider-card__price">
+              <span class="provider-card__price-text">Starting at</span>
+              <span>
+                <span class="provider-card__price-value">600</span>
+                <span class="provider-card__price-unit"> MZN</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <div class="provider-card__cover" style="background: linear-gradient(135deg, var(--blue-50), var(--blue-100));">
+            <span class="provider-card__badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Verified</span>
+            <div class="provider-card__avatar" style="background: var(--navy-900);">TM</div>
+          </div>
+          <div class="provider-card__body">
+            <div class="provider-card__name">Teresa Machava</div>
+            <div class="provider-card__service">Hair Braiding & Extensions</div>
+            <div class="provider-card__meta">
+              <span class="provider-card__rating">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                4.7 (42)
+              </span>
+              <span class="provider-card__location">
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Matola
+              </span>
+            </div>
+            <div class="provider-card__price">
+              <span class="provider-card__price-text">Starting at</span>
+              <span>
+                <span class="provider-card__price-value">1,000</span>
+                <span class="provider-card__price-unit"> MZN</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-card">
+          <div class="provider-card__cover">
+            <span class="provider-card__badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Verified</span>
+            <div class="provider-card__avatar">CM</div>
+          </div>
+          <div class="provider-card__body">
+            <div class="provider-card__name">Carla Mondlane</div>
+            <div class="provider-card__service">Nails & Beauty</div>
+            <div class="provider-card__meta">
+              <span class="provider-card__rating">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                4.8 (91)
+              </span>
+              <span class="provider-card__location">
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </span>
+            </div>
+            <div class="provider-card__price">
+              <span class="provider-card__price-text">Starting at</span>
+              <span>
+                <span class="provider-card__price-value">500</span>
+                <span class="provider-card__price-unit"> MZN</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__card">
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand"><a href="../landing.html">nt<span>izo</span></a></div>
+            <p class="footer__desc">Connecting customers with trusted service providers. Book the services you need, when you need them.</p>
+            <div class="footer__social">
+              <a href="#" title="Twitter">X</a>
+              <a href="#" title="Instagram">ig</a>
+              <a href="#" title="LinkedIn">in</a>
+              <a href="#" title="Facebook">f</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">01</span>
+              <h4 class="footer__title">Product</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="search-results.html">Browse Services</a></li>
+              <li><a href="categories.html">Categories</a></li>
+              <li><a href="task-board.html">Task Board</a></li>
+              <li><a href="become-provider.html">For Providers</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">02</span>
+              <h4 class="footer__title">Resources</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="how-it-works.html">How It Works</a></li>
+              <li><a href="#">Help Center</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Success Stories</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">03</span>
+              <h4 class="footer__title">Company</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="#">About Us</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer__bottom">
+          <span>&copy; 2026 Ntizo. All rights reserved.</span>
+          <div class="footer__legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

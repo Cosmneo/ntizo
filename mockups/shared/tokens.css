@@ -1,0 +1,81 @@
+/* ============================================
+   NTIZO DESIGN TOKENS
+   Based on Brand Identity Manual
+   ============================================ */
+
+:root {
+  /* ---- Brand Colors (from SVG assets) ---- */
+  --navy-900: #00244D;   /* Primary dark - headings, text */
+  --navy-800: #003166;
+  --navy-700: #003D7A;
+  --navy-600: #004A8F;
+
+  /* Primary Blue */
+  --blue-50:  #EBF5FF;
+  --blue-100: #D6EBFF;
+  --blue-200: #ADD6FF;
+  --blue-300: #85C2FF;
+  --blue-400: #5CADFF;
+  --blue-500: #007AFF;   /* Brand primary */
+  --blue-600: #006ADB;
+  --blue-700: #005AB8;
+  --blue-800: #004A94;
+  --blue-900: #003A71;
+
+  /* Light Blue (Sky) */
+  --sky-50:  #EEF9FF;
+  --sky-100: #DCF3FF;
+  --sky-200: #B9E7FF;
+  --sky-300: #82D5FF;
+  --sky-400: #38B6FF;   /* Brand accent / gradient end */
+  --sky-500: #1AA3F0;
+  --sky-600: #0D8AD4;
+  --sky-700: #0671B0;
+
+  /* Brand Gradients */
+  --gradient-brand: linear-gradient(135deg, #007AFF 0%, #38B6FF 100%);
+  --gradient-brand-r: linear-gradient(135deg, #38B6FF 0%, #007AFF 100%);
+  --gradient-brand-vertical: linear-gradient(180deg, #007AFF 0%, #38B6FF 100%);
+
+  /* Neutrals */
+  --white:    #FFFFFF;
+  --gray-50:  #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-300: #D1D5DB;
+  --gray-400: #9CA3AF;
+  --gray-500: #6B7280;
+  --gray-600: #4B5563;
+  --gray-700: #374151;
+  --gray-800: #1F2937;
+  --gray-900: #111827;
+
+  /* Semantic */
+  --green-50:  #F0FDF4;
+  --green-500: #22C55E;
+  --green-600: #16A34A;
+  --red-50:    #FEF2F2;
+  --red-500:   #EF4444;
+  --red-600:   #DC2626;
+  --amber-50:  #FFFBEB;
+  --amber-500: #F59E0B;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 2px rgba(0, 36, 77, 0.05);
+  --shadow-md:  0 4px 6px -1px rgba(0, 36, 77, 0.08), 0 2px 4px -2px rgba(0, 36, 77, 0.06);
+  --shadow-lg:  0 10px 15px -3px rgba(0, 36, 77, 0.08), 0 4px 6px -4px rgba(0, 36, 77, 0.04);
+  --shadow-xl:  0 20px 25px -5px rgba(0, 36, 77, 0.1), 0 8px 10px -6px rgba(0, 36, 77, 0.06);
+  --shadow-input: 0 1px 2px rgba(0, 36, 77, 0.06), 0 0 0 0px transparent;
+  --shadow-input-focus: 0 1px 2px rgba(0, 122, 255, 0.1), 0 0 0 3px rgba(0, 122, 255, 0.15);
+
+  /* Radii */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-2xl:  28px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}

@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FixaSol Reparos - Plumbing & Electrical | Ntizo</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-100);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .navbar__logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .navbar__logo span { color: var(--sky-400); }
+
+    .navbar__links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .navbar__links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.2s;
+    }
+
+    .navbar__links a:hover { color: var(--blue-500); }
+
+    .navbar__actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--nav-ghost {
+      background: transparent;
+      color: var(--gray-600);
+    }
+    .btn--nav-ghost:hover { color: var(--blue-500); }
+
+    .btn--nav-primary {
+      background: var(--blue-500);
+      color: var(--white);
+    }
+    .btn--nav-primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--blue-500);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--ghost:hover { background: var(--blue-50); }
+
+    .btn--primary {
+      background: var(--blue-500);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+
+    .btn--primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn--lg { padding: 14px 28px; font-size: 15px; }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--blue-500);
+      border: 1.5px solid var(--blue-200);
+    }
+
+    .btn--outline:hover {
+      border-color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    .btn--sm { padding: 8px 16px; font-size: 13px; }
+
+    .btn--white { background: var(--white); color: var(--navy-900); }
+    .btn--white:hover { box-shadow: var(--shadow-lg); }
+
+    .btn--white-outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.3);
+    }
+    .btn--white-outline:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
+
+    /* ============================================
+       COVER & HEADER
+       ============================================ */
+    .org-cover {
+      padding-top: 64px;
+    }
+
+    .org-cover__image {
+      height: 250px;
+      background: linear-gradient(135deg, var(--blue-500) 0%, var(--sky-400) 50%, var(--blue-400) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .org-cover__image::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .org-cover__image::after {
+      content: '';
+      position: absolute;
+      bottom: -40px;
+      left: 10%;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .org-cover__pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      background-image: url('../../assets/Pattern/SVG/Pattern 1.svg');
+      background-size: 200px;
+      background-repeat: repeat;
+    }
+
+    .org-header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-100);
+      padding: 0 0 24px;
+      position: relative;
+    }
+
+    .org-header__content {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      margin-top: -44px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .org-header__logo {
+      width: 88px;
+      height: 88px;
+      border-radius: var(--radius-lg);
+      background: var(--navy-900);
+      border: 4px solid var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(0, 36, 77, 0.15);
+      position: relative;
+      z-index: 3;
+    }
+
+    .org-header__info {
+      flex: 1;
+      padding-top: 48px;
+    }
+
+    .org-header__name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .org-header__name {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -0.5px;
+    }
+
+    .org-header__verified {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--green-500);
+      border-radius: 50%;
+      color: var(--white);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .org-header__badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .org-header__badge {
+      display: inline-block;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+
+    .org-header__badge--type {
+      background: var(--navy-900);
+      color: var(--white);
+    }
+
+    .org-header__badge--category {
+      background: var(--blue-50);
+      color: var(--blue-500);
+    }
+
+    .org-header__meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 14px;
+      color: var(--gray-500);
+      flex-wrap: wrap;
+    }
+
+    .org-header__meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .org-header__stars {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      color: var(--amber-500);
+    }
+
+    .org-header__stars-text {
+      color: var(--gray-700);
+      font-weight: 600;
+    }
+
+    .org-header__status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      color: var(--green-600);
+    }
+
+    .org-header__status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green-500);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .org-header__actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      padding-top: 52px;
+    }
+
+    /* ============================================
+       TABS
+       ============================================ */
+    .tabs {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-100);
+      position: sticky;
+      top: 72px;
+      z-index: 50;
+    }
+
+    .tabs__list {
+      display: flex;
+      gap: 0;
+      list-style: none;
+    }
+
+    .tabs__item a {
+      display: block;
+      padding: 16px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-500);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tabs__item a:hover {
+      color: var(--blue-500);
+    }
+
+    .tabs__item--active a {
+      color: var(--blue-500);
+      border-bottom-color: var(--blue-500);
+    }
+
+    /* ============================================
+       CONTENT LAYOUT
+       ============================================ */
+    .org-content {
+      padding: 40px 0 80px;
+      background: var(--gray-50);
+    }
+
+    .org-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 32px;
+      align-items: start;
+    }
+
+    .org-main {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .org-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 136px;
+    }
+
+    /* ============================================
+       CARDS (shared)
+       ============================================ */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+      padding: 28px;
+    }
+
+    .card__title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    /* ============================================
+       ABOUT
+       ============================================ */
+    .about__text {
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.75;
+    }
+
+    .about__text p + p {
+      margin-top: 12px;
+    }
+
+    /* ============================================
+       OPERATING HOURS
+       ============================================ */
+    .hours-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .hours-table tr {
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .hours-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .hours-table td {
+      padding: 10px 0;
+      font-size: 14px;
+    }
+
+    .hours-table td:first-child {
+      font-weight: 600;
+      color: var(--navy-900);
+      width: 140px;
+    }
+
+    .hours-table td:last-child {
+      color: var(--gray-500);
+      text-align: right;
+    }
+
+    .hours-table tr.hours-table__today {
+      background: var(--blue-50);
+      border-radius: var(--radius-sm);
+    }
+
+    .hours-table tr.hours-table__today td {
+      padding: 10px 12px;
+      color: var(--blue-500);
+    }
+
+    .hours-table tr.hours-table__today td:first-child {
+      color: var(--blue-600);
+      border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    }
+
+    .hours-table tr.hours-table__today td:last-child {
+      color: var(--blue-500);
+      font-weight: 600;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+
+    .hours-table__closed {
+      color: var(--red-500) !important;
+    }
+
+    /* ============================================
+       SERVICES
+       ============================================ */
+    .services-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .service-item {
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--gray-100);
+      transition: all 0.2s;
+    }
+
+    .service-item:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.06);
+    }
+
+    .service-item__info { flex: 1; }
+
+    .service-item__name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 4px;
+    }
+
+    .service-item__desc {
+      font-size: 13px;
+      color: var(--gray-500);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .service-item__tags {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .service-item__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--gray-500);
+    }
+
+    .service-item__tag--location {
+      color: var(--blue-500);
+      background: var(--blue-50);
+      border-color: var(--blue-100);
+    }
+
+    .service-item__right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .service-item__price {
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .service-item__price-value {
+      font-size: 20px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .service-item__price-unit {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--gray-400);
+    }
+
+    /* ============================================
+       TEAM
+       ============================================ */
+    .team-scroll {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .team-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .team-scroll::-webkit-scrollbar-track {
+      background: var(--gray-100);
+      border-radius: var(--radius-full);
+    }
+
+    .team-scroll::-webkit-scrollbar-thumb {
+      background: var(--blue-200);
+      border-radius: var(--radius-full);
+    }
+
+    .team-card {
+      flex-shrink: 0;
+      width: 180px;
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: center;
+      border: 1px solid var(--gray-100);
+      transition: all 0.2s;
+      scroll-snap-align: start;
+    }
+
+    .team-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.06);
+    }
+
+    .team-card__avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--blue-500);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--white);
+      margin: 0 auto 12px;
+    }
+
+    .team-card__name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 2px;
+    }
+
+    .team-card__specialty {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+    }
+
+    .team-card__rating {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .team-card__rating svg { color: var(--amber-500); }
+
+    /* ============================================
+       REVIEWS
+       ============================================ */
+    .reviews-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 32px;
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .reviews-summary__score {
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .reviews-summary__number {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--navy-900);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .reviews-summary__stars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--amber-500);
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .reviews-summary__count {
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .reviews-summary__bars {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rating-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rating-bar__label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .rating-bar__track {
+      flex: 1;
+      height: 8px;
+      background: var(--gray-100);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .rating-bar__fill {
+      height: 100%;
+      background: var(--gradient-brand);
+      border-radius: var(--radius-full);
+      transition: width 0.5s ease;
+    }
+
+    .rating-bar__percent {
+      font-size: 12px;
+      color: var(--gray-400);
+      width: 32px;
+      flex-shrink: 0;
+    }
+
+    .reviews-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .review-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px;
+      background: var(--gray-50);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--gray-100);
+    }
+
+    .review-card__avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--blue-500);
+      flex-shrink: 0;
+    }
+
+    .review-card__content { flex: 1; }
+
+    .review-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .review-card__name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy-900);
+    }
+
+    .review-card__date {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+
+    .review-card__stars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: var(--amber-500);
+      margin-bottom: 8px;
+    }
+
+    .review-card__text {
+      font-size: 13px;
+      color: var(--gray-600);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .review-card__service-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+
+    .reviews-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue-500);
+      transition: gap 0.2s;
+    }
+
+    .reviews-more:hover {
+      gap: 10px;
+    }
+
+    /* ============================================
+       SIDEBAR CARDS
+       ============================================ */
+    /* Quick Contact */
+    .contact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .contact-item__icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue-500);
+      flex-shrink: 0;
+    }
+
+    .contact-item__label {
+      font-size: 11px;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .contact-item__value {
+      font-size: 14px;
+      color: var(--navy-900);
+      font-weight: 500;
+    }
+
+    .contact-item a {
+      color: var(--blue-500);
+    }
+
+    .contact-item a:hover {
+      text-decoration: underline;
+    }
+
+    /* Business Info */
+    .biz-info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .biz-info-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .biz-info-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .biz-info-item__label {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .biz-info-item__value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy-900);
+    }
+
+    /* Map */
+    .map-placeholder {
+      width: 100%;
+      height: 160px;
+      background: var(--gray-100);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .location-address {
+      font-size: 13px;
+      color: var(--gray-600);
+      line-height: 1.6;
+    }
+
+    /* Share */
+    .share-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .share-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .share-btn:hover {
+      border-color: var(--blue-200);
+      color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    .share-btn--whatsapp:hover {
+      border-color: #25D366;
+      color: #25D366;
+      background: #F0FDF4;
+    }
+
+    .share-btn--facebook:hover {
+      border-color: #1877F2;
+      color: #1877F2;
+      background: var(--blue-50);
+    }
+
+    /* ============================================
+       SECTION HEADER (for similar)
+       ============================================ */
+    .section__header { text-align: center; margin-bottom: 48px; }
+
+    .section__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(0, 122, 255, 0.08);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius-full);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section__title {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+
+    .section__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      margin-top: 10px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .footer {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      padding: 0;
+    }
+
+    .footer__card {
+      border-top: 1px solid var(--gray-200);
+      padding: 56px 0 40px;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .footer__brand {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .footer__brand a { color: var(--blue-500); }
+    .footer__brand a span { color: var(--sky-400); }
+
+    .footer__desc { font-size: 13px; line-height: 1.7; max-width: 300px; color: var(--gray-400); }
+
+    .footer__social {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .footer__social a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      transition: all 0.2s;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .footer__social a:hover { border-color: var(--blue-500); color: var(--blue-500); }
+
+    .footer__col-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .footer__col-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .footer__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .footer__links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__links a { font-size: 14px; color: var(--gray-500); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--blue-500); }
+
+    .footer__bottom {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .footer__legal { display: flex; gap: 24px; }
+    .footer__legal a { color: var(--blue-500); transition: color 0.2s; }
+    .footer__legal a:hover { color: var(--blue-600); }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .org-layout {
+        grid-template-columns: 1fr 320px;
+      }
+
+      .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      .navbar__links { display: none; }
+
+      .org-cover__image {
+        height: 160px;
+      }
+
+      .org-header__content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .org-header__info {
+        padding-top: 12px;
+      }
+
+      .org-header__meta {
+        justify-content: center;
+      }
+
+      .org-header__badges {
+        justify-content: center;
+      }
+
+      .org-header__actions {
+        justify-content: center;
+        padding-top: 16px;
+      }
+
+      .org-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .org-sidebar {
+        position: static;
+      }
+
+      .tabs__list {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .tabs__item a {
+        padding: 14px 16px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .reviews-summary {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .reviews-summary__bars {
+        width: 100%;
+      }
+
+      .footer__grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .footer__bottom {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+      }
+
+      .service-item {
+        flex-direction: column;
+      }
+
+      .service-item__right {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 16px;
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .section__title {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="../landing.html" class="navbar__logo">nt<span>izo</span></a>
+
+      <ul class="navbar__links">
+        <li><a href="search-results.html">Browse Services</a></li>
+        <li><a href="categories.html">Categories</a></li>
+        <li><a href="how-it-works.html">How It Works</a></li>
+        <li><a href="become-provider.html">Become a Provider</a></li>
+      </ul>
+
+      <div class="navbar__actions">
+        <button class="btn btn--nav-ghost" onclick="location.href='../auth/login.html'">Log In</button>
+        <button class="btn btn--nav-primary" onclick="location.href='../auth/register.html'">Sign Up</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== COVER & HEADER ===================== -->
+  <div class="org-cover">
+    <div class="org-cover__image">
+      <div class="org-cover__pattern"></div>
+    </div>
+  </div>
+
+  <section class="org-header">
+    <div class="container">
+      <div class="org-header__content">
+        <div class="org-header__logo">FS</div>
+
+        <div class="org-header__info">
+          <div class="org-header__name-row">
+            <h1 class="org-header__name">FixaSol Reparos</h1>
+            <span class="org-header__verified" title="Verified Organization">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            </span>
+          </div>
+          <div class="org-header__badges">
+            <span class="org-header__badge org-header__badge--type">Organization</span>
+            <span class="org-header__badge org-header__badge--category">Plumbing & Electrical</span>
+          </div>
+          <div class="org-header__meta">
+            <span class="org-header__meta-item">
+              <span class="org-header__stars">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+              </span>
+              <span class="org-header__stars-text">4.8</span>
+              (89 reviews)
+            </span>
+            <span class="org-header__meta-item">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--gray-400)"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Av. Julius Nyerere 456, Maputo
+            </span>
+            <span class="org-header__status">
+              <span class="org-header__status-dot"></span>
+              Open now &mdash; closes at 18:00
+            </span>
+          </div>
+        </div>
+
+        <div class="org-header__actions">
+          <button class="btn btn--outline">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+            Message
+          </button>
+          <button class="btn btn--primary">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd" transform="rotate(90 10 10)"/></svg>
+            View Services
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TABS ===================== -->
+  <nav class="tabs">
+    <div class="container">
+      <ul class="tabs__list">
+        <li class="tabs__item tabs__item--active"><a href="#about">About</a></li>
+        <li class="tabs__item"><a href="#services">Services</a></li>
+        <li class="tabs__item"><a href="#team">Team</a></li>
+        <li class="tabs__item"><a href="#reviews">Reviews</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===================== CONTENT ===================== -->
+  <section class="org-content">
+    <div class="container">
+      <div class="org-layout">
+
+        <!-- ---- MAIN COLUMN ---- -->
+        <div class="org-main">
+
+          <!-- About -->
+          <div class="card" id="about">
+            <h2 class="card__title">About</h2>
+            <div class="about__text">
+              <p>FixaSol Reparos is a trusted home services company based in Maputo, specializing in plumbing, electrical installations, and general home maintenance. Founded in 2020, we have grown into a team of 6 certified professionals serving the greater Maputo and Matola area.</p>
+              <p>We pride ourselves on reliability, transparent pricing, and quality workmanship. All our technicians are licensed and insured, and we offer a satisfaction guarantee on every job. From a leaky faucet to a full electrical rewiring, no job is too small or too large for our team.</p>
+            </div>
+          </div>
+
+          <!-- Operating Hours -->
+          <div class="card">
+            <h2 class="card__title">Operating Hours</h2>
+            <table class="hours-table">
+              <tr>
+                <td>Monday</td>
+                <td>08:00 - 18:00</td>
+              </tr>
+              <tr>
+                <td>Tuesday</td>
+                <td>08:00 - 18:00</td>
+              </tr>
+              <tr>
+                <td>Wednesday</td>
+                <td>08:00 - 18:00</td>
+              </tr>
+              <tr>
+                <td>Thursday</td>
+                <td>08:00 - 18:00</td>
+              </tr>
+              <tr>
+                <td>Friday</td>
+                <td>08:00 - 18:00</td>
+              </tr>
+              <tr class="hours-table__today">
+                <td>Saturday</td>
+                <td>09:00 - 14:00</td>
+              </tr>
+              <tr>
+                <td>Sunday</td>
+                <td class="hours-table__closed">Closed</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Services -->
+          <div class="card" id="services">
+            <h2 class="card__title">Services</h2>
+            <div class="services-list">
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Plumbing Repair</div>
+                  <div class="service-item__desc">Fix leaks, unclog drains, repair or replace faucets, toilets, and pipes. Emergency service available.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      60 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      At your location
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">1,200</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Electrical Installation</div>
+                  <div class="service-item__desc">Wiring, outlets, switches, circuit breaker installation, and full house electrical setup by certified electricians.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      90 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      At your location
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">2,500</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Water Heater Service</div>
+                  <div class="service-item__desc">Installation, repair, and maintenance of electric and gas water heaters. Includes safety inspection.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      120 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      At your location
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">3,500</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+              <div class="service-item">
+                <div class="service-item__info">
+                  <div class="service-item__name">Home Maintenance Package</div>
+                  <div class="service-item__desc">General home inspection and maintenance covering plumbing, electrical, and minor repairs. Ideal for preventive care.</div>
+                  <div class="service-item__tags">
+                    <span class="service-item__tag">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                      180 min
+                    </span>
+                    <span class="service-item__tag service-item__tag--location">
+                      <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                      At your location
+                    </span>
+                  </div>
+                </div>
+                <div class="service-item__right">
+                  <div class="service-item__price">
+                    From <span class="service-item__price-value">5,000</span><span class="service-item__price-unit"> MZN</span>
+                  </div>
+                  <button class="btn btn--primary btn--sm">Book</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Team -->
+          <div class="card" id="team">
+            <h2 class="card__title">Our Team</h2>
+            <div class="team-scroll">
+
+              <div class="team-card">
+                <div class="team-card__avatar">AM</div>
+                <div class="team-card__name">Alberto Macamo</div>
+                <div class="team-card__specialty">Lead Plumber</div>
+                <div class="team-card__rating">
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  4.9
+                </div>
+              </div>
+
+              <div class="team-card">
+                <div class="team-card__avatar" style="background: var(--navy-900);">JD</div>
+                <div class="team-card__name">Jorge Dimande</div>
+                <div class="team-card__specialty">Electrician</div>
+                <div class="team-card__rating">
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  4.8
+                </div>
+              </div>
+
+              <div class="team-card">
+                <div class="team-card__avatar" style="background: var(--sky-500);">RM</div>
+                <div class="team-card__name">Rosa Matsinhe</div>
+                <div class="team-card__specialty">General Maintenance</div>
+                <div class="team-card__rating">
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  4.7
+                </div>
+              </div>
+
+              <div class="team-card">
+                <div class="team-card__avatar" style="background: var(--green-600);">CN</div>
+                <div class="team-card__name">Carlos Nhambe</div>
+                <div class="team-card__specialty">Plumber</div>
+                <div class="team-card__rating">
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  4.9
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Reviews -->
+          <div class="card" id="reviews">
+            <h2 class="card__title">Reviews</h2>
+
+            <div class="reviews-summary">
+              <div class="reviews-summary__score">
+                <div class="reviews-summary__number">4.8</div>
+                <div class="reviews-summary__stars">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                </div>
+                <div class="reviews-summary__count">89 reviews</div>
+              </div>
+
+              <div class="reviews-summary__bars">
+                <div class="rating-bar">
+                  <span class="rating-bar__label">5 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 72%"></div></div>
+                  <span class="rating-bar__percent">72%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">4 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 20%"></div></div>
+                  <span class="rating-bar__percent">20%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">3 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 5%"></div></div>
+                  <span class="rating-bar__percent">5%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">2 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 2%"></div></div>
+                  <span class="rating-bar__percent">2%</span>
+                </div>
+                <div class="rating-bar">
+                  <span class="rating-bar__label">1 star</span>
+                  <div class="rating-bar__track"><div class="rating-bar__fill" style="width: 1%"></div></div>
+                  <span class="rating-bar__percent">1%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="reviews-list">
+              <div class="review-card">
+                <div class="review-card__avatar">RC</div>
+                <div class="review-card__content">
+                  <div class="review-card__header">
+                    <span class="review-card__name">Ricardo Cossa</span>
+                    <span class="review-card__date">Feb 2, 2026</span>
+                  </div>
+                  <div class="review-card__stars">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <div class="review-card__text">Alberto came out the same day I called and fixed a burst pipe in my kitchen. He was professional, clean, and explained everything he was doing. Fair pricing too. Will definitely use FixaSol again.</div>
+                  <span class="review-card__service-badge">Plumbing Repair</span>
+                </div>
+              </div>
+
+              <div class="review-card">
+                <div class="review-card__avatar">LM</div>
+                <div class="review-card__content">
+                  <div class="review-card__header">
+                    <span class="review-card__name">Lidia Mabjaia</span>
+                    <span class="review-card__date">Jan 20, 2026</span>
+                  </div>
+                  <div class="review-card__stars">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <div class="review-card__text">Had Jorge rewire two rooms and install new outlets. Very neat work, he even cleaned up after himself. The whole team is courteous and responsive. I appreciate how they gave me a clear quote upfront with no surprises.</div>
+                  <span class="review-card__service-badge">Electrical Installation</span>
+                </div>
+              </div>
+
+              <div class="review-card">
+                <div class="review-card__avatar">PM</div>
+                <div class="review-card__content">
+                  <div class="review-card__header">
+                    <span class="review-card__name">Pedro Mucavel</span>
+                    <span class="review-card__date">Jan 8, 2026</span>
+                  </div>
+                  <div class="review-card__stars">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="var(--gray-200)"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  </div>
+                  <div class="review-card__text">Good overall service for a water heater installation. The team arrived on time and got the job done, though it took a bit longer than expected. The result is solid and has been working well. I would recommend them.</div>
+                  <span class="review-card__service-badge">Water Heater Service</span>
+                </div>
+              </div>
+            </div>
+
+            <a href="#" class="reviews-more">
+              See all 89 reviews
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+            </a>
+          </div>
+
+        </div>
+
+        <!-- ---- SIDEBAR ---- -->
+        <div class="org-sidebar">
+
+          <!-- Quick Contact -->
+          <div class="card">
+            <h3 class="card__title">Contact</h3>
+            <div class="contact-list">
+              <div class="contact-item">
+                <div class="contact-item__icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/></svg>
+                </div>
+                <div>
+                  <div class="contact-item__label">Phone</div>
+                  <div class="contact-item__value">+258 84 123 4567</div>
+                </div>
+              </div>
+              <div class="contact-item">
+                <div class="contact-item__icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                </div>
+                <div>
+                  <div class="contact-item__label">Email</div>
+                  <div class="contact-item__value"><a href="#">info@fixasol.co.mz</a></div>
+                </div>
+              </div>
+              <div class="contact-item">
+                <div class="contact-item__icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.497-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.029 11H4.083a6.004 6.004 0 002.783 4.118z" clip-rule="evenodd"/></svg>
+                </div>
+                <div>
+                  <div class="contact-item__label">Website</div>
+                  <div class="contact-item__value"><a href="#">www.fixasol.co.mz</a></div>
+                </div>
+              </div>
+              <div class="contact-item">
+                <div class="contact-item__icon">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                </div>
+                <div>
+                  <div class="contact-item__label">Address</div>
+                  <div class="contact-item__value">Av. Julius Nyerere 456, Maputo</div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn--outline" style="width: 100%;">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Get Directions
+            </button>
+          </div>
+
+          <!-- Business Info -->
+          <div class="card">
+            <h3 class="card__title">Business Info</h3>
+            <div class="biz-info-list">
+              <div class="biz-info-item">
+                <span class="biz-info-item__label">Type</span>
+                <span class="biz-info-item__value">Home Services</span>
+              </div>
+              <div class="biz-info-item">
+                <span class="biz-info-item__label">Established</span>
+                <span class="biz-info-item__value">2020</span>
+              </div>
+              <div class="biz-info-item">
+                <span class="biz-info-item__label">Team size</span>
+                <span class="biz-info-item__value">6 members</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location -->
+          <div class="card">
+            <h3 class="card__title">Location</h3>
+            <div class="map-placeholder">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
+              Map Preview
+            </div>
+            <p class="location-address">Av. Julius Nyerere 456, Maputo, Mozambique</p>
+          </div>
+
+          <!-- Share -->
+          <div class="card">
+            <h3 class="card__title">Share</h3>
+            <div class="share-buttons">
+              <button class="share-btn">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"/></svg>
+                Copy
+              </button>
+              <button class="share-btn share-btn--whatsapp">
+                WA
+              </button>
+              <button class="share-btn share-btn--facebook">
+                FB
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__card">
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand"><a href="../landing.html">nt<span>izo</span></a></div>
+            <p class="footer__desc">Connecting customers with trusted service providers. Book the services you need, when you need them.</p>
+            <div class="footer__social">
+              <a href="#" title="Twitter">X</a>
+              <a href="#" title="Instagram">ig</a>
+              <a href="#" title="LinkedIn">in</a>
+              <a href="#" title="Facebook">f</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">01</span>
+              <h4 class="footer__title">Product</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="search-results.html">Browse Services</a></li>
+              <li><a href="categories.html">Categories</a></li>
+              <li><a href="task-board.html">Task Board</a></li>
+              <li><a href="become-provider.html">For Providers</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">02</span>
+              <h4 class="footer__title">Resources</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="how-it-works.html">How It Works</a></li>
+              <li><a href="#">Help Center</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Success Stories</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">03</span>
+              <h4 class="footer__title">Company</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="#">About Us</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer__bottom">
+          <span>&copy; 2026 Ntizo. All rights reserved.</span>
+          <div class="footer__legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

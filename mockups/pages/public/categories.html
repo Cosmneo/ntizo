@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ntizo - Browse All Categories</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-100);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .navbar__logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .navbar__logo span { color: var(--sky-400); }
+
+    .navbar__links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .navbar__links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.2s;
+    }
+
+    .navbar__links a:hover { color: var(--blue-500); }
+    .navbar__links a.active { color: var(--blue-500); font-weight: 600; }
+
+    .navbar__actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--nav-ghost {
+      background: transparent;
+      color: var(--gray-600);
+    }
+    .btn--nav-ghost:hover { color: var(--blue-500); }
+
+    .btn--nav-primary {
+      background: var(--blue-500);
+      color: var(--white);
+    }
+    .btn--nav-primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn--primary {
+      background: var(--blue-500);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn--dark {
+      background: var(--navy-900);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--dark:hover {
+      background: var(--navy-800);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-1px);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--blue-500);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--ghost:hover { background: var(--blue-50); }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--blue-500);
+      border: 1.5px solid var(--blue-200);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--outline:hover {
+      border-color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    .btn--outline-white {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--outline-white:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .btn--lg { padding: 14px 28px; font-size: 15px; }
+
+    /* ============================================
+       HERO — 2-Column Split
+       ============================================ */
+    .hero {
+      padding: 64px 0 0;
+      background: var(--white);
+    }
+
+    .hero__inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      min-height: 480px;
+      padding: 80px 0 72px;
+    }
+
+    .hero__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(0, 122, 255, 0.06);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    .hero__badge svg { width: 14px; height: 14px; }
+
+    .hero__title {
+      font-size: 52px;
+      font-weight: 900;
+      color: var(--navy-900);
+      letter-spacing: -1.5px;
+      line-height: 1.05;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .hero__title em {
+      font-style: normal;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero__subtitle {
+      font-size: 17px;
+      color: var(--gray-500);
+      line-height: 1.7;
+      max-width: 480px;
+      margin-bottom: 28px;
+    }
+
+    .hero__search {
+      max-width: 440px;
+      position: relative;
+    }
+
+    .hero__search-input {
+      width: 100%;
+      padding: 16px 20px 16px 52px;
+      font-size: 15px;
+      font-family: inherit;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      background: var(--gray-50);
+      color: var(--navy-900);
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .hero__search-input::placeholder { color: var(--gray-400); }
+
+    .hero__search-input:focus {
+      background: var(--white);
+      border-color: var(--blue-300);
+      box-shadow: var(--shadow-input-focus);
+    }
+
+    .hero__search-icon {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      color: var(--gray-400);
+    }
+
+    .hero__visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero__image-placeholder {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-300);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Floating cards on hero */
+    .hero__float {
+      position: absolute;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      box-shadow: 0 8px 32px rgba(0, 36, 77, 0.1), 0 2px 8px rgba(0, 36, 77, 0.04);
+      border: 1px solid var(--gray-100);
+      z-index: 2;
+    }
+
+    .hero__float--top {
+      top: -16px;
+      right: -8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero__float--bottom {
+      bottom: -12px;
+      left: -16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero__float-num {
+      font-size: 28px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .hero__float-text {
+      font-size: 12px;
+      color: var(--gray-500);
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .hero__float-text strong {
+      display: block;
+      color: var(--navy-900);
+      font-size: 13px;
+    }
+
+    /* ============================================
+       CATEGORY GRID
+       ============================================ */
+    .categories-section {
+      padding: 80px 0 96px;
+      background: var(--gray-50);
+    }
+
+    .section__header-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 48px;
+    }
+
+    .section__header-row .section__title {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+
+    .section__header-row .section__count {
+      font-size: 14px;
+      color: var(--gray-400);
+      font-weight: 500;
+    }
+
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .cat-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      border: 1px solid var(--gray-100);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .cat-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.06);
+      transform: translateY(-4px);
+    }
+
+    .cat-card__name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 6px;
+    }
+
+    .cat-card__desc {
+      font-size: 13px;
+      color: var(--gray-500);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+
+    .cat-card__footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid var(--gray-100);
+    }
+
+    .cat-card__providers {
+      font-size: 13px;
+      color: var(--gray-400);
+      font-weight: 500;
+    }
+
+    .cat-card__arrow-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue-500);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: all 0.3s;
+    }
+
+    .cat-card:hover .cat-card__arrow-text {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* ============================================
+       POPULAR SUBCATEGORIES
+       ============================================ */
+    .subcategories {
+      padding: 80px 0 96px;
+      background: var(--white);
+    }
+
+    .section__header-editorial {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: end;
+      margin-bottom: 56px;
+    }
+
+    .section__header-editorial .section__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(0, 122, 255, 0.06);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius-full);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section__header-editorial .section__title {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+
+    .section__header-editorial .section__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      line-height: 1.7;
+      max-width: 480px;
+    }
+
+    .subcat-groups {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .subcat-group {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+
+    .subcat-group__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .subcat-group__num {
+      font-size: 18px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .subcat-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .subcat-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-600);
+      transition: all 0.2s;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .subcat-pill:hover {
+      border-color: var(--blue-300);
+      color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    /* ============================================
+       STATS — Dark Navy
+       ============================================ */
+    .stats {
+      padding: 80px 0;
+      background: var(--navy-900);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stats__pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.03;
+      background-image: url('../../assets/Pattern/SVG/Pattern 1.svg');
+      background-size: 200px;
+      background-repeat: repeat;
+    }
+
+    .stats__inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .stats__header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .stats__header .section__title {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -1px;
+    }
+
+    .stats__header .section__subtitle {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 10px;
+    }
+
+    .stats__grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 40px;
+      text-align: center;
+    }
+
+    .stat__num {
+      font-size: 48px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+
+    .stat__label {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 500;
+    }
+
+    /* ============================================
+       CTA
+       ============================================ */
+    .cta {
+      padding: 100px 0;
+      background: var(--gray-50);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta__pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.015;
+      background-image: url('../../assets/Pattern/SVG/Pattern 1.svg');
+      background-size: 180px;
+      background-repeat: repeat;
+    }
+
+    .cta__content { text-align: center; position: relative; z-index: 1; }
+
+    .cta__title {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1.5px;
+      margin-bottom: 16px;
+      line-height: 1.1;
+    }
+
+    .cta__title em {
+      font-style: normal;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cta__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 520px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .cta__buttons { display: flex; justify-content: center; gap: 12px; }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .footer {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      padding: 0;
+    }
+
+    .footer__card {
+      border-top: 1px solid var(--gray-200);
+      padding: 56px 0 40px;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .footer__brand {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .footer__brand a { color: var(--blue-500); }
+    .footer__brand a span { color: var(--sky-400); }
+
+    .footer__desc { font-size: 13px; line-height: 1.7; max-width: 300px; color: var(--gray-400); }
+
+    .footer__social {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .footer__social a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      transition: all 0.2s;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .footer__social a:hover { border-color: var(--blue-500); color: var(--blue-500); }
+
+    .footer__col-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .footer__col-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .footer__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .footer__links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__links a { font-size: 14px; color: var(--gray-500); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--blue-500); }
+
+    .footer__bottom {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .footer__legal { display: flex; gap: 24px; }
+    .footer__legal a { color: var(--blue-500); transition: color 0.2s; }
+    .footer__legal a:hover { color: var(--blue-600); }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .hero__inner { grid-template-columns: 1fr; gap: 40px; min-height: auto; }
+      .hero__visual { display: none; }
+      .hero__title { font-size: 40px; }
+      .categories-grid { grid-template-columns: repeat(3, 1fr); }
+      .subcat-groups { grid-template-columns: 1fr; }
+      .stats__grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+      .section__header-editorial { grid-template-columns: 1fr; gap: 16px; }
+      .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      .navbar__links { display: none; }
+      .hero__title { font-size: 32px; }
+      .hero__inner { padding: 60px 0 48px; }
+      .categories-grid { grid-template-columns: repeat(2, 1fr); }
+      .categories-section { padding: 56px 0 64px; }
+      .subcategories { padding: 56px 0 64px; }
+      .section__header-row .section__title { font-size: 28px; }
+      .section__header-editorial .section__title { font-size: 28px; }
+      .stats__grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      .stat__num { font-size: 36px; }
+      .footer__grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer__bottom { flex-direction: column; gap: 12px; text-align: center; }
+      .cta__title { font-size: 28px; }
+      .cta__buttons { flex-direction: column; align-items: center; }
+    }
+
+    @media (max-width: 480px) {
+      .categories-grid { grid-template-columns: 1fr; }
+      .hero__title { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="../landing.html" class="navbar__logo">nt<span>izo</span></a>
+
+      <ul class="navbar__links">
+        <li><a href="search-results.html">Browse Services</a></li>
+        <li><a href="categories.html" class="active">Categories</a></li>
+        <li><a href="how-it-works.html">How It Works</a></li>
+        <li><a href="become-provider.html">Become a Provider</a></li>
+      </ul>
+
+      <div class="navbar__actions">
+        <button class="btn btn--nav-ghost" onclick="location.href='../auth/login.html'">Log In</button>
+        <button class="btn btn--nav-primary" onclick="location.href='../auth/register.html'">Sign Up</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO — 2-Column Split ===================== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero__inner">
+        <div class="hero__content">
+          <div class="hero__badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            16 service categories
+          </div>
+          <h1 class="hero__title">FIND THE <em>RIGHT SERVICE</em> FOR YOU</h1>
+          <p class="hero__subtitle">Browse our curated categories to discover trusted providers for home, personal care, education, tech, and more.</p>
+
+          <div class="hero__search">
+            <svg class="hero__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input class="hero__search-input" type="text" placeholder="Search categories..." id="categorySearch" oninput="filterCategories()">
+          </div>
+        </div>
+
+        <div class="hero__visual">
+          <div class="hero__image-placeholder">
+            <span>Category illustration</span>
+          </div>
+          <div class="hero__float hero__float--top">
+            <div class="hero__float-num">500+</div>
+            <div class="hero__float-text"><strong>Verified Providers</strong>Ready to help</div>
+          </div>
+          <div class="hero__float hero__float--bottom">
+            <div class="hero__float-num">4.8</div>
+            <div class="hero__float-text"><strong>Average Rating</strong>Across all services</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CATEGORY GRID ===================== -->
+  <section class="categories-section">
+    <div class="container">
+      <div class="section__header-row">
+        <h2 class="section__title">All Categories</h2>
+        <span class="section__count" id="catCount">16 categories</span>
+      </div>
+
+      <div class="categories-grid" id="categoriesGrid">
+
+        <a href="search-results.html?category=home-repairs" class="cat-card" data-name="Home Repairs">
+          <div class="cat-card__name">Home Repairs</div>
+          <div class="cat-card__desc">General fixes, furniture assembly, and maintenance</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">120+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=beauty-styling" class="cat-card" data-name="Beauty & Styling">
+          <div class="cat-card__name">Beauty & Styling</div>
+          <div class="cat-card__desc">Hair, makeup, nails, and personal grooming</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">85+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=tutoring-education" class="cat-card" data-name="Tutoring & Education">
+          <div class="cat-card__name">Tutoring & Education</div>
+          <div class="cat-card__desc">Academic tutoring, language lessons, and skill training</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">60+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=transport-delivery" class="cat-card" data-name="Transport & Delivery">
+          <div class="cat-card__name">Transport & Delivery</div>
+          <div class="cat-card__desc">Moving, courier services, and package delivery</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">45+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=cleaning" class="cat-card" data-name="Cleaning Services">
+          <div class="cat-card__name">Cleaning Services</div>
+          <div class="cat-card__desc">Home, office, and deep cleaning solutions</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">90+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=tech-it" class="cat-card" data-name="Tech & IT Support">
+          <div class="cat-card__name">Tech & IT Support</div>
+          <div class="cat-card__desc">Computer repair, networking, and software help</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">35+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=catering-events" class="cat-card" data-name="Catering & Events">
+          <div class="cat-card__name">Catering & Events</div>
+          <div class="cat-card__desc">Food catering, event planning, and party setups</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">40+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=photography-video" class="cat-card" data-name="Photography & Video">
+          <div class="cat-card__name">Photography & Video</div>
+          <div class="cat-card__desc">Professional shoots, video production, and editing</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">30+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=plumbing" class="cat-card" data-name="Plumbing">
+          <div class="cat-card__name">Plumbing</div>
+          <div class="cat-card__desc">Pipe repairs, installations, and water systems</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">55+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=electrical" class="cat-card" data-name="Electrical">
+          <div class="cat-card__name">Electrical</div>
+          <div class="cat-card__desc">Wiring, installations, and electrical repairs</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">48+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=painting-decor" class="cat-card" data-name="Painting & Decor">
+          <div class="cat-card__name">Painting & Decor</div>
+          <div class="cat-card__desc">Interior painting, wallpaper, and decoration</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">32+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=gardening-landscaping" class="cat-card" data-name="Gardening & Landscaping">
+          <div class="cat-card__name">Gardening & Landscaping</div>
+          <div class="cat-card__desc">Lawn care, garden design, and plant maintenance</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">28+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=auto-repair" class="cat-card" data-name="Auto Repair">
+          <div class="cat-card__name">Auto Repair</div>
+          <div class="cat-card__desc">Vehicle maintenance, diagnostics, and bodywork</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">38+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=health-wellness" class="cat-card" data-name="Health & Wellness">
+          <div class="cat-card__name">Health & Wellness</div>
+          <div class="cat-card__desc">Massage, physiotherapy, fitness, and nutrition</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">42+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=legal-consulting" class="cat-card" data-name="Legal & Consulting">
+          <div class="cat-card__name">Legal & Consulting</div>
+          <div class="cat-card__desc">Legal advice, business consulting, and accounting</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">22+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+        <a href="search-results.html?category=fashion-tailoring" class="cat-card" data-name="Fashion & Tailoring">
+          <div class="cat-card__name">Fashion & Tailoring</div>
+          <div class="cat-card__desc">Custom tailoring, alterations, and fashion design</div>
+          <div class="cat-card__footer">
+            <span class="cat-card__providers">26+ providers</span>
+            <span class="cat-card__arrow-text">Explore <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+          </div>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== POPULAR SUBCATEGORIES ===================== -->
+  <section class="subcategories">
+    <div class="container">
+      <div class="section__header-editorial">
+        <div>
+          <span class="section__tag">Explore</span>
+          <h2 class="section__title">Popular Subcategories</h2>
+        </div>
+        <p class="section__subtitle">Quickly find the most in-demand services across our top categories</p>
+      </div>
+
+      <div class="subcat-groups">
+        <div class="subcat-group">
+          <div class="subcat-group__title"><span class="subcat-group__num">01</span> Home Repairs</div>
+          <div class="subcat-pills">
+            <a href="search-results.html?category=home-repairs&sub=furniture-assembly" class="subcat-pill">Furniture Assembly</a>
+            <a href="search-results.html?category=home-repairs&sub=door-window" class="subcat-pill">Door & Window Repair</a>
+            <a href="search-results.html?category=home-repairs&sub=roofing" class="subcat-pill">Roofing</a>
+            <a href="search-results.html?category=home-repairs&sub=tiling" class="subcat-pill">Tiling & Flooring</a>
+            <a href="search-results.html?category=home-repairs&sub=general-handyman" class="subcat-pill">General Handyman</a>
+            <a href="search-results.html?category=home-repairs&sub=carpentry" class="subcat-pill">Carpentry</a>
+          </div>
+        </div>
+
+        <div class="subcat-group">
+          <div class="subcat-group__title"><span class="subcat-group__num">02</span> Beauty & Styling</div>
+          <div class="subcat-pills">
+            <a href="search-results.html?category=beauty-styling&sub=hair-styling" class="subcat-pill">Hair Styling</a>
+            <a href="search-results.html?category=beauty-styling&sub=makeup" class="subcat-pill">Makeup Artist</a>
+            <a href="search-results.html?category=beauty-styling&sub=nails" class="subcat-pill">Nail Art & Manicure</a>
+            <a href="search-results.html?category=beauty-styling&sub=braids" class="subcat-pill">Braids & Extensions</a>
+            <a href="search-results.html?category=beauty-styling&sub=barbering" class="subcat-pill">Barbering</a>
+            <a href="search-results.html?category=beauty-styling&sub=skincare" class="subcat-pill">Skincare & Facials</a>
+          </div>
+        </div>
+
+        <div class="subcat-group">
+          <div class="subcat-group__title"><span class="subcat-group__num">03</span> Cleaning Services</div>
+          <div class="subcat-pills">
+            <a href="search-results.html?category=cleaning&sub=home-cleaning" class="subcat-pill">Home Cleaning</a>
+            <a href="search-results.html?category=cleaning&sub=deep-cleaning" class="subcat-pill">Deep Cleaning</a>
+            <a href="search-results.html?category=cleaning&sub=office-cleaning" class="subcat-pill">Office Cleaning</a>
+            <a href="search-results.html?category=cleaning&sub=post-construction" class="subcat-pill">Post-Construction</a>
+            <a href="search-results.html?category=cleaning&sub=laundry" class="subcat-pill">Laundry & Ironing</a>
+          </div>
+        </div>
+
+        <div class="subcat-group">
+          <div class="subcat-group__title"><span class="subcat-group__num">04</span> Tech & IT Support</div>
+          <div class="subcat-pills">
+            <a href="search-results.html?category=tech-it&sub=computer-repair" class="subcat-pill">Computer Repair</a>
+            <a href="search-results.html?category=tech-it&sub=phone-repair" class="subcat-pill">Phone Repair</a>
+            <a href="search-results.html?category=tech-it&sub=networking" class="subcat-pill">Networking & Wi-Fi</a>
+            <a href="search-results.html?category=tech-it&sub=web-dev" class="subcat-pill">Web Development</a>
+            <a href="search-results.html?category=tech-it&sub=data-recovery" class="subcat-pill">Data Recovery</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STATS — Dark Navy ===================== -->
+  <section class="stats">
+    <div class="stats__pattern"></div>
+    <div class="container">
+      <div class="stats__inner">
+        <div class="stats__header">
+          <h2 class="section__title">A Marketplace You Can Trust</h2>
+          <p class="section__subtitle">Join thousands of customers who rely on Ntizo every day</p>
+        </div>
+        <div class="stats__grid">
+          <div>
+            <div class="stat__num">500+</div>
+            <div class="stat__label">Verified Providers</div>
+          </div>
+          <div>
+            <div class="stat__num">2,000+</div>
+            <div class="stat__label">Bookings Completed</div>
+          </div>
+          <div>
+            <div class="stat__num">16</div>
+            <div class="stat__label">Service Categories</div>
+          </div>
+          <div>
+            <div class="stat__num">4.8</div>
+            <div class="stat__label">Average Rating</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CTA ===================== -->
+  <section class="cta">
+    <div class="cta__pattern"></div>
+    <div class="container">
+      <div class="cta__content">
+        <h2 class="cta__title">Can't find <em>what you need</em>?</h2>
+        <p class="cta__subtitle">Post a task and let providers come to you. Describe what you need and receive bids from qualified professionals.</p>
+        <div class="cta__buttons">
+          <button class="btn btn--lg btn--primary" onclick="location.href='task-board.html'">Post a Task</button>
+          <button class="btn btn--lg btn--outline" onclick="location.href='how-it-works.html'">Learn How It Works</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__card">
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand"><a href="../landing.html">nt<span>izo</span></a></div>
+            <p class="footer__desc">Connecting customers with trusted service providers. Book the services you need, when you need them.</p>
+            <div class="footer__social">
+              <a href="#" title="Twitter">X</a>
+              <a href="#" title="Instagram">ig</a>
+              <a href="#" title="LinkedIn">in</a>
+              <a href="#" title="Facebook">f</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">01</span>
+              <h4 class="footer__title">Product</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="search-results.html">Browse Services</a></li>
+              <li><a href="categories.html">Categories</a></li>
+              <li><a href="task-board.html">Task Board</a></li>
+              <li><a href="become-provider.html">For Providers</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">02</span>
+              <h4 class="footer__title">Resources</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="how-it-works.html">How It Works</a></li>
+              <li><a href="#">Help Center</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Success Stories</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">03</span>
+              <h4 class="footer__title">Company</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="#">About Us</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer__bottom">
+          <span>&copy; 2026 Ntizo. All rights reserved.</span>
+          <div class="footer__legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function filterCategories() {
+      const query = document.getElementById('categorySearch').value.toLowerCase();
+      const cards = document.querySelectorAll('.cat-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const name = card.getAttribute('data-name').toLowerCase();
+        const match = name.includes(query);
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      document.getElementById('catCount').textContent = visible + ' categor' + (visible === 1 ? 'y' : 'ies');
+    }
+  </script>
+
+</body>
+</html>

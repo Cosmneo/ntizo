@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ntizo - Task Board</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--gray-50);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-100);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .navbar__logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .navbar__logo span { color: var(--sky-400); }
+
+    .navbar__links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .navbar__links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.2s;
+    }
+
+    .navbar__links a:hover { color: var(--blue-500); }
+
+    .navbar__actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--nav-ghost {
+      background: transparent;
+      color: var(--gray-600);
+    }
+    .btn--nav-ghost:hover { color: var(--blue-500); }
+
+    .btn--nav-primary {
+      background: var(--blue-500);
+      color: var(--white);
+    }
+    .btn--nav-primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--blue-500);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--ghost:hover { background: var(--blue-50); }
+
+    .btn--primary {
+      background: var(--blue-500);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+
+    .btn--primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn--lg { padding: 14px 28px; font-size: 15px; }
+    .btn--xl { padding: 16px 36px; font-size: 16px; border-radius: var(--radius-lg); }
+
+    .btn--white { background: var(--white); color: var(--navy-900); }
+    .btn--white:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+
+    .btn--white-outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.3);
+    }
+    .btn--white-outline:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--blue-500);
+      border: 1.5px solid var(--blue-200);
+    }
+    .btn--outline:hover {
+      border-color: var(--blue-500);
+      background: var(--blue-50);
+    }
+
+    .btn--sm { padding: 8px 16px; font-size: 13px; }
+
+    /* ============================================
+       PAGE TOP (breadcrumb bar)
+       ============================================ */
+    .page-top {
+      padding-top: 64px;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .page-top__inner {
+      padding: 16px 0;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .breadcrumb a {
+      color: var(--gray-500);
+      transition: color 0.2s;
+    }
+
+    .breadcrumb a:hover { color: var(--blue-500); }
+
+    .breadcrumb__sep { color: var(--gray-300); font-size: 11px; }
+
+    .breadcrumb__current {
+      color: var(--navy-900);
+      font-weight: 600;
+    }
+
+    /* ============================================
+       SIDEBAR SEARCH
+       ============================================ */
+    .sidebar-search {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .sidebar-search__field {
+      margin-bottom: 10px;
+    }
+
+    .sidebar-search__field:last-child {
+      margin-bottom: 0;
+    }
+
+    .sidebar-search__label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-500);
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .sidebar-search__input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      background: var(--white);
+      transition: all 0.2s;
+    }
+
+    .sidebar-search__input-wrap:focus-within {
+      border-color: var(--blue-300);
+      box-shadow: var(--shadow-input-focus);
+    }
+
+    .sidebar-search__input-wrap svg {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: var(--gray-400);
+    }
+
+    .sidebar-search__input-wrap input {
+      border: none;
+      outline: none;
+      font-size: 14px;
+      color: var(--navy-900);
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .sidebar-search__input-wrap input::placeholder {
+      color: var(--gray-400);
+    }
+
+    .sidebar-search__btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px 20px;
+      background: var(--gradient-brand);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .sidebar-search__btn:hover {
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* ============================================
+       MAIN LAYOUT (matches search-results)
+       ============================================ */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 28px;
+      padding: 28px 0 80px;
+    }
+
+    /* ============================================
+       FILTERS SIDEBAR (matches search-results)
+       ============================================ */
+    .sidebar {
+      position: sticky;
+      top: 100px;
+      align-self: start;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .sidebar__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-900);
+    }
+
+    .sidebar__clear {
+      font-size: 13px;
+      color: var(--blue-500);
+      font-weight: 500;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      transition: color 0.2s;
+    }
+
+    .sidebar__clear:hover { color: var(--blue-700); text-decoration: underline; }
+
+    .filter-group {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .filter-group:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .filter-group__label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      color: var(--navy-900);
+      background: var(--white);
+      outline: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    .filter-select:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+
+    .filter-text-input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      color: var(--navy-900);
+      background: var(--white);
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .filter-text-input:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+
+    .filter-range {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-range__field {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .filter-range input {
+      width: 100%;
+      min-width: 0;
+      padding: 10px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      color: var(--navy-900);
+      background: var(--white);
+      outline: none;
+      transition: all 0.2s;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+
+    .filter-range input::-webkit-outer-spin-button,
+    .filter-range input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .filter-range input:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+
+    .filter-range__sep {
+      font-size: 13px;
+      color: var(--gray-400);
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .filter-checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .filter-checkbox input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue-500);
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    .filter-radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-radio {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .filter-radio input[type="radio"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue-500);
+      cursor: pointer;
+    }
+
+    .sidebar__apply-btn {
+      width: 100%;
+      margin-top: 24px;
+      padding: 12px 20px;
+      background: var(--gradient-brand);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .sidebar__apply-btn:hover {
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* ============================================
+       RESULTS AREA (matches search-results)
+       ============================================ */
+    .results-area {}
+
+    .results-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      background: var(--white);
+      padding: 14px 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+    }
+
+    .results-toolbar__count {
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+
+    .results-toolbar__count strong {
+      color: var(--navy-900);
+      font-weight: 700;
+    }
+
+    .results-toolbar__actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .sort-select {
+      padding: 8px 32px 8px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      color: var(--gray-700);
+      background: var(--white);
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+
+    .sort-select:focus { box-shadow: var(--shadow-input-focus); border-color: var(--blue-300); }
+
+    .view-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .view-toggle__btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--white);
+      border: none;
+      cursor: pointer;
+      color: var(--gray-400);
+      transition: all 0.2s;
+    }
+
+    .view-toggle__btn:first-child { border-right: 1px solid var(--gray-200); }
+
+    .view-toggle__btn.active {
+      background: var(--blue-50);
+      color: var(--blue-500);
+    }
+
+    .view-toggle__btn:hover { color: var(--blue-500); }
+
+    /* ============================================
+       TASK CARDS (2-column in main area)
+       ============================================ */
+    .tasks-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .task-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+      padding: 24px;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .task-card:hover {
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.08);
+      transform: translateY(-4px);
+      border-color: var(--blue-200);
+    }
+
+    .task-card__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .task-card__title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--navy-900);
+      line-height: 1.3;
+      flex: 1;
+      margin-right: 12px;
+    }
+
+    .task-card__category {
+      display: inline-flex;
+      padding: 4px 12px;
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .task-card__posted-by {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .task-card__avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-500);
+      flex-shrink: 0;
+    }
+
+    .task-card__author-name {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .task-card__author-name strong {
+      color: var(--gray-700);
+      font-weight: 600;
+    }
+
+    .task-card__desc {
+      font-size: 14px;
+      color: var(--gray-500);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .task-card__meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .task-card__meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .task-card__meta-item svg {
+      width: 14px;
+      height: 14px;
+      color: var(--gray-400);
+      flex-shrink: 0;
+    }
+
+    .task-card__location-badge {
+      display: inline-flex;
+      padding: 3px 10px;
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+
+    .task-card__footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--gray-100);
+      margin-top: auto;
+    }
+
+    .task-card__budget {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .task-card__budget-label {
+      font-size: 11px;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .task-card__budget-value {
+      font-size: 18px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .task-card__actions { display: flex; gap: 8px; align-items: center; }
+
+    .task-card__bid-count {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    .task-card__bid-count svg {
+      width: 14px;
+      height: 14px;
+      color: var(--gray-400);
+    }
+
+    .task-card__first-bid {
+      font-size: 12px;
+      color: var(--green-600);
+      font-weight: 600;
+    }
+
+    .task-card__time {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-bottom: 16px;
+    }
+
+    /* Tooltip for login-to-bid */
+    .btn--bid {
+      position: relative;
+    }
+
+    .btn--bid .tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 12px;
+      background: var(--navy-900);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .btn--bid .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--navy-900);
+    }
+
+    .btn--bid:hover .tooltip { display: block; }
+
+    /* ============================================
+       PAGINATION (matches search-results)
+       ============================================ */
+    .pagination {
+      margin-top: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--white);
+      padding: 14px 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+    }
+
+    .pagination__info {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .pagination__controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pagination__btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      color: var(--gray-600);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .pagination__btn:hover {
+      border-color: var(--blue-300);
+      color: var(--blue-500);
+    }
+
+    .pagination__btn.active {
+      background: var(--gradient-brand);
+      color: var(--white);
+      border-color: transparent;
+    }
+
+    .pagination__btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .pagination__prev,
+    .pagination__next {
+      padding: 0 14px;
+      width: auto;
+    }
+
+    /* ============================================
+       MOBILE FILTER TOGGLE (matches search-results)
+       ============================================ */
+    .mobile-filter-toggle {
+      display: none;
+      width: 100%;
+      padding: 12px 20px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy-900);
+      cursor: pointer;
+      margin-bottom: 16px;
+      font-family: inherit;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    /* ============================================
+       CTA
+       ============================================ */
+    .cta {
+      padding: 80px 0;
+      background: var(--gray-50);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta__content { text-align: center; position: relative; z-index: 1; }
+
+    .cta__title {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .cta__title em {
+      font-style: normal;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cta__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 420px;
+      margin: 0 auto 8px;
+      line-height: 1.7;
+    }
+
+    .cta__note {
+      font-size: 13px;
+      color: var(--gray-400);
+      margin-bottom: 28px;
+    }
+
+    .cta__buttons { display: flex; justify-content: center; gap: 14px; }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .footer {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      padding: 0;
+    }
+
+    .footer__card {
+      border-top: 1px solid var(--gray-200);
+      padding: 56px 0 40px;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .footer__brand {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .footer__brand a { color: var(--blue-500); }
+    .footer__brand a span { color: var(--sky-400); }
+
+    .footer__desc { font-size: 13px; line-height: 1.7; max-width: 300px; color: var(--gray-400); }
+
+    .footer__social {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .footer__social a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      transition: all 0.2s;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .footer__social a:hover { border-color: var(--blue-500); color: var(--blue-500); }
+
+    .footer__col-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .footer__col-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .footer__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .footer__links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__links a { font-size: 14px; color: var(--gray-500); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--blue-500); }
+
+    .footer__bottom {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .footer__legal { display: flex; gap: 24px; }
+    .footer__legal a { color: var(--blue-500); transition: color 0.2s; }
+    .footer__legal a:hover { color: var(--blue-600); }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .tasks-grid { grid-template-columns: 1fr; }
+      .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      .navbar__links { display: none; }
+
+      .main-layout {
+        grid-template-columns: 1fr;
+        padding: 20px 0 60px;
+      }
+
+      .sidebar {
+        position: static;
+        display: none;
+      }
+
+      .sidebar.show { display: block; }
+
+      .mobile-filter-toggle { display: flex; }
+
+      .tasks-grid { grid-template-columns: 1fr; }
+
+      .results-toolbar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .results-toolbar__actions { width: 100%; justify-content: space-between; }
+
+      .task-card__footer { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .task-card__actions { width: 100%; }
+      .task-card__actions .btn { flex: 1; }
+
+      .pagination { flex-direction: column; gap: 12px; }
+
+      .cta__title { font-size: 26px; }
+      .cta__buttons { flex-direction: column; align-items: center; }
+
+      .footer__grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer__bottom { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="../landing.html" class="navbar__logo">nt<span>izo</span></a>
+
+      <ul class="navbar__links">
+        <li><a href="search-results.html">Browse Services</a></li>
+        <li><a href="how-it-works.html">How It Works</a></li>
+        <li><a href="task-board.html" style="color: var(--blue-500); font-weight: 600;">Task Board</a></li>
+        <li><a href="become-provider.html">Become a Provider</a></li>
+      </ul>
+
+      <div class="navbar__actions">
+        <button class="btn btn--nav-ghost" onclick="location.href='../auth/login.html'">Log In</button>
+        <button class="btn btn--nav-primary" onclick="location.href='../auth/register.html'">Sign Up</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== BREADCRUMB BAR ===================== -->
+  <div class="page-top">
+    <div class="container">
+      <div class="page-top__inner">
+        <div class="breadcrumb">
+          <a href="../landing.html">Home</a>
+          <span class="breadcrumb__sep">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+          </span>
+          <span class="breadcrumb__current">Task Board</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MAIN CONTENT ===================== -->
+  <div class="container">
+    <div class="main-layout">
+
+      <!-- Mobile filter toggle -->
+      <button class="mobile-filter-toggle" onclick="document.querySelector('.sidebar').classList.toggle('show')">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
+        Filters
+      </button>
+
+      <!-- ===================== SIDEBAR ===================== -->
+      <aside class="sidebar">
+        <!-- Search -->
+        <div class="sidebar-search">
+          <div class="sidebar-search__field">
+            <label class="sidebar-search__label">Search tasks</label>
+            <div class="sidebar-search__input-wrap">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+              <input type="text" placeholder="What task are you looking for?">
+            </div>
+          </div>
+          <div class="sidebar-search__field">
+            <label class="sidebar-search__label">Location</label>
+            <div class="sidebar-search__input-wrap">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              <input type="text" placeholder="City or area">
+            </div>
+          </div>
+          <button class="sidebar-search__btn">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+            Search
+          </button>
+        </div>
+
+        <div class="sidebar__header">
+          <span class="sidebar__title">Filters</span>
+          <button class="sidebar__clear">Clear all</button>
+        </div>
+
+        <!-- Category -->
+        <div class="filter-group">
+          <div class="filter-group__label">Category</div>
+          <select class="filter-select">
+            <option selected>All Categories</option>
+            <option>Plumbing</option>
+            <option>Beauty & Styling</option>
+            <option>Cleaning Services</option>
+            <option>Tech & IT Support</option>
+            <option>Tutoring & Education</option>
+            <option>Painting & Decor</option>
+            <option>Catering & Events</option>
+            <option>Electrical</option>
+            <option>Home Repairs</option>
+            <option>Gardening & Landscaping</option>
+            <option>Auto Repair</option>
+            <option>Transport & Delivery</option>
+            <option>Photography & Video</option>
+            <option>Health & Wellness</option>
+            <option>Legal & Consulting</option>
+            <option>Fashion & Tailoring</option>
+          </select>
+        </div>
+
+        <!-- Budget Range -->
+        <div class="filter-group">
+          <div class="filter-group__label">Budget Range (MZN)</div>
+          <div class="filter-range">
+            <div class="filter-range__field">
+              <input type="number" placeholder="Min">
+            </div>
+            <span class="filter-range__sep">to</span>
+            <div class="filter-range__field">
+              <input type="number" placeholder="Max">
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Location -->
+        <div class="filter-group">
+          <div class="filter-group__label">Service Location</div>
+          <div class="filter-checkbox-group">
+            <label class="filter-checkbox">
+              <input type="checkbox" checked> At my location
+            </label>
+            <label class="filter-checkbox">
+              <input type="checkbox"> At provider
+            </label>
+            <label class="filter-checkbox">
+              <input type="checkbox"> Remote
+            </label>
+            <label class="filter-checkbox">
+              <input type="checkbox"> Flexible
+            </label>
+          </div>
+        </div>
+
+        <!-- Date Posted -->
+        <div class="filter-group">
+          <div class="filter-group__label">Date Posted</div>
+          <div class="filter-radio-group">
+            <label class="filter-radio">
+              <input type="radio" name="date-posted" value="today"> Today
+            </label>
+            <label class="filter-radio">
+              <input type="radio" name="date-posted" value="week" checked> This week
+            </label>
+            <label class="filter-radio">
+              <input type="radio" name="date-posted" value="month"> This month
+            </label>
+            <label class="filter-radio">
+              <input type="radio" name="date-posted" value="any"> Any time
+            </label>
+          </div>
+        </div>
+
+        <button class="sidebar__apply-btn">Apply Filters</button>
+      </aside>
+
+      <!-- ===================== RESULTS AREA ===================== -->
+      <div class="results-area">
+
+        <div class="results-toolbar">
+          <span class="results-toolbar__count"><strong>42</strong> open tasks</span>
+          <div class="results-toolbar__actions">
+            <select class="sort-select">
+              <option>Newest First</option>
+              <option>Budget: High to Low</option>
+              <option>Budget: Low to High</option>
+              <option>Most Bids</option>
+              <option>Fewest Bids</option>
+            </select>
+            <div class="view-toggle">
+              <button class="view-toggle__btn active" title="Grid view">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+              </button>
+              <button class="view-toggle__btn" title="List view">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tasks-grid">
+
+          <!-- Task 1 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Fix Leaking Kitchen Faucet</h3>
+              <span class="task-card__category">Plumbing</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">AM</div>
+              <span class="task-card__author-name">Posted by <strong>Ana M.</strong></span>
+            </div>
+            <p class="task-card__desc">My kitchen faucet has been leaking for a few days. Need someone experienced with plumbing to come fix or replace it. Must bring own tools and parts.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo, Sommerschield
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Feb 15, 2026
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                3 bids
+              </span>
+            </div>
+            <div class="task-card__time">2 hours ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">2,000 - 3,500 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 2 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Hair Stylist for Wedding Party</h3>
+              <span class="task-card__category">Beauty</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">SM</div>
+              <span class="task-card__author-name">Posted by <strong>Sofia M.</strong></span>
+            </div>
+            <p class="task-card__desc">Looking for an experienced hair stylist for my wedding party. Need styling for the bride and 4 bridesmaids. Prefer someone who can also do light makeup touch-ups.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo, Polana
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Mar 8, 2026
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                7 bids
+              </span>
+            </div>
+            <div class="task-card__time">4 hours ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">5,000 - 8,000 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 3 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Deep Clean 3-Bedroom House</h3>
+              <span class="task-card__category">Cleaning</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">RC</div>
+              <span class="task-card__author-name">Posted by <strong>Ricardo C.</strong></span>
+            </div>
+            <p class="task-card__desc">Need a thorough deep cleaning of my 3-bedroom house including kitchen, 2 bathrooms, living room, and balcony. Cleaning supplies can be provided if needed.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Matola, Km 10
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Feb 18, 2026
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                5 bids
+              </span>
+            </div>
+            <div class="task-card__time">5 hours ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">1,500 - 2,500 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 4 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Install Home Security Cameras</h3>
+              <span class="task-card__category">Tech</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">JN</div>
+              <span class="task-card__author-name">Posted by <strong>Jorge N.</strong></span>
+            </div>
+            <p class="task-card__desc">Looking for a tech professional to install 4 security cameras around my property. Need wiring, setup, and mobile app configuration. Cameras already purchased.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo, Costa do Sol
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Feb 20, 2026
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                2 bids
+              </span>
+            </div>
+            <div class="task-card__time">6 hours ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">8,000 - 15,000 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 5 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Math Tutor for High School Student</h3>
+              <span class="task-card__category">Tutoring</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">FN</div>
+              <span class="task-card__author-name">Posted by <strong>Fatima N.</strong></span>
+            </div>
+            <p class="task-card__desc">My daughter needs help with 10th grade mathematics, especially algebra and geometry. Looking for 2-3 sessions per week. Tutor must be patient and experienced with teens.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo, Malhangalene
+              </span>
+              <span class="task-card__location-badge">Flexible</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Ongoing
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                4 bids
+              </span>
+            </div>
+            <div class="task-card__time">8 hours ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Per Session</span>
+                <span class="task-card__budget-value">800 - 1,200 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 6 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Paint Living Room & Hallway</h3>
+              <span class="task-card__category">Painting</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">CM</div>
+              <span class="task-card__author-name">Posted by <strong>Carlos M.</strong></span>
+            </div>
+            <p class="task-card__desc">Need interior painting for living room and hallway. Walls are currently white, want to change to light gray. Approximately 60 square meters total. Paint included or not.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Matola, Txumene
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Feb 22, 2026
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                1 bid
+              </span>
+            </div>
+            <div class="task-card__time">12 hours ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">4,000 - 6,000 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 7 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Catering for Birthday Party (50 guests)</h3>
+              <span class="task-card__category">Catering</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">LB</div>
+              <span class="task-card__author-name">Posted by <strong>Lucia B.</strong></span>
+            </div>
+            <p class="task-card__desc">Planning a birthday party for 50 guests. Need full catering service including appetizers, main course, dessert, and drinks. Mozambican and Portuguese cuisine preferred.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo, Triunfo
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                Mar 1, 2026
+              </span>
+              <span class="task-card__bid-count">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+                6 bids
+              </span>
+            </div>
+            <div class="task-card__time">1 day ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">15,000 - 25,000 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Task 8 -->
+          <div class="task-card">
+            <div class="task-card__header">
+              <h3 class="task-card__title">Fix Broken Air Conditioner</h3>
+              <span class="task-card__category">Electrical</span>
+            </div>
+            <div class="task-card__posted-by">
+              <div class="task-card__avatar">DP</div>
+              <span class="task-card__author-name">Posted by <strong>Daniel P.</strong></span>
+            </div>
+            <p class="task-card__desc">Split AC unit stopped cooling. It turns on but only blows warm air. Brand is Samsung, installed 3 years ago. Need diagnosis and repair. Urgent during this heat wave.</p>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo, Baixa
+              </span>
+              <span class="task-card__location-badge">At my location</span>
+            </div>
+            <div class="task-card__meta">
+              <span class="task-card__meta-item">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                ASAP
+              </span>
+              <span class="task-card__first-bid">Be the first to bid!</span>
+            </div>
+            <div class="task-card__time">30 minutes ago</div>
+            <div class="task-card__footer">
+              <div class="task-card__budget">
+                <span class="task-card__budget-label">Budget</span>
+                <span class="task-card__budget-value">3,000 - 5,000 MZN</span>
+              </div>
+              <div class="task-card__actions">
+                <button class="btn btn--sm btn--outline">View Details</button>
+                <button class="btn btn--sm btn--primary btn--bid">
+                  Submit Bid
+                  <span class="tooltip">Login to bid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="pagination__info">Showing 1-8 of 42</span>
+          <div class="pagination__controls">
+            <button class="pagination__btn pagination__prev" disabled>
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Prev
+            </button>
+            <button class="pagination__btn active">1</button>
+            <button class="pagination__btn">2</button>
+            <button class="pagination__btn">3</button>
+            <button class="pagination__btn">4</button>
+            <button class="pagination__btn">5</button>
+            <button class="pagination__btn">6</button>
+            <button class="pagination__btn pagination__next">
+              Next
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== CTA ===================== -->
+  <section class="cta">
+    <div class="container">
+      <div class="cta__content">
+        <h2 class="cta__title">Have a task that <em>needs doing</em>?</h2>
+        <p class="cta__subtitle">Post your task and let qualified providers come to you with their best offers.</p>
+        <p class="cta__note">It's free to post</p>
+        <div class="cta__buttons">
+          <button class="btn btn--primary" onclick="location.href='../auth/register.html'">Post a Task</button>
+          <button class="btn btn--ghost" onclick="location.href='how-it-works.html'">Learn More</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__card">
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand"><a href="../landing.html">nt<span>izo</span></a></div>
+            <p class="footer__desc">Connecting customers with trusted service providers. Book the services you need, when you need them.</p>
+            <div class="footer__social">
+              <a href="#" title="Twitter">X</a>
+              <a href="#" title="Instagram">ig</a>
+              <a href="#" title="LinkedIn">in</a>
+              <a href="#" title="Facebook">f</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">01</span>
+              <h4 class="footer__title">Product</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="search-results.html">Browse Services</a></li>
+              <li><a href="categories.html">Categories</a></li>
+              <li><a href="task-board.html">Task Board</a></li>
+              <li><a href="become-provider.html">For Providers</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">02</span>
+              <h4 class="footer__title">Resources</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="how-it-works.html">How It Works</a></li>
+              <li><a href="#">Help Center</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Success Stories</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">03</span>
+              <h4 class="footer__title">Company</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="#">About Us</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer__bottom">
+          <span>&copy; 2026 Ntizo. All rights reserved.</span>
+          <div class="footer__legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ntizo - Find the Perfect Service Provider</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+
+    .container { max-width: 1320px; margin: 0 auto; padding: 0 40px; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--gray-100);
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+
+    .navbar .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .navbar__logo {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .navbar__logo span { color: var(--sky-400); }
+
+    .navbar__links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .navbar__links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.2s;
+    }
+
+    .navbar__links a:hover { color: var(--blue-500); }
+
+    .navbar__actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--nav-ghost {
+      background: transparent;
+      color: var(--gray-600);
+    }
+    .btn--nav-ghost:hover { color: var(--blue-500); }
+
+    .btn--nav-primary {
+      background: var(--blue-500);
+      color: var(--white);
+    }
+    .btn--nav-primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn--primary {
+      background: var(--blue-500);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--primary:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn--outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--outline:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn--dark {
+      background: var(--navy-900);
+      color: var(--white);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--dark:hover {
+      background: var(--navy-800);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-1px);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--blue-500);
+      padding: 12px 24px;
+      font-size: 14px;
+    }
+    .btn--ghost:hover { background: var(--blue-50); }
+
+    .btn--lg { padding: 14px 28px; font-size: 15px; }
+
+    .btn--white { background: var(--white); color: var(--navy-900); }
+    .btn--white:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+
+    .btn--white-outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.25);
+    }
+    .btn--white-outline:hover { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.06); }
+
+    .btn__arrow {
+      display: inline-flex;
+      font-size: 16px;
+      transition: transform 0.2s;
+    }
+    .btn:hover .btn__arrow { transform: translateX(3px); }
+
+    /* ============================================
+       SECTION UTILITIES
+       ============================================ */
+    .section__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(0, 122, 255, 0.08);
+      color: var(--blue-500);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius-full);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section__tag--light {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .section__title {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+
+    .section__title--light { color: var(--white); }
+
+    .section__title em {
+      font-style: normal;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section__title--light em {
+      background: linear-gradient(135deg, var(--sky-400) 0%, var(--blue-300) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .section__subtitle {
+      font-size: 15px;
+      color: var(--gray-500);
+      margin-top: 12px;
+      line-height: 1.7;
+      max-width: 420px;
+    }
+
+    .section__subtitle--light { color: rgba(255, 255, 255, 0.5); }
+
+    .section__header { margin-bottom: 56px; }
+    .section__header--center { text-align: center; }
+    .section__header--center .section__subtitle { margin-left: auto; margin-right: auto; }
+
+    .section__header-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+
+    .section__view-all {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue-500);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: gap 0.2s;
+    }
+    .section__view-all:hover { gap: 10px; }
+
+    /* ============================================
+       HERO (Light)
+       ============================================ */
+    .hero {
+      padding-top: 64px;
+      background: linear-gradient(170deg, #F5F9FF 0%, #EDF4FF 40%, #F0F7FF 70%, var(--white) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero__bg-pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.025;
+      background-image: url('../assets/Pattern/SVG/Pattern 1.svg');
+      background-size: 200px;
+      background-repeat: repeat;
+    }
+
+    /* Subtle gradient glow */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      right: -100px;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 182, 255, 0.06) 0%, transparent 70%);
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -150px;
+      left: 10%;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 122, 255, 0.04) 0%, transparent 70%);
+    }
+
+    .hero__content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      background: var(--white);
+      border: 1px solid var(--blue-200);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-500);
+      margin-bottom: 28px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hero__badge__dot {
+      width: 7px;
+      height: 7px;
+      background: var(--green-500);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .hero__title {
+      font-size: 62px;
+      font-weight: 800;
+      line-height: 1.02;
+      color: var(--navy-900);
+      letter-spacing: -2.5px;
+      margin-bottom: 24px;
+    }
+
+    .hero__title em {
+      font-style: normal;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 440px;
+      line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    .hero__buttons { display: flex; gap: 12px; margin-bottom: 32px; }
+
+    /* Search bar */
+    .search-bar {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 8px 32px rgba(0, 36, 77, 0.06), 0 2px 8px rgba(0, 36, 77, 0.03);
+      max-width: 520px;
+      margin-bottom: 16px;
+    }
+
+    .search-bar__field {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+    }
+
+    .search-bar__icon { flex-shrink: 0; width: 18px; height: 18px; color: var(--gray-400); }
+
+    .search-bar__input {
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: var(--navy-900);
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .search-bar__input::placeholder { color: var(--gray-400); }
+
+    .search-bar__divider { width: 1px; height: 20px; background: var(--gray-200); }
+
+    .search-bar__btn {
+      flex-shrink: 0;
+      padding: 10px 22px;
+      background: var(--blue-500);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .search-bar__btn:hover {
+      background: var(--blue-400);
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+    }
+
+    .hero__suggestions {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+    .hero__suggestions span { color: var(--gray-500); font-weight: 600; }
+    .hero__suggestions a { color: var(--blue-500); font-weight: 500; }
+    .hero__suggestions a:hover { text-decoration: underline; }
+
+    /* Hero visual (right side) */
+    .hero__visual {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero__image-wrapper {
+      width: 100%;
+      max-width: 440px;
+      aspect-ratio: 4/5;
+      background: linear-gradient(160deg, #DCE9FF 0%, #C8DFFF 50%, #D4EAFF 100%);
+      border-radius: var(--radius-xl);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 36, 77, 0.08);
+    }
+
+    .hero__image-wrapper span {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.85);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--blue-600);
+    }
+
+    /* Floating cards on hero */
+    .hero__float-card {
+      position: absolute;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 3;
+      animation: float 5s ease-in-out infinite;
+    }
+
+    .hero__float-card--1 { top: 10%; right: -20px; animation-delay: 0s; }
+    .hero__float-card--2 { bottom: 32%; left: -28px; animation-delay: 1.5s; }
+    .hero__float-card--3 { bottom: 10%; right: 12%; animation-delay: 3s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .hero__float-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--blue-500);
+      flex-shrink: 0;
+    }
+
+    .hero__float-text { font-size: 11px; color: var(--gray-600); font-weight: 500; white-space: nowrap; }
+    .hero__float-text strong { display: block; color: var(--navy-900); font-weight: 700; font-size: 12px; }
+
+    /* Hero metrics strip */
+    .hero__metrics {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 0 40px;
+      position: relative;
+      z-index: 2;
+      flex-wrap: wrap;
+    }
+
+    .hero__metric {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      background: var(--white);
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hero__metric-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue-500);
+    }
+
+    .hero__metric-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .hero__metric-label {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 1px;
+    }
+
+    /* Trusted by / partners strip */
+    .hero__partners {
+      border-top: 1px solid var(--gray-100);
+      padding: 24px 0 32px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero__partners-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-300);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+    }
+
+    .hero__partners-logos {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .hero__partner {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gray-200);
+      letter-spacing: -0.3px;
+    }
+
+    /* ============================================
+       FEATURES (like Spectra's "Optical Precision")
+       ============================================ */
+    .features {
+      padding: 100px 0;
+      background: var(--white);
+    }
+
+    .features__header {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: end;
+      margin-bottom: 56px;
+    }
+
+    .features__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .feature-card {
+      padding: 32px 28px;
+      background: var(--gray-50);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-100);
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.06);
+      transform: translateY(-4px);
+    }
+
+    .feature-card__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue-500);
+      margin-bottom: 20px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover .feature-card__icon {
+      background: var(--blue-500);
+      border-color: var(--blue-500);
+      color: var(--white);
+    }
+
+    .feature-card__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 8px;
+    }
+
+    .feature-card__desc {
+      font-size: 13px;
+      color: var(--gray-500);
+      line-height: 1.7;
+    }
+
+    /* ============================================
+       CATEGORIES BENTO (like "Limitless Applications")
+       ============================================ */
+    .categories { padding: 100px 0; background: var(--gray-50); }
+
+    .bento {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 16px;
+    }
+
+    .bento__item {
+      background: linear-gradient(160deg, var(--blue-100) 0%, var(--sky-100) 100%);
+      border-radius: var(--radius-lg);
+      position: relative;
+      overflow: hidden;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(0, 122, 255, 0.06);
+    }
+
+    .bento__item:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+
+    .bento__item--large {
+      grid-row: 1 / 3;
+      min-height: 460px;
+    }
+
+    .bento__item--alt { background: linear-gradient(160deg, var(--sky-100) 0%, var(--blue-50) 100%); }
+    .bento__item--dark {
+      background: var(--navy-900);
+    }
+
+    .bento__label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(6px);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy-900);
+      align-self: flex-start;
+    }
+
+    .bento__item--dark .bento__label {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--white);
+    }
+
+    .bento__count {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 6px;
+    }
+
+    .bento__item--dark .bento__count { color: rgba(255, 255, 255, 0.4); }
+
+    .bento__arrow {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--navy-900);
+      transition: all 0.2s;
+    }
+
+    .bento__item:hover .bento__arrow { background: var(--blue-500); color: var(--white); }
+
+    .bento__item--dark .bento__arrow { background: rgba(255, 255, 255, 0.1); color: var(--white); }
+    .bento__item--dark:hover .bento__arrow { background: var(--blue-500); }
+
+    /* Categories second row - smaller cards */
+    .categories__row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .cat-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 24px 20px;
+      text-align: center;
+      border: 1px solid var(--gray-100);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .cat-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.06);
+      transform: translateY(-4px);
+    }
+
+    .cat-card__icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      background: var(--blue-50);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue-500);
+      transition: all 0.3s;
+    }
+
+    .cat-card:hover .cat-card__icon { background: var(--gradient-brand); color: var(--white); }
+
+    .cat-card__name { font-size: 14px; font-weight: 700; color: var(--navy-900); }
+    .cat-card__count { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+    /* ============================================
+       TESTIMONIALS (dark, like "Trusted by Visionaries")
+       ============================================ */
+    .testimonials {
+      padding: 100px 0;
+      background: var(--white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .testimonials__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .testimonial-card {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      transition: all 0.3s ease;
+    }
+
+    .testimonial-card:hover {
+      border-color: var(--blue-200);
+      box-shadow: 0 8px 24px rgba(0, 122, 255, 0.06);
+      transform: translateY(-4px);
+    }
+
+    .testimonial-card__header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .testimonial-card__avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--blue-500);
+      flex-shrink: 0;
+    }
+
+    .testimonial-card__name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy-900);
+    }
+
+    .testimonial-card__role {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-top: 2px;
+    }
+
+    .testimonial-card__stars {
+      margin-left: auto;
+      color: var(--amber-500);
+      font-size: 12px;
+      display: flex;
+      gap: 2px;
+    }
+
+    .testimonial-card__text {
+      font-size: 15px;
+      color: var(--gray-500);
+      line-height: 1.7;
+      font-weight: 400;
+    }
+
+    .testimonial-card__text strong {
+      color: var(--navy-900);
+      font-weight: 600;
+    }
+
+    /* ============================================
+       HOW IT WORKS (like "Transform Reality" split layout)
+       ============================================ */
+    .how-it-works { padding: 100px 0; background: var(--white); }
+
+    .how__layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .how__features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 36px;
+    }
+
+    .how__feature {
+      display: flex;
+      gap: 12px;
+    }
+
+    .how__feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--blue-500);
+    }
+
+    .how__feature-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 4px;
+    }
+
+    .how__feature-desc {
+      font-size: 12px;
+      color: var(--gray-500);
+      line-height: 1.6;
+    }
+
+    .how__link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 36px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue-500);
+      transition: gap 0.2s;
+    }
+    .how__link:hover { gap: 10px; }
+
+    .how__image {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: linear-gradient(160deg, var(--blue-50) 0%, var(--sky-100) 100%);
+      border-radius: var(--radius-xl);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--gray-100);
+    }
+
+    .how__image span {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 122, 255, 0.08);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--blue-500);
+    }
+
+    /* ============================================
+       FEATURED PROVIDERS (card grid)
+       ============================================ */
+    .featured { padding: 100px 0; background: var(--gray-50); }
+
+    .featured__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .provider-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-100);
+      transition: all 0.3s ease;
+    }
+
+    .provider-card:hover {
+      box-shadow: 0 12px 32px rgba(0, 36, 77, 0.08);
+      transform: translateY(-4px);
+    }
+
+    .provider-card__cover {
+      height: 120px;
+      background: linear-gradient(135deg, var(--blue-100), var(--sky-200));
+      position: relative;
+    }
+
+    .provider-card__badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--white);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green-500);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .provider-card__avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--blue-500);
+      border: 3px solid var(--white);
+      position: absolute;
+      bottom: -26px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+      box-shadow: var(--shadow-md);
+    }
+
+    .provider-card__body { padding: 36px 20px 20px; }
+
+    .provider-card__name { font-size: 16px; font-weight: 700; color: var(--navy-900); }
+    .provider-card__service { font-size: 12px; color: var(--blue-500); font-weight: 500; margin-top: 2px; }
+
+    .provider-card__meta { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+
+    .provider-card__rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .provider-card__rating svg { color: var(--amber-500); }
+
+    .provider-card__location {
+      font-size: 12px;
+      color: var(--gray-400);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .provider-card__price {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .provider-card__price-text { font-size: 12px; color: var(--gray-400); }
+
+    .provider-card__price-value {
+      font-size: 18px;
+      font-weight: 800;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .provider-card__price-unit { font-size: 12px; font-weight: 400; color: var(--gray-400); }
+
+    /* ============================================
+       FAQ (split layout like Spectra)
+       ============================================ */
+    .faq { padding: 100px 0; background: var(--white); }
+
+    .faq__layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+
+    .faq__intro {
+      font-size: 15px;
+      color: var(--gray-500);
+      line-height: 1.7;
+      margin-bottom: 32px;
+      max-width: 400px;
+    }
+
+    .faq__list { display: flex; flex-direction: column; gap: 0; }
+
+    .faq__item {
+      border-bottom: 1px solid var(--gray-100);
+      padding: 20px 0;
+      cursor: pointer;
+    }
+
+    .faq__item:first-child { border-top: 1px solid var(--gray-100); }
+
+    .faq__question {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--navy-900);
+      transition: color 0.2s;
+    }
+
+    .faq__question:hover { color: var(--blue-500); }
+
+    .faq__chevron {
+      width: 20px;
+      height: 20px;
+      color: var(--gray-400);
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+
+    .faq__right { position: sticky; top: 100px; }
+
+    .faq__image {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: linear-gradient(160deg, var(--blue-50) 0%, var(--sky-100) 100%);
+      border-radius: var(--radius-xl);
+      margin-top: 24px;
+      border: 1px solid var(--gray-100);
+      position: relative;
+    }
+
+    .faq__image span {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 122, 255, 0.08);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--blue-500);
+    }
+
+    .faq__card {
+      background: var(--white);
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-top: -40px;
+      margin-left: 24px;
+      margin-right: 24px;
+      position: relative;
+      z-index: 2;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .faq__card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy-900);
+      margin-bottom: 4px;
+    }
+
+    .faq__card-desc {
+      font-size: 12px;
+      color: var(--gray-500);
+      line-height: 1.6;
+    }
+
+    .faq__card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-500);
+      margin-top: 10px;
+      transition: gap 0.2s;
+    }
+    .faq__card-link:hover { gap: 8px; }
+
+    /* ============================================
+       CTA
+       ============================================ */
+    .cta {
+      padding: 100px 0;
+      background: var(--gray-50);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta__pattern {
+      position: absolute;
+      inset: 0;
+      opacity: 0.015;
+      background-image: url('../assets/Pattern/SVG/Pattern 1.svg');
+      background-size: 180px;
+      background-repeat: repeat;
+    }
+
+    .cta__content { text-align: center; position: relative; z-index: 1; }
+
+    .cta__title {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--navy-900);
+      letter-spacing: -1.5px;
+      margin-bottom: 16px;
+      line-height: 1.1;
+    }
+
+    .cta__title em {
+      font-style: normal;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cta__subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 520px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .cta__buttons { display: flex; justify-content: center; gap: 12px; }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .footer {
+      background: var(--gray-50);
+      color: var(--gray-500);
+      padding: 0;
+    }
+
+    .footer__card {
+      border-top: 1px solid var(--gray-200);
+      padding: 56px 0 40px;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .footer__brand {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .footer__brand a { color: var(--blue-500); }
+    .footer__brand a span { color: var(--sky-400); }
+
+    .footer__desc { font-size: 13px; line-height: 1.7; max-width: 300px; color: var(--gray-400); }
+
+    .footer__social {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .footer__social a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-400);
+      transition: all 0.2s;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .footer__social a:hover { border-color: var(--blue-500); color: var(--blue-500); }
+
+    .footer__col-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .footer__col-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: var(--blue-50);
+      color: var(--blue-500);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .footer__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-900);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .footer__links { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer__links a { font-size: 14px; color: var(--gray-500); transition: color 0.2s; }
+    .footer__links a:hover { color: var(--blue-500); }
+
+    .footer__bottom {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .footer__legal { display: flex; gap: 24px; }
+    .footer__legal a { color: var(--blue-500); transition: color 0.2s; }
+    .footer__legal a:hover { color: var(--blue-600); }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 1024px) {
+      .features__header { grid-template-columns: 1fr; }
+      .bento { grid-template-columns: 1fr; }
+      .bento__item--large { grid-row: auto; min-height: 280px; }
+      .how__layout { grid-template-columns: 1fr; gap: 48px; }
+      .faq__layout { grid-template-columns: 1fr; gap: 48px; }
+      .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 0 24px; }
+
+      .navbar__links { display: none; }
+
+      .hero__content {
+        grid-template-columns: 1fr;
+        padding: 60px 0 24px;
+      }
+
+      .hero__title { font-size: 38px; letter-spacing: -1.5px; }
+      .hero__visual { display: none; }
+
+      .search-bar { flex-direction: column; max-width: 100%; }
+      .search-bar__field { width: 100%; }
+      .search-bar__divider { display: none; }
+      .search-bar__btn { width: 100%; padding: 12px; }
+
+      .hero__metrics { flex-direction: column; align-items: stretch; }
+      .hero__partners-logos { flex-wrap: wrap; gap: 20px; }
+
+      .section__title { font-size: 32px; }
+      .cta__title { font-size: 32px; }
+
+      .features__grid { grid-template-columns: 1fr; }
+      .categories__row { grid-template-columns: repeat(2, 1fr); }
+      .testimonials__grid { grid-template-columns: 1fr; }
+      .featured__grid { grid-template-columns: 1fr; }
+      .how__features { grid-template-columns: 1fr; }
+      .footer__grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer__bottom { flex-direction: column; gap: 12px; text-align: center; }
+
+      .faq__right { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="landing.html" class="navbar__logo">nt<span>izo</span></a>
+
+      <ul class="navbar__links">
+        <li><a href="public/search-results.html">Browse Services</a></li>
+        <li><a href="public/categories.html">Categories</a></li>
+        <li><a href="public/how-it-works.html">How It Works</a></li>
+        <li><a href="public/become-provider.html">Become a Provider</a></li>
+      </ul>
+
+      <div class="navbar__actions">
+        <button class="btn btn--nav-ghost" onclick="location.href='auth/login.html'">Log In</button>
+        <button class="btn btn--nav-primary" onclick="location.href='auth/register.html'">Sign Up</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <div class="hero__bg-pattern"></div>
+
+    <div class="container">
+      <div class="hero__content">
+
+        <div class="hero__text">
+          <div class="hero__badge">
+            <span class="hero__badge__dot"></span>
+            Trusted by 2,000+ customers
+          </div>
+
+          <h1 class="hero__title">
+            FIND THE<br>PERFECT<br><em>SERVICE PROVIDER</em>
+          </h1>
+
+          <p class="hero__subtitle">
+            From home repairs to beauty services, connect with verified professionals near you. Book instantly or request a custom quote.
+          </p>
+
+          <div class="search-bar">
+            <div class="search-bar__field">
+              <svg class="search-bar__icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+              <input class="search-bar__input" type="text" placeholder="What service do you need?">
+            </div>
+            <div class="search-bar__divider"></div>
+            <div class="search-bar__field">
+              <svg class="search-bar__icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              <input class="search-bar__input" type="text" placeholder="Location">
+            </div>
+            <button class="search-bar__btn" onclick="location.href='public/search-results.html'">Search</button>
+          </div>
+
+          <p class="hero__suggestions">
+            <span>Popular:</span>
+            <a href="public/search-results.html">Plumbing</a>,
+            <a href="public/search-results.html">Hair Styling</a>,
+            <a href="public/search-results.html">Home Cleaning</a>,
+            <a href="public/search-results.html">Electrician</a>
+          </p>
+        </div>
+
+        <div class="hero__visual">
+          <div class="hero__image-wrapper">
+            <span>Hero Image</span>
+          </div>
+
+          <div class="hero__float-card hero__float-card--1">
+            <div class="hero__float-avatar">AM</div>
+            <div class="hero__float-text">
+              <strong>Ana M. booked</strong>
+              Hair Styling - 2min ago
+            </div>
+          </div>
+
+          <div class="hero__float-card hero__float-card--2">
+            <div class="hero__float-avatar">JC</div>
+            <div class="hero__float-text">
+              <strong>Joao C. completed</strong>
+              Plumbing repair - 5min ago
+            </div>
+          </div>
+
+          <div class="hero__float-card hero__float-card--3">
+            <div class="hero__float-avatar" style="background: var(--green-50); color: var(--green-500);">&#9733;</div>
+            <div class="hero__float-text">
+              <strong>4.9 average rating</strong>
+              Based on 1,200+ reviews
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Metrics strip -->
+      <div class="hero__metrics">
+        <div class="hero__metric">
+          <div class="hero__metric-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div>
+            <div class="hero__metric-value">500+</div>
+            <div class="hero__metric-label">Verified Providers</div>
+          </div>
+        </div>
+        <div class="hero__metric">
+          <div class="hero__metric-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+          <div>
+            <div class="hero__metric-value">50+</div>
+            <div class="hero__metric-label">Service Categories</div>
+          </div>
+        </div>
+        <div class="hero__metric">
+          <div class="hero__metric-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div>
+            <div class="hero__metric-value">4.8</div>
+            <div class="hero__metric-label">Average Rating</div>
+          </div>
+        </div>
+        <div class="hero__metric">
+          <div class="hero__metric-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+          <div>
+            <div class="hero__metric-value">2,000+</div>
+            <div class="hero__metric-label">Happy Customers</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Partners strip -->
+      <div class="hero__partners">
+        <div class="hero__partners-label">Trusted by leading businesses</div>
+        <div class="hero__partners-logos">
+          <span class="hero__partner">SalonPro</span>
+          <span class="hero__partner">FixaSol</span>
+          <span class="hero__partner">CleanHouse</span>
+          <span class="hero__partner">TechAssist</span>
+          <span class="hero__partner">PhotoStudio</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== FEATURES ===================== -->
+  <section class="features">
+    <div class="container">
+      <div class="features__header">
+        <div>
+          <span class="section__tag">Why Ntizo</span>
+          <h2 class="section__title">Built for <em>Trust</em></h2>
+        </div>
+        <p class="section__subtitle" style="margin-top: 0;">We verify every provider, secure every payment, and ensure every booking runs smoothly so you can focus on what matters.</p>
+      </div>
+
+      <div class="features__grid">
+        <div class="feature-card">
+          <div class="feature-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <h3 class="feature-card__title">Verified Providers</h3>
+          <p class="feature-card__desc">Every provider goes through identity verification and document checks before joining the platform. Reviews and ratings keep quality high.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg></div>
+          <h3 class="feature-card__title">Flexible Booking</h3>
+          <p class="feature-card__desc">Book fixed-price packages, hourly slots, request custom quotes, or post tasks for providers to bid on. Four paths, one platform.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+          <h3 class="feature-card__title">Secure Payments</h3>
+          <p class="feature-card__desc">Pay securely through the platform with escrow protection. Funds are only released after the service is completed to your satisfaction.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CATEGORIES BENTO ===================== -->
+  <section class="categories">
+    <div class="container">
+      <div class="section__header-row">
+        <div>
+          <span class="section__tag">Categories</span>
+          <h2 class="section__title">Explore <em>Services</em></h2>
+        </div>
+        <a href="public/categories.html" class="section__view-all">View all categories <span>&rarr;</span></a>
+      </div>
+
+      <!-- Bento grid -->
+      <div class="bento">
+        <a href="public/categories.html" class="bento__item bento__item--large">
+          <div class="bento__arrow">&nearr;</div>
+          <div class="bento__label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Home Repairs</div>
+          <div class="bento__count">120+ providers</div>
+        </a>
+        <a href="public/categories.html" class="bento__item bento__item--alt">
+          <div class="bento__arrow">&nearr;</div>
+          <div class="bento__label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12L12 12"/><path d="M20 4L8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8L20 20"/></svg> Beauty & Styling</div>
+          <div class="bento__count">85+ providers</div>
+        </a>
+        <a href="public/categories.html" class="bento__item bento__item--dark">
+          <div class="bento__arrow">&nearr;</div>
+          <div class="bento__label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Tutoring & Education</div>
+          <div class="bento__count">60+ providers</div>
+        </a>
+      </div>
+
+      <!-- Smaller category cards row -->
+      <div class="categories__row">
+        <a href="public/categories.html" class="cat-card">
+          <div class="cat-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V8l9-6 9 6v14"/><path d="M9 22V12h6v10"/></svg></div>
+          <div class="cat-card__name">Cleaning</div>
+          <div class="cat-card__count">90+ providers</div>
+        </a>
+        <a href="public/categories.html" class="cat-card">
+          <div class="cat-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          <div class="cat-card__name">Tech & IT</div>
+          <div class="cat-card__count">35+ providers</div>
+        </a>
+        <a href="public/categories.html" class="cat-card">
+          <div class="cat-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div>
+          <div class="cat-card__name">Catering</div>
+          <div class="cat-card__count">40+ providers</div>
+        </a>
+        <a href="public/categories.html" class="cat-card">
+          <div class="cat-card__icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          <div class="cat-card__name">Photography</div>
+          <div class="cat-card__count">30+ providers</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TESTIMONIALS ===================== -->
+  <section class="testimonials">
+    <div class="container">
+      <div class="section__header--center" style="margin-bottom: 56px;">
+        <span class="section__tag">Client Reviews</span>
+        <h2 class="section__title">Trusted by <em>Thousands</em></h2>
+        <p class="section__subtitle" style="margin-left: auto; margin-right: auto;">
+          Hear from the customers and providers who make Ntizo their go-to platform every day.
+        </p>
+      </div>
+
+      <div class="testimonials__grid">
+        <div class="testimonial-card">
+          <div class="testimonial-card__header">
+            <div class="testimonial-card__avatar">MC</div>
+            <div>
+              <div class="testimonial-card__name">Maria Costa</div>
+              <div class="testimonial-card__role">Hair Stylist, Maputo</div>
+            </div>
+            <div class="testimonial-card__stars">
+              <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+            </div>
+          </div>
+          <p class="testimonial-card__text">
+            <strong>"Ntizo completely changed how I find clients."</strong> I went from word-of-mouth to fully booked in two weeks. The booking system is intuitive and payments arrive on time.
+          </p>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="testimonial-card__header">
+            <div class="testimonial-card__avatar">RC</div>
+            <div>
+              <div class="testimonial-card__name">Ricardo Chissano</div>
+              <div class="testimonial-card__role">Customer, Matola</div>
+            </div>
+            <div class="testimonial-card__stars">
+              <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+            </div>
+          </div>
+          <p class="testimonial-card__text">
+            <strong>"Finding a reliable plumber used to be a nightmare."</strong> With Ntizo I can see verified reviews, compare prices, and book in minutes. The escrow payment gives me confidence.
+          </p>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="testimonial-card__header">
+            <div class="testimonial-card__avatar">FS</div>
+            <div>
+              <div class="testimonial-card__name">FixaSol Reparos</div>
+              <div class="testimonial-card__role">Organization, Maputo</div>
+            </div>
+            <div class="testimonial-card__stars">
+              <span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span><span>&#9733;</span>
+            </div>
+          </div>
+          <p class="testimonial-card__text">
+            <strong>"Managing our team's schedule was chaos before Ntizo."</strong> Now our 5 technicians each have their own availability, and customers book directly into open slots. Revenue is up 40%.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="how__layout">
+        <div>
+          <span class="section__tag">How It Works</span>
+          <h2 class="section__title">Book Any Service<br>in <em>Minutes</em></h2>
+          <p class="section__subtitle">
+            Our streamlined process makes it easy to find, book, and pay for services — all in one place.
+          </p>
+
+          <div class="how__features">
+            <div class="how__feature">
+              <div class="how__feature-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+              <div>
+                <div class="how__feature-title">Search & Browse</div>
+                <p class="how__feature-desc">Find providers by category, location, rating, or price.</p>
+              </div>
+            </div>
+            <div class="how__feature">
+              <div class="how__feature-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+              <div>
+                <div class="how__feature-title">Book Your Way</div>
+                <p class="how__feature-desc">Pick a package, hourly slot, or request a custom quote.</p>
+              </div>
+            </div>
+            <div class="how__feature">
+              <div class="how__feature-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <div>
+                <div class="how__feature-title">Pay Securely</div>
+                <p class="how__feature-desc">Escrow-protected payments released after completion.</p>
+              </div>
+            </div>
+            <div class="how__feature">
+              <div class="how__feature-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+              <div>
+                <div class="how__feature-title">Rate & Review</div>
+                <p class="how__feature-desc">Share your experience and help the community grow.</p>
+              </div>
+            </div>
+          </div>
+
+          <a href="public/how-it-works.html" class="how__link">Learn how it works <span>&rarr;</span></a>
+        </div>
+
+        <div class="how__image">
+          <span>How It Works Image</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FEATURED PROVIDERS ===================== -->
+  <section class="featured">
+    <div class="container">
+      <div class="section__header-row">
+        <div>
+          <span class="section__tag">Top Rated</span>
+          <h2 class="section__title">Featured <em>Providers</em></h2>
+        </div>
+        <a href="public/search-results.html" class="section__view-all">Browse all providers <span>&rarr;</span></a>
+      </div>
+
+      <div class="featured__grid">
+        <a href="public/provider-profile.html" class="provider-card">
+          <div class="provider-card__cover">
+            <span class="provider-card__badge">&#10003; Verified</span>
+            <div class="provider-card__avatar">MC</div>
+          </div>
+          <div class="provider-card__body">
+            <div class="provider-card__name">Maria Costa</div>
+            <div class="provider-card__service">Hair Styling & Makeup</div>
+            <div class="provider-card__meta">
+              <span class="provider-card__rating">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                4.9 (127)
+              </span>
+              <span class="provider-card__location">
+                <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </span>
+            </div>
+            <div class="provider-card__price">
+              <span class="provider-card__price-text">Starting at</span>
+              <span>
+                <span class="provider-card__price-value">800</span>
+                <span class="provider-card__price-unit"> MZN</span>
+              </span>
+            </div>
+          </div>
+        </a>
+
+        <a href="public/organization-profile.html" class="provider-card">
+          <div class="provider-card__cover" style="background: linear-gradient(135deg, var(--blue-50), var(--blue-100));">
+            <span class="provider-card__badge">&#10003; Verified</span>
+            <div class="provider-card__avatar" style="background: var(--navy-900);">FS</div>
+          </div>
+          <div class="provider-card__body">
+            <div class="provider-card__name">FixaSol Reparos</div>
+            <div class="provider-card__service">Plumbing & Electrical</div>
+            <div class="provider-card__meta">
+              <span class="provider-card__rating">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                4.8 (89)
+              </span>
+              <span class="provider-card__location">
+                <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Matola
+              </span>
+            </div>
+            <div class="provider-card__price">
+              <span class="provider-card__price-text">Starting at</span>
+              <span>
+                <span class="provider-card__price-value">1,200</span>
+                <span class="provider-card__price-unit"> MZN</span>
+              </span>
+            </div>
+          </div>
+        </a>
+
+        <a href="public/provider-profile.html" class="provider-card">
+          <div class="provider-card__cover" style="background: linear-gradient(135deg, var(--sky-50), var(--sky-200));">
+            <span class="provider-card__badge">&#10003; Verified</span>
+            <div class="provider-card__avatar" style="background: var(--sky-500);">LS</div>
+          </div>
+          <div class="provider-card__body">
+            <div class="provider-card__name">Lucia Santos</div>
+            <div class="provider-card__service">Home Cleaning</div>
+            <div class="provider-card__meta">
+              <span class="provider-card__rating">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                5.0 (64)
+              </span>
+              <span class="provider-card__location">
+                <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                Maputo
+              </span>
+            </div>
+            <div class="provider-card__price">
+              <span class="provider-card__price-text">Starting at</span>
+              <span>
+                <span class="provider-card__price-value">500</span>
+                <span class="provider-card__price-unit"> MZN</span>
+              </span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FAQ ===================== -->
+  <section class="faq">
+    <div class="container">
+      <div class="faq__layout">
+        <div>
+          <span class="section__tag">Support</span>
+          <p class="faq__intro">
+            Whether you're new to service booking or scaling your provider business, we're here to help clarify the details.
+          </p>
+
+          <div class="faq__list">
+            <div class="faq__item">
+              <div class="faq__question">
+                How does provider verification work?
+                <svg class="faq__chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </div>
+            </div>
+            <div class="faq__item">
+              <div class="faq__question">
+                What are the different booking paths?
+                <svg class="faq__chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </div>
+            </div>
+            <div class="faq__item">
+              <div class="faq__question">
+                How are payments protected?
+                <svg class="faq__chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </div>
+            </div>
+            <div class="faq__item">
+              <div class="faq__question">
+                Can I manage an organization with multiple staff?
+                <svg class="faq__chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </div>
+            </div>
+            <div class="faq__item">
+              <div class="faq__question">
+                Is Ntizo free for providers?
+                <svg class="faq__chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq__right">
+          <h2 class="section__title">Answers to your <em>Common</em> Queries</h2>
+
+          <div class="faq__image">
+            <span>FAQ Image</span>
+          </div>
+
+          <div class="faq__card">
+            <div class="faq__card-title">Help Center</div>
+            <p class="faq__card-desc">Browse our complete knowledge base with step-by-step guides for customers and providers.</p>
+            <a href="#" class="faq__card-link">Visit Help Center <span>&rarr;</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CTA ===================== -->
+  <section class="cta">
+    <div class="cta__pattern"></div>
+    <div class="container">
+      <div class="cta__content">
+        <h2 class="cta__title">Ready to grow your <em>business</em>?</h2>
+        <p class="cta__subtitle">
+          Join hundreds of providers already growing their business on Ntizo. Free to start, pay only when you earn.
+        </p>
+        <div class="cta__buttons">
+          <button class="btn btn--lg btn--primary" onclick="location.href='public/become-provider.html'">Become a Provider</button>
+          <button class="btn btn--lg btn--ghost" onclick="location.href='public/how-it-works.html'">Learn More <span class="btn__arrow">&rarr;</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__card">
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand"><a href="landing.html">nt<span>izo</span></a></div>
+            <p class="footer__desc">Connecting customers with trusted service providers. Book the services you need, when you need them.</p>
+            <div class="footer__social">
+              <a href="#" title="Twitter">X</a>
+              <a href="#" title="Instagram">ig</a>
+              <a href="#" title="LinkedIn">in</a>
+              <a href="#" title="Facebook">f</a>
+            </div>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">01</span>
+              <h4 class="footer__title">Product</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="public/search-results.html">Browse Services</a></li>
+              <li><a href="public/categories.html">Categories</a></li>
+              <li><a href="public/task-board.html">Task Board</a></li>
+              <li><a href="public/become-provider.html">For Providers</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">02</span>
+              <h4 class="footer__title">Resources</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="public/how-it-works.html">How It Works</a></li>
+              <li><a href="#">Help Center</a></li>
+              <li><a href="#">Blog</a></li>
+              <li><a href="#">Success Stories</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer__col-header">
+              <span class="footer__col-num">03</span>
+              <h4 class="footer__title">Company</h4>
+            </div>
+            <ul class="footer__links">
+              <li><a href="#">About Us</a></li>
+              <li><a href="#">Careers</a></li>
+              <li><a href="#">Press</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer__bottom">
+          <span>&copy; 2026 Ntizo. All rights reserved.</span>
+          <div class="footer__legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Cookie Settings</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

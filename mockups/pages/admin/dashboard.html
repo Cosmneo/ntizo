@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ntizo Admin - Dashboard</title>
+  <link rel="stylesheet" href="../../shared/tokens.css">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--navy-900);
+      background: var(--gray-50);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { text-decoration: none; color: inherit; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+    /* ============================================
+       LAYOUT
+       ============================================ */
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ============================================
+       SIDEBAR - Light Spectra-inspired design
+       ============================================ */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 260px;
+      background: var(--white);
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      z-index: 200;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: width 0.2s ease;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
+
+    /* -- Sidebar Header -- */
+    .sidebar__header {
+      padding: 20px 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .sidebar__logo {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--blue-500);
+      letter-spacing: -0.5px;
+    }
+
+    .sidebar__logo span {
+      color: var(--sky-400);
+    }
+
+    .sidebar__badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--blue-500);
+      background: var(--blue-50);
+      border: 1px solid var(--blue-100);
+      border-radius: var(--radius-full);
+    }
+
+    /* -- Sidebar Search -- */
+    .sidebar__search {
+      padding: 16px 16px 12px;
+      flex-shrink: 0;
+    }
+
+    .sidebar__search-input {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      color: var(--gray-500);
+      font-size: 13px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .sidebar__search-input:hover {
+      border-color: var(--gray-300);
+      background: var(--gray-100);
+    }
+
+    .sidebar__search-input svg {
+      flex-shrink: 0;
+      color: var(--gray-400);
+    }
+
+    .sidebar__search-input span {
+      flex: 1;
+    }
+
+    .sidebar__search-kbd {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      color: var(--gray-400);
+      font-family: var(--font-sans);
+    }
+
+    /* -- Sidebar Nav -- */
+    .sidebar__nav {
+      flex: 1;
+      padding: 4px 0;
+      overflow-y: auto;
+    }
+
+    .sidebar__section {
+      margin-bottom: 4px;
+    }
+
+    .sidebar__section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--blue-500);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s;
+    }
+
+    .sidebar__section-title:hover {
+      color: var(--blue-600);
+    }
+
+    .sidebar__section-title svg {
+      width: 14px;
+      height: 14px;
+      color: var(--gray-300);
+      transition: transform 0.2s;
+    }
+
+    .sidebar__section.collapsed .sidebar__section-title svg {
+      transform: rotate(-90deg);
+    }
+
+    .sidebar__section.collapsed .sidebar__section-items {
+      display: none;
+    }
+
+    /* -- Nav Items -- */
+    .sidebar__item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px 8px 20px;
+      margin: 1px 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--gray-600);
+      border-radius: var(--radius-sm);
+      transition: all 0.15s;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .sidebar__item:hover {
+      background: var(--gray-50);
+      color: var(--navy-900);
+    }
+
+    .sidebar__item:hover svg:not(.chevron) {
+      color: var(--gray-500);
+    }
+
+    .sidebar__item.active {
+      background: var(--blue-50);
+      color: var(--blue-600);
+      font-weight: 600;
+    }
+
+    .sidebar__item.active::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background: var(--blue-500);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .sidebar__item svg {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      color: var(--gray-400);
+    }
+
+    .sidebar__item.active svg:not(.chevron) {
+      color: var(--blue-500);
+    }
+
+    .sidebar__item-label { flex: 1; }
+
+    .sidebar__item-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-full);
+      background: var(--blue-50);
+      color: var(--blue-500);
+    }
+
+    .sidebar__item-badge.red {
+      background: var(--red-50);
+      color: var(--red-500);
+    }
+
+    .sidebar__item-badge.amber {
+      background: var(--amber-50);
+      color: #b45309;
+    }
+
+    /* -- Sub-items -- */
+    .sidebar__sub {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.25s ease;
+    }
+
+    .sidebar__item.has-sub.expanded + .sidebar__sub {
+      max-height: 200px;
+    }
+
+    .sidebar__sub-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px 6px 50px;
+      margin: 0 8px;
+      font-size: 13px;
+      font-weight: 450;
+      color: var(--gray-500);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sidebar__sub-item:hover {
+      color: var(--navy-900);
+      background: var(--gray-50);
+    }
+
+    .sidebar__sub-item .sidebar__item-badge {
+      font-size: 10px;
+      padding: 0 6px;
+    }
+
+    /* Chevron for expandable items */
+    .sidebar__item .chevron {
+      width: 16px;
+      height: 16px;
+      color: var(--gray-300);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .sidebar__item.expanded .chevron {
+      transform: rotate(90deg);
+    }
+
+    /* -- Sidebar Divider -- */
+    .sidebar__divider {
+      height: 1px;
+      background: var(--gray-100);
+      margin: 8px 20px;
+    }
+
+    /* -- Sidebar Footer -- */
+    .sidebar__footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--gray-100);
+      padding: 12px 16px;
+    }
+
+    .sidebar__user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: var(--radius-md);
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+
+    .sidebar__user:hover {
+      background: var(--gray-50);
+    }
+
+    .sidebar__user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: var(--gradient-brand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+
+    .sidebar__user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sidebar__user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy-900);
+      line-height: 1.3;
+    }
+
+    .sidebar__user-email {
+      font-size: 11.5px;
+      color: var(--gray-400);
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sidebar__user-settings {
+      color: var(--gray-400);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s;
+    }
+
+    .sidebar__user-settings:hover {
+      color: var(--gray-600);
+      background: var(--gray-100);
+    }
+
+    /* ============================================
+       MAIN CONTENT
+       ============================================ */
+    .main {
+      flex: 1;
+      margin-left: 260px;
+      min-height: 100vh;
+    }
+
+    .main__container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 0 48px;
+    }
+
+    /* -- Top Bar -- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(249, 250, 251, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+    }
+
+    .topbar__inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .topbar__left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar__hamburger {
+      display: none;
+      width: 36px;
+      height: 36px;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      color: var(--gray-600);
+      transition: all 0.15s;
+    }
+
+    .topbar__hamburger:hover {
+      background: var(--gray-100);
+      color: var(--navy-900);
+    }
+
+    .topbar__title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--navy-900);
+    }
+
+    .topbar__right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar__date-range {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .topbar__date-range:hover {
+      border-color: var(--gray-300);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .topbar__date-range svg {
+      width: 16px;
+      height: 16px;
+      color: var(--gray-400);
+    }
+
+    .topbar__dropdown {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .topbar__dropdown:hover {
+      border-color: var(--gray-300);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ============================================
+       DASHBOARD CONTENT
+       ============================================ */
+    .dashboard {
+      padding: 28px 0 48px;
+    }
+
+    /* -- Stats Grid -- */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--gray-300);
+    }
+
+    .stat-card__content {
+      flex: 1;
+    }
+
+    .stat-card__label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--gray-500);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .stat-card__value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--navy-900);
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+    }
+
+    .stat-card__trend {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 6px;
+      padding: 2px 6px;
+      border-radius: var(--radius-full);
+    }
+
+    .stat-card__trend.up {
+      color: var(--green-600);
+      background: var(--green-50);
+    }
+
+    .stat-card__trend.down {
+      color: var(--red-600);
+      background: var(--red-50);
+    }
+
+    .stat-card__trend.attention {
+      color: var(--red-600);
+      background: var(--red-50);
+    }
+
+    .stat-card__icon {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .stat-card__icon.blue { background: var(--blue-50); color: var(--blue-500); }
+    .stat-card__icon.green { background: var(--green-50); color: var(--green-500); }
+    .stat-card__icon.amber { background: var(--amber-50); color: var(--amber-500); }
+    .stat-card__icon.sky { background: var(--sky-50); color: var(--sky-500); }
+    .stat-card__icon.red { background: var(--red-50); color: var(--red-500); }
+    .stat-card__icon.navy { background: rgba(0, 36, 77, 0.06); color: var(--navy-900); }
+
+    .stat-card__icon svg { width: 20px; height: 20px; }
+
+    /* -- Three-Column Layout -- */
+    .dashboard__grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    /* -- Card Shared -- */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .card__title {
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--navy-900);
+    }
+
+    .card__action {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--blue-500);
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .card__action:hover { color: var(--blue-700); }
+
+    .card__body { padding: 0; }
+    .card__body.padded { padding: 16px 20px; }
+
+    /* -- Table -- */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray-400);
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .data-table td {
+      padding: 11px 16px;
+      font-size: 13px;
+      color: var(--gray-700);
+      border-bottom: 1px solid var(--gray-50);
+      white-space: nowrap;
+    }
+
+    .data-table tbody tr {
+      transition: background 0.1s;
+    }
+
+    .data-table tbody tr:hover {
+      background: var(--gray-50);
+    }
+
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table .id {
+      font-weight: 600;
+      color: var(--blue-500);
+      font-size: 12.5px;
+    }
+
+    .data-table .name {
+      font-weight: 550;
+      color: var(--navy-900);
+    }
+
+    .data-table .amount {
+      font-weight: 600;
+      color: var(--navy-900);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .data-table .date {
+      color: var(--gray-400);
+      font-size: 12.5px;
+    }
+
+    /* -- Status Badges -- */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status.completed { background: var(--green-50); color: var(--green-600); }
+    .status.completed::before { background: var(--green-500); }
+
+    .status.confirmed { background: var(--blue-50); color: var(--blue-600); }
+    .status.confirmed::before { background: var(--blue-500); }
+
+    .status.pending { background: var(--amber-50); color: #b45309; }
+    .status.pending::before { background: var(--amber-500); }
+
+    .status.in-progress { background: var(--sky-50); color: var(--sky-700); }
+    .status.in-progress::before { background: var(--sky-400); }
+
+    .status.cancelled { background: var(--red-50); color: var(--red-600); }
+    .status.cancelled::before { background: var(--red-500); }
+
+    /* -- Approval Items -- */
+    .approval-list { list-style: none; }
+
+    .approval-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--gray-50);
+      transition: background 0.1s;
+      cursor: pointer;
+    }
+
+    .approval-item:last-child { border-bottom: none; }
+    .approval-item:hover { background: var(--gray-50); }
+
+    .approval-item__avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-500);
+      flex-shrink: 0;
+    }
+
+    .approval-item__avatar.provider { background: var(--blue-50); color: var(--blue-500); }
+    .approval-item__avatar.service { background: var(--amber-50); color: #b45309; }
+
+    .approval-item__info { flex: 1; min-width: 0; }
+
+    .approval-item__name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy-900);
+      line-height: 1.3;
+    }
+
+    .approval-item__desc {
+      font-size: 12px;
+      color: var(--gray-400);
+      line-height: 1.3;
+    }
+
+    .approval-item__time {
+      font-size: 11px;
+      color: var(--gray-400);
+      flex-shrink: 0;
+    }
+
+    /* -- Dispute Items -- */
+    .dispute-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--gray-50);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .dispute-item:last-child { border-bottom: none; }
+    .dispute-item:hover { background: var(--gray-50); }
+
+    .dispute-item__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .dispute-item__id {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--red-500);
+    }
+
+    .dispute-item__priority {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .dispute-item__priority.high { background: var(--red-50); color: var(--red-600); }
+    .dispute-item__priority.medium { background: var(--amber-50); color: #b45309; }
+
+    .dispute-item__desc {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: 3px;
+    }
+
+    .dispute-item__meta {
+      font-size: 11.5px;
+      color: var(--gray-400);
+    }
+
+    /* -- Platform Health -- */
+    .health-metrics { list-style: none; }
+
+    .health-metric {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--gray-50);
+    }
+
+    .health-metric:last-child { border-bottom: none; }
+
+    .health-metric__label {
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    .health-metric__value {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy-900);
+    }
+
+    .health-metric__value.good { color: var(--green-600); }
+    .health-metric__value.warning { color: var(--amber-500); }
+
+    /* -- Quick Actions -- */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .quick-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--gray-50);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 550;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+
+    .quick-action:hover {
+      background: var(--blue-50);
+      color: var(--blue-600);
+      border-color: var(--blue-100);
+    }
+
+    .quick-action svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    /* ============================================
+       MOBILE OVERLAY
+       ============================================ */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 190;
+    }
+
+    .sidebar-overlay.visible { display: block; }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+
+    /* Tablets / Small Desktop: sidebar collapses to icons */
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 68px;
+      }
+
+      .sidebar__header { padding: 16px 0; justify-content: center; }
+      .sidebar__logo { font-size: 18px; }
+      .sidebar__badge,
+      .sidebar__search,
+      .sidebar__section-title,
+      .sidebar__user-info,
+      .sidebar__user-settings,
+      .sidebar__item-label,
+      .sidebar__item-badge,
+      .sidebar__item .chevron,
+      .sidebar__sub { display: none; }
+
+      .sidebar__item {
+        justify-content: center;
+        padding: 10px;
+        margin: 2px 8px;
+      }
+
+      .sidebar__item svg {
+        color: var(--gray-400);
+      }
+
+      .sidebar__item.active svg {
+        color: var(--blue-500);
+      }
+
+      .sidebar__item:hover svg {
+        color: var(--gray-500);
+      }
+
+      .sidebar__user { justify-content: center; padding: 8px 0; }
+      .sidebar__user-avatar { width: 32px; height: 32px; font-size: 11px; }
+
+      .sidebar__footer { padding: 8px; }
+
+      .main { margin-left: 68px; }
+      .topbar { padding: 0 24px; }
+      .main__container { padding: 0 24px; }
+
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .dashboard__grid { grid-template-columns: 1fr 1fr; }
+      .dashboard__grid > :first-child { grid-column: 1 / -1; }
+    }
+
+    /* Mobile: sidebar hidden, hamburger visible */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 260px;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+      }
+
+      .sidebar.open { transform: translateX(0); }
+
+      .sidebar.open ~ .sidebar-overlay { display: block; }
+
+      /* Restore full sidebar labels when open on mobile */
+      .sidebar.open .sidebar__badge,
+      .sidebar.open .sidebar__search,
+      .sidebar.open .sidebar__section-title,
+      .sidebar.open .sidebar__user-info,
+      .sidebar.open .sidebar__user-settings,
+      .sidebar.open .sidebar__item-label,
+      .sidebar.open .sidebar__item-badge,
+      .sidebar.open .sidebar__item .chevron,
+      .sidebar.open .sidebar__sub { display: flex; }
+      .sidebar.open .sidebar__sub { display: block; }
+
+      .sidebar.open .sidebar__header { justify-content: flex-start; padding: 20px 20px 0; }
+      .sidebar.open .sidebar__logo { font-size: 24px; }
+      .sidebar.open .sidebar__item { justify-content: flex-start; padding: 8px 16px 8px 20px; }
+      .sidebar.open .sidebar__user { justify-content: flex-start; padding: 8px; }
+      .sidebar.open .sidebar__user-avatar { width: 34px; height: 34px; font-size: 12px; }
+      .sidebar.open .sidebar__footer { padding: 12px 16px; }
+
+      .main { margin-left: 0; }
+      .topbar { padding: 0 20px; }
+      .main__container { padding: 0 20px; }
+
+      .topbar__hamburger { display: flex; }
+
+      .stats-grid { grid-template-columns: 1fr; }
+      .dashboard__grid {
+        grid-template-columns: 1fr;
+      }
+      .dashboard__grid > :first-child { grid-column: auto; }
+
+      .topbar__right { gap: 6px; }
+      .topbar__date-range span,
+      .topbar__dropdown span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-layout">
+  <!-- ============================================
+       SIDEBAR
+       ============================================ -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Header -->
+    <div class="sidebar__header">
+      <a href="../landing.html" class="sidebar__logo">nti<span>zo</span></a>
+      <span class="sidebar__badge">Admin</span>
+    </div>
+
+    <!-- Search -->
+    <div class="sidebar__search">
+      <div class="sidebar__search-input">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Search...</span>
+        <kbd class="sidebar__search-kbd">Cmd+K</kbd>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar__nav">
+
+      <!-- Main Nav -->
+      <div class="sidebar__section">
+        <!-- Dashboard -->
+        <a class="sidebar__item active" href="dashboard.html">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="sidebar__item-label">Dashboard</span>
+        </a>
+
+        <!-- Users -->
+        <a class="sidebar__item has-sub expanded" href="users.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="sidebar__item-label">Users</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="users.html">All Users</a>
+          <a class="sidebar__sub-item" href="verification-queue.html">Verification Queue <span class="sidebar__item-badge">8</span></a>
+        </div>
+
+        <!-- Organizations -->
+        <a class="sidebar__item has-sub" href="organizations.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>
+          <span class="sidebar__item-label">Organizations</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="organizations.html">All Organizations</a>
+          <a class="sidebar__sub-item" href="org-verification.html">Org Verification <span class="sidebar__item-badge">3</span></a>
+        </div>
+
+        <!-- Services -->
+        <a class="sidebar__item has-sub" href="services.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span class="sidebar__item-label">Services</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="services.html">All Services</a>
+          <a class="sidebar__sub-item" href="categories.html">Categories</a>
+          <a class="sidebar__sub-item" href="service-approval.html">Service Approval <span class="sidebar__item-badge amber">12</span></a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Operations Section -->
+      <div class="sidebar__section" id="section-operations">
+        <div class="sidebar__section-title" onclick="toggleSection(this)">
+          Operations
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="sidebar__section-items">
+          <a class="sidebar__item" href="bookings.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span class="sidebar__item-label">Bookings</span>
+          </a>
+          <a class="sidebar__item" href="disputes.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="sidebar__item-label">Disputes</span>
+            <span class="sidebar__item-badge red">2</span>
+          </a>
+          <a class="sidebar__item" href="reported-reviews.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <span class="sidebar__item-label">Reported Reviews</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Finance Section -->
+      <div class="sidebar__section" id="section-finance">
+        <div class="sidebar__section-title" onclick="toggleSection(this)">
+          Finance
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="sidebar__section-items">
+          <a class="sidebar__item" href="payments.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span class="sidebar__item-label">Payments</span>
+          </a>
+          <a class="sidebar__item" href="payouts.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 14h2"/><path d="M14 14h4"/></svg>
+            <span class="sidebar__item-label">Payouts</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Insights Section -->
+      <div class="sidebar__section" id="section-insights">
+        <div class="sidebar__section-title" onclick="toggleSection(this)">
+          Insights
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="sidebar__section-items">
+          <a class="sidebar__item" href="analytics.html">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span class="sidebar__item-label">Analytics</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sidebar__divider"></div>
+
+      <!-- Settings -->
+      <div class="sidebar__section">
+        <a class="sidebar__item has-sub" href="platform-settings.html" onclick="toggleSub(this, event)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="sidebar__item-label">Settings</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        <div class="sidebar__sub">
+          <a class="sidebar__sub-item" href="platform-settings.html">Platform Settings</a>
+          <a class="sidebar__sub-item" href="content-management.html">Content Management</a>
+        </div>
+      </div>
+
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar__footer">
+      <div class="sidebar__user">
+        <div class="sidebar__user-avatar">SA</div>
+        <div class="sidebar__user-info">
+          <div class="sidebar__user-name">Super Admin</div>
+          <div class="sidebar__user-email">admin@ntizo.com</div>
+        </div>
+        <button class="sidebar__user-settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ============================================
+       MAIN CONTENT
+       ============================================ -->
+  <main class="main">
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div class="topbar__inner">
+        <div class="topbar__left">
+          <button class="topbar__hamburger" onclick="openSidebar()" aria-label="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="topbar__title">Dashboard</h1>
+        </div>
+        <div class="topbar__right">
+          <button class="topbar__date-range">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Jan 9 - Feb 8, 2026</span>
+          </button>
+          <button class="topbar__dropdown">
+            <span>Last 30 days</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="main__container">
+      <div class="dashboard">
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <!-- Total Users -->
+          <div class="stat-card">
+            <div class="stat-card__content">
+              <div class="stat-card__label">Total Users</div>
+              <div class="stat-card__value">2,847</div>
+              <div class="stat-card__trend up">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                +12%
+              </div>
+            </div>
+            <div class="stat-card__icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+          </div>
+
+          <!-- Active Providers -->
+          <div class="stat-card">
+            <div class="stat-card__content">
+              <div class="stat-card__label">Active Providers</div>
+              <div class="stat-card__value">486</div>
+              <div class="stat-card__trend up">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                +8%
+              </div>
+            </div>
+            <div class="stat-card__icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><polyline points="16 3.13 16 8 21 8"/></svg>
+            </div>
+          </div>
+
+          <!-- Organizations -->
+          <div class="stat-card">
+            <div class="stat-card__content">
+              <div class="stat-card__label">Organizations</div>
+              <div class="stat-card__value">52</div>
+              <div class="stat-card__trend up">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                +4%
+              </div>
+            </div>
+            <div class="stat-card__icon navy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg>
+            </div>
+          </div>
+
+          <!-- Bookings This Month -->
+          <div class="stat-card">
+            <div class="stat-card__content">
+              <div class="stat-card__label">Bookings (This Month)</div>
+              <div class="stat-card__value">1,234</div>
+              <div class="stat-card__trend up">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                +18%
+              </div>
+            </div>
+            <div class="stat-card__icon sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+          </div>
+
+          <!-- Revenue This Month -->
+          <div class="stat-card">
+            <div class="stat-card__content">
+              <div class="stat-card__label">Revenue (This Month)</div>
+              <div class="stat-card__value">892,400 <span style="font-size: 15px; font-weight: 600; color: var(--gray-400);">MZN</span></div>
+              <div class="stat-card__trend up">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                +15%
+              </div>
+            </div>
+            <div class="stat-card__icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+
+          <!-- Pending Actions -->
+          <div class="stat-card">
+            <div class="stat-card__content">
+              <div class="stat-card__label">Pending Actions</div>
+              <div class="stat-card__value">23</div>
+              <div class="stat-card__trend attention">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Needs attention
+              </div>
+            </div>
+            <div class="stat-card__icon red">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Three-Column Grid -->
+        <div class="dashboard__grid">
+
+          <!-- Column 1: Recent Bookings Table -->
+          <div class="card">
+            <div class="card__header">
+              <span class="card__title">Recent Bookings</span>
+              <a class="card__action" href="#">View all</a>
+            </div>
+            <div class="card__body">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Customer</th>
+                    <th>Provider</th>
+                    <th>Service</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="id">#BK-2841</td>
+                    <td class="name">Ana Mondlane</td>
+                    <td>Carlos Sitoe</td>
+                    <td>Electrical Repair</td>
+                    <td class="amount">4,500 MZN</td>
+                    <td><span class="status completed">Completed</span></td>
+                    <td class="date">Feb 8</td>
+                  </tr>
+                  <tr>
+                    <td class="id">#BK-2840</td>
+                    <td class="name">Fatima Nhaca</td>
+                    <td>Maria Tembe</td>
+                    <td>House Cleaning</td>
+                    <td class="amount">2,800 MZN</td>
+                    <td><span class="status confirmed">Confirmed</span></td>
+                    <td class="date">Feb 7</td>
+                  </tr>
+                  <tr>
+                    <td class="id">#BK-2839</td>
+                    <td class="name">Jorge Machava</td>
+                    <td>Elite Plumbers</td>
+                    <td>Pipe Installation</td>
+                    <td class="amount">12,000 MZN</td>
+                    <td><span class="status in-progress">In Progress</span></td>
+                    <td class="date">Feb 7</td>
+                  </tr>
+                  <tr>
+                    <td class="id">#BK-2838</td>
+                    <td class="name">Teresa Cossa</td>
+                    <td>Abdul Magaia</td>
+                    <td>AC Maintenance</td>
+                    <td class="amount">3,200 MZN</td>
+                    <td><span class="status pending">Pending</span></td>
+                    <td class="date">Feb 6</td>
+                  </tr>
+                  <tr>
+                    <td class="id">#BK-2837</td>
+                    <td class="name">Ricardo Langa</td>
+                    <td>Bela Hair Studio</td>
+                    <td>Hair Styling</td>
+                    <td class="amount">1,800 MZN</td>
+                    <td><span class="status completed">Completed</span></td>
+                    <td class="date">Feb 5</td>
+                  </tr>
+                  <tr>
+                    <td class="id">#BK-2836</td>
+                    <td class="name">Celeste Mabjaia</td>
+                    <td>Paulo Guambe</td>
+                    <td>Garden Service</td>
+                    <td class="amount">5,500 MZN</td>
+                    <td><span class="status cancelled">Cancelled</span></td>
+                    <td class="date">Feb 5</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Column 2 -->
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Pending Approvals -->
+            <div class="card">
+              <div class="card__header">
+                <span class="card__title">Pending Approvals</span>
+                <a class="card__action" href="#">Review all</a>
+              </div>
+              <div class="card__body">
+                <ul class="approval-list">
+                  <li class="approval-item">
+                    <div class="approval-item__avatar provider">CM</div>
+                    <div class="approval-item__info">
+                      <div class="approval-item__name">Carlos Mutola</div>
+                      <div class="approval-item__desc">Provider verification - ID documents</div>
+                    </div>
+                    <span class="approval-item__time">2h ago</span>
+                  </li>
+                  <li class="approval-item">
+                    <div class="approval-item__avatar service">LS</div>
+                    <div class="approval-item__info">
+                      <div class="approval-item__name">Luxury Spa Maputo</div>
+                      <div class="approval-item__desc">New service: Deep Tissue Massage</div>
+                    </div>
+                    <span class="approval-item__time">4h ago</span>
+                  </li>
+                  <li class="approval-item">
+                    <div class="approval-item__avatar provider">EN</div>
+                    <div class="approval-item__info">
+                      <div class="approval-item__name">Elisa Nhambirre</div>
+                      <div class="approval-item__desc">Provider verification - Qualifications</div>
+                    </div>
+                    <span class="approval-item__time">6h ago</span>
+                  </li>
+                  <li class="approval-item">
+                    <div class="approval-item__avatar service">TC</div>
+                    <div class="approval-item__info">
+                      <div class="approval-item__name">TechCare Solutions</div>
+                      <div class="approval-item__desc">New service: Network Setup</div>
+                    </div>
+                    <span class="approval-item__time">1d ago</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Active Disputes -->
+            <div class="card">
+              <div class="card__header">
+                <span class="card__title">Active Disputes</span>
+                <a class="card__action" href="#">View all</a>
+              </div>
+              <div class="card__body">
+                <div class="dispute-item">
+                  <div class="dispute-item__header">
+                    <span class="dispute-item__id">#DSP-0047</span>
+                    <span class="dispute-item__priority high">High</span>
+                  </div>
+                  <div class="dispute-item__desc">Service not completed as described</div>
+                  <div class="dispute-item__meta">Ana Mondlane vs Carlos Sitoe &middot; Opened Feb 6</div>
+                </div>
+                <div class="dispute-item">
+                  <div class="dispute-item__header">
+                    <span class="dispute-item__id">#DSP-0046</span>
+                    <span class="dispute-item__priority medium">Medium</span>
+                  </div>
+                  <div class="dispute-item__desc">Refund request after provider no-show</div>
+                  <div class="dispute-item__meta">Jorge Machava vs Elite Plumbers &middot; Opened Feb 4</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3 -->
+          <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Platform Health -->
+            <div class="card">
+              <div class="card__header">
+                <span class="card__title">Platform Health</span>
+              </div>
+              <div class="card__body">
+                <ul class="health-metrics">
+                  <li class="health-metric">
+                    <span class="health-metric__label">Avg Response Time</span>
+                    <span class="health-metric__value good">2.4 min</span>
+                  </li>
+                  <li class="health-metric">
+                    <span class="health-metric__label">Completion Rate</span>
+                    <span class="health-metric__value good">94.2%</span>
+                  </li>
+                  <li class="health-metric">
+                    <span class="health-metric__label">Customer Satisfaction</span>
+                    <span class="health-metric__value good">4.7 / 5.0</span>
+                  </li>
+                  <li class="health-metric">
+                    <span class="health-metric__label">Provider Retention</span>
+                    <span class="health-metric__value warning">87.1%</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+              <div class="card__header">
+                <span class="card__title">Quick Actions</span>
+              </div>
+              <div class="card__body padded">
+                <div class="quick-actions">
+                  <a class="quick-action" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                    Approve Providers
+                  </a>
+                  <a class="quick-action" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Review Services
+                  </a>
+                  <a class="quick-action" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 14h2"/><path d="M14 14h4"/></svg>
+                    Process Payouts
+                  </a>
+                  <a class="quick-action" href="#">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    View Disputes
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============================================
+     SCRIPTS
+     ============================================ -->
+<script>
+  // Toggle sidebar sub-menus
+  function toggleSub(el, event) {
+    event.preventDefault();
+    el.classList.toggle('expanded');
+  }
+
+  // Toggle collapsible sections
+  function toggleSection(titleEl) {
+    const section = titleEl.parentElement;
+    section.classList.toggle('collapsed');
+  }
+
+  // Mobile sidebar open/close
+  function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarOverlay').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('visible');
+    document.body.style.overflow = '';
+  }
+
+  // Close sidebar on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+
+  // Auto-expand sub-items of active nav item
+  document.addEventListener('DOMContentLoaded', function() {
+    const activeItem = document.querySelector('.sidebar__item.active.has-sub');
+    if (activeItem) activeItem.classList.add('expanded');
+  });
+</script>
+
+</body>
+</html>
