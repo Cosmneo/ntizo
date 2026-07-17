@@ -9,12 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProviderIndexRouteImport } from './routes/provider/index'
+import { Route as ProviderSettingsRouteImport } from './routes/provider/settings'
+import { Route as ProviderOverviewRouteImport } from './routes/provider/overview'
+import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
+import { Route as ProviderMembersRouteImport } from './routes/provider/members'
+import { Route as ProviderAccountRouteImport } from './routes/provider/account'
 import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 
+const ProviderRouteRoute = ProviderRouteRouteImport.update({
+  id: '/provider',
+  path: '/provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicRouteRoute = PublicRouteRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
@@ -23,6 +35,36 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ProviderIndexRoute = ProviderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderSettingsRoute = ProviderSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderOverviewRoute = ProviderOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderNoProviderRoute = ProviderNoProviderRouteImport.update({
+  id: '/no-provider',
+  path: '/no-provider',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderMembersRoute = ProviderMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderAccountRoute = ProviderAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => ProviderRouteRoute,
 } as any)
 const PublicSignUpRoute = PublicSignUpRouteImport.update({
   id: '/sign-up',
@@ -42,45 +84,101 @@ const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/provider': typeof ProviderRouteRouteWithChildren
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
+  '/provider/account': typeof ProviderAccountRoute
+  '/provider/members': typeof ProviderMembersRoute
+  '/provider/no-provider': typeof ProviderNoProviderRoute
+  '/provider/overview': typeof ProviderOverviewRoute
+  '/provider/settings': typeof ProviderSettingsRoute
+  '/provider/': typeof ProviderIndexRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
+  '/provider/account': typeof ProviderAccountRoute
+  '/provider/members': typeof ProviderMembersRoute
+  '/provider/no-provider': typeof ProviderNoProviderRoute
+  '/provider/overview': typeof ProviderOverviewRoute
+  '/provider/settings': typeof ProviderSettingsRoute
+  '/provider': typeof ProviderIndexRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_public': typeof PublicRouteRouteWithChildren
+  '/provider': typeof ProviderRouteRouteWithChildren
   '/_public/sign-in': typeof PublicSignInRoute
   '/_public/sign-up': typeof PublicSignUpRoute
+  '/provider/account': typeof ProviderAccountRoute
+  '/provider/members': typeof ProviderMembersRoute
+  '/provider/no-provider': typeof ProviderNoProviderRoute
+  '/provider/overview': typeof ProviderOverviewRoute
+  '/provider/settings': typeof ProviderSettingsRoute
+  '/provider/': typeof ProviderIndexRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/sign-up' | '/accept-invite/$token'
+  fullPaths:
+    | '/'
+    | '/provider'
+    | '/sign-in'
+    | '/sign-up'
+    | '/provider/account'
+    | '/provider/members'
+    | '/provider/no-provider'
+    | '/provider/overview'
+    | '/provider/settings'
+    | '/provider/'
+    | '/accept-invite/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-up' | '/accept-invite/$token'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/sign-up'
+    | '/provider/account'
+    | '/provider/members'
+    | '/provider/no-provider'
+    | '/provider/overview'
+    | '/provider/settings'
+    | '/provider'
+    | '/accept-invite/$token'
   id:
     | '__root__'
     | '/'
     | '/_public'
+    | '/provider'
     | '/_public/sign-in'
     | '/_public/sign-up'
+    | '/provider/account'
+    | '/provider/members'
+    | '/provider/no-provider'
+    | '/provider/overview'
+    | '/provider/settings'
+    | '/provider/'
     | '/_public/accept-invite/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
+  ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/provider': {
+      id: '/provider'
+      path: '/provider'
+      fullPath: '/provider'
+      preLoaderRoute: typeof ProviderRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_public': {
       id: '/_public'
       path: ''
@@ -94,6 +192,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/provider/': {
+      id: '/provider/'
+      path: '/'
+      fullPath: '/provider/'
+      preLoaderRoute: typeof ProviderIndexRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/settings': {
+      id: '/provider/settings'
+      path: '/settings'
+      fullPath: '/provider/settings'
+      preLoaderRoute: typeof ProviderSettingsRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/overview': {
+      id: '/provider/overview'
+      path: '/overview'
+      fullPath: '/provider/overview'
+      preLoaderRoute: typeof ProviderOverviewRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/no-provider': {
+      id: '/provider/no-provider'
+      path: '/no-provider'
+      fullPath: '/provider/no-provider'
+      preLoaderRoute: typeof ProviderNoProviderRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/members': {
+      id: '/provider/members'
+      path: '/members'
+      fullPath: '/provider/members'
+      preLoaderRoute: typeof ProviderMembersRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/account': {
+      id: '/provider/account'
+      path: '/account'
+      fullPath: '/provider/account'
+      preLoaderRoute: typeof ProviderAccountRouteImport
+      parentRoute: typeof ProviderRouteRoute
     }
     '/_public/sign-up': {
       id: '/_public/sign-up'
@@ -135,9 +275,32 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
   PublicRouteRouteChildren,
 )
 
+interface ProviderRouteRouteChildren {
+  ProviderAccountRoute: typeof ProviderAccountRoute
+  ProviderMembersRoute: typeof ProviderMembersRoute
+  ProviderNoProviderRoute: typeof ProviderNoProviderRoute
+  ProviderOverviewRoute: typeof ProviderOverviewRoute
+  ProviderSettingsRoute: typeof ProviderSettingsRoute
+  ProviderIndexRoute: typeof ProviderIndexRoute
+}
+
+const ProviderRouteRouteChildren: ProviderRouteRouteChildren = {
+  ProviderAccountRoute: ProviderAccountRoute,
+  ProviderMembersRoute: ProviderMembersRoute,
+  ProviderNoProviderRoute: ProviderNoProviderRoute,
+  ProviderOverviewRoute: ProviderOverviewRoute,
+  ProviderSettingsRoute: ProviderSettingsRoute,
+  ProviderIndexRoute: ProviderIndexRoute,
+}
+
+const ProviderRouteRouteWithChildren = ProviderRouteRoute._addFileChildren(
+  ProviderRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PublicRouteRoute: PublicRouteRouteWithChildren,
+  ProviderRouteRoute: ProviderRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

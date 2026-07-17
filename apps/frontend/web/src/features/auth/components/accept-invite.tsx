@@ -2,30 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
-import { API_BASE_URL } from "@/shared/lib/api/auth-client";
-
-// NOTE: `@/features/provider/lib/provider-api` (which owns `acceptInvite`) doesn't
-// exist yet — it's migrated wholesale in Task 6. This inline call preserves the
-// exact same request/response contract so it can be swapped for the shared
-// `acceptInvite` import once that module lands, without behavior changes.
-async function acceptInvite(token: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/providers/invites/${token}/accept`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (res.ok) return;
-  const text = await res.text();
-  let message = res.statusText;
-  if (text) {
-    try {
-      const body = JSON.parse(text) as { error?: string };
-      message = body.error ?? message;
-    } catch {
-      message = text;
-    }
-  }
-  throw new Error(message);
-}
+import { acceptInvite } from "@/features/provider/lib/provider-api";
 
 export function AcceptInvite() {
   const { t } = useTranslation("auth");
@@ -43,7 +20,7 @@ export function AcceptInvite() {
     acceptInvite(token)
       .then(() => {
         setStatus("ok");
-        setTimeout(() => nav({ to: "/provider/overview" as string }), 800);
+        setTimeout(() => nav({ to: "/provider/overview" }), 800);
       })
       .catch((e) => {
         setStatus("error");
