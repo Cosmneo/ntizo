@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@ntizo/frontend-ui";
 import { AppSidebar } from "@/shared/components/app-sidebar/app-sidebar";
+import { ZoneSwitcher } from "@/shared/components/zone-switcher";
 import {
   PageHeaderContext,
   type PageHeaderState,
@@ -38,7 +39,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
               )}
             </div>
             <div className="ml-auto flex items-center gap-3">
-            {/* zone-switcher */}
+            <ZoneSwitcher current="provider" />
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
