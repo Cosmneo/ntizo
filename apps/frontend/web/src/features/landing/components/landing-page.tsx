@@ -66,7 +66,7 @@ function Header() {
           <Globe size={16} />
           <span>EN · USD</span>
         </button>
-        <Link to={"/sign-in" as string} style={signInBtn}>
+        <Link to="/sign-in" style={signInBtn}>
           Sign in
         </Link>
       </div>
