@@ -9,38 +9,85 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
+import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
+import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicSignUpRoute = PublicSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicSignInRoute = PublicSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
+  id: '/accept-invite/$token',
+  path: '/accept-invite/$token',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/sign-in': typeof PublicSignInRoute
+  '/sign-up': typeof PublicSignUpRoute
+  '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/sign-in': typeof PublicSignInRoute
+  '/sign-up': typeof PublicSignUpRoute
+  '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_public': typeof PublicRouteRouteWithChildren
+  '/_public/sign-in': typeof PublicSignInRoute
+  '/_public/sign-up': typeof PublicSignUpRoute
+  '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/sign-in' | '/sign-up' | '/accept-invite/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/sign-in' | '/sign-up' | '/accept-invite/$token'
+  id:
+    | '__root__'
+    | '/'
+    | '/_public'
+    | '/_public/sign-in'
+    | '/_public/sign-up'
+    | '/_public/accept-invite/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PublicRouteRoute: typeof PublicRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +95,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_public/sign-up': {
+      id: '/_public/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof PublicSignUpRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/sign-in': {
+      id: '/_public/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof PublicSignInRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/accept-invite/$token': {
+      id: '/_public/accept-invite/$token'
+      path: '/accept-invite/$token'
+      fullPath: '/accept-invite/$token'
+      preLoaderRoute: typeof PublicAcceptInviteTokenRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
   }
 }
 
+interface PublicRouteRouteChildren {
+  PublicSignInRoute: typeof PublicSignInRoute
+  PublicSignUpRoute: typeof PublicSignUpRoute
+  PublicAcceptInviteTokenRoute: typeof PublicAcceptInviteTokenRoute
+}
+
+const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicSignInRoute: PublicSignInRoute,
+  PublicSignUpRoute: PublicSignUpRoute,
+  PublicAcceptInviteTokenRoute: PublicAcceptInviteTokenRoute,
+}
+
+const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
+  PublicRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PublicRouteRoute: PublicRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
