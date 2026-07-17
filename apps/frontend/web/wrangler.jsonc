@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ntizo-web",
+  "compatibility_date": "2026-02-12",
+  "main": "worker/index.ts",
+  "preview_urls": true,
+  "assets": { "directory": "./dist", "binding": "ASSETS", "html_handling": "none" },
+  // NOTE: "routes.pattern" hostnames below (dev.ntizo.com / qa.ntizo.com / ntizo.com) are
+  // placeholders. Confirm the real hostnames and that the zones are on Cloudflare before
+  // running any `wrangler deploy` against these environments.
+  "env": {
+    "dev": {
+      "vars": { "VITE_AUTH_API_URL": "https://dev.api.ntizo.com" },
+      "routes": [{ "pattern": "dev.ntizo.com", "custom_domain": true }]
+    },
+    "qa": {
+      "vars": { "VITE_AUTH_API_URL": "https://qa.api.ntizo.com" },
+      "routes": [{ "pattern": "qa.ntizo.com", "custom_domain": true }]
+    },
+    "prod": {
+      "vars": { "VITE_AUTH_API_URL": "https://api.ntizo.com" },
+      "routes": [{ "pattern": "ntizo.com", "custom_domain": true }]
+    }
+  }
+}

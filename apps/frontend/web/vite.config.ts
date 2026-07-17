@@ -16,7 +16,7 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
-      routeFileIgnorePattern: "\\.(test|spec)\\.",
+      routeFileIgnorePattern: "\\.(test|spec)\\.|-guard\\.",
     }),
     viteReact(),
   ],

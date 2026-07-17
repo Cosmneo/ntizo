@@ -9,7 +9,10 @@
     "preview": "vite preview --port 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "deploy:dev": "vite build && wrangler deploy --env dev",
+    "deploy:qa": "vite build && wrangler deploy --env qa",
+    "deploy:prod": "vite build && wrangler deploy --env prod"
   },
   "dependencies": {
     "@ntizo/frontend-ui": "workspace:*",
@@ -45,6 +48,7 @@
     "jsdom": "^25.0.0",
     "typescript": "5.9.2",
     "vite": "^7.0.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "wrangler": "^4.0.0"
   }
 }
