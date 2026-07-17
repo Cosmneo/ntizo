@@ -30,16 +30,21 @@ export function accessibleZones(
 }
 
 /** True only for app-internal absolute paths ("/x"), never external URLs. */
-export function isSafeInternalPath(path: string | null): boolean {
-  if (!path) return false;
-  return path.startsWith("/") && !path.startsWith("//");
+export function isSafeInternalPath(path: string | null): path is string {
+  if (!path || !path.startsWith("/")) return false;
+  try {
+    const base = "http://localhost";
+    return new URL(path, base).origin === base;
+  } catch {
+    return false;
+  }
 }
 
 export function resolvePostLoginDestination(
   user: CurrentUserDTO | null,
   next: string | null,
 ): string {
-  if (isSafeInternalPath(next)) return next as string;
+  if (isSafeInternalPath(next)) return next;
   if (canAccessAdmin(user)) return "/admin";
   if (user && PROVIDER_ROLES.has(user.role)) return "/provider";
   return "/";

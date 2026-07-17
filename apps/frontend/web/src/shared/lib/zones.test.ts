@@ -46,6 +46,9 @@ describe("isSafeInternalPath", () => {
     expect(isSafeInternalPath("https://evil.com")).toBe(false);
     expect(isSafeInternalPath(null)).toBe(false);
     expect(isSafeInternalPath("relative")).toBe(false);
+    expect(isSafeInternalPath("/\\evil.com")).toBe(false);
+    expect(isSafeInternalPath("/\t/evil.com")).toBe(false);
+    expect(isSafeInternalPath("/admin/users?next=/x")).toBe(true);
   });
 });
 
