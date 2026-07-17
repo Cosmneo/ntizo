@@ -1,0 +1,4 @@
+@import "tailwindcss";
+@import "@ntizo/frontend-ui/styles/globals.css";
+
+@source "../../../../packages/frontend/src";
