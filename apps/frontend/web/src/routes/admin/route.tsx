@@ -9,7 +9,14 @@ export const Route = createFileRoute("/admin")({
     const { data: session } = await authClient.getSession();
     const me = session ? await fetchCurrentUser() : null;
     const decision = resolveAdminGuard(session, me, location.pathname);
-    if (decision) throw redirect(decision as never);
+    if (decision) {
+      // resolveAdminGuard returns { redirectTo, search? }, but redirect() reads
+      // `to` — passing `decision` (or a `redirectTo`-keyed object) as-is leaves
+      // `to` undefined, so the router treats the throw as "stay put, merge
+      // search", re-running this beforeLoad and looping. Remap the field.
+      const { redirectTo, ...rest } = decision;
+      throw redirect({ to: redirectTo, ...rest } as never);
+    }
     return { session, me };
   },
   component: () => (
