@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
@@ -10,6 +10,7 @@ export function AcceptInvite() {
   const nav = useNavigate();
   const [status, setStatus] = useState<"pending" | "ok" | "error">("pending");
   const [error, setError] = useState<string | null>(null);
+  const hasFiredRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -17,6 +18,8 @@ export function AcceptInvite() {
       setError(t("missingInviteToken"));
       return;
     }
+    if (hasFiredRef.current) return;
+    hasFiredRef.current = true;
     acceptInvite(token)
       .then(() => {
         setStatus("ok");
