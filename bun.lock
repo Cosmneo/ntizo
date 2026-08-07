@@ -75,12 +75,15 @@
       "name": "@ntizo/backend",
       "version": "0.0.1",
       "dependencies": {
+        "@cosmneo/onion-lasagna": "^1.0.0-beta.3",
+        "@cosmneo/onion-lasagna-zod": "^1.0.0-beta.3",
         "@ntizo/shared": "workspace:*",
         "better-auth": "^1.5.5",
         "drizzle-orm": "^0.36.0",
         "hono": "^4.11.9",
         "postgres": "^3.4.8",
         "resend": "^4.0.0",
+        "zod": "^4.4.3",
       },
       "devDependencies": {
         "@ntizo/typescript-config": "workspace:*",
@@ -234,6 +237,10 @@
     "@cloudflare/workerd-windows-64": ["@cloudflare/workerd-windows-64@1.20260714.1", "", { "os": "win32", "cpu": "x64" }, "sha512-cGqnU3Hg2YZS/k3SAqrMp1DjpdsyFde72tWltdl6ZT9+SFz/Zrk/8gyTU1TcxC4YApXeNVH5TyU5cOGPgUJ0pg=="],
 
     "@cloudflare/workers-types": ["@cloudflare/workers-types@5.20260804.1", "", {}, "sha512-B1dwxpN6e5RZXZkE5zpZj+ooNeNZ1mwavLIyHDYe10ojhlGTwDfe8sAl7R1mMXc1cyIsbr+jKVdvmMEyVcdTdg=="],
+
+    "@cosmneo/onion-lasagna": ["@cosmneo/onion-lasagna@1.0.0-beta.3", "", { "dependencies": { "uuid": "^13.0.0" }, "peerDependencies": { "typescript": "^5" }, "optionalPeers": ["typescript"] }, "sha512-bPknR3wyvEfck4sM2WbysIXOM3xA3dvpS5C+ivZ2hOA+iXiBcw8lBPSOIj59/yGwmBaTUxGUU1XMajLENnvFuw=="],
+
+    "@cosmneo/onion-lasagna-zod": ["@cosmneo/onion-lasagna-zod@1.0.0-beta.3", "", { "peerDependencies": { "@cosmneo/onion-lasagna": "^1.0.0-beta.3", "zod": "^4.2.1" } }, "sha512-vGHAWAgfIpdhJJ3zFJrp83mD/M3pG63rUPfzewxS1MlkKgZRRxEmSK8mNbuYVhg8wVdDCjg0ftEh31RFDh/MpA=="],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
@@ -1236,6 +1243,8 @@
     "uri-js": ["uri-js@4.4.1", "", { "dependencies": { "punycode": "^2.1.0" } }, "sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg=="],
 
     "use-sync-external-store": ["use-sync-external-store@1.6.0", "", { "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w=="],
+
+    "uuid": ["uuid@13.0.2", "", { "bin": { "uuid": "dist-node/bin/uuid" } }, "sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw=="],
 
     "vite": ["vite@7.3.2", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-Bby3NOsna2jsjfLVOHKes8sGwgl4TT0E6vvpYgnAYDIF/tie7MRaFthmKuHx1NSXjiTueXH3do80FMQgvEktRg=="],
 
