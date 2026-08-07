@@ -8,7 +8,8 @@
     "deploy:dev": "wrangler deploy --env dev",
     "deploy:qa": "wrangler deploy --env qa",
     "deploy:prod": "wrangler deploy --env prod",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src"
   },
   "dependencies": {
     "@cosmneo/onion-lasagna": "1.0.0-beta.3",
