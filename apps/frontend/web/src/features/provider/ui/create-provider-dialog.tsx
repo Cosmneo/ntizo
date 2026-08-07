@@ -14,7 +14,7 @@ import {
   Separator,
 } from "@ntizo/frontend-ui";
 import { slugify } from "../domain/slugify";
-import { providerErrorMessage } from "../domain/errors";
+import { providerErrorMessage } from "../viewmodel/error-message";
 import {
   useCreateProvider,
   useRegisterMe,
@@ -139,7 +139,7 @@ export function CreateProviderDialog({ open, onOpenChange, onCreated }: Props) {
             {(err) =>
               err ? (
                 <div className="text-sm text-[var(--color-destructive)]">
-                  {String(err)}
+                  {err.form}
                 </div>
               ) : null
             }

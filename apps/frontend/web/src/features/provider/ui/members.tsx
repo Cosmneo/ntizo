@@ -26,7 +26,7 @@ import {
   Skeleton,
 } from "@ntizo/frontend-ui";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
-import { providerErrorMessage } from "../domain/errors";
+import { providerErrorMessage } from "../viewmodel/error-message";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
 import { useProviderDetail } from "../viewmodel/use-providers";
 import {
@@ -361,7 +361,7 @@ export function MembersPage() {
             <inviteForm.Subscribe selector={(s) => s.errorMap.onSubmit}>
               {(err) =>
                 err ? (
-                  <div className="text-sm text-destructive">{String(err)}</div>
+                  <div className="text-sm text-destructive">{err.form}</div>
                 ) : null
               }
             </inviteForm.Subscribe>

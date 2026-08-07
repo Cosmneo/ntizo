@@ -1,11 +1,13 @@
-import type { TFunction } from "i18next";
-import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
-
 /**
  * Maps a provider-BC domain error code (`GraphqlError.code` — see
  * `bounded-contexts/provider/domain/exceptions`) to a translation key under
  * provider.json's "errors" namespace. Codes with no entry here have no
  * dedicated copy; callers fall back to the error's raw message.
+ *
+ * Pure: no transport, no i18n, no React. This is the single source of
+ * truth for the code -> translation-key mapping. Narrowing a caught error
+ * to `GraphqlError` and calling `t(...)` both belong outside `domain/` —
+ * see `viewmodel/error-message.ts`.
  */
 const CODE_I18N_KEYS: Partial<Record<string, string>> = {
   MEMBER_ALREADY_EXISTS: "errors.memberAlreadyExists",
@@ -14,22 +16,15 @@ const CODE_I18N_KEYS: Partial<Record<string, string>> = {
   INSUFFICIENT_PROVIDER_PERMISSIONS: "errors.insufficientPermissions",
 };
 
+/** Fallback translation key for codes with no dedicated copy, or non-Error throws. */
+export const GENERIC_PROVIDER_ERROR_KEY = "errors.generic";
+
 /**
- * Turns any thrown value into user-facing copy.
- *
- * `GraphqlError.code` is the fine-grained domain code (already preferred
- * over the coarse kit code by `sessionGraphql`). Codes with dedicated copy
- * resolve through `t` against provider.json's "errors" namespace — pass
- * `{ ns: "provider" }` explicitly so this works from callers whose default
- * namespace isn't "provider" (e.g. the auth feature's accept-invite page).
- * Anything else falls back to the error's own message.
+ * Pure lookup: a provider-BC domain error code -> translation key under
+ * provider.json's "errors" namespace. Returns `undefined` when there's no
+ * dedicated copy for this code, so callers know to fall back to the raw
+ * message instead.
  */
-export function providerErrorMessage(t: TFunction, error: unknown): string {
-  if (error instanceof GraphqlError) {
-    const key = error.code ? CODE_I18N_KEYS[error.code] : undefined;
-    if (key) return t(key, { ns: "provider" });
-    return error.message;
-  }
-  if (error instanceof Error) return error.message;
-  return t("errors.generic", { ns: "provider" });
+export function providerErrorKey(code: string | undefined): string | undefined {
+  return code ? CODE_I18N_KEYS[code] : undefined;
 }

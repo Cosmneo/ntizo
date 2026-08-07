@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
-import { providerErrorMessage } from "@/features/provider/domain/errors";
+import { providerErrorMessage } from "@/features/provider/viewmodel/error-message";
 import { useAcceptInvite } from "@/features/provider/viewmodel/use-member-mutations";
 
 export function AcceptInvite() {

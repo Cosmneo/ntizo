@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button, Input, Label } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { providerErrorMessage } from "../domain/errors";
+import { providerErrorMessage } from "../viewmodel/error-message";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
 import { useProviderDetail } from "../viewmodel/use-providers";
 import {
