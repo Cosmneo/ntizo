@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { createProviderReadHandlers } from "../graphql/handlers/queries.handlers";
+import { GetProviderDetailProjection } from "../app/use-cases/get-provider-detail.projection";
+import { mapGetProviderDetailInput } from "../graphql/handlers/arg-mappers";
+import type { ProviderReadRepositoryPort } from "../app/ports/outbound/provider-read.repository.port";
 import type { ProviderDetailDTO, ProviderListItemDTO } from "@ntizo/shared/read-models";
 
 const listItem: ProviderListItemDTO = {
@@ -49,5 +52,82 @@ describe("createProviderReadHandlers", () => {
     expect(mapped.requestedByUserId).toBe("u-session");
     await mod.listMyProviders.execute(mapped);
     expect(calls).toEqual(["list:u-session"]);
+  });
+});
+
+/**
+ * A fake repository that records every call so the authorization gate's
+ * *ordering* can be asserted, not just its outcome — a future change that
+ * reorders or removes the isMember check must fail these tests.
+ */
+class FakeProviderReadRepository implements ProviderReadRepositoryPort {
+  public readonly calls: string[] = [];
+
+  constructor(
+    private readonly membership: boolean,
+    private readonly detailToReturn: ProviderDetailDTO | null,
+  ) {}
+
+  async listForUser(): Promise<ProviderListItemDTO[]> {
+    throw new Error("not used in these tests");
+  }
+
+  async isMember(providerId: string, userId: string): Promise<boolean> {
+    this.calls.push(`isMember:${providerId}:${userId}`);
+    return this.membership;
+  }
+
+  async findDetailById(providerId: string): Promise<ProviderDetailDTO | null> {
+    this.calls.push(`findDetailById:${providerId}`);
+    return this.detailToReturn;
+  }
+}
+
+describe("GetProviderDetailProjection authorization gate", () => {
+  it("rejects a non-member and never calls findDetailById", async () => {
+    const repo = new FakeProviderReadRepository(false, detail);
+    const projection = new GetProviderDetailProjection(repo);
+
+    await expect(
+      projection.execute({ providerId: "p1", requestedByUserId: "u-outsider" }),
+    ).rejects.toThrow("[read/provider] not a member of this provider");
+
+    // The security property is ORDERING: isMember ran, findDetailById never did.
+    expect(repo.calls).toEqual(["isMember:p1:u-outsider"]);
+  });
+
+  it("returns the detail for a member", async () => {
+    const repo = new FakeProviderReadRepository(true, detail);
+    const projection = new GetProviderDetailProjection(repo);
+
+    const result = await projection.execute({ providerId: "p1", requestedByUserId: "u1" });
+
+    expect(result).toEqual(detail);
+    expect(repo.calls).toEqual(["isMember:p1:u1", "findDetailById:p1"]);
+  });
+
+  it("throws when a member requests a provider that no longer exists", async () => {
+    const repo = new FakeProviderReadRepository(true, null);
+    const projection = new GetProviderDetailProjection(repo);
+
+    await expect(
+      projection.execute({ providerId: "p1", requestedByUserId: "u1" }),
+    ).rejects.toThrow("[read/provider] provider not found");
+  });
+});
+
+describe("mapGetProviderDetailInput", () => {
+  it("takes providerId from args and requestedByUserId from the session, never from args", () => {
+    const ctx = {
+      requesterUserId: "u-session", email: null, firstName: null,
+      lastName: null, requestId: null, ipAddress: null, userAgent: null,
+    };
+    // Extra field on args simulates a hostile/buggy client trying to smuggle
+    // its own requestedByUserId in — the mapper must ignore it entirely.
+    const suspiciousArgs = { providerId: "p1", requestedByUserId: "attacker-supplied" };
+
+    const mapped = mapGetProviderDetailInput(suspiciousArgs, ctx);
+
+    expect(mapped).toEqual({ providerId: "p1", requestedByUserId: "u-session" });
   });
 });
