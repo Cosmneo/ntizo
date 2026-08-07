@@ -70,6 +70,12 @@
     "inviteAlreadyUsed": "Este convite já foi utilizado.",
     "inviteExpired": "Este convite expirou. Peça a um proprietário ou administrador para enviar um novo.",
     "insufficientPermissions": "Não tem permissão para fazer isto.",
+    "providerNotFound": "Não foi possível encontrar esta organização.",
+    "notProviderOwner": "Só o proprietário da organização pode fazer isto.",
+    "inviteNotFound": "Este link de convite é inválido ou já foi utilizado.",
+    "memberNotFound": "Não foi possível encontrar este membro.",
+    "individualProviderCannotHaveMembers": "Prestadores individuais não podem ter membros adicionais.",
+    "notProviderMember": "Não tem acesso a esta organização.",
     "generic": "Ocorreu um erro. Tente novamente."
   }
 }

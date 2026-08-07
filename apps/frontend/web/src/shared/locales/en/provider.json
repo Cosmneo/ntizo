@@ -70,6 +70,12 @@
     "inviteAlreadyUsed": "This invite has already been used.",
     "inviteExpired": "This invite has expired. Ask an owner or admin to send a new one.",
     "insufficientPermissions": "You don't have permission to do this.",
+    "providerNotFound": "This organization could not be found.",
+    "notProviderOwner": "Only the organization owner can do this.",
+    "inviteNotFound": "This invite link is invalid or has already been used.",
+    "memberNotFound": "This member could not be found.",
+    "individualProviderCannotHaveMembers": "Individual providers can't have additional members.",
+    "notProviderMember": "You don't have access to this organization.",
     "generic": "Something went wrong. Please try again."
   }
 }

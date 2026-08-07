@@ -14,6 +14,15 @@ const CODE_I18N_KEYS: Partial<Record<string, string>> = {
   INVITE_ALREADY_USED: "errors.inviteAlreadyUsed",
   INVITE_EXPIRED: "errors.inviteExpired",
   INSUFFICIENT_PROVIDER_PERMISSIONS: "errors.insufficientPermissions",
+  PROVIDER_NOT_FOUND: "errors.providerNotFound",
+  NOT_PROVIDER_OWNER: "errors.notProviderOwner",
+  INVITE_NOT_FOUND: "errors.inviteNotFound",
+  MEMBER_NOT_FOUND: "errors.memberNotFound",
+  INDIVIDUAL_PROVIDER_CANNOT_HAVE_MEMBERS: "errors.individualProviderCannotHaveMembers",
+  // Thrown by the read-side detail projection (get-provider-detail.projection.ts),
+  // not by bounded-contexts/provider/domain/exceptions — still a reachable,
+  // stable code the web client branches on.
+  NOT_PROVIDER_MEMBER: "errors.notProviderMember",
 };
 
 /** Fallback translation key for codes with no dedicated copy, or non-Error throws. */
