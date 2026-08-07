@@ -1,8 +1,8 @@
 import { app } from "./api";
+import type { AppBindings } from "./types";
 
-// Bun / Node fetch server entrypoint.
-// TODO(ntizo): swap to Cloudflare Workers default export like flowzao once wrangler is wired.
 export default {
-  port: Number(process.env.PORT ?? 8788),
-  fetch: app.fetch,
+  fetch(request: Request, env: AppBindings, ctx: ExecutionContext) {
+    return app.fetch(request, env, ctx);
+  },
 };
