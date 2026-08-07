@@ -41,12 +41,21 @@ export class GraphqlError extends Error {
   }
 }
 
+/** How much of a non-JSON body to echo back in the thrown error's message. */
+const RAW_BODY_PREVIEW_LENGTH = 200;
+
 /**
  * POST a query or mutation to the private, session-authenticated endpoint.
  *
  * A GraphQL failure normally arrives as HTTP 200 with a populated `errors`
  * array — NOT as a 4xx — so a status check alone would silently return
  * `undefined` data. Throw on either signal.
+ *
+ * The response body is read as text and defensively `JSON.parse`d — mirroring
+ * `features/provider/lib/provider-api.ts`'s `request()` — because a proxy
+ * error page, an empty 502, or a truncated response is not valid JSON. Every
+ * failure mode surfaces as a `GraphqlError`; callers that branch on
+ * `instanceof GraphqlError` / `.code` must never see a raw `SyntaxError`.
  */
 export async function sessionGraphql<T>(
   query: string,
@@ -63,13 +72,24 @@ export async function sessionGraphql<T>(
     body: JSON.stringify({ query, variables }),
   });
 
-  const body = (await response.json()) as {
-    data?: T;
-    errors?: GraphqlErrorEntry[];
-  };
-
-  if (!response.ok || (body.errors && body.errors.length > 0)) {
-    throw new GraphqlError(response.status, body.errors ?? []);
+  const text = await response.text();
+  let body: { data?: T; errors?: GraphqlErrorEntry[] } | undefined;
+  if (text) {
+    try {
+      body = JSON.parse(text) as { data?: T; errors?: GraphqlErrorEntry[] };
+    } catch {
+      const preview =
+        text.length > RAW_BODY_PREVIEW_LENGTH
+          ? `${text.slice(0, RAW_BODY_PREVIEW_LENGTH)}…`
+          : text;
+      throw new GraphqlError(response.status, [
+        { message: `Non-JSON response (HTTP ${response.status}): ${preview}` },
+      ]);
+    }
   }
-  return body.data as T;
+
+  if (!response.ok || (body?.errors && body.errors.length > 0)) {
+    throw new GraphqlError(response.status, body?.errors ?? []);
+  }
+  return body?.data as T;
 }
