@@ -15,7 +15,7 @@ import type { ProviderAddress } from "../domain/types";
 export function SettingsPage() {
   const { t } = useTranslation("provider");
   const { activeProvider } = useActiveProvider();
-  const { data: detail, isLoading } = useProviderDetail(activeProvider?.id);
+  const { data: detail, isLoading, error } = useProviderDetail(activeProvider?.id);
   const updateMut = useUpdateProvider(activeProvider?.id ?? "");
   const deactivateMut = useDeactivateProvider();
   const nav = useNavigate();
@@ -37,6 +37,9 @@ export function SettingsPage() {
 
   if (!activeProvider) return null;
   if (isLoading) return <p>…</p>;
+  if (error) {
+    return <p className="text-destructive">{providerErrorMessage(t, error)}</p>;
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();

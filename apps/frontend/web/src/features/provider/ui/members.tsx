@@ -61,13 +61,14 @@ const ROLE_STYLES: Record<
 export function MembersPage() {
   const { t } = useTranslation("provider");
   const { activeProvider } = useActiveProvider();
-  const { data: detail, isLoading } = useProviderDetail(activeProvider?.id);
+  const { data: detail, isLoading, error } = useProviderDetail(activeProvider?.id);
   const removeMut = useRemoveMember(activeProvider?.id ?? "");
   const roleMut = useUpdateMemberRole(activeProvider?.id ?? "");
   const inviteMut = useInviteMember(activeProvider?.id ?? "");
   const revokeMut = useRevokeInvite(activeProvider?.id ?? "");
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   usePageHeader(t("members"), activeProvider?.name);
   usePageAction(
@@ -94,6 +95,11 @@ export function MembersPage() {
   });
 
   if (!activeProvider) return null;
+  if (error) {
+    return (
+      <p className="text-sm text-destructive">{providerErrorMessage(t, error)}</p>
+    );
+  }
   const members = detail?.members ?? [];
   const invites = detail?.invites ?? [];
   const myRole =
@@ -139,6 +145,10 @@ export function MembersPage() {
           hintClassName="text-emerald-400"
         />
       </div>
+
+      {actionError && (
+        <p className="text-sm text-destructive">{actionError}</p>
+      )}
 
       {/* Members + invites table */}
       <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -187,12 +197,19 @@ export function MembersPage() {
                   <div className="relative">
                     <select
                       value={m.role}
-                      onChange={(e) =>
-                        roleMut.mutate({
-                          userId: m.userId,
-                          role: e.target.value as ProviderRole,
-                        })
-                      }
+                      onChange={(e) => {
+                        setActionError(null);
+                        roleMut.mutate(
+                          {
+                            userId: m.userId,
+                            role: e.target.value as ProviderRole,
+                          },
+                          {
+                            onError: (err) =>
+                              setActionError(providerErrorMessage(t, err)),
+                          },
+                        );
+                      }}
                       className={`appearance-none rounded-full border px-3 py-1 pr-7 text-xs font-medium ${style.pill} cursor-pointer focus:outline-none`}
                     >
                       <option value="owner">Owner</option>
@@ -206,8 +223,13 @@ export function MembersPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm(t("removeConfirm")))
-                        removeMut.mutate(m.userId);
+                      if (confirm(t("removeConfirm"))) {
+                        setActionError(null);
+                        removeMut.mutate(m.userId, {
+                          onError: (err) =>
+                            setActionError(providerErrorMessage(t, err)),
+                        });
+                      }
                     }}
                     className="ml-2 rounded p-1 text-muted-foreground hover:text-destructive"
                   >
@@ -258,7 +280,13 @@ export function MembersPage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => revokeMut.mutate(inv.id)}
+                  onClick={() => {
+                    setActionError(null);
+                    revokeMut.mutate(inv.id, {
+                      onError: (err) =>
+                        setActionError(providerErrorMessage(t, err)),
+                    });
+                  }}
                   className="ml-2 rounded p-1 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
