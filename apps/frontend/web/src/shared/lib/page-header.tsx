@@ -21,17 +21,22 @@ export function usePageHeaderAction() {
 }
 
 export function usePageHeader(title: string, subtitle?: string) {
-  const ctx = useContext(PageHeaderContext);
+  // Depend on the setter, not the whole context object. Shells build their
+  // context value inline, so `ctx` is a new object every render — keeping it
+  // in the dep array re-fires this effect on every render, and setHeader's new
+  // object defeats React's bail-out, so the two loop forever.
+  // useState setters are referentially stable, so this settles.
+  const setHeader = useContext(PageHeaderContext)?.setHeader;
   useEffect(() => {
-    ctx?.setHeader({ title, subtitle });
-  }, [title, subtitle, ctx]);
+    setHeader?.({ title, subtitle });
+  }, [title, subtitle, setHeader]);
 }
 
 export function usePageAction(node: ReactNode, deps: unknown[] = []) {
-  const ctx = useContext(PageHeaderContext);
+  const setAction = useContext(PageHeaderContext)?.setAction;
   useEffect(() => {
-    ctx?.setAction(node);
-    return () => ctx?.setAction(null);
+    setAction?.(node);
+    return () => setAction?.(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [setAction, ...deps]);
 }

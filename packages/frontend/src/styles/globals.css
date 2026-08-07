@@ -1,0 +1,125 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --color-brand-navy: #00244d;
+  --color-brand-accent: #007aff;
+  --color-brand-sky: #38b6ff;
+  --color-brand-ink: #0e1f37;
+
+  --color-background: #ffffff;
+  --color-foreground: #0e1f37;
+  --color-primary: #00244d;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f4f6fa;
+  --color-secondary-foreground: #0e1f37;
+  --color-muted: #f4f6fa;
+  --color-muted-foreground: #6b7a90;
+  --color-accent: #007aff;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #b00020;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #007aff;
+  --color-card: #ffffff;
+  --color-card-foreground: #0e1f37;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0e1f37;
+
+  --color-sidebar: #f7f9fc;
+  --color-sidebar-foreground: #0e1f37;
+  --color-sidebar-primary: #00244d;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #e8eef7;
+  --color-sidebar-accent-foreground: #00244d;
+  --color-sidebar-border: #e5e7eb;
+  --color-sidebar-ring: #007aff;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --color-background: #0a0d14;
+  --color-foreground: #e6e9ef;
+  --color-primary: #007aff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #161a23;
+  --color-secondary-foreground: #e6e9ef;
+  --color-muted: #161a23;
+  --color-muted-foreground: #8a93a6;
+  --color-accent: #1a2030;
+  --color-accent-foreground: #e6e9ef;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #1f2532;
+  --color-input: #1f2532;
+  --color-ring: #007aff;
+  --color-card: #10141d;
+  --color-card-foreground: #e6e9ef;
+  --color-popover: #10141d;
+  --color-popover-foreground: #e6e9ef;
+
+  --color-sidebar: #0d1119;
+  --color-sidebar-foreground: #e6e9ef;
+  --color-sidebar-primary: #007aff;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #1a2030;
+  --color-sidebar-accent-foreground: #e6e9ef;
+  --color-sidebar-border: #1f2532;
+  --color-sidebar-ring: #007aff;
+}
+
+@theme inline {
+  --color-brand-navy: var(--color-brand-navy);
+  --color-brand-accent: var(--color-brand-accent);
+  --color-brand-sky: var(--color-brand-sky);
+  --color-brand-ink: var(--color-brand-ink);
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-destructive: var(--color-destructive);
+  --color-destructive-foreground: var(--color-destructive-foreground);
+  --color-border: var(--color-border);
+  --color-input: var(--color-input);
+  --color-ring: var(--color-ring);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-popover: var(--color-popover);
+  --color-popover-foreground: var(--color-popover-foreground);
+  --color-sidebar: var(--color-sidebar);
+  --color-sidebar-foreground: var(--color-sidebar-foreground);
+  --color-sidebar-primary: var(--color-sidebar-primary);
+  --color-sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
+  --color-sidebar-accent: var(--color-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
+  --color-sidebar-border: var(--color-sidebar-border);
+  --color-sidebar-ring: var(--color-sidebar-ring);
+  --radius: var(--radius);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+  }
+}

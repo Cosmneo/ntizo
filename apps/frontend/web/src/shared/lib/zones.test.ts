@@ -11,7 +11,7 @@ import {
 const user = (role: CurrentUserDTO["role"]): CurrentUserDTO =>
   ({ id: "u1", email: "a@b.c", role, status: "active", createdAt: "", name: "",
      firstName: "", lastName: "", displayName: "", avatarUrl: null,
-     phoneNumber: null, bio: null, language: "en", timezone: "UTC" });
+     phoneNumber: null, bio: null, language: "en-US", timezone: "UTC" });
 
 describe("canAccessAdmin", () => {
   it("is true only for admin role", () => {
@@ -59,5 +59,33 @@ describe("resolvePostLoginDestination", () => {
     expect(resolvePostLoginDestination(user("organization_owner"), null)).toBe("/provider");
     expect(resolvePostLoginDestination(user("customer"), null)).toBe("/");
     expect(resolvePostLoginDestination(user("admin"), "https://evil.com")).toBe("/admin");
+  });
+
+  // `upgradeToProvider()` sets verificationStatus and deliberately leaves role
+  // as "customer", so ownership — not role — is what makes the provider zone
+  // reachable. This must agree with canAccessProvider, which the zone switcher
+  // uses; otherwise the switcher offers a zone that login refuses to route to.
+  it("routes a provider-owning customer to /provider", () => {
+    expect(resolvePostLoginDestination(user("customer"), null, 1)).toBe("/provider");
+  });
+
+  it("agrees with canAccessProvider for every user/ownership combination", () => {
+    for (const role of ["customer", "individual_provider", "organization_owner"] as const) {
+      for (const count of [0, 1]) {
+        const u = user(role);
+        const expected = canAccessProvider(u, count) ? "/provider" : "/";
+        expect(resolvePostLoginDestination(u, null, count)).toBe(expected);
+      }
+    }
+  });
+
+  it("keeps admin ahead of provider ownership", () => {
+    expect(resolvePostLoginDestination(user("admin"), null, 3)).toBe("/admin");
+  });
+
+  it("still honours an explicit next over ownership", () => {
+    expect(resolvePostLoginDestination(user("customer"), "/provider/members", 1)).toBe(
+      "/provider/members",
+    );
   });
 });

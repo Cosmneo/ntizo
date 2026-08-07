@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Bell, Plus, Search } from "lucide-react";
 import {
   Separator,
@@ -17,13 +17,19 @@ export function ProviderShell({ children }: { children: ReactNode }) {
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
   const [action, setAction] = useState<ReactNode>(null);
 
+  // Stable identity so consumers don't re-render on every shell render.
+  const headerCtx = useMemo(
+    () => ({ header, setHeader, action, setAction }),
+    [header, action],
+  );
+
   useEffect(() => {
     document.documentElement.classList.add("dark");
     return () => document.documentElement.classList.remove("dark");
   }, []);
 
   return (
-    <PageHeaderContext.Provider value={{ header, setHeader, action, setAction }}>
+    <PageHeaderContext.Provider value={headerCtx}>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>

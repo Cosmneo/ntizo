@@ -40,12 +40,22 @@ export function isSafeInternalPath(path: string | null): path is string {
   }
 }
 
+/**
+ * Where an authenticated user should land.
+ *
+ * `providerCount` matters because becoming a provider sets the user's
+ * verificationStatus and leaves `role` as "customer" — so ownership, not role,
+ * is what makes the provider zone reachable. Delegating to canAccessProvider
+ * keeps this in lockstep with the zone switcher; checking role alone would
+ * offer a zone that login then refuses to route to.
+ */
 export function resolvePostLoginDestination(
   user: CurrentUserDTO | null,
   next: string | null,
+  providerCount = 0,
 ): string {
   if (isSafeInternalPath(next)) return next;
   if (canAccessAdmin(user)) return "/admin";
-  if (user && PROVIDER_ROLES.has(user.role)) return "/provider";
+  if (canAccessProvider(user, providerCount)) return "/provider";
   return "/";
 }

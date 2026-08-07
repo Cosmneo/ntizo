@@ -30,6 +30,12 @@ export function SignUp() {
           name: `${value.firstName} ${value.lastName}`.trim(),
           firstName: value.firstName,
           lastName: value.lastName,
+          // Absolute, and pointing at this app. better-auth builds the
+          // verification link off its own baseURL (the API origin) and
+          // redirects here afterwards — without this the user lands on the
+          // API's JSON root instead of the app. Origin-checked server-side
+          // against trustedOrigins, which already includes this origin.
+          callbackURL: `${window.location.origin}/`,
         } as Parameters<typeof authClient.signUp.email>[0]);
         if (error) return { form: error.message ?? "Sign up failed" };
         setSubmitted(value.email);

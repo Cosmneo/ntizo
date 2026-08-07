@@ -1,0 +1,66 @@
+{
+  "name": "@ntizo/backend",
+  "version": "0.0.1",
+  "description": "Ntizo backend package (hexagonal / DDD, module-based)",
+  "type": "module",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "src"
+  ],
+  "exports": {
+    "./modules/better-auth": "./src/modules/better-auth/lib/better-auth.ts",
+    "./modules/better-auth/schema": "./src/modules/better-auth/infrastructure/database/schema.ts",
+    "./modules/ntizo/bounded-contexts/user": "./src/modules/ntizo/bounded-contexts/user/bootstrap/index.ts",
+    "./modules/ntizo/bounded-contexts/user/router": "./src/modules/ntizo/bounded-contexts/user/infrastructure/rest/user.router.ts",
+    "./modules/ntizo/bounded-contexts/provider": "./src/modules/ntizo/bounded-contexts/provider/bootstrap/index.ts",
+    "./modules/ntizo/bounded-contexts/provider/router": "./src/modules/ntizo/bounded-contexts/provider/infrastructure/rest/provider.router.ts",
+    "./modules/ntizo/orchestrations/workflows/provider": "./src/modules/ntizo/orchestrations/workflows/provider/bootstrap/index.ts",
+    "./shared/infra/saga": "./src/modules/ntizo/shared/infrastructure/saga/saga.ts",
+    "./modules/ntizo/shared/infrastructure/execution-context": "./src/modules/ntizo/shared/infrastructure/execution-context/index.ts",
+    "./modules/ntizo/schema": "./src/modules/ntizo/infrastructure/database/schema.ts",
+    "./shared/infra": "./src/shared/infrastructure/stores/infra-store.ts",
+    "./shared/infra/logger": "./src/shared/infrastructure/logger/index.ts",
+    "./shared/infra/config": "./src/shared/infrastructure/config/stage-properties.ts",
+    "./shared/infra/email": "./src/shared/infrastructure/email/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "db:auth:dev:generate": "STAGE=dev drizzle-kit generate --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:dev:migrate": "STAGE=dev drizzle-kit migrate --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:dev:studio": "STAGE=dev drizzle-kit studio --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:qa:generate": "STAGE=qa drizzle-kit generate --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:qa:migrate": "STAGE=qa drizzle-kit migrate --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:qa:studio": "STAGE=qa drizzle-kit studio --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:prod:generate": "STAGE=prod drizzle-kit generate --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:prod:migrate": "STAGE=prod drizzle-kit migrate --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:auth:prod:studio": "STAGE=prod drizzle-kit studio --config ./src/modules/better-auth/drizzle.config.ts",
+    "db:ntizo:dev:generate": "STAGE=dev drizzle-kit generate --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:dev:migrate": "STAGE=dev drizzle-kit migrate --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:dev:studio": "STAGE=dev drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:qa:generate": "STAGE=qa drizzle-kit generate --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:qa:migrate": "STAGE=qa drizzle-kit migrate --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:qa:studio": "STAGE=qa drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:prod:generate": "STAGE=prod drizzle-kit generate --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:prod:migrate": "STAGE=prod drizzle-kit migrate --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:ntizo:prod:studio": "STAGE=prod drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts"
+  },
+  "dependencies": {
+    "@ntizo/shared": "workspace:*",
+    "better-auth": "^1.5.5",
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.11.9",
+    "postgres": "^3.4.8",
+    "resend": "^4.0.0"
+  },
+  "devDependencies": {
+    "@ntizo/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "drizzle-kit": "^0.30.0",
+    "typescript": "5.9.2"
+  }
+}

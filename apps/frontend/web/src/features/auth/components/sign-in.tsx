@@ -14,8 +14,7 @@ import {
   Separator,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { fetchCurrentUser } from "@/shared/lib/api/me";
-import { resolvePostLoginDestination } from "@/shared/lib/zones";
+import { resolveDestinationForSession } from "@/shared/lib/api/post-login";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 
@@ -35,8 +34,7 @@ export function SignIn() {
           password: value.password,
         });
         if (error) return { form: error.message ?? "Sign in failed" };
-        const me = await fetchCurrentUser();
-        navigate({ to: resolvePostLoginDestination(me, next ?? null) });
+        navigate({ to: await resolveDestinationForSession(next ?? null) });
         return null;
       },
     },
