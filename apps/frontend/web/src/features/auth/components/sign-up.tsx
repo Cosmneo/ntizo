@@ -24,22 +24,32 @@ export function SignUp() {
     defaultValues: { firstName: "", lastName: "", email: "", password: "" },
     validators: {
       onSubmitAsync: async ({ value }) => {
-        const { error } = await authClient.signUp.email({
-          email: value.email,
-          password: value.password,
-          name: `${value.firstName} ${value.lastName}`.trim(),
-          firstName: value.firstName,
-          lastName: value.lastName,
-          // Absolute, and pointing at this app. better-auth builds the
-          // verification link off its own baseURL (the API origin) and
-          // redirects here afterwards — without this the user lands on the
-          // API's JSON root instead of the app. Origin-checked server-side
-          // against trustedOrigins, which already includes this origin.
-          callbackURL: `${window.location.origin}/`,
-        } as Parameters<typeof authClient.signUp.email>[0]);
-        if (error) return { form: error.message ?? "Sign up failed" };
-        setSubmitted(value.email);
-        return null;
+        try {
+          const { error } = await authClient.signUp.email({
+            email: value.email,
+            password: value.password,
+            name: `${value.firstName} ${value.lastName}`.trim(),
+            firstName: value.firstName,
+            lastName: value.lastName,
+            // Absolute, and pointing at this app. better-auth builds the
+            // verification link off its own baseURL (the API origin) and
+            // redirects here afterwards — without this the user lands on the
+            // API's JSON root instead of the app. Origin-checked server-side
+            // against trustedOrigins, which already includes this origin.
+            callbackURL: `${window.location.origin}/`,
+          } as Parameters<typeof authClient.signUp.email>[0]);
+          if (error) return { form: error.message ?? "Sign up failed" };
+          setSubmitted(value.email);
+          return null;
+        } catch (err) {
+          // authClient doesn't set throw:true/catchAllError, so a
+          // network-level failure rejects instead of resolving {error} —
+          // normalize it the same way so the form always has a message to
+          // show, instead of `.form` being undefined on a bare thrown value.
+          return {
+            form: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+          };
+        }
       },
     },
   });

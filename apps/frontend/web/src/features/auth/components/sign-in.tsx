@@ -29,13 +29,23 @@ export function SignIn() {
     defaultValues: { email: "", password: "" },
     validators: {
       onSubmitAsync: async ({ value }) => {
-        const { error } = await authClient.signIn.email({
-          email: value.email,
-          password: value.password,
-        });
-        if (error) return { form: error.message ?? "Sign in failed" };
-        navigate({ to: await resolveDestinationForSession(next ?? null) });
-        return null;
+        try {
+          const { error } = await authClient.signIn.email({
+            email: value.email,
+            password: value.password,
+          });
+          if (error) return { form: error.message ?? "Sign in failed" };
+          navigate({ to: await resolveDestinationForSession(next ?? null) });
+          return null;
+        } catch (err) {
+          // authClient doesn't set throw:true/catchAllError, so a
+          // network-level failure rejects instead of resolving {error} —
+          // normalize it the same way so the form always has a message to
+          // show, instead of `.form` being undefined on a bare thrown value.
+          return {
+            form: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+          };
+        }
       },
     },
   });

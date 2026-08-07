@@ -18,10 +18,19 @@ export default [
       "boundaries/elements": [
         { type: "domain", pattern: ["src/features/*/domain/**", "src/shared/domain/**"] },
         { type: "data", pattern: ["src/features/*/data/**"] },
-        { type: "viewmodel", pattern: ["src/features/*/viewmodel/**"] },
+        {
+          type: "viewmodel",
+          pattern: ["src/features/*/viewmodel/**", "src/features/*/hooks/**"],
+        },
         {
           type: "ui",
-          pattern: ["src/features/*/ui/**", "src/shared/ui/**", "src/shared/components/**"],
+          pattern: [
+            "src/features/*/ui/**",
+            "src/shared/ui/**",
+            "src/shared/components/**",
+            "src/features/*/components/**",
+            "src/features/*/pages/**",
+          ],
         },
         { type: "routes", pattern: ["src/routes/**"] },
         { type: "shared", pattern: ["src/shared/**"] },
