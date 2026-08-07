@@ -12,7 +12,6 @@ import { Link } from "@tanstack/react-router";
 
 const NAVY = "#0e1f37";
 const ACCENT = "#007AFF";
-const SOFT_BG = "#eef3fb";
 const CARD = "#ffffff";
 const MUTED = "#6b7a90";
 const BORDER = "#dde6f3";

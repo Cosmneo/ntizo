@@ -1,23 +1,19 @@
 import { useTranslation } from "react-i18next";
 import {
   Activity,
-  ArrowRight,
   CalendarCheck,
   Clock,
   DollarSign,
   Star,
   TrendingUp,
-  Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@ntizo/frontend-ui";
+import { Card, CardContent } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "../hooks/use-active-provider";
-import { useProviderDetail } from "../hooks/use-providers";
 
 export function OverviewPage() {
   const { t } = useTranslation("provider");
   const { activeProvider } = useActiveProvider();
-  const { data: detail, isLoading } = useProviderDetail(activeProvider?.id);
 
   usePageHeader(
     activeProvider?.name ?? t("overview"),
@@ -30,7 +26,6 @@ export function OverviewPage() {
     );
   }
 
-  const memberCount = isLoading ? "…" : String(detail?.members?.length ?? 1);
 
   return (
     <div className="flex flex-col gap-6">
@@ -104,11 +99,3 @@ function StatCard({
   );
 }
 
-function ReportStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="text-center">
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
-    </div>
-  );
-}

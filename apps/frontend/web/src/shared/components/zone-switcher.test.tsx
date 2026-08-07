@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
-  RouterProvider, createRootRoute, createRoute, createRouter, createMemoryHistory,
+  RouterProvider, createRootRoute, createRouter, createMemoryHistory,
 } from "@tanstack/react-router";
 import { ZoneLinks } from "./zone-switcher";
 

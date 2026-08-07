@@ -11,7 +11,11 @@ function readStored(): string | null {
 
 export function useActiveProvider() {
   const query = useMyProviders();
-  const providers: ProviderSummary[] = query.data ?? [];
+  // `query.data ?? []` allocates a new array on every render while the query is
+  // loading or errored, which would change the identity of every dep array
+  // below on each render. Memoising keeps the effect from re-firing forever —
+  // the same failure mode that made usePageHeader loop.
+  const providers: ProviderSummary[] = useMemo(() => query.data ?? [], [query.data]);
   const [activeId, setActiveId] = useState<string | null>(() => readStored());
 
   useEffect(() => {
