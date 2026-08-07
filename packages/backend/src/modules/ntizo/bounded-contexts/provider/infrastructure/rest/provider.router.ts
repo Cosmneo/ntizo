@@ -5,7 +5,10 @@ import { Hono } from "hono";
 import { inArray } from "drizzle-orm";
 import type { ProviderBootstrap } from "../../bootstrap";
 import type { ProviderWorkflowsBootstrap } from "../../../../orchestrations/workflows/provider/bootstrap";
-import type { ExecutionContext } from "../../../../shared/infrastructure/execution-context";
+import {
+  type ExecutionContext,
+  requireAuthenticated,
+} from "../../../../shared/infrastructure/execution-context";
 import { db } from "../../../../../better-auth/infrastructure/client/drizzle";
 import { user as userTable } from "../../../../../better-auth/infrastructure/database/schema";
 
@@ -115,6 +118,17 @@ export function createProviderRouter(deps: CreateProviderRouterDeps) {
     const ctx = c.var.executionContext;
     if (!requireAuth(ctx)) return c.json({ error: "unauthenticated" }, 401);
     const id = c.req.param("id");
+    const requester = requireAuthenticated(ctx);
+
+    // Membership gate, matching the read-side isMember check. Return 404
+    // (not 403) for non-members so we don't confirm the provider exists.
+    const requesterMembership =
+      await provider.adapters.providerMemberRepository.findByProviderAndUser(
+        id,
+        requester.userId,
+      );
+    if (!requesterMembership) return c.json({ error: "not found" }, 404);
+
     const found = await provider.adapters.providerRepository.findById(id);
     if (!found) return c.json({ error: "not found" }, 404);
 
@@ -171,7 +185,10 @@ export function createProviderRouter(deps: CreateProviderRouterDeps) {
         providerId: c.req.param("id"),
         ...body,
       });
-      return c.json(out, 201);
+      // `out` also carries `token`, the live invite secret — never put it on
+      // the wire. Matches the projection done on the GraphQL side (see
+      // mapProviderInviteSendOutput in write/provider/graphql/handlers).
+      return c.json({ inviteId: out.inviteId }, 201);
     } catch (err) {
       return c.json({ error: (err as Error).message }, 400);
     }
