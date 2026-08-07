@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
+import { providerErrorMessage } from "../domain/errors";
 import { useRegisterMe } from "../viewmodel/use-provider-mutations";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
 import { CreateProviderDialog } from "./create-provider-dialog";
@@ -43,7 +44,7 @@ export function NoProviderPage() {
 
       {registerMut.error && (
         <p className="text-sm text-[var(--color-destructive)] mt-4">
-          {String(registerMut.error)}
+          {providerErrorMessage(t, registerMut.error)}
         </p>
       )}
 

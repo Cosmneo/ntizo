@@ -1,4 +1,5 @@
-import { listMyProviders } from "@/features/provider/lib/provider-api";
+import type { ProviderSummary } from "@/features/provider/domain/types";
+import { providerQueries } from "@/features/provider/data/provider.repository";
 import { fetchCurrentUser } from "@/shared/lib/api/me";
 import { resolvePostLoginDestination } from "@/shared/lib/zones";
 
@@ -14,9 +15,15 @@ import { resolvePostLoginDestination } from "@/shared/lib/zones";
 export async function resolveDestinationForSession(
   next: string | null,
 ): Promise<string> {
+  // Called outside a React context, so this invokes the repository's queryFn
+  // directly rather than a hook. See routes/provider/index.tsx for the same
+  // pattern and why the cast is needed.
+  const listMine = providerQueries.mine().queryFn as () => Promise<
+    ProviderSummary[]
+  >;
   const [me, providerCount] = await Promise.all([
     fetchCurrentUser(),
-    listMyProviders()
+    listMine()
       .then((list) => list.length)
       .catch(() => 0),
   ]);

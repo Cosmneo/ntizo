@@ -63,5 +63,12 @@
   "dangerZone": "Danger zone",
   "deactivate": "Deactivate provider",
   "deactivateConfirm": "Deactivate this provider? This cannot be easily undone.",
-  "deactivateDescription": "Deactivating the provider will hide it from customers and stop new bookings."
+  "deactivateDescription": "Deactivating the provider will hide it from customers and stop new bookings.",
+  "errors": {
+    "memberAlreadyExists": "This person is already a member of this organization.",
+    "inviteAlreadyUsed": "This invite has already been used.",
+    "inviteExpired": "This invite has expired. Ask an owner or admin to send a new one.",
+    "insufficientPermissions": "You don't have permission to do this.",
+    "generic": "Something went wrong. Please try again."
+  }
 }

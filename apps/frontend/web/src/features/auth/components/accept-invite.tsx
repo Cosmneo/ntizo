@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
-import { acceptInvite } from "@/features/provider/lib/provider-api";
+import { providerErrorMessage } from "@/features/provider/domain/errors";
+import { useAcceptInvite } from "@/features/provider/viewmodel/use-member-mutations";
 
 export function AcceptInvite() {
   const { t } = useTranslation("auth");
@@ -11,6 +12,7 @@ export function AcceptInvite() {
   const [status, setStatus] = useState<"pending" | "ok" | "error">("pending");
   const [error, setError] = useState<string | null>(null);
   const hasFiredRef = useRef(false);
+  const { mutateAsync: accept } = useAcceptInvite();
 
   useEffect(() => {
     if (!token) {
@@ -20,16 +22,16 @@ export function AcceptInvite() {
     }
     if (hasFiredRef.current) return;
     hasFiredRef.current = true;
-    acceptInvite(token)
+    accept(token)
       .then(() => {
         setStatus("ok");
         setTimeout(() => nav({ to: "/provider/overview" }), 800);
       })
       .catch((e) => {
         setStatus("error");
-        setError(e instanceof Error ? e.message : t("inviteError"));
+        setError(e instanceof Error ? providerErrorMessage(t, e) : t("inviteError"));
       });
-  }, [token, nav, t]);
+  }, [token, nav, t, accept]);
 
   return (
     <AuthLayout title={t("acceptInvite")} subtitle="" footer={null}>

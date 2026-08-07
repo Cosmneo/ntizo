@@ -63,5 +63,12 @@
   "dangerZone": "Zona de perigo",
   "deactivate": "Desativar prestador",
   "deactivateConfirm": "Desativar este prestador? Não é fácil reverter.",
-  "deactivateDescription": "A desativação oculta o prestador dos clientes e impede novas reservas."
+  "deactivateDescription": "A desativação oculta o prestador dos clientes e impede novas reservas.",
+  "errors": {
+    "memberAlreadyExists": "Esta pessoa já é membro desta organização.",
+    "inviteAlreadyUsed": "Este convite já foi utilizado.",
+    "inviteExpired": "Este convite expirou. Peça a um proprietário ou administrador para enviar um novo.",
+    "insufficientPermissions": "Não tem permissão para fazer isto.",
+    "generic": "Ocorreu um erro. Tente novamente."
+  }
 }

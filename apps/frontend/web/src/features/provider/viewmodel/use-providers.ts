@@ -1,23 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { listMyProviders, getProvider } from "../lib/provider-api";
-
-export const providerKeys = {
-  all: ["providers"] as const,
-  mine: ["providers", "mine"] as const,
-  detail: (id: string) => ["providers", "detail", id] as const,
-};
+import { providerQueries } from "../data/provider.repository";
 
 export function useMyProviders() {
-  return useQuery({
-    queryKey: providerKeys.mine,
-    queryFn: listMyProviders,
-  });
+  return useQuery(providerQueries.mine());
 }
 
 export function useProviderDetail(id: string | undefined) {
   return useQuery({
-    queryKey: providerKeys.detail(id ?? ""),
-    queryFn: () => getProvider(id!),
+    ...providerQueries.byId(id ?? ""),
     enabled: !!id,
   });
 }

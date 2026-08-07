@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button, Input, Label } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
+import { providerErrorMessage } from "../domain/errors";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
 import { useProviderDetail } from "../viewmodel/use-providers";
 import {
@@ -44,7 +45,7 @@ export function SettingsPage() {
       await updateMut.mutateAsync({ name, description, address });
       setMsg(t("saved"));
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Error");
+      setMsg(providerErrorMessage(t, err));
     }
   }
 

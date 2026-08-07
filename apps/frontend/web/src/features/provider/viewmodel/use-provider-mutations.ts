@@ -2,10 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createProvider,
   deactivateProvider,
+  providerQueries,
   registerMe,
   updateProvider,
-} from "../lib/provider-api";
-import { providerKeys } from "./use-providers";
+} from "../data/provider.repository";
 import type { CreateProviderBody, RegisterMeBody, ProviderDetail } from "../domain/types";
 
 export function useCreateProvider() {
@@ -13,7 +13,7 @@ export function useCreateProvider() {
   return useMutation({
     mutationFn: (body: CreateProviderBody) => createProvider(body),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerKeys.mine });
+      void qc.invalidateQueries({ queryKey: providerQueries.mine().queryKey });
     },
   });
 }
@@ -23,7 +23,7 @@ export function useRegisterMe() {
   return useMutation({
     mutationFn: (body: RegisterMeBody = {}) => registerMe(body),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerKeys.mine });
+      void qc.invalidateQueries({ queryKey: providerQueries.mine().queryKey });
     },
   });
 }
@@ -34,8 +34,8 @@ export function useUpdateProvider(providerId: string) {
     mutationFn: (body: Partial<Pick<ProviderDetail, "name" | "description" | "address">>) =>
       updateProvider(providerId, body),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerKeys.mine });
-      void qc.invalidateQueries({ queryKey: providerKeys.detail(providerId) });
+      void qc.invalidateQueries({ queryKey: providerQueries.mine().queryKey });
+      void qc.invalidateQueries({ queryKey: providerQueries.byId(providerId).queryKey });
     },
   });
 }
@@ -45,7 +45,7 @@ export function useDeactivateProvider() {
   return useMutation({
     mutationFn: (providerId: string) => deactivateProvider(providerId),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerKeys.mine });
+      void qc.invalidateQueries({ queryKey: providerQueries.mine().queryKey });
     },
   });
 }

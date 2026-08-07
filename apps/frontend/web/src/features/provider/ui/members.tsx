@@ -26,6 +26,7 @@ import {
   Skeleton,
 } from "@ntizo/frontend-ui";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
+import { providerErrorMessage } from "../domain/errors";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
 import { useProviderDetail } from "../viewmodel/use-providers";
 import {
@@ -86,7 +87,7 @@ export function MembersPage() {
           setInviteOpen(false);
           return null;
         } catch (e) {
-          return { form: e instanceof Error ? e.message : "Failed" };
+          return { form: providerErrorMessage(t, e) };
         }
       },
     },

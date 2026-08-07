@@ -52,10 +52,11 @@ const RAW_BODY_PREVIEW_LENGTH = 200;
  * `undefined` data. Throw on either signal.
  *
  * The response body is read as text and defensively `JSON.parse`d — mirroring
- * `features/provider/lib/provider-api.ts`'s `request()` — because a proxy
- * error page, an empty 502, or a truncated response is not valid JSON. Every
- * failure mode surfaces as a `GraphqlError`; callers that branch on
- * `instanceof GraphqlError` / `.code` must never see a raw `SyntaxError`.
+ * the old REST client's `request()` helper (since removed in the GraphQL
+ * cutover) — because a proxy error page, an empty 502, or a truncated
+ * response is not valid JSON. Every failure mode surfaces as a
+ * `GraphqlError`; callers that branch on `instanceof GraphqlError` / `.code`
+ * must never see a raw `SyntaxError`.
  */
 export async function sessionGraphql<T>(
   query: string,
