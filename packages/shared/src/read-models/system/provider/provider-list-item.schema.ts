@@ -1,15 +1,18 @@
-// Read model returned by GET /providers/mine.
-// Mirrors flowzao's user-organization.schema location & purpose: a
-// viewer-scoped list item (carries the viewer's role, not just the aggregate).
+import { z } from "zod";
 
-export type ProviderListItemType = "individual" | "organization";
-export type ProviderListItemRole = "owner" | "admin" | "staff";
+export const providerListItemType = z.enum(["individual", "organization"]);
+export const providerListItemRole = z.enum(["owner", "admin", "staff"]);
 
-export interface ProviderListItemDTO {
-  id: string;
-  name: string;
-  slug: string;
-  type: ProviderListItemType;
-  status: string;
-  role: ProviderListItemRole;
-}
+/** Read model returned by the `provider.mine` query — viewer-scoped. */
+export const providerListItemReadModel = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  slug: z.string(),
+  type: providerListItemType,
+  status: z.string(),
+  role: providerListItemRole,
+});
+
+export type ProviderListItemType = z.infer<typeof providerListItemType>;
+export type ProviderListItemRole = z.infer<typeof providerListItemRole>;
+export type ProviderListItemDTO = z.infer<typeof providerListItemReadModel>;
