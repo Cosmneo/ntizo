@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { createProviderReadHandlers } from "../graphql/handlers/queries.handlers";
 import { GetProviderDetailProjection } from "../app/use-cases/get-provider-detail.projection";
 import { mapGetProviderDetailInput } from "../graphql/handlers/arg-mappers";
+import { ProviderNotFoundError } from "../../../bounded-contexts/provider/domain/exceptions";
 import type { ProviderReadRepositoryPort } from "../app/ports/outbound/provider-read.repository.port";
 import type { ProviderDetailDTO, ProviderListItemDTO } from "@ntizo/shared/read-models";
 
@@ -112,7 +113,7 @@ describe("GetProviderDetailProjection authorization gate", () => {
 
     await expect(
       projection.execute({ providerId: "p1", requestedByUserId: "u1" }),
-    ).rejects.toThrow("[read/provider] provider not found");
+    ).rejects.toThrow(ProviderNotFoundError);
   });
 });
 
