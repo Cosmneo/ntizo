@@ -11,6 +11,7 @@ import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/use
 import { buildYoga } from "./build-yoga";
 import { buildHardeningPlugins } from "./hardening";
 import { createGraphqlContext } from "./context-factory";
+import { graphqlCorsFetch } from "./cors";
 import type { AppBindings } from "../types";
 
 /**
@@ -50,5 +51,9 @@ function getYoga(stage: string) {
 }
 
 export function mountPrivateGraphql(app: Hono<{ Bindings: AppBindings }>) {
-  app.all("/graphql", (c) => getYoga(c.env.STAGE ?? "local").fetch(c.req.raw));
+  app.all("/graphql", (c) =>
+    graphqlCorsFetch(c.req.raw, (request) =>
+      getYoga(c.env.STAGE ?? "local").fetch(request),
+    ),
+  );
 }

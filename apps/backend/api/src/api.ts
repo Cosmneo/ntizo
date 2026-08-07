@@ -16,6 +16,11 @@ const app = new Hono<{ Bindings: AppBindings }>();
 
 app.use("*", configMiddleware);
 app.use("/api/*", authCors);
+// /graphql's own CORS enforcement lives inside mountPrivateGraphql
+// (graphql/cors.ts) rather than as a Hono middleware here — Yoga's bundled
+// default CORS plugin builds its own Response inside `fetch()`, which a
+// wrapping Hono middleware cannot correct after the fact. See graphql/cors.ts
+// for why, and for the origin allowlist shared with authCors.
 
 // Better-auth handler runs BEFORE execution-context middleware so
 // login/signup/callback endpoints don't re-resolve their own session.
