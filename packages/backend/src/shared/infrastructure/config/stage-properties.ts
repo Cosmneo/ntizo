@@ -48,5 +48,14 @@ export function getStageProperties(stage: Stage): StageProperties {
 
 export function getTrustedOrigins(stage: Stage): string[] {
   const p = getStageProperties(stage);
-  return [p.baseUrl, p.adminUrl, p.providerUrl, p.landingUrl];
+  // adminUrl/providerUrl are pre-consolidation subdomains (admin.ntizo.com,
+  // provider.ntizo.com and their dev/qa variants) for apps that no longer
+  // exist — the single web app now serves ntizo.com / dev.ntizo.com /
+  // qa.ntizo.com only. This list gates REST CORS, GraphQL CORS, and
+  // better-auth's trustedOrigins, and combined with crossSubDomainCookies
+  // (domain: "ntizo.com"), trusting those hosts would let any origin at
+  // those (now-unclaimed) names receive the session cookie. The
+  // StageProperties fields themselves are left in place; only trust is
+  // withdrawn here.
+  return [p.baseUrl, p.landingUrl];
 }
