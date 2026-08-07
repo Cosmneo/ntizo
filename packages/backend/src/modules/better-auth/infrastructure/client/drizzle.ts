@@ -1,20 +1,16 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { infraStore } from "../../../../shared/infrastructure/stores/infra-store";
-import * as schema from "../database/schema";
+import { Db } from "../../../../shared/infrastructure/database/connection";
 
-let _db: ReturnType<typeof drizzle<typeof schema>> | undefined;
-
+/**
+ * The per-request drizzle client. Signature unchanged, so all existing
+ * repositories keep working — but the handle is now scoped to the current
+ * request instead of the isolate.
+ */
 export function getDb() {
-  if (!_db) {
-    const env = infraStore.getEnv();
-    const client = postgres(env.DATABASE_URL, { prepare: false });
-    _db = drizzle(client, { schema });
-  }
-  return _db;
+  return Db.getDbConnection().drizzleDbClient;
 }
 
-// Convenience lazy proxy so existing imports `import { db } from ...` still work.
+/** Legacy lazy proxy. Resolves per property access, so it picks up the
+ *  current request's connection. Do not use in new code — call getDb(). */
 export const db = new Proxy({} as ReturnType<typeof getDb>, {
   get(_t, prop) {
     return (getDb() as unknown as Record<string | symbol, unknown>)[prop];

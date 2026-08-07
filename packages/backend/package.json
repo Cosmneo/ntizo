@@ -23,6 +23,7 @@
     "./modules/ntizo/shared/infrastructure/execution-context": "./src/modules/ntizo/shared/infrastructure/execution-context/index.ts",
     "./modules/ntizo/schema": "./src/modules/ntizo/infrastructure/database/schema.ts",
     "./shared/infra": "./src/shared/infrastructure/stores/infra-store.ts",
+    "./shared/infra/database": "./src/shared/infrastructure/database/connection.ts",
     "./shared/infra/logger": "./src/shared/infrastructure/logger/index.ts",
     "./shared/infra/config": "./src/shared/infrastructure/config/stage-properties.ts",
     "./shared/infra/email": "./src/shared/infrastructure/email/index.ts"
@@ -59,6 +60,7 @@
   },
   "devDependencies": {
     "@ntizo/typescript-config": "workspace:*",
+    "@types/bun": "^1.3.12",
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.30.0",
     "typescript": "5.9.2"
