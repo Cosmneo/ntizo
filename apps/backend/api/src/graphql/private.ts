@@ -51,9 +51,10 @@ function getYoga(stage: string) {
 }
 
 export function mountPrivateGraphql(app: Hono<{ Bindings: AppBindings }>) {
-  app.all("/graphql", (c) =>
-    graphqlCorsFetch(c.req.raw, (request) =>
-      getYoga(c.env.STAGE ?? "local").fetch(request),
-    ),
-  );
+  app.all("/graphql", (c) => {
+    const stage = c.env.STAGE ?? "local";
+    return graphqlCorsFetch(c.req.raw, stage, (request) =>
+      getYoga(stage).fetch(request),
+    );
+  });
 }

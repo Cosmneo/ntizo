@@ -1,4 +1,5 @@
-import { resolveTrustedOrigin } from "../middlewares/cors";
+import { isOriginTrusted } from "../middlewares/cors";
+import type { Stage } from "@ntizo/backend/shared/infra/config";
 
 /**
  * Origin-restricted CORS enforcement for `/graphql`, applied around the
@@ -23,8 +24,14 @@ import { resolveTrustedOrigin } from "../middlewares/cors";
  *
  * So this function owns the entire `/graphql` CORS story end to end and
  * always has the last word on the outgoing response's headers — using the
- * exact same trusted-origin allowlist as REST (`resolveTrustedOrigin`) so
- * the two tiers cannot drift apart.
+ * exact same trusted-origin allowlist as REST (`isOriginTrusted`) so the
+ * two tiers cannot drift apart.
+ *
+ * `stage` is taken as an explicit parameter (mirroring how `mountPrivateGraphql`
+ * already reads `c.env.STAGE` directly for `getYoga`) rather than read from
+ * the request-scoped infra store — which keeps this function pure and
+ * trivially unit-testable with a stub `handleGraphql`, no server or
+ * AsyncLocalStorage context required. See `__tests__/cors.test.ts`.
  */
 const ALLOW_METHODS = "GET, POST, OPTIONS";
 // Content-Type/Authorization match REST's authCors; x-graphql-csrf is the
@@ -35,10 +42,11 @@ const ALLOW_HEADERS = "Content-Type, Authorization, x-graphql-csrf";
 
 export async function graphqlCorsFetch(
   request: Request,
+  stage: Stage,
   handleGraphql: (request: Request) => Response | Promise<Response>,
 ): Promise<Response> {
   const origin = request.headers.get("origin");
-  const allowedOrigin = origin ? resolveTrustedOrigin(origin) : "";
+  const allowedOrigin = origin ? isOriginTrusted(origin, stage) : "";
 
   if (request.method === "OPTIONS") {
     const headers = new Headers({

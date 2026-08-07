@@ -1,17 +1,30 @@
 import { cors } from "hono/cors";
-import { getTrustedOrigins } from "@ntizo/backend/shared/infra/config";
+import { getTrustedOrigins, type Stage } from "@ntizo/backend/shared/infra/config";
 import { infraStore } from "@ntizo/backend/shared/infra";
 
 /**
- * Resolves an Origin header against the current stage's trusted-origin
- * allowlist. Exported so the GraphQL mount (`../graphql/cors`) can enforce
- * the exact same allowlist as REST without a second, independently
- * maintained origin list that the two tiers could drift apart on.
+ * Pure allowlist check: is `origin` one of `stage`'s trusted origins?
+ * No request-scope dependency, so this is what the CORS unit tests
+ * (`../graphql/__tests__/cors.test.ts`) exercise directly — a change that
+ * makes this permissive (e.g. always returning `origin`) fails those tests
+ * immediately. Shared by `authCors` below and the GraphQL CORS enforcement
+ * (`../graphql/cors`), so REST and GraphQL can never drift onto different
+ * allowlists.
+ */
+export function isOriginTrusted(origin: string, stage: Stage): string {
+  const allowed = getTrustedOrigins(stage);
+  return allowed.includes(origin) ? origin : "";
+}
+
+/**
+ * Request-scoped wrapper around `isOriginTrusted` for `authCors`, which
+ * (via `hono/cors`) only hands us an origin string, not a stage. Reads
+ * STAGE from the AsyncLocalStorage infra store `configMiddleware`
+ * populates; returns "" (untrusted) if called outside that scope.
  */
 export function resolveTrustedOrigin(origin: string): string {
   try {
-    const allowed = getTrustedOrigins(infraStore.getEnv().STAGE);
-    return allowed.includes(origin) ? origin : "";
+    return isOriginTrusted(origin, infraStore.getEnv().STAGE);
   } catch {
     return "";
   }
