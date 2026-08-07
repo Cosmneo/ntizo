@@ -30,6 +30,15 @@ export default [
             "src/shared/components/**",
             "src/features/*/components/**",
             "src/features/*/pages/**",
+            // features/admin/** nests one level deeper than the other
+            // features (e.g. admin/users/users-page.tsx,
+            // admin/dashboard/pages/...), so the single-segment `*` above
+            // never matches it and it was left ungoverned. Mapping the
+            // whole admin tree to `ui` brings it under the boundaries
+            // policy; a hook misclassified as `ui` can still reach
+            // everything it needs, and the only thing this newly forbids
+            // is `ui -> data`, which is exactly what should be forbidden.
+            "src/features/admin/**",
           ],
         },
         { type: "routes", pattern: ["src/routes/**"] },

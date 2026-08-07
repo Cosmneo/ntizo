@@ -1,9 +1,15 @@
 // REST router for user BC. Exposes GET /me.
 // Reads the ExecutionContext built by the api-level middleware.
+//
+// This router lives at the app layer (not in packages/backend) because it
+// binds the user BC's use case to Hono — the framework adapter belongs
+// here, not inside the framework-agnostic core package. `UserBootstrap` and
+// `ExecutionContext` are imported as types only, so no framework or runtime
+// value crosses the package boundary.
 
 import { Hono } from "hono";
-import type { UserBootstrap } from "../../bootstrap";
-import type { ExecutionContext } from "../../../../shared/infrastructure/execution-context";
+import type { UserBootstrap } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
+import type { ExecutionContext } from "@ntizo/backend/modules/ntizo/shared/infrastructure/execution-context";
 
 type Env = { Variables: { executionContext: ExecutionContext } };
 

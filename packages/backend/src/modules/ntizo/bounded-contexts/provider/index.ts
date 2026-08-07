@@ -1,5 +1,4 @@
 export { bootstrapProvider } from "./bootstrap";
-export { createProviderRouter } from "./infrastructure/rest/provider.router";
 export { Provider } from "./domain/aggregates/provider";
 export { ProviderMember } from "./domain/entities/provider-member";
 export { ProviderInvite } from "./domain/entities/provider-invite";
