@@ -78,10 +78,16 @@ export function SettingsPage() {
           />
         </div>
 
-        <fieldset className="border border-[var(--color-border)] rounded-md p-4 flex flex-col gap-3">
+        <fieldset
+          disabled
+          className="border border-[var(--color-border)] rounded-md p-4 flex flex-col gap-3 opacity-60"
+        >
           <legend className="text-xs text-[var(--color-muted-foreground)] px-1">
             {t("address")}
           </legend>
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            {t("addressEditingUnavailable")}
+          </p>
           <input
             placeholder={t("line1")}
             value={address.line1 ?? ""}

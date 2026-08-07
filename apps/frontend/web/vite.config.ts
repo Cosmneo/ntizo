@@ -24,6 +24,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       "/api": DEV_WORKER_ORIGIN,
+      "/graphql": DEV_WORKER_ORIGIN,
     },
   },
   test: {

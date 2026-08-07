@@ -51,6 +51,7 @@
   "removeConfirm": "Remove this member?",
   "description": "Description",
   "address": "Address",
+  "addressEditingUnavailable": "Address editing is temporarily unavailable.",
   "line1": "Line 1",
   "line2": "Line 2",
   "city": "City",
