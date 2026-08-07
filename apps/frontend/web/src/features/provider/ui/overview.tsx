@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { useActiveProvider } from "../hooks/use-active-provider";
+import { useActiveProvider } from "../viewmodel/use-active-provider";
 
 export function OverviewPage() {
   const { t } = useTranslation("provider");

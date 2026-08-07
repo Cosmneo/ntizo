@@ -6,7 +6,7 @@ import type {
   ProviderRole,
   ProviderSummary,
   RegisterMeBody,
-} from "../types";
+} from "../domain/types";
 
 export class ApiError extends Error {
   status: number;

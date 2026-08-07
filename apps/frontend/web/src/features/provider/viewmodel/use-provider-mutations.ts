@@ -6,7 +6,7 @@ import {
   updateProvider,
 } from "../lib/provider-api";
 import { providerKeys } from "./use-providers";
-import type { CreateProviderBody, RegisterMeBody, ProviderDetail } from "../types";
+import type { CreateProviderBody, RegisterMeBody, ProviderDetail } from "../domain/types";
 
 export function useCreateProvider() {
   const qc = useQueryClient();

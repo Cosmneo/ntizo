@@ -3,13 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button, Input, Label } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { useActiveProvider } from "../hooks/use-active-provider";
-import { useProviderDetail } from "../hooks/use-providers";
+import { useActiveProvider } from "../viewmodel/use-active-provider";
+import { useProviderDetail } from "../viewmodel/use-providers";
 import {
   useDeactivateProvider,
   useUpdateProvider,
-} from "../hooks/use-provider-mutations";
-import type { ProviderAddress } from "../types";
+} from "../viewmodel/use-provider-mutations";
+import type { ProviderAddress } from "../domain/types";
 
 export function SettingsPage() {
   const { t } = useTranslation("provider");

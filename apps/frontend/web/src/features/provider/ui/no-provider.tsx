@@ -3,9 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { useRegisterMe } from "../hooks/use-provider-mutations";
-import { useActiveProvider } from "../hooks/use-active-provider";
-import { CreateProviderDialog } from "../components/create-provider-dialog";
+import { useRegisterMe } from "../viewmodel/use-provider-mutations";
+import { useActiveProvider } from "../viewmodel/use-active-provider";
+import { CreateProviderDialog } from "./create-provider-dialog";
 
 export function NoProviderPage() {
   const { t } = useTranslation("provider");

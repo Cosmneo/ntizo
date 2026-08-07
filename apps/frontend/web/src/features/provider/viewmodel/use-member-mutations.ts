@@ -6,7 +6,7 @@ import {
   updateMemberRole,
 } from "../lib/provider-api";
 import { providerKeys } from "./use-providers";
-import type { InviteMemberBody, ProviderRole } from "../types";
+import type { InviteMemberBody, ProviderRole } from "../domain/types";
 
 export function useInviteMember(providerId: string) {
   const qc = useQueryClient();

@@ -32,8 +32,8 @@ import {
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
 import { useCurrentUser } from "@/features/account/hooks/use-current-user";
-import { useActiveProvider } from "@/features/provider/hooks/use-active-provider";
-import { CreateProviderDialog } from "@/features/provider/components/create-provider-dialog";
+import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 
 export function SidebarUserMenu() {
   const { t } = useTranslation("provider");

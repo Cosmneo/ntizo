@@ -13,8 +13,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
-import { useActiveProvider } from "@/features/provider/hooks/use-active-provider";
-import { CreateProviderDialog } from "@/features/provider/components/create-provider-dialog";
+import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 
 export function SidebarProviderSwitcher() {
   const { t } = useTranslation("provider");

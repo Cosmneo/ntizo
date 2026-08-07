@@ -26,15 +26,15 @@ import {
   Skeleton,
 } from "@ntizo/frontend-ui";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
-import { useActiveProvider } from "../hooks/use-active-provider";
-import { useProviderDetail } from "../hooks/use-providers";
+import { useActiveProvider } from "../viewmodel/use-active-provider";
+import { useProviderDetail } from "../viewmodel/use-providers";
 import {
   useInviteMember,
   useRemoveMember,
   useRevokeInvite,
   useUpdateMemberRole,
-} from "../hooks/use-member-mutations";
-import type { ProviderRole } from "../types";
+} from "../viewmodel/use-member-mutations";
+import type { ProviderRole } from "../domain/types";
 
 const ROLE_STYLES: Record<
   ProviderRole,

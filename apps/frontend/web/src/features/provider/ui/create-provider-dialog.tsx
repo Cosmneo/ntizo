@@ -13,12 +13,12 @@ import {
   Label,
   Separator,
 } from "@ntizo/frontend-ui";
-import { slugify } from "../lib/slugify";
+import { slugify } from "../domain/slugify";
 import {
   useCreateProvider,
   useRegisterMe,
-} from "../hooks/use-provider-mutations";
-import type { ProviderType } from "../types";
+} from "../viewmodel/use-provider-mutations";
+import type { ProviderType } from "../domain/types";
 
 interface Props {
   open: boolean;

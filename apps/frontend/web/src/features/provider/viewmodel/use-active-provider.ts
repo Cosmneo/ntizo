@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useMyProviders } from "./use-providers";
-import type { ProviderSummary } from "../types";
+import type { ProviderSummary } from "../domain/types";
 
 const STORAGE_KEY = "ntizo.activeProviderId";
 
