@@ -2,19 +2,32 @@
 // that need them (e.g. better-auth's email hooks). Must be imported once,
 // before the first auth request is handled.
 //
-// Runs at module scope, before configMiddleware populates the infraStore, so
-// it reads process.env directly — same source configMiddleware reads from.
+// Workers only expose env bindings inside a request scope: configMiddleware
+// populates infraStore via AsyncLocalStorage around each request, and
+// infraStore.getEnv() throws outside that scope. This module runs at module
+// scope — once per isolate, before any request exists — so it cannot decide
+// which concrete email adapter to use yet. Instead it registers an adapter
+// that defers the STAGE / RESEND_API_KEY decision to send time, when a
+// request scope is guaranteed to be active.
 
 import {
   ConsoleEmailServiceAdapter,
   ResendEmailServiceAdapter,
+  type EmailMessage,
   type EmailServicePort,
 } from "@ntizo/backend/shared/infra/email";
 import { registerEmailService } from "@ntizo/backend/modules/better-auth";
+import { infraStore } from "@ntizo/backend/shared/infra";
 
+/**
+ * Picks the concrete adapter from the request-scoped env. Must only be
+ * called from inside a request (i.e. after configMiddleware has run) —
+ * infraStore.getEnv() throws otherwise.
+ */
 function resolveEmailService(): EmailServicePort {
-  const stage = process.env.STAGE ?? "local";
-  const hasResendKey = Boolean(process.env.RESEND_API_KEY);
+  const env = infraStore.getEnv();
+  const stage = env.STAGE ?? "local";
+  const hasResendKey = Boolean(env.RESEND_API_KEY);
 
   if (hasResendKey) return new ResendEmailServiceAdapter();
 
@@ -35,7 +48,19 @@ function resolveEmailService(): EmailServicePort {
   return new ConsoleEmailServiceAdapter();
 }
 
-const emailService = resolveEmailService();
+/**
+ * Registered once at module scope, but resolves + delegates to the real
+ * adapter on every send — so the STAGE / RESEND_API_KEY check always runs
+ * against the current request's env, never a stale or absent one.
+ */
+class LazyEmailServiceAdapter implements EmailServicePort {
+  async sendEmail(message: EmailMessage): Promise<void> {
+    const service = resolveEmailService();
+    await service.sendEmail(message);
+  }
+}
+
+const emailService = new LazyEmailServiceAdapter();
 registerEmailService(emailService);
 
 export { emailService };
