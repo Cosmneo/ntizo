@@ -87,7 +87,7 @@ export function SignUp() {
           {(err) =>
             err ? (
               <div className="text-sm text-[var(--color-destructive)] text-center">
-                {String(err)}
+                {err.form}
               </div>
             ) : null
           }

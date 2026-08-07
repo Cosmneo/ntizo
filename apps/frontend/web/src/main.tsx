@@ -6,7 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import "@/shared/lib/i18n";
 import "./styles.css";
 import { createRouter } from "@/router";
-import { queryClient } from "@/lib/query-client";
+import { queryClient } from "#/lib/query-client";
 
 const router = createRouter();
 const rootElement = document.getElementById("app")!;

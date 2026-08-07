@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { resolveDestinationForSession } from "@/shared/lib/api/post-login";
+import { resolveDestinationForSession } from "@/features/provider/viewmodel/post-login";
 import { shouldBypassPublicRedirect } from "@/shared/lib/public-redirect";
 
 export const Route = createFileRoute("/_public")({

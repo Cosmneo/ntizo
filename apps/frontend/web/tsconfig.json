@@ -2,7 +2,7 @@
   "extends": "@ntizo/typescript-config/react-library.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] },
+    "paths": { "@/*": ["./src/*"], "#/*": ["./src/*"] },
     "jsx": "react-jsx",
     "types": ["vite/client", "@testing-library/jest-dom"],
     "noEmit": true

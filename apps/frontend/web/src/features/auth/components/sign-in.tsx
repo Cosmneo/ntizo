@@ -14,7 +14,7 @@ import {
   Separator,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { resolveDestinationForSession } from "@/shared/lib/api/post-login";
+import { resolveDestinationForSession } from "@/features/provider/viewmodel/post-login";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 
@@ -64,7 +64,7 @@ export function SignIn() {
           {(error) =>
             error ? (
               <div className="text-sm text-[var(--color-destructive)] text-center">
-                {String(error)}
+                {error.form}
               </div>
             ) : null
           }
