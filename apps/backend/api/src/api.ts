@@ -5,6 +5,7 @@ import { createProviderRouter } from "@ntizo/backend/modules/ntizo/bounded-conte
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
+import { mountPrivateGraphql } from "./graphql/private";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
 import { authCors } from "./middlewares/cors";
@@ -55,6 +56,9 @@ app.route(
   "/api",
   createProviderRouter({ providerBootstrap, workflowsBootstrap }),
 );
+
+// GraphQL (private, session-authed). REST stays live until Plan 1B.
+mountPrivateGraphql(app);
 
 // Health check
 app.get("/", (c) => c.json({ status: "ok", service: "ntizo-api" }));
