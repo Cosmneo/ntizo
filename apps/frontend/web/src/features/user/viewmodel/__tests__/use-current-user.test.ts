@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
-import { clearSessionQueryCache } from "../use-current-user";
+import { clearSessionQueryCache, fetchCurrentUser } from "../use-current-user";
 import { userQueries } from "../../data/user.repository";
 import { providerQueries } from "@/features/provider/data/provider.repository";
+import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
+import * as client from "@/shared/lib/graphql/session-graphql";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("clearSessionQueryCache", () => {
   it("drops every session-scoped query, not just user.me", () => {
@@ -26,5 +30,34 @@ describe("clearSessionQueryCache", () => {
 
     expect(qc.getQueryData(userKey)).toBeUndefined();
     expect(qc.getQueryData(providersKey)).toBeUndefined();
+  });
+});
+
+describe("fetchCurrentUser", () => {
+  it("resolves to null on a genuine sign-out", async () => {
+    vi.spyOn(client, "sessionGraphql").mockRejectedValueOnce(
+      new GraphqlError(200, [
+        {
+          message: "Authentication required",
+          extensions: { code: "UNAUTHENTICATED", originalCode: "UNAUTHENTICATED" },
+        },
+      ]),
+    );
+
+    await expect(fetchCurrentUser()).resolves.toBeNull();
+  });
+
+  it("rejects on a non-auth failure instead of degrading to null", async () => {
+    // No blanket catch here anymore — see the doc comment on
+    // fetchCurrentUser for why: swallowing every error was what let a
+    // transient backend failure look identical to "signed out" to
+    // routes/admin/route.tsx's beforeLoad guard.
+    vi.spyOn(client, "sessionGraphql").mockRejectedValueOnce(
+      new GraphqlError(500, [
+        { message: "Database unavailable", extensions: { code: "INTERNAL_ERROR" } },
+      ]),
+    );
+
+    await expect(fetchCurrentUser()).rejects.toBeInstanceOf(GraphqlError);
   });
 });

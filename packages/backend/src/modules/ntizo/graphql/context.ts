@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { UnauthorizedError } from "@cosmneo/onion-lasagna";
 import type { GraphQLHandlerContext } from "@cosmneo/onion-lasagna/graphql/server";
 import { userRoleSchema, type UserRole } from "@ntizo/shared";
 
@@ -56,10 +57,25 @@ export function asNtizoGraphqlContext(
   return ctx as unknown as NtizoGraphqlContext;
 }
 
-/** Throws unless the request carries an authenticated user. */
+/**
+ * Throws unless the request carries an authenticated user.
+ *
+ * Throws the kit's `UnauthorizedError` rather than a bare `Error` so
+ * `getGraphQLErrorCode` (used by both `buildYoga`'s masked-errors config and
+ * the fitness tests) recognises it and maps it to the coarse `UNAUTHENTICATED`
+ * extension code instead of masking it to `INTERNAL_ERROR`. The frontend
+ * relies on that distinction — see `GraphqlError.kitCode` in
+ * `apps/frontend/web/src/shared/lib/graphql/session-graphql.ts` — to tell
+ * "signed out" apart from a genuine backend failure, which otherwise both
+ * surfaced as the same opaque error and left the caller no way to react
+ * differently (e.g. `userQueries.me()` collapsing every failure to `null`).
+ */
 export function requireRequesterUserId(ctx: NtizoGraphqlContext): string {
   if (!ctx.requesterUserId) {
-    throw new Error("[graphql] unauthenticated");
+    throw new UnauthorizedError({
+      message: "Authentication required",
+      code: "UNAUTHENTICATED",
+    });
   }
   return ctx.requesterUserId;
 }

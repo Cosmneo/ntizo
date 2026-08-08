@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
+import { GraphqlError, sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 import type { CurrentUserDTO } from "../domain/current-user";
 
 // Verified against the live schema (packages/backend read/user/graphql):
@@ -25,19 +25,39 @@ export const userQueries = {
             input: {},
           });
           return d.userMe;
-        } catch {
-          // Must resolve to `null`, not throw. TanStack Query v5 keeps
-          // `data` at its last *successful* value when a refetch's queryFn
-          // throws — status flips to "error" but the stale user stays put.
-          // Concretely: session expires while the tab is open,
-          // refetchOnWindowFocus fires on refocus, the request 401s, and
-          // without this catch zone-switcher.tsx / both
-          // sidebar-user-menu.tsx keep rendering the signed-out user's name
-          // and zone links. Resolving `null` instead makes the refetch a
-          // *successful* "no user" result, matching the REST fetcher this
-          // replaced (which returned `null` on any non-ok response) and
-          // what every consumer (`user?.`, `if (!user)`) already expects.
-          return null;
+        } catch (error) {
+          // Resolve to `null` — not throw — ONLY for a genuine "you are not
+          // signed in" response. `kitCode` is the kit's coarse
+          // classification (see `requireRequesterUserId` in
+          // packages/backend/src/modules/ntizo/graphql/context.ts, which
+          // throws the kit's `UnauthorizedError`), so this narrows on the
+          // classification, not on the fine-grained `code` string, which is
+          // free to vary.
+          //
+          // TanStack Query v5 keeps `data` at its last *successful* value
+          // when a refetch's queryFn throws — status flips to "error" but
+          // the stale user stays put. Concretely: session expires while the
+          // tab is open, refetchOnWindowFocus fires on refocus, the request
+          // comes back UNAUTHENTICATED, and without this catch
+          // zone-switcher.tsx / both sidebar-user-menu.tsx keep rendering
+          // the signed-out user's name and zone links. Resolving `null`
+          // instead makes the refetch a *successful* "no user" result,
+          // matching the REST fetcher this replaced (which returned `null`
+          // on a 401) and what every consumer (`user?.`, `if (!user)`)
+          // already expects.
+          //
+          // Everything else (a database blip, a 500, a network failure)
+          // rethrows instead of masquerading as "signed out" — see the
+          // whole-branch review: a DB error during an admin's navigation to
+          // /admin used to resolve `null` here, `canAccessAdmin(null)` read
+          // false, and the admin was silently redirected to `/` with no
+          // error surfaced anywhere. Consumers now decide deliberately how
+          // to handle a thrown error (see fetchCurrentUser and
+          // resolveDestinationForSession).
+          if (error instanceof GraphqlError && error.kitCode === "UNAUTHENTICATED") {
+            return null;
+          }
+          throw error;
         }
       },
     }),

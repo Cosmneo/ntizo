@@ -3,6 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { currentUserReadModel } from "@ntizo/shared";
 import { userQueries } from "../user.repository";
 import * as client from "@/shared/lib/graphql/session-graphql";
+import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -40,7 +41,7 @@ describe("userQueries.me", () => {
     }
   });
 
-  it("resolves to null on a failing transport, in the real query cache — never the prior session's data", async () => {
+  it("resolves to null on a genuine sign-out, in the real query cache — never the prior session's data", async () => {
     // TanStack Query v5 keeps `data` at its last *successful* value when a
     // refetch's queryFn throws (status flips to "error", data is
     // untouched). Exercised against the real QueryClient, not just the bare
@@ -61,12 +62,52 @@ describe("userQueries.me", () => {
       email: "old@user.example",
     });
 
-    // The session expires; the transport now rejects (e.g. a 401 surfaced
-    // as a GraphqlError). staleTime defaults to 0, so this fetchQuery call
-    // issues a real refetch rather than serving the cached value.
-    spy.mockRejectedValueOnce(new Error("session expired"));
+    // The session expires; the transport now rejects with the backend's
+    // typed auth failure — `requireRequesterUserId` throws the kit's
+    // `UnauthorizedError`, which `getGraphQLErrorCode` maps to the coarse
+    // `UNAUTHENTICATED` extension code (see
+    // packages/backend/src/modules/ntizo/graphql/context.ts). staleTime
+    // defaults to 0, so this fetchQuery call issues a real refetch rather
+    // than serving the cached value.
+    spy.mockRejectedValueOnce(
+      new GraphqlError(200, [
+        {
+          message: "Authentication required",
+          extensions: { code: "UNAUTHENTICATED", originalCode: "UNAUTHENTICATED" },
+        },
+      ]),
+    );
     await qc.fetchQuery(opts);
 
     expect(qc.getQueryData(opts.queryKey)).toBeNull();
+  });
+
+  it("propagates a non-auth failure instead of masquerading it as signed-out", async () => {
+    // The regression this guards against: before this fix, `queryFn` caught
+    // *every* rejection indiscriminately and resolved `null`, so a database
+    // blip during an admin's navigation to /admin looked identical to
+    // "not signed in" — `canAccessAdmin(null)` read false and the admin was
+    // silently redirected to `/` with no error surfaced anywhere. A
+    // non-auth failure (any `kitCode` other than `UNAUTHENTICATED`, or a
+    // non-GraphqlError transport failure) must now reject instead.
+    const qc = new QueryClient();
+    const opts = userQueries.me();
+
+    vi.spyOn(client, "sessionGraphql").mockRejectedValueOnce(
+      new GraphqlError(500, [
+        { message: "Database unavailable", extensions: { code: "INTERNAL_ERROR" } },
+      ]),
+    );
+
+    await expect(qc.fetchQuery(opts)).rejects.toBeInstanceOf(GraphqlError);
+  });
+
+  it("propagates a raw transport failure (not even a GraphqlError) rather than swallowing it", async () => {
+    const qc = new QueryClient();
+    const opts = userQueries.me();
+
+    vi.spyOn(client, "sessionGraphql").mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await expect(qc.fetchQuery(opts)).rejects.toThrow("Failed to fetch");
   });
 });

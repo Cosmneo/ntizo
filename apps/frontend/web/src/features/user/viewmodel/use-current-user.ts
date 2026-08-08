@@ -52,22 +52,27 @@ export function useClearSessionQueryCache() {
  * which these call sites never supply — same cast
  * `provider/viewmodel/use-providers.ts`'s `countMyProviders()` uses.
  *
- * A failing lookup degrades to `null` (read downstream as "no session")
- * rather than throwing — the old REST fetcher returned `null` on a non-ok
- * response, and callers (post-login redirect resolution, the admin route
- * guard) are written to tolerate that, not to catch a rejected promise.
- * `userQueries.me()`'s queryFn already catches transport failures and
- * resolves `null` itself (see user.repository.ts), so this try/catch is a
- * belt-and-suspenders repeat of that — deliberately, not an oversight: it
- * also swallows errors the old REST code let throw (e.g. a network failure
- * mid-request), which is a semantics change from the pre-GraphQL version
- * but a defensible one, kept consistent with `countMyProviders()`.
+ * Resolves to `null` for a genuine "not signed in" (`userQueries.me()`'s
+ * queryFn already narrows that — see user.repository.ts) and REJECTS for
+ * everything else (a database blip, a 500, a network failure), instead of
+ * blanket-catching like the old REST-era version of this function did.
+ *
+ * That blanket catch used to be load-bearing for a real bug: a transient
+ * backend error while an admin navigated to `/admin` was indistinguishable
+ * from "signed out" (both resolved `null` here), so
+ * `resolveAdminGuard`/`canAccessAdmin(null)` silently redirected the admin
+ * to `/` with no error surfaced anywhere. Now that the backend and
+ * `userQueries.me()` can tell the two apart, swallowing everything here
+ * again would just reintroduce that bug one layer up — so this function
+ * does not add its own catch. Each caller decides for itself whether a
+ * thrown error should propagate (`routes/admin/route.tsx` — a broken guard
+ * check should be visible, not silently misroute) or degrade to a safe
+ * default (`resolveDestinationForSession` in
+ * features/provider/viewmodel/post-login.ts — blocking a just-completed
+ * sign-in on a transient read failure is worse than landing somewhere
+ * slightly less specific).
  */
 export async function fetchCurrentUser(): Promise<CurrentUserDTO | null> {
-  try {
-    const queryFn = userQueries.me().queryFn as () => Promise<CurrentUserDTO>;
-    return await queryFn();
-  } catch {
-    return null;
-  }
+  const queryFn = userQueries.me().queryFn as () => Promise<CurrentUserDTO>;
+  return queryFn();
 }
