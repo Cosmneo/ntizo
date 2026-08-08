@@ -31,7 +31,7 @@ import {
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { useCurrentUser } from "@/features/account/hooks/use-current-user";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 

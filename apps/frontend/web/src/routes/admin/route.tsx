@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { fetchCurrentUser } from "@/shared/lib/api/me";
+import { fetchCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { resolveAdminGuard } from "./admin-guard";
 import { AdminShell } from "@/shared/components/admin-shell";
 

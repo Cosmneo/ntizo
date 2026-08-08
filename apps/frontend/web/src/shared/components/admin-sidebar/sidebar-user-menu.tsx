@@ -16,7 +16,7 @@ import {
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { useCurrentUser } from "@/features/admin/dashboard/hooks/use-current-user";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 
 export function SidebarUserMenu() {
   const { t: ta } = useTranslation("auth");

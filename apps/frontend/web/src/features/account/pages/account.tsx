@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { useCurrentUser } from "../hooks/use-current-user";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 
 export function AccountPage() {
   const { t } = useTranslation("provider");

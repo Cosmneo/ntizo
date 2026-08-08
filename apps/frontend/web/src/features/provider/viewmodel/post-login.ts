@@ -1,4 +1,4 @@
-import { fetchCurrentUser } from "@/shared/lib/api/me";
+import { fetchCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { resolvePostLoginDestination } from "@/shared/lib/zones";
 import { countMyProviders } from "./use-providers";
 

@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { Zone } from "@/shared/lib/zones";
 import { accessibleZones } from "@/shared/lib/zones";
-import { fetchCurrentUser } from "@/shared/lib/api/me";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useMyProviders } from "@/features/provider/viewmodel/use-providers";
 
 const ZONE_META: Record<Zone, { label: string; to: string }> = {
@@ -30,7 +29,7 @@ export function ZoneLinks({ zones, current }: { zones: Zone[]; current: Zone }) 
 }
 
 export function ZoneSwitcher({ current }: { current: Zone }) {
-  const { data: me = null } = useQuery({ queryKey: ["me"], queryFn: fetchCurrentUser });
+  const { data: me = null } = useCurrentUser();
   const { data: providers = [] } = useMyProviders();
   const zones = accessibleZones(me, providers.length);
   return <ZoneLinks zones={zones} current={current} />;
