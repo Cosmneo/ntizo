@@ -1,10 +1,26 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ntizo-web",
+  // Start's server entry, not a hand-written worker. The upstream idiom is
+  // `"main": "@tanstack/react-start/server-entry"`, but that's an npm bare
+  // specifier — it only resolves when @cloudflare/vite-plugin drives the
+  // build (it rewrites `main` into a generated, build-output wrangler config).
+  // This app builds with plain `tanstackStart()` + `wrangler deploy`, no
+  // @cloudflare/vite-plugin, so `main` must be a real file: wrangler's own
+  // entry resolution (resolveEntryWithMain/assertEntryPointExists in
+  // wrangler@4.112.0) does a literal fs path check, never npm/Node module
+  // resolution — confirmed empirically (`wrangler dev` errors "entry-point
+  // file ... was not found" on the bare-specifier form). `dist/server/server.js`
+  // IS that same server entry, already resolved and bundled by `vite build`
+  // (src/planning.js in @tanstack/start-plugin-core falls back to the
+  // package's default server entry because this app has no `src/server.ts`) —
+  // zero custom serving logic, same as the upstream idiom, just pointed at
+  // its build artifact instead of its source specifier.
+  "main": "./dist/server/server.js",
   "compatibility_date": "2026-02-12",
-  "main": "worker/index.ts",
+  "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
-  "assets": { "directory": "./dist", "binding": "ASSETS", "html_handling": "none" },
+  "assets": { "directory": "./dist/client", "html_handling": "none" },
   // NOTE: "routes.pattern" hostnames below (dev.ntizo.com / qa.ntizo.com / ntizo.com) are
   // placeholders. Confirm the real hostnames and that the zones are on Cloudflare before
   // running any `wrangler deploy` against these environments.

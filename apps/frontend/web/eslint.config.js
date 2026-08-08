@@ -57,7 +57,6 @@ export default [
         "src/test/**",
         "vite.config.ts",
         "eslint.config.js",
-        "worker/**",
       ],
     },
     rules: {
