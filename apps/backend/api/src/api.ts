@@ -5,7 +5,6 @@ import { mountPrivateGraphql } from "./graphql/private";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
 import { authCors } from "./middlewares/cors";
-import { executionContextMiddleware } from "./middlewares/execution-context.middleware";
 import type { AppBindings } from "./types";
 
 const app = new Hono<{ Bindings: AppBindings }>();
@@ -18,12 +17,7 @@ app.use("/api/*", authCors);
 // wrapping Hono middleware cannot correct after the fact. See graphql/cors.ts
 // for why, and for the origin allowlist shared with authCors.
 
-// Better-auth handler runs BEFORE execution-context middleware so
-// login/signup/callback endpoints don't re-resolve their own session.
 app.on(["POST", "GET"], "/api/auth/*", (c) => getAuth().handler(c.req.raw));
-
-// Every domain endpoint gets a fresh ExecutionContext attached.
-app.use("/api/*", executionContextMiddleware);
 
 // Bootstrap the user BC once at module scope; the sign-up hook below shares it.
 const userBootstrap = bootstrapUser();
