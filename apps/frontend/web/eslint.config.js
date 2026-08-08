@@ -52,6 +52,7 @@ export default [
       "boundaries/ignore": [
         "src/main.tsx",
         "src/router.tsx",
+        "src/start.ts",
         "src/lib/query-client.ts",
         "src/test/**",
         "vite.config.ts",

@@ -9,26 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ProviderRouteRouteImport } from './routes/provider/route'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
-import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProviderIndexRouteImport } from './routes/provider/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as ProviderSettingsRouteImport } from './routes/provider/settings'
-import { Route as ProviderOverviewRouteImport } from './routes/provider/overview'
-import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
-import { Route as ProviderMembersRouteImport } from './routes/provider/members'
-import { Route as ProviderAccountRouteImport } from './routes/provider/account'
-import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
-import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
+import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as ProviderIndexRouteImport } from './routes/provider/index'
+import { Route as ProviderAccountRouteImport } from './routes/provider/account'
+import { Route as ProviderMembersRouteImport } from './routes/provider/members'
+import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
+import { Route as ProviderOverviewRouteImport } from './routes/provider/overview'
+import { Route as ProviderSettingsRouteImport } from './routes/provider/settings'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 
-const ProviderRouteRoute = ProviderRouteRouteImport.update({
-  id: '/provider',
-  path: '/provider',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
@@ -36,53 +40,24 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PublicRouteRoute = PublicRouteRouteImport.update({
-  id: '/_public',
+const ProviderRouteRoute = ProviderRouteRouteImport.update({
+  id: '/provider',
+  path: '/provider',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
+const PublicSignInRoute = PublicSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => PublicRouteRoute,
 } as any)
-const ProviderIndexRoute = ProviderIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProviderRouteRoute,
+const PublicSignUpRoute = PublicSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => PublicRouteRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const ProviderSettingsRoute = ProviderSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const ProviderOverviewRoute = ProviderOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const ProviderNoProviderRoute = ProviderNoProviderRouteImport.update({
-  id: '/no-provider',
-  path: '/no-provider',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const ProviderMembersRoute = ProviderMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const ProviderAccountRoute = ProviderAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -90,15 +65,40 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const PublicSignUpRoute = PublicSignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => PublicRouteRoute,
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const PublicSignInRoute = PublicSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => PublicRouteRoute,
+const ProviderIndexRoute = ProviderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderAccountRoute = ProviderAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderMembersRoute = ProviderMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderNoProviderRoute = ProviderNoProviderRouteImport.update({
+  id: '/no-provider',
+  path: '/no-provider',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderOverviewRoute = ProviderOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => ProviderRouteRoute,
+} as any)
+const ProviderSettingsRoute = ProviderSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProviderRouteRoute,
 } as any)
 const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   id: '/accept-invite/$token',
@@ -219,18 +219,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/provider': {
-      id: '/provider'
-      path: '/provider'
-      fullPath: '/provider'
-      preLoaderRoute: typeof ProviderRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_public': {
@@ -240,67 +233,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/provider/': {
-      id: '/provider/'
-      path: '/'
-      fullPath: '/provider/'
-      preLoaderRoute: typeof ProviderIndexRouteImport
-      parentRoute: typeof ProviderRouteRoute
+    '/provider': {
+      id: '/provider'
+      path: '/provider'
+      fullPath: '/provider'
+      preLoaderRoute: typeof ProviderRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_public/sign-in': {
+      id: '/_public/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof PublicSignInRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/sign-up': {
+      id: '/_public/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof PublicSignUpRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/provider/settings': {
-      id: '/provider/settings'
-      path: '/settings'
-      fullPath: '/provider/settings'
-      preLoaderRoute: typeof ProviderSettingsRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/overview': {
-      id: '/provider/overview'
-      path: '/overview'
-      fullPath: '/provider/overview'
-      preLoaderRoute: typeof ProviderOverviewRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/no-provider': {
-      id: '/provider/no-provider'
-      path: '/no-provider'
-      fullPath: '/provider/no-provider'
-      preLoaderRoute: typeof ProviderNoProviderRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/members': {
-      id: '/provider/members'
-      path: '/members'
-      fullPath: '/provider/members'
-      preLoaderRoute: typeof ProviderMembersRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/account': {
-      id: '/provider/account'
-      path: '/account'
-      fullPath: '/provider/account'
-      preLoaderRoute: typeof ProviderAccountRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/dashboard': {
@@ -310,19 +275,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/_public/sign-up': {
-      id: '/_public/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof PublicSignUpRouteImport
-      parentRoute: typeof PublicRouteRoute
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/_public/sign-in': {
-      id: '/_public/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof PublicSignInRouteImport
-      parentRoute: typeof PublicRouteRoute
+    '/provider/': {
+      id: '/provider/'
+      path: '/'
+      fullPath: '/provider/'
+      preLoaderRoute: typeof ProviderIndexRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/account': {
+      id: '/provider/account'
+      path: '/account'
+      fullPath: '/provider/account'
+      preLoaderRoute: typeof ProviderAccountRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/members': {
+      id: '/provider/members'
+      path: '/members'
+      fullPath: '/provider/members'
+      preLoaderRoute: typeof ProviderMembersRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/no-provider': {
+      id: '/provider/no-provider'
+      path: '/no-provider'
+      fullPath: '/provider/no-provider'
+      preLoaderRoute: typeof ProviderNoProviderRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/overview': {
+      id: '/provider/overview'
+      path: '/overview'
+      fullPath: '/provider/overview'
+      preLoaderRoute: typeof ProviderOverviewRouteImport
+      parentRoute: typeof ProviderRouteRoute
+    }
+    '/provider/settings': {
+      id: '/provider/settings'
+      path: '/settings'
+      fullPath: '/provider/settings'
+      preLoaderRoute: typeof ProviderSettingsRouteImport
+      parentRoute: typeof ProviderRouteRoute
     }
     '/_public/accept-invite/$token': {
       id: '/_public/accept-invite/$token'
@@ -397,3 +397,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -13,10 +13,18 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    tanstackRouter({
-      target: "react",
-      autoCodeSplitting: true,
-      routeFileIgnorePattern: "\\.(test|spec)\\.|-guard\\.",
+    // tanstackStart() owns route-tree generation and code-splitting itself
+    // (it instantiates @tanstack/router-plugin internally, once per Vite
+    // environment) — it is NOT layered on top of a standalone
+    // tanstackRouter() plugin. Router options that used to go to that
+    // standalone plugin are passed through `router` here instead. Adding a
+    // second, separate `tanstackRouter()` plugin alongside this one double-
+    // runs the code-splitter transform on every route file and crashes dev
+    // with "Duplicate declaration \"hot\"" (verified locally).
+    tanstackStart({
+      router: {
+        routeFileIgnorePattern: "\\.(test|spec)\\.|-guard\\.",
+      },
     }),
     viteReact(),
   ],
