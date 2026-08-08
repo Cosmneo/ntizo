@@ -17,7 +17,7 @@ import {
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
 import {
-  useClearCurrentUserCache,
+  useClearSessionQueryCache,
   useCurrentUser,
 } from "@/features/user/viewmodel/use-current-user";
 
@@ -25,11 +25,11 @@ export function SidebarUserMenu() {
   const { t: ta } = useTranslation("auth");
   const { data: user } = useCurrentUser();
   const nav = useNavigate();
-  const clearCurrentUserCache = useClearCurrentUserCache();
+  const clearSessionQueryCache = useClearSessionQueryCache();
 
   async function handleSignOut() {
     await authClient.signOut();
-    clearCurrentUserCache();
+    clearSessionQueryCache();
     nav({ to: "/sign-in" });
   }
 

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { userQueries } from "../data/user.repository";
 import type { CurrentUserDTO } from "../domain/current-user";
 
@@ -10,19 +10,39 @@ export function useCurrentUser() {
 /**
  * Call on sign-out. The QueryClient is a module singleton and sign-in
  * navigates client-side, so without this a second user signing in in the
- * same tab within `gcTime` (5 min default) would mount `useCurrentUser()`
- * against the first user's still-cached `["user", "me"]` entry — rendering
- * their name, email, and zone links until revalidation lands. Exposed as a
- * hook (not a bare function taking a QueryClient) to match the
- * `useQueryClient()`-inside-a-viewmodel-hook convention already used by
- * `provider/viewmodel/use-provider-mutations.ts` and
- * `use-member-mutations.ts`; `ui/` call sites (both sidebar
- * `SidebarUserMenu`s) can't reach `data/` to build the query key
- * themselves.
+ * same tab within `gcTime` (5 min default) would mount hooks against the
+ * first user's still-cached entries.
+ *
+ * This was originally scoped to just `["user", "me"]`, which fixed the
+ * name/email leak but missed `["providers", "mine"]`
+ * (`features/provider/data/provider.repository.ts`), which backs
+ * `useMyProviders()`/`useActiveProvider()`: `zone-switcher.tsx` combines the
+ * *new* user's `me` with the *previous* user's stale `providers.length` in
+ * `accessibleZones()`, so a plain customer could transiently inherit a
+ * Provider zone link (or a provider transiently lose one). Enumerating a
+ * second key here would only fix the two currently-known offenders and
+ * repeat the same mistake for the next feature that adds a session-scoped
+ * query — every key in this app so far (`["user", ...]`,
+ * `["providers", ...]`) is session-scoped, none of it is
+ * public/anonymous data that should survive a sign-out, so this clears the
+ * whole `QueryClient` instead of maintaining a key-prefix allowlist.
+ *
+ * Split into a plain function (`clearSessionQueryCache`, directly testable
+ * against a real `QueryClient` with no React involved) and a thin hook
+ * wrapper, matching the `useQueryClient()`-inside-a-viewmodel-hook
+ * convention already used by `provider/viewmodel/use-provider-mutations.ts`
+ * and `use-member-mutations.ts`. `ui/` call sites (both sidebar
+ * `SidebarUserMenu`s) go through the hook — `clear()` needs no query key
+ * from any feature's `data/`, but centralizing it here still keeps
+ * sign-out cache handling in one place rather than duplicated per sidebar.
  */
-export function useClearCurrentUserCache() {
+export function clearSessionQueryCache(queryClient: QueryClient) {
+  queryClient.clear();
+}
+
+export function useClearSessionQueryCache() {
   const queryClient = useQueryClient();
-  return () => queryClient.removeQueries({ queryKey: userQueries.me().queryKey });
+  return () => clearSessionQueryCache(queryClient);
 }
 
 /**
