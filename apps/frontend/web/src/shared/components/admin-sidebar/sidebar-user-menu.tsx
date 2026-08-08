@@ -16,15 +16,20 @@ import {
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import {
+  useClearCurrentUserCache,
+  useCurrentUser,
+} from "@/features/user/viewmodel/use-current-user";
 
 export function SidebarUserMenu() {
   const { t: ta } = useTranslation("auth");
   const { data: user } = useCurrentUser();
   const nav = useNavigate();
+  const clearCurrentUserCache = useClearCurrentUserCache();
 
   async function handleSignOut() {
     await authClient.signOut();
+    clearCurrentUserCache();
     nav({ to: "/sign-in" });
   }
 

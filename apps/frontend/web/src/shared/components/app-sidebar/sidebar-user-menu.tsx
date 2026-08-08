@@ -31,7 +31,10 @@ import {
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import {
+  useClearCurrentUserCache,
+  useCurrentUser,
+} from "@/features/user/viewmodel/use-current-user";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 
@@ -42,9 +45,11 @@ export function SidebarUserMenu() {
   const { providers, activeProvider, setActive } = useActiveProvider();
   const [dialogOpen, setDialogOpen] = useState(false);
   const nav = useNavigate();
+  const clearCurrentUserCache = useClearCurrentUserCache();
 
   async function handleSignOut() {
     await authClient.signOut();
+    clearCurrentUserCache();
     nav({ to: "/sign-in" });
   }
 
