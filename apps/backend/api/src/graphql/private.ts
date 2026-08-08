@@ -4,6 +4,10 @@ import {
   bootstrapProviderRead,
   createProviderReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/provider";
+import {
+  bootstrapUserRead,
+  createUserReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/user";
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
@@ -23,6 +27,7 @@ let yoga: ReturnType<typeof buildYoga> | undefined;
 function getYoga(stage: string) {
   if (!yoga) {
     const providerRead = bootstrapProviderRead();
+    const userRead = bootstrapUserRead();
     const provider = bootstrapProvider();
     const user = bootstrapUser();
     const workflows = bootstrapProviderWorkflows({
@@ -40,6 +45,7 @@ function getYoga(stage: string) {
       schema: privateGraphqlSchema,
       fields: [
         ...createProviderReadHandlers(providerRead.useCases),
+        ...createUserReadHandlers(userRead.useCases),
         ...createProviderWriteHandlers({ provider, workflows }),
       ] as Parameters<typeof buildYoga>[0]["fields"],
       plugins: buildHardeningPlugins(stage),
