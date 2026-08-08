@@ -39,7 +39,7 @@ gh variable set DEPLOY_ENABLED --body true
    ```
 
    Add the returned id under that stage in
-   `ntizo-workspace/apps/backend/api/wrangler.jsonc`:
+   `apps/backend/api/wrangler.jsonc`:
 
    ```jsonc
    "dev": {

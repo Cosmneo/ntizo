@@ -5,11 +5,6 @@ name: CI
 on:
   workflow_call:
 
-# The bun workspace root is `ntizo-workspace/`, not the repo root.
-defaults:
-  run:
-    working-directory: ntizo-workspace
-
 jobs:
   typecheck:
     name: Typecheck
@@ -18,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: ntizo-workspace/package.json
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run check-types
 
@@ -29,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: ntizo-workspace/package.json
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run lint
 
@@ -40,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: ntizo-workspace/package.json
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
       # Covers all four workspaces with a `test` script, including the
       # architecture fitness gates (tier segregation, framework isolation)
@@ -54,6 +49,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version-file: ntizo-workspace/package.json
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run build
