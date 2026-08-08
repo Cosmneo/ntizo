@@ -10,7 +10,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
     "better-auth": "^1.5.5"
@@ -24,6 +25,8 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "5.9.2",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "@ntizo/eslint-config": "workspace:*",
+    "eslint": "^9.0.0"
   }
 }

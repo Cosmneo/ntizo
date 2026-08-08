@@ -52,7 +52,8 @@
     "db:ntizo:qa:studio": "STAGE=qa drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts",
     "db:ntizo:prod:generate": "STAGE=prod drizzle-kit generate --config ./src/modules/ntizo/drizzle.config.ts",
     "db:ntizo:prod:migrate": "STAGE=prod drizzle-kit migrate --config ./src/modules/ntizo/drizzle.config.ts",
-    "db:ntizo:prod:studio": "STAGE=prod drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts"
+    "db:ntizo:prod:studio": "STAGE=prod drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@cosmneo/onion-lasagna": "1.0.0-beta.3",
@@ -70,6 +71,8 @@
     "@types/bun": "^1.3.12",
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.30.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "@ntizo/eslint-config": "workspace:*",
+    "eslint": "^9.0.0"
   }
 }

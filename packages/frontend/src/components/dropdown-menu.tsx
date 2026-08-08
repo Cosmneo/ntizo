@@ -7,6 +7,16 @@ interface DropdownCtx {
   setOpen: (v: boolean) => void;
   triggerRef: React.RefObject<HTMLElement | null>;
 }
+/**
+ * A child the `asChild` triggers clone. Typed narrowly instead of `any`:
+ * the only prop these triggers read or override is `onClick`, so that is the
+ * whole contract — widening it to `any` would also silence real mistakes in
+ * the props object passed to cloneElement.
+ */
+type ClickableChild = React.ReactElement<
+  { onClick?: React.MouseEventHandler } & Record<string, unknown>
+>;
+
 const Ctx = React.createContext<DropdownCtx | null>(null);
 
 export function DropdownMenu({ children }: { children: React.ReactNode }) {
@@ -25,10 +35,13 @@ export function DropdownMenuTrigger({
   children: React.ReactElement;
 }) {
   const ctx = React.useContext(Ctx)!;
-  return React.cloneElement(children as React.ReactElement<any>, {
+  // Narrow once and read from the narrowed value: `children` is declared as
+  // a bare ReactElement, whose `props` is `unknown` under React 19's types.
+  const child = children as ClickableChild;
+  return React.cloneElement(child, {
     ref: ctx.triggerRef,
     onClick: (e: React.MouseEvent) => {
-      (children.props as any).onClick?.(e);
+      child.props.onClick?.(e);
       ctx.setOpen(!ctx.open);
     },
   });

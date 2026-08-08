@@ -8,6 +8,16 @@ interface SheetCtx {
   open: boolean;
   setOpen: (v: boolean) => void;
 }
+/**
+ * A child the `asChild` triggers clone. Typed narrowly instead of `any`:
+ * the only prop these triggers read or override is `onClick`, so that is the
+ * whole contract — widening it to `any` would also silence real mistakes in
+ * the props object passed to cloneElement.
+ */
+type ClickableChild = React.ReactElement<{
+  onClick?: React.MouseEventHandler;
+}>;
+
 const Ctx = React.createContext<SheetCtx | null>(null);
 
 export function Sheet({
@@ -36,9 +46,12 @@ export function SheetTrigger({
   children: React.ReactElement;
 }) {
   const ctx = React.useContext(Ctx)!;
-  return React.cloneElement(children as React.ReactElement<any>, {
+  // Narrow once and read from the narrowed value: `children` is declared as a
+  // bare ReactElement, whose `props` is `unknown` under React 19's types.
+  const child = children as ClickableChild;
+  return React.cloneElement(child, {
     onClick: (e: React.MouseEvent) => {
-      (children.props as any).onClick?.(e);
+      child.props.onClick?.(e);
       ctx.setOpen(true);
     },
   });

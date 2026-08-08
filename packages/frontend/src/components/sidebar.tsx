@@ -35,6 +35,19 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 
+/**
+ * A child the `asChild` triggers clone. Typed narrowly instead of `any`:
+ * the only prop these triggers read or override is `onClick`, so that is the
+ * whole contract — widening it to `any` would also silence real mistakes in
+ * the props object passed to cloneElement.
+ */
+type ClickableChild = React.ReactElement<
+  { onClick?: React.MouseEventHandler; className?: string } & Record<
+    string,
+    unknown
+  >
+>;
+
 export function useSidebar() {
   const ctx = React.useContext(SidebarContext);
   if (!ctx) throw new Error("useSidebar must be used within a SidebarProvider.");
@@ -473,7 +486,7 @@ export const SidebarMenuButton = React.forwardRef<
       state === "collapsed" && !isMobile && tooltip ? tooltip : undefined;
 
     if (asChild && React.isValidElement(children)) {
-      const child = children as React.ReactElement<any>;
+      const child = children as ClickableChild;
       return React.cloneElement(child, {
         "data-slot": "sidebar-menu-button",
         "data-sidebar": "menu-button",
@@ -615,7 +628,7 @@ export function SidebarMenuSubButton({
     className,
   );
   if (asChild && React.isValidElement(children)) {
-    const child = children as React.ReactElement<any>;
+    const child = children as ClickableChild;
     return React.cloneElement(child, {
       "data-slot": "sidebar-menu-sub-button",
       "data-active": isActive,
