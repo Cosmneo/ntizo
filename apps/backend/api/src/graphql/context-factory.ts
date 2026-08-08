@@ -1,5 +1,6 @@
 import { getAuth } from "@ntizo/backend/modules/better-auth";
 import type { NtizoGraphqlContext } from "@ntizo/backend/modules/ntizo/graphql/context";
+import { toUserRole } from "@ntizo/shared";
 
 /**
  * Resolves the per-request GraphQL context from the better-auth session.
@@ -14,6 +15,7 @@ export async function createGraphqlContext(
     | (NonNullable<typeof session>["user"] & {
         firstName?: string;
         lastName?: string;
+        role?: string;
       })
     | undefined;
 
@@ -22,6 +24,10 @@ export async function createGraphqlContext(
     email: u?.email ?? null,
     firstName: u?.firstName ?? null,
     lastName: u?.lastName ?? null,
+    // Narrowed here, once, so no resolver downstream has to trust the raw
+    // column. Anonymous requests and unrecognised values both land on
+    // "customer" rather than on a wider role.
+    role: toUserRole(u?.role),
     requestId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
     ipAddress:
       request.headers.get("cf-connecting-ip") ??

@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { userRoleSchema } from "../../../enums/user-enums";
 
 export const currentUserReadModel = z.object({
   id: z.string().min(1),
   email: z.string(),
-  role: z.enum(["customer", "individual_provider", "organization_owner", "admin"]),
+  // Shared with the authorization path rather than re-listed here, so a role
+  // added to one is never missing from the other.
+  role: userRoleSchema,
   status: z.enum(["active", "pending", "suspended"]),
   createdAt: z.string(),
   name: z.string(),

@@ -18,7 +18,7 @@ export function toExecutionContext(ctx: NtizoGraphqlContext): ExecutionContext {
         email: ctx.email ?? "",
         firstName: ctx.firstName ?? "",
         lastName: ctx.lastName ?? "",
-        platformRole: "customer",
+        platformRole: ctx.role,
       },
     },
     metadata: {

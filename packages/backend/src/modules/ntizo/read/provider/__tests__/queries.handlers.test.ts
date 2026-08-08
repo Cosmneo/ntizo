@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { NtizoGraphqlContext } from "../../../graphql/context";
 import { createProviderReadHandlers } from "../graphql/handlers/queries.handlers";
 import { GetProviderDetailProjection } from "../app/use-cases/get-provider-detail.projection";
 import { mapGetProviderDetailInput } from "../graphql/handlers/arg-mappers";
@@ -48,7 +49,8 @@ describe("createProviderReadHandlers", () => {
     const { mapListMyProvidersInput } = await import("../graphql/handlers/arg-mappers");
     const mapped = mapListMyProvidersInput({
       requesterUserId: "u-session", email: null, firstName: null,
-      lastName: null, requestId: null, ipAddress: null, userAgent: null,
+      lastName: null, role: "customer",
+      requestId: null, ipAddress: null, userAgent: null,
     });
     expect(mapped.requestedByUserId).toBe("u-session");
     await mod.listMyProviders.execute(mapped);
@@ -119,9 +121,10 @@ describe("GetProviderDetailProjection authorization gate", () => {
 
 describe("mapGetProviderDetailInput", () => {
   it("takes providerId from args and requestedByUserId from the session, never from args", () => {
-    const ctx = {
+    const ctx: NtizoGraphqlContext = {
       requesterUserId: "u-session", email: null, firstName: null,
-      lastName: null, requestId: null, ipAddress: null, userAgent: null,
+      lastName: null, role: "customer",
+      requestId: null, ipAddress: null, userAgent: null,
     };
     // Extra field on args simulates a hostile/buggy client trying to smuggle
     // its own requestedByUserId in — the mapper must ignore it entirely.

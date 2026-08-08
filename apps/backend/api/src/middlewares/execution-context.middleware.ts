@@ -4,7 +4,7 @@ import type {
   ExecutionContext,
   Requester,
 } from "@ntizo/backend/modules/ntizo/shared/infrastructure/execution-context";
-import type { UserRole } from "@ntizo/shared";
+import { toUserRole } from "@ntizo/shared";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -36,7 +36,9 @@ export const executionContextMiddleware: MiddlewareHandler = async (c, next) => 
         email: u.email,
         firstName: u.firstName ?? "",
         lastName: u.lastName ?? "",
-        platformRole: (u.role ?? "customer") as UserRole,
+        // Not `as UserRole`: the column is free `text`, so a cast would let an
+        // arbitrary stored string reach authorization untouched.
+        platformRole: toUserRole(u.role),
       },
     };
   } else {
