@@ -2,8 +2,10 @@ import { describe, expect, it } from "bun:test";
 import type { CurrentUserDTO } from "@ntizo/shared";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
 import { mapGetCurrentUserInput } from "../graphql/handlers/arg-mappers";
+import { createUserReadHandlers } from "../graphql/handlers/queries.handlers";
 import { GetCurrentUserProjection } from "../app/use-cases/get-current-user.projection";
 import type { UserReadRepositoryPort } from "../app/ports/outbound/user-read.repository.port";
+import type { GetCurrentUserProjectionInput } from "../app/ports/inbound";
 
 const dto: CurrentUserDTO = {
   id: "u1", email: "a@b.c", role: "customer", status: "active",
@@ -56,5 +58,46 @@ describe("GetCurrentUserProjection", () => {
     await expect(
       new GetCurrentUserProjection(repo).execute({ requestedByUserId: "ghost" }),
     ).rejects.toThrow("[read/user] current user not found");
+  });
+});
+
+/**
+ * The unit above only covers `mapGetCurrentUserInput` in isolation. The
+ * boundary the client actually talks to is the `argsMapper` lambda wired up
+ * inside `createUserReadHandlers` — a regression could leave that lambda
+ * reading from `args` (e.g. `args.input.userId ?? requireRequesterUserId(ctx)`)
+ * while `mapGetCurrentUserInput` itself stays untouched and fully green. So
+ * this exercises the real built handler, not the mapper function directly.
+ */
+describe("createUserReadHandlers", () => {
+  it("builds a handler for the read field", () => {
+    const handlers = createUserReadHandlers({
+      getCurrentUser: new GetCurrentUserProjection(new FakeUserReadRepository(dto)),
+    });
+    expect(handlers.length).toBe(1);
+  });
+
+  it("stamps requestedByUserId from the session, even when args try to smuggle a different id", async () => {
+    const calls: GetCurrentUserProjectionInput[] = [];
+    const spy = {
+      execute: async (input: GetCurrentUserProjectionInput) => {
+        calls.push(input);
+        return dto;
+      },
+    };
+    const handlers = createUserReadHandlers({ getCurrentUser: spy });
+
+    // A hostile/buggy client's args, carrying an attacker-supplied id under
+    // an unrelated field name. This is the value of the GraphQL `input`
+    // argument itself — the kit's `handler(args, ctx)` takes that value
+    // directly, not wrapped in another `{ input: ... }` envelope. The use
+    // case must only ever see the session-stamped id, never anything read
+    // off args.
+    const hostileArgs = { userId: "victim" };
+    const authenticatedCtx = ctx();
+
+    await handlers[0]!.handler(hostileArgs, authenticatedCtx);
+
+    expect(calls).toEqual([{ requestedByUserId: "u-session" }]);
   });
 });

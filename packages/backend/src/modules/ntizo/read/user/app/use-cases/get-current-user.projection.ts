@@ -14,6 +14,15 @@ export class GetCurrentUserProjection implements GetCurrentUserProjectionPort {
     // missing row is a broken invariant, not an ordinary "not found". The output
     // schema is non-nullable, so returning null would fail kit validation with a
     // far less legible error.
+    //
+    // Deliberately a bare Error, not a typed kit exception (contrast
+    // ProviderNotFoundError etc. in bounded-contexts/provider/domain/exceptions):
+    // the kit doesn't recognise a plain Error, so it gets masked to a generic
+    // INTERNAL_ERROR and this message never reaches the client. That's the
+    // intended behavior here — a missing row for a session-validated id is an
+    // internal invariant violation, not a domain condition worth a stable public
+    // error code. Do not "fix" this into a typed error; that would leak the
+    // detail to the client instead of masking it.
     if (!dto) throw new Error("[read/user] current user not found");
     return dto;
   }
