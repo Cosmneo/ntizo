@@ -1,0 +1,11 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [dev, qa, main]
+
+jobs:
+  CI:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit

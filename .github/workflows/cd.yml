@@ -1,0 +1,296 @@
+name: CD
+
+# Promotion pipeline: dev -> qa -> main, one stage per branch.
+#
+# Shape follows the doazores reference: CI gate, then migrate, then per-worker
+# blue-green (versions upload -> smoke the version preview -> flip to 100%),
+# then a live tripwire that auto-reverts on failure.
+#
+# DEPLOY GATE: the deploy jobs only run when the repository variable
+# DEPLOY_ENABLED is exactly "true". Ntizo's Cloudflare side is not provisioned
+# yet (no Hyperdrive binding, no routes on the api worker), so deploys would
+# fail on every push and train everyone to ignore a red pipeline. CI still runs
+# on every push. See .github/README.md for the provisioning checklist.
+on:
+  push:
+    branches: [main, qa, dev]
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ntizo-workspace
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  gate-notice:
+    name: Deploys disabled
+    needs: ci
+    if: vars.DEPLOY_ENABLED != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain why nothing deployed
+        run: |
+          {
+            echo "## Deploys skipped"
+            echo
+            echo 'Repository variable `DEPLOY_ENABLED` is not `"true"`, so the'
+            echo 'migrate/deploy/flip/tripwire jobs did not run. CI passed.'
+            echo
+            echo 'Enable only after completing the provisioning checklist in'
+            echo '`.github/README.md` — most importantly the Hyperdrive bindings,'
+            echo 'without which a deployed Worker cannot reach Postgres.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  migrate:
+    name: Migrate databases
+    needs: ci
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      stage: ${{ steps.stage.outputs.name }}
+      api_url: ${{ steps.stage.outputs.api_url }}
+      web_url: ${{ steps.stage.outputs.web_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: stage
+        name: Resolve stage and live URLs from the branch
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            main) NAME=prod; UPPER=PROD; API=https://api.ntizo.com;    WEB=https://ntizo.com ;;
+            qa)   NAME=qa;   UPPER=QA;   API=https://qa.api.ntizo.com; WEB=https://qa.ntizo.com ;;
+            dev)  NAME=dev;  UPPER=DEV;  API=https://dev.api.ntizo.com; WEB=https://dev.ntizo.com ;;
+            *)    echo "::error::CD triggered on unexpected branch ${GITHUB_REF_NAME}" >&2; exit 1 ;;
+          esac
+          {
+            echo "name=$NAME"
+            echo "upper=$UPPER"
+            echo "api_url=$API"
+            echo "web_url=$WEB"
+          } >> "$GITHUB_OUTPUT"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - name: Run both migration chains
+        working-directory: ntizo-workspace/packages/backend
+        env:
+          STAGE_NAME: ${{ steps.stage.outputs.name }}
+          STAGE_DB_URL: ${{ secrets[format('{0}_DB_URL', steps.stage.outputs.upper)] }}
+        run: |
+          if [ -z "$STAGE_DB_URL" ]; then
+            echo "::error::Secret ${{ steps.stage.outputs.upper }}_DB_URL is not set"
+            exit 1
+          fi
+          # drizzle.config.ts reads <UPPER>_DB_URL, chosen by the STAGE the
+          # script itself exports — so export under the name that stage expects.
+          export "${{ steps.stage.outputs.upper }}_DB_URL=$STAGE_DB_URL"
+          # Two independent chains: better-auth's schema, then ntizo's.
+          bun run "db:auth:${STAGE_NAME}:migrate"
+          bun run "db:ntizo:${STAGE_NAME}:migrate"
+
+  deploy-api:
+    name: Deploy api (upload + smoke)
+    needs: migrate
+    runs-on: ubuntu-latest
+    outputs:
+      version_id: ${{ steps.upload.outputs.version_id }}
+      preview_url: ${{ steps.upload.outputs.preview_url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - id: upload
+        name: Upload new api version
+        working-directory: ntizo-workspace/apps/backend/api
+        run: |
+          set -o pipefail
+          OUTPUT=$(bunx wrangler versions upload --env ${{ needs.migrate.outputs.stage }} --minify 2>&1 | tee /dev/stderr)
+          VERSION_ID=$(echo "$OUTPUT" | grep -E '^Worker Version ID:'   | awk '{print $NF}' | tail -1)
+          PREVIEW_URL=$(echo "$OUTPUT" | grep -E '^Version Preview URL:' | awk '{print $NF}' | tail -1)
+          if [ -z "$VERSION_ID" ]; then
+            echo "::error::Could not extract Worker Version ID from wrangler output"; exit 1
+          fi
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "::error::No Version Preview URL — is preview_urls enabled on the ntizo-api worker?"; exit 1
+          fi
+          echo "version_id=$VERSION_ID"   >> "$GITHUB_OUTPUT"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+      - name: Smoke the version preview
+        run: |
+          curl --fail --max-time 15 --retry 3 --retry-delay 5 --retry-all-errors \
+            "${{ steps.upload.outputs.preview_url }}/" > /tmp/api.json
+          STATUS=$(jq -r '.status' /tmp/api.json)
+          if [ "$STATUS" != "ok" ]; then
+            echo "::error::API smoke failed (status=$STATUS)"; cat /tmp/api.json; exit 1
+          fi
+
+  flip-api:
+    name: Flip api
+    needs: [migrate, deploy-api]
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - name: Deploy version to 100% of routes
+        working-directory: ntizo-workspace/apps/backend/api
+        run: |
+          bunx wrangler versions deploy \
+            ${{ needs.deploy-api.outputs.version_id }}@100% \
+            --env ${{ needs.migrate.outputs.stage }} --yes
+      - name: Apply triggers (routes + custom domains)
+        working-directory: ntizo-workspace/apps/backend/api
+        run: bunx wrangler triggers deploy --env ${{ needs.migrate.outputs.stage }}
+
+  deploy-web:
+    name: Deploy web (upload + smoke)
+    # Sequenced after the api flip: the web app calls the API, so the API must
+    # already be serving the new contract before the new frontend goes live.
+    needs: [migrate, flip-api]
+    runs-on: ubuntu-latest
+    outputs:
+      version_id: ${{ steps.upload.outputs.version_id }}
+      preview_url: ${{ steps.upload.outputs.preview_url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - name: Build
+        working-directory: ntizo-workspace/apps/frontend/web
+        # Vite INLINES this at build time — the worker `vars` entry in
+        # wrangler.jsonc is runtime-only and cannot supply it.
+        env:
+          VITE_AUTH_API_URL: ${{ needs.migrate.outputs.api_url }}
+        run: bun run build
+      - id: upload
+        name: Upload new web version
+        working-directory: ntizo-workspace/apps/frontend/web
+        run: |
+          set -o pipefail
+          OUTPUT=$(bunx wrangler versions upload --env ${{ needs.migrate.outputs.stage }} 2>&1 | tee /dev/stderr)
+          VERSION_ID=$(echo "$OUTPUT" | grep -E '^Worker Version ID:'   | awk '{print $NF}' | tail -1)
+          PREVIEW_URL=$(echo "$OUTPUT" | grep -E '^Version Preview URL:' | awk '{print $NF}' | tail -1)
+          if [ -z "$VERSION_ID" ] || [ -z "$PREVIEW_URL" ]; then
+            echo "::error::Could not extract version id / preview URL from wrangler output"; exit 1
+          fi
+          echo "version_id=$VERSION_ID"   >> "$GITHUB_OUTPUT"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+      - name: Smoke the version preview
+        run: |
+          curl --fail --max-time 30 --retry 3 --retry-delay 5 --retry-all-errors \
+            "${{ steps.upload.outputs.preview_url }}/" > /tmp/web.html
+          grep -qi '<script' /tmp/web.html || {
+            echo "::error::Web smoke found no <script> in the served HTML"
+            head -50 /tmp/web.html; exit 1
+          }
+
+  flip-web:
+    name: Flip web
+    needs: [migrate, deploy-web]
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - name: Deploy version to 100% of routes
+        working-directory: ntizo-workspace/apps/frontend/web
+        run: |
+          bunx wrangler versions deploy \
+            ${{ needs.deploy-web.outputs.version_id }}@100% \
+            --env ${{ needs.migrate.outputs.stage }} --yes
+
+  tripwire:
+    name: Tripwire (live URL smoke + auto-revert)
+    needs: [migrate, deploy-api, deploy-web, flip-api, flip-web]
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - id: live
+        name: Curl the live URLs
+        env:
+          API_URL: ${{ needs.migrate.outputs.api_url }}
+          WEB_URL: ${{ needs.migrate.outputs.web_url }}
+        run: |
+          set +e
+          API_FAIL=0; WEB_FAIL=0
+
+          curl --fail --max-time 15 --retry 3 --retry-delay 5 --retry-all-errors \
+            "${API_URL}/" > /tmp/api.json
+          if [ $? -ne 0 ]; then
+            API_FAIL=1; echo "::error::API tripwire failed at ${API_URL}/"
+          else
+            STATUS=$(jq -r '.status' /tmp/api.json 2>/dev/null || echo "")
+            [ "$STATUS" = "ok" ] || { API_FAIL=1; echo "::error::API / returned status=$STATUS"; }
+          fi
+
+          curl --fail --location --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors \
+            "${WEB_URL}/" > /tmp/web.html
+          if [ $? -ne 0 ] || ! grep -qi '<script' /tmp/web.html; then
+            WEB_FAIL=1; echo "::error::Web tripwire failed at ${WEB_URL}/"
+          fi
+
+          echo "api_fail=$API_FAIL" >> "$GITHUB_OUTPUT"
+          echo "web_fail=$WEB_FAIL" >> "$GITHUB_OUTPUT"
+          [ "$API_FAIL" -eq 0 ] && [ "$WEB_FAIL" -eq 0 ]
+
+      - name: Auto-revert api
+        if: failure() && steps.live.outputs.api_fail == '1'
+        working-directory: ntizo-workspace/apps/backend/api
+        run: |
+          bunx wrangler rollback --env ${{ needs.migrate.outputs.stage }} --yes
+          echo "## API auto-reverted" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Auto-revert web
+        if: failure() && steps.live.outputs.web_fail == '1'
+        working-directory: ntizo-workspace/apps/frontend/web
+        run: |
+          bunx wrangler rollback --env ${{ needs.migrate.outputs.stage }} --yes
+          echo "## Web auto-reverted" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note that migrations are NOT reverted
+        if: failure()
+        run: |
+          {
+            echo "## Workers reverted — database was NOT"
+            echo
+            echo 'Migrations ran before the deploy and are not rolled back.'
+            echo 'The reverted Worker is now running against a migrated schema.'
+            echo 'Verify the previous version tolerates it before re-deploying.'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -36,3 +36,17 @@ yarn-error.log*
 .DS_Store
 *.pem
 apps/mobile/.idea/
+
+# Cloudflare Workers local secrets
+.dev.vars
+
+# Wrangler local dev state/cache
+.wrangler/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
+# Subagent-driven-development scratch (ledgers, briefs, review packages)
+.superpowers/
+playwright-report/
+.playwright-mcp/

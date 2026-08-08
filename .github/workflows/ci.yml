@@ -1,0 +1,59 @@
+name: CI
+
+# Reusable. Called by pr.yml (on pull request) and cd.yml (before any deploy).
+# Nothing here touches infrastructure — it is safe to run on every branch.
+on:
+  workflow_call:
+
+# The bun workspace root is `ntizo-workspace/`, not the repo root.
+defaults:
+  run:
+    working-directory: ntizo-workspace
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check-types
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      # Covers all four workspaces with a `test` script, including the
+      # architecture fitness gates (tier segregation, framework isolation)
+      # and the /graphql CORS regression suite.
+      - run: bun run test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ntizo-workspace/package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
