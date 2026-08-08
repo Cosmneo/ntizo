@@ -1,4 +1,3 @@
-export type { GetCurrentUserPort } from "./get-current-user.query.port";
 export type {
   UpgradeProfileToProviderInternalPort,
   UpgradeProfileToProviderInternalInput,

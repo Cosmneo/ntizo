@@ -9,6 +9,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "better-auth": "^1.5.5"
   },
@@ -20,6 +23,7 @@
     "@ntizo/typescript-config": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vite": "^7.0.0"
   }
 }

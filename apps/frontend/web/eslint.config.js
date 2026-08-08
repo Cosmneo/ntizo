@@ -20,7 +20,7 @@ export default [
         { type: "data", pattern: ["src/features/*/data/**"] },
         {
           type: "viewmodel",
-          pattern: ["src/features/*/viewmodel/**", "src/features/*/hooks/**"],
+          pattern: ["src/features/*/viewmodel/**"],
         },
         {
           type: "ui",

@@ -1,4 +1,18 @@
 {
   "extends": "@ntizo/typescript-config/react-library.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    // This package publishes its TS source directly (package.json `types`
+    // points at ./src/index.ts, no build step, no dist/) and never emits a
+    // .d.ts, so react-library.json's inherited `declaration: true` (meant
+    // for packages that DO build one) is pure overhead here — and standalone
+    // it actively breaks: better-auth's client return type isn't portably
+    // nameable in a declaration file (TS2742), which only surfaces once this
+    // package's own files are the compilation root instead of a transitive
+    // import inside @ntizo/web's tsconfig (which has no such rootDir-bound
+    // check on files outside it).
+    "declaration": false,
+    "declarationMap": false
+  },
   "include": ["src"]
 }

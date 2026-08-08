@@ -18,7 +18,6 @@
       "version": "0.0.1",
       "dependencies": {
         "@cosmneo/onion-lasagna": "1.0.0-beta.3",
-        "@cosmneo/onion-lasagna-hono": "1.0.0-beta.3",
         "@cosmneo/onion-lasagna-yoga": "1.0.0-beta.3",
         "@escape.tech/graphql-armor-cost-limit": "^2.4.3",
         "@escape.tech/graphql-armor-max-aliases": "^2.6.2",
@@ -100,6 +99,7 @@
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
         "typescript": "5.9.2",
+        "vite": "^7.0.0",
       },
       "peerDependencies": {
         "react": "^19.0.0",
@@ -273,8 +273,6 @@
     "@cloudflare/workers-types": ["@cloudflare/workers-types@5.20260804.1", "", {}, "sha512-B1dwxpN6e5RZXZkE5zpZj+ooNeNZ1mwavLIyHDYe10ojhlGTwDfe8sAl7R1mMXc1cyIsbr+jKVdvmMEyVcdTdg=="],
 
     "@cosmneo/onion-lasagna": ["@cosmneo/onion-lasagna@1.0.0-beta.3", "", { "dependencies": { "uuid": "^13.0.0" }, "peerDependencies": { "typescript": "^5" }, "optionalPeers": ["typescript"] }, "sha512-bPknR3wyvEfck4sM2WbysIXOM3xA3dvpS5C+ivZ2hOA+iXiBcw8lBPSOIj59/yGwmBaTUxGUU1XMajLENnvFuw=="],
-
-    "@cosmneo/onion-lasagna-hono": ["@cosmneo/onion-lasagna-hono@1.0.0-beta.3", "", { "peerDependencies": { "@cosmneo/onion-lasagna": "^1.0.0-beta.3", "hono": "^4" } }, "sha512-Lv+PGYjVBWXdClhOhg8SXMYptLuohVCss8YxP1FjmC5eTDq7LG22hjx3Vsr5zEr0Ij6WNJ84sYojteckEEG74g=="],
 
     "@cosmneo/onion-lasagna-yoga": ["@cosmneo/onion-lasagna-yoga@1.0.0-beta.3", "", { "peerDependencies": { "@cosmneo/onion-lasagna": "^1.0.0-beta.3", "graphql": "^16", "graphql-yoga": "^5" } }, "sha512-Xw7iYwyPJMKx0J/hXcW9eaHI13CeRZYhmynskobdvO4KjTd7TQVy+tIHtMnFY5CmoY+XotAEH4P4lHZhXD1tsA=="],
 
