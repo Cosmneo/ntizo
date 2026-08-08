@@ -25,6 +25,18 @@ export default defineConfig({
       router: {
         routeFileIgnorePattern: "\\.(test|spec)\\.|-guard\\.",
       },
+      // Prerender `/` to static HTML at build time. `crawlLinks: false` is
+      // deliberate: the landing page links to /sign-in, /provider and
+      // /admin, all of which are session-dependent and `ssr: false` —
+      // crawling would try (and fail) to prerender routes that cannot
+      // render without a user. `autoStaticPathsDiscovery: false` is equally
+      // required: it defaults to `true` and independently walks the whole
+      // route tree adding every static route to the prerender queue,
+      // completely ignoring `crawlLinks` (verified locally — with it left
+      // on, /admin, /provider/*, /sign-in and /sign-up all got prerendered
+      // too).
+      pages: [{ path: "/" }],
+      prerender: { enabled: true, crawlLinks: false, autoStaticPathsDiscovery: false },
     }),
     viteReact(),
   ],

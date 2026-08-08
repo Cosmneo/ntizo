@@ -44,9 +44,9 @@ export default [
         { type: "routes", pattern: ["src/routes/**"] },
         { type: "shared", pattern: ["src/shared/**"] },
       ],
-      // Legitimate non-element roots: entry points, root-level config, and
-      // the worker shim, none of which belong under any `src/features/*`
-      // layer. Anything NOT listed here now fails `boundaries/no-unknown-files`
+      // Legitimate non-element roots: entry points and root-level config,
+      // none of which belong under any `src/features/*` layer. Anything
+      // NOT listed here now fails `boundaries/no-unknown-files`
       // instead of silently laundering a layered import through an
       // unclassified folder (see the F1 finding this rule closes).
       "boundaries/ignore": [
