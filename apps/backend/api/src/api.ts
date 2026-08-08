@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { getAuth, registerSignUpHook } from "@ntizo/backend/modules/better-auth";
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
-import { createUserRouter } from "./http/user.router";
 import { mountPrivateGraphql } from "./graphql/private";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
@@ -26,7 +25,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => getAuth().handler(c.req.raw));
 // Every domain endpoint gets a fresh ExecutionContext attached.
 app.use("/api/*", executionContextMiddleware);
 
-// Bootstrap the user BC once at module scope; the router below shares it.
+// Bootstrap the user BC once at module scope; the sign-up hook below shares it.
 const userBootstrap = bootstrapUser();
 
 // Wire the sign-up hook so every new better-auth user gets a matching
@@ -36,12 +35,9 @@ registerSignUpHook((input) =>
   userBootstrap.useCases.internal.createUserOnSignUp.execute(input),
 );
 
-// Ntizo user BC router — exposes GET /me. There is no read/user GraphQL
-// slice yet, so this REST router stays mounted.
-app.route("/api", createUserRouter({ userBootstrap }));
-
-// GraphQL (private, session-authed). The provider BC is served exclusively
-// through this endpoint now — its REST router was deleted in Phase 1B.
+// GraphQL (private, session-authed). The user and provider BCs are served
+// exclusively through this endpoint now — REST routers for both were
+// deleted (provider in Phase 1B, user in Phase 2).
 mountPrivateGraphql(app);
 
 // Health check
