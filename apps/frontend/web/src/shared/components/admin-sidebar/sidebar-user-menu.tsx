@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { ChevronsUpDown, LogOut, User as UserIcon, Palette, Languages } from "lucide-react";
 import {
   Avatar,
@@ -15,22 +15,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
-import { authClient } from "@/shared/lib/api/auth-client";
-import {
-  useClearSessionQueryCache,
-  useCurrentUser,
-} from "@/features/user/viewmodel/use-current-user";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 
 export function SidebarUserMenu() {
   const { t: ta } = useTranslation("auth");
   const { data: user } = useCurrentUser();
-  const nav = useNavigate();
-  const clearSessionQueryCache = useClearSessionQueryCache();
+  const signOut = useSignOut();
 
   async function handleSignOut() {
-    await authClient.signOut();
-    clearSessionQueryCache();
-    nav({ to: "/sign-in" });
+    const { serverRevokeFailed } = await signOut();
+    if (serverRevokeFailed) {
+      toast.error(ta("signOutOffline"));
+    }
   }
 
   const initials = (user?.name ?? user?.email ?? "?")

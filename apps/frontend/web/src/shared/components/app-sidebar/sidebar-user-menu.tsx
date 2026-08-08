@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   Check,
   ChevronsUpDown,
@@ -30,11 +31,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
-import { authClient } from "@/shared/lib/api/auth-client";
-import {
-  useClearSessionQueryCache,
-  useCurrentUser,
-} from "@/features/user/viewmodel/use-current-user";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 
@@ -45,12 +43,13 @@ export function SidebarUserMenu() {
   const { providers, activeProvider, setActive } = useActiveProvider();
   const [dialogOpen, setDialogOpen] = useState(false);
   const nav = useNavigate();
-  const clearSessionQueryCache = useClearSessionQueryCache();
+  const signOut = useSignOut();
 
   async function handleSignOut() {
-    await authClient.signOut();
-    clearSessionQueryCache();
-    nav({ to: "/sign-in" });
+    const { serverRevokeFailed } = await signOut();
+    if (serverRevokeFailed) {
+      toast.error(ta("signOutOffline"));
+    }
   }
 
   const initials = (user?.name ?? user?.email ?? "?")
