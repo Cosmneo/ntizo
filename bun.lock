@@ -46,6 +46,7 @@
       "name": "@ntizo/web",
       "version": "0.0.0",
       "dependencies": {
+        "@ntizo/auth-client": "workspace:*",
         "@ntizo/frontend-ui": "workspace:*",
         "@ntizo/shared": "workspace:*",
         "@tailwindcss/vite": "^4.1.17",
@@ -86,6 +87,23 @@
         "vite": "^7.0.0",
         "vitest": "^4.1.4",
         "wrangler": "^4.0.0",
+      },
+    },
+    "packages/auth-client": {
+      "name": "@ntizo/auth-client",
+      "version": "0.0.0",
+      "dependencies": {
+        "better-auth": "^1.5.5",
+      },
+      "devDependencies": {
+        "@ntizo/typescript-config": "workspace:*",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "typescript": "5.9.2",
+      },
+      "peerDependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
       },
     },
     "packages/backend": {
@@ -487,6 +505,8 @@
     "@noble/hashes": ["@noble/hashes@2.2.0", "", {}, "sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg=="],
 
     "@ntizo/api": ["@ntizo/api@workspace:apps/backend/api"],
+
+    "@ntizo/auth-client": ["@ntizo/auth-client@workspace:packages/auth-client"],
 
     "@ntizo/backend": ["@ntizo/backend@workspace:packages/backend"],
 
