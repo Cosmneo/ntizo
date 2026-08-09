@@ -1,83 +1,110 @@
 // Provider BC domain events.
 // TODO(ntizo): wire to a real domain event dispatcher / outbox once
-// the eventing infrastructure lands. For now they're plain plain DTOs
-// pulled off the aggregate via `pullEvents()`.
+// the eventing infrastructure lands. For now they're pulled off the
+// aggregate via `pullEvents()`.
+//
+// Each class extends the kit's `BaseDomainEvent`, which supplies a stable
+// `eventId` (crypto.randomUUID() per instance), `occurredOn`, and a frozen
+// `payload` — see `super(eventName, aggregateId, payload)` below. The
+// `aggregateId` passed to `super()` is always the provider's own id: every
+// one of these events is raised by the Provider aggregate, so it is the
+// thing the event is about, not the whole payload.
+//
+// The string passed as `eventName` (e.g. "provider.created") becomes the
+// outbox's `event_type` column (Task 5) — keep every one of these 9 strings
+// byte-identical; renaming one silently orphans any consumer written
+// against it.
 
-export interface DomainEvent {
-  readonly name: string;
-  readonly occurredAt: Date;
-  readonly payload: Record<string, unknown>;
+import { BaseDomainEvent } from "@cosmneo/onion-lasagna";
+
+export class ProviderCreated extends BaseDomainEvent<{
+  providerId: string;
+  ownerUserId: string;
+  type: "individual" | "organization";
+}> {
+  constructor(payload: {
+    providerId: string;
+    ownerUserId: string;
+    type: "individual" | "organization";
+  }) {
+    super("provider.created", payload.providerId, payload);
+  }
 }
 
-export class ProviderCreated implements DomainEvent {
-  readonly name = "provider.created";
-  readonly occurredAt = new Date();
-  constructor(
-    readonly payload: {
-      providerId: string;
-      ownerUserId: string;
-      type: "individual" | "organization";
-    },
-  ) {}
+export class ProviderUpdated extends BaseDomainEvent<{ providerId: string }> {
+  constructor(payload: { providerId: string }) {
+    super("provider.updated", payload.providerId, payload);
+  }
 }
 
-export class ProviderUpdated implements DomainEvent {
-  readonly name = "provider.updated";
-  readonly occurredAt = new Date();
-  constructor(readonly payload: { providerId: string }) {}
+export class ProviderDeactivated extends BaseDomainEvent<{
+  providerId: string;
+}> {
+  constructor(payload: { providerId: string }) {
+    super("provider.deactivated", payload.providerId, payload);
+  }
 }
 
-export class ProviderDeactivated implements DomainEvent {
-  readonly name = "provider.deactivated";
-  readonly occurredAt = new Date();
-  constructor(readonly payload: { providerId: string }) {}
+export class ProviderMemberAdded extends BaseDomainEvent<{
+  providerId: string;
+  userId: string;
+  role: string;
+}> {
+  constructor(payload: { providerId: string; userId: string; role: string }) {
+    super("provider.member.added", payload.providerId, payload);
+  }
 }
 
-export class ProviderMemberAdded implements DomainEvent {
-  readonly name = "provider.member.added";
-  readonly occurredAt = new Date();
-  constructor(
-    readonly payload: { providerId: string; userId: string; role: string },
-  ) {}
+export class ProviderMemberRemoved extends BaseDomainEvent<{
+  providerId: string;
+  userId: string;
+}> {
+  constructor(payload: { providerId: string; userId: string }) {
+    super("provider.member.removed", payload.providerId, payload);
+  }
 }
 
-export class ProviderMemberRemoved implements DomainEvent {
-  readonly name = "provider.member.removed";
-  readonly occurredAt = new Date();
-  constructor(readonly payload: { providerId: string; userId: string }) {}
+export class ProviderMemberRoleUpdated extends BaseDomainEvent<{
+  providerId: string;
+  userId: string;
+  role: string;
+}> {
+  constructor(payload: { providerId: string; userId: string; role: string }) {
+    super("provider.member.role-updated", payload.providerId, payload);
+  }
 }
 
-export class ProviderMemberRoleUpdated implements DomainEvent {
-  readonly name = "provider.member.role-updated";
-  readonly occurredAt = new Date();
-  constructor(
-    readonly payload: { providerId: string; userId: string; role: string },
-  ) {}
+export class ProviderInviteSent extends BaseDomainEvent<{
+  providerId: string;
+  email: string;
+  token: string;
+  role: string;
+}> {
+  constructor(payload: {
+    providerId: string;
+    email: string;
+    token: string;
+    role: string;
+  }) {
+    super("provider.invite.sent", payload.providerId, payload);
+  }
 }
 
-export class ProviderInviteSent implements DomainEvent {
-  readonly name = "provider.invite.sent";
-  readonly occurredAt = new Date();
-  constructor(
-    readonly payload: {
-      providerId: string;
-      email: string;
-      token: string;
-      role: string;
-    },
-  ) {}
+export class ProviderInviteAccepted extends BaseDomainEvent<{
+  providerId: string;
+  email: string;
+  userId: string;
+}> {
+  constructor(payload: { providerId: string; email: string; userId: string }) {
+    super("provider.invite.accepted", payload.providerId, payload);
+  }
 }
 
-export class ProviderInviteAccepted implements DomainEvent {
-  readonly name = "provider.invite.accepted";
-  readonly occurredAt = new Date();
-  constructor(
-    readonly payload: { providerId: string; email: string; userId: string },
-  ) {}
-}
-
-export class ProviderInviteRevoked implements DomainEvent {
-  readonly name = "provider.invite.revoked";
-  readonly occurredAt = new Date();
-  constructor(readonly payload: { providerId: string; inviteId: string }) {}
+export class ProviderInviteRevoked extends BaseDomainEvent<{
+  providerId: string;
+  inviteId: string;
+}> {
+  constructor(payload: { providerId: string; inviteId: string }) {
+    super("provider.invite.revoked", payload.providerId, payload);
+  }
 }

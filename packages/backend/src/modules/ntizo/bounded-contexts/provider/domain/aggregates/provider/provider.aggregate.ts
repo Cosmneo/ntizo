@@ -4,6 +4,7 @@
 // Mirrors flowzao's Organization aggregate but collapses the two ntizo
 // provider types into a single aggregate via a discriminator.
 
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Address } from "../../value-objects/address.vo";
 import {
   IndividualProviderCannotHaveMembersError,
@@ -11,7 +12,6 @@ import {
   NotProviderOwnerError,
 } from "../../exceptions";
 import {
-  type DomainEvent,
   ProviderCreated,
   ProviderDeactivated,
   ProviderUpdated,
@@ -34,7 +34,7 @@ export interface ProviderProps {
 }
 
 export class Provider {
-  private readonly _events: DomainEvent[] = [];
+  private readonly _events: BaseDomainEvent[] = [];
 
   private constructor(private readonly props: ProviderProps) {}
 
@@ -156,11 +156,11 @@ export class Provider {
 
   // ---- events ------------------------------------------------------------
 
-  recordEvent(event: DomainEvent): void {
+  recordEvent(event: BaseDomainEvent): void {
     this._events.push(event);
   }
 
-  pullEvents(): DomainEvent[] {
+  pullEvents(): BaseDomainEvent[] {
     const events = [...this._events];
     this._events.length = 0;
     return events;
