@@ -1,12 +1,19 @@
-import { Db } from "../../../../shared/infrastructure/database/connection";
+import { getActiveDb } from "../../../../shared/infrastructure/database/tx-context";
 
 /**
- * The per-request drizzle client. Signature unchanged, so all existing
- * repositories keep working — but the handle is now scoped to the current
- * request instead of the isolate.
+ * The active drizzle handle. Signature unchanged, so all existing
+ * repositories keep working — but the handle now resolves to the bound
+ * transaction when one is active, otherwise the request-scoped client.
+ *
+ * Name deliberately kept as `getDb()` rather than renamed to
+ * `getActiveDb()`: 32 call sites already funnel through this function, and a
+ * missed rename at any one of them would fail silently — it would write
+ * outside the transaction instead of raising an error. Changing what the
+ * existing name resolves to makes every call site join a transaction
+ * automatically with zero edits at the call sites.
  */
 export function getDb() {
-  return Db.getDbConnection().drizzleDbClient;
+  return getActiveDb();
 }
 
 /** Legacy lazy proxy. Resolves per property access, so it picks up the
