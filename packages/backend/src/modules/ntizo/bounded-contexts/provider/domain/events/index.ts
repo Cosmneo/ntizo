@@ -74,16 +74,23 @@ export class ProviderMemberRoleUpdated extends BaseDomainEvent<{
   }
 }
 
+// Deliberately does NOT carry the invite's bearer `token`. This payload is
+// written verbatim into `ntizo_outbox.outbox_event.payload` (plaintext
+// jsonb, no consumer yet, no pruning), so anything placed here outlives the
+// invite itself — including after the invite row is deleted. `inviteId` is
+// enough for a future consumer to identify the invite; it is not a
+// credential. Do not add `token` back without also adding redaction/pruning
+// for the outbox table.
 export class ProviderInviteSent extends BaseDomainEvent<{
   providerId: string;
+  inviteId: string;
   email: string;
-  token: string;
   role: string;
 }> {
   constructor(payload: {
     providerId: string;
+    inviteId: string;
     email: string;
-    token: string;
     role: string;
   }) {
     super("provider.invite.sent", payload.providerId, payload);

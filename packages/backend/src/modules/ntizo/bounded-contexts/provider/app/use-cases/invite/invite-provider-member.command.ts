@@ -79,8 +79,8 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
       provider.recordEvent(
         new ProviderInviteSent({
           providerId: provider.id,
+          inviteId: invite.id,
           email: invite.email,
-          token,
           role: invite.role,
         }),
       );

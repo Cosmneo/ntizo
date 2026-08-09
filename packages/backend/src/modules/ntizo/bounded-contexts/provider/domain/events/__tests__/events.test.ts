@@ -39,8 +39,8 @@ describe("provider domain events", () => {
       }),
       new ProviderInviteSent({
         providerId: "p7",
+        inviteId: "inv-1",
         email: "a@b.com",
-        token: "tok",
         role: "staff",
       }),
       new ProviderInviteAccepted({
@@ -69,6 +69,29 @@ describe("provider domain events", () => {
       "p8",
       "p9",
     ]);
+  });
+
+  it("never carries the invite's bearer token in ProviderInviteSent's payload", () => {
+    // ProviderInviteSent's payload is written verbatim into
+    // `ntizo_outbox.outbox_event.payload` (plaintext jsonb, no consumer, no
+    // pruning) — see the file-level comment on ProviderInviteSent. A
+    // consumer only ever needs the invite's id to look it up; the raw
+    // bearer token must never be durably persisted a second time in a table
+    // that outlives the invite itself.
+    const event = new ProviderInviteSent({
+      providerId: "p1",
+      inviteId: "inv-1",
+      email: "a@b.com",
+      role: "staff",
+    });
+
+    expect(Object.keys(event.payload)).not.toContain("token");
+    expect(event.payload).toEqual({
+      providerId: "p1",
+      inviteId: "inv-1",
+      email: "a@b.com",
+      role: "staff",
+    });
   });
 
   it("gives two instances of the same event distinct eventIds", () => {
@@ -106,8 +129,8 @@ describe("provider domain events", () => {
       }).eventName,
       ProviderInviteSent: new ProviderInviteSent({
         providerId: "p1",
+        inviteId: "inv-1",
         email: "a@b.com",
-        token: "tok",
         role: "staff",
       }).eventName,
       ProviderInviteAccepted: new ProviderInviteAccepted({
