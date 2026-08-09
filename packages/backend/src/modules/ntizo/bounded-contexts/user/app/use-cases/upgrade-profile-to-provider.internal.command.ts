@@ -24,5 +24,12 @@ export class UpgradeProfileToProviderInternalCommand
     user.upgradeToProvider();
     await this.userRepo.save(user);
     // TODO(ntizo): dispatch a ProfileUpgradedToProvider domain event via outbox.
+    // Left unwired by Task 6 (outbox port/adapter + dispatch-site replacement):
+    // no ProfileUpgradedToProvider event class exists, and the User aggregate
+    // has no event-recording machinery at all (no `_events`/`recordEvent`/
+    // `pullEvents` — confirmed absent in Task 4's scope check, which touched
+    // only the Provider BC's 9 event classes). Adding a new domain event and
+    // wiring event-recording into User is domain modeling, out of scope for
+    // a port/adapter task; there is nothing here yet to pull and publish.
   }
 }

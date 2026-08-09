@@ -1,3 +1,4 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -12,6 +13,7 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { ProviderInviteRevoked } from "../../../domain/events";
 import {
   InviteNotFoundError,
@@ -23,6 +25,8 @@ export class RevokeProviderInviteCommand implements RevokeProviderInvitePort {
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly inviteRepo: ProviderInviteRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(
@@ -53,16 +57,18 @@ export class RevokeProviderInviteCommand implements RevokeProviderInvitePort {
     }
 
     invite.markRevoked();
-    await this.inviteRepo.save(invite);
 
-    provider.recordEvent(
-      new ProviderInviteRevoked({
-        providerId: provider.id,
-        inviteId: invite.id,
-      }),
-    );
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.inviteRepo.save(invite);
+
+      provider.recordEvent(
+        new ProviderInviteRevoked({
+          providerId: provider.id,
+          inviteId: invite.id,
+        }),
+      );
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
 
     return { inviteId: invite.id };
   }

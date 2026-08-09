@@ -3,6 +3,8 @@ import { DrizzleProviderMemberRepository } from "../infrastructure/repositories/
 import { DrizzleProviderInviteRepository } from "../infrastructure/repositories/drizzle/provider-invite";
 import { ProviderEmailServiceAdapter } from "../infrastructure/outbound-adapters";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
+import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
+import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
 
 export function bootstrapAdapters() {
   const providerRepository = new DrizzleProviderRepository();
@@ -10,6 +12,7 @@ export function bootstrapAdapters() {
   const providerInviteRepository = new DrizzleProviderInviteRepository();
   const emailService = new ProviderEmailServiceAdapter();
   const unitOfWork = new DrizzleUnitOfWork();
+  const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
 
   return {
     providerRepository,
@@ -17,6 +20,7 @@ export function bootstrapAdapters() {
     providerInviteRepository,
     emailService,
     unitOfWork,
+    outboxPort,
   };
 }
 

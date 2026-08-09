@@ -14,6 +14,7 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { ProviderMember } from "../../../domain/entities/provider-member";
 import {
   ProviderInviteAccepted,
@@ -31,6 +32,7 @@ export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly inviteRepo: ProviderInviteRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(
@@ -68,24 +70,23 @@ export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
 
       invite.markAccepted();
       await this.inviteRepo.save(invite);
-    });
 
-    provider.recordEvent(
-      new ProviderMemberAdded({
-        providerId: provider.id,
-        userId: requester.userId,
-        role: invite.role,
-      }),
-    );
-    provider.recordEvent(
-      new ProviderInviteAccepted({
-        providerId: provider.id,
-        email: invite.email,
-        userId: requester.userId,
-      }),
-    );
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
+      provider.recordEvent(
+        new ProviderMemberAdded({
+          providerId: provider.id,
+          userId: requester.userId,
+          role: invite.role,
+        }),
+      );
+      provider.recordEvent(
+        new ProviderInviteAccepted({
+          providerId: provider.id,
+          email: invite.email,
+          userId: requester.userId,
+        }),
+      );
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
 
     return { providerId: provider.id, memberId: member.id };
   }

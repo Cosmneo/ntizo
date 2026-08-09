@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -14,6 +15,7 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { ProviderInvite } from "../../../domain/entities/provider-invite";
 import {
   ProviderInviteSent,
@@ -28,6 +30,8 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly inviteRepo: ProviderInviteRepositoryPort,
     private readonly emailService: EmailServicePort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(
@@ -69,8 +73,22 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
       expiresAt,
     });
 
-    await this.inviteRepo.save(invite);
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.inviteRepo.save(invite);
 
+      provider.recordEvent(
+        new ProviderInviteSent({
+          providerId: provider.id,
+          email: invite.email,
+          token,
+          role: invite.role,
+        }),
+      );
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
+
+    // Sent only once the invite row + event are durably committed — an email
+    // for an invite that got rolled back would be worse than none.
     await this.emailService.sendEmail({
       to: [invite.email],
       subject: `You've been invited to join ${provider.name} on Ntizo`,
@@ -81,17 +99,6 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
       }),
       textBody: `You've been invited to join ${provider.name} on Ntizo. Use this token: ${token}`,
     });
-
-    provider.recordEvent(
-      new ProviderInviteSent({
-        providerId: provider.id,
-        email: invite.email,
-        token,
-        role: invite.role,
-      }),
-    );
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
 
     return { inviteId: invite.id, token };
   }

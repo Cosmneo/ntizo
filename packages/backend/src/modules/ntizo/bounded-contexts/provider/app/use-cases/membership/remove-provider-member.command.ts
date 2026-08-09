@@ -1,3 +1,4 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -11,6 +12,7 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { ProviderMemberRemoved } from "../../../domain/events";
 import {
   MemberNotFoundError,
@@ -22,6 +24,8 @@ export class RemoveProviderMemberCommand implements RemoveProviderMemberPort {
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(
@@ -58,16 +62,17 @@ export class RemoveProviderMemberCommand implements RemoveProviderMemberPort {
     );
     if (!target) throw new MemberNotFoundError(provider.id, input.userId);
 
-    await this.memberRepo.delete(provider.id, input.userId);
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.memberRepo.delete(provider.id, input.userId);
 
-    provider.recordEvent(
-      new ProviderMemberRemoved({
-        providerId: provider.id,
-        userId: input.userId,
-      }),
-    );
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
+      provider.recordEvent(
+        new ProviderMemberRemoved({
+          providerId: provider.id,
+          userId: input.userId,
+        }),
+      );
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
 
     return { providerId: provider.id, userId: input.userId };
   }

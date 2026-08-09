@@ -1,14 +1,23 @@
 import { describe, expect, it } from "bun:test";
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import type { ProviderListItemDTO } from "@ntizo/shared";
 import { CreateProviderCommand } from "../create-provider.command";
 import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../../ports/outbound";
+import type { OutboxPort } from "../../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../../domain/aggregates";
 import { ProviderMember } from "../../../../domain/entities/provider-member";
 import type { ExecutionContext } from "../../../../../../shared/infrastructure/execution-context";
+
+class FakeOutboxPort implements OutboxPort {
+  async publish(_events: BaseDomainEvent[], _aggregateType: string): Promise<void> {
+    // no-op: this test only asserts on the rollback path, which never
+    // reaches a publish call.
+  }
+}
 
 /**
  * In-memory store shared by the fake repositories, plus a UoW double that
@@ -118,6 +127,7 @@ describe("CreateProviderCommand — atomicity", () => {
       providerRepo,
       memberRepo,
       unitOfWork,
+      new FakeOutboxPort(),
     );
 
     await expect(

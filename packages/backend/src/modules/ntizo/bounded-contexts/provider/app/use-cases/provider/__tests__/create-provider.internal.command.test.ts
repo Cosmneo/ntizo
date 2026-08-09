@@ -1,13 +1,22 @@
 import { describe, expect, it } from "bun:test";
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import type { ProviderListItemDTO } from "@ntizo/shared";
 import { CreateProviderInternalCommand } from "../create-provider.internal.command";
 import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../../ports/outbound";
+import type { OutboxPort } from "../../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../../domain/aggregates";
 import { ProviderMember } from "../../../../domain/entities/provider-member";
+
+class FakeOutboxPort implements OutboxPort {
+  async publish(_events: BaseDomainEvent[], _aggregateType: string): Promise<void> {
+    // no-op: this test only asserts on the rollback path, which never
+    // reaches a publish call.
+  }
+}
 
 /**
  * Same shape as create-provider.command.test.ts: this internal command
@@ -95,6 +104,7 @@ describe("CreateProviderInternalCommand — atomicity", () => {
       providerRepo,
       memberRepo,
       unitOfWork,
+      new FakeOutboxPort(),
     );
 
     await expect(

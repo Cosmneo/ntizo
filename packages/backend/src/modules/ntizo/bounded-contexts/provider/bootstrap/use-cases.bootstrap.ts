@@ -18,6 +18,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     providerInviteRepository,
     emailService,
     unitOfWork,
+    outboxPort,
   } = adapters;
 
   return {
@@ -25,12 +26,19 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
       providerRepository,
       providerMemberRepository,
       unitOfWork,
+      outboxPort,
     ),
     updateProvider: new UpdateProviderCommand(
       providerRepository,
       providerMemberRepository,
+      unitOfWork,
+      outboxPort,
     ),
-    deactivateProvider: new DeactivateProviderCommand(providerRepository),
+    deactivateProvider: new DeactivateProviderCommand(
+      providerRepository,
+      unitOfWork,
+      outboxPort,
+    ),
 
     listMyProviders: new ListMyProvidersQuery(providerRepository),
 
@@ -39,26 +47,35 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
       providerMemberRepository,
       providerInviteRepository,
       emailService,
+      unitOfWork,
+      outboxPort,
     ),
     acceptProviderInvite: new AcceptProviderInviteCommand(
       providerRepository,
       providerMemberRepository,
       providerInviteRepository,
       unitOfWork,
+      outboxPort,
     ),
     revokeProviderInvite: new RevokeProviderInviteCommand(
       providerRepository,
       providerMemberRepository,
       providerInviteRepository,
+      unitOfWork,
+      outboxPort,
     ),
 
     removeProviderMember: new RemoveProviderMemberCommand(
       providerRepository,
       providerMemberRepository,
+      unitOfWork,
+      outboxPort,
     ),
     updateProviderMemberRole: new UpdateProviderMemberRoleCommand(
       providerRepository,
       providerMemberRepository,
+      unitOfWork,
+      outboxPort,
     ),
 
     // Internal commands — called by orchestration workflows only.
@@ -67,9 +84,12 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
         providerRepository,
         providerMemberRepository,
         unitOfWork,
+        outboxPort,
       ),
       deactivateProvider: new DeactivateProviderInternalCommand(
         providerRepository,
+        unitOfWork,
+        outboxPort,
       ),
     },
   };

@@ -1,3 +1,4 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -11,6 +12,7 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { ProviderMemberRoleUpdated } from "../../../domain/events";
 import {
   MemberNotFoundError,
@@ -24,6 +26,8 @@ export class UpdateProviderMemberRoleCommand
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(
@@ -52,17 +56,19 @@ export class UpdateProviderMemberRoleCommand
     if (!member) throw new MemberNotFoundError(provider.id, input.userId);
 
     member.changeRole(input.role);
-    await this.memberRepo.save(member);
 
-    provider.recordEvent(
-      new ProviderMemberRoleUpdated({
-        providerId: provider.id,
-        userId: input.userId,
-        role: input.role,
-      }),
-    );
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.memberRepo.save(member);
+
+      provider.recordEvent(
+        new ProviderMemberRoleUpdated({
+          providerId: provider.id,
+          userId: input.userId,
+          role: input.role,
+        }),
+      );
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
 
     return {
       providerId: provider.id,

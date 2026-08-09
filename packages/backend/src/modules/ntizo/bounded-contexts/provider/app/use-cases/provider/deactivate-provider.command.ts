@@ -1,3 +1,4 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -8,10 +9,15 @@ import type {
   DeactivateProviderPort,
 } from "../../ports/inbound/provider";
 import type { ProviderRepositoryPort } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { ProviderNotFoundError } from "../../../domain/exceptions";
 
 export class DeactivateProviderCommand implements DeactivateProviderPort {
-  constructor(private readonly providerRepo: ProviderRepositoryPort) {}
+  constructor(
+    private readonly providerRepo: ProviderRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
+  ) {}
 
   async execute(
     ctx: ExecutionContext,
@@ -26,9 +32,10 @@ export class DeactivateProviderCommand implements DeactivateProviderPort {
     provider.assertOwnedBy(requester.userId);
     provider.deactivate();
 
-    await this.providerRepo.save(provider);
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.providerRepo.save(provider);
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
 
     return { providerId: provider.id };
   }

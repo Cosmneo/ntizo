@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { randomUUID } from "node:crypto";
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import type { ProviderListItemDTO } from "@ntizo/shared";
 import { AcceptProviderInviteCommand } from "../accept-provider-invite.command";
 import type {
@@ -8,10 +9,18 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../../ports/outbound";
+import type { OutboxPort } from "../../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../../domain/aggregates";
 import { ProviderMember } from "../../../../domain/entities/provider-member";
 import { ProviderInvite } from "../../../../domain/entities/provider-invite";
 import type { ExecutionContext } from "../../../../../../shared/infrastructure/execution-context";
+
+class FakeOutboxPort implements OutboxPort {
+  async publish(_events: BaseDomainEvent[], _aggregateType: string): Promise<void> {
+    // no-op: this test only asserts on the rollback path (inviteRepo.save
+    // rejects before publish is ever reached).
+  }
+}
 
 /**
  * In-memory store shared by the fake repositories, plus a UoW double that
@@ -183,6 +192,7 @@ describe("AcceptProviderInviteCommand — atomicity", () => {
       memberRepo,
       inviteRepo,
       unitOfWork,
+      new FakeOutboxPort(),
     );
 
     await expect(

@@ -9,6 +9,7 @@ import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
 } from "../../ports/outbound";
+import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../domain/aggregates/provider";
 import { Address } from "../../../domain/value-objects/address.vo";
 import { ProviderMember } from "../../../domain/entities/provider-member";
@@ -23,6 +24,7 @@ export class CreateProviderInternalCommand implements CreateProviderInternalPort
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(
@@ -49,10 +51,9 @@ export class CreateProviderInternalCommand implements CreateProviderInternalPort
         role: "owner",
       });
       await this.memberRepo.save(ownerMember);
-    });
 
-    // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
-    provider.pullEvents();
+      await this.outboxPort.publish(provider.pullEvents(), "provider");
+    });
 
     return { providerId: provider.id };
   }
