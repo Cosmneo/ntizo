@@ -33,13 +33,26 @@ export default {
   // A migration describes how the schema evolved, not which environment it
   // runs against — so there is one migration chain per module, not one per
   // stage. Only the connection URL varies by stage; `out` must not.
-  //
-  // NOTE: this module and `better-auth/drizzle.config.ts` both write to the
-  // default `drizzle.__drizzle_migrations` journal table. That only works
-  // because drizzle applies any migration whose content hash is absent from
-  // the journal, and the two chains' hashes have never collided. It is
-  // coincidental, not designed — do not rely on it, and if you add a third
-  // migration chain, give it its own `migrationsTable`.
   out: "./src/modules/ntizo/infrastructure/migrations",
+  // This chain gets its own journal table, distinct from
+  // `better-auth/drizzle.config.ts`'s. drizzle-orm's postgres-js migrator
+  // (pg-core/dialect.js, PgDialect.migrate) does NOT decide what to apply by
+  // hash membership — it reads only the single most-recent row from the
+  // journal table (`order by created_at desc limit 1`) and applies any
+  // pending migration whose own timestamp is greater than that one row's
+  // `created_at`. The `hash` column is written but never read back for this
+  // decision.
+  //
+  // Two chains sharing one journal table are therefore order-dependent: if
+  // this chain's migrations carry a later timestamp than the other chain's
+  // and this chain applies first, the other chain's migrate run finds a
+  // journal row newer than its own pending migration and skips it entirely —
+  // exit 0, "applied successfully", zero statements executed. Confirmed
+  // empirically against a from-zero database in both apply orders (see
+  // packages/backend/scripts/reset-test-db.ts's header comment and Task 1's
+  // report). A separate `migrationsTable` per chain removes the coupling as
+  // a property of the config, rather than relying on an apply order nobody
+  // enforces.
+  migrations: { table: "ntizo_migrations" },
   dbCredentials: { url: urlByStage[stage] ?? "" },
 } satisfies Config;
