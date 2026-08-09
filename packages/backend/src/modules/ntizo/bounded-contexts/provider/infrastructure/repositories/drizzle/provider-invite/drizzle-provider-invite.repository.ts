@@ -78,4 +78,19 @@ export class DrizzleProviderInviteRepository
       .delete(providerInviteTable)
       .where(eq(providerInviteTable.id, id));
   }
+
+  async markAcceptedIfPending(id: string): Promise<boolean> {
+    const db = getDb();
+    const updated = await db
+      .update(providerInviteTable)
+      .set({ status: "accepted" })
+      .where(
+        and(
+          eq(providerInviteTable.id, id),
+          eq(providerInviteTable.status, "pending"),
+        ),
+      )
+      .returning({ id: providerInviteTable.id });
+    return updated.length > 0;
+  }
 }

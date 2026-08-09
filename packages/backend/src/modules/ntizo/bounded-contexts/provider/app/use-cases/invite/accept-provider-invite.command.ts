@@ -21,11 +21,28 @@ import {
   ProviderMemberAdded,
 } from "../../../domain/events";
 import {
+  InviteAlreadyUsedError,
   InviteNotFoundError,
   MemberAlreadyExistsError,
   ProviderNotFoundError,
 } from "../../../domain/exceptions";
 
+/**
+ * Concurrency note: `atomicExecute` below makes the member insert and the
+ * invite transition all-or-nothing — it does NOT by itself make the
+ * accept-vs-revoke race safe. The invite is read and validated
+ * (`assertUsable()`) *before* the transaction opens, per this BC's rule of
+ * keeping authorization/validation reads outside the wrapped writes. That
+ * leaves a window: another request can revoke the same invite and commit
+ * before this one reaches its transaction. A blind `inviteRepo.save(invite)`
+ * would overwrite that committed "revoked" status back to "accepted" with
+ * the stale in-memory copy — the write would be atomic (both rows or
+ * neither) but not correct. `markAcceptedIfPending` closes that window: it's
+ * a conditional `UPDATE ... WHERE status = 'pending'`, so Postgres itself
+ * re-checks the invite's current status at write time and reports back
+ * whether the transition actually happened, rather than trusting what this
+ * process read minutes/microseconds ago.
+ */
 export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
@@ -68,8 +85,16 @@ export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
     await this.unitOfWork.atomicExecute(async () => {
       await this.memberRepo.save(member);
 
+      // Conditional, not a blind upsert — see the class docblock. If the
+      // invite was revoked (or accepted/expired) by someone else after our
+      // `assertUsable()` read above, this affects zero rows and we must
+      // abort: throwing here rolls back the member insert too, since both
+      // are in the same atomicExecute.
+      const accepted = await this.inviteRepo.markAcceptedIfPending(invite.id);
+      if (!accepted) {
+        throw new InviteAlreadyUsedError(input.token);
+      }
       invite.markAccepted();
-      await this.inviteRepo.save(invite);
 
       provider.recordEvent(
         new ProviderMemberAdded({

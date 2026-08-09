@@ -68,7 +68,10 @@ export async function runAfterCommit(
  * `db.transaction()` finds no free connection and queues silently behind the
  * outer transaction's own queue, which is itself waiting on it — a permanent
  * hang with no error and no timeout, not a savepoint. Use `ensureTransaction`
- * for reentrant call sites (e.g. repository `save` methods).
+ * for reentrant call sites — today that means exactly one caller,
+ * `DrizzleUnitOfWork.atomicExecute`, not repositories: every repository
+ * reaches the active transaction through `getDb()`/`getActiveDb()`, never by
+ * calling this module directly.
  *
  * A fire-and-forget promise started inside `work` (e.g. `void (async () =>
  * ...)()`) keeps this transaction's AsyncLocalStorage binding after `work`
@@ -97,8 +100,13 @@ export async function runInTransaction<T>(work: () => Promise<T>): Promise<T> {
 
 /**
  * Reentrant transaction wrapper: joins an existing transaction when one is
- * already active, otherwise opens a new one. Use this in repository `save`
- * methods so they compose with a use-case-level UoW.
+ * already active, otherwise opens a new one. This is the mechanism
+ * `DrizzleUnitOfWork.atomicExecute` is built on, which is what lets a nested
+ * `atomicExecute` call join its caller's transaction instead of trying to
+ * open a second one on the `{ max: 1 }` pool. No repository calls this
+ * directly — every repository composes with the active transaction simply by
+ * reading/writing through `getDb()` (→ `getActiveDb()`), not by calling
+ * anything in this module.
  */
 export function ensureTransaction<T>(work: () => Promise<T>): Promise<T> {
   if (transactionContext.getStore()) {

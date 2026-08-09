@@ -16,9 +16,9 @@ import { ProviderInvite } from "../../../../domain/entities/provider-invite";
 import type { ExecutionContext } from "../../../../../../shared/infrastructure/execution-context";
 
 class FakeOutboxPort implements OutboxPort {
+  published = false;
   async publish(_events: BaseDomainEvent[], _aggregateType: string): Promise<void> {
-    // no-op: this test only asserts on the rollback path (inviteRepo.save
-    // rejects before publish is ever reached).
+    this.published = true;
   }
 }
 
@@ -89,7 +89,13 @@ class FakeProviderRepository implements ProviderRepositoryPort {
 }
 
 class FakeProviderMemberRepository implements ProviderMemberRepositoryPort {
-  constructor(private readonly store: Store) {}
+  constructor(
+    private readonly store: Store,
+    // Fires after the member row is written but before the invite
+    // transition — lets a test simulate a concurrent, already-committed
+    // change to the invite landing in that exact window.
+    private readonly onSave?: () => void,
+  ) {}
   async findByProviderId(_providerId: string): Promise<ProviderMember[]> {
     throw new Error("not used by this test");
   }
@@ -106,6 +112,7 @@ class FakeProviderMemberRepository implements ProviderMemberRepositoryPort {
   }
   async save(member: ProviderMember): Promise<void> {
     this.store.members.set(member.id, member);
+    this.onSave?.();
   }
   async delete(_providerId: string, _userId: string): Promise<void> {
     throw new Error("not used by this test");
@@ -113,7 +120,10 @@ class FakeProviderMemberRepository implements ProviderMemberRepositoryPort {
 }
 
 class FakeProviderInviteRepository implements ProviderInviteRepositoryPort {
-  constructor(private readonly store: Store) {}
+  constructor(
+    private readonly store: Store,
+    private readonly options: { rejectMarkAccepted?: boolean } = {},
+  ) {}
   async findById(id: string): Promise<ProviderInvite | null> {
     return this.store.invites.get(id) ?? null;
   }
@@ -133,10 +143,26 @@ class FakeProviderInviteRepository implements ProviderInviteRepositoryPort {
     throw new Error("not used by this test");
   }
   async save(_invite: ProviderInvite): Promise<void> {
-    throw new Error("inviteRepo.save always rejects in this test");
+    throw new Error("inviteRepo.save must not be called by the accept flow");
   }
   async delete(_id: string): Promise<void> {
     throw new Error("not used by this test");
+  }
+  /**
+   * Mirrors the real `UPDATE ... WHERE status = 'pending'` guard: only
+   * transitions — and only reports success — when the invite's *current*
+   * stored status is still "pending" at the moment this runs, not whatever
+   * it was when the use case originally read it.
+   */
+  async markAcceptedIfPending(id: string): Promise<boolean> {
+    if (this.options.rejectMarkAccepted) {
+      throw new Error("markAcceptedIfPending always rejects in this test");
+    }
+    const current = this.store.invites.get(id);
+    if (!current || current.status !== "pending") return false;
+    current.markAccepted();
+    this.store.invites.set(id, current);
+    return true;
   }
 }
 
@@ -159,32 +185,39 @@ function authenticatedCtx(userId: string): ExecutionContext {
   };
 }
 
+function seedProviderAndInvite(store: Store) {
+  const provider = Provider.create({
+    id: randomUUID(),
+    ownerUserId: "owner-1",
+    type: "organization",
+    name: "Acme Cleaning",
+    slug: "acme-cleaning",
+  });
+  store.providers.set(provider.id, provider);
+
+  const invite = ProviderInvite.create({
+    id: randomUUID(),
+    providerId: provider.id,
+    email: "invitee@ntizo.test",
+    role: "staff",
+    token: "invite-token-1",
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+  store.invites.set(invite.id, invite);
+
+  return { provider, invite };
+}
+
 describe("AcceptProviderInviteCommand — atomicity", () => {
   it("rolls back the member write when the invite-accepted write fails, leaving no orphan member row", async () => {
     const store = createStore();
-
-    const provider = Provider.create({
-      id: randomUUID(),
-      ownerUserId: "owner-1",
-      type: "organization",
-      name: "Acme Cleaning",
-      slug: "acme-cleaning",
-    });
-    store.providers.set(provider.id, provider);
-
-    const invite = ProviderInvite.create({
-      id: randomUUID(),
-      providerId: provider.id,
-      email: "invitee@ntizo.test",
-      role: "staff",
-      token: "invite-token-1",
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    });
-    store.invites.set(invite.id, invite);
+    const { provider } = seedProviderAndInvite(store);
 
     const providerRepo = new FakeProviderRepository(store);
     const memberRepo = new FakeProviderMemberRepository(store);
-    const inviteRepo = new FakeProviderInviteRepository(store);
+    const inviteRepo = new FakeProviderInviteRepository(store, {
+      rejectMarkAccepted: true,
+    });
     const unitOfWork = new InMemoryUnitOfWork(store);
 
     const command = new AcceptProviderInviteCommand(
@@ -199,7 +232,7 @@ describe("AcceptProviderInviteCommand — atomicity", () => {
       command.execute(authenticatedCtx("invitee-1"), {
         token: "invite-token-1",
       }),
-    ).rejects.toThrow("inviteRepo.save always rejects in this test");
+    ).rejects.toThrow("markAcceptedIfPending always rejects in this test");
 
     // The bug: today the member row survives even though marking the invite
     // accepted failed afterwards.
@@ -207,5 +240,97 @@ describe("AcceptProviderInviteCommand — atomicity", () => {
       await memberRepo.findByProviderAndUser(provider.id, "invitee-1"),
     ).toBeNull();
     expect(store.members.size).toBe(0);
+  });
+
+  it("accepts normally when nothing else touches the invite (happy path sanity check)", async () => {
+    const store = createStore();
+    const { provider, invite } = seedProviderAndInvite(store);
+
+    const providerRepo = new FakeProviderRepository(store);
+    const memberRepo = new FakeProviderMemberRepository(store);
+    const inviteRepo = new FakeProviderInviteRepository(store);
+    const unitOfWork = new InMemoryUnitOfWork(store);
+    const outboxPort = new FakeOutboxPort();
+
+    const command = new AcceptProviderInviteCommand(
+      providerRepo,
+      memberRepo,
+      inviteRepo,
+      unitOfWork,
+      outboxPort,
+    );
+
+    const result = await command.execute(authenticatedCtx("invitee-1"), {
+      token: "invite-token-1",
+    });
+
+    expect(result.providerId).toBe(provider.id);
+    expect(store.members.size).toBe(1);
+    expect(store.invites.get(invite.id)?.status).toBe("accepted");
+    expect(outboxPort.published).toBe(true);
+  });
+});
+
+describe("AcceptProviderInviteCommand — revoke/accept concurrency", () => {
+  // Reproduces the race from the Task 3 follow-up review: Request A reads the
+  // invite while it is still "pending" and passes `assertUsable()`. Before
+  // A's transaction writes anything, a *different*, already-committed
+  // request revokes the same invite. A blind `inviteRepo.save(invite)` would
+  // then overwrite that committed "revoked" status back to "accepted" using
+  // A's stale in-memory copy — atomic (member + invite land together) but
+  // wrong (a withdrawn invite lets someone join, and the audit trail lies
+  // about it being a normal acceptance).
+  //
+  // The fake models the interleaving precisely: the "concurrent revoke"
+  // fires from inside `memberRepo.save` — i.e. *after* A's member write has
+  // already landed but *before* A calls `markAcceptedIfPending` — mutating
+  // the same store the conditional update reads. This is the exact window
+  // the brief describes: pending when read, revoked by the time the write
+  // lands.
+  it("aborts the accept — and leaves no member row — when the invite is revoked between the read and the write", async () => {
+    const store = createStore();
+    const { provider, invite } = seedProviderAndInvite(store);
+
+    const providerRepo = new FakeProviderRepository(store);
+    const memberRepo = new FakeProviderMemberRepository(store, () => {
+      // Models a different, already-committed request revoking the invite
+      // in the window between our `assertUsable()` read and our write.
+      const current = store.invites.get(invite.id)!;
+      current.markRevoked();
+      store.invites.set(invite.id, current);
+    });
+    const inviteRepo = new FakeProviderInviteRepository(store);
+    const unitOfWork = new InMemoryUnitOfWork(store);
+    const outboxPort = new FakeOutboxPort();
+
+    const command = new AcceptProviderInviteCommand(
+      providerRepo,
+      memberRepo,
+      inviteRepo,
+      unitOfWork,
+      outboxPort,
+    );
+
+    await expect(
+      command.execute(authenticatedCtx("invitee-1"), {
+        token: "invite-token-1",
+      }),
+    ).rejects.toThrow(/already used or revoked/i);
+
+    // No orphan member: the member insert that happened before the
+    // conditional invite update failed must be rolled back with it.
+    expect(
+      await memberRepo.findByProviderAndUser(provider.id, "invitee-1"),
+    ).toBeNull();
+    expect(store.members.size).toBe(0);
+
+    // The audit trail must still say "revoked", never "accepted" — this is
+    // the actual bug: a withdrawn invite silently flipping back to accepted.
+    expect(store.invites.get(invite.id)?.status).toBe("revoked");
+
+    // The acceptance events must never have been published: we must not
+    // tell downstream consumers a member joined via an invite that was
+    // actually revoked.
+    expect(outboxPort.published).toBe(false);
   });
 });
