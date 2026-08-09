@@ -18,6 +18,13 @@ class FakeOutboxPort implements OutboxPort {
   }
 }
 
+class CapturingOutboxPort implements OutboxPort {
+  published: BaseDomainEvent[] = [];
+  async publish(events: BaseDomainEvent[], _aggregateType: string): Promise<void> {
+    this.published.push(...events);
+  }
+}
+
 /**
  * Same shape as create-provider.command.test.ts: this internal command
  * mirrors CreateProviderCommand but skips the ExecutionContext auth check
@@ -93,6 +100,25 @@ class FakeProviderMemberRepository implements ProviderMemberRepositoryPort {
   }
 }
 
+class WorkingProviderMemberRepository implements ProviderMemberRepositoryPort {
+  constructor(private readonly store: Store) {}
+  async findByProviderId(_providerId: string): Promise<ProviderMember[]> {
+    throw new Error("not used by this test");
+  }
+  async findByProviderAndUser(
+    _providerId: string,
+    _userId: string,
+  ): Promise<ProviderMember | null> {
+    throw new Error("not used by this test");
+  }
+  async save(member: ProviderMember): Promise<void> {
+    this.store.members.set(member.id, member);
+  }
+  async delete(_providerId: string, _userId: string): Promise<void> {
+    throw new Error("not used by this test");
+  }
+}
+
 describe("CreateProviderInternalCommand — atomicity", () => {
   it("rolls back the provider write when the member write fails, leaving no orphan provider row", async () => {
     const store = createStore();
@@ -120,5 +146,47 @@ describe("CreateProviderInternalCommand — atomicity", () => {
     // making it invisible forever (provider.mine lists via provider_member).
     expect(store.providers.size).toBe(0);
     expect(store.members.size).toBe(0);
+  });
+});
+
+describe("CreateProviderInternalCommand — events", () => {
+  it("publishes ProviderMemberAdded for the owner alongside ProviderCreated", async () => {
+    // Same contract as CreateProviderCommand: the owner member row is
+    // inserted directly, but a future projection rebuilding membership
+    // purely from the event stream must still see it. Mirrors
+    // accept-provider-invite.command.ts, which already records
+    // ProviderMemberAdded for an invitee.
+    const store = createStore();
+    const providerRepo = new FakeProviderRepository(store);
+    const memberRepo = new WorkingProviderMemberRepository(store);
+    const unitOfWork = new InMemoryUnitOfWork(store);
+    const outboxPort = new CapturingOutboxPort();
+
+    const command = new CreateProviderInternalCommand(
+      providerRepo,
+      memberRepo,
+      unitOfWork,
+      outboxPort,
+    );
+
+    const result = await command.execute({
+      ownerUserId: "owner-1",
+      type: "organization",
+      name: "Acme Cleaning",
+      slug: "acme-cleaning",
+    });
+
+    const eventNames = outboxPort.published.map((e) => e.eventName);
+    expect(eventNames).toContain("provider.created");
+    expect(eventNames).toContain("provider.member.added");
+
+    const memberAdded = outboxPort.published.find(
+      (e) => e.eventName === "provider.member.added",
+    );
+    expect(memberAdded?.payload).toEqual({
+      providerId: result.providerId,
+      userId: "owner-1",
+      role: "owner",
+    });
   });
 });

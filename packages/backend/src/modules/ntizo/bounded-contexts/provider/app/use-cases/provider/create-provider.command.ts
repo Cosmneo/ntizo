@@ -17,6 +17,7 @@ import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../domain/aggregates/provider";
 import { Address } from "../../../domain/value-objects/address.vo";
 import { ProviderMember } from "../../../domain/entities/provider-member";
+import { ProviderMemberAdded } from "../../../domain/events";
 
 export class CreateProviderCommand implements CreateProviderPort {
   constructor(
@@ -53,6 +54,18 @@ export class CreateProviderCommand implements CreateProviderPort {
         role: "owner",
       });
       await this.memberRepo.save(ownerMember);
+
+      // Mirrors accept-provider-invite.command.ts: every member row must
+      // have a matching event, so a future projection rebuilding
+      // membership from the event stream sees the owner too — the one
+      // member every provider is guaranteed to have.
+      provider.recordEvent(
+        new ProviderMemberAdded({
+          providerId: provider.id,
+          userId: requester.userId,
+          role: "owner",
+        }),
+      );
 
       await this.outboxPort.publish(provider.pullEvents(), "provider");
     });
