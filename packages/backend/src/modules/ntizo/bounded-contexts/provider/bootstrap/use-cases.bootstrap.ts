@@ -17,12 +17,14 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     providerMemberRepository,
     providerInviteRepository,
     emailService,
+    unitOfWork,
   } = adapters;
 
   return {
     createProvider: new CreateProviderCommand(
       providerRepository,
       providerMemberRepository,
+      unitOfWork,
     ),
     updateProvider: new UpdateProviderCommand(
       providerRepository,
@@ -42,6 +44,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
       providerRepository,
       providerMemberRepository,
       providerInviteRepository,
+      unitOfWork,
     ),
     revokeProviderInvite: new RevokeProviderInviteCommand(
       providerRepository,
@@ -63,6 +66,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
       createProvider: new CreateProviderInternalCommand(
         providerRepository,
         providerMemberRepository,
+        unitOfWork,
       ),
       deactivateProvider: new DeactivateProviderInternalCommand(
         providerRepository,

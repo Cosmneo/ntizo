@@ -1,3 +1,4 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import type {
   ProfileRepositoryPort,
   UserRepositoryPort,
@@ -19,24 +20,27 @@ export class CreateUserOnSignUpInternalCommand
   constructor(
     private readonly userRepo: UserRepositoryPort,
     private readonly profileRepo: ProfileRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
   ) {}
 
   async execute(input: CreateUserOnSignUpInternalInput): Promise<void> {
     const existing = await this.userRepo.findById(input.userId);
     if (existing) return;
 
-    const user = User.create({
-      id: input.userId,
-      email: input.email,
-      role: "customer",
-    });
-    await this.userRepo.save(user);
+    await this.unitOfWork.atomicExecute(async () => {
+      const user = User.create({
+        id: input.userId,
+        email: input.email,
+        role: "customer",
+      });
+      await this.userRepo.save(user);
 
-    const profile = Profile.create({
-      userId: input.userId,
-      firstName: input.firstName,
-      lastName: input.lastName,
+      const profile = Profile.create({
+        userId: input.userId,
+        firstName: input.firstName,
+        lastName: input.lastName,
+      });
+      await this.profileRepo.save(profile);
     });
-    await this.profileRepo.save(profile);
   }
 }

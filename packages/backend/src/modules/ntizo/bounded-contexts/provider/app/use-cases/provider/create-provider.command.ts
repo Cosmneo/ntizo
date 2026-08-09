@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -20,6 +21,7 @@ export class CreateProviderCommand implements CreateProviderPort {
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
   ) {}
 
   async execute(
@@ -38,16 +40,18 @@ export class CreateProviderCommand implements CreateProviderPort {
       address: input.address ? Address.create(input.address) : undefined,
     });
 
-    await this.providerRepo.save(provider);
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.providerRepo.save(provider);
 
-    // Owner is always recorded as the first member, regardless of provider type.
-    const ownerMember = ProviderMember.create({
-      id: randomUUID(),
-      providerId: provider.id,
-      userId: requester.userId,
-      role: "owner",
+      // Owner is always recorded as the first member, regardless of provider type.
+      const ownerMember = ProviderMember.create({
+        id: randomUUID(),
+        providerId: provider.id,
+        userId: requester.userId,
+        role: "owner",
+      });
+      await this.memberRepo.save(ownerMember);
     });
-    await this.memberRepo.save(ownerMember);
 
     // TODO(ntizo): dispatch provider.pullEvents() through an outbox/dispatcher.
     provider.pullEvents();

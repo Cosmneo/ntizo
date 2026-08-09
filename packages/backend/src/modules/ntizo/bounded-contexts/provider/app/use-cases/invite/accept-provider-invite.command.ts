@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import {
   type ExecutionContext,
   requireAuthenticated,
@@ -29,6 +30,7 @@ export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly inviteRepo: ProviderInviteRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
   ) {}
 
   async execute(
@@ -60,10 +62,13 @@ export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
       userId: requester.userId,
       role: invite.role,
     });
-    await this.memberRepo.save(member);
 
-    invite.markAccepted();
-    await this.inviteRepo.save(invite);
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.memberRepo.save(member);
+
+      invite.markAccepted();
+      await this.inviteRepo.save(invite);
+    });
 
     provider.recordEvent(
       new ProviderMemberAdded({
