@@ -224,3 +224,38 @@ Pre-existing, but Phase 3A added the first whole new schema
 would break the app at runtime rather than merely drift.
 
 **Trigger:** before the first deploy to any stage other than local.
+
+---
+
+## 13. The journal-table split (`db03649`) has no upgrade path for existing databases
+
+`db03649` gave each migration chain its own journal table
+(`ntizo_migrations` / `better_auth_migrations`), replacing the shared
+`drizzle.__drizzle_migrations`. `dev` was migrated by hand: the 3 existing
+rows redistributed by hash via direct SQL, verified byte-identical before and
+after, and the whole procedure recorded only in that commit's message — not
+as a runnable script.
+
+Any OTHER database still holding the legacy shared table — qa, prod, another
+developer's machine, or even `dev` again if someone re-runs migrations from a
+checkout that predates the manual fix — fails the next `drizzle-kit migrate`
+with `42P06 schema "drizzle" already exists` (or the per-chain equivalent)
+and is left half-migrated: the new per-chain tables created but empty, the
+legacy shared table still holding its rows, and drizzle-kit with no reliable
+way to tell which migrations are actually applied.
+
+**Recovery today is only the hand-written row redistribution recorded in
+`db03649`'s commit message.** There is no backfill script, and none should be
+written speculatively — verifying a migration tool against a database that
+doesn't yet need it is how the original journal-sharing bug shipped in the
+first place.
+
+**Why this is bounded today:** `cd.yml`'s migrate job runs only when the
+repository variable `DEPLOY_ENABLED` is exactly `true`, and it is currently
+off (`.github/README.md`). No automated path reaches qa or prod's databases
+yet, so no database besides the already-fixed `dev` is at risk.
+
+**Trigger:** must be resolved — a proper migration/backfill script, or at
+minimum documented manual steps per target database — before
+`DEPLOY_ENABLED` is ever set to `true`. Do not attempt the backfill now;
+there is nothing yet that needs it.
