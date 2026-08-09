@@ -34,7 +34,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "bun test src",
+    "test": "bun test src scripts",
     "db:auth:generate": "drizzle-kit generate --config ./src/modules/better-auth/drizzle.config.ts",
     "db:auth:dev:migrate": "STAGE=dev drizzle-kit migrate --config ./src/modules/better-auth/drizzle.config.ts",
     "db:auth:dev:studio": "STAGE=dev drizzle-kit studio --config ./src/modules/better-auth/drizzle.config.ts",

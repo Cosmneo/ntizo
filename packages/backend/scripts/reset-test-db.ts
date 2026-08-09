@@ -8,41 +8,42 @@
  *
  * Guard:
  *   - Target comes from `E2E_DB_URL` only. Never `DATABASE_URL`, never a
- *     fallback. An unset var refuses, loudly, with a non-zero exit.
+ *     fallback. An unset (or blank) var refuses, loudly, with a non-zero
+ *     exit.
+ *   - Refuses a URL that resolves to an empty hostname, e.g. "postgres:///db"
+ *     — an authority-less URL, which `new URL(...)` parses without throwing
+ *     and gives `hostname === ""`. An empty hostname would otherwise sail
+ *     straight past the neon.tech check below while `postgres.js` quietly
+ *     falls back to resolving the real host from `PGHOST`/`PGHOSTADDR`,
+ *     which this script has no visibility into. (A URL that instead has
+ *     credentials or a port but no host, e.g. "postgres://u:p@:5432/db",
+ *     was already refused before this check existed — `new URL(...)` throws
+ *     on that shape rather than returning an empty hostname, verified
+ *     directly against both Bun's and Node's URL parser, and the surrounding
+ *     try/catch below turns that throw into the "not a valid connection URL"
+ *     refusal.)
  *   - Refuses if the hostname looks like a managed provider. This project's
  *     dev/qa/prod databases are Neon, whose hostnames contain "neon.tech" —
  *     that pattern is the check. It is not a general safety net for every
  *     possible managed provider; it targets the one this project actually
  *     uses.
  *
- * Ordering (do not swap without re-verifying against dev):
- *   Both migration chains write to the SAME default `drizzle.__drizzle_migrations`
- *   journal table (see the "coincidental, not designed" comment in
- *   drizzle.config.ts). That is more fragile than a hash collision risk: the
- *   postgres-js migrator in drizzle-orm (pg-core/dialect.js, `PgDialect.migrate`)
- *   only compares each pending migration's own timestamp against the SINGLE
- *   most recent `created_at` row already in that shared table — not against
- *   the set of already-applied hashes. Concretely:
- *
- *     const dbMigrations = await session.all(
- *       sql`select id, hash, created_at from ${schema}.${table}
- *           order by created_at desc limit 1`
- *     );
- *     const lastDbMigration = dbMigrations[0];
- *     // later, per migration in *this* chain only:
- *     if (!lastDbMigration || lastDbMigration.created_at < migration.folderMillis) { apply }
- *
- *   Each migration file's timestamp is its `when` in meta/_journal.json.
- *   better-auth's single migration was generated earlier (smaller `when`) than
- *   ntizo's. Applying ntizo first leaves a high-water mark in the shared
- *   journal that is greater than better-auth's migration timestamp, so running
- *   better-auth second causes it to be silently skipped: exit code 0, "applied
- *   successfully", zero rows inserted, `better_auth` schema never created. No
- *   error is raised anywhere in that path.
- *
- *   Verified against the real dev database (read-only): its journal holds
- *   better-auth's hash first, then both ntizo hashes, in that order. This
- *   script preserves it: better-auth migrates before ntizo.
+ * Ordering: does not matter, and does not need to. Each migration chain
+ * writes to its own journal table — `ntizo_migrations` /
+ * `better_auth_migrations`, set via each chain's own `drizzle.config.ts`
+ * (`migrations: { table: ... }`) — instead of sharing the default
+ * `drizzle.__drizzle_migrations`. An earlier revision of this file required
+ * better-auth to apply first, because drizzle-orm's postgres-js migrator
+ * (pg-core/dialect.js, `PgDialect.migrate`) decides what to apply by
+ * comparing each pending migration's own timestamp against the single most
+ * recent row in ONE journal table — not by hash membership — so two chains
+ * sharing that table were order-dependent in a way that failed silently.
+ * That coupling was removed structurally, as a property of the drizzle
+ * configs (see the `migrations.table` comment in each), not by any ordering
+ * guarantee in this file — there is nothing left here to re-verify before
+ * swapping the two `runMigrate` calls below. Neither chain's migrations
+ * reference the other's tables via foreign key either, so there is no
+ * data-dependency reason to prefer one order over the other.
  */
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -58,10 +59,24 @@ function refuse(message: string): never {
   process.exit(1);
 }
 
-function guardTargetUrl(): string {
+/**
+ * Thrown by `guardTargetUrl` for every refusal case. Kept separate from
+ * `refuse`'s `process.exit(1)` specifically so the guard logic itself is a
+ * pure function the test suite can call directly, instead of a script entry
+ * point that would kill the test runner's process on the very refusals it's
+ * trying to exercise.
+ */
+export class GuardRefusalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GuardRefusalError";
+  }
+}
+
+export function guardTargetUrl(): string {
   const url = process.env[TARGET_URL_ENV_VAR];
   if (!url || url.trim() === "") {
-    refuse(
+    throw new GuardRefusalError(
       `${TARGET_URL_ENV_VAR} is not set. This script drops and recreates ` +
         `database schemas — it only ever runs against a target named ` +
         `explicitly, never DATABASE_URL, never a default. Set ${TARGET_URL_ENV_VAR} ` +
@@ -73,11 +88,22 @@ function guardTargetUrl(): string {
   try {
     hostname = new URL(url).hostname;
   } catch {
-    refuse(`${TARGET_URL_ENV_VAR} is not a valid connection URL.`);
+    throw new GuardRefusalError(`${TARGET_URL_ENV_VAR} is not a valid connection URL.`);
+  }
+
+  if (hostname.trim() === "") {
+    throw new GuardRefusalError(
+      `${TARGET_URL_ENV_VAR} resolves to an empty hostname (parsed from ` +
+        `"${url}"). An authority-less URL like "postgres:///db" passes the ` +
+        `neon.tech check below by simply not matching it, while postgres.js ` +
+        `silently falls back to resolving the real host from ` +
+        `PGHOST/PGHOSTADDR, which this script cannot see or verify. Set ` +
+        `${TARGET_URL_ENV_VAR} to a URL that names its host explicitly.`,
+    );
   }
 
   if (hostname.toLowerCase().includes("neon.tech")) {
-    refuse(
+    throw new GuardRefusalError(
       `${TARGET_URL_ENV_VAR} points at host "${hostname}", which contains ` +
         `"neon.tech" — this project's dev/qa/prod databases are Neon. That ` +
         `makes this almost certainly a real, shared database, not a ` +
@@ -138,16 +164,31 @@ function runMigrate(url: string, configPath: string, label: string): Promise<voi
 }
 
 async function main(): Promise<void> {
-  const url = guardTargetUrl();
+  let url: string;
+  try {
+    url = guardTargetUrl();
+  } catch (error) {
+    if (error instanceof GuardRefusalError) {
+      refuse(error.message);
+    }
+    throw error;
+  }
   const schemas = schemasToReset();
 
   await dropSchemas(url, schemas);
 
-  // Order matters — see the header comment. better-auth must apply first.
+  // Order does not matter — see the header comment. Each chain owns its own
+  // journal table, so neither run can see or be skipped by the other's rows.
   await runMigrate(url, "./src/modules/better-auth/drizzle.config.ts", "better-auth");
   await runMigrate(url, "./src/modules/ntizo/drizzle.config.ts", "ntizo");
 
   console.log("[reset-test-db] done.");
 }
 
-await main();
+// Guarded so importing this module (e.g. from the guard's own test suite)
+// never runs the destructive script as a side effect of import — only
+// running it directly (`bun run reset-test-db.ts`, including via `bunx bun
+// run` from the package script) does.
+if (import.meta.main) {
+  await main();
+}
