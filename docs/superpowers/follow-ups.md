@@ -8,7 +8,24 @@ Last updated at the end of Phase 2 (branch `feat/phase2-user-slice`).
 
 ---
 
-## 1. Two `role` columns, nothing synchronises them
+## ~~1. Two `role` columns, nothing synchronises them~~ — RESOLVED 2026-08-09
+
+The GraphQL context now resolves the role through `findPlatformRole`, a single
+primary-key lookup on `ntizo_user.user.role` — the column the Ntizo user BC
+owns and the one `userMe` projects. Anonymous callers skip the query; a missing
+ntizo row degrades to `"customer"`, least privilege rather than unrestricted.
+
+`better_auth.user.role` still exists because better-auth needs a column, but
+**nothing reads it for authorization any more**, so the two are free to drift
+without consequence. Proven live with the columns deliberately desynced:
+`sessao.role="customer" -> ctx.role="admin"`.
+
+The original analysis is kept below because the reasoning still explains why
+the fix is shaped the way it is.
+
+---
+
+## 1. (original) Two `role` columns, nothing synchronises them
 
 `better_auth.user.role` drives authorization: it reaches the session, becomes
 `platformRole` in the `ExecutionContext`, and is what any future authorization
@@ -39,18 +56,22 @@ The sync simply does not exist yet.
 
 ---
 
-## 2. `packages/backend` is never linted
+## ~~2. `packages/backend` is never linted~~ — RESOLVED 2026-08-09
 
-Only `apps/frontend/web` defines a `lint` script, so `bun run lint` at the root
-covers a fraction of what its name implies. Every backend file written across
-Phases 1 and 2 has been typechecked and tested, never linted.
+`bun run lint` now runs in 9 packages instead of 1, covering 243 previously
+unlinted files. `@ntizo/backend`, `@ntizo/api`, `@ntizo/shared` and
+`@ntizo/auth-client` were already clean; `@ntizo/frontend-ui` needed two
+changes, neither a suppression — the shared base config now honours a leading
+underscore in `no-unused-vars` (the `asChild: _asChild` destructure exists so
+the prop is *not* spread onto the DOM), and the eight `as any` casts in the
+`asChild` triggers are now properly typed.
 
-Narrower than it first looked: `packages/backend` *does* define
-`typecheck: tsc --noEmit` and passes it. This is a lint gap, not a type-safety
-gap.
+Break-checked in both directions: an unused `deadVariable` in
+`packages/backend` fails the **root** gate; `_intentional` is ignored as
+designed.
 
-**Trigger:** now, really — it is cheap, and the gap widens with every backend
-file added.
+Four `react-hooks/exhaustive-deps` warnings remain in `frontend-ui` — warnings,
+not errors, and untouched.
 
 ---
 
