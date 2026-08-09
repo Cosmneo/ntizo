@@ -60,25 +60,30 @@ jobs:
     # Playwright's globalSetup) to build from zero and for the API's
     # wrangler-dev process to run against — never dev/qa/prod, which are
     # Neon and unreachable from here anyway. Published on 55432, matching
-    # the port apps/e2e/fixtures/db.ts falls back to for local runs, so the
-    # E2E_DB_URL below is what that file's own doc comment calls "override
-    # with E2E_DB_URL for CI."
+    # the port apps/e2e/fixtures/db.ts falls back to for local runs. The
+    # database name below is deliberately NOT the same as that fallback
+    # (`ntizo_e2e`) — turbo.json's `e2e` task must `passThroughEnv` this var
+    # for it to reach the harness at all, and a CI value byte-identical to
+    # the fallback would make that requirement invisible: the job would stay
+    # green even if the var silently failed to arrive, because the fallback
+    # would quietly stand in for it. A different name makes CI actually
+    # prove E2E_DB_URL got through.
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ntizo_e2e
+          POSTGRES_DB: ntizo_e2e_ci
         ports:
           - 55432:5432
         options: >-
-          --health-cmd="pg_isready -U postgres -d ntizo_e2e"
+          --health-cmd="pg_isready -U postgres -d ntizo_e2e_ci"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
     env:
-      E2E_DB_URL: postgres://postgres:postgres@localhost:55432/ntizo_e2e
+      E2E_DB_URL: postgres://postgres:postgres@localhost:55432/ntizo_e2e_ci
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

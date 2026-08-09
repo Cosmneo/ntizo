@@ -18,7 +18,8 @@
     },
     "e2e": {
       "cache": false,
-      "persistent": false
+      "persistent": false,
+      "passThroughEnv": ["E2E_DB_URL", "E2E_API_URL", "E2E_WEB_URL", "NTIZO_E2E_NODE_BIN"]
     },
     "dev": {
       "cache": false,
