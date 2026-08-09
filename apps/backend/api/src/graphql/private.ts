@@ -9,6 +9,7 @@ import {
   createUserReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/user";
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
+import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
@@ -47,6 +48,7 @@ function getYoga(stage: string) {
         ...createProviderReadHandlers(providerRead.useCases),
         ...createUserReadHandlers(userRead.useCases),
         ...createProviderWriteHandlers({ provider, workflows }),
+        ...createUserWriteHandlers({ updateMyProfile: user.useCases.updateMyProfile }),
       ] as Parameters<typeof buildYoga>[0]["fields"],
       plugins: buildHardeningPlugins(stage),
       createContext: createGraphqlContextFactory({

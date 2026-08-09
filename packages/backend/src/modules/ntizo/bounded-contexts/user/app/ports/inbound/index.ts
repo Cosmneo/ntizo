@@ -10,3 +10,4 @@ export type {
   CreateUserOnSignUpInternalPort,
   CreateUserOnSignUpInternalInput,
 } from "./create-user-on-sign-up.internal.command.port";
+export type * from "./update-my-profile.command.port";

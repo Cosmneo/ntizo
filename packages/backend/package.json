@@ -29,7 +29,8 @@
     "./modules/ntizo/graphql/private-schema": "./src/modules/ntizo/graphql/private-schema.ts",
     "./modules/ntizo/read/provider": "./src/modules/ntizo/read/provider/index.ts",
     "./modules/ntizo/read/user": "./src/modules/ntizo/read/user/index.ts",
-    "./modules/ntizo/write/provider": "./src/modules/ntizo/write/provider/index.ts"
+    "./modules/ntizo/write/provider": "./src/modules/ntizo/write/provider/index.ts",
+    "./modules/ntizo/write/user": "./src/modules/ntizo/write/user/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
