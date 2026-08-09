@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
+import { Route as ProvidersRouteImport } from './routes/providers'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
 import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -43,6 +44,11 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
 const ProviderRouteRoute = ProviderRouteRouteImport.update({
   id: '/provider',
   path: '/provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersRoute = ProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PublicSignInRoute = PublicSignInRouteImport.update({
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/providers': typeof ProvidersRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/providers': typeof ProvidersRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/providers': typeof ProvidersRoute
   '/_public/sign-in': typeof PublicSignInRoute
   '/_public/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/provider'
+    | '/providers'
     | '/sign-in'
     | '/sign-up'
     | '/admin/dashboard'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/providers'
     | '/sign-in'
     | '/sign-up'
     | '/admin/dashboard'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/provider'
+    | '/providers'
     | '/_public/sign-in'
     | '/_public/sign-up'
     | '/admin/dashboard'
@@ -215,6 +227,7 @@ export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
+  ProvidersRoute: typeof ProvidersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       path: '/provider'
       fullPath: '/provider'
       preLoaderRoute: typeof ProviderRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers': {
+      id: '/providers'
+      path: '/providers'
+      fullPath: '/providers'
+      preLoaderRoute: typeof ProvidersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_public/sign-in': {
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
+  ProvidersRoute: ProvidersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -45,6 +45,10 @@ export default defineConfig({
     proxy: {
       "/api": DEV_WORKER_ORIGIN,
       "/graphql": DEV_WORKER_ORIGIN,
+      // The anonymous endpoint needs its own entry. A missing proxy entry
+      // shows up as a 404 only in a browser — unit tests mock fetch, so
+      // nothing else notices. That is exactly how /graphql was missed once.
+      "/public": DEV_WORKER_ORIGIN,
     },
   },
   test: {

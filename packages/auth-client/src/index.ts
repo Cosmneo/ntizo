@@ -12,6 +12,13 @@ import { inferAdditionalFields } from "better-auth/client/plugins";
 // apps/frontend/web/src/shared/lib/env.ts if that default ever changes.
 const AUTH_API_URL_DEFAULT = "http://localhost:8788";
 
+/**
+ * The absolute API origin, always — even in dev where `API_BASE_URL` is the
+ * empty string. Server-side code has no page to resolve a relative URL
+ * against, so it needs this. Browser code should keep using `API_BASE_URL`.
+ */
+export const AUTH_API_URL_FALLBACK: string = readAuthApiUrl();
+
 function readAuthApiUrl(): string {
   const value = import.meta.env.VITE_AUTH_API_URL as string | undefined;
   return value && value.length > 0 ? value : AUTH_API_URL_DEFAULT;
