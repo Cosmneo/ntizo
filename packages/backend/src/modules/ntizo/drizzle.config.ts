@@ -33,7 +33,7 @@ export default {
   // A migration describes how the schema evolved, not which environment it
   // runs against — so there is one migration chain per module, not one per
   // stage. Only the connection URL varies by stage; `out` must not.
-  out: "./src/modules/ntizo/infrastructure/migrations",
+  out: "./src/modules/ntizo/shared/infrastructure/migrations",
   // This chain gets its own journal table, distinct from
   // `better-auth/drizzle.config.ts`'s. drizzle-orm's postgres-js migrator
   // (pg-core/dialect.js, PgDialect.migrate) does NOT decide what to apply by

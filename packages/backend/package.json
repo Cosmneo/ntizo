@@ -19,7 +19,7 @@
     "./modules/ntizo/orchestrations/workflows/provider": "./src/modules/ntizo/orchestrations/workflows/provider/bootstrap/index.ts",
     "./shared/infra/saga": "./src/modules/ntizo/shared/infrastructure/saga/saga.ts",
     "./modules/ntizo/shared/infrastructure/execution-context": "./src/modules/ntizo/shared/infrastructure/execution-context/index.ts",
-    "./modules/ntizo/schema": "./src/modules/ntizo/infrastructure/database/schema.ts",
+    "./modules/ntizo/schema": "./src/modules/ntizo/shared/infrastructure/database/schemas.ts",
     "./shared/infra": "./src/shared/infrastructure/stores/infra-store.ts",
     "./shared/infra/database": "./src/shared/infrastructure/database/connection.ts",
     "./shared/infra/logger": "./src/shared/infrastructure/logger/index.ts",
