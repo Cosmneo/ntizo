@@ -1,0 +1,24 @@
+{
+  "name": "@ntizo/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ntizo/shared": "workspace:*",
+    "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "@ntizo/eslint-config": "workspace:*",
+    "@ntizo/typescript-config": "workspace:*",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "5.9.2"
+  }
+}

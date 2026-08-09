@@ -50,3 +50,4 @@ apps/mobile/.idea/
 .superpowers/
 playwright-report/
 .playwright-mcp/
+test-results/

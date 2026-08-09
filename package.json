@@ -8,6 +8,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run typecheck",
     "test": "turbo run test",
+    "e2e": "turbo run e2e",
     "deploy:dev": "turbo run deploy:dev",
     "prepare": "husky"
   },
@@ -32,6 +33,7 @@
     "apps/frontend/*",
     "apps/backend/*",
     "apps/mobile/*",
+    "apps/e2e",
     "packages/*",
     "packages/tooling/*"
   ],
