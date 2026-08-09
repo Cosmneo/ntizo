@@ -1,0 +1,10 @@
+{
+  "title": "Panel de administración de Ntizo",
+  "welcome": "Bienvenido de nuevo.",
+  "adminConsole": "Administración",
+  "nav": {
+    "platform": "Plataforma",
+    "dashboard": "Panel",
+    "users": "Usuarios"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Ntizo-beheerdashboard",
+  "welcome": "Welkom terug.",
+  "adminConsole": "Beheer",
+  "nav": {
+    "platform": "Platform",
+    "dashboard": "Dashboard",
+    "users": "Gebruikers"
+  }
+}

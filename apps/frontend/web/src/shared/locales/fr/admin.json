@@ -1,0 +1,10 @@
+{
+  "title": "Tableau de bord d'administration Ntizo",
+  "welcome": "Bon retour.",
+  "adminConsole": "Administration",
+  "nav": {
+    "platform": "Plateforme",
+    "dashboard": "Tableau de bord",
+    "users": "Utilisateurs"
+  }
+}
