@@ -52,3 +52,77 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run build
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    # Throwaway database for apps/e2e's own reset-test-db.ts run (via
+    # Playwright's globalSetup) to build from zero and for the API's
+    # wrangler-dev process to run against — never dev/qa/prod, which are
+    # Neon and unreachable from here anyway. Published on 55432, matching
+    # the port apps/e2e/fixtures/db.ts falls back to for local runs, so the
+    # E2E_DB_URL below is what that file's own doc comment calls "override
+    # with E2E_DB_URL for CI."
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ntizo_e2e
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d ntizo_e2e"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      E2E_DB_URL: postgres://postgres:postgres@localhost:55432/ntizo_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      # wrangler (which apps/backend/api runs under during e2e) requires
+      # Node >= 22 and refuses to run under Bun's own runtime at all
+      # (apps/e2e/lib/resolve-node22.ts) — this runner's default Node is
+      # older, so pin one explicitly rather than relying on it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      # No apps/backend/api/.dev.vars secret material is needed here: the
+      # harness (apps/e2e/lib/api-env-file.ts) generates its own throwaway
+      # env file at config-load time with DATABASE_URL (from E2E_DB_URL
+      # above), a fixed BETTER_AUTH_SECRET (any value is fine — better-auth
+      # just needs one to exist), and no RESEND_API_KEY. STAGE is left at
+      # wrangler.jsonc's top-level default ("local"), and with no
+      # RESEND_API_KEY set anywhere in this job's env, apps/backend/api/src/
+      # bootstrap.ts's resolveEmailService() takes its STAGE==="local"
+      # branch and selects ConsoleEmailServiceAdapter — verified by reading
+      # that function, not assumed — so no real email is ever sent from CI.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      # Browser binaries are cached above, but a fresh runner VM never has
+      # the OS-level shared libraries Chromium needs, cache hit or not —
+      # actions/cache only persists ~/.cache/ms-playwright, not apt state.
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: apps/e2e
+        run: bunx playwright install --with-deps chromium
+      - name: Install Playwright OS dependencies (browsers already cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: apps/e2e
+        run: bunx playwright install-deps chromium
+      # Migrations run as part of this: apps/e2e/global-setup.ts calls
+      # packages/backend/scripts/reset-test-db.ts before any test, rebuilding
+      # the schema from zero against E2E_DB_URL above. A separate CI step
+      # would just repeat that same drop-and-reapply a second time.
+      - run: bun run e2e
