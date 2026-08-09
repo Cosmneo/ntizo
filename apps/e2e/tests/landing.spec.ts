@@ -5,5 +5,5 @@ import { test, expect } from "@playwright/test";
 // The real test suite is Task 4's job, not this file's.
 test("landing page renders the hero", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("THIS TEXT DOES NOT EXIST ON THE PAGE")).toBeVisible();
+  await expect(page.getByText("Find it.")).toBeVisible();
 });
