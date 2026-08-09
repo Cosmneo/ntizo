@@ -2,8 +2,10 @@ import { z } from "zod";
 import {
   defineQuery,
   defineGraphQLSchema,
+  mergeGraphQLSchemas,
 } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { providerPublicSchema } from "./provider/graphql/schema/queries";
 
 /**
  * The PUBLIC (anonymous-tier) schema barrel.
@@ -35,6 +37,14 @@ const health = defineQuery({
   docs: { summary: "Public schema health check", tags: ["Health"] },
 });
 
-export const publicSchema = defineGraphQLSchema({ _health: health });
+const healthSchema = defineGraphQLSchema({ _health: health });
+
+/**
+ * `_health` stays merged rather than being dropped now that a real slice
+ * exists: `mergeGraphQLSchemas` needs two or more arguments to select its
+ * typed overload, and a single-argument call widens the result to the bare
+ * config, collapsing the frontend's inferred method tree to `never`.
+ */
+export const publicSchema = mergeGraphQLSchemas(healthSchema, providerPublicSchema);
 
 export type PublicSchema = typeof publicSchema;

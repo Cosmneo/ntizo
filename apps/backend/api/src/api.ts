@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { getAuth, registerSignUpHook } from "@ntizo/backend/modules/better-auth";
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
 import { mountPrivateGraphql } from "./graphql/private";
+import { mountPublicGraphql } from "./graphql/public";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
 import { authCors } from "./middlewares/cors";
@@ -33,6 +34,12 @@ registerSignUpHook((input) =>
 // exclusively through this endpoint now — REST routers for both were
 // deleted (provider in Phase 1B, user in Phase 2).
 mountPrivateGraphql(app);
+
+// PUBLIC — anonymous listings, its own Yoga and its own CORS posture. Mounted
+// separately from /graphql on purpose: that endpoint reflects only trusted
+// origins WITH credentials, which a crawler can never satisfy; loosening it to
+// serve public pages would widen the session-bearing surface instead.
+mountPublicGraphql(app);
 
 // Health check
 app.get("/", (c) => c.json({ status: "ok", service: "ntizo-api" }));
