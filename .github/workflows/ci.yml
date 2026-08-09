@@ -56,6 +56,14 @@ jobs:
   e2e:
     name: E2E
     runs-on: ubuntu-latest
+    # Without this, a hung step (e.g. tests/ssr.spec.ts's production-build
+    # test: it shells out via spawnSync, which blocks the worker's event
+    # loop, so Playwright's own test.setTimeout cannot fire) falls back to
+    # GitHub's 360-minute job default and blocks the PR for six hours
+    # instead of failing fast. 20 minutes is generous: local runs of the
+    # full suite (browser install + wrangler/vite boot + all specs) finish
+    # in well under a minute once Playwright's browsers are cache-hit.
+    timeout-minutes: 20
     # Throwaway database for apps/e2e's own reset-test-db.ts run (via
     # Playwright's globalSetup) to build from zero and for the API's
     # wrangler-dev process to run against — never dev/qa/prod, which are

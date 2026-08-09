@@ -35,6 +35,29 @@ const apiEnvFile = writeApiEnvFile();
 const node22 = resolveNode22();
 const wranglerEntry = path.join(API_ROOT, "node_modules/wrangler/bin/wrangler.js");
 
+// tests/ssr.spec.ts's "the production build prerenders..." test shells out
+// to a real `bun run build` via spawnSync, which BLOCKS this worker's event
+// loop — test.setTimeout cannot fire while it's blocked, so a hung build is
+// bounded only from the outside, by the CI job's own timeout-minutes (see
+// ci.yml). Separately, that build is CPU-heavy, and with `fullyParallel:
+// true` and the default worker count it would otherwise run concurrently
+// with every other browser test on the SAME runner, while wrangler dev and
+// vite dev (both already running for the whole suite) compete for the same
+// CPUs — real resource contention that `retries: 2` would then read back as
+// flake, silently re-running the entire build rather than surfacing a red
+// job.
+//
+// Fixed by giving it its own project, ordered strictly after "chromium" via
+// `dependencies` (not just `test.describe.configure({ mode: "serial" })`):
+// serial mode only orders tests within the same describe block/file onto
+// one worker — it would not stop this test's worker from running
+// concurrently with auth.spec.ts, provider.spec.ts, etc. on other workers,
+// which is the actual contention described above. A project dependency
+// makes Playwright fully drain "chromium" before starting "build" at all,
+// and `workers: 1` / `retries: 0` on "build" means the one heavy test in it
+// never doubles up on itself either.
+const BUILD_TEST_TITLE = /the production build prerenders only "\/" to a static file/;
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -47,7 +70,22 @@ export default defineConfig({
     baseURL: WEB_URL,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      grepInvert: BUILD_TEST_TITLE,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "build",
+      grep: BUILD_TEST_TITLE,
+      dependencies: ["chromium"],
+      fullyParallel: false,
+      workers: 1,
+      retries: 0,
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
   // Two entries, so Playwright owns spawning AND teardown of both real apps
   // end to end — no reuseExistingServer: a harness that might silently
   // adopt (and then never tear down) an already-running server defeats the
