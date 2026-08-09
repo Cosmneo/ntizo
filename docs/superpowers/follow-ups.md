@@ -4,7 +4,7 @@ Findings that surfaced during implementation, judged non-blocking at the time,
 with the reasoning that made them non-blocking. Each says what makes it urgent
 again — a deferral without a trigger is just a forgotten bug.
 
-Last updated at the end of Phase 2 (branch `feat/phase2-user-slice`).
+Last updated at the end of Phase 3A (branch `feat/phase3a-uow-outbox`).
 
 ---
 
@@ -136,3 +136,77 @@ delete the file. Leaving a validator nobody calls is worse than neither.
 assert "`/api/me` still REST; no `read/user` slice" in the present tense. Both
 became false in Phase 2. They are historical records, so arguably fine — but a
 reader skimming for current state will be misled.
+
+---
+
+## 8. The outbox has no relay, no consumer, and no pruning
+
+Phase 3A made domain events durable and correctly ordered relative to state:
+an outbox row can never describe a write that rolled back. It did **not** ship
+them anywhere. Rows accumulate with `status: "pending"` forever; nothing
+advances the status and nothing prunes the table.
+
+That ordering was deliberate — a relay over a non-transactional outbox is a
+queue that can lie, so the transaction had to come first. But a durable log
+nobody reads is only half the pattern.
+
+Scoping note, from reading the doazores relay: its SQL fits Ntizo's table
+as-is, but the module also needs `OutboxEventStatus`, `infraStore.getQueue()`,
+`infraStore.getLogger()`, `causeChain`, and a `database/index.ts` barrel —
+none of which exist here. The queue-consumer and dead-letter paths additionally
+need `outbox_event_subscriber` and `outbox_event_subscriber_execution`. It is
+not a drop-in port.
+
+**Trigger:** the first feature that needs to react to something happening
+elsewhere — a notification, an email on booking, a projection. Also sooner if
+table growth becomes visible.
+
+---
+
+## 9. `runAfterCommit` is built but unused
+
+`tx-context.ts` provides it; nothing calls it. Its natural first user is
+`invite-provider-member`, which saves the invite and then sends an email, both
+untransacted. The only failure mode today is a stale unused invite, so this is
+not urgent — but the mechanism exists precisely for it.
+
+**Trigger:** the next side-effect that must not fire on a rolled-back write.
+
+---
+
+## 10. `upgrade-profile-to-provider` emits no event
+
+The eleventh dispatch site was left unwired: there is no
+`ProfileUpgradedToProvider` event class, and the `User` aggregate has no
+event-recording machinery at all. That is domain modelling, not adapter work,
+which is why Phase 3A did not force it.
+
+**Trigger:** whenever the User BC needs to publish anything. It will need the
+machinery either way.
+
+---
+
+## 11. `ProviderEmailServiceAdapter` hardcodes Resend
+
+Unlike better-auth's env-aware lazy adapter, it constructs
+`ResendEmailServiceAdapter` regardless of `STAGE` or `RESEND_API_KEY`. Locally
+this makes `providerInvitesSend` throw `INTERNAL_ERROR` to the client — after
+the invite row and its outbox event have already committed, since the email is
+sent post-commit. So the transaction mechanics are correct; the error is
+misleading noise from unrelated wiring.
+
+Pre-existing, and the same fix already exists for better-auth: select the
+console adapter lazily when no key is present.
+
+**Trigger:** the next time anyone tries to exercise invites locally.
+
+---
+
+## 12. Migration chains exist only for `dev`
+
+`drizzle.config.ts` writes to `migrations/${stage}`; qa and prod have no chain.
+Pre-existing, but Phase 3A added the first whole new schema
+(`CREATE SCHEMA "ntizo_outbox"`), so it is the first migration whose absence
+would break the app at runtime rather than merely drift.
+
+**Trigger:** before the first deploy to any stage other than local.
