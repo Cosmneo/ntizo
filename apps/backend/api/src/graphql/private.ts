@@ -14,7 +14,7 @@ import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchest
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
 import { buildYoga } from "./build-yoga";
 import { buildHardeningPlugins } from "./hardening";
-import { createGraphqlContext } from "./context-factory";
+import { createGraphqlContextFactory } from "./context-factory";
 import { graphqlCorsFetch } from "./cors";
 import type { AppBindings } from "../types";
 
@@ -49,7 +49,9 @@ function getYoga(stage: string) {
         ...createProviderWriteHandlers({ provider, workflows }),
       ] as Parameters<typeof buildYoga>[0]["fields"],
       plugins: buildHardeningPlugins(stage),
-      createContext: createGraphqlContext,
+      createContext: createGraphqlContextFactory({
+        userRead: userRead.adapters.userReadRepository,
+      }),
       graphiql: stage !== "prod",
     });
   }

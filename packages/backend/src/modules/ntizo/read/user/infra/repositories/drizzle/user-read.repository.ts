@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { CurrentUserDTO } from "@ntizo/shared";
+import { toUserRole, type CurrentUserDTO, type UserRole } from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { user, profile } from "../../../../../shared/infrastructure/database/user/schemas";
 import type { UserReadRepositoryPort } from "../../../app/ports/outbound/user-read.repository.port";
@@ -10,6 +10,19 @@ import type { UserReadRepositoryPort } from "../../../app/ports/outbound/user-re
  * user table (no cross-module reach).
  */
 export class DrizzleUserReadRepository implements UserReadRepositoryPort {
+  async findPlatformRole(userId: string): Promise<UserRole | null> {
+    const [row] = await getDb()
+      .select({ role: user.role })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    // `role` is `text(...).$type<UserRole>()` — a cast, not a constraint, so
+    // the column can hold anything. Narrow it here rather than trusting the
+    // type, the same way the session path already does.
+    return row ? toUserRole(row.role) : null;
+  }
+
   async findCurrentUser(userId: string): Promise<CurrentUserDTO | null> {
     const [row] = await getDb()
       .select({

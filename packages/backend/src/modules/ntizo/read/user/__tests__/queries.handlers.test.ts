@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { CurrentUserDTO } from "@ntizo/shared";
+import type { CurrentUserDTO, UserRole } from "@ntizo/shared";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
 import { mapGetCurrentUserInput } from "../graphql/handlers/arg-mappers";
 import { createUserReadHandlers } from "../graphql/handlers/queries.handlers";
@@ -26,10 +26,17 @@ function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext 
 
 class FakeUserReadRepository implements UserReadRepositoryPort {
   public readonly calls: string[] = [];
-  constructor(private readonly toReturn: CurrentUserDTO | null) {}
+  constructor(
+    private readonly toReturn: CurrentUserDTO | null,
+    private readonly roleToReturn: UserRole | null = "customer",
+  ) {}
   async findCurrentUser(userId: string): Promise<CurrentUserDTO | null> {
     this.calls.push(`findCurrentUser:${userId}`);
     return this.toReturn;
+  }
+  async findPlatformRole(userId: string): Promise<UserRole | null> {
+    this.calls.push(`findPlatformRole:${userId}`);
+    return this.roleToReturn;
   }
 }
 
