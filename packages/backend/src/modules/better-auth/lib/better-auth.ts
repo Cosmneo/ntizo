@@ -59,9 +59,9 @@ function createAuthInstance() {
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: getTrustedOrigins(env.STAGE),
-    // No `transaction` option is passed here — at better-auth@1.6.2 that
-    // resolves to `false` (@better-auth/drizzle-adapter's default), which
-    // makes @better-auth/core use `createAsIsTransaction`, a passthrough
+    // `transaction: false` is passed EXPLICITLY, and must stay that way.
+    //
+    // It makes @better-auth/core use `createAsIsTransaction`, a passthrough
     // that opens no real Postgres transaction. That is the ONLY reason the
     // `user.create.after` hook below (which drives our own
     // `unitOfWork.atomicExecute`) doesn't deadlock: our app pool is capped
@@ -70,11 +70,13 @@ function createAuthInstance() {
     // single connection while our hook's `atomicExecute` queues forever for
     // one — a silent, permanent hang with no timeout to break it
     // (`connect_timeout` only covers the initial socket, not this queue).
-    // `better-auth` is pinned to an exact version in package.json (not a
-    // caret range) specifically so this default can't flip out from under
-    // us on a routine dependency bump. If you bump the pin, re-verify this
-    // default still holds, or pass `transaction: false` explicitly.
-    database: drizzleAdapter(db, { provider: "pg", schema }),
+    //
+    // Passing it beats omitting it: the adapter's default is `false` today,
+    // but relying on that makes the safety a property of a third-party
+    // version rather than of this file. `better-auth` is also pinned exactly
+    // in package.json, but a pin is discipline and this is structure — a
+    // routine bump cannot reach it.
+    database: drizzleAdapter(db, { provider: "pg", schema, transaction: false }),
     user: {
       additionalFields: {
         firstName: { type: "string", required: false, defaultValue: "" },

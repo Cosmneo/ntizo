@@ -157,6 +157,16 @@ none of which exist here. The queue-consumer and dead-letter paths additionally
 need `outbox_event_subscriber` and `outbox_event_subscriber_execution`. It is
 not a drop-in port.
 
+**Ordering is not recoverable from the table as it stands.** There is no
+monotonic sequence column: `id` is a random uuid and `created_at` is the event's
+`occurredOn`, a `new Date()` at millisecond resolution. That was harmless while
+every multi-event publish was order-independent. It stopped being harmless when
+provider creation began emitting `provider.created` and `provider.member.added`
+together — you cannot project a member onto a provider that does not exist, and
+those two rows can tie on `created_at`. A relay doing `ORDER BY created_at`
+would then hand them over backwards. Add a sequence column with the relay; do
+not discover this in production.
+
 **Trigger:** the first feature that needs to react to something happening
 elsewhere — a notification, an email on booking, a projection. Also sooner if
 table growth becomes visible.
@@ -166,9 +176,13 @@ table growth becomes visible.
 ## 9. `runAfterCommit` is built but unused
 
 `tx-context.ts` provides it; nothing calls it. Its natural first user is
-`invite-provider-member`, which saves the invite and then sends an email, both
-untransacted. The only failure mode today is a stale unused invite, so this is
-not urgent — but the mechanism exists precisely for it.
+`invite-provider-member`, which saves the invite **transactionally** (Phase 3A
+made it so) and then sends an email **outside** that transaction. The only
+failure mode today is a stale unused invite, so this is not urgent — but the
+mechanism exists precisely for it.
+
+An earlier draft of this entry said both were untransacted, which was wrong and
+contradicted entry 11 below.
 
 **Trigger:** the next side-effect that must not fire on a rolled-back write.
 
