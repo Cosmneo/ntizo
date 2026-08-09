@@ -139,3 +139,15 @@ jobs:
       # the schema from zero against E2E_DB_URL above. A separate CI step
       # would just repeat that same drop-and-reapply a second time.
       - run: bun run e2e
+      # playwright.config.ts's `trace: "on-first-retry"` writes into
+      # test-results/ but nothing previously carried it off the runner —
+      # the first time this gate went red on a PR, the only evidence left
+      # would have been scrollback. Upload it so a failure is debuggable
+      # instead of being the reason this suite gets disabled.
+      - name: Upload Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: apps/e2e/test-results/
+          retention-days: 7
