@@ -61,8 +61,28 @@ export async function runAfterCommit(
 /**
  * Opens a new Drizzle transaction and runs `work` with the transaction handle
  * bound to AsyncLocalStorage so nested `getActiveDb()` calls pick it up.
+ *
+ * Throws when a transaction is already active — it must not be called
+ * reentrantly. It always opens on the request client, never on
+ * `getActiveDb()`; nested on the `{ max: 1 }` per-request pool, the inner
+ * `db.transaction()` finds no free connection and queues silently behind the
+ * outer transaction's own queue, which is itself waiting on it — a permanent
+ * hang with no error and no timeout, not a savepoint. Use `ensureTransaction`
+ * for reentrant call sites (e.g. repository `save` methods).
+ *
+ * A fire-and-forget promise started inside `work` (e.g. `void (async () =>
+ * ...)()`) keeps this transaction's AsyncLocalStorage binding after `work`
+ * returns and the transaction settles, so its `getActiveDb()` still resolves
+ * to the (by then committed or rolled back) tx handle instead of a fresh
+ * connection — inherent to AsyncLocalStorage, not specific to this module.
+ * Always `await` work that must run inside — or after — the transaction.
  */
 export async function runInTransaction<T>(work: () => Promise<T>): Promise<T> {
+  if (transactionContext.getStore()) {
+    throw new Error(
+      "[tx-context] runInTransaction called inside an active transaction — use ensureTransaction()",
+    );
+  }
   const db = Db.getDbConnection().drizzleDbClient;
   const afterCommit: AfterCommitCallback[] = [];
   const result = await db.transaction(async (tx) => {
