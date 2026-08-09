@@ -4,9 +4,15 @@ Modelled on the doazores reference project.
 
 | Workflow | Trigger | Does |
 |---|---|---|
-| `ci.yml` | `workflow_call` only | typecheck · lint · test · build, in parallel |
+| `ci.yml` | `workflow_call` only | typecheck · lint · test · build · e2e, in parallel |
 | `pr.yml` | PR into `dev`/`qa`/`main` | runs CI |
 | `cd.yml` | push to `dev`/`qa`/`main` | CI → migrate → blue-green deploy → tripwire |
+
+`ci.yml`'s `e2e` job provisions its own throwaway Postgres 16 service
+container and runs a real Playwright suite (API + web dev servers, a
+browser, a from-zero DB rebuild) on every PR — not just the four static
+gates the table above used to promise. See `apps/e2e/` and
+`packages/backend/scripts/reset-test-db.ts`.
 
 Branch → stage: `dev` → dev, `qa` → qa, `main` → prod. The promotion path is
 `dev → qa → main`.
