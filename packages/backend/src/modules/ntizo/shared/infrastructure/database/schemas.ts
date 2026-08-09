@@ -8,3 +8,4 @@ export * from "./booking";
 export * from "./payment";
 export * from "./communication";
 export * from "./review";
+export * from "./outbox/schemas/outbox-event.schema";

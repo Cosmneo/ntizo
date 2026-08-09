@@ -16,6 +16,7 @@ const base: Config = {
     "ntizo_payment",
     "ntizo_communication",
     "ntizo_review",
+    "ntizo_outbox",
   ],
   verbose: true,
   strict: true,
