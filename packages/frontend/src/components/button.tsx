@@ -19,10 +19,17 @@ const buttonVariants = cva(
         // Primário
         default:
           "bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:opacity-90",
-        // Secundário — outlined in the brand blue, not in the neutral border,
-        // so it reads as the second action rather than a disabled one.
-        outline:
+        // Secundário — outlined in the brand blue. The second action in a
+        // pair, when both belong to the same task.
+        secondary:
           "border border-[var(--color-primary)] bg-transparent text-[var(--color-primary)] hover:bg-[var(--color-secondary)]",
+        // Neutral outline. Not in the design system's three, and needed
+        // anyway: "Cancel" in a dialog and "Continue with Google" are not
+        // second actions in the same task, they are other doors. Painting
+        // them blue makes them compete with the primary button and, on the
+        // sign-in page, makes Google look like the recommended way in.
+        outline:
+          "border border-[var(--color-border)] bg-transparent hover:bg-[var(--color-secondary)]",
         // Ghost
         ghost: "text-[var(--color-primary)] hover:bg-[var(--color-secondary)]",
         destructive:

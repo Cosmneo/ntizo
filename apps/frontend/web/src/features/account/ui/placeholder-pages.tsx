@@ -13,10 +13,10 @@ import { EmptyState } from "@/features/account/ui/empty-state";
 
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <>
-      <h1 className="text-2xl font-semibold">{title}</h1>
+    <div className="mx-auto max-w-3xl">
+      <h1 className="type-h1">{title}</h1>
       <div className="mt-8">{children}</div>
-    </>
+    </div>
   );
 }
 

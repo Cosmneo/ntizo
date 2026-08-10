@@ -266,7 +266,7 @@ minimum documented manual steps per target database — before
 `DEPLOY_ENABLED` is ever set to `true`. Do not attempt the backfill now;
 there is nothing yet that needs it.
 
-## 14. The phone number is stored in two places that can disagree
+## 14. The phone number is stored in two places — new signups now agree, existing rows do not
 
 Phone verification writes to `better_auth.user.phone_number` (added by the
 better-auth phone-number plugin, with `phone_number_verified` beside it). The
@@ -283,10 +283,24 @@ Neither is obviously the right home. The verified flag has to live where
 better-auth writes it, but a marketplace that texts providers about bookings
 wants the number inside the User bounded context, not in the auth module.
 
-**Trigger:** resolve before anything outside the auth flow reads or writes a
-phone number — the first booking notification, provider contact details, or a
-profile edit screen. Deciding then is cheap; discovering it after two features
-have each picked a different column is not.
+**Half of this is now closed.** The signup hook carries the number through to
+the Profile, so a new account has the same E.164 string in both tables —
+verified against the running API, both columns matching. It surfaced exactly
+as predicted: the account page told a user who had just confirmed their phone
+that it was unverified, because it reads the Profile and only better-auth had
+the number.
+
+**What remains:** every account created before that change has a null
+`ntizo_user.profile.phone_number` while `better_auth.user.phone_number` holds
+their real one. A one-off backfill copying across is enough, and it is safe to
+run twice.
+
+Still unanswered is which column is authoritative. Both are written at signup
+now; nothing keeps them in step afterwards, and `updateMe` writes only the
+Profile's.
+
+**Trigger:** the backfill before the first real user; the ownership question
+before anything writes a phone number outside the signup path.
 
 ## 15. Verification email and SMS are English-only, in an app with 8 locales
 

@@ -49,7 +49,12 @@ describe("currentUserReadModel", () => {
       firstName: "A", lastName: "B", displayName: "A B",
       avatarUrl: null, phoneNumber: null, bio: null,
       language: "en-US", timezone: "UTC",
+      dateOfBirth: null, gender: null,
     });
     expect(parsed.avatarUrl).toBeNull();
+    // Two optional personal details a user may never fill in. Null here is
+    // "never answered"; "undisclosed" is an answer, and is not this.
+    expect(parsed.dateOfBirth).toBeNull();
+    expect(parsed.gender).toBeNull();
   });
 });

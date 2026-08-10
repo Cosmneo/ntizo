@@ -39,6 +39,8 @@ export class DrizzleUserReadRepository implements UserReadRepositoryPort {
         bio: profile.bio,
         language: profile.language,
         timezone: profile.timezone,
+        dateOfBirth: profile.dateOfBirth,
+        gender: profile.gender,
       })
       .from(user)
       // leftJoin, not innerJoin: the profile is created empty on registration
@@ -69,6 +71,12 @@ export class DrizzleUserReadRepository implements UserReadRepositoryPort {
       bio: row.bio ?? null,
       language: row.language ?? "en-US",
       timezone: row.timezone ?? "UTC",
+      // The column is `date`, which drizzle hands back as a `YYYY-MM-DD`
+      // string. Kept as that string rather than parsed into a Date: the read
+      // model crosses GraphQL, where a Date has no representation, and a
+      // birthday has no time or zone to lose.
+      dateOfBirth: row.dateOfBirth ?? null,
+      gender: row.gender ?? null,
     };
   }
 }

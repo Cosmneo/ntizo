@@ -40,6 +40,10 @@ export class CreateUserOnSignUpInternalCommand
         firstName: input.firstName,
         lastName: input.lastName,
       });
+      // Through the aggregate's own method rather than passed into `create`:
+      // a phone is a contact detail a user changes later, and `create` takes
+      // only what a profile cannot exist without.
+      if (input.phoneNumber) profile.updateContact({ phoneNumber: input.phoneNumber });
       await this.profileRepo.save(profile);
     });
   }

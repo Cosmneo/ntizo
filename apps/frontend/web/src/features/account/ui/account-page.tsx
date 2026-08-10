@@ -1,49 +1,165 @@
-import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { BadgeCheck, Pencil, Sparkles } from "lucide-react";
+import { Avatar, AvatarFallback, Badge, Button } from "@ntizo/frontend-ui";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { useMyProviders } from "@/features/provider/viewmodel/use-providers";
+import { canAccessProvider } from "@/shared/lib/zones";
+import { ProfileForm } from "@/features/account/ui/profile-form";
 
-function Row({ label, value }: { label: string; value: string | null }) {
+function initialsOf(source: string): string {
+  return source
+    .split(" ")
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/** A label above its value, for the grid of personal details. */
+function Detail({ label, value }: { label: string; value: string | null }) {
   const { t } = useTranslation("account");
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-[var(--color-border)] py-3 last:border-0">
-      <dt className="text-sm text-[var(--color-muted-foreground)]">{label}</dt>
-      <dd className={value ? "text-sm" : "text-sm text-[var(--color-muted-foreground)] italic"}>
+    <div className="flex items-baseline justify-between gap-4 py-2">
+      <dt className="type-body-medium text-[var(--color-muted-foreground)]">{label}</dt>
+      <dd
+        className={
+          value
+            ? "type-body-medium text-right font-semibold"
+            : "type-body-medium text-right text-[var(--color-muted-foreground)] italic"
+        }
+      >
         {value || t("notSet")}
       </dd>
     </div>
   );
 }
 
-/**
- * The customer's own details. Read-only for now — editing needs a mutation
- * that does not exist yet, and a form that saves nothing is worse than none.
- */
+/** One of the three figures under the details. */
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="text-center">
+      <div className="type-h2 tabular-nums">{value}</div>
+      <div className="type-caption mt-1 text-[var(--color-muted-foreground)]">{label}</div>
+    </div>
+  );
+}
+
 export function AccountPage() {
-  const { t } = useTranslation("account");
+  const { t, i18n } = useTranslation("account");
   const { data: user } = useCurrentUser();
+  const { data: providers = [] } = useMyProviders();
+  const [editing, setEditing] = useState(false);
+
+  if (!user) return null;
+
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const name = user.displayName || user.name || user.email;
+  const isProvider = canAccessProvider(user, providers.length);
+
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const monthFmt = new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" });
+
+  // Verified means email and phone, the two signals that exist. Identity
+  // documents are a provider's obligation and live with their workspace, so
+  // this badge deliberately does not claim them.
+  const verified = Boolean(user.phoneNumber);
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t("accountTitle")}</h1>
-      <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-        {t("accountSubtitle")}
-      </p>
+      <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-6">
+        <div className="flex flex-wrap items-start gap-4">
+          <Avatar className="h-[72px] w-[72px]">
+            <AvatarFallback className="type-h2 bg-[var(--color-primary)] font-semibold text-white">
+              {initialsOf(name)}
+            </AvatarFallback>
+          </Avatar>
 
-      <dl className="mt-8 rounded-lg border border-[var(--color-border)] px-5">
-        <Row label={t("fieldName")} value={user?.name ?? null} />
-        <Row label={t("fieldEmail")} value={user?.email ?? null} />
-        {/* Reads the Profile's phone, which the signup path does not write —
-            the number lives on the auth user instead. Shown rather than
-            hidden so the gap is visible; see follow-ups.md entry 14. */}
-        <Row label={t("fieldPhone")} value={user?.phoneNumber ?? null} />
-      </dl>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="type-h1">{name}</h1>
+              {verified ? (
+                <Badge tone="success" className="gap-1">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  {t("verified")}
+                </Badge>
+              ) : (
+                <Badge tone="warning">{t("unverified")}</Badge>
+              )}
+            </div>
+            <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+              {[user.phoneNumber, user.email].filter(Boolean).join(" · ")}
+            </p>
+          </div>
 
-      <p className="mt-6 text-sm text-[var(--color-muted-foreground)]">
-        {t("verifyPhonePrompt")}{" "}
-        <Link to="/verify-phone" className="text-[var(--color-accent)] hover:underline">
-          {t("verifyPhoneLink")}
+          {!editing ? (
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4" />
+              {t("editProfile")}
+            </Button>
+          ) : null}
+        </div>
+
+        {editing ? (
+          <ProfileForm user={user} onDone={() => setEditing(false)} />
+        ) : (
+          <>
+            <dl className="mt-6 grid gap-x-10 border-t border-[var(--color-border)] pt-4 sm:grid-cols-2">
+              <Detail
+                label={t("fieldDateOfBirth")}
+                value={user.dateOfBirth ? dateFmt.format(new Date(user.dateOfBirth)) : null}
+              />
+              <Detail
+                label={t("fieldLanguages")}
+                value={t(`language.${user.language}`, { defaultValue: user.language })}
+              />
+              <Detail
+                label={t("fieldGender")}
+                value={user.gender ? t(`gender.${user.gender}`) : null}
+              />
+              <Detail label={t("fieldTimezone")} value={user.timezone} />
+            </dl>
+
+            {/* Two of these three have nowhere to come from yet. They are
+                shown at zero rather than hidden: a customer with no bookings
+                is the normal state at launch, and an empty row says that
+                more honestly than an absent one. */}
+            <div className="mt-4 grid grid-cols-3 gap-4 border-t border-[var(--color-border)] pt-5">
+              <Stat value="0" label={t("statBookings")} />
+              <Stat value="—" label={t("statRating")} />
+              <Stat
+                value={monthFmt.format(new Date(user.createdAt))}
+                label={t("statMemberSince")}
+              />
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Only for someone who is not one yet. A provider who already has a
+          workspace does not need to be invited into it. */}
+      {!isProvider ? (
+        <Link
+          to="/provider"
+          className="mt-4 flex flex-wrap items-center gap-4 rounded-[var(--radius-card)] bg-[var(--color-primary)] p-5 text-white"
+        >
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-white/20">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="type-h3 block font-semibold">{t("becomeProviderTitle")}</span>
+            <span className="type-body block text-white/85">{t("becomeProviderBody")}</span>
+          </span>
+          <span className="type-button rounded-[var(--radius-card-sm)] bg-white px-5 py-3 text-[var(--color-primary)]">
+            {t("becomeProviderCta")}
+          </span>
         </Link>
-      </p>
+      ) : null}
     </>
   );
 }

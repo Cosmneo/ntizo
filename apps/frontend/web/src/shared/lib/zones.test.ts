@@ -11,7 +11,8 @@ import {
 const user = (role: CurrentUserDTO["role"]): CurrentUserDTO =>
   ({ id: "u1", email: "a@b.c", role, status: "active", createdAt: "", name: "",
      firstName: "", lastName: "", displayName: "", avatarUrl: null,
-     phoneNumber: null, bio: null, language: "en-US", timezone: "UTC" });
+     phoneNumber: null, bio: null, language: "en-US", timezone: "UTC",
+     dateOfBirth: null, gender: null });
 
 describe("canAccessAdmin", () => {
   it("is true only for admin role", () => {

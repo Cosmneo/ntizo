@@ -24,6 +24,15 @@ export interface SignUpHookInput {
   email: string;
   firstName: string;
   lastName: string;
+  /**
+   * In E.164, or null when the user signed up without one (social login).
+   *
+   * Passed through so the domain Profile carries the same number better-auth
+   * stores. Without it the two disagreed from the first second: the auth user
+   * had a verified phone and the profile had none, so the account page told a
+   * user who had just confirmed their number that it was unverified.
+   */
+  phoneNumber: string | null;
 }
 export type SignUpHook = (input: SignUpHookInput) => Promise<void>;
 
@@ -223,6 +232,9 @@ function createAuthInstance() {
                 email: authUser.email,
                 firstName: (u.firstName as string) ?? "",
                 lastName: (u.lastName as string) ?? "",
+                // Already normalised to E.164 by the create.before hook above,
+                // so the profile and the auth user store the same string.
+                phoneNumber: (u.phoneNumber as string | undefined) ?? null,
               });
             } catch (error) {
               // Compensation: delete the auth user so the next signup attempt isn't blocked.

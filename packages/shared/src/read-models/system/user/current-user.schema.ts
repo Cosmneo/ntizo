@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { userRoleSchema } from "../../../enums/user-enums";
+import { genderSchema, userRoleSchema } from "../../../enums/user-enums";
 import { LOCALES } from "../../../enums/system-enums";
 
 export const currentUserReadModel = z.object({
@@ -21,6 +21,10 @@ export const currentUserReadModel = z.object({
   // drifted out of step with the eight locales the app ships.
   language: z.enum(LOCALES),
   timezone: z.string(),
+  // Readable as well as writable. They were added to `updateMe` first, which
+  // left the profile page able to save a date of birth and unable to show it.
+  dateOfBirth: z.string().nullable(),
+  gender: genderSchema.nullable(),
 });
 
 export type CurrentUserDTO = z.infer<typeof currentUserReadModel>;

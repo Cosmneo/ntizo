@@ -10,9 +10,37 @@ import type { CurrentUserDTO } from "../domain/current-user";
 const ME = `
   query UserMe($input: JSON!) {
     userMe(input: $input) {
-      id email role status createdAt name firstName lastName displayName avatarUrl phoneNumber bio language timezone
+      id email role status createdAt name firstName lastName displayName avatarUrl phoneNumber bio language timezone dateOfBirth gender
     }
   }`;
+
+/**
+ * `user.updateMe` — the kit flattens it to `userUpdateMe`, and every field
+ * takes a required `input`. Partial by design: a field left out is left
+ * alone, and an explicit null clears it.
+ */
+const UPDATE_ME = `
+  mutation UserUpdateMe($input: UserUpdateMeInput!) {
+    userUpdateMe(input: $input) {
+      ok
+    }
+  }`;
+
+export interface UpdateMyProfileInput {
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  language?: CurrentUserDTO["language"];
+  timezone?: string;
+  dateOfBirth?: string | null;
+  gender?: CurrentUserDTO["gender"];
+}
+
+export async function updateMyProfile(input: UpdateMyProfileInput): Promise<void> {
+  await sessionGraphql<{ userUpdateMe: { ok: boolean } }>(UPDATE_ME, { input });
+}
 
 /** Query definitions. Components consume these via useQuery(userQueries.me()). */
 export const userQueries = {

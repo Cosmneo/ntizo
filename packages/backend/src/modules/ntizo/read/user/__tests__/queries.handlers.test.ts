@@ -13,6 +13,7 @@ const dto: CurrentUserDTO = {
   firstName: "A", lastName: "B", displayName: "A B",
   avatarUrl: null, phoneNumber: null, bio: null,
   language: "en-US", timezone: "UTC",
+  dateOfBirth: null, gender: null,
 };
 
 function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {

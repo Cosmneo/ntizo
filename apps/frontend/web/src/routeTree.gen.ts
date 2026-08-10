@@ -15,7 +15,7 @@ import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
-import { Route as CustomerAccountRouteImport } from './routes/_customer/account'
+import { Route as CustomerAccountRouteRouteImport } from './routes/_customer/account/route'
 import { Route as CustomerBookingsRouteImport } from './routes/_customer/bookings'
 import { Route as CustomerFavouritesRouteImport } from './routes/_customer/favourites'
 import { Route as CustomerMessagesRouteImport } from './routes/_customer/messages'
@@ -34,6 +34,13 @@ import { Route as ProviderOverviewRouteImport } from './routes/provider/overview
 import { Route as ProviderSettingsRouteImport } from './routes/provider/settings'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
+import { Route as CustomerAccountIndexRouteImport } from './routes/_customer/account/index'
+import { Route as CustomerAccountAddressesRouteImport } from './routes/_customer/account/addresses'
+import { Route as CustomerAccountLegalRouteImport } from './routes/_customer/account/legal'
+import { Route as CustomerAccountNotificationsRouteImport } from './routes/_customer/account/notifications'
+import { Route as CustomerAccountPaymentMethodsRouteImport } from './routes/_customer/account/payment-methods'
+import { Route as CustomerAccountPreferencesRouteImport } from './routes/_customer/account/preferences'
+import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/account/security'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -64,7 +71,7 @@ const VerifyPhoneRoute = VerifyPhoneRouteImport.update({
   path: '/verify-phone',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CustomerAccountRoute = CustomerAccountRouteImport.update({
+const CustomerAccountRouteRoute = CustomerAccountRouteRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => CustomerRouteRoute,
@@ -159,6 +166,45 @@ const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
   path: '/providers/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerAccountIndexRoute = CustomerAccountIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CustomerAccountRouteRoute,
+} as any)
+const CustomerAccountAddressesRoute =
+  CustomerAccountAddressesRouteImport.update({
+    id: '/addresses',
+    path: '/addresses',
+    getParentRoute: () => CustomerAccountRouteRoute,
+  } as any)
+const CustomerAccountLegalRoute = CustomerAccountLegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => CustomerAccountRouteRoute,
+} as any)
+const CustomerAccountNotificationsRoute =
+  CustomerAccountNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => CustomerAccountRouteRoute,
+  } as any)
+const CustomerAccountPaymentMethodsRoute =
+  CustomerAccountPaymentMethodsRouteImport.update({
+    id: '/payment-methods',
+    path: '/payment-methods',
+    getParentRoute: () => CustomerAccountRouteRoute,
+  } as any)
+const CustomerAccountPreferencesRoute =
+  CustomerAccountPreferencesRouteImport.update({
+    id: '/preferences',
+    path: '/preferences',
+    getParentRoute: () => CustomerAccountRouteRoute,
+  } as any)
+const CustomerAccountSecurityRoute = CustomerAccountSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => CustomerAccountRouteRoute,
+} as any)
 const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   id: '/accept-invite/$token',
   path: '/accept-invite/$token',
@@ -170,7 +216,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
   '/verify-phone': typeof VerifyPhoneRoute
-  '/account': typeof CustomerAccountRoute
+  '/account': typeof CustomerAccountRouteRouteWithChildren
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
@@ -189,12 +235,18 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/provider/': typeof ProviderIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/account/addresses': typeof CustomerAccountAddressesRoute
+  '/account/legal': typeof CustomerAccountLegalRoute
+  '/account/notifications': typeof CustomerAccountNotificationsRoute
+  '/account/payment-methods': typeof CustomerAccountPaymentMethodsRoute
+  '/account/preferences': typeof CustomerAccountPreferencesRoute
+  '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
+  '/account/': typeof CustomerAccountIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/verify-phone': typeof VerifyPhoneRoute
-  '/account': typeof CustomerAccountRoute
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
@@ -213,7 +265,14 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/provider': typeof ProviderIndexRoute
   '/providers': typeof ProvidersIndexRoute
+  '/account/addresses': typeof CustomerAccountAddressesRoute
+  '/account/legal': typeof CustomerAccountLegalRoute
+  '/account/notifications': typeof CustomerAccountNotificationsRoute
+  '/account/payment-methods': typeof CustomerAccountPaymentMethodsRoute
+  '/account/preferences': typeof CustomerAccountPreferencesRoute
+  '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
+  '/account': typeof CustomerAccountIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -223,7 +282,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
   '/verify-phone': typeof VerifyPhoneRoute
-  '/_customer/account': typeof CustomerAccountRoute
+  '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
   '/_customer/bookings': typeof CustomerBookingsRoute
   '/_customer/favourites': typeof CustomerFavouritesRoute
   '/_customer/messages': typeof CustomerMessagesRoute
@@ -242,7 +301,14 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/provider/': typeof ProviderIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/_customer/account/addresses': typeof CustomerAccountAddressesRoute
+  '/_customer/account/legal': typeof CustomerAccountLegalRoute
+  '/_customer/account/notifications': typeof CustomerAccountNotificationsRoute
+  '/_customer/account/payment-methods': typeof CustomerAccountPaymentMethodsRoute
+  '/_customer/account/preferences': typeof CustomerAccountPreferencesRoute
+  '/_customer/account/security': typeof CustomerAccountSecurityRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
+  '/_customer/account/': typeof CustomerAccountIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -270,12 +336,18 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/provider/'
     | '/providers/'
+    | '/account/addresses'
+    | '/account/legal'
+    | '/account/notifications'
+    | '/account/payment-methods'
+    | '/account/preferences'
+    | '/account/security'
     | '/accept-invite/$token'
+    | '/account/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/verify-phone'
-    | '/account'
     | '/bookings'
     | '/favourites'
     | '/messages'
@@ -294,7 +366,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/provider'
     | '/providers'
+    | '/account/addresses'
+    | '/account/legal'
+    | '/account/notifications'
+    | '/account/payment-methods'
+    | '/account/preferences'
+    | '/account/security'
     | '/accept-invite/$token'
+    | '/account'
   id:
     | '__root__'
     | '/'
@@ -322,7 +401,14 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/provider/'
     | '/providers/'
+    | '/_customer/account/addresses'
+    | '/_customer/account/legal'
+    | '/_customer/account/notifications'
+    | '/_customer/account/payment-methods'
+    | '/_customer/account/preferences'
+    | '/_customer/account/security'
     | '/_public/accept-invite/$token'
+    | '/_customer/account/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -384,7 +470,7 @@ declare module '@tanstack/react-router' {
       id: '/_customer/account'
       path: '/account'
       fullPath: '/account'
-      preLoaderRoute: typeof CustomerAccountRouteImport
+      preLoaderRoute: typeof CustomerAccountRouteRouteImport
       parentRoute: typeof CustomerRouteRoute
     }
     '/_customer/bookings': {
@@ -513,6 +599,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProvidersSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_customer/account/': {
+      id: '/_customer/account/'
+      path: '/'
+      fullPath: '/account/'
+      preLoaderRoute: typeof CustomerAccountIndexRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
+    '/_customer/account/addresses': {
+      id: '/_customer/account/addresses'
+      path: '/addresses'
+      fullPath: '/account/addresses'
+      preLoaderRoute: typeof CustomerAccountAddressesRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
+    '/_customer/account/legal': {
+      id: '/_customer/account/legal'
+      path: '/legal'
+      fullPath: '/account/legal'
+      preLoaderRoute: typeof CustomerAccountLegalRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
+    '/_customer/account/notifications': {
+      id: '/_customer/account/notifications'
+      path: '/notifications'
+      fullPath: '/account/notifications'
+      preLoaderRoute: typeof CustomerAccountNotificationsRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
+    '/_customer/account/payment-methods': {
+      id: '/_customer/account/payment-methods'
+      path: '/payment-methods'
+      fullPath: '/account/payment-methods'
+      preLoaderRoute: typeof CustomerAccountPaymentMethodsRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
+    '/_customer/account/preferences': {
+      id: '/_customer/account/preferences'
+      path: '/preferences'
+      fullPath: '/account/preferences'
+      preLoaderRoute: typeof CustomerAccountPreferencesRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
+    '/_customer/account/security': {
+      id: '/_customer/account/security'
+      path: '/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof CustomerAccountSecurityRouteImport
+      parentRoute: typeof CustomerAccountRouteRoute
+    }
     '/_public/accept-invite/$token': {
       id: '/_public/accept-invite/$token'
       path: '/accept-invite/$token'
@@ -523,15 +658,38 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CustomerAccountRouteRouteChildren {
+  CustomerAccountAddressesRoute: typeof CustomerAccountAddressesRoute
+  CustomerAccountLegalRoute: typeof CustomerAccountLegalRoute
+  CustomerAccountNotificationsRoute: typeof CustomerAccountNotificationsRoute
+  CustomerAccountPaymentMethodsRoute: typeof CustomerAccountPaymentMethodsRoute
+  CustomerAccountPreferencesRoute: typeof CustomerAccountPreferencesRoute
+  CustomerAccountSecurityRoute: typeof CustomerAccountSecurityRoute
+  CustomerAccountIndexRoute: typeof CustomerAccountIndexRoute
+}
+
+const CustomerAccountRouteRouteChildren: CustomerAccountRouteRouteChildren = {
+  CustomerAccountAddressesRoute: CustomerAccountAddressesRoute,
+  CustomerAccountLegalRoute: CustomerAccountLegalRoute,
+  CustomerAccountNotificationsRoute: CustomerAccountNotificationsRoute,
+  CustomerAccountPaymentMethodsRoute: CustomerAccountPaymentMethodsRoute,
+  CustomerAccountPreferencesRoute: CustomerAccountPreferencesRoute,
+  CustomerAccountSecurityRoute: CustomerAccountSecurityRoute,
+  CustomerAccountIndexRoute: CustomerAccountIndexRoute,
+}
+
+const CustomerAccountRouteRouteWithChildren =
+  CustomerAccountRouteRoute._addFileChildren(CustomerAccountRouteRouteChildren)
+
 interface CustomerRouteRouteChildren {
-  CustomerAccountRoute: typeof CustomerAccountRoute
+  CustomerAccountRouteRoute: typeof CustomerAccountRouteRouteWithChildren
   CustomerBookingsRoute: typeof CustomerBookingsRoute
   CustomerFavouritesRoute: typeof CustomerFavouritesRoute
   CustomerMessagesRoute: typeof CustomerMessagesRoute
 }
 
 const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
-  CustomerAccountRoute: CustomerAccountRoute,
+  CustomerAccountRouteRoute: CustomerAccountRouteRouteWithChildren,
   CustomerBookingsRoute: CustomerBookingsRoute,
   CustomerFavouritesRoute: CustomerFavouritesRoute,
   CustomerMessagesRoute: CustomerMessagesRoute,
