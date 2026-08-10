@@ -70,7 +70,10 @@ class FakeProviderRepository implements ProviderRepositoryPort {
     throw new Error("not used by this test");
   }
   async findBySlug(_slug: string): Promise<Provider | null> {
-    throw new Error("not used by this test");
+    // Free. These tests are about atomicity and events, not slug collisions —
+    // they threw here until the command started resolving collisions, which is
+    // the fake correctly reporting that its assumptions had moved.
+    return null;
   }
   async findAllByOwnerOrMemberUserId(_userId: string): Promise<Provider[]> {
     throw new Error("not used by this test");

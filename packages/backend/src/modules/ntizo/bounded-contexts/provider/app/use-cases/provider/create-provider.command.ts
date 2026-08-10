@@ -38,7 +38,7 @@ export class CreateProviderCommand implements CreateProviderPort {
       ownerUserId: requester.userId,
       type: input.type,
       name: input.name,
-      slug: input.slug,
+      slug: await this.freeSlug(input.slug),
       description: input.description,
       address: input.address ? Address.create(input.address) : undefined,
     });
@@ -71,5 +71,35 @@ export class CreateProviderCommand implements CreateProviderPort {
     });
 
     return { providerId: provider.id };
+  }
+
+  /**
+   * The requested slug, or the first free variation of it.
+   *
+   * Two businesses may legitimately share a name — a Salão Beleza in Maputo and
+   * another in Beira — and the slug is derived from that name rather than
+   * chosen. Before this, the second one hit the unique index and the onboarding
+   * wizard showed "an unexpected error occurred" to somebody who has never seen
+   * a slug and could not act on it. Making them rename their business because a
+   * URL collided is charging them for our schema.
+   *
+   * Here rather than in the caller: only this side knows what is taken, and a
+   * check made in the browser is stale by the time it arrives. This narrows the
+   * race without closing it — two simultaneous creations of the same name can
+   * still collide, and the unique index remains the thing that guarantees
+   * correctness. What changes is that the common case stops failing.
+   */
+  private async freeSlug(requested: string): Promise<string> {
+    if (!(await this.providerRepo.findBySlug(requested))) return requested;
+
+    // Bounded: past a handful of identically-named businesses, a longer suffix
+    // is not more helpful and the loop should not become a scan.
+    for (let n = 2; n <= 50; n += 1) {
+      const candidate = `${requested}-${n}`;
+      if (!(await this.providerRepo.findBySlug(candidate))) return candidate;
+    }
+    // Out of tidy options. A random tail always terminates and is still a
+    // working URL, which beats refusing to create the business.
+    return `${requested}-${Math.floor(Date.now() % 100000)}`;
   }
 }

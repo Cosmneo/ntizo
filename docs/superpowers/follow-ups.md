@@ -443,17 +443,16 @@ MIME and size re-checked server-side, `no-store` on the object, the uploader's
 id in custom metadata. It answers `503 DOCUMENT_STORAGE_UNCONFIGURED` when the
 binding is absent, which is the state today.
 
-**The buckets do not exist yet.** One command each:
+**The four buckets now exist** on the account
+(`fb80ea1e…`), created with `wrangler r2 bucket create`, and
+`wrangler r2 bucket dev-url get` reports public access **disabled** on every
+one. Keep it that way: the reference project's media bucket has a public
+`r2.dev` URL because it serves photographs of activities; these hold ID cards
+and tax certificates, and that is why the read leg goes through the Worker.
 
-    wrangler r2 bucket create ntizo-documents-local
-    wrangler r2 bucket create ntizo-documents-dev
-    wrangler r2 bucket create ntizo-documents-qa
-    wrangler r2 bucket create ntizo-documents-prod
-
-Do **not** attach a public `r2.dev` URL to any of them. The reference project's
-media bucket has one because it serves photographs of activities; these hold ID
-cards and tax certificates, and the read leg goes through the Worker for that
-reason.
+Verified end to end against `wrangler dev` with the binding attached: a PDF
+returns 201 with its key, an SVG 415, an 11 MB file 413, an unknown document
+type 400, and an anonymous caller 401 before any of that is evaluated.
 
 Still outstanding after the buckets exist:
 
