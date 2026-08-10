@@ -1,5 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { SidebarHeader, SidebarMenu, SidebarMenuItem } from "@ntizo/frontend-ui";
+import {
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+} from "@ntizo/frontend-ui";
 
 /**
  * The zone's masthead: the wordmark, and which zone this is.
@@ -27,7 +31,11 @@ export function AppSidebarHeader() {
               className="hidden h-8 w-auto shrink-0 group-data-[collapsible=icon]:block"
             />
             <div className="grid gap-1 group-data-[collapsible=icon]:hidden">
-              <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-7 w-auto" />
+              <img
+                src="/brand/logo-primary.svg"
+                alt="Ntizo"
+                className="h-7 w-auto"
+              />
               <span className="truncate text-[11px] text-[var(--color-muted-foreground)]">
                 {t("providerConsole")}
               </span>

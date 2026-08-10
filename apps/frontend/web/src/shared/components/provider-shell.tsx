@@ -12,10 +12,7 @@ import {
   PageHeaderContext,
   type PageHeaderState,
 } from "@/shared/lib/page-header";
-import {
-  applyThemePreference,
-  readThemePreference,
-} from "@/shared/lib/theme";
+import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
 
 export function ProviderShell({ children }: { children: ReactNode }) {
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
@@ -59,40 +56,38 @@ export function ProviderShell({ children }: { children: ReactNode }) {
               )}
             </div>
             <div className="ml-auto flex items-center gap-3">
-            <HeaderActions showAccount={false} />
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="Search…"
-                className="h-9 w-64 rounded-md border border-input bg-secondary pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-input bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                ⌘K
-              </kbd>
-            </div>
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-            </button>
-            {action ?? (
+              <HeaderActions showAccount={false} />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="search"
+                  placeholder="Search…"
+                  className="h-9 w-64 rounded-md border border-input bg-secondary pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <kbd className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-input bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </div>
               <button
                 type="button"
-                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90"
+                aria-label="Notifications"
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent"
               >
-                <Plus className="h-4 w-4" />
-                New service
+                <Bell className="h-4 w-4" />
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
               </button>
-            )}
-          </div>
-        </header>
-          <main className="min-h-0 flex-1 overflow-y-auto p-6">
-            {children}
-          </main>
+              {action ?? (
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90"
+                >
+                  <Plus className="h-4 w-4" />
+                  New service
+                </button>
+              )}
+            </div>
+          </header>
+          <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </PageHeaderContext.Provider>

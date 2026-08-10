@@ -24,7 +24,11 @@ interface ServiceSearchProps {
  * placeholder says "service" because that is what a user is looking for, and
  * the destination changes without this component changing when it exists.
  */
-export function ServiceSearch({ initialValue = "", className, autoFocus }: ServiceSearchProps) {
+export function ServiceSearch({
+  initialValue = "",
+  className,
+  autoFocus,
+}: ServiceSearchProps) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
   const [value, setValue] = useState(initialValue);

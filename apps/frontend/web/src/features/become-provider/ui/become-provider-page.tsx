@@ -26,21 +26,25 @@ export function BecomeProviderPage() {
   const { t } = useTranslation("becomeProvider");
   const { data: user } = useCurrentUser();
 
-  // Signed in, so the pitch is over: go to the workspace. Anonymous visitors
-  // sign up first and come back by the same route.
-  const ctaTo = user ? "/provider" : "/sign-up";
+  // Both ends of this land in the wizard. Signed in, straight there; signed
+  // out, through registration carrying the intent — which is what stops the
+  // chain breaking at "registered, now on the customer home, and the thing
+  // they came for is nowhere".
+  const cta: CtaTarget = user
+    ? { to: "/onboarding" }
+    : { to: "/sign-up", search: { next: "/onboarding" } };
 
   return (
     <main
       style={{ ...LANDING_VARS, background: PAGE_TOP }}
       className="text-[color:var(--l-navy)]"
     >
-      <Hero ctaTo={ctaTo} t={t} />
+      <Hero cta={cta} t={t} />
       <Paths t={t} />
-      <Pricing ctaTo={ctaTo} t={t} />
+      <Pricing cta={cta} t={t} />
       <Steps t={t} />
       <Requirements t={t} />
-      <Closing ctaTo={ctaTo} t={t} />
+      <Closing cta={cta} t={t} />
       <Footer />
     </main>
   );
@@ -72,10 +76,24 @@ function Eyebrow({
   );
 }
 
-function PrimaryCta({ to, label }: { to: string; label: string }) {
+/**
+ * Where the page's call to action goes.
+ *
+ * Signed in it is the wizard. Signed out it is registration carrying the
+ * intent as a *search param* — a query string inside `to` would be read as
+ * part of the path and never match a route. Carrying it is what stops the
+ * chain breaking at "registered, landed on the customer home, and the thing
+ * they came for was never offered again".
+ */
+type CtaTarget =
+  | { to: "/onboarding"; search?: undefined }
+  | { to: "/sign-up"; search: { next: string } };
+
+function PrimaryCta({ cta, label }: { cta: CtaTarget; label: string }) {
   return (
     <Link
-      to={to}
+      to={cta.to}
+      {...(cta.search ? { search: cta.search } : {})}
       className="font-rounded inline-flex items-center gap-2.5 rounded-full px-8 py-4 font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
       style={{ background: ACCENT }}
     >
@@ -92,7 +110,7 @@ function PrimaryCta({ to, label }: { to: string; label: string }) {
  * would make the two pages read as one long scroll. Low-and-left also leaves
  * the right half to the artwork, which is the only image this product has.
  */
-function Hero({ ctaTo, t }: { ctaTo: string; t: T }) {
+function Hero({ cta, t }: { cta: CtaTarget; t: T }) {
   return (
     <header
       className="relative isolate flex min-h-[660px] flex-col"
@@ -127,7 +145,7 @@ function Hero({ ctaTo, t }: { ctaTo: string; t: T }) {
         </p>
 
         <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-          <PrimaryCta to={ctaTo} label={t("cta")} />
+          <PrimaryCta cta={cta} label={t("cta")} />
           <Link
             to="/providers"
             className="font-rounded inline-flex items-center justify-center rounded-full border border-white/30 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/70 hover:bg-white/10"
@@ -263,7 +281,7 @@ function GridTexture() {
  * has, so it is a full-bleed dark band rather than a card: the provider is paid
  * the price they set, and the ten percent is the customer's.
  */
-function Pricing({ ctaTo, t }: { ctaTo: string; t: T }) {
+function Pricing({ cta, t }: { cta: CtaTarget; t: T }) {
   return (
     <section
       className="relative isolate overflow-hidden py-24"
@@ -297,7 +315,7 @@ function Pricing({ ctaTo, t }: { ctaTo: string; t: T }) {
             {t("pricingBody")}
           </p>
           <div className="mt-8">
-            <PrimaryCta to={ctaTo} label={t("cta")} />
+            <PrimaryCta cta={cta} label={t("cta")} />
           </div>
         </div>
       </div>
@@ -445,7 +463,7 @@ function Requirements({ t }: { t: T }) {
  * the page needs somewhere to end. It also carries the way out for someone not
  * ready to commit — a question answered by a person beats a form abandoned.
  */
-function Closing({ ctaTo, t }: { ctaTo: string; t: T }) {
+function Closing({ cta, t }: { cta: CtaTarget; t: T }) {
   return (
     <section
       className="relative isolate overflow-hidden py-28 text-center"
@@ -474,7 +492,7 @@ function Closing({ ctaTo, t }: { ctaTo: string; t: T }) {
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <PrimaryCta to={ctaTo} label={t("cta")} />
+          <PrimaryCta cta={cta} label={t("cta")} />
           <a
             href="mailto:ola@ntizo.com"
             className="font-rounded inline-flex items-center justify-center rounded-full border border-white/25 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/60 hover:bg-white/10"

@@ -1,6 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ChevronsUpDown, LogOut, User as UserIcon, Palette, Languages } from "lucide-react";
+import {
+  ChevronsUpDown,
+  LogOut,
+  User as UserIcon,
+  Palette,
+  Languages,
+} from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -48,7 +54,9 @@ export function SidebarUserMenu() {
                 tooltip={user?.name ?? user?.email ?? ""}
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-xs">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-semibold text-sm">

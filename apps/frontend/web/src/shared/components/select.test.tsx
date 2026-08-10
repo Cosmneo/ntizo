@@ -105,7 +105,9 @@ describe("Select", () => {
     await user.click(screen.getByRole("button", { name: "Field" }));
     await user.keyboard("{ArrowDown}{Enter}");
 
-    expect(screen.getByRole("button", { name: "Field" })).toHaveTextContent("Option 6");
+    expect(screen.getByRole("button", { name: "Field" })).toHaveTextContent(
+      "Option 6",
+    );
   });
 
   it("returns focus to the trigger after a choice made from the search box", async () => {
@@ -142,11 +144,19 @@ describe("Select", () => {
     await user.click(screen.getByRole("button", { name: "Field" }));
     await user.keyboard("{ArrowDown}{Enter}");
 
-    expect(screen.getByRole("button", { name: "Field" })).toHaveTextContent("C");
+    expect(screen.getByRole("button", { name: "Field" })).toHaveTextContent(
+      "C",
+    );
   });
 });
 
-function DateHarness({ initial = "", max }: { initial?: string; max?: string }) {
+function DateHarness({
+  initial = "",
+  max,
+}: {
+  initial?: string;
+  max?: string;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <DatePicker
@@ -177,7 +187,13 @@ describe("DatePicker", () => {
   });
 
   it("refuses a value that is not a date", () => {
-    for (const bad of ["", "1999-2-6", "not-a-date", "1999-13-01", "1999-02-00"]) {
+    for (const bad of [
+      "",
+      "1999-2-6",
+      "not-a-date",
+      "1999-13-01",
+      "1999-02-00",
+    ]) {
       expect(parseISO(bad)).toBeNull();
     }
   });
@@ -202,7 +218,9 @@ describe("DatePicker", () => {
 
   it("shows the stored date in the reader's format", () => {
     render(<DateHarness initial="1999-02-06" />);
-    expect(screen.getByRole("button", { name: /6 February 1999/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /6 February 1999/ }),
+    ).toBeInTheDocument();
   });
 
   it("writes back the ISO date the form expects", async () => {
@@ -212,7 +230,9 @@ describe("DatePicker", () => {
     await user.click(screen.getByRole("button", { name: /6 February 1999/ }));
     await user.click(screen.getByRole("button", { name: "15" }));
 
-    expect(screen.getByRole("button", { name: /15 February 1999/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /15 February 1999/ }),
+    ).toBeInTheDocument();
   });
 
   it("opens on the chosen month, not on today", async () => {
@@ -223,8 +243,12 @@ describe("DatePicker", () => {
 
     await user.click(screen.getByRole("button", { name: /6 February 1999/ }));
 
-    expect(screen.getByRole("button", { name: "Year" })).toHaveTextContent("1999");
-    expect(screen.getByRole("button", { name: "Month" })).toHaveTextContent("February");
+    expect(screen.getByRole("button", { name: "Year" })).toHaveTextContent(
+      "1999",
+    );
+    expect(screen.getByRole("button", { name: "Month" })).toHaveTextContent(
+      "February",
+    );
   });
 
   it("blocks a date past the maximum", async () => {
@@ -244,6 +268,8 @@ describe("DatePicker", () => {
     await user.click(screen.getByRole("button", { name: /6 February 1999/ }));
     await user.click(screen.getByRole("button", { name: "Clear" }));
 
-    expect(screen.getByRole("button", { name: /Pick a date/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Pick a date/ }),
+    ).toBeInTheDocument();
   });
 });

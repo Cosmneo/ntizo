@@ -137,7 +137,9 @@ export function UserMenu() {
             {t("providerDashboard")}
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem onSelect={() => navigate({ to: "/become-provider" })}>
+          <DropdownMenuItem
+            onSelect={() => navigate({ to: "/become-provider" })}
+          >
             <Sparkles className="h-4 w-4" />
             {t("becomeProvider")}
           </DropdownMenuItem>
@@ -167,7 +169,10 @@ export function UserMenu() {
                 ["system", Monitor, "themeSystem"],
               ] as Array<[ThemePreference, typeof Sun, string]>
             ).map(([value, Icon, key]) => (
-              <DropdownMenuItem key={value} onSelect={() => applyThemePreference(value)}>
+              <DropdownMenuItem
+                key={value}
+                onSelect={() => applyThemePreference(value)}
+              >
                 <Icon className="h-4 w-4" />
                 {t(key)}
               </DropdownMenuItem>

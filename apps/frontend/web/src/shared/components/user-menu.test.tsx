@@ -35,9 +35,14 @@ vi.mock("@/features/user/viewmodel/use-sign-out", () => ({
 
 const { UserMenu } = await import("./user-menu");
 
-async function renderMenu(user: Partial<CurrentUserDTO> | null, providerCount = 0) {
+async function renderMenu(
+  user: Partial<CurrentUserDTO> | null,
+  providerCount = 0,
+) {
   state.user = user;
-  state.providers = Array.from({ length: providerCount }, (_, i) => ({ id: `p${i}` }));
+  state.providers = Array.from({ length: providerCount }, (_, i) => ({
+    id: `p${i}`,
+  }));
 
   const root = createRootRoute({ component: () => <UserMenu /> });
   const router = createRouter({
@@ -106,7 +111,12 @@ describe("UserMenu", () => {
   it("offers the customer pages to everyone signed in", async () => {
     await renderMenu(CUSTOMER, 0);
     await openMenu();
-    for (const label of ["My account", "My bookings", "Messages", "Favourites"]) {
+    for (const label of [
+      "My account",
+      "My bookings",
+      "Messages",
+      "Favourites",
+    ]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });

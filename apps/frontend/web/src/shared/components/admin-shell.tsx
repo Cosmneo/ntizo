@@ -20,9 +20,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <HeaderActions showAccount={false} />
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

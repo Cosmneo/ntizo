@@ -30,5 +30,6 @@
   "themeSystem": "Système",
   "mainNavigation": "Navigation principale",
   "navExplore": "Explorer",
-  "navProfile": "Profil"
+  "navProfile": "Profil",
+  "createProvider": "Créer un nouveau prestataire"
 }

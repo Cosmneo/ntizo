@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -35,7 +34,6 @@ import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useProviderDetail } from "@/features/provider/viewmodel/use-providers";
-import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 import { applyThemePreference } from "@/shared/lib/theme";
 
 export function SidebarUserMenu() {
@@ -46,7 +44,6 @@ export function SidebarUserMenu() {
   const { providers, activeProvider, setActive } = useActiveProvider();
   // Cached alongside the settings page's own read; costs nothing extra here.
   const { data: detail } = useProviderDetail(activeProvider?.id);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const nav = useNavigate();
   const signOut = useSignOut();
 
@@ -64,9 +61,7 @@ export function SidebarUserMenu() {
     .slice(0, 2)
     .toUpperCase();
 
-  const orgInitials = (activeProvider?.name ?? "?")
-    .slice(0, 2)
-    .toUpperCase();
+  const orgInitials = (activeProvider?.name ?? "?").slice(0, 2).toUpperCase();
 
   return (
     <SidebarFooter>
@@ -79,7 +74,9 @@ export function SidebarUserMenu() {
                 tooltip={user?.name ?? user?.email ?? ""}
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-xs">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-sm font-semibold">
@@ -96,7 +93,9 @@ export function SidebarUserMenu() {
               <DropdownMenuLabel className="px-3 py-3">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                    <AvatarFallback className="text-xs">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid leading-tight">
                     <span className="text-sm font-semibold text-foreground">
@@ -122,7 +121,11 @@ export function SidebarUserMenu() {
                       each cost a detail fetch to find theirs. */}
                   <div className="mr-2 flex aspect-square h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
                     {detail?.logo?.url ? (
-                      <img src={detail.logo.url} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={detail.logo.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       orgInitials
                     )}
@@ -149,7 +152,9 @@ export function SidebarUserMenu() {
                           {p.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                          <span className="truncate text-sm font-medium">{p.name}</span>
+                          <span className="truncate text-sm font-medium">
+                            {p.name}
+                          </span>
                           {/* The slug, not the role. Several workspaces can
                               share a name — and here nine did — which turned
                               this list into nine identical rows and made the
@@ -167,7 +172,11 @@ export function SidebarUserMenu() {
                     );
                   })}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
+                  {/* The wizard, not a dialog. A second workspace needs the
+                      same type, address, payout and documents as the first — a
+                      two-field modal collected none of it and left the new
+                      provider half-made, with no screen that said so. */}
+                  <DropdownMenuItem onSelect={() => nav({ to: "/onboarding" })}>
                     <Plus className="h-4 w-4" />
                     {t("createNew")}
                   </DropdownMenuItem>
@@ -198,15 +207,21 @@ export function SidebarUserMenu() {
                   {/* These did nothing at all before — three labels wired to no
                       handler. A theme picker that leaves the theme alone is
                       worse than no theme picker. */}
-                  <DropdownMenuItem onSelect={() => applyThemePreference("light")}>
+                  <DropdownMenuItem
+                    onSelect={() => applyThemePreference("light")}
+                  >
                     <Sun className="h-4 w-4" />
                     {tc("themeLight")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => applyThemePreference("dark")}>
+                  <DropdownMenuItem
+                    onSelect={() => applyThemePreference("dark")}
+                  >
                     <Moon className="h-4 w-4" />
                     {tc("themeDark")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => applyThemePreference("system")}>
+                  <DropdownMenuItem
+                    onSelect={() => applyThemePreference("system")}
+                  >
                     <Monitor className="h-4 w-4" />
                     {tc("themeSystem")}
                   </DropdownMenuItem>
@@ -225,7 +240,6 @@ export function SidebarUserMenu() {
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <CreateProviderDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </SidebarFooter>
   );
 }

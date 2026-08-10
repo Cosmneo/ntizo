@@ -46,7 +46,13 @@ export function Footer() {
             <FooterLink href="#">{t("footer.about")}</FooterLink>
             <FooterLink href="#">{t("footer.contact")}</FooterLink>
             <FooterLink href="#">{t("footer.faq")}</FooterLink>
-            <FooterLink to="/sign-up">{t("footer.becomeProvider")}</FooterLink>
+            {/* The public pitch, not registration. A link labelled "become a
+                provider" that opens a sign-up form skips the part where someone
+                finds out what they would be signing up for — and that page's
+                own buttons carry the intent onward from there. */}
+            <FooterLink to="/become-provider">
+              {t("footer.becomeProvider")}
+            </FooterLink>
             <FooterLink href="#">{t("footer.careers")}</FooterLink>
           </FooterCol>
 

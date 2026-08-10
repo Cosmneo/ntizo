@@ -29,7 +29,9 @@ export function SidebarNav() {
                 // The template is what React Router matches on; the resolved
                 // path is what the current location is compared against.
                 const href = slug ? item.url.replace("$slug", slug) : null;
-                const isActive = href ? location.pathname.startsWith(href) : false;
+                const isActive = href
+                  ? location.pathname.startsWith(href)
+                  : false;
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { isSafeInternalPath } from "@/shared/lib/zones";
 import { useForm } from "@tanstack/react-form";
 import { Eye, EyeOff, UserPlus, MailCheck } from "lucide-react";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -25,6 +26,9 @@ import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 export function SignUp() {
   const { t, i18n } = useTranslation("auth");
   const { t: tc } = useTranslation("common");
+  // Where to go once the address is verified. `strict: false` so this works
+  // whether or not the route declares the param.
+  const { next } = useSearch({ strict: false }) as { next?: string };
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
 
@@ -61,7 +65,18 @@ export function SignUp() {
             // redirects here afterwards — without this the user lands on the
             // API's JSON root instead of the app. Origin-checked server-side
             // against trustedOrigins, which already includes this origin.
-            callbackURL: `${window.location.origin}/`,
+            //
+            // The path carries the intent through verification. Someone who
+            // arrived from "become a provider" comes back to `/onboarding`
+            // rather than the customer home — which is where the chain used to
+            // break: they registered, landed on `/`, and the thing they came to
+            // do was never offered again.
+            //
+            // Checked with `isSafeInternalPath` because this ends up in a URL a
+            // server redirects to, and an unchecked `next` is an open redirect.
+            callbackURL: `${window.location.origin}${
+              isSafeInternalPath(next ?? null) ? next : "/"
+            }`,
           } as Parameters<typeof authClient.signUp.email>[0]);
           if (error) return { form: error.message ?? "Sign up failed" };
           setSubmitted(value.email);
