@@ -22,6 +22,13 @@
       "when": 1786369266424,
       "tag": "0002_hesitant_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786370999589,
+      "tag": "0003_known_wonder_man",
+      "breakpoints": true
     }
   ]
 }

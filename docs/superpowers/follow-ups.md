@@ -371,3 +371,31 @@ Two halves to the fix, and the second matters more:
 
 **Trigger:** before the first deploy that has real traffic, or the first time
 someone tries to alert on backend error rate and finds it dominated by this.
+
+## 18. Payment methods: schema and domain exist, nothing reaches them yet
+
+The two tables (`payment_method`, `country_payment_method`), the aggregate and
+its validation are written, migrated and tested — ten unit tests, break-checked
+three ways. What does not exist is everything between them and a user:
+repository, commands, GraphQL, and the page.
+
+This is deliberate rather than abandoned. The domain half is the half that has
+to be right before the wiring is worth writing:
+
+- Identifier normalisation differs per type. Mobile money is E.164 or nothing,
+  because "849876543" and "+258849876543" are one wallet and storing both lets
+  a user register it twice. An IBAN is compacted and upper-cased. A card token
+  is opaque.
+- A card cannot be a payout method, and that is enforced in `create` rather
+  than trusted from the picker.
+- Labels are masked to the last four characters, so a list of two M-Pesa
+  numbers is readable without putting the numbers on screen.
+
+`country_payment_method` is the administrator-maintained half of the earlier
+decision: which types a country offers is a row; a type nobody has written
+validation for is not. It has no rows yet and no admin screen to add them, so
+the picker has nothing to read.
+
+**Trigger:** the provider onboarding wizard needs the payout direction of
+exactly this model, so build the wiring with that flow rather than twice. The
+customer-facing page can come from the same commands.
