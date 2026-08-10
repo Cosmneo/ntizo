@@ -83,8 +83,13 @@ export function SettingsNav({
 
   return (
     <nav aria-label={title} className="hidden lg:block">
-      <div className="sticky top-6">
-        <p className="type-caption px-3 font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
+      {/* Bounded, not floating. The rail sat loose in whitespace with nothing
+          saying where it ended, so it read as stray links rather than as one
+          control. A soft edge and a tinted ground give it an outline without
+          competing with the section cards it points at — those carry the
+          content, so they keep the stronger border and the plain background. */}
+      <div className="sticky top-6 rounded-[var(--radius-card)] border border-[color-mix(in_srgb,var(--color-border)_60%,transparent)] bg-[color-mix(in_srgb,var(--color-muted)_45%,transparent)] p-3">
+        <p className="type-caption px-3 pt-1 font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
           {title}
         </p>
         <ul className="mt-3 grid gap-0.5">
@@ -97,9 +102,12 @@ export function SettingsNav({
                   aria-current={active ? "true" : undefined}
                   className={cn(
                     "type-body flex items-center gap-2.5 rounded-[var(--radius-field)] px-3 py-2 transition-colors",
+                    // Lifted, not tinted. The selected row used to be
+                    // `bg-muted`, which was the same value the rail's own
+                    // ground now carries — it would have vanished into it.
                     active
-                      ? "bg-[var(--color-muted)] font-semibold text-[var(--color-foreground)]"
-                      : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]/60 hover:text-[var(--color-foreground)]",
+                      ? "bg-[var(--color-background)] font-semibold text-[var(--color-foreground)] shadow-sm"
+                      : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-background)]/60 hover:text-[var(--color-foreground)]",
                     section.tone === "danger" && "text-[var(--color-destructive)]",
                   )}
                 >
