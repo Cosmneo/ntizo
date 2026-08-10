@@ -26,12 +26,22 @@ const LIST = `
  * page that is meant to be cacheable.
  */
 export const directoryQueries = {
-  list: (offset = 0) =>
+  // `search` is part of the key, not just the variables: two different terms
+  // are two different result sets, and sharing a key would serve the first
+  // one's providers under the second one's query.
+  list: (offset = 0, search = "") =>
     queryOptions({
-      queryKey: ["public", "providers", offset] as const,
+      queryKey: ["public", "providers", offset, search] as const,
       queryFn: async (): Promise<ProviderPublicDTO[]> => {
         const d = await publicGraphql<{ providerList: ProviderPublicDTO[] }>(LIST, {
-          input: { limit: DIRECTORY_PAGE_SIZE, offset },
+          input: {
+            limit: DIRECTORY_PAGE_SIZE,
+            offset,
+            // Omitted rather than sent empty: the backend treats an absent
+            // term as "no filter", and sending "" would depend on it
+            // trimming to the same conclusion.
+            ...(search ? { search } : {}),
+          },
         });
         return d.providerList;
       },

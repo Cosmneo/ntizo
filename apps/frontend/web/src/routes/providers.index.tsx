@@ -23,6 +23,17 @@ import { prefetchDirectory } from "@/features/directory/viewmodel/use-directory"
  */
 export const Route = createFileRoute("/providers/")({
   ssr: true,
-  loader: ({ context }) => prefetchDirectory(context.queryClient),
+  /**
+   * `?q=` is the search term, and it lives in the URL rather than in component
+   * state on purpose: a results page you cannot link to or reload is not a
+   * results page. It is also what makes the term reach the loader, so the
+   * filtered list is server-rendered like the unfiltered one.
+   */
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search["q"] === "string" ? search["q"].trim() : "";
+    return q ? { q } : {};
+  },
+  loaderDeps: ({ search }) => ({ q: search.q ?? "" }),
+  loader: ({ context, deps }) => prefetchDirectory(context.queryClient, deps.q),
   component: DirectoryPage,
 });

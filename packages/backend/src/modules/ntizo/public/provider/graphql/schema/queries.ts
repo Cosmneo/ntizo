@@ -18,6 +18,9 @@ export const listPublicProviders = defineQuery({
     z.object({
       limit: z.number().int().min(1).max(MAX_PUBLIC_PAGE_SIZE).default(20),
       offset: z.number().int().min(0).default(0),
+      // Bounded length: this is an anonymous endpoint, and the string ends up
+      // in a LIKE pattern.
+      search: z.string().trim().max(100).optional(),
     }),
   ),
   output: zodSchema(z.array(providerPublicReadModel)),

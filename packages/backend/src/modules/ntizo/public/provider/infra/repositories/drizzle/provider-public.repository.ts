@@ -1,8 +1,23 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ilike, or, type SQL } from "drizzle-orm";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
 import type { ProviderPublicRepositoryPort } from "../../../app/ports/outbound/provider-public.repository.port";
+
+/**
+ * Wraps a search term in a LIKE pattern, escaping the metacharacters first.
+ *
+ * Without the escape, a search for "100%" matches every provider and "_"
+ * matches all of them too — those wildcards are the user's typing, not their
+ * intent. Postgres treats backslash as LIKE's escape character by default, so
+ * the backslash itself is escaped first or it would escape the escapes.
+ *
+ * Exported for its own test: the behaviour is invisible from the outside
+ * until someone searches for a percent sign.
+ */
+export function likePattern(term: string): string {
+  return `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
 
 /**
  * Public read repository.
@@ -33,11 +48,31 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     return { ...row, type: row.type as ProviderPublicDTO["type"] };
   }
 
-  async listActive(limit: number, offset: number): Promise<ProviderPublicDTO[]> {
+  async listActive(
+    limit: number,
+    offset: number,
+    search?: string,
+  ): Promise<ProviderPublicDTO[]> {
+    const filters: SQL[] = [eq(provider.status, "active")];
+
+    if (search) {
+      const pattern = likePattern(search);
+      // Only across fields the public DTO already exposes. Searching a column
+      // this repository deliberately never selects — the street, the owner —
+      // would leak it: a caller could confirm a hidden value by whether a row
+      // comes back.
+      const match = or(
+        ilike(provider.name, pattern),
+        ilike(provider.addressCity, pattern),
+        ilike(provider.description, pattern),
+      );
+      if (match) filters.push(match);
+    }
+
     const rows = await getDb()
       .select(DrizzleProviderPublicRepository.COLUMNS)
       .from(provider)
-      .where(eq(provider.status, "active"))
+      .where(and(...filters))
       .orderBy(asc(provider.name))
       .limit(limit)
       .offset(offset);

@@ -10,8 +10,8 @@ import { directoryQueries } from "@/features/directory/data/directory.repository
  * boundaries lint rejects it, and it caught this exact import when the page was
  * first written. The indirection is not decoration: it is the one legal route.
  */
-export function useDirectory(): ProviderPublicDTO[] {
-  const { data } = useSuspenseQuery(directoryQueries.list());
+export function useDirectory(search = ""): ProviderPublicDTO[] {
+  const { data } = useSuspenseQuery(directoryQueries.list(0, search));
   return data;
 }
 
@@ -20,8 +20,11 @@ export function useDirectory(): ProviderPublicDTO[] {
  * listings land in the HTML a crawler receives. Called from the route loader,
  * which cannot use hooks.
  */
-export function prefetchDirectory(queryClient: QueryClient): Promise<unknown> {
-  return queryClient.ensureQueryData(directoryQueries.list());
+export function prefetchDirectory(
+  queryClient: QueryClient,
+  search = "",
+): Promise<unknown> {
+  return queryClient.ensureQueryData(directoryQueries.list(0, search));
 }
 
 export function useProviderDetail(slug: string): ProviderPublicDTO | null {

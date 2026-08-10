@@ -9,6 +9,7 @@ import {
   MAX_PUBLIC_PAGE_SIZE,
 } from "../app/use-cases/list-public-providers.projection";
 import { GetPublicProviderProjection } from "../app/use-cases/get-public-provider.projection";
+import { likePattern } from "../infra/repositories/drizzle/provider-public.repository";
 
 const dto: ProviderPublicDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization",
@@ -18,8 +19,12 @@ const dto: ProviderPublicDTO = {
 class FakeRepo implements ProviderPublicRepositoryPort {
   public readonly calls: string[] = [];
   constructor(private readonly result: ProviderPublicDTO | null = dto) {}
-  async listActive(limit: number, offset: number): Promise<ProviderPublicDTO[]> {
-    this.calls.push(`listActive:${limit}:${offset}`);
+  async listActive(
+    limit: number,
+    offset: number,
+    search?: string,
+  ): Promise<ProviderPublicDTO[]> {
+    this.calls.push(`listActive:${limit}:${offset}:${search ?? "-"}`);
     return this.result ? [this.result] : [];
   }
   async findActiveBySlug(slug: string): Promise<ProviderPublicDTO | null> {
@@ -83,13 +88,13 @@ describe("ListPublicProvidersProjection", () => {
   it("clamps the page size, whatever the caller asks for", async () => {
     const repo = new FakeRepo();
     await new ListPublicProvidersProjection(repo).execute({ limit: 10_000, offset: -5 });
-    expect(repo.calls).toEqual([`listActive:${MAX_PUBLIC_PAGE_SIZE}:0`]);
+    expect(repo.calls).toEqual([`listActive:${MAX_PUBLIC_PAGE_SIZE}:0:-`]);
   });
 
   it("refuses a page size below one rather than passing it through", async () => {
     const repo = new FakeRepo();
     await new ListPublicProvidersProjection(repo).execute({ limit: 0, offset: 0 });
-    expect(repo.calls).toEqual(["listActive:1:0"]);
+    expect(repo.calls).toEqual(["listActive:1:0:-"]);
   });
 });
 
@@ -99,5 +104,63 @@ describe("GetPublicProviderProjection", () => {
     // them apart reveals which businesses exist but are hidden.
     const result = await new GetPublicProviderProjection(new FakeRepo(null)).execute({ slug: "gone" });
     expect(result).toBeNull();
+  });
+});
+
+describe("ListPublicProvidersProjection — search", () => {
+  it("passes a trimmed term down to the repository", async () => {
+    const repo = new FakeRepo();
+    await new ListPublicProvidersProjection(repo).execute({
+      limit: 20,
+      offset: 0,
+      search: "  canaliza  ",
+    });
+    expect(repo.calls).toEqual(["listActive:20:0:canaliza"]);
+  });
+
+  it("treats a whitespace-only term as no filter, not as a search for spaces", async () => {
+    // A stray space in the URL would otherwise empty the directory.
+    const repo = new FakeRepo();
+    await new ListPublicProvidersProjection(repo).execute({
+      limit: 20,
+      offset: 0,
+      search: "   ",
+    });
+    expect(repo.calls).toEqual(["listActive:20:0:-"]);
+  });
+
+  it("treats an absent term as no filter", async () => {
+    const repo = new FakeRepo();
+    await new ListPublicProvidersProjection(repo).execute({ limit: 20, offset: 0 });
+    expect(repo.calls).toEqual(["listActive:20:0:-"]);
+  });
+
+  it("still clamps the page size when searching", async () => {
+    // The ceiling is not something a search term gets to bypass.
+    const repo = new FakeRepo();
+    await new ListPublicProvidersProjection(repo).execute({
+      limit: 9999,
+      offset: 0,
+      search: "x",
+    });
+    expect(repo.calls).toEqual([`listActive:${MAX_PUBLIC_PAGE_SIZE}:0:x`]);
+  });
+});
+
+describe("likePattern", () => {
+  it("wraps a plain term in wildcards", () => {
+    expect(likePattern("agua")).toBe("%agua%");
+  });
+
+  it("escapes the wildcards a user typed, so they match literally", () => {
+    // Unescaped, "%" matches every row and "_" matches any single character —
+    // a search for "100%" would return the whole directory.
+    expect(likePattern("100%")).toBe("%100\\%%");
+    expect(likePattern("a_b")).toBe("%a\\_b%");
+  });
+
+  it("escapes the escape character itself", () => {
+    // Done first, or the backslashes added above would themselves be escaped.
+    expect(likePattern("a\\b")).toBe("%a\\\\b%");
   });
 });

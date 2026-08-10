@@ -14,6 +14,9 @@ export class ListPublicProvidersProjection implements ListPublicProvidersPort {
     // one place where "the client wouldn't do that" is not an argument.
     const limit = Math.min(Math.max(input.limit, 1), MAX_PUBLIC_PAGE_SIZE);
     const offset = Math.max(input.offset, 0);
-    return this.repo.listActive(limit, offset);
+    // Whitespace-only is treated as no filter, not as a search for spaces —
+    // otherwise a stray space in the URL empties the directory.
+    const search = input.search?.trim() || undefined;
+    return this.repo.listActive(limit, offset, search);
   }
 }
