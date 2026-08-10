@@ -49,15 +49,16 @@ export const providerQueries = {
 };
 
 export async function createProvider(body: CreateProviderBody) {
-  // ProviderCreateInput doesn't accept `address` — the write-side mutation
-  // never gained that field, so it's dropped here rather than sent and
-  // silently ignored by the server.
-  const { type, name, slug } = body;
+  // The whole body. `address` used to be stripped here with a comment saying
+  // the mutation did not accept one — true when it was written, and it stayed
+  // true-looking after the mutation gained the field, because a dropped
+  // argument fails silently: the wizard collected a country and a city, the
+  // request left without them, and the row came back with nulls.
   const d = await sessionGraphql<{ providerCreate: { providerId: string } }>(
     `mutation($input: ProviderCreateInput!) {
        providerCreate(input: $input) { providerId }
      }`,
-    { input: { type, name, slug } },
+    { input: body },
   );
   return d.providerCreate;
 }

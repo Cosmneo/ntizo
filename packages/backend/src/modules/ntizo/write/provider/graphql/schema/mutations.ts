@@ -6,6 +6,24 @@ import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 const providerIdResult = z.object({ providerId: z.string().min(1) });
 const okResult = z.object({ ok: z.literal(true) });
 
+/**
+ * Where the business is.
+ *
+ * Optional as a whole and optional field by field. The aggregate has always
+ * accepted an address; only this schema did not declare one, so the onboarding
+ * wizard had nowhere to send what it collected. Every part stays optional
+ * because a provider who works only at the customer's home has no premises to
+ * describe, and refusing to create them over a missing street would be refusing
+ * a legitimate business.
+ */
+const addressInput = z.object({
+  country: z.string().trim().length(2).optional(),
+  city: z.string().trim().max(120).optional(),
+  district: z.string().trim().max(120).optional(),
+  street: z.string().trim().max(200).optional(),
+  postalCode: z.string().trim().max(20).optional(),
+});
+
 export const createProvider = defineMutation({
   input: zodSchema(
     z.object({
@@ -13,6 +31,7 @@ export const createProvider = defineMutation({
       name: z.string().min(1),
       slug: z.string().min(1),
       description: z.string().optional(),
+      address: addressInput.optional(),
     }),
   ),
   output: zodSchema(providerIdResult),

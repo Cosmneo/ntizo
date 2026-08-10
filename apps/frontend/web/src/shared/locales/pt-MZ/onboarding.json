@@ -1,0 +1,89 @@
+{
+  "back": "Voltar",
+  "continue": "Continuar",
+  "phase": {
+    "provider": "O seu negócio",
+    "payout": "Como receber",
+    "review": "Em análise"
+  },
+  "type": {
+    "eyebrow": "Passo 1 de 3",
+    "title": "Como é que vai prestar serviços?",
+    "description": "Isto decide como funciona a agenda e quem faz o trabalho. Pode mudar mais tarde nas definições.",
+    "individual": {
+      "title": "Por conta própria",
+      "body": "Você é o serviço. Uma agenda, o seu perfil, os seus preços."
+    },
+    "organization": {
+      "title": "Estabelecimento com equipa",
+      "body": "Várias pessoas sob um nome, com reservas em paralelo."
+    }
+  },
+  "identity": {
+    "eyebrow": "Passo 2 de 3",
+    "title": {
+      "individual": "Como quer ser conhecido?",
+      "organization": "Como se chama o estabelecimento?"
+    },
+    "description": "É este o nome que os clientes vão ver nos resultados de pesquisa e na sua página.",
+    "nameLabel": "Nome",
+    "nameHint": "Pode mudar depois. O endereço da sua página é gerado a partir daqui.",
+    "namePlaceholder": {
+      "individual": "Ex.: João Matola — Canalizações",
+      "organization": "Ex.: Salão Beleza Maputo"
+    },
+    "descriptionLabel": "Descrição",
+    "descriptionHint": "Opcional. Uma ou duas frases sobre o que faz e para quem.",
+    "descriptionPlaceholder": "Canalização doméstica em Maputo e Matola, com deslocação incluída."
+  },
+  "location": {
+    "eyebrow": "Passo 3 de 3",
+    "title": "Onde é que trabalha?",
+    "description": "Usamos isto para o mostrar a clientes perto de si. A morada exacta não aparece na sua página pública.",
+    "streetHint": "Opcional. Deixe em branco se trabalha só em casa do cliente."
+  },
+  "payout": {
+    "eyebrow": "Quase lá",
+    "title": "Como quer receber?",
+    "description": "É para aqui que enviamos o que ganhar, depois de cada serviço concluído. Pode tratar disto mais tarde.",
+    "skip": "Tratar disto depois",
+    "method": {
+      "BANK_ACCOUNT": {
+        "title": "Conta bancária",
+        "body": "Transferência para o seu NIB ou IBAN",
+        "identifierLabel": "NIB ou IBAN",
+        "identifierHint": "Sem espaços"
+      },
+      "M_PESA": {
+        "title": "M-Pesa",
+        "body": "Carteira móvel da Vodacom",
+        "identifierLabel": "Número M-Pesa",
+        "identifierHint": "Com o indicativo do país, ex.: +258 84 123 4567"
+      },
+      "E_MOLA": {
+        "title": "e-Mola",
+        "body": "Carteira móvel da Movitel",
+        "identifierLabel": "Número e-Mola",
+        "identifierHint": "Com o indicativo do país, ex.: +258 86 123 4567"
+      }
+    }
+  },
+  "review": {
+    "eyebrow": "Candidatura enviada",
+    "title": "{{name}} está em análise",
+    "body": "Vamos confirmar a sua identidade antes de o mostrar aos clientes. Normalmente demora um a dois dias e avisamos por e-mail.",
+    "meanwhile": {
+      "profile": "Complete o perfil do negócio — fotografias, horário, área de serviço",
+      "services": "Prepare os seus serviços e preços, prontos a publicar",
+      "team": "Convide a equipa, se tiver"
+    },
+    "cta": "Ir para o painel"
+  },
+  "error": {
+    "typeRequired": "Escolha uma das duas formas de prestar.",
+    "nameRequired": "Escreva o nome com que quer ser conhecido.",
+    "countryRequired": "Escolha o país.",
+    "cityRequired": "Escreva a cidade onde trabalha.",
+    "createFailed": "Não foi possível criar o seu negócio. Tente de novo."
+  }
+}

@@ -10,7 +10,10 @@ export const Route = createFileRoute("/provider/")({
     // throw outside the try removes that failure mode entirely.
     const hasProvider = await hasAnyProvider();
     throw redirect({
-      to: hasProvider ? "/provider/overview" : "/provider/no-provider",
+      // The wizard, not the two-button scaffold that stood here. It is
+      // what "become a provider" promises, and the page that sends people
+      // here now spends five sections setting up that expectation.
+      to: hasProvider ? "/provider/overview" : "/onboarding",
     });
   },
 });

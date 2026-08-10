@@ -47,6 +47,7 @@ export interface CreateProviderBody {
   type: ProviderType;
   name: string;
   slug: string;
+  description?: string;
   address?: ProviderAddress;
 }
 

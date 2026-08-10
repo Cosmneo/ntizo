@@ -14,6 +14,7 @@ import { Route as CustomerRouteRouteImport } from './routes/_customer/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as BecomeProviderRouteImport } from './routes/become-provider'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
 import { Route as CustomerAccountRouteRouteImport } from './routes/_customer/account/route'
@@ -64,6 +65,11 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
 const BecomeProviderRoute = BecomeProviderRouteImport.update({
   id: '/become-provider',
   path: '/become-provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProviderRouteRoute = ProviderRouteRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
   '/become-provider': typeof BecomeProviderRoute
+  '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/account': typeof CustomerAccountRouteRouteWithChildren
   '/bookings': typeof CustomerBookingsRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/become-provider': typeof BecomeProviderRoute
+  '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
   '/become-provider': typeof BecomeProviderRoute
+  '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
   '/_customer/bookings': typeof CustomerBookingsRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/provider'
     | '/become-provider'
+    | '/onboarding'
     | '/verify-phone'
     | '/account'
     | '/bookings'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/become-provider'
+    | '/onboarding'
     | '/verify-phone'
     | '/bookings'
     | '/favourites'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/provider'
     | '/become-provider'
+    | '/onboarding'
     | '/verify-phone'
     | '/_customer/account'
     | '/_customer/bookings'
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
   BecomeProviderRoute: typeof BecomeProviderRoute
+  OnboardingRoute: typeof OnboardingRoute
   VerifyPhoneRoute: typeof VerifyPhoneRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/become-provider'
       fullPath: '/become-provider'
       preLoaderRoute: typeof BecomeProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/provider': {
@@ -763,6 +783,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
   BecomeProviderRoute: BecomeProviderRoute,
+  OnboardingRoute: OnboardingRoute,
   VerifyPhoneRoute: VerifyPhoneRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
