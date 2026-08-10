@@ -253,7 +253,11 @@ function RowActions({
         <button
           type="button"
           aria-label={t("peopleActions")}
-          className="grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+          // `ml-auto`, because `grid` makes this a block-level box and a
+          // block-level box ignores the cell's `text-align`. Without it the
+          // button sat flush left in a right-aligned column, 88px adrift of
+          // the header it belongs under.
+          className="ml-auto grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
