@@ -65,33 +65,41 @@ function ctxFor(userId: string): ExecutionContext {
 const ctx = ctxFor(ADMIN);
 
 describe("DecideProviderStatusCommand", () => {
-  it("moves an active provider to suspended and records who decided", async () => {
+  it("starts a new provider as an application, not a live business", async () => {
+    // The rule the whole queue rests on. Were this `Active`, registration
+    // would put an unreviewed business in front of customers and the queue
+    // would be permanently empty — a feature that looks like it works.
+    expect(makeProvider().status).toBe(ProviderStatus.Pending);
+  });
+
+  it("approves an application and records who decided", async () => {
     const provider = makeProvider();
     const { repo, saved } = makeRepo(provider);
     const outbox = new CapturingOutbox();
 
     await new DecideProviderStatusCommand(repo, unitOfWork, outbox).execute(ctx, {
       providerId: "prov-1",
-      status: ProviderStatus.Suspended,
+      status: ProviderStatus.Active,
     });
 
     expect(saved).toHaveLength(1);
-    expect(provider.status).toBe(ProviderStatus.Suspended);
+    expect(provider.status).toBe(ProviderStatus.Active);
 
     // The admin's id, not the owner's. A log that cannot say who decided is a
     // log nobody can act on when the decision is questioned.
     const event = outbox.published.at(-1);
     expect(event?.eventName).toBe("provider.status.decided");
     expect(event?.payload).toMatchObject({
-      from: ProviderStatus.Active,
-      to: ProviderStatus.Suspended,
+      from: ProviderStatus.Pending,
+      to: ProviderStatus.Active,
       decidedByUserId: ADMIN,
     });
   });
 
   it("refuses a move the lifecycle does not allow, and saves nothing", async () => {
-    // Rejection answers an application. A business that already traded gets
-    // suspended — and the refusal has to happen before the write, not after.
+    // Suspending an application that never traded is not a decision anyone
+    // means to make; rejecting it is. The refusal has to land before the
+    // write, not after.
     const provider = makeProvider();
     const { repo, saved } = makeRepo(provider);
     const outbox = new CapturingOutbox();
@@ -99,13 +107,25 @@ describe("DecideProviderStatusCommand", () => {
     await expect(
       new DecideProviderStatusCommand(repo, unitOfWork, outbox).execute(ctx, {
         providerId: "prov-1",
-        status: ProviderStatus.Rejected,
+        status: ProviderStatus.Suspended,
       }),
     ).rejects.toThrow();
 
     expect(saved).toHaveLength(0);
     expect(outbox.published).toHaveLength(0);
-    expect(provider.status).toBe(ProviderStatus.Active);
+    expect(provider.status).toBe(ProviderStatus.Pending);
+  });
+
+  it("rejects an application without letting it be reached as suspended", async () => {
+    const provider = makeProvider();
+    const { repo } = makeRepo(provider);
+
+    await new DecideProviderStatusCommand(repo, unitOfWork, new CapturingOutbox()).execute(
+      ctx,
+      { providerId: "prov-1", status: ProviderStatus.Rejected },
+    );
+
+    expect(provider.status).toBe(ProviderStatus.Rejected);
   });
 
   it("does not require the caller to own the provider", async () => {
@@ -117,7 +137,7 @@ describe("DecideProviderStatusCommand", () => {
 
     await new DecideProviderStatusCommand(repo, unitOfWork, new CapturingOutbox()).execute(
       ctxFor("someone-who-is-not-the-owner"),
-      { providerId: "prov-1", status: ProviderStatus.Suspended },
+      { providerId: "prov-1", status: ProviderStatus.Active },
     );
 
     expect(saved).toHaveLength(1);
@@ -129,7 +149,7 @@ describe("DecideProviderStatusCommand", () => {
     await expect(
       new DecideProviderStatusCommand(repo, unitOfWork, new CapturingOutbox()).execute(ctx, {
         providerId: "does-not-exist",
-        status: ProviderStatus.Suspended,
+        status: ProviderStatus.Active,
       }),
     ).rejects.toThrow();
 

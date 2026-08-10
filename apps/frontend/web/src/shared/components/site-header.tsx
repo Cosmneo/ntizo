@@ -78,7 +78,6 @@ export function SiteHeader({
 
         <div className="col-start-3 justify-self-end">
           <HeaderActions
-            currentZone="landing"
             onDark={overlay}
             signedOutAction={
               <Link

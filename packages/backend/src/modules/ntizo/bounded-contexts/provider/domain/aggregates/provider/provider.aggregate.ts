@@ -73,14 +73,14 @@ export class Provider {
       type: params.type,
       name: params.name,
       slug: params.slug,
-      // Live on creation, not pending.
+      // An application, not a live business.
       //
-      // This is why the admin review queue is empty: nothing ever enters it.
-      // Flipping this to `Pending` turns registration into an application — a
-      // real product change, since a provider registering today can trade
-      // immediately and afterwards would wait for someone to look. Left as it
-      // was rather than changed while building the queue around it.
-      status: SharedProviderStatus.Active,
+      // Registering creates a workspace the owner can start filling in; it does
+      // not put them in front of customers. The public directory shows only
+      // `Active`, so nothing here is findable or bookable until an
+      // administrator decides — which is what makes the "verified" badge and
+      // the review queue mean anything.
+      status: SharedProviderStatus.Pending,
       description: params.description,
       address: params.address,
       createdAt: now,

@@ -1,7 +1,5 @@
 import type { CurrentUserDTO } from "@ntizo/shared";
 
-export type Zone = "landing" | "provider" | "admin";
-
 const PROVIDER_ROLES: ReadonlySet<CurrentUserDTO["role"]> = new Set([
   "individual_provider",
   "organization_owner",
@@ -17,16 +15,6 @@ export function canAccessProvider(
 ): boolean {
   if (!user) return false;
   return providerCount > 0 || PROVIDER_ROLES.has(user.role);
-}
-
-export function accessibleZones(
-  user: CurrentUserDTO | null,
-  providerCount: number,
-): Zone[] {
-  const zones: Zone[] = ["landing"];
-  if (canAccessProvider(user, providerCount)) zones.push("provider");
-  if (canAccessAdmin(user)) zones.push("admin");
-  return zones;
 }
 
 /** True only for app-internal absolute paths ("/x"), never external URLs. */

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CurrentUserDTO } from "@ntizo/shared";
 import {
-  accessibleZones,
   canAccessAdmin,
   canAccessProvider,
   isSafeInternalPath,
@@ -29,14 +28,6 @@ describe("canAccessProvider", () => {
     expect(canAccessProvider(user("customer"), 1)).toBe(true);
     expect(canAccessProvider(user("customer"), 0)).toBe(false);
     expect(canAccessProvider(null, 0)).toBe(false);
-  });
-});
-
-describe("accessibleZones", () => {
-  it("always includes landing; adds provider/admin per access", () => {
-    expect(accessibleZones(null, 0)).toEqual(["landing"]);
-    expect(accessibleZones(user("individual_provider"), 0)).toEqual(["landing", "provider"]);
-    expect(accessibleZones(user("admin"), 0)).toEqual(["landing", "admin"]);
   });
 });
 

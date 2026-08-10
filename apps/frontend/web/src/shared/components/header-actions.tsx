@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Bell } from "lucide-react";
-import type { Zone } from "@/shared/lib/zones";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
-import { ZoneSwitcher } from "@/shared/components/zone-switcher";
 import { LanguageSwitcher } from "@/shared/components/language-switcher";
 import { UserMenu } from "@/shared/components/user-menu";
 
 interface HeaderActionsProps {
-  currentZone: Zone;
   /**
    * Rendered in place of the account cluster when nobody is signed in.
    *
@@ -40,6 +37,12 @@ interface HeaderActionsProps {
 /**
  * The right-hand side of the top bar, in every zone.
  *
+ * It carried a Cliente|Prestador segmented switch until every zone had its own
+ * navigation — a sidebar in the provider and admin zones, a top menu in the
+ * customer one. A control that duplicates the navigation beside it is one more
+ * thing to keep in step, and a second answer to a question the page already
+ * answers.
+ *
  * The signed-out action shows until a session is known, rather than the
  * header staying empty while the query is in flight. That order matters on
  * the landing page: it is public, server-rendered, and the server has no
@@ -48,7 +51,6 @@ interface HeaderActionsProps {
  * "Sign in" before their avatar arrives.
  */
 export function HeaderActions({
-  currentZone,
   signedOutAction,
   showAccount = true,
   onDark = false,
@@ -58,7 +60,6 @@ export function HeaderActions({
 
   return (
     <div className="flex items-center gap-2">
-      {user ? <ZoneSwitcher current={currentZone} /> : null}
       <LanguageSwitcher
         className={onDark ? "text-white/90 hover:bg-white/15" : undefined}
       />

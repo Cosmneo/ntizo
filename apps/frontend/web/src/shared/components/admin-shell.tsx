@@ -17,7 +17,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
           <div className="ml-auto">
-            <HeaderActions currentZone="admin" showAccount={false} />
+            <HeaderActions showAccount={false} />
           </div>
         </header>
         <main className="flex-1 p-6">
