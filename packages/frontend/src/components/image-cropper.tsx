@@ -126,6 +126,8 @@ export function ImageCropper({
 }: ImageCropperProps) {
   const frameRef = React.useRef<HTMLDivElement>(null);
   const [image, setImage] = React.useState<HTMLImageElement | null>(null);
+  /** Kept alive for as long as the `<img>` below points at it. */
+  const [src, setSrc] = React.useState<string | null>(null);
   const [frame, setFrame] = React.useState({ w: 0, h: 0 });
   const [view, setView] = React.useState<View>({ zoom: 1, x: 0, y: 0 });
   const [working, setWorking] = React.useState(false);
@@ -136,14 +138,19 @@ export function ImageCropper({
     oy: number;
   } | null>(null);
 
-  // Decoded once. The object URL is revoked as soon as the bitmap exists — the
-  // element holds the decoded image, so the blob URL has no further job.
+  // Decoded off-screen to learn the natural size, then rendered from the same
+  // URL below.
+  //
+  // The URL is revoked on unmount and NOT when the probe finishes. Revoking it
+  // early left the frame blank: the probe element holds the decoded bitmap, but
+  // the `<img>` in the markup is a *different* element pointing at the same
+  // URL, and by the time it tried to fetch it there was nothing there.
   React.useEffect(() => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       setImage(img);
-      URL.revokeObjectURL(url);
+      setSrc(url);
     };
     img.src = url;
     return () => URL.revokeObjectURL(url);
@@ -288,9 +295,9 @@ export function ImageCropper({
           }}
           onWheel={(e) => setZoom(view.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))}
         >
-          {image ? (
+          {image && src ? (
             <img
-              src={image.src}
+              src={src}
               alt=""
               draggable={false}
               style={{
