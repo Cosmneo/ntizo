@@ -6,6 +6,20 @@ interface DropdownCtx {
   open: boolean;
   setOpen: (v: boolean) => void;
   triggerRef: React.RefObject<HTMLElement | null>;
+  /**
+   * Portalled panels that belong to this menu even though they are not inside
+   * its DOM subtree.
+   *
+   * A submenu renders into `document.body` as a *sibling* of the menu that
+   * owns it. The close-on-outside-click check tested `content.contains(target)`
+   * and therefore called every submenu click "outside": `mousedown` closed the
+   * whole menu, the item unmounted, and the `click` that would have run
+   * `onSelect` never happened. Switching workspace and creating a provider both
+   * did nothing, silently — and only for real mice, because a synthetic
+   * `.click()` fires no `mousedown` and slipped straight through.
+   */
+  registerPanel: (node: HTMLElement) => () => void;
+  ownsTarget: (target: Node) => boolean;
 }
 /**
  * A child the `asChild` triggers clone. Typed narrowly instead of `any`:
@@ -22,9 +36,30 @@ const Ctx = React.createContext<DropdownCtx | null>(null);
 export function DropdownMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLElement>(null);
-  return (
-    <Ctx.Provider value={{ open, setOpen, triggerRef }}>{children}</Ctx.Provider>
+  // A ref, not state: registration happens during layout and must not schedule
+  // a render, and nothing renders off this set — it is only read inside event
+  // handlers.
+  const panels = React.useRef(new Set<HTMLElement>());
+
+  const registerPanel = React.useCallback((node: HTMLElement) => {
+    panels.current.add(node);
+    return () => {
+      panels.current.delete(node);
+    };
+  }, []);
+
+  const ownsTarget = React.useCallback(
+    (target: Node) =>
+      triggerRef.current?.contains(target) === true ||
+      [...panels.current].some((el) => el.contains(target)),
+    [],
   );
+
+  const value = React.useMemo(
+    () => ({ open, setOpen, triggerRef, registerPanel, ownsTarget }),
+    [open, registerPanel, ownsTarget],
+  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function DropdownMenuTrigger({
@@ -90,19 +125,20 @@ export function DropdownMenuContent({
   }, [ctx.open, side, align]);
 
   React.useEffect(() => {
-    if (!ctx.open) return;
+    if (!ctx.open || !ref.current) return;
+    const release = ctx.registerPanel(ref.current);
     function onDoc(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        ref.current?.contains(target) ||
-        ctx.triggerRef.current?.contains(target)
-      )
-        return;
+      // Every panel this menu owns, not just this one — a submenu lives in a
+      // portal outside this element and its clicks are not "outside".
+      if (ctx.ownsTarget(e.target as Node)) return;
       ctx.setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [ctx.open]);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      release();
+    };
+  }, [ctx.open, ctx.registerPanel, ctx.ownsTarget]);
 
   if (!ctx.open || typeof document === "undefined") return null;
   return createPortal(
@@ -255,7 +291,11 @@ export function DropdownMenuSubContent({
   }, [sub.open]);
 
   React.useEffect(() => {
-    if (!sub.open) return;
+    if (!sub.open || !ref.current) return;
+    // Announce this panel to the menu that owns it, so its outside-click check
+    // stops treating clicks in here as outside and closing everything before
+    // the click lands.
+    const release = parent?.registerPanel(ref.current);
     function onDoc(e: MouseEvent) {
       const target = e.target as Node;
       if (
@@ -266,8 +306,11 @@ export function DropdownMenuSubContent({
       sub.setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [sub.open]);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      release?.();
+    };
+  }, [sub.open, parent]);
 
   if (!sub.open || typeof document === "undefined") return null;
   return createPortal(
