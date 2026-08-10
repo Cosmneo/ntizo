@@ -22,13 +22,21 @@ export interface ProviderInvite {
   createdAt?: string;
 }
 
+/**
+ * The provider's address, in the backend's own words.
+ *
+ * It used to say `line1`, `line2` and `region` — a vocabulary the server has
+ * never spoken. The aggregate's Address VO carries `street`, `city`,
+ * `district`, `country` and `postalCode`, so nothing on either side could be
+ * mapped to the other, which is part of why the settings page shipped with its
+ * address block greyed out.
+ */
 export interface ProviderAddress {
-  line1?: string;
-  line2?: string;
+  street?: string;
   city?: string;
-  region?: string;
-  postalCode?: string;
+  district?: string;
   country?: string;
+  postalCode?: string;
 }
 
 export interface ProviderDetail {

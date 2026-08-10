@@ -30,7 +30,10 @@
   "createProvider": "Criar prestador",
   "name": "Nome",
   "slug": "Slug",
-  "type": "Tipo",
+  "type": {
+    "individual": "Por conta própria",
+    "organization": "Estabelecimento com equipa"
+  },
   "organization": "Organização",
   "individual": "Individual",
   "creating": "A criar…",
@@ -40,7 +43,13 @@
   "revenue": "Receita",
   "comingSoon": "Em breve.",
   "role": "Função",
-  "status": "Estado",
+  "status": {
+    "pending": "Em análise",
+    "active": "Activo",
+    "rejected": "Recusado",
+    "suspended": "Suspenso",
+    "archived": "Arquivado"
+  },
   "membersLabel": "Membros",
   "sendInvite": "Enviar convite",
   "sending": "A enviar…",
@@ -79,5 +88,26 @@
     "notProviderMember": "Não tem acesso a esta organização.",
     "generic": "Ocorreu um erro. Tente novamente."
   },
-  "backToApp": "Voltar à Ntizo"
+  "backToApp": "Voltar à Ntizo",
+  "settingsSnapshot": "Identificadores",
+  "settingsWorkspaceId": "ID do negócio",
+  "settingsSlug": "Endereço da página",
+  "settingsType": "Tipo",
+  "settingsStatus": "Estado",
+  "settingsIdentity": "Identidade",
+  "settingsIdentityBlurb": "O que os clientes vêem nos resultados de pesquisa e na sua página.",
+  "settingsName": "Nome",
+  "settingsDescription": "Descrição",
+  "settingsDescriptionHint": "Uma ou duas frases sobre o que faz e para quem.",
+  "settingsTypeLocked": "Não é alterável: decide como funcionam a agenda e a equipa. Fale connosco se precisar de mudar.",
+  "settingsAddress": "Onde trabalha",
+  "settingsAddressBlurb": "Usado para o mostrar a clientes perto de si. A morada exacta não aparece na sua página pública.",
+  "settingsUnsaved": "Alterações por guardar",
+  "settingsNoChanges": "Nada por guardar",
+  "settingsSaveHint": "As alterações aparecem de imediato na sua página.",
+  "settingsSaved": "Alterações guardadas.",
+  "settingsSave": "Guardar alterações",
+  "settingsSaving": "A guardar…",
+  "settingsDiscard": "Descartar",
+  "deactivateWarning": "A desactivação esconde o prestador dos clientes e impede novas reservas. As reservas já confirmadas mantêm-se."
 }

@@ -137,5 +137,6 @@
     "light": "Claro",
     "dark": "Oscuro",
     "system": "Sistema"
-  }
+  },
+  "addrPostalCode": "Postal code"
 }

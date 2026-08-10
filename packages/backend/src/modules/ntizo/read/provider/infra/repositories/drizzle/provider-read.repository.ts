@@ -96,6 +96,16 @@ export class DrizzleProviderReadRepository implements ProviderReadRepositoryPort
       type: row.type as ProviderDetailDTO["type"],
       status: row.status,
       description: row.description ?? null,
+      // Flat columns, reassembled. The table stores the Address VO spread
+      // across `address_*`; the read model gives it back as one object so the
+      // settings form has something shaped like the thing it edits.
+      address: {
+        street: row.addressStreet ?? null,
+        city: row.addressCity ?? null,
+        district: row.addressDistrict ?? null,
+        country: row.addressCountry ?? null,
+        postalCode: row.addressPostalCode ?? null,
+      },
       ownerUserId: row.ownerUserId,
       members: memberRows.map((m) => ({
         userId: m.userId,

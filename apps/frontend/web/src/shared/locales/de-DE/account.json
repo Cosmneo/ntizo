@@ -137,5 +137,6 @@
     "light": "Hell",
     "dark": "Dunkel",
     "system": "System"
-  }
+  },
+  "addrPostalCode": "Postal code"
 }

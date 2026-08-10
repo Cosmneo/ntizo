@@ -18,6 +18,7 @@ const BY_ID = `
   query ProviderById($input: ProviderByIdInput!) {
     providerById(input: $input) {
       id name slug type status description ownerUserId
+      address { street city district country postalCode }
       members { userId email name role joinedAt }
       invites { id email role status }
     }
@@ -77,16 +78,15 @@ export async function updateProvider(
   providerId: string,
   body: Partial<Pick<ProviderDetail, "name" | "description" | "address">>,
 ) {
-  // ProviderUpdateInput only carries `name`/`description` on the backend —
-  // `address` isn't part of the write-side mutation yet, so it's accepted
-  // here (to keep this signature matching the old REST one, which kept
-  // viewmodel/UI call sites unchanged) but never sent over the wire.
-  const { name, description } = body;
+  // The whole body, `address` included. It used to be accepted here and
+  // dropped — the same silent discard `createProvider` had, and with the same
+  // result: the settings page greyed its address block out under "temporarily
+  // unavailable" and nothing was ever going to change that but this line.
   const d = await sessionGraphql<{ providerUpdate: { ok: true } }>(
     `mutation($input: ProviderUpdateInput!) {
        providerUpdate(input: $input) { ok }
      }`,
-    { input: { providerId, name, description } },
+    { input: { providerId, ...body } },
   );
   return d.providerUpdate;
 }

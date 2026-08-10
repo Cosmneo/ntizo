@@ -30,7 +30,10 @@
   "createProvider": "Aanbieder aanmaken",
   "name": "Naam",
   "slug": "Slug",
-  "type": "Type",
+  "type": {
+    "individual": "On your own",
+    "organization": "A business with staff"
+  },
   "organization": "Organisatie",
   "individual": "Individueel",
   "creating": "Bezig met aanmaken…",
@@ -40,7 +43,13 @@
   "revenue": "Omzet",
   "comingSoon": "Binnenkort beschikbaar.",
   "role": "Rol",
-  "status": "Status",
+  "status": {
+    "pending": "Under review",
+    "active": "Active",
+    "rejected": "Rejected",
+    "suspended": "Suspended",
+    "archived": "Archived"
+  },
   "membersLabel": "Leden",
   "sendInvite": "Uitnodiging versturen",
   "sending": "Versturen…",
@@ -79,5 +88,26 @@
     "notProviderMember": "Je hebt geen toegang tot deze organisatie.",
     "generic": "Er is iets misgegaan. Probeer het opnieuw."
   },
-  "backToApp": "Terug naar Ntizo"
+  "backToApp": "Terug naar Ntizo",
+  "settingsSnapshot": "Identifiers",
+  "settingsWorkspaceId": "Business ID",
+  "settingsSlug": "Page address",
+  "settingsType": "Type",
+  "settingsStatus": "Status",
+  "settingsIdentity": "Identity",
+  "settingsIdentityBlurb": "What customers see in search results and on your page.",
+  "settingsName": "Name",
+  "settingsDescription": "Description",
+  "settingsDescriptionHint": "A sentence or two about what you do and for whom.",
+  "settingsTypeLocked": "Not changeable: it decides how the calendar and the team work. Talk to us if you need it changed.",
+  "settingsAddress": "Where you work",
+  "settingsAddressBlurb": "Used to show you to customers near you. Your exact address never appears on your public page.",
+  "settingsUnsaved": "Unsaved changes",
+  "settingsNoChanges": "Nothing to save",
+  "settingsSaveHint": "Changes appear on your page straight away.",
+  "settingsSaved": "Changes saved.",
+  "settingsSave": "Save changes",
+  "settingsSaving": "Saving…",
+  "settingsDiscard": "Discard",
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
 }

@@ -24,6 +24,23 @@ export const providerDetailReadModel = z.object({
   type: providerListItemType,
   status: z.string(),
   description: z.string().nullable(),
+  /**
+   * Where the business is.
+   *
+   * Absent until now, which is why the settings page could not populate its
+   * address block: there was nothing to populate it from. Every part is
+   * nullable because a provider who only works at the customer's home has no
+   * premises to describe.
+   */
+  address: z
+    .object({
+      street: z.string().nullable(),
+      city: z.string().nullable(),
+      district: z.string().nullable(),
+      country: z.string().nullable(),
+      postalCode: z.string().nullable(),
+    })
+    .nullable(),
   ownerUserId: z.string().min(1),
   members: z.array(providerMemberReadModel),
   invites: z.array(providerInviteReadModel),

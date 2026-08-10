@@ -44,6 +44,11 @@ export const updateProvider = defineMutation({
       providerId: z.string().min(1),
       name: z.string().min(1).optional(),
       description: z.string().optional(),
+      // The command has always accepted an address; only this schema did not
+      // declare one, which is why the settings page shipped with its address
+      // block greyed out under "temporarily unavailable". It was not
+      // temporary — nothing was going to change it but this line.
+      address: addressInput.optional(),
     }),
   ),
   output: zodSchema(okResult),

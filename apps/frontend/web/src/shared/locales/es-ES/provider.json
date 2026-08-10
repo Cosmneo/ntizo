@@ -30,7 +30,10 @@
   "createProvider": "Crear proveedor",
   "name": "Nombre",
   "slug": "Slug",
-  "type": "Tipo",
+  "type": {
+    "individual": "On your own",
+    "organization": "A business with staff"
+  },
   "organization": "Organización",
   "individual": "Individual",
   "creating": "Creando…",
@@ -40,7 +43,13 @@
   "revenue": "Ingresos",
   "comingSoon": "Próximamente.",
   "role": "Rol",
-  "status": "Estado",
+  "status": {
+    "pending": "Under review",
+    "active": "Active",
+    "rejected": "Rejected",
+    "suspended": "Suspended",
+    "archived": "Archived"
+  },
   "membersLabel": "Miembros",
   "sendInvite": "Enviar invitación",
   "sending": "Enviando…",
@@ -79,5 +88,26 @@
     "notProviderMember": "No tienes acceso a esta organización.",
     "generic": "Algo ha salido mal. Inténtalo de nuevo."
   },
-  "backToApp": "Volver a Ntizo"
+  "backToApp": "Volver a Ntizo",
+  "settingsSnapshot": "Identifiers",
+  "settingsWorkspaceId": "Business ID",
+  "settingsSlug": "Page address",
+  "settingsType": "Type",
+  "settingsStatus": "Status",
+  "settingsIdentity": "Identity",
+  "settingsIdentityBlurb": "What customers see in search results and on your page.",
+  "settingsName": "Name",
+  "settingsDescription": "Description",
+  "settingsDescriptionHint": "A sentence or two about what you do and for whom.",
+  "settingsTypeLocked": "Not changeable: it decides how the calendar and the team work. Talk to us if you need it changed.",
+  "settingsAddress": "Where you work",
+  "settingsAddressBlurb": "Used to show you to customers near you. Your exact address never appears on your public page.",
+  "settingsUnsaved": "Unsaved changes",
+  "settingsNoChanges": "Nothing to save",
+  "settingsSaveHint": "Changes appear on your page straight away.",
+  "settingsSaved": "Changes saved.",
+  "settingsSave": "Save changes",
+  "settingsSaving": "Saving…",
+  "settingsDiscard": "Discard",
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
 }

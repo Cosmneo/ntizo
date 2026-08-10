@@ -14,7 +14,8 @@ const listItem: ProviderListItemDTO = {
 
 const detail: ProviderDetailDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization", status: "active",
-  description: null, ownerUserId: "u1", members: [], invites: [],
+  description: null,
+  address: null, ownerUserId: "u1", members: [], invites: [],
 };
 
 function makeModule(calls: string[] = []) {
