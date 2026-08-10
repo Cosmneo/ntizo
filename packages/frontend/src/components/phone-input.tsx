@@ -7,7 +7,7 @@ import {
   parsePhoneNumberFromString,
   type CountryCode,
 } from "libphonenumber-js";
-import { cn } from "../lib/utils";
+import { cn, regionalFlag } from "../lib/utils";
 
 export interface PhoneInputProps {
   /** The number in E.164 (`+258841234567`), or `""` while incomplete. */
@@ -28,13 +28,6 @@ export interface PhoneInputProps {
   required?: boolean;
   className?: string;
   onBlur?: () => void;
-}
-
-/** `MZ` → 🇲🇿. Regional indicators sit 0x1F1E6 above ASCII `A`. */
-function flagOf(country: string): string {
-  return String.fromCodePoint(
-    ...[...country].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
-  );
 }
 
 interface CountryEntry {
@@ -60,7 +53,7 @@ function buildCountries(locale: string): CountryEntry[] {
       code,
       name: display.of(code) ?? code,
       dial: `+${getCountryCallingCode(code)}`,
-      flag: flagOf(code),
+      flag: regionalFlag(code),
     }))
     .sort((a, b) => collator.compare(a.name, b.name));
 }
@@ -210,7 +203,7 @@ export function PhoneInput({
         >
           {/* The ISO code carries the meaning on platforms that render no
               flag emoji, so the control never degrades to a bare arrow. */}
-          <span aria-hidden="true">{flagOf(country)}</span>
+          <span aria-hidden="true">{regionalFlag(country)}</span>
           <span className="text-[var(--color-muted-foreground)]">{dial}</span>
           <svg
             aria-hidden="true"

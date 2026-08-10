@@ -1,49 +1,96 @@
+/*
+ * Self-hosted rather than fetched from a font CDN: no third-party request on
+ * first paint, nothing to fail in a market with patchy connectivity, and the
+ * weights below are the only ones the type scale uses — loading the full
+ * families would ship megabytes nobody renders.
+ *
+ * Poppins carries the headings, Inter the text. Both are named in the design
+ * system; the weights map one-to-one onto it.
+ */
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";
+
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * The design system, as given. Every value below comes from the spec; nothing
+ * here is an approximation, and nothing outside this block should invent a
+ * colour. The nine names on the left are the whole palette.
+ */
 :root {
-  --color-brand-navy: #00244d;
-  --color-brand-accent: #007aff;
-  --color-brand-sky: #38b6ff;
-  --color-brand-ink: #0e1f37;
-
-  --color-background: #ffffff;
-  --color-foreground: #0e1f37;
-  /* Brand blue, sampled from the approved mockups (#1853FD in the sign-in
-     panel, the primary button and the wordmark — one colour in all three).
-     Replaces the previous navy #00244d.
-
-     Contrast note: white on this is 5.68:1, which passes WCAG AA for normal
-     text but not AAA; the navy was 15.45:1. That is a deliberate, accepted
-     trade for the brand, not an oversight. Anything smaller than body text on
-     this background should be checked before it ships. */
-  --color-primary: #1853fd;
+  /* Brand Blue — logo, CTAs, active links, hero */
+  --color-primary: #006ffd;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #f4f6fa;
-  --color-secondary-foreground: #0e1f37;
-  --color-muted: #f4f6fa;
-  --color-muted-foreground: #6b7a90;
-  --color-accent: #007aff;
+  --color-accent: #006ffd;
   --color-accent-foreground: #ffffff;
-  --color-destructive: #b00020;
+  --color-ring: #006ffd;
+
+  /* Dark Text — headings, body copy, icons */
+  --color-foreground: #13171b;
+
+  /* Grey Text — secondary copy, captions */
+  --color-muted-foreground: #71727a;
+
+  /* Border — dividers, card and header outlines */
+  --color-border: #e5e5e5;
+  --color-input: #e5e5e5;
+
+  /* Tint Blue BG — soft grounds, highlighted sections */
+  --color-muted: #f2f8fe;
+  --color-secondary: #f2f8fe;
+  --color-secondary-foreground: #13171b;
+
+  /* White — surfaces, headers, cards */
+  --color-background: #ffffff;
+
+  /*
+   * Semantic, and separate from the brand blue on purpose: a status colour
+   * has to keep meaning if the brand ever changes hue.
+   */
+  --color-success: #21b872;
+  --color-success-foreground: #ffffff;
+  --color-warning: #ffb020;
+  --color-warning-foreground: #13171b;
+  --color-destructive: #ee4040;
   --color-destructive-foreground: #ffffff;
-  --color-border: #e5e7eb;
-  --color-input: #e5e7eb;
-  --color-ring: #007aff;
+
+  /* Cards and popovers are White surfaces on Border, per the system. */
   --color-card: #ffffff;
-  --color-card-foreground: #0e1f37;
+  --color-card-foreground: #13171b;
   --color-popover: #ffffff;
-  --color-popover-foreground: #0e1f37;
+  --color-popover-foreground: #13171b;
 
-  --color-sidebar: #f7f9fc;
-  --color-sidebar-foreground: #0e1f37;
-  --color-sidebar-primary: #00244d;
+  /* Kept: the sidebar components read these by name. */
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #13171b;
+  --color-sidebar-primary: #006ffd;
   --color-sidebar-primary-foreground: #ffffff;
-  --color-sidebar-accent: #e8eef7;
-  --color-sidebar-accent-foreground: #00244d;
-  --color-sidebar-border: #e5e7eb;
-  --color-sidebar-ring: #007aff;
+  --color-sidebar-accent: #f2f8fe;
+  --color-sidebar-accent-foreground: #13171b;
+  --color-sidebar-border: #e5e5e5;
+  --color-sidebar-ring: #006ffd;
 
-  --radius: 0.5rem;
+  /*
+   * The four brand aliases predate the system and are still imported by name
+   * in a few places. Pointed at the system's values rather than deleted, so
+   * nothing renders a colour that is no longer in the palette.
+   */
+  --color-brand-navy: #13171b;
+  --color-brand-ink: #13171b;
+  --color-brand-accent: #006ffd;
+  --color-brand-sky: #006ffd;
+
+  /*
+   * Corner radii, by what they are for rather than by size — so a card is
+   * `rounded-card` everywhere and changing the system changes one line.
+   */
+  --radius-field: 8px;
+  --radius-card-sm: 12px;
+  --radius-card: 16px;
+  --radius: 16px;
 }
 
 .dark {
@@ -78,6 +125,24 @@
 }
 
 @theme inline {
+  /*
+   * Two families, as the system specifies: Poppins for headings, Inter for
+   * everything read as text. `font-rounded` is kept as an alias for Poppins
+   * because the landing page already asks for it by that name.
+   */
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-rounded: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-field: var(--radius-field);
+  --radius-card-sm: var(--radius-card-sm);
+  --radius-card: var(--radius-card);
+
+  --color-success: var(--color-success);
+  --color-success-foreground: var(--color-success-foreground);
+  --color-warning: var(--color-warning);
+  --color-warning-foreground: var(--color-warning-foreground);
+
   --color-brand-navy: var(--color-brand-navy);
   --color-brand-accent: var(--color-brand-accent);
   --color-brand-sky: var(--color-brand-sky);
@@ -112,12 +177,51 @@
   --radius: var(--radius);
 }
 
+@layer components {
+  /*
+   * The type scale, named as the system names it. Using these instead of
+   * assembling `text-[22px] font-semibold font-display` at each call site is
+   * what keeps a section title the same size on every page.
+   */
+  .type-h1 { font-family: var(--font-display); font-weight: 600; font-size: 28px; line-height: 1.25; letter-spacing: -0.01em; }
+  .type-h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; }
+  .type-h3 { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.35; }
+  .type-body { font-family: var(--font-sans); font-weight: 400; font-size: 15px; line-height: 1.55; }
+  .type-body-medium { font-family: var(--font-sans); font-weight: 500; font-size: 14px; line-height: 1.5; }
+  .type-caption { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: 1.45; }
+  .type-button { font-family: var(--font-sans); font-weight: 700; font-size: 15px; line-height: 1; }
+
+  /*
+   * The one content column, used by every page.
+   *
+   * Before this each surface picked its own: the landing at 1180, its header
+   * at 1560, the directory at 1024, the account pages at 768. Nothing lined
+   * up between pages, and the logo sat at a different distance from the edge
+   * depending on where you were. 1320 is the footer's existing width — the
+   * oldest measurement in the design, so adopting it moved the fewest things.
+   *
+   * Content that wants a narrower measure keeps a `max-w-*` inside this,
+   * rather than shrinking the column itself — the gutters stay put.
+   */
+  .page-shell {
+    width: min(1320px, 100% - 3rem);
+    margin-inline: auto;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
   }
+  /*
+   * `light dark`, not `dark`. This was declaring the page dark unconditionally
+   * while the tokens above it default to light, so native widgets — scrollbars,
+   * date pickers, autofill backgrounds — rendered dark on a white page. The
+   * pair lets the browser follow the OS, and the theme switcher overrides it
+   * inline once the user chooses.
+   */
   html {
-    color-scheme: dark;
+    color-scheme: light dark;
   }
   body {
     background-color: var(--color-background);
