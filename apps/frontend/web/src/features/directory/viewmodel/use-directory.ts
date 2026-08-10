@@ -23,3 +23,15 @@ export function useDirectory(): ProviderPublicDTO[] {
 export function prefetchDirectory(queryClient: QueryClient): Promise<unknown> {
   return queryClient.ensureQueryData(directoryQueries.list());
 }
+
+export function useProviderDetail(slug: string): ProviderPublicDTO | null {
+  const { data } = useSuspenseQuery(directoryQueries.bySlug(slug));
+  return data;
+}
+
+export function prefetchProviderDetail(
+  queryClient: QueryClient,
+  slug: string,
+): Promise<ProviderPublicDTO | null> {
+  return queryClient.ensureQueryData(directoryQueries.bySlug(slug));
+}

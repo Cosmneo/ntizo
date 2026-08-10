@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
-import { Route as ProvidersRouteImport } from './routes/providers'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
 import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -25,6 +24,8 @@ import { Route as ProviderMembersRouteImport } from './routes/provider/members'
 import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
 import { Route as ProviderOverviewRouteImport } from './routes/provider/overview'
 import { Route as ProviderSettingsRouteImport } from './routes/provider/settings'
+import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
+import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -44,11 +45,6 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
 const ProviderRouteRoute = ProviderRouteRouteImport.update({
   id: '/provider',
   path: '/provider',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProvidersRoute = ProvidersRouteImport.update({
-  id: '/providers',
-  path: '/providers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PublicSignInRoute = PublicSignInRouteImport.update({
@@ -106,6 +102,16 @@ const ProviderSettingsRoute = ProviderSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => ProviderRouteRoute,
 } as any)
+const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
+  id: '/providers/',
+  path: '/providers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
+  id: '/providers/$slug',
+  path: '/providers/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   id: '/accept-invite/$token',
   path: '/accept-invite/$token',
@@ -116,7 +122,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
-  '/providers': typeof ProvidersRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -126,13 +131,14 @@ export interface FileRoutesByFullPath {
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/provider/overview': typeof ProviderOverviewRoute
   '/provider/settings': typeof ProviderSettingsRoute
+  '/providers/$slug': typeof ProvidersSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/provider/': typeof ProviderIndexRoute
+  '/providers/': typeof ProvidersIndexRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/providers': typeof ProvidersRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -142,8 +148,10 @@ export interface FileRoutesByTo {
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/provider/overview': typeof ProviderOverviewRoute
   '/provider/settings': typeof ProviderSettingsRoute
+  '/providers/$slug': typeof ProvidersSlugRoute
   '/admin': typeof AdminIndexRoute
   '/provider': typeof ProviderIndexRoute
+  '/providers': typeof ProvidersIndexRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRoutesById {
@@ -152,7 +160,6 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
-  '/providers': typeof ProvidersRoute
   '/_public/sign-in': typeof PublicSignInRoute
   '/_public/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -162,8 +169,10 @@ export interface FileRoutesById {
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/provider/overview': typeof ProviderOverviewRoute
   '/provider/settings': typeof ProviderSettingsRoute
+  '/providers/$slug': typeof ProvidersSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/provider/': typeof ProviderIndexRoute
+  '/providers/': typeof ProvidersIndexRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
 }
 export interface FileRouteTypes {
@@ -172,7 +181,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/provider'
-    | '/providers'
     | '/sign-in'
     | '/sign-up'
     | '/admin/dashboard'
@@ -182,13 +190,14 @@ export interface FileRouteTypes {
     | '/provider/no-provider'
     | '/provider/overview'
     | '/provider/settings'
+    | '/providers/$slug'
     | '/admin/'
     | '/provider/'
+    | '/providers/'
     | '/accept-invite/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/providers'
     | '/sign-in'
     | '/sign-up'
     | '/admin/dashboard'
@@ -198,8 +207,10 @@ export interface FileRouteTypes {
     | '/provider/no-provider'
     | '/provider/overview'
     | '/provider/settings'
+    | '/providers/$slug'
     | '/admin'
     | '/provider'
+    | '/providers'
     | '/accept-invite/$token'
   id:
     | '__root__'
@@ -207,7 +218,6 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/provider'
-    | '/providers'
     | '/_public/sign-in'
     | '/_public/sign-up'
     | '/admin/dashboard'
@@ -217,8 +227,10 @@ export interface FileRouteTypes {
     | '/provider/no-provider'
     | '/provider/overview'
     | '/provider/settings'
+    | '/providers/$slug'
     | '/admin/'
     | '/provider/'
+    | '/providers/'
     | '/_public/accept-invite/$token'
   fileRoutesById: FileRoutesById
 }
@@ -227,7 +239,8 @@ export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
-  ProvidersRoute: typeof ProvidersRoute
+  ProvidersSlugRoute: typeof ProvidersSlugRoute
+  ProvidersIndexRoute: typeof ProvidersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -258,13 +271,6 @@ declare module '@tanstack/react-router' {
       path: '/provider'
       fullPath: '/provider'
       preLoaderRoute: typeof ProviderRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/providers': {
-      id: '/providers'
-      path: '/providers'
-      fullPath: '/providers'
-      preLoaderRoute: typeof ProvidersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_public/sign-in': {
@@ -344,6 +350,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProviderSettingsRouteImport
       parentRoute: typeof ProviderRouteRoute
     }
+    '/providers/': {
+      id: '/providers/'
+      path: '/providers'
+      fullPath: '/providers/'
+      preLoaderRoute: typeof ProvidersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers/$slug': {
+      id: '/providers/$slug'
+      path: '/providers/$slug'
+      fullPath: '/providers/$slug'
+      preLoaderRoute: typeof ProvidersSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_public/accept-invite/$token': {
       id: '/_public/accept-invite/$token'
       path: '/accept-invite/$token'
@@ -413,7 +433,8 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
-  ProvidersRoute: ProvidersRoute,
+  ProvidersSlugRoute: ProvidersSlugRoute,
+  ProvidersIndexRoute: ProvidersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

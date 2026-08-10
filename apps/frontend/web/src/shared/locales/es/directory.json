@@ -3,5 +3,9 @@
   "subtitle": "Explora los negocios y profesionales en Ntizo.",
   "empty": "Todavía no hay proveedores listados.",
   "typeOrganization": "Organización",
-  "typeIndividual": "Individual"
+  "typeIndividual": "Individual",
+  "notFoundTitle": "Proveedor no encontrado",
+  "notFoundBody": "Es posible que este proveedor haya sido eliminado, o que el enlace sea incorrecto.",
+  "backToDirectory": "Volver a todos los proveedores",
+  "noDescription": "Este proveedor todavía no ha añadido una descripción."
 }

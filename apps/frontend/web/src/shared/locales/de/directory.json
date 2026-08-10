@@ -3,5 +3,9 @@
   "subtitle": "Entdecken Sie Unternehmen und Fachleute auf Ntizo.",
   "empty": "Noch keine Anbieter gelistet.",
   "typeOrganization": "Organisation",
-  "typeIndividual": "Einzelperson"
+  "typeIndividual": "Einzelperson",
+  "notFoundTitle": "Anbieter nicht gefunden",
+  "notFoundBody": "Dieser Anbieter wurde möglicherweise entfernt, oder der Link ist falsch.",
+  "backToDirectory": "Zurück zu allen Anbietern",
+  "noDescription": "Dieser Anbieter hat noch keine Beschreibung hinzugefügt."
 }

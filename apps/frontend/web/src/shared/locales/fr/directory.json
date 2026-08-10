@@ -3,5 +3,9 @@
   "subtitle": "Parcourez les entreprises et professionnels sur Ntizo.",
   "empty": "Aucun prestataire répertorié pour l'instant.",
   "typeOrganization": "Organisation",
-  "typeIndividual": "Individuel"
+  "typeIndividual": "Individuel",
+  "notFoundTitle": "Prestataire introuvable",
+  "notFoundBody": "Ce prestataire a peut-être été supprimé, ou le lien est incorrect.",
+  "backToDirectory": "Retour à tous les prestataires",
+  "noDescription": "Ce prestataire n'a pas encore ajouté de description."
 }

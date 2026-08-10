@@ -3,5 +3,9 @@
   "subtitle": "Browse the businesses and professionals on Ntizo.",
   "empty": "No providers listed yet.",
   "typeOrganization": "Organization",
-  "typeIndividual": "Individual"
+  "typeIndividual": "Individual",
+  "notFoundTitle": "Provider not found",
+  "notFoundBody": "This provider may have been removed, or the link is wrong.",
+  "backToDirectory": "Back to all providers",
+  "noDescription": "This provider hasn't added a description yet."
 }

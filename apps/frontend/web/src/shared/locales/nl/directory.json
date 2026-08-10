@@ -3,5 +3,9 @@
   "subtitle": "Blader door de bedrijven en professionals op Ntizo.",
   "empty": "Nog geen aanbieders vermeld.",
   "typeOrganization": "Organisatie",
-  "typeIndividual": "Individueel"
+  "typeIndividual": "Individueel",
+  "notFoundTitle": "Aanbieder niet gevonden",
+  "notFoundBody": "Deze aanbieder is mogelijk verwijderd, of de link klopt niet.",
+  "backToDirectory": "Terug naar alle aanbieders",
+  "noDescription": "Deze aanbieder heeft nog geen beschrijving toegevoegd."
 }
