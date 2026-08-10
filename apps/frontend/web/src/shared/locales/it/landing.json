@@ -1,0 +1,42 @@
+{
+  "signIn": "Accedi",
+  "admin": "Amministrazione",
+  "favorites": "Preferiti",
+  "heroLine1": "Trovalo.",
+  "heroLine2": "Prenotalo.",
+  "heroLine3": "Fatto.",
+  "search": "Cerca",
+  "nav": {
+    "explore": "Esplora",
+    "services": "Servizi",
+    "providers": "Fornitori",
+    "howItWorks": "Come funziona"
+  },
+  "searchWhat": "Cosa",
+  "searchWhere": "Dove",
+  "searchWhen": "Quando",
+  "searchWho": "Chi",
+  "anyService": "Qualsiasi servizio",
+  "addCity": "Aggiungi città",
+  "anyDate": "Qualsiasi data",
+  "onePerson": "1 persona",
+  "footer": {
+    "support": "Assistenza",
+    "company": "Azienda",
+    "legal": "Note legali",
+    "getTheApp": "Scarica l'app",
+    "about": "Chi siamo",
+    "contact": "Contatti",
+    "faq": "Domande frequenti",
+    "becomeProvider": "Diventa fornitore",
+    "careers": "Lavora con noi",
+    "terms": "Termini di servizio",
+    "privacy": "Informativa sulla privacy",
+    "cookies": "Informativa sui cookie",
+    "ourSocials": "I nostri canali",
+    "acceptedPayments": "Metodi di pagamento accettati",
+    "downloadOnThe": "Scarica su",
+    "getItOn": "Disponibile su"
+  },
+  "heroSubtitle": "Il marketplace globale dei servizi locali di fiducia. Scopri fornitori, confronta pacchetti e prenota in pochi secondi."
+}

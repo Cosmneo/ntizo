@@ -8,6 +8,7 @@ import {
   MapPin,
   Calendar,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
 const NAVY = "#0e1f37";
@@ -16,11 +17,14 @@ const CARD = "#ffffff";
 const MUTED = "#6b7a90";
 const BORDER = "#dde6f3";
 
+// `labelKey`, not `label`: the array is module-scope, evaluated once at import
+// time, so a translated string baked in here would freeze at whatever locale
+// happened to load first and never follow a language change.
 const NAV_ITEMS = [
-  { key: "explore", label: "Explore", icon: Compass },
-  { key: "services", label: "Services", icon: Wrench },
-  { key: "providers", label: "Providers", icon: Users },
-  { key: "how", label: "How it works", icon: HelpCircle },
+  { key: "explore", labelKey: "nav.explore", icon: Compass },
+  { key: "services", labelKey: "nav.services", icon: Wrench },
+  { key: "providers", labelKey: "nav.providers", icon: Users },
+  { key: "how", labelKey: "nav.howItWorks", icon: HelpCircle },
 ] as const;
 
 export function LandingPage() {
@@ -34,6 +38,7 @@ export function LandingPage() {
 }
 
 function Header() {
+  const { t } = useTranslation("landing"); // t:Header
   return (
     <header style={header}>
       <a href="/" style={logoLink}>
@@ -51,14 +56,14 @@ function Header() {
               style={active ? navItemActive : navItem}
             >
               <Icon size={16} />
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
             </a>
           );
         })}
       </nav>
 
       <div style={headerRight}>
-        <button type="button" style={iconBtn} aria-label="Favorites">
+        <button type="button" style={iconBtn} aria-label={t("favorites")}>
           <Heart size={18} />
         </button>
         <button type="button" style={langBtn}>
@@ -66,7 +71,7 @@ function Header() {
           <span>EN · USD</span>
         </button>
         <Link to="/sign-in" style={signInBtn}>
-          Sign in
+          {t("signIn")}
         </Link>
       </div>
     </header>
@@ -74,6 +79,7 @@ function Header() {
 }
 
 function Hero() {
+  const { t } = useTranslation("landing"); // t:Hero
   return (
     <section style={hero}>
       <Cloud style={{ top: 20, left: 80, opacity: 0.6 }} />
@@ -84,18 +90,17 @@ function Hero() {
       <div style={heroInner}>
         <div style={heroText}>
           <h1 style={heroH1}>
-            <span>Find it.</span>
+            <span>{t("heroLine1")}</span>
             <br />
             <span style={{ position: "relative", display: "inline-block" }}>
-              Book it.
+              {t("heroLine2")}
               <Underline />
             </span>
             <br />
-            <span style={{ color: ACCENT }}>Done.</span>
+            <span style={{ color: ACCENT }}>{t("heroLine3")}</span>
           </h1>
           <p style={heroSub}>
-            The global marketplace for trusted local services. Discover
-            providers, compare packages, and book in seconds.
+            {t("heroSubtitle")}
           </p>
         </div>
 
@@ -186,6 +191,7 @@ function Underline() {
 }
 
 function SearchBar() {
+  const { t } = useTranslation("landing"); // t:SearchBar
   return (
     <div style={searchOuter}>
       <div style={searchTabs}>
@@ -195,19 +201,19 @@ function SearchBar() {
           return (
             <button key={it.key} type="button" style={active ? tabActive : tab}>
               <Icon size={16} />
-              <span>{it.label}</span>
+              <span>{t(it.labelKey)}</span>
             </button>
           );
         })}
       </div>
 
       <div style={searchPill}>
-        <SearchField label="What" placeholder="Any service" icon={<Wrench size={18} />} />
-        <SearchField label="Where" placeholder="Add city" icon={<MapPin size={18} />} />
-        <SearchField label="When" placeholder="Any date" icon={<Calendar size={18} />} />
-        <SearchField label="Who" placeholder="1 person" icon={<Users size={18} />} />
+        <SearchField label={t("searchWhat")} placeholder={t("anyService")} icon={<Wrench size={18} />} />
+        <SearchField label={t("searchWhere")} placeholder={t("addCity")} icon={<MapPin size={18} />} />
+        <SearchField label={t("searchWhen")} placeholder={t("anyDate")} icon={<Calendar size={18} />} />
+        <SearchField label={t("searchWho")} placeholder={t("onePerson")} icon={<Users size={18} />} />
         <button type="button" style={searchBtn}>
-          Search
+          {t("search")}
         </button>
       </div>
     </div>
@@ -235,6 +241,7 @@ function SearchField({
 }
 
 function Footer() {
+  const { t } = useTranslation("landing"); // t:Footer
   return (
     <>
       <footer style={footer}>
@@ -251,33 +258,33 @@ function Footer() {
             </p>
           </div>
 
-          <FooterCol title="Support">
+          <FooterCol title={t("footer.support")}>
             <FooterMeta label="Toll Free Customer Care" value="+1 (800) 000-0000" />
             <FooterMeta label="Need live support?" value="hello@ntizo.com" />
           </FooterCol>
 
-          <FooterCol title="Company">
-            <FooterLink href="#">About</FooterLink>
-            <FooterLink href="#">Contact</FooterLink>
-            <FooterLink href="#">FAQ</FooterLink>
-            <FooterLink to="/sign-up">Become a Provider</FooterLink>
-            <FooterLink href="#">Careers</FooterLink>
+          <FooterCol title={t("footer.company")}>
+            <FooterLink href="#">{t("footer.about")}</FooterLink>
+            <FooterLink href="#">{t("footer.contact")}</FooterLink>
+            <FooterLink href="#">{t("footer.faq")}</FooterLink>
+            <FooterLink to="/sign-up">{t("footer.becomeProvider")}</FooterLink>
+            <FooterLink href="#">{t("footer.careers")}</FooterLink>
           </FooterCol>
 
-          <FooterCol title="Legal">
-            <FooterLink href="#">Terms of Service</FooterLink>
-            <FooterLink href="#">Privacy Policy</FooterLink>
-            <FooterLink href="#">Cookie Policy</FooterLink>
-            <FooterLink to="/admin">Admin</FooterLink>
+          <FooterCol title={t("footer.legal")}>
+            <FooterLink href="#">{t("footer.terms")}</FooterLink>
+            <FooterLink href="#">{t("footer.privacy")}</FooterLink>
+            <FooterLink href="#">{t("footer.cookies")}</FooterLink>
+            <FooterLink to="/admin">{t("admin")}</FooterLink>
           </FooterCol>
 
-          <FooterCol title="Get the App">
+          <FooterCol title={t("footer.getTheApp")}>
             <a href="#" style={appBadge}>
-              <span style={{ fontSize: 11, opacity: 0.8 }}>Download on the</span>
+              <span style={{ fontSize: 11, opacity: 0.8 }}>{t("footer.downloadOnThe")}</span>
               <span style={{ fontSize: 15, fontWeight: 600 }}>App Store</span>
             </a>
             <a href="#" style={appBadge}>
-              <span style={{ fontSize: 11, opacity: 0.8 }}>Get it on</span>
+              <span style={{ fontSize: 11, opacity: 0.8 }}>{t("footer.getItOn")}</span>
               <span style={{ fontSize: 15, fontWeight: 600 }}>Google Play</span>
             </a>
           </FooterCol>
@@ -286,7 +293,7 @@ function Footer() {
         <div style={footerBottom}>
           <div>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
-              Our Socials
+              {t("footer.ourSocials")}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <SocialIcon><FacebookGlyph /></SocialIcon>
@@ -297,7 +304,7 @@ function Footer() {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
-              Accepted Payment Methods
+              {t("footer.acceptedPayments")}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <PayChip color="#1a1f71">VISA</PayChip>

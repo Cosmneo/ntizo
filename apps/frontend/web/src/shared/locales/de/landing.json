@@ -1,0 +1,42 @@
+{
+  "signIn": "Anmelden",
+  "admin": "Administration",
+  "favorites": "Favoriten",
+  "heroLine1": "Finden.",
+  "heroLine2": "Buchen.",
+  "heroLine3": "Fertig.",
+  "search": "Suchen",
+  "nav": {
+    "explore": "Entdecken",
+    "services": "Dienstleistungen",
+    "providers": "Anbieter",
+    "howItWorks": "So funktioniert's"
+  },
+  "searchWhat": "Was",
+  "searchWhere": "Wo",
+  "searchWhen": "Wann",
+  "searchWho": "Wer",
+  "anyService": "Beliebige Dienstleistung",
+  "addCity": "Stadt hinzufügen",
+  "anyDate": "Beliebiges Datum",
+  "onePerson": "1 Person",
+  "footer": {
+    "support": "Hilfe",
+    "company": "Unternehmen",
+    "legal": "Rechtliches",
+    "getTheApp": "App herunterladen",
+    "about": "Über uns",
+    "contact": "Kontakt",
+    "faq": "Häufige Fragen",
+    "becomeProvider": "Anbieter werden",
+    "careers": "Karriere",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutzerklärung",
+    "cookies": "Cookie-Richtlinie",
+    "ourSocials": "Unsere Kanäle",
+    "acceptedPayments": "Akzeptierte Zahlungsmittel",
+    "downloadOnThe": "Laden im",
+    "getItOn": "Jetzt bei"
+  },
+  "heroSubtitle": "Der globale Marktplatz für vertrauenswürdige lokale Dienstleistungen. Entdecken Sie Anbieter, vergleichen Sie Pakete und buchen Sie in Sekunden."
+}

@@ -1,0 +1,42 @@
+{
+  "signIn": "Inloggen",
+  "admin": "Beheer",
+  "favorites": "Favorieten",
+  "heroLine1": "Vind het.",
+  "heroLine2": "Boek het.",
+  "heroLine3": "Klaar.",
+  "search": "Zoeken",
+  "nav": {
+    "explore": "Ontdekken",
+    "services": "Diensten",
+    "providers": "Aanbieders",
+    "howItWorks": "Hoe het werkt"
+  },
+  "searchWhat": "Wat",
+  "searchWhere": "Waar",
+  "searchWhen": "Wanneer",
+  "searchWho": "Wie",
+  "anyService": "Elke dienst",
+  "addCity": "Stad toevoegen",
+  "anyDate": "Elke datum",
+  "onePerson": "1 persoon",
+  "footer": {
+    "support": "Ondersteuning",
+    "company": "Bedrijf",
+    "legal": "Juridisch",
+    "getTheApp": "Download de app",
+    "about": "Over ons",
+    "contact": "Contact",
+    "faq": "Veelgestelde vragen",
+    "becomeProvider": "Word aanbieder",
+    "careers": "Vacatures",
+    "terms": "Servicevoorwaarden",
+    "privacy": "Privacybeleid",
+    "cookies": "Cookiebeleid",
+    "ourSocials": "Onze kanalen",
+    "acceptedPayments": "Geaccepteerde betaalmethoden",
+    "downloadOnThe": "Download in de",
+    "getItOn": "Verkrijgbaar via"
+  },
+  "heroSubtitle": "De wereldwijde marktplaats voor betrouwbare lokale diensten. Ontdek aanbieders, vergelijk pakketten en boek in seconden."
+}

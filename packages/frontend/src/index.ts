@@ -4,6 +4,7 @@ export * from "./components/input-group";
 export * from "./components/label";
 export * from "./components/card"
 export * from "./components/checkbox";
+export * from "./components/split-brand-layout";
 export * from "./components/separator";
 export * from "./components/avatar";
 export * from "./components/dropdown-menu";

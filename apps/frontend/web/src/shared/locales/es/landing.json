@@ -1,0 +1,42 @@
+{
+  "signIn": "Iniciar sesión",
+  "admin": "Administración",
+  "favorites": "Favoritos",
+  "heroLine1": "Encuéntralo.",
+  "heroLine2": "Resérvalo.",
+  "heroLine3": "Listo.",
+  "search": "Buscar",
+  "nav": {
+    "explore": "Explorar",
+    "services": "Servicios",
+    "providers": "Proveedores",
+    "howItWorks": "Cómo funciona"
+  },
+  "searchWhat": "Qué",
+  "searchWhere": "Dónde",
+  "searchWhen": "Cuándo",
+  "searchWho": "Quién",
+  "anyService": "Cualquier servicio",
+  "addCity": "Añadir ciudad",
+  "anyDate": "Cualquier fecha",
+  "onePerson": "1 persona",
+  "footer": {
+    "support": "Soporte",
+    "company": "Empresa",
+    "legal": "Legal",
+    "getTheApp": "Consigue la app",
+    "about": "Acerca de",
+    "contact": "Contacto",
+    "faq": "Preguntas frecuentes",
+    "becomeProvider": "Hazte proveedor",
+    "careers": "Empleo",
+    "terms": "Términos del servicio",
+    "privacy": "Política de privacidad",
+    "cookies": "Política de cookies",
+    "ourSocials": "Nuestras redes",
+    "acceptedPayments": "Métodos de pago aceptados",
+    "downloadOnThe": "Descárgala en",
+    "getItOn": "Disponible en"
+  },
+  "heroSubtitle": "El mercado global de servicios locales de confianza. Descubre proveedores, compara paquetes y reserva en segundos."
+}

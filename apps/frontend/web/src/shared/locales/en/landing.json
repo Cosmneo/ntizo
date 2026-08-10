@@ -1,0 +1,42 @@
+{
+  "signIn": "Sign in",
+  "admin": "Admin",
+  "favorites": "Favorites",
+  "heroLine1": "Find it.",
+  "heroLine2": "Book it.",
+  "heroLine3": "Done.",
+  "search": "Search",
+  "nav": {
+    "explore": "Explore",
+    "services": "Services",
+    "providers": "Providers",
+    "howItWorks": "How it works"
+  },
+  "searchWhat": "What",
+  "searchWhere": "Where",
+  "searchWhen": "When",
+  "searchWho": "Who",
+  "anyService": "Any service",
+  "addCity": "Add city",
+  "anyDate": "Any date",
+  "onePerson": "1 person",
+  "footer": {
+    "support": "Support",
+    "company": "Company",
+    "legal": "Legal",
+    "getTheApp": "Get the App",
+    "about": "About",
+    "contact": "Contact",
+    "faq": "FAQ",
+    "becomeProvider": "Become a Provider",
+    "careers": "Careers",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "cookies": "Cookie Policy",
+    "ourSocials": "Our Socials",
+    "acceptedPayments": "Accepted Payment Methods",
+    "downloadOnThe": "Download on the",
+    "getItOn": "Get it on"
+  },
+  "heroSubtitle": "The global marketplace for trusted local services. Discover providers, compare packages, and book in seconds."
+}

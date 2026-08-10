@@ -1,0 +1,42 @@
+{
+  "signIn": "Se connecter",
+  "admin": "Administration",
+  "favorites": "Favoris",
+  "heroLine1": "Trouvez.",
+  "heroLine2": "Réservez.",
+  "heroLine3": "C'est fait.",
+  "search": "Rechercher",
+  "nav": {
+    "explore": "Explorer",
+    "services": "Services",
+    "providers": "Prestataires",
+    "howItWorks": "Comment ça marche"
+  },
+  "searchWhat": "Quoi",
+  "searchWhere": "Où",
+  "searchWhen": "Quand",
+  "searchWho": "Qui",
+  "anyService": "Tout service",
+  "addCity": "Ajouter une ville",
+  "anyDate": "Toute date",
+  "onePerson": "1 personne",
+  "footer": {
+    "support": "Assistance",
+    "company": "Entreprise",
+    "legal": "Mentions légales",
+    "getTheApp": "Obtenir l'app",
+    "about": "À propos",
+    "contact": "Contact",
+    "faq": "Questions fréquentes",
+    "becomeProvider": "Devenir prestataire",
+    "careers": "Carrières",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialité",
+    "cookies": "Politique de cookies",
+    "ourSocials": "Nos réseaux",
+    "acceptedPayments": "Moyens de paiement acceptés",
+    "downloadOnThe": "Télécharger sur",
+    "getItOn": "Disponible sur"
+  },
+  "heroSubtitle": "La place de marché mondiale des services locaux de confiance. Découvrez des prestataires, comparez les offres et réservez en quelques secondes."
+}
