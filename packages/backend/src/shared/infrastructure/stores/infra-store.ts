@@ -8,6 +8,14 @@ export interface InfraEnvBindings {
   BETTER_AUTH_SECRET: string;
   RESEND_API_KEY: string;
   EMAIL_FROM: string;
+  /**
+   * Where the web app lives, for links inside emails.
+   *
+   * Needed because the API and the app are different origins and a mail body
+   * cannot use a relative path. Its absence is why the invitation email shipped
+   * a bare token and no link at all.
+   */
+  APP_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   MICROSOFT_CLIENT_ID: string;

@@ -8,6 +8,16 @@ export type ProviderInviteStatus =
   | "pending"
   | "accepted"
   | "revoked"
+  /**
+   * Turned down by the person it was sent to.
+   *
+   * Its own state rather than folded into `revoked`, because the two say
+   * opposite things about who decided: revoked is the workspace withdrawing an
+   * offer, declined is the invitee refusing one. An admin looking at the list
+   * needs to tell those apart — one means "I changed my mind", the other means
+   * "they said no", and only the second is a reason not to send it again.
+   */
+  | "declined"
   | "expired";
 
 export interface ProviderInviteProps {
@@ -89,6 +99,10 @@ export class ProviderInvite {
 
   markRevoked(): void {
     this.props.status = "revoked";
+  }
+
+  markDeclined(): void {
+    this.props.status = "declined";
   }
 
   toJSON(): ProviderInviteProps {

@@ -7,6 +7,7 @@ import { DeactivateProviderInternalCommand } from "../app/use-cases/provider/dea
 import { ListMyProvidersQuery } from "../app/use-cases/provider/list-my-providers.query";
 import { InviteProviderMemberCommand } from "../app/use-cases/invite/invite-provider-member.command";
 import { AcceptProviderInviteCommand } from "../app/use-cases/invite/accept-provider-invite.command";
+import { DeclineProviderInviteCommand } from "../app/use-cases/invite/decline-provider-invite.command";
 import { RevokeProviderInviteCommand } from "../app/use-cases/invite/revoke-provider-invite.command";
 import { RemoveProviderMemberCommand } from "../app/use-cases/membership/remove-provider-member.command";
 import { UpdateProviderMemberRoleCommand } from "../app/use-cases/membership/update-provider-member-role.command";
@@ -17,6 +18,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     providerMemberRepository,
     providerInviteRepository,
     emailService,
+    inviterLocale,
     unitOfWork,
     outboxPort,
   } = adapters;
@@ -47,12 +49,19 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
       providerMemberRepository,
       providerInviteRepository,
       emailService,
+      inviterLocale,
       unitOfWork,
       outboxPort,
     ),
     acceptProviderInvite: new AcceptProviderInviteCommand(
       providerRepository,
       providerMemberRepository,
+      providerInviteRepository,
+      unitOfWork,
+      outboxPort,
+    ),
+    declineProviderInvite: new DeclineProviderInviteCommand(
+      providerRepository,
       providerInviteRepository,
       unitOfWork,
       outboxPort,

@@ -7,7 +7,8 @@
   "vars": {
     "STAGE": "local",
     "LOG_LEVEL": "info",
-    "MEDIA_PUBLIC_URL_BASE": "http://localhost:8788/api/media"
+    "MEDIA_PUBLIC_URL_BASE": "http://localhost:8788/api/media",
+    "APP_URL": "http://localhost:3000"
   },
 
   // Provider identity documents.
@@ -38,7 +39,8 @@
       "vars": {
         "STAGE": "dev",
         "LOG_LEVEL": "info",
-        "MEDIA_PUBLIC_URL_BASE": "https://pub-292f4ba0836f4ea88891c12dffdd4711.r2.dev"
+        "MEDIA_PUBLIC_URL_BASE": "https://pub-292f4ba0836f4ea88891c12dffdd4711.r2.dev",
+        "APP_URL": "https://dev.ntizo.pages.dev"
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" },
@@ -49,7 +51,8 @@
       "vars": {
         "STAGE": "qa",
         "LOG_LEVEL": "info",
-        "MEDIA_PUBLIC_URL_BASE": "https://pub-5989f9bee8264cbf986a8bd2c8bd1e69.r2.dev"
+        "MEDIA_PUBLIC_URL_BASE": "https://pub-5989f9bee8264cbf986a8bd2c8bd1e69.r2.dev",
+        "APP_URL": "https://qa.ntizo.pages.dev"
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" },
@@ -60,7 +63,8 @@
       "vars": {
         "STAGE": "prod",
         "LOG_LEVEL": "warn",
-        "MEDIA_PUBLIC_URL_BASE": "https://pub-a476c46654eb4872983914195f2918d8.r2.dev"
+        "MEDIA_PUBLIC_URL_BASE": "https://pub-a476c46654eb4872983914195f2918d8.r2.dev",
+        "APP_URL": "https://ntizo.pages.dev"
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" },

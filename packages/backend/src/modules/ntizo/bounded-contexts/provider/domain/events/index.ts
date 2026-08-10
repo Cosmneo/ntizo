@@ -131,6 +131,28 @@ export class ProviderInviteAccepted extends BaseDomainEvent<{
   }
 }
 
+/**
+ * The invitee said no.
+ *
+ * Distinct from `revoked`, which is the workspace withdrawing the offer. The
+ * two are opposite decisions by opposite parties, and anything reading this
+ * stream later — a re-invite prompt, a metric on how many invitations land —
+ * needs to tell them apart.
+ */
+export class ProviderInviteDeclined extends BaseDomainEvent<{
+  providerId: string;
+  inviteId: string;
+  email: string;
+}> {
+  constructor(payload: {
+    providerId: string;
+    inviteId: string;
+    email: string;
+  }) {
+    super("provider.invite.declined", payload.providerId, payload);
+  }
+}
+
 export class ProviderInviteRevoked extends BaseDomainEvent<{
   providerId: string;
   inviteId: string;

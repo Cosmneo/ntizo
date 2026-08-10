@@ -164,6 +164,15 @@ class FakeProviderInviteRepository implements ProviderInviteRepositoryPort {
     this.store.invites.set(id, current);
     return true;
   }
+
+  /** The same guard, for the other outcome. See `markDeclinedIfPending`. */
+  async markDeclinedIfPending(id: string): Promise<boolean> {
+    const current = this.store.invites.get(id);
+    if (!current || current.status !== "pending") return false;
+    current.markDeclined();
+    this.store.invites.set(id, current);
+    return true;
+  }
 }
 
 function authenticatedCtx(userId: string): ExecutionContext {

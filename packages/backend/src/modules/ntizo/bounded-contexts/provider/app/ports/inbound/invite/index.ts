@@ -13,3 +13,4 @@ export type {
   RevokeProviderInviteInput,
   RevokeProviderInviteOutput,
 } from "./revoke-provider-invite.command.port";
+export * from "./decline-provider-invite.command.port";

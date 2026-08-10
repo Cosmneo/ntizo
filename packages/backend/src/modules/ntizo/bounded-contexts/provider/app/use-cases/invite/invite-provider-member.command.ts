@@ -9,8 +9,11 @@ import type {
   InviteProviderMemberOutput,
   InviteProviderMemberPort,
 } from "../../ports/inbound/invite";
+import { infraStore } from "../../../../../../../shared/infrastructure/stores/infra-store";
+import { buildProviderInviteEmail } from "../../../../../../../shared/infrastructure/email/templates/provider-invite.template";
 import type {
   EmailServicePort,
+  InviterLocalePort,
   ProviderInviteRepositoryPort,
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
@@ -30,6 +33,7 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly inviteRepo: ProviderInviteRepositoryPort,
     private readonly emailService: EmailServicePort,
+    private readonly inviterLocale: InviterLocalePort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
@@ -89,26 +93,29 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
 
     // Sent only once the invite row + event are durably committed — an email
     // for an invite that got rolled back would be worse than none.
+    // In the inviter's language. The recipient has no account yet, so that is
+    // the only signal available — and a colleague inviting a colleague almost
+    // always shares one.
+    const locale = await this.inviterLocale.localeFor(requester.userId);
+    const appUrl = infraStore.getEnv().APP_URL.replace(/\/+$/, "");
+    const mail = buildProviderInviteEmail({
+      providerName: provider.name,
+      inviterName: requester.email,
+      role: invite.role,
+      // The link the email exists to carry. The version this replaces sent a
+      // 48-character hex token in a paragraph and nothing to click.
+      acceptUrl: `${appUrl}/accept-invite/${token}`,
+      expiresInDays: INVITE_TTL_DAYS,
+      ...(locale ? { locale } : {}),
+    });
+
     await this.emailService.sendEmail({
       to: [invite.email],
-      subject: `You've been invited to join ${provider.name} on Ntizo`,
-      htmlBody: buildInviteHtml({
-        providerName: provider.name,
-        inviterName: requester.email,
-        token,
-      }),
-      textBody: `You've been invited to join ${provider.name} on Ntizo. Use this token: ${token}`,
+      subject: mail.subject,
+      htmlBody: mail.html,
+      textBody: mail.text,
     });
 
     return { inviteId: invite.id, token };
   }
-}
-
-function buildInviteHtml(params: {
-  providerName: string;
-  inviterName: string;
-  token: string;
-}): string {
-  return `<p>${params.inviterName} invited you to join <strong>${params.providerName}</strong> on Ntizo.</p>
-<p>Use this token to accept the invite: <code>${params.token}</code></p>`;
 }

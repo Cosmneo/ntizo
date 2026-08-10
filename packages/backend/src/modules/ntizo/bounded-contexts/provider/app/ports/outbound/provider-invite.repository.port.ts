@@ -23,4 +23,14 @@ export interface ProviderInviteRepositoryPort {
    * `accept-provider-invite.command.ts`.
    */
   markAcceptedIfPending(id: string): Promise<boolean>;
+
+  /**
+   * The same conditional transition, to "declined".
+   *
+   * Guarded for the same reason and against the same races: an admin may
+   * revoke while the invitee is reading the page, and the last write must not
+   * be the one that read the row first. A no-op here is the correct answer —
+   * the invitation was already resolved by someone else.
+   */
+  markDeclinedIfPending(id: string): Promise<boolean>;
 }

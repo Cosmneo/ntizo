@@ -21,6 +21,9 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET ?? "dev-secret-change-me",
       RESEND_API_KEY: env.RESEND_API_KEY ?? "",
       EMAIL_FROM: env.EMAIL_FROM ?? "Ntizo <noreply@ntizo.com>",
+      // Falls back to the local app rather than to "": an invitation email
+      // carrying a link to nowhere is worse than one that only works in dev.
+      APP_URL: env.APP_URL ?? "http://localhost:3000",
       GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ?? "",
       GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET ?? "",
       MICROSOFT_CLIENT_ID: env.MICROSOFT_CLIENT_ID ?? "",

@@ -95,6 +95,15 @@ export const acceptProviderInvite = defineMutation({
   docs: { summary: "Accept a provider invite", tags: ["Provider"] },
 });
 
+export const declineProviderInvite = defineMutation({
+  input: zodSchema(z.object({ token: z.string().min(1) })),
+  // `declined: false` when somebody else resolved it first — revoked, accepted
+  // or expired. Not an error: the invitation is not going to happen either
+  // way, which is what the person asked for.
+  output: zodSchema(z.object({ declined: z.boolean() })),
+  docs: { summary: "Decline a provider invite", tags: ["Provider"] },
+});
+
 export const revokeProviderInvite = defineMutation({
   input: zodSchema(
     z.object({ providerId: z.string().min(1), inviteId: z.string().min(1) }),
@@ -133,6 +142,7 @@ export const providerWriteSchema = defineGraphQLSchema(
       invites: {
         send: inviteProviderMember,
         accept: acceptProviderInvite,
+        decline: declineProviderInvite,
         revoke: revokeProviderInvite,
       },
       members: {

@@ -76,6 +76,12 @@ export function createProviderWriteHandlers(mod: ProviderWriteModule) {
       // boundary. See mapProviderInviteSendOutput.
       return mapProviderInviteSendOutput(result);
     })
+    .handle("provider.invites.decline", async (args, ctx) =>
+      uc.declineProviderInvite.execute(
+        toExecutionContext(asNtizoGraphqlContext(ctx)),
+        { token: args.input.token },
+      ),
+    )
     .handle("provider.invites.accept", async (args, ctx) => {
       const result = await uc.acceptProviderInvite.execute(
         toExecutionContext(asNtizoGraphqlContext(ctx)),
