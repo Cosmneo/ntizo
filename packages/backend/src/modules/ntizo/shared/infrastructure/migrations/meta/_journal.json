@@ -15,6 +15,13 @@
       "when": 1786281262856,
       "tag": "0001_real_landau",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786369266424,
+      "tag": "0002_hesitant_boomerang",
+      "breakpoints": true
     }
   ]
 }

@@ -48,7 +48,12 @@ function getYoga(stage: string) {
         ...createProviderReadHandlers(providerRead.useCases),
         ...createUserReadHandlers(userRead.useCases),
         ...createProviderWriteHandlers({ provider, workflows }),
-        ...createUserWriteHandlers({ updateMyProfile: user.useCases.updateMyProfile }),
+        ...createUserWriteHandlers({
+            updateMyProfile: user.useCases.updateMyProfile,
+            addMyAddress: user.useCases.addMyAddress,
+            updateMyAddress: user.useCases.updateMyAddress,
+            deleteMyAddress: user.useCases.deleteMyAddress,
+          }),
       ] as Parameters<typeof buildYoga>[0]["fields"],
       plugins: buildHardeningPlugins(stage),
       createContext: createGraphqlContextFactory({

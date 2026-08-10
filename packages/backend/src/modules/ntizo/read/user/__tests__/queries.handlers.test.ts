@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { CurrentUserDTO, UserRole } from "@ntizo/shared";
+import type { AddressDTO, CurrentUserDTO, UserRole } from "@ntizo/shared";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
 import { mapGetCurrentUserInput } from "../graphql/handlers/arg-mappers";
 import { createUserReadHandlers } from "../graphql/handlers/queries.handlers";
@@ -81,8 +81,12 @@ describe("createUserReadHandlers", () => {
   it("builds a handler for the read field", () => {
     const handlers = createUserReadHandlers({
       getCurrentUser: new GetCurrentUserProjection(new FakeUserReadRepository(dto)),
+      listMyAddresses: { execute: async (): Promise<AddressDTO[]> => [] },
     });
-    expect(handlers.length).toBe(1);
+    // Two fields now: the profile and the address list. Asserting the count
+    // rather than just "not empty" is what catches a field silently dropped
+    // from the schema.
+    expect(handlers.length).toBe(2);
   });
 
   it("stamps requestedByUserId from the session, even when args try to smuggle a different id", async () => {
@@ -93,7 +97,10 @@ describe("createUserReadHandlers", () => {
         return dto;
       },
     };
-    const handlers = createUserReadHandlers({ getCurrentUser: spy });
+    const handlers = createUserReadHandlers({
+      getCurrentUser: spy,
+      listMyAddresses: { execute: async (): Promise<AddressDTO[]> => [] },
+    });
 
     // A hostile/buggy client's args, carrying an attacker-supplied id under
     // an unrelated field name. This is the value of the GraphQL `input`

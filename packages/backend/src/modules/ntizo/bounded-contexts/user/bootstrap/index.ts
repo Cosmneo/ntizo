@@ -6,6 +6,12 @@ import { UpgradeProfileToProviderInternalCommand } from "../app/use-cases/upgrad
 import { RevertProviderUpgradeInternalCommand } from "../app/use-cases/revert-provider-upgrade.internal.command";
 import { CreateUserOnSignUpInternalCommand } from "../app/use-cases/create-user-on-sign-up.internal.command";
 import { UpdateMyProfileCommand } from "../app/use-cases/update-my-profile.command";
+import {
+  AddMyAddressCommand,
+  DeleteMyAddressCommand,
+  UpdateMyAddressCommand,
+} from "../app/use-cases/manage-my-addresses.command";
+import { DrizzleAddressRepository } from "../infrastructure/repositories/drizzle-address.repository";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 
 export function bootstrapUser() {
@@ -27,10 +33,18 @@ export function bootstrapUser() {
 
   const updateMyProfile = new UpdateMyProfileCommand(profileRepository, unitOfWork);
 
+  const addressRepository = new DrizzleAddressRepository();
+  const addMyAddress = new AddMyAddressCommand(addressRepository, unitOfWork);
+  const updateMyAddress = new UpdateMyAddressCommand(addressRepository, unitOfWork);
+  const deleteMyAddress = new DeleteMyAddressCommand(addressRepository, unitOfWork);
+
   return {
-    adapters: { userRepository, profileRepository, unitOfWork },
+    adapters: { userRepository, profileRepository, addressRepository, unitOfWork },
     useCases: {
       updateMyProfile,
+      addMyAddress,
+      updateMyAddress,
+      deleteMyAddress,
       internal: {
         upgradeProfileToProvider,
         revertProviderUpgrade,

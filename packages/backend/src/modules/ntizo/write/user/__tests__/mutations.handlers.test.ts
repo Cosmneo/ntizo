@@ -42,7 +42,15 @@ describe("createUserWriteHandlers", () => {
         seen.push({ userId: ec.requester.user.userId, input });
       },
     };
-    const handlers = createUserWriteHandlers({ updateMyProfile: spy });
+    const handlers = createUserWriteHandlers({
+        updateMyProfile: spy,
+        // The address commands are not what this test exercises; they exist
+        // so the module satisfies the handler builder, which refuses to
+        // resolve at all when a declared field has no use case.
+        addMyAddress: { execute: async () => ({ id: "a1" }) },
+        updateMyAddress: { execute: async () => {} },
+        deleteMyAddress: { execute: async () => {} },
+      });
 
     // A hostile client's args. `handler(args, ctx)` receives the GraphQL
     // `input` value directly, and the kit exposes it as `args.input` alongside
