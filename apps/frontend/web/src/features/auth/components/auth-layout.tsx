@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@ntizo/frontend-ui";
-import { NtizoIcon } from "@/shared/components/icons";
+import { NtizoMark } from "@/shared/components/icons";
 
 interface AuthLayoutProps {
   title: string;
@@ -29,7 +29,7 @@ export function AuthLayout({ title, subtitle, children, footer, icon }: AuthLayo
             {icon ? (
               <div className="mb-3 rounded-full bg-[var(--color-secondary)] p-3">{icon}</div>
             ) : (
-              <NtizoIcon className="h-10 w-10 mb-2" />
+              <NtizoMark className="h-10 w-10 mb-2" />
             )}
             <h1 className="text-lg font-semibold">{title}</h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">{subtitle}</p>

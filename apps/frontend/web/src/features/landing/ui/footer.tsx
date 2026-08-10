@@ -15,8 +15,8 @@ export function Footer() {
   return (
     <>
       <footer style={footer}>
-        <div style={footerGrid}>
-          <div>
+        <div className="mx-auto grid max-w-[1320px] grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:gap-10">
+          <div className="col-span-2 sm:col-span-3 lg:col-span-1">
             <img
               src="/brand/logo-primary.svg"
               alt="Ntizo"
@@ -60,7 +60,8 @@ export function Footer() {
           </FooterCol>
         </div>
 
-        <div style={footerBottom}>
+        <div className="mx-auto mt-12 flex max-w-[1320px] flex-col items-start justify-between gap-6 border-t pt-8 sm:flex-row sm:items-center"
+          style={{ borderColor: BORDER }}>
           <div>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
               {t("footer.ourSocials")}
@@ -209,6 +210,14 @@ function LinkedInGlyph() {
 
 
 
+/**
+ * The footer's own styles.
+ *
+ * Layout moved to classes, values stayed here. Inline styles cannot carry a
+ * media query, so the five-column grid held at every width — on a phone it was
+ * five sixty-pixel columns of stacked words. Anything that has to change with
+ * the viewport belongs in a class; anything that does not can stay.
+ */
 const footer: React.CSSProperties = {
   marginTop: 60,
   background: PAGE_TOP,
@@ -216,14 +225,6 @@ const footer: React.CSSProperties = {
   // inset from every section above it on anything narrower than ~1416px —
   // the same 1320 ceiling, a different edge.
   padding: "60px 24px 32px",
-};
-
-const footerGrid: React.CSSProperties = {
-  maxWidth: 1320,
-  margin: "0 auto",
-  display: "grid",
-  gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr",
-  gap: 40,
 };
 
 const footerDesc: React.CSSProperties = {
@@ -258,18 +259,6 @@ const appBadge: React.CSSProperties = {
   color: "#fff",
   textDecoration: "none",
   width: "fit-content",
-};
-
-const footerBottom: React.CSSProperties = {
-  maxWidth: 1320,
-  margin: "48px auto 0",
-  paddingTop: 32,
-  borderTop: `1px solid ${BORDER}`,
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "space-between",
-  gap: 24,
-  flexWrap: "wrap",
 };
 
 const socialIcon: React.CSSProperties = {
