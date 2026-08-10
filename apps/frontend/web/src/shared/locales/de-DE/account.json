@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Adresse hinzufügen",
+  "addrLabel": "Bezeichnung",
+  "addrLabelPlaceholder": "Zuhause, Büro…",
+  "addrCountry": "Land",
+  "addrCity": "Stadt",
+  "addrDistrict": "Stadtteil",
+  "addrLine1": "Straße und Nummer",
+  "addrDirections": "Wegbeschreibung",
+  "addrDirectionsPlaceholder": "Blaues Haus nach der Tankstelle, grünes Tor",
+  "addrSetDefault": "Als Standardadresse verwenden",
+  "addrDefault": "Standard",
+  "addrMakeDefault": "Als Standard",
+  "addrDeleted": "Adresse gelöscht",
+  "edit": "Bearbeiten",
+  "delete": "Löschen",
+  "country": {
+    "MZ": "Mosambik",
+    "PT": "Portugal",
+    "ZA": "Südafrika",
+    "BR": "Brasilien"
   }
 }

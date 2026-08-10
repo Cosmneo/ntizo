@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Acrescentar endereço",
+  "addrLabel": "Etiqueta",
+  "addrLabelPlaceholder": "Casa, Escritório…",
+  "addrCountry": "País",
+  "addrCity": "Cidade",
+  "addrDistrict": "Bairro",
+  "addrLine1": "Morada",
+  "addrDirections": "Como chegar",
+  "addrDirectionsPlaceholder": "Casa azul depois da bomba, portão verde",
+  "addrSetDefault": "Usar como endereço predefinido",
+  "addrDefault": "Predefinido",
+  "addrMakeDefault": "Tornar predefinido",
+  "addrDeleted": "Endereço apagado",
+  "edit": "Editar",
+  "delete": "Apagar",
+  "country": {
+    "MZ": "Moçambique",
+    "PT": "Portugal",
+    "ZA": "África do Sul",
+    "BR": "Brasil"
   }
 }

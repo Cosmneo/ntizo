@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Añadir dirección",
+  "addrLabel": "Etiqueta",
+  "addrLabelPlaceholder": "Casa, Oficina…",
+  "addrCountry": "País",
+  "addrCity": "Ciudad",
+  "addrDistrict": "Barrio",
+  "addrLine1": "Dirección",
+  "addrDirections": "Cómo llegar",
+  "addrDirectionsPlaceholder": "Casa azul después de la gasolinera, portón verde",
+  "addrSetDefault": "Usar como dirección predeterminada",
+  "addrDefault": "Predeterminada",
+  "addrMakeDefault": "Hacer predeterminada",
+  "addrDeleted": "Dirección eliminada",
+  "edit": "Editar",
+  "delete": "Eliminar",
+  "country": {
+    "MZ": "Mozambique",
+    "PT": "Portugal",
+    "ZA": "Sudáfrica",
+    "BR": "Brasil"
   }
 }

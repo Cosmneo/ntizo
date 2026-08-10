@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { BadgeCheck, CreditCard, KeyRound, MapPin, ShieldAlert } from "lucide-react";
+import { BadgeCheck, CreditCard, KeyRound, ShieldAlert } from "lucide-react";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import {
   NotificationBucket,
@@ -25,20 +25,6 @@ function Panel({ children }: { children: React.ReactNode }) {
     <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-6">
       {children}
     </div>
-  );
-}
-
-export function AddressesPage() {
-  const { t } = useTranslation("account");
-  return (
-    <>
-      <SectionHeading title={t("navAddresses")} blurb={t("addressesBlurb")} />
-      <EmptyState
-        icon={<MapPin className="h-6 w-6" />}
-        title={t("addressesEmptyTitle")}
-        body={t("addressesEmptyBody")}
-      />
-    </>
   );
 }
 

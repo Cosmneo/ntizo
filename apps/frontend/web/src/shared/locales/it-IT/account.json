@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Aggiungi indirizzo",
+  "addrLabel": "Etichetta",
+  "addrLabelPlaceholder": "Casa, Ufficio…",
+  "addrCountry": "Paese",
+  "addrCity": "Città",
+  "addrDistrict": "Quartiere",
+  "addrLine1": "Indirizzo",
+  "addrDirections": "Come arrivare",
+  "addrDirectionsPlaceholder": "Casa blu dopo il distributore, cancello verde",
+  "addrSetDefault": "Usa come indirizzo predefinito",
+  "addrDefault": "Predefinito",
+  "addrMakeDefault": "Rendi predefinito",
+  "addrDeleted": "Indirizzo eliminato",
+  "edit": "Modifica",
+  "delete": "Elimina",
+  "country": {
+    "MZ": "Mozambico",
+    "PT": "Portogallo",
+    "ZA": "Sudafrica",
+    "BR": "Brasile"
   }
 }

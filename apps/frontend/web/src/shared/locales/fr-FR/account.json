@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Ajouter une adresse",
+  "addrLabel": "Libellé",
+  "addrLabelPlaceholder": "Domicile, Bureau…",
+  "addrCountry": "Pays",
+  "addrCity": "Ville",
+  "addrDistrict": "Quartier",
+  "addrLine1": "Adresse",
+  "addrDirections": "Comment y arriver",
+  "addrDirectionsPlaceholder": "Maison bleue après la station-service, portail vert",
+  "addrSetDefault": "Utiliser comme adresse par défaut",
+  "addrDefault": "Par défaut",
+  "addrMakeDefault": "Définir par défaut",
+  "addrDeleted": "Adresse supprimée",
+  "edit": "Modifier",
+  "delete": "Supprimer",
+  "country": {
+    "MZ": "Mozambique",
+    "PT": "Portugal",
+    "ZA": "Afrique du Sud",
+    "BR": "Brésil"
   }
 }

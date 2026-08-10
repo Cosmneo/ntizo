@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Adres toevoegen",
+  "addrLabel": "Label",
+  "addrLabelPlaceholder": "Thuis, Kantoor…",
+  "addrCountry": "Land",
+  "addrCity": "Stad",
+  "addrDistrict": "Wijk",
+  "addrLine1": "Adres",
+  "addrDirections": "Hoe je er komt",
+  "addrDirectionsPlaceholder": "Blauw huis na het tankstation, groene poort",
+  "addrSetDefault": "Gebruik als standaardadres",
+  "addrDefault": "Standaard",
+  "addrMakeDefault": "Standaard maken",
+  "addrDeleted": "Adres verwijderd",
+  "edit": "Bewerken",
+  "delete": "Verwijderen",
+  "country": {
+    "MZ": "Mozambique",
+    "PT": "Portugal",
+    "ZA": "Zuid-Afrika",
+    "BR": "Brazilië"
   }
 }

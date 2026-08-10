@@ -100,5 +100,26 @@
     "fr-FR": "Français",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
+  },
+  "addrAdd": "Add address",
+  "addrLabel": "Label",
+  "addrLabelPlaceholder": "Home, Office…",
+  "addrCountry": "Country",
+  "addrCity": "City",
+  "addrDistrict": "District",
+  "addrLine1": "Street address",
+  "addrDirections": "How to find it",
+  "addrDirectionsPlaceholder": "Blue house after the petrol station, green gate",
+  "addrSetDefault": "Use this as my default address",
+  "addrDefault": "Default",
+  "addrMakeDefault": "Make default",
+  "addrDeleted": "Address deleted",
+  "edit": "Edit",
+  "delete": "Delete",
+  "country": {
+    "MZ": "Mozambique",
+    "PT": "Portugal",
+    "ZA": "South Africa",
+    "BR": "Brazil"
   }
 }
