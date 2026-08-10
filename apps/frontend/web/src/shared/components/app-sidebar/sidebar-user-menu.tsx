@@ -148,10 +148,18 @@ export function SidebarUserMenu() {
                         <div className="mr-2 flex aspect-square h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
                           {p.name.slice(0, 2).toUpperCase()}
                         </div>
-                        <div className="flex flex-1 flex-col leading-tight">
-                          <span className="text-sm font-medium">{p.name}</span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {p.role}
+                        <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                          <span className="truncate text-sm font-medium">{p.name}</span>
+                          {/* The slug, not the role. Several workspaces can
+                              share a name — and here nine did — which turned
+                              this list into nine identical rows and made the
+                              switch look broken, because nothing visibly
+                              changed after picking one. The slug is unique by
+                              construction and is what the address bar shows
+                              next, so it is both the discriminator and a
+                              preview of where the click lands. */}
+                          <span className="truncate font-mono text-[11px] text-muted-foreground">
+                            {p.slug}
                           </span>
                         </div>
                         {isActive && <Check className="ml-2 h-4 w-4" />}

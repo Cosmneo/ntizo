@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { ACTIVE_PROVIDER_KEY, useMyProviders } from "./use-providers";
 import type { ProviderSummary } from "../domain/types";
 
@@ -22,6 +22,7 @@ export function useActiveProvider() {
   // `strict: false` reads params from whichever route is matched, so this hook
   // works both under `/provider/$slug` and on pages that have no slug at all.
   const { slug } = useParams({ strict: false }) as { slug?: string };
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // `query.data ?? []` allocates a new array on every render while the query is
   // loading or errored, which would change the identity of every dep array
@@ -53,15 +54,24 @@ export function useActiveProvider() {
       const target = providers.find((p) => p.id === id);
       if (!target) return;
       window.localStorage.setItem(ACTIVE_PROVIDER_KEY, target.id);
+
+      // Stay on the same page, in the other workspace. Switching from Settings
+      // used to land on Overview, which loses your place for no reason —
+      // "show me the other one's settings" is almost always what the switch
+      // means when it is made from a settings page.
+      const page = pathname.match(/^\/provider\/[^/]+\/([^/?#]+)/)?.[1];
+      const to =
+        page === "members"
+          ? "/provider/$slug/members"
+          : page === "settings"
+            ? "/provider/$slug/settings"
+            : "/provider/$slug/overview";
+
       // The URL is the state. `replace` keeps a switcher click out of the back
       // button's history, where it reads as a page the user never visited.
-      void navigate({
-        to: "/provider/$slug/overview",
-        params: { slug: target.slug },
-        replace: true,
-      });
+      void navigate({ to, params: { slug: target.slug }, replace: true });
     },
-    [navigate, providers],
+    [navigate, providers, pathname],
   );
 
   return {
