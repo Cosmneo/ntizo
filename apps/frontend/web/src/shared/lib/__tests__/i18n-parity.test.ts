@@ -13,7 +13,7 @@ const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/*.jso
   import: "default",
 });
 
-const REFERENCE = "en";
+const REFERENCE = "en-US";
 
 interface Entry {
   locale: string;
