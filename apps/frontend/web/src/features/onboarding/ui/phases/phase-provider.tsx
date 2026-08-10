@@ -7,6 +7,7 @@ import type { ProviderDraft } from "@/features/onboarding/domain/draft";
 import type { FieldKey } from "@/features/onboarding/domain/validation";
 import type { WizardStep } from "@/features/onboarding/domain/screen-model";
 import { Field, HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
+import { LocationMap } from "@/features/onboarding/ui/location-map";
 
 export interface PhaseProviderProps {
   sub: WizardStep;
@@ -145,6 +146,27 @@ export function PhaseProvider({
       />
 
       <div className="grid gap-5 sm:grid-cols-2">
+        {/* Above the fields, because its job is to fill them: dropping a pin
+            is one gesture where typing them is five. It renders nothing at all
+            without a Maps key, and the fields below stand alone. */}
+        <LocationMap
+          country={draft.country}
+          onPick={(place) =>
+            onChange({
+              latitude: String(place.lat),
+              longitude: String(place.lng),
+              // Only what the lookup actually returned. Writing `undefined`
+              // over a field the provider typed by hand would punish them for
+              // moving the pin.
+              ...(place.country ? { country: place.country } : {}),
+              ...(place.city ? { city: place.city } : {}),
+              ...(place.district ? { district: place.district } : {}),
+              ...(place.street ? { street: place.street } : {}),
+              ...(place.postalCode ? { postalCode: place.postalCode } : {}),
+            })
+          }
+        />
+
         <Field label={ta("addrCountry")} error={err("country")} htmlFor="country">
           <CountrySelect
             id="country"

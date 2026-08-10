@@ -34,7 +34,10 @@
     "description": "We use this to show you to customers near you. Your exact address never appears on your public page.",
     "streetHint": "Optional. Leave it blank if you only work at the customer's.",
     "postalCodeLabel": "Postal code (optional)",
-    "directionsHint": "Optional, and often the most useful line: a landmark beats a door number."
+    "directionsHint": "Optional, and often the most useful line: a landmark beats a door number.",
+    "mapLabel": "Map for marking where you work",
+    "mapHint": "Tap the map or drag the pin to mark the spot — we fill the fields for you.",
+    "mapPicked": "Spot marked. Correct the fields below if anything is off."
   },
   "payout": {
     "title": "How would you like to be paid?",

@@ -34,7 +34,10 @@
     "description": "Usamos isto para o mostrar a clientes perto de si. A morada exacta não aparece na sua página pública.",
     "streetHint": "Opcional. Deixe em branco se trabalha só em casa do cliente.",
     "postalCodeLabel": "Código postal (opcional)",
-    "directionsHint": "Opcional, e muitas vezes o que mais ajuda: um ponto de referência vale mais do que um número de porta."
+    "directionsHint": "Opcional, e muitas vezes o que mais ajuda: um ponto de referência vale mais do que um número de porta.",
+    "mapLabel": "Mapa para marcar onde trabalha",
+    "mapHint": "Toque no mapa ou arraste o pino para marcar o local — preenchemos os campos por si.",
+    "mapPicked": "Local marcado. Corrija os campos abaixo se algo não estiver certo."
   },
   "payout": {
     "title": "Como quer receber?",

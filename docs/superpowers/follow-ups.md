@@ -435,42 +435,59 @@ happens to pass both explicitly.
 **Trigger:** the next caller of `providerList` that omits `limit` or `offset`,
 or the next slice written from that file as a template.
 
-## 21. Provider documents: the bytes have nowhere to go
+## 21. Provider documents: the buckets are declared, not created
 
-The onboarding wizard's document step is built — the types, the requirements per
-provider type, the slots, the file picker, the client-side MIME and size checks.
-What it does with a chosen file is remember its name and size. **Nothing is
-uploaded, because there is no bucket.**
+`wrangler.jsonc` now declares `DOCUMENTS_BUCKET` for local, dev, qa and prod,
+and `POST /api/documents/:providerId/:type` writes to it — session checked,
+MIME and size re-checked server-side, `no-store` on the object, the uploader's
+id in custom metadata. It answers `503 DOCUMENT_STORAGE_UNCONFIGURED` when the
+binding is absent, which is the state today.
 
-`apps/backend/api/wrangler.jsonc` declares no `r2_buckets`. Finishing this needs,
-in order:
+**The buckets do not exist yet.** One command each:
 
-1. `wrangler r2 bucket create ntizo-documents` (per stage), and the binding added
-   to `wrangler.jsonc`.
-2. An upload route on the Worker — documents must NOT be publicly readable, so
-   reads go through a signed, short-lived URL rather than a public bucket.
-   Re-check MIME and size server-side: the `accept` attribute and the length
-   check in `FilePicker` only spare the user a doomed upload.
-3. A `provider_document` table (provider, type, storage key, status, who
-   reviewed it and when) and the admin queue reading it.
-4. **A retention decision.** These are identity documents. Keeping them
-   indefinitely "just in case" is the default and the wrong answer; how long
-   they are held after a decision has to be chosen deliberately.
+    wrangler r2 bucket create ntizo-documents-local
+    wrangler r2 bucket create ntizo-documents-dev
+    wrangler r2 bucket create ntizo-documents-qa
+    wrangler r2 bucket create ntizo-documents-prod
 
-**Trigger:** before any provider is asked to upload anything in an environment
-that is not local. The step currently *looks* like it works.
+Do **not** attach a public `r2.dev` URL to any of them. The reference project's
+media bucket has one because it serves photographs of activities; these hold ID
+cards and tax certificates, and the read leg goes through the Worker for that
+reason.
 
-## 22. Address autocomplete needs a Google key
+Still outstanding after the buckets exist:
 
-The location step collects country, city, district, street, postal code and
-free-text directions by hand. The reference app fills all of those from one
-search box via Google Places (`AutocompleteSuggestion`), plus a map pin.
+1. **The read leg returns 501.** Who may read whose document is a decision that
+   belongs with the admin review queue, and that queue does not exist. It
+   refuses everyone until it does, because the failure mode of guessing is
+   handing someone's ID card to the wrong person.
+2. **The wizard does not call the endpoint.** It records a file's name and size;
+   wiring the POST needs the provider id, which exists only after the location
+   step.
+3. **A `provider_document` table** — provider, type, key, status, reviewer,
+   timestamps — so the admin queue has something to list.
+4. **A retention decision.** How long an identity document is held after a
+   decision. Keeping them indefinitely is what happens if nobody chooses.
 
-That needs a Google Maps API key with Places enabled and billing active on the
-account — not something that can be provisioned from here. The fields are
-already the ones a parsed place would populate, so the autocomplete drops in
-above them without changing what is stored.
+**Trigger:** before any provider is asked to upload in an environment that is
+not local.
 
-**Trigger:** when a Google Cloud project with billing exists. Until then the
-manual fields are the whole feature, and `directions` carries the weight —
-which in this market is the honest arrangement anyway.
+## 22. The location map needs a Google Maps key
+
+The location step has a map with a draggable pin: dropping it stores the
+coordinates and reverse-geocodes to fill country, city, district, street and
+postal code — never overwriting a field the provider typed with an empty one.
+
+It renders **nothing at all** without `VITE_GOOGLE_MAPS_API_KEY`, which is a
+designed state rather than a fault: the fields work alone, and a Mozambican
+address is often a landmark rather than a coordinate. Set the key (and
+optionally `VITE_GOOGLE_MAPS_MAP_ID`, which the vector renderer needs for
+advanced markers) and the map appears with no other change.
+
+Not built: the Places **autocomplete search box** the reference has above its
+map, which fills the same fields from a typed query. The parsing is already
+there — `parseComponents` in `location-map.tsx` handles a geocoder result — so
+it is the search UI that is missing, not the plumbing.
+
+**Trigger:** when a Google Cloud project with Maps JavaScript, Geocoding and
+(for the search box) Places enabled and billing active exists.

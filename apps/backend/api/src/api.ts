@@ -3,6 +3,7 @@ import { getAuth, registerSignUpHook } from "@ntizo/backend/modules/better-auth"
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
 import { mountPrivateGraphql } from "./graphql/private";
 import { mountPublicGraphql } from "./graphql/public";
+import { mountDocuments } from "./documents";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
 import { authCors } from "./middlewares/cors";
@@ -40,6 +41,10 @@ mountPrivateGraphql(app);
 // origins WITH credentials, which a crawler can never satisfy; loosening it to
 // serve public pages would widen the session-bearing surface instead.
 mountPublicGraphql(app);
+
+// Identity documents. Its own mount: multipart in, bytes out — neither of
+// which GraphQL carries well.
+mountDocuments(app);
 
 // Health check
 app.get("/", (c) => c.json({ status: "ok", service: "ntizo-api" }));

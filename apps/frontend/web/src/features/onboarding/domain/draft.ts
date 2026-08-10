@@ -17,6 +17,9 @@ export interface ProviderDraft {
   district: string;
   street: string;
   postalCode: string;
+  /** Where the pin was dropped, as strings — the draft round-trips through storage. */
+  latitude: string;
+  longitude: string;
   /**
    * How to find the place, in words.
    *
@@ -43,6 +46,8 @@ export const EMPTY_DRAFT: ProviderDraft = {
   district: "",
   street: "",
   postalCode: "",
+  latitude: "",
+  longitude: "",
   directions: "",
   payoutType: "",
   payoutIdentifier: "",

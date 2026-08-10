@@ -4,7 +4,9 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"], "#/*": ["./src/*"] },
     "jsx": "react-jsx",
-    "types": ["vite/client", "@testing-library/jest-dom"],
+    // `google.maps` is a global namespace, not an import, so it has to be
+    // listed here or every reference to it fails to resolve.
+    "types": ["vite/client", "@testing-library/jest-dom", "google.maps"],
     "noEmit": true
   },
   "include": ["src"]

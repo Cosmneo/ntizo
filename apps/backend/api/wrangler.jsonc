@@ -5,9 +5,38 @@
   "compatibility_date": "2026-02-12",
   "compatibility_flags": ["nodejs_compat"],
   "vars": { "STAGE": "local", "LOG_LEVEL": "info" },
+
+  // Provider identity documents.
+  //
+  // `r2_buckets` is NOT inheritable in wrangler: an env that omits it gets no
+  // bucket at all rather than this one, so every stage below declares its own.
+  //
+  // No `MEDIA_PUBLIC_URL_BASE` here, unlike the reference project's media
+  // bucket. These are identity papers: nothing about them may be served from a
+  // public r2.dev URL, and reads go through an authenticated Worker route so
+  // the only way to see one is to be an administrator asking for it.
+  "r2_buckets": [
+    { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-local" }
+  ],
+
   "env": {
-    "dev":  { "vars": { "STAGE": "dev",  "LOG_LEVEL": "info" } },
-    "qa":   { "vars": { "STAGE": "qa",   "LOG_LEVEL": "info" } },
-    "prod": { "vars": { "STAGE": "prod", "LOG_LEVEL": "warn" } }
+    "dev": {
+      "vars": { "STAGE": "dev", "LOG_LEVEL": "info" },
+      "r2_buckets": [
+        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" }
+      ]
+    },
+    "qa": {
+      "vars": { "STAGE": "qa", "LOG_LEVEL": "info" },
+      "r2_buckets": [
+        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" }
+      ]
+    },
+    "prod": {
+      "vars": { "STAGE": "prod", "LOG_LEVEL": "warn" },
+      "r2_buckets": [
+        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" }
+      ]
+    }
   }
 }
