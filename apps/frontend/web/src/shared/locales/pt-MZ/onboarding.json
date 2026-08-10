@@ -1,13 +1,7 @@
 {
   "back": "Voltar",
   "continue": "Continuar",
-  "phase": {
-    "provider": "O seu negócio",
-    "payout": "Como receber",
-    "review": "Em análise"
-  },
   "type": {
-    "eyebrow": "Passo 1 de 3",
     "title": "Como é que vai prestar serviços?",
     "description": "Isto decide como funciona a agenda e quem faz o trabalho. Pode mudar mais tarde nas definições.",
     "individual": {
@@ -20,7 +14,6 @@
     }
   },
   "identity": {
-    "eyebrow": "Passo 2 de 3",
     "title": {
       "individual": "Como quer ser conhecido?",
       "organization": "Como se chama o estabelecimento?"
@@ -37,13 +30,13 @@
     "descriptionPlaceholder": "Canalização doméstica em Maputo e Matola, com deslocação incluída."
   },
   "location": {
-    "eyebrow": "Passo 3 de 3",
     "title": "Onde é que trabalha?",
     "description": "Usamos isto para o mostrar a clientes perto de si. A morada exacta não aparece na sua página pública.",
-    "streetHint": "Opcional. Deixe em branco se trabalha só em casa do cliente."
+    "streetHint": "Opcional. Deixe em branco se trabalha só em casa do cliente.",
+    "postalCodeLabel": "Código postal (opcional)",
+    "directionsHint": "Opcional, e muitas vezes o que mais ajuda: um ponto de referência vale mais do que um número de porta."
   },
   "payout": {
-    "eyebrow": "Quase lá",
     "title": "Como quer receber?",
     "description": "É para aqui que enviamos o que ganhar, depois de cada serviço concluído. Pode tratar disto mais tarde.",
     "skip": "Tratar disto depois",
@@ -69,7 +62,6 @@
     }
   },
   "review": {
-    "eyebrow": "Candidatura enviada",
     "title": "{{name}} está em análise",
     "body": "Vamos confirmar a sua identidade antes de o mostrar aos clientes. Normalmente demora um a dois dias e avisamos por e-mail.",
     "meanwhile": {
@@ -85,5 +77,57 @@
     "countryRequired": "Escolha o país.",
     "cityRequired": "Escreva a cidade onde trabalha.",
     "createFailed": "Não foi possível criar o seu negócio. Tente de novo."
-  }
+  },
+  "step": {
+    "type": "Tipo de negócio",
+    "identity": "Identificação",
+    "location": "Localização",
+    "payout": "Como receber",
+    "documents": "Documentos",
+    "review": "Em análise"
+  },
+  "documents": {
+    "title": "Falta confirmarmos quem é",
+    "description": "É isto que dá valor ao selo de verificado — e o que permite a um cliente deixá-lo entrar em casa com confiança.",
+    "identity": {
+      "label": "Documento de identidade",
+      "hint": "Um dos três, não os três. Envie fotografia legível de ambos os lados."
+    },
+    "type": {
+      "NATIONAL_ID": {
+        "label": "Bilhete de Identidade",
+        "hint": ""
+      },
+      "DIRE": {
+        "label": "DIRE",
+        "hint": ""
+      },
+      "PASSPORT": {
+        "label": "Passaporte",
+        "hint": ""
+      },
+      "TAX_NUMBER": {
+        "label": "NUIT",
+        "hint": "Certidão ou cartão do Número Único de Identificação Tributária. É o que nos permite pagar-lhe."
+      },
+      "BUSINESS_LICENCE": {
+        "label": "Alvará",
+        "hint": "A licença de actividade emitida pela autarquia."
+      },
+      "COMMERCIAL_REGISTRY": {
+        "label": "Certidão do registo comercial",
+        "hint": "Com o NUEL do estabelecimento."
+      }
+    },
+    "privacy": "Os documentos são usados só para a verificação, ficam guardados em armazenamento privado e nunca aparecem na sua página pública.",
+    "skip": "Enviar mais tarde",
+    "upload": "Carregar",
+    "remove": "Remover"
+  },
+  "status": {
+    "done": "Concluído",
+    "active": "Em curso",
+    "stepPrefix": "Passo"
+  },
+  "alreadyProvider": "Já é prestador? <a>Ir para o painel</a>"
 }

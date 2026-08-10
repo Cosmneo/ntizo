@@ -1,13 +1,7 @@
 {
   "back": "Back",
   "continue": "Continue",
-  "phase": {
-    "provider": "Your business",
-    "payout": "Getting paid",
-    "review": "Under review"
-  },
   "type": {
-    "eyebrow": "Step 1 of 3",
     "title": "How will you provide services?",
     "description": "This decides how the calendar works and who does the work. You can change it later in settings.",
     "individual": {
@@ -20,7 +14,6 @@
     }
   },
   "identity": {
-    "eyebrow": "Step 2 of 3",
     "title": {
       "individual": "What should you be known as?",
       "organization": "What is the business called?"
@@ -37,13 +30,13 @@
     "descriptionPlaceholder": "Household plumbing across Maputo and Matola, travel included."
   },
   "location": {
-    "eyebrow": "Step 3 of 3",
     "title": "Where do you work?",
     "description": "We use this to show you to customers near you. Your exact address never appears on your public page.",
-    "streetHint": "Optional. Leave it blank if you only work at the customer's."
+    "streetHint": "Optional. Leave it blank if you only work at the customer's.",
+    "postalCodeLabel": "Postal code (optional)",
+    "directionsHint": "Optional, and often the most useful line: a landmark beats a door number."
   },
   "payout": {
-    "eyebrow": "Almost there",
     "title": "How would you like to be paid?",
     "description": "This is where your earnings go after each job is completed. You can deal with it later.",
     "skip": "Do this later",
@@ -69,7 +62,6 @@
     }
   },
   "review": {
-    "eyebrow": "Application sent",
     "title": "{{name}} is under review",
     "body": "We will confirm who you are before showing you to customers. It usually takes a day or two, and we will email you.",
     "meanwhile": {
@@ -85,5 +77,57 @@
     "countryRequired": "Choose the country.",
     "cityRequired": "Enter the city where you work.",
     "createFailed": "We could not create your business. Please try again."
-  }
+  },
+  "step": {
+    "type": "Business type",
+    "identity": "Your details",
+    "location": "Location",
+    "payout": "Getting paid",
+    "documents": "Documents",
+    "review": "Under review"
+  },
+  "documents": {
+    "title": "We need to confirm who you are",
+    "description": "This is what makes the verified badge mean something — and what lets a customer let you into their home with confidence.",
+    "identity": {
+      "label": "Proof of identity",
+      "hint": "One of the three, not all three. A legible photo of both sides."
+    },
+    "type": {
+      "NATIONAL_ID": {
+        "label": "National ID (BI)",
+        "hint": ""
+      },
+      "DIRE": {
+        "label": "DIRE",
+        "hint": ""
+      },
+      "PASSPORT": {
+        "label": "Passport",
+        "hint": ""
+      },
+      "TAX_NUMBER": {
+        "label": "Tax number (NUIT)",
+        "hint": "Your NUIT certificate or card. It is what lets us pay you."
+      },
+      "BUSINESS_LICENCE": {
+        "label": "Business licence (Alvará)",
+        "hint": "The activity licence issued by your municipality."
+      },
+      "COMMERCIAL_REGISTRY": {
+        "label": "Commercial registry certificate",
+        "hint": "Carrying the establishment's NUEL."
+      }
+    },
+    "privacy": "Documents are used only for verification, held in private storage, and never appear on your public page.",
+    "skip": "Send later",
+    "upload": "Upload",
+    "remove": "Remove"
+  },
+  "status": {
+    "done": "Complete",
+    "active": "In progress",
+    "stepPrefix": "Step"
+  },
+  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>"
 }

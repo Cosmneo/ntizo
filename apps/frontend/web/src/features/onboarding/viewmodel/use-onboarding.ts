@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ProviderType } from "@ntizo/shared";
+import { ProviderType, type ProviderDocumentType } from "@ntizo/shared";
 import {
   EMPTY_DRAFT,
   clearDraft,
   readDraft,
   slugFrom,
   writeDraft,
+  type DocumentUpload,
   type ProviderDraft,
 } from "@/features/onboarding/domain/draft";
 import {
-  FIRST_SCREEN,
-  nextScreen,
-  previousScreen,
-  type OnboardingScreen,
-  type ProviderSubStep,
+  CREATES_PROVIDER,
+  FIRST_STEP,
+  nextStep,
+  previousStep,
+  type WizardStep,
 } from "@/features/onboarding/domain/screen-model";
 import {
   firstIncompleteStep,
@@ -37,7 +38,8 @@ export function useOnboarding() {
   const create = useCreateProvider();
   const { setActive, refresh } = useActiveProvider();
 
-  const [screen, setScreen] = useState<OnboardingScreen>(FIRST_SCREEN);
+  const [step, setStep] = useState<WizardStep>(FIRST_STEP);
+  const [uploads, setUploads] = useState<DocumentUpload[]>([]);
   const [draft, setDraft] = useState<ProviderDraft>(EMPTY_DRAFT);
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function useOnboarding() {
     // would fail server-side with a message pointing nowhere.
     const gap = firstIncompleteStep(draft);
     if (gap) {
-      setScreen({ phase: 1, sub: gap });
+      setStep(gap);
       setErrors(validateStep(gap, draft));
       return;
     }
@@ -90,57 +92,87 @@ export function useOnboarding() {
           city: draft.city.trim(),
           ...(draft.district.trim() ? { district: draft.district.trim() } : {}),
           ...(draft.street.trim() ? { street: draft.street.trim() } : {}),
+          ...(draft.postalCode.trim() ? { postalCode: draft.postalCode.trim() } : {}),
         },
       });
       await refresh();
       if (providerId) setActive(providerId);
-      setScreen({ phase: 2 });
+      setStep("payout");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "error.createFailed");
     }
   }, [draft, create, refresh, setActive]);
 
   const advance = useCallback(() => {
-    if (screen.phase === 1) {
-      const stepErrors = validateStep(screen.sub as ProviderSubStep, draft);
-      if (Object.keys(stepErrors).length > 0) {
-        setErrors(stepErrors);
-        return;
-      }
-      // The last sub-step is where the provider gets created; the earlier two
-      // only move forward.
-      if (screen.sub === "location") {
-        void submit();
-        return;
-      }
+    const stepErrors = validateStep(step, draft);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      return;
     }
-    if (screen.phase === 2) {
+    // One step creates the provider; the rest only move forward.
+    if (step === CREATES_PROVIDER) {
+      void submit();
+      return;
+    }
+    if (step === "documents") {
       // The draft has done its job once the provider exists. Leaving it behind
       // would restore a finished application into the next attempt.
       clearDraft();
     }
-    const next = nextScreen(screen);
-    if (next) setScreen(next);
-  }, [screen, draft, submit]);
+    const next = nextStep(step);
+    if (next) setStep(next);
+  }, [step, draft, submit]);
 
   const back = useCallback(() => {
-    const target = previousScreen(screen);
-    if (target) setScreen(target);
+    const target = previousStep(step);
+    if (target) setStep(target);
     else void navigate({ to: "/become-provider" });
-  }, [screen, navigate]);
+  }, [step, navigate]);
+
+  /**
+   * Records a picked document.
+   *
+   * Metadata only, for now — see the route's note. One entry per type, because
+   * a second upload of the same document replaces it rather than queueing two.
+   */
+  const addUpload = useCallback((type: ProviderDocumentType, file: File) => {
+    setUploads((current) => [
+      ...current.filter((u) => u.type !== type),
+      { type, fileName: file.name, size: file.size },
+    ]);
+  }, []);
+
+  const removeUpload = useCallback((type: ProviderDocumentType) => {
+    setUploads((current) => current.filter((u) => u.type !== type));
+  }, []);
 
   return useMemo(
     () => ({
-      screen,
-      setScreen,
+      step,
+      setStep,
       draft,
       patch,
       errors,
       submitError,
       submitting: create.isPending,
+      uploads,
+      addUpload,
+      removeUpload,
       advance,
       back,
     }),
-    [screen, draft, patch, errors, submitError, create.isPending, advance, back],
+    [
+      step,
+      draft,
+      patch,
+      errors,
+      submitError,
+      create.isPending,
+      uploads,
+      addUpload,
+      removeUpload,
+      advance,
+      back,
+    ],
   );
 }

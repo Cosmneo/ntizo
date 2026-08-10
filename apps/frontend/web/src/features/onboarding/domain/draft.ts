@@ -1,4 +1,4 @@
-import type { ProviderType } from "@ntizo/shared";
+import type { ProviderDocumentType, ProviderType } from "@ntizo/shared";
 
 /**
  * What the wizard is collecting, before any of it is sent.
@@ -16,6 +16,16 @@ export interface ProviderDraft {
   city: string;
   district: string;
   street: string;
+  postalCode: string;
+  /**
+   * How to find the place, in words.
+   *
+   * Not decoration in Mozambique: plenty of addresses are not on a numbered
+   * street, and "casa azul depois da bomba da Petromoc" is how a customer
+   * actually arrives. A structured address alone would make the field unusable
+   * in the market this launches in.
+   */
+  directions: string;
   /** What the provider will be paid through. Empty until phase 2. */
   payoutType: string;
   payoutIdentifier: string;
@@ -32,6 +42,8 @@ export const EMPTY_DRAFT: ProviderDraft = {
   city: "",
   district: "",
   street: "",
+  postalCode: "",
+  directions: "",
   payoutType: "",
   payoutIdentifier: "",
 };
@@ -104,4 +116,18 @@ export function slugFrom(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
+}
+
+/**
+ * A document the provider has picked but not yet sent.
+ *
+ * Metadata only — the bytes stay in the `File` the viewmodel holds until there
+ * is somewhere to put them. Here rather than beside the component that renders
+ * it because the viewmodel needs the shape too, and a type that crosses that
+ * line belongs to neither side of it.
+ */
+export interface DocumentUpload {
+  type: ProviderDocumentType;
+  fileName: string;
+  size: number;
 }

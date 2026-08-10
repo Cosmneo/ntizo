@@ -1,72 +1,69 @@
 import { describe, expect, it } from "vitest";
 import {
-  FIRST_SCREEN,
-  PROVIDER_SUB_ORDER,
+  FIRST_STEP,
+  STEP_ORDER,
   isReachable,
-  nextScreen,
-  previousScreen,
-  subProgress,
-  type OnboardingScreen,
+  nextStep,
+  previousStep,
+  stepProgress,
+  type WizardStep,
 } from "../screen-model";
 import { ProviderType } from "@ntizo/shared";
 import { EMPTY_DRAFT, coerceDraft, slugFrom, type ProviderDraft } from "../draft";
 import { firstIncompleteStep, validateStep } from "../validation";
 
-/** Walks the wizard from the first screen to the end, collecting every stop. */
-function walk(): OnboardingScreen[] {
-  const seen: OnboardingScreen[] = [FIRST_SCREEN];
-  let screen: OnboardingScreen | null = FIRST_SCREEN;
-  while ((screen = nextScreen(screen))) {
-    seen.push(screen);
-    if (seen.length > 20) throw new Error("nextScreen never terminates");
+/** Walks the wizard from the first step to the end, collecting every stop. */
+function walk(): WizardStep[] {
+  const seen: WizardStep[] = [FIRST_STEP];
+  let step: WizardStep | null = FIRST_STEP;
+  while ((step = nextStep(step))) {
+    seen.push(step);
+    if (seen.length > 20) throw new Error("nextStep never terminates");
   }
   return seen;
 }
 
 describe("wizard navigation", () => {
-  it("visits every sub-step before leaving the first phase", () => {
-    const path = walk();
-    expect(path.filter((s) => s.phase === 1).map((s) => (s as { sub: string }).sub)).toEqual([
-      ...PROVIDER_SUB_ORDER,
-    ]);
+  it("visits every step, in order, exactly once", () => {
+    expect(walk()).toEqual([...STEP_ORDER]);
   });
 
   it("ends, rather than looping", () => {
-    const path = walk();
-    expect(path.at(-1)).toEqual({ phase: 3 });
-    expect(nextScreen({ phase: 3 })).toBeNull();
+    expect(nextStep("review")).toBeNull();
   });
 
-  it("has no way back out of the last screen", () => {
+  it("has no way back out of the last step", () => {
     // The provider exists by then. A back button there would re-run creation
     // and make a second one.
-    expect(previousScreen({ phase: 3 })).toBeNull();
+    expect(previousStep("review")).toBeNull();
   });
 
-  it("returns from each screen to the one before it", () => {
-    for (const screen of walk().slice(1, -1)) {
-      const back = previousScreen(screen);
+  it("returns from each step to the one before it", () => {
+    for (const step of walk().slice(1, -1)) {
+      const back = previousStep(step);
       expect(back).not.toBeNull();
-      expect(nextScreen(back!)).toEqual(screen);
+      expect(nextStep(back!)).toBe(step);
     }
   });
 
-  it("offers no way back from the very first screen", () => {
-    expect(previousScreen(FIRST_SCREEN)).toBeNull();
+  it("offers no way back from the very first step", () => {
+    expect(previousStep(FIRST_STEP)).toBeNull();
   });
 
-  it("counts the sub-steps only where there are any", () => {
-    expect(subProgress({ phase: 1, sub: "type" })).toEqual({ current: 1, total: 3 });
-    expect(subProgress({ phase: 1, sub: "location" })).toEqual({ current: 3, total: 3 });
-    expect(subProgress({ phase: 2 })).toBeNull();
+  it("counts every step, so the rail can say how many are left", () => {
+    expect(stepProgress("type")).toEqual({ current: 1, total: STEP_ORDER.length });
+    expect(stepProgress("review")).toEqual({
+      current: STEP_ORDER.length,
+      total: STEP_ORDER.length,
+    });
   });
 
-  it("lets a chip go back but never forward", () => {
-    // Forward would skip the step that creates the provider, and every screen
+  it("lets a rail row go back but never forward", () => {
+    // Forward would skip the step that creates the provider, and every step
     // after it needs one to exist.
-    expect(isReachable({ phase: 1, sub: "type" }, { phase: 2 })).toBe(true);
-    expect(isReachable({ phase: 3 }, { phase: 2 })).toBe(false);
-    expect(isReachable({ phase: 2 }, { phase: 2 })).toBe(true);
+    expect(isReachable("type", "payout")).toBe(true);
+    expect(isReachable("review", "payout")).toBe(false);
+    expect(isReachable("payout", "payout")).toBe(true);
   });
 });
 

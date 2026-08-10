@@ -1,56 +1,74 @@
-import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { Trans, useTranslation } from "react-i18next";
 import { useOnboarding } from "@/features/onboarding/viewmodel/use-onboarding";
-import { PhaseChips } from "@/features/onboarding/ui/wizard-chrome";
+import { WizardLayout } from "@/features/onboarding/ui/wizard-chrome";
 import { PhaseProvider } from "@/features/onboarding/ui/phases/phase-provider";
 import { PhasePayout } from "@/features/onboarding/ui/phases/phase-payout";
+import { PhaseDocuments } from "@/features/onboarding/ui/phases/phase-documents";
 import { PhaseReview } from "@/features/onboarding/ui/phases/phase-review";
-import type { OnboardingPhase } from "@/features/onboarding/domain/screen-model";
+import { STEP_ORDER, type WizardStep } from "@/features/onboarding/domain/screen-model";
 
 /**
  * The provider onboarding wizard.
  *
- * Narrow and centred, and outside the provider zone entirely — see the route.
- * The shell's sidebar would offer Members and Settings to someone whose
- * provider does not exist yet, and exits at the one moment leaving loses work.
+ * The rail and the content, with each step's screen swapped into the right-hand
+ * column. Nothing here decides anything — the viewmodel owns the state and the
+ * domain owns the order.
  */
 export function OnboardingPage() {
   const { t } = useTranslation("onboarding");
   const vm = useOnboarding();
 
-  const labels: Record<OnboardingPhase, string> = {
-    1: t("phase.provider"),
-    2: t("phase.payout"),
-    3: t("phase.review"),
-  };
+  const labels = Object.fromEntries(
+    STEP_ORDER.map((step) => [step, t(`step.${step}`)]),
+  ) as Record<WizardStep, string>;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pt-10 pb-16">
-      {/* The last screen has nothing left to navigate, and a progress strip
-          above a finished thing invites the reader to look for a next step. */}
-      {vm.screen.phase !== 3 ? (
-        <PhaseChips current={vm.screen} onSeek={vm.setScreen} labels={labels} />
-      ) : (
-        <div className="h-8" />
-      )}
-
+    <WizardLayout
+      current={vm.step}
+      onSeek={vm.setStep}
+      labels={labels}
+      statusLabels={{
+        done: t("status.done"),
+        active: t("status.active"),
+        stepPrefix: t("status.stepPrefix"),
+      }}
+      // The last screen has nothing behind it to go back to.
+      {...(vm.step !== "type" && vm.step !== "review" ? { onBack: vm.back } : {})}
+      backLabel={t("back")}
+      footerNote={
+        <Trans
+          t={t}
+          i18nKey="alreadyProvider"
+          components={{
+            a: (
+              <Link
+                to="/provider/overview"
+                className="font-semibold text-[var(--color-primary)]"
+              />
+            ),
+          }}
+        />
+      }
+    >
       {vm.submitError ? (
         <p className="type-body-medium mb-6 rounded-[var(--radius-field)] bg-[color-mix(in_srgb,var(--color-destructive)_10%,transparent)] px-4 py-3 text-[var(--color-destructive)]">
           {vm.submitError}
         </p>
       ) : null}
 
-      {vm.screen.phase === 1 ? (
+      {vm.step === "type" || vm.step === "identity" || vm.step === "location" ? (
         <PhaseProvider
-          sub={vm.screen.sub}
+          sub={vm.step}
           draft={vm.draft}
           errors={vm.errors}
           onChange={vm.patch}
-          {...(vm.screen.sub !== "type" ? { onBack: vm.back } : {})}
+          {...(vm.step !== "type" ? { onBack: vm.back } : {})}
           onContinue={vm.advance}
         />
       ) : null}
 
-      {vm.screen.phase === 2 ? (
+      {vm.step === "payout" ? (
         <PhasePayout
           draft={vm.draft}
           onChange={vm.patch}
@@ -59,7 +77,18 @@ export function OnboardingPage() {
         />
       ) : null}
 
-      {vm.screen.phase === 3 ? <PhaseReview providerName={vm.draft.name} /> : null}
-    </div>
+      {vm.step === "documents" ? (
+        <PhaseDocuments
+          draft={vm.draft}
+          uploads={vm.uploads}
+          onUpload={vm.addUpload}
+          onRemove={vm.removeUpload}
+          onBack={vm.back}
+          onContinue={vm.advance}
+        />
+      ) : null}
+
+      {vm.step === "review" ? <PhaseReview providerName={vm.draft.name} /> : null}
+    </WizardLayout>
   );
 }

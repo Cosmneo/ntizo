@@ -5,11 +5,11 @@ import type { ProviderType } from "@ntizo/shared";
 import { useCities } from "@/features/account/viewmodel/use-cities";
 import type { ProviderDraft } from "@/features/onboarding/domain/draft";
 import type { FieldKey } from "@/features/onboarding/domain/validation";
-import type { ProviderSubStep } from "@/features/onboarding/domain/screen-model";
+import type { WizardStep } from "@/features/onboarding/domain/screen-model";
 import { Field, HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
 
 export interface PhaseProviderProps {
-  sub: ProviderSubStep;
+  sub: WizardStep;
   draft: ProviderDraft;
   errors: Partial<Record<FieldKey, string>>;
   onChange: (patch: Partial<ProviderDraft>) => void;
@@ -42,7 +42,6 @@ export function PhaseProvider({
     return (
       <>
         <HeroQuestion
-          eyebrow={t("type.eyebrow")}
           title={t("type.title")}
           description={t("type.description")}
         />
@@ -102,7 +101,6 @@ export function PhaseProvider({
     return (
       <>
         <HeroQuestion
-          eyebrow={t("identity.eyebrow")}
           title={t(`identity.title.${draft.type || "individual"}`)}
           description={t("identity.description")}
         />
@@ -142,7 +140,6 @@ export function PhaseProvider({
   return (
     <>
       <HeroQuestion
-        eyebrow={t("location.eyebrow")}
         title={t("location.title")}
         description={t("location.description")}
       />
@@ -189,6 +186,34 @@ export function PhaseProvider({
             onChange={(e) => onChange({ street: e.target.value })}
           />
         </Field>
+
+        <Field label={t("location.postalCodeLabel")} htmlFor="postal-code">
+          <Input
+            id="postal-code"
+            value={draft.postalCode}
+            onChange={(e) => onChange({ postalCode: e.target.value })}
+          />
+        </Field>
+
+        {/* Full width, and last. It is the field that carries the most in this
+            market — many places here have no numbered street — so it gets room
+            to write a sentence rather than half a row. */}
+        <div className="sm:col-span-2">
+          <Field
+            label={ta("addrDirections")}
+            hint={t("location.directionsHint")}
+            htmlFor="directions"
+          >
+            <textarea
+              id="directions"
+              rows={2}
+              value={draft.directions}
+              onChange={(e) => onChange({ directions: e.target.value })}
+              placeholder={ta("addrDirectionsPlaceholder")}
+              className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
+            />
+          </Field>
+        </div>
       </div>
 
       <StepFooter onBack={onBack} backLabel={t("back")}>

@@ -1,10 +1,14 @@
 import type { ProviderDraft } from "./draft";
-import type { ProviderSubStep } from "./screen-model";
+import type { WizardStep } from "./screen-model";
 
 export type FieldKey = "type" | "name" | "country" | "city" | "payout";
 
-/** Which fields belong to which screen. One list, so nothing validates twice or not at all. */
-const STEP_FIELDS: Record<ProviderSubStep, FieldKey[]> = {
+/**
+ * Which fields belong to which screen. One list, so nothing validates twice or
+ * not at all. The steps after `location` collect nothing required — a payout
+ * account and a document can both follow the application.
+ */
+const STEP_FIELDS: Partial<Record<WizardStep, FieldKey[]>> = {
   type: ["type"],
   identity: ["name"],
   location: ["country", "city"],
@@ -29,11 +33,11 @@ const VALIDATORS: Record<FieldKey, (d: ProviderDraft) => string | null> = {
 };
 
 export function validateStep(
-  step: ProviderSubStep,
+  step: WizardStep,
   draft: ProviderDraft,
 ): Partial<Record<FieldKey, string>> {
   const errors: Partial<Record<FieldKey, string>> = {};
-  for (const field of STEP_FIELDS[step]) {
+  for (const field of STEP_FIELDS[step] ?? []) {
     const message = VALIDATORS[field](draft);
     if (message) errors[field] = message;
   }
@@ -48,7 +52,7 @@ export function validateStep(
  * empty first one would fail at submit with an error pointing three screens
  * back.
  */
-export function firstIncompleteStep(draft: ProviderDraft): ProviderSubStep | null {
+export function firstIncompleteStep(draft: ProviderDraft): WizardStep | null {
   for (const step of ["type", "identity", "location"] as const) {
     if (Object.keys(validateStep(step, draft)).length > 0) return step;
   }

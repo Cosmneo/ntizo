@@ -45,7 +45,6 @@ export function PhasePayout({
   return (
     <>
       <HeroQuestion
-        eyebrow={t("payout.eyebrow")}
         title={t("payout.title")}
         description={t("payout.description")}
       />
@@ -128,15 +127,18 @@ export function PhasePayout({
         </div>
       ) : null}
 
-      <StepFooter onBack={onBack} backLabel={t("back")}>
-        <div className="flex items-center gap-3">
+      <StepFooter
+        onBack={onBack}
+        backLabel={t("back")}
+        secondary={
           <Button type="button" variant="outline" onClick={onContinue}>
             {t("payout.skip")}
           </Button>
-          <Button onClick={onContinue} disabled={!draft.payoutType}>
-            {t("continue")}
-          </Button>
-        </div>
+        }
+      >
+        <Button onClick={onContinue} disabled={!draft.payoutType}>
+          {t("continue")}
+        </Button>
       </StepFooter>
     </>
   );

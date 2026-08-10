@@ -434,3 +434,43 @@ happens to pass both explicitly.
 
 **Trigger:** the next caller of `providerList` that omits `limit` or `offset`,
 or the next slice written from that file as a template.
+
+## 21. Provider documents: the bytes have nowhere to go
+
+The onboarding wizard's document step is built — the types, the requirements per
+provider type, the slots, the file picker, the client-side MIME and size checks.
+What it does with a chosen file is remember its name and size. **Nothing is
+uploaded, because there is no bucket.**
+
+`apps/backend/api/wrangler.jsonc` declares no `r2_buckets`. Finishing this needs,
+in order:
+
+1. `wrangler r2 bucket create ntizo-documents` (per stage), and the binding added
+   to `wrangler.jsonc`.
+2. An upload route on the Worker — documents must NOT be publicly readable, so
+   reads go through a signed, short-lived URL rather than a public bucket.
+   Re-check MIME and size server-side: the `accept` attribute and the length
+   check in `FilePicker` only spare the user a doomed upload.
+3. A `provider_document` table (provider, type, storage key, status, who
+   reviewed it and when) and the admin queue reading it.
+4. **A retention decision.** These are identity documents. Keeping them
+   indefinitely "just in case" is the default and the wrong answer; how long
+   they are held after a decision has to be chosen deliberately.
+
+**Trigger:** before any provider is asked to upload anything in an environment
+that is not local. The step currently *looks* like it works.
+
+## 22. Address autocomplete needs a Google key
+
+The location step collects country, city, district, street, postal code and
+free-text directions by hand. The reference app fills all of those from one
+search box via Google Places (`AutocompleteSuggestion`), plus a map pin.
+
+That needs a Google Maps API key with Places enabled and billing active on the
+account — not something that can be provisioned from here. The fields are
+already the ones a parsed place would populate, so the autocomplete drops in
+above them without changing what is stored.
+
+**Trigger:** when a Google Cloud project with billing exists. Until then the
+manual fields are the whole feature, and `directions` carries the weight —
+which in this market is the honest arrangement anyway.

@@ -25,10 +25,7 @@ export function PhaseReview({ providerName }: { providerName: string }) {
       </span>
 
       <div className="mt-6">
-        <HeroQuestion
-          eyebrow={t("review.eyebrow")}
-          title={t("review.title", { name: providerName })}
-        />
+        <HeroQuestion title={t("review.title", { name: providerName })} />
       </div>
 
       <p className="type-body mx-auto -mt-4 max-w-[52ch] text-[var(--color-muted-foreground)]">
