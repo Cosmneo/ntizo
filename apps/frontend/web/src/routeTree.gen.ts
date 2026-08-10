@@ -27,7 +27,6 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
-import { Route as ProviderAccountRouteImport } from './routes/provider/account'
 import { Route as ProviderMembersRouteImport } from './routes/provider/members'
 import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
 import { Route as ProviderOverviewRouteImport } from './routes/provider/overview'
@@ -131,11 +130,6 @@ const ProviderIndexRoute = ProviderIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProviderRouteRoute,
 } as any)
-const ProviderAccountRoute = ProviderAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
 const ProviderMembersRoute = ProviderMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -226,7 +220,6 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
-  '/provider/account': typeof ProviderAccountRoute
   '/provider/members': typeof ProviderMembersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/provider/overview': typeof ProviderOverviewRoute
@@ -256,7 +249,6 @@ export interface FileRoutesByTo {
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
-  '/provider/account': typeof ProviderAccountRoute
   '/provider/members': typeof ProviderMembersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/provider/overview': typeof ProviderOverviewRoute
@@ -292,7 +284,6 @@ export interface FileRoutesById {
   '/_public/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
-  '/provider/account': typeof ProviderAccountRoute
   '/provider/members': typeof ProviderMembersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/provider/overview': typeof ProviderOverviewRoute
@@ -327,7 +318,6 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin/dashboard'
     | '/admin/users'
-    | '/provider/account'
     | '/provider/members'
     | '/provider/no-provider'
     | '/provider/overview'
@@ -357,7 +347,6 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin/dashboard'
     | '/admin/users'
-    | '/provider/account'
     | '/provider/members'
     | '/provider/no-provider'
     | '/provider/overview'
@@ -392,7 +381,6 @@ export interface FileRouteTypes {
     | '/_public/sign-up'
     | '/admin/dashboard'
     | '/admin/users'
-    | '/provider/account'
     | '/provider/members'
     | '/provider/no-provider'
     | '/provider/overview'
@@ -548,13 +536,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/provider/'
       preLoaderRoute: typeof ProviderIndexRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/account': {
-      id: '/provider/account'
-      path: '/account'
-      fullPath: '/provider/account'
-      preLoaderRoute: typeof ProviderAccountRouteImport
       parentRoute: typeof ProviderRouteRoute
     }
     '/provider/members': {
@@ -736,7 +717,6 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface ProviderRouteRouteChildren {
-  ProviderAccountRoute: typeof ProviderAccountRoute
   ProviderMembersRoute: typeof ProviderMembersRoute
   ProviderNoProviderRoute: typeof ProviderNoProviderRoute
   ProviderOverviewRoute: typeof ProviderOverviewRoute
@@ -745,7 +725,6 @@ interface ProviderRouteRouteChildren {
 }
 
 const ProviderRouteRouteChildren: ProviderRouteRouteChildren = {
-  ProviderAccountRoute: ProviderAccountRoute,
   ProviderMembersRoute: ProviderMembersRoute,
   ProviderNoProviderRoute: ProviderNoProviderRoute,
   ProviderOverviewRoute: ProviderOverviewRoute,

@@ -10,7 +10,8 @@
     "members": "Leden",
     "invites": "Uitnodigingen",
     "settings": "Instellingen",
-    "myAccount": "Mijn account"
+    "myAccount": "Mijn account",
+    "you": "Jij"
   },
   "myAccount": "Mijn account",
   "noProvider": "Geen aanbieder",
@@ -77,5 +78,6 @@
     "individualProviderCannotHaveMembers": "Individuele aanbieders kunnen geen extra leden hebben.",
     "notProviderMember": "Je hebt geen toegang tot deze organisatie.",
     "generic": "Er is iets misgegaan. Probeer het opnieuw."
-  }
+  },
+  "backToApp": "Terug naar Ntizo"
 }

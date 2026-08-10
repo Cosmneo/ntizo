@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  ArrowLeft,
   Check,
   ChevronsUpDown,
   LogOut,
@@ -10,7 +11,6 @@ import {
   Moon,
   Palette,
   Plus,
-  Settings,
   Sun,
   User as UserIcon,
 } from "lucide-react";
@@ -35,10 +35,12 @@ import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
+import { applyThemePreference } from "@/shared/lib/theme";
 
 export function SidebarUserMenu() {
   const { t } = useTranslation("provider");
   const { t: ta } = useTranslation("auth");
+  const { t: tc } = useTranslation("common");
   const { data: user } = useCurrentUser();
   const { providers, activeProvider, setActive } = useActiveProvider();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -105,36 +107,8 @@ export function SidebarUserMenu() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onSelect={() => nav({ to: "/provider/account" })}>
-                <UserIcon className="h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => nav({ to: "/provider/settings" })}>
-                <Settings className="h-4 w-4" />
-                {t("settings")}
-              </DropdownMenuItem>
-
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Palette className="h-4 w-4" />
-                  Theme
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-44">
-                  <DropdownMenuItem>
-                    <Sun className="h-4 w-4" />
-                    Light
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Moon className="h-4 w-4" />
-                    Dark
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Monitor className="h-4 w-4" />
-                    System
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-
+              {/* The workspace comes first: this menu sits inside a workspace
+                  and switching one is the thing most often wanted here. */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="py-2">
                   <div className="mr-2 flex aspect-square h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
@@ -175,6 +149,45 @@ export function SidebarUserMenu() {
                   <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
                     <Plus className="h-4 w-4" />
                     {t("createNew")}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator />
+
+              {/* Both of these leave the workspace, and that is the point. An
+                  account belongs to a person; this zone belongs to an
+                  organization. Keeping them here rather than in the sidebar is
+                  what keeps the sidebar about the business. */}
+              <DropdownMenuItem onSelect={() => nav({ to: "/account" })}>
+                <UserIcon className="h-4 w-4" />
+                {t("nav.myAccount")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => nav({ to: "/" })}>
+                <ArrowLeft className="h-4 w-4" />
+                {t("backToApp")}
+              </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Palette className="h-4 w-4" />
+                  {tc("appearance")}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-44">
+                  {/* These did nothing at all before — three labels wired to no
+                      handler. A theme picker that leaves the theme alone is
+                      worse than no theme picker. */}
+                  <DropdownMenuItem onSelect={() => applyThemePreference("light")}>
+                    <Sun className="h-4 w-4" />
+                    {tc("themeLight")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => applyThemePreference("dark")}>
+                    <Moon className="h-4 w-4" />
+                    {tc("themeDark")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => applyThemePreference("system")}>
+                    <Monitor className="h-4 w-4" />
+                    {tc("themeSystem")}
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>

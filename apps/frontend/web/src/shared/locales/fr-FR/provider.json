@@ -10,7 +10,8 @@
     "members": "Membres",
     "invites": "Invitations",
     "settings": "Paramètres",
-    "myAccount": "Mon compte"
+    "myAccount": "Mon compte",
+    "you": "Vous"
   },
   "myAccount": "Mon compte",
   "noProvider": "Aucun prestataire",
@@ -77,5 +78,6 @@
     "individualProviderCannotHaveMembers": "Les prestataires individuels ne peuvent pas avoir de membres supplémentaires.",
     "notProviderMember": "Vous n'avez pas accès à cette organisation.",
     "generic": "Une erreur s'est produite. Veuillez réessayer."
-  }
+  },
+  "backToApp": "Retour à Ntizo"
 }

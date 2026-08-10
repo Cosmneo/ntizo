@@ -5,6 +5,8 @@
   "nav": {
     "platform": "Platform",
     "dashboard": "Dashboard",
-    "users": "Users"
+    "users": "Users",
+    "you": "You",
+    "myAccount": "My account"
   }
 }

@@ -12,6 +12,10 @@ import {
   PageHeaderContext,
   type PageHeaderState,
 } from "@/shared/lib/page-header";
+import {
+  applyThemePreference,
+  readThemePreference,
+} from "@/shared/lib/theme";
 
 export function ProviderShell({ children }: { children: ReactNode }) {
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
@@ -23,9 +27,13 @@ export function ProviderShell({ children }: { children: ReactNode }) {
     [header, action],
   );
 
+  // The zone used to force dark on the document while it was mounted. That
+  // made the theme picker in its own sidebar menu a lie — three labels that
+  // changed nothing while this ran — and it overrode a choice the person had
+  // already made everywhere else in the app. The preference is global; a zone
+  // is not the right level to have an opinion about it.
   useEffect(() => {
-    document.documentElement.classList.add("dark");
-    return () => document.documentElement.classList.remove("dark");
+    applyThemePreference(readThemePreference());
   }, []);
 
   return (

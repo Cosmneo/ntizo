@@ -5,6 +5,8 @@
   "nav": {
     "platform": "Plateforme",
     "dashboard": "Tableau de bord",
-    "users": "Utilisateurs"
+    "users": "Utilisateurs",
+    "you": "Vous",
+    "myAccount": "Mon compte"
   }
 }
