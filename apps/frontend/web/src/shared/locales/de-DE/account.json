@@ -1,0 +1,20 @@
+{
+  "accountTitle": "Mein Konto",
+  "accountSubtitle": "Deine Daten bei Ntizo.",
+  "fieldName": "Name",
+  "fieldEmail": "E-Mail",
+  "fieldPhone": "Mobilnummer",
+  "notSet": "Nicht angegeben",
+  "verifyPhonePrompt": "Nummer noch nicht bestätigt?",
+  "verifyPhoneLink": "Telefonnummer bestätigen",
+  "bookingsTitle": "Meine Buchungen",
+  "bookingsEmptyTitle": "Noch keine Buchungen",
+  "bookingsEmptyBody": "Sobald du eine Leistung buchst, steht sie hier mit Datum und Status.",
+  "browseProviders": "Anbieter ansehen",
+  "messagesTitle": "Nachrichten",
+  "messagesEmptyTitle": "Keine Nachrichten",
+  "messagesEmptyBody": "Unterhaltungen mit Anbietern erscheinen hier, sobald du eine beginnst.",
+  "favouritesTitle": "Favoriten",
+  "favouritesEmptyTitle": "Noch nichts gespeichert",
+  "favouritesEmptyBody": "Speichere Anbieter, die dir gefallen, und finde sie später hier wieder."
+}

@@ -7,5 +7,10 @@
   "notFoundTitle": "Proveedor no encontrado",
   "notFoundBody": "Es posible que este proveedor haya sido eliminado, o que el enlace sea incorrecto.",
   "backToDirectory": "Volver a todos los proveedores",
-  "noDescription": "Este proveedor todavía no ha añadido una descripción."
+  "noDescription": "Este proveedor todavía no ha añadido una descripción.",
+  "searchPlaceholder": "¿Qué servicio necesitas?",
+  "searchLabel": "Buscar servicios",
+  "searchAction": "Buscar",
+  "noResultsFor": "Nada coincide con \"{{query}}\". Prueba otra palabra.",
+  "resultsFor": "{{count}} resultado(s) para \"{{query}}\""
 }

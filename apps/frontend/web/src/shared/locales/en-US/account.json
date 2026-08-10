@@ -1,0 +1,20 @@
+{
+  "accountTitle": "My account",
+  "accountSubtitle": "Your details on Ntizo.",
+  "fieldName": "Name",
+  "fieldEmail": "Email",
+  "fieldPhone": "Mobile number",
+  "notSet": "Not set",
+  "verifyPhonePrompt": "Haven't confirmed your number yet?",
+  "verifyPhoneLink": "Verify your phone",
+  "bookingsTitle": "My bookings",
+  "bookingsEmptyTitle": "No bookings yet",
+  "bookingsEmptyBody": "When you book a service, it will show up here with its date and status.",
+  "browseProviders": "Browse providers",
+  "messagesTitle": "Messages",
+  "messagesEmptyTitle": "No messages",
+  "messagesEmptyBody": "Conversations with providers will appear here once you start one.",
+  "favouritesTitle": "Favourites",
+  "favouritesEmptyTitle": "Nothing saved yet",
+  "favouritesEmptyBody": "Save the providers you like and find them here later."
+}

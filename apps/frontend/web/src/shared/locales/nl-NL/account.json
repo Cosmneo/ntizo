@@ -1,0 +1,20 @@
+{
+  "accountTitle": "Mijn account",
+  "accountSubtitle": "Je gegevens op Ntizo.",
+  "fieldName": "Naam",
+  "fieldEmail": "E-mail",
+  "fieldPhone": "Mobiel nummer",
+  "notSet": "Niet ingevuld",
+  "verifyPhonePrompt": "Je nummer nog niet bevestigd?",
+  "verifyPhoneLink": "Verifieer je telefoon",
+  "bookingsTitle": "Mijn boekingen",
+  "bookingsEmptyTitle": "Nog geen boekingen",
+  "bookingsEmptyBody": "Zodra je een dienst boekt, staat die hier met datum en status.",
+  "browseProviders": "Aanbieders bekijken",
+  "messagesTitle": "Berichten",
+  "messagesEmptyTitle": "Geen berichten",
+  "messagesEmptyBody": "Gesprekken met aanbieders verschijnen hier zodra je er een begint.",
+  "favouritesTitle": "Favorieten",
+  "favouritesEmptyTitle": "Nog niets opgeslagen",
+  "favouritesEmptyBody": "Bewaar de aanbieders die je leuk vindt en vind ze hier terug."
+}

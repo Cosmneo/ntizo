@@ -1,25 +1,16 @@
 {
   "signIn": "Inloggen",
-  "admin": "Beheer",
   "favorites": "Favorieten",
   "heroLine1": "Vind het.",
   "heroLine2": "Boek het.",
   "heroLine3": "Klaar.",
-  "search": "Zoeken",
   "nav": {
     "explore": "Ontdekken",
     "services": "Diensten",
     "providers": "Aanbieders",
-    "howItWorks": "Hoe het werkt"
+    "howItWorks": "Hoe het werkt",
+    "categories": "Categorieën"
   },
-  "searchWhat": "Wat",
-  "searchWhere": "Waar",
-  "searchWhen": "Wanneer",
-  "searchWho": "Wie",
-  "anyService": "Elke dienst",
-  "addCity": "Stad toevoegen",
-  "anyDate": "Elke datum",
-  "onePerson": "1 persoon",
   "footer": {
     "support": "Ondersteuning",
     "company": "Bedrijf",
@@ -36,7 +27,54 @@
     "ourSocials": "Onze kanalen",
     "acceptedPayments": "Geaccepteerde betaalmethoden",
     "downloadOnThe": "Download in de",
-    "getItOn": "Verkrijgbaar via"
+    "getItOn": "Verkrijgbaar via",
+    "blurb": "De marktplaats voor betrouwbare lokale diensten. Vinden, boeken en betalen op één plek.",
+    "helpCentre": "Helpcentrum"
   },
-  "heroSubtitle": "De wereldwijde marktplaats voor betrouwbare lokale diensten. Ontdek aanbieders, vergelijk pakketten en boek in seconden."
+  "heroSubtitle": "De wereldwijde marktplaats voor betrouwbare lokale diensten. Ontdek aanbieders, vergelijk pakketten en boek in seconden.",
+  "cities": "Maputo · Matola · Beira",
+  "place": "Maputo, Mozambique",
+  "seeAll": "Bekijk alle →",
+  "promiseRated": "Best beoordeelde aanbieders",
+  "promiseEscrow": "Betaling vastgehouden tot het klaar is",
+  "promiseVerified": "Geverifieerde identiteit",
+  "categoriesTitle": "Dienstcategorieën",
+  "categoriesBlurb": "Wat er deze week het meest geboekt wordt in Maputo.",
+  "cat": {
+    "plumbing": "Loodgieterswerk",
+    "electrical": "Elektra",
+    "cleaning": "Huisschoonmaak",
+    "mechanic": "Automonteur",
+    "cooking": "Kok",
+    "delivery": "Bezorging",
+    "building": "Metselaar",
+    "driving": "Chauffeurs"
+  },
+  "popularTitle": "Populaire diensten",
+  "popularBlurb": "Aanbieders met klussen die beoordeeld zijn door wie ze inhuurde.",
+  "role": {
+    "photographer": "Bruidsfotograaf",
+    "designer": "Grafisch ontwerper",
+    "electrician": "Gecertificeerd elektricien"
+  },
+  "badgeRecommended": "Aanbevolen",
+  "badgeTopRated": "Best beoordeeld",
+  "reviewCount": "{{count}} beoordeling",
+  "reviewCount_other": "{{count}} beoordelingen",
+  "fromPrice": "vanaf",
+  "storiesTitle": "Verhalen van klanten",
+  "storiesBlurb": "Wie boekte, en wat er gedaan werd.",
+  "story": {
+    "leak": "Lek dezelfde dag verholpen",
+    "leakQuote": "Kwam om 9 uur zoals afgesproken en liet alles schoon achter.",
+    "wiring": "Complete elektrische installatie",
+    "wiringQuote": "Legde alles uit voordat hij begon. De prijs bleef gelijk.",
+    "office": "Kantoorschoonmaak",
+    "officeQuote": "Team van vier, drie uur, brandschoon.",
+    "tutoring": "Bijles wiskunde",
+    "tutoringQuote": "Mijn dochter ging in één trimester van 11 naar 16."
+  },
+  "zeroFeeTitle": "commissie voor wie het werk doet.",
+  "zeroFeeBody": "De 10% is voor de klant en komt boven op jouw prijs. Wat je met de klant afspreekt, is precies wat je ontvangt.",
+  "zeroFeeCta": "Aanbiedersaccount aanmaken"
 }

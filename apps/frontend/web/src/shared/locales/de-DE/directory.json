@@ -7,5 +7,10 @@
   "notFoundTitle": "Anbieter nicht gefunden",
   "notFoundBody": "Dieser Anbieter wurde möglicherweise entfernt, oder der Link ist falsch.",
   "backToDirectory": "Zurück zu allen Anbietern",
-  "noDescription": "Dieser Anbieter hat noch keine Beschreibung hinzugefügt."
+  "noDescription": "Dieser Anbieter hat noch keine Beschreibung hinzugefügt.",
+  "searchPlaceholder": "Welche Leistung brauchst du?",
+  "searchLabel": "Leistungen suchen",
+  "searchAction": "Suchen",
+  "noResultsFor": "Nichts passt zu \"{{query}}\". Versuch ein anderes Wort.",
+  "resultsFor": "{{count}} Treffer für \"{{query}}\""
 }

@@ -7,5 +7,10 @@
   "notFoundTitle": "Prestataire introuvable",
   "notFoundBody": "Ce prestataire a peut-être été supprimé, ou le lien est incorrect.",
   "backToDirectory": "Retour à tous les prestataires",
-  "noDescription": "Ce prestataire n'a pas encore ajouté de description."
+  "noDescription": "Ce prestataire n'a pas encore ajouté de description.",
+  "searchPlaceholder": "De quel service avez-vous besoin ?",
+  "searchLabel": "Rechercher des services",
+  "searchAction": "Rechercher",
+  "noResultsFor": "Rien ne correspond à \"{{query}}\". Essayez un autre mot.",
+  "resultsFor": "{{count}} résultat(s) pour \"{{query}}\""
 }

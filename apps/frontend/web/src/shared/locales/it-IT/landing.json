@@ -1,25 +1,16 @@
 {
   "signIn": "Accedi",
-  "admin": "Amministrazione",
   "favorites": "Preferiti",
   "heroLine1": "Trovalo.",
   "heroLine2": "Prenotalo.",
   "heroLine3": "Fatto.",
-  "search": "Cerca",
   "nav": {
     "explore": "Esplora",
     "services": "Servizi",
     "providers": "Fornitori",
-    "howItWorks": "Come funziona"
+    "howItWorks": "Come funziona",
+    "categories": "Categorie"
   },
-  "searchWhat": "Cosa",
-  "searchWhere": "Dove",
-  "searchWhen": "Quando",
-  "searchWho": "Chi",
-  "anyService": "Qualsiasi servizio",
-  "addCity": "Aggiungi città",
-  "anyDate": "Qualsiasi data",
-  "onePerson": "1 persona",
   "footer": {
     "support": "Assistenza",
     "company": "Azienda",
@@ -36,7 +27,54 @@
     "ourSocials": "I nostri canali",
     "acceptedPayments": "Metodi di pagamento accettati",
     "downloadOnThe": "Scarica su",
-    "getItOn": "Disponibile su"
+    "getItOn": "Disponibile su",
+    "blurb": "Il mercato dei servizi locali di fiducia. Trova, prenota e paga in un unico posto.",
+    "helpCentre": "Centro assistenza"
   },
-  "heroSubtitle": "Il marketplace globale dei servizi locali di fiducia. Scopri fornitori, confronta pacchetti e prenota in pochi secondi."
+  "heroSubtitle": "Il marketplace globale dei servizi locali di fiducia. Scopri fornitori, confronta pacchetti e prenota in pochi secondi.",
+  "cities": "Maputo · Matola · Beira",
+  "place": "Maputo, Mozambico",
+  "seeAll": "Vedi tutte →",
+  "promiseRated": "Fornitori più votati",
+  "promiseEscrow": "Pagamento trattenuto fino al termine",
+  "promiseVerified": "Identità verificata",
+  "categoriesTitle": "Categorie di servizi",
+  "categoriesBlurb": "I servizi più richiesti a Maputo questa settimana.",
+  "cat": {
+    "plumbing": "Idraulica",
+    "electrical": "Elettricità",
+    "cleaning": "Pulizie domestiche",
+    "mechanic": "Meccanico",
+    "cooking": "Cuoco",
+    "delivery": "Consegne",
+    "building": "Muratore",
+    "driving": "Autisti"
+  },
+  "popularTitle": "Servizi popolari",
+  "popularBlurb": "Fornitori con lavori valutati da chi li ha ingaggiati.",
+  "role": {
+    "photographer": "Fotografo di matrimoni",
+    "designer": "Grafica",
+    "electrician": "Elettricista certificato"
+  },
+  "badgeRecommended": "Consigliato",
+  "badgeTopRated": "Più votato",
+  "reviewCount": "{{count}} recensione",
+  "reviewCount_other": "{{count}} recensioni",
+  "fromPrice": "a partire da",
+  "storiesTitle": "Storie dei clienti",
+  "storiesBlurb": "Chi ha prenotato, e cosa è stato fatto.",
+  "story": {
+    "leak": "Perdita risolta in giornata",
+    "leakQuote": "Arrivato alle 9 come concordato e ha lasciato tutto pulito.",
+    "wiring": "Impianto elettrico completo",
+    "wiringQuote": "Ha spiegato tutto prima di iniziare. Il prezzo non è cambiato.",
+    "office": "Pulizia dell'ufficio",
+    "officeQuote": "Squadra di quattro, tre ore, impeccabile.",
+    "tutoring": "Ripetizioni di matematica",
+    "tutoringQuote": "Mia figlia è passata da 11 a 16 in un trimestre."
+  },
+  "zeroFeeTitle": "di commissione per chi lavora.",
+  "zeroFeeBody": "La commissione del 10% è a carico del cliente e si somma al tuo prezzo. Quello che concordi con il cliente è esattamente quello che ricevi.",
+  "zeroFeeCta": "Crea un account fornitore"
 }

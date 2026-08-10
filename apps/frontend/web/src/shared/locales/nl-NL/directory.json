@@ -7,5 +7,10 @@
   "notFoundTitle": "Aanbieder niet gevonden",
   "notFoundBody": "Deze aanbieder is mogelijk verwijderd, of de link klopt niet.",
   "backToDirectory": "Terug naar alle aanbieders",
-  "noDescription": "Deze aanbieder heeft nog geen beschrijving toegevoegd."
+  "noDescription": "Deze aanbieder heeft nog geen beschrijving toegevoegd.",
+  "searchPlaceholder": "Welke dienst zoek je?",
+  "searchLabel": "Diensten zoeken",
+  "searchAction": "Zoeken",
+  "noResultsFor": "Niets komt overeen met \"{{query}}\". Probeer een ander woord.",
+  "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\""
 }

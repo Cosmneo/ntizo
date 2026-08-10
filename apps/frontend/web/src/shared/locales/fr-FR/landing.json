@@ -1,25 +1,16 @@
 {
   "signIn": "Se connecter",
-  "admin": "Administration",
   "favorites": "Favoris",
   "heroLine1": "Trouvez.",
   "heroLine2": "Réservez.",
   "heroLine3": "C'est fait.",
-  "search": "Rechercher",
   "nav": {
     "explore": "Explorer",
     "services": "Services",
     "providers": "Prestataires",
-    "howItWorks": "Comment ça marche"
+    "howItWorks": "Comment ça marche",
+    "categories": "Catégories"
   },
-  "searchWhat": "Quoi",
-  "searchWhere": "Où",
-  "searchWhen": "Quand",
-  "searchWho": "Qui",
-  "anyService": "Tout service",
-  "addCity": "Ajouter une ville",
-  "anyDate": "Toute date",
-  "onePerson": "1 personne",
   "footer": {
     "support": "Assistance",
     "company": "Entreprise",
@@ -36,7 +27,54 @@
     "ourSocials": "Nos réseaux",
     "acceptedPayments": "Moyens de paiement acceptés",
     "downloadOnThe": "Télécharger sur",
-    "getItOn": "Disponible sur"
+    "getItOn": "Disponible sur",
+    "blurb": "La place de marché des services locaux de confiance. Trouvez, réservez et payez au même endroit.",
+    "helpCentre": "Centre d'aide"
   },
-  "heroSubtitle": "La place de marché mondiale des services locaux de confiance. Découvrez des prestataires, comparez les offres et réservez en quelques secondes."
+  "heroSubtitle": "La place de marché mondiale des services locaux de confiance. Découvrez des prestataires, comparez les offres et réservez en quelques secondes.",
+  "cities": "Maputo · Matola · Beira",
+  "place": "Maputo, Mozambique",
+  "seeAll": "Voir tout →",
+  "promiseRated": "Prestataires les mieux notés",
+  "promiseEscrow": "Paiement retenu jusqu'à la fin",
+  "promiseVerified": "Identité vérifiée",
+  "categoriesTitle": "Catégories de services",
+  "categoriesBlurb": "Ce que l'on réserve le plus à Maputo cette semaine.",
+  "cat": {
+    "plumbing": "Plomberie",
+    "electrical": "Électricité",
+    "cleaning": "Ménage",
+    "mechanic": "Mécanicien",
+    "cooking": "Cuisinier",
+    "delivery": "Livraisons",
+    "building": "Maçon",
+    "driving": "Chauffeurs"
+  },
+  "popularTitle": "Services populaires",
+  "popularBlurb": "Des prestataires dont les interventions ont été notées par leurs clients.",
+  "role": {
+    "photographer": "Photographe de mariage",
+    "designer": "Graphiste",
+    "electrician": "Électricien certifié"
+  },
+  "badgeRecommended": "Recommandé",
+  "badgeTopRated": "Mieux noté",
+  "reviewCount": "{{count}} avis",
+  "reviewCount_other": "{{count}} avis",
+  "fromPrice": "à partir de",
+  "storiesTitle": "Histoires de clients",
+  "storiesBlurb": "Ceux qui ont réservé, et ce qui a été fait.",
+  "story": {
+    "leak": "Fuite réparée le jour même",
+    "leakQuote": "Arrivé à 9h comme convenu et a tout laissé propre.",
+    "wiring": "Installation électrique complète",
+    "wiringQuote": "Tout expliqué avant de commencer. Le prix n'a pas bougé.",
+    "office": "Nettoyage du bureau",
+    "officeQuote": "Une équipe de quatre, trois heures, impeccable.",
+    "tutoring": "Cours de maths",
+    "tutoringQuote": "Ma fille est passée de 11 à 16 en un trimestre."
+  },
+  "zeroFeeTitle": "de commission pour ceux qui travaillent.",
+  "zeroFeeBody": "Les 10 % sont à la charge du client et s'ajoutent à votre prix. Ce que vous convenez avec le client est exactement ce que vous recevez.",
+  "zeroFeeCta": "Créer un compte prestataire"
 }

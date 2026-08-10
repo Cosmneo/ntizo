@@ -1,25 +1,16 @@
 {
   "signIn": "Entrar",
-  "admin": "Administração",
   "favorites": "Favoritos",
   "heroLine1": "Encontre.",
   "heroLine2": "Reserve.",
   "heroLine3": "Feito.",
-  "search": "Pesquisar",
   "nav": {
     "explore": "Explorar",
     "services": "Serviços",
     "providers": "Prestadores",
-    "howItWorks": "Como funciona"
+    "howItWorks": "Como funciona",
+    "categories": "Categorias"
   },
-  "searchWhat": "O quê",
-  "searchWhere": "Onde",
-  "searchWhen": "Quando",
-  "searchWho": "Quem",
-  "anyService": "Qualquer serviço",
-  "addCity": "Adicionar cidade",
-  "anyDate": "Qualquer data",
-  "onePerson": "1 pessoa",
   "footer": {
     "support": "Apoio",
     "company": "Empresa",
@@ -36,7 +27,54 @@
     "ourSocials": "As nossas redes",
     "acceptedPayments": "Métodos de pagamento aceites",
     "downloadOnThe": "Descarregar na",
-    "getItOn": "Disponível no"
+    "getItOn": "Disponível no",
+    "blurb": "O mercado de serviços locais de confiança. Encontre, reserve e pague num só sítio.",
+    "helpCentre": "Centro de ajuda"
   },
-  "heroSubtitle": "O mercado global de serviços locais de confiança. Descubra prestadores, compare pacotes e reserve em segundos."
+  "heroSubtitle": "O mercado global de serviços locais de confiança. Descubra prestadores, compare pacotes e reserve em segundos.",
+  "cities": "Maputo · Matola · Beira",
+  "place": "Maputo, Moçambique",
+  "seeAll": "Ver todas →",
+  "promiseRated": "Prestadores mais bem avaliados",
+  "promiseEscrow": "Pagamento retido até concluir",
+  "promiseVerified": "Identidade verificada",
+  "categoriesTitle": "Categorias de serviços",
+  "categoriesBlurb": "O que mais se contrata em Maputo, esta semana.",
+  "cat": {
+    "plumbing": "Canalização",
+    "electrical": "Electricidade",
+    "cleaning": "Limpeza de casa",
+    "mechanic": "Mecânico",
+    "cooking": "Cozinheiro",
+    "delivery": "Entregas",
+    "building": "Pedreiro",
+    "driving": "Motoristas"
+  },
+  "popularTitle": "Serviços populares",
+  "popularBlurb": "Prestadores com histórico de trabalhos avaliados por quem os contratou.",
+  "role": {
+    "photographer": "Fotógrafo de casamentos",
+    "designer": "Designer gráfica",
+    "electrician": "Electricista certificado"
+  },
+  "badgeRecommended": "Recomendado",
+  "badgeTopRated": "Top avaliado",
+  "reviewCount": "{{count}} avaliação",
+  "reviewCount_other": "{{count}} avaliações",
+  "fromPrice": "a partir de",
+  "storiesTitle": "Histórias de clientes",
+  "storiesBlurb": "Quem já contratou, e o que ficou feito.",
+  "story": {
+    "leak": "Fuga resolvida no próprio dia",
+    "leakQuote": "Chegou às 9h como combinado e deixou tudo limpo.",
+    "wiring": "Instalação eléctrica completa",
+    "wiringQuote": "Explicou tudo antes de começar. O preço não mudou.",
+    "office": "Limpeza do escritório",
+    "officeQuote": "Equipa de quatro, três horas, ficou impecável.",
+    "tutoring": "Explicações de matemática",
+    "tutoringQuote": "A minha filha passou de 11 para 16 num trimestre."
+  },
+  "zeroFeeTitle": "de comissão para quem trabalha.",
+  "zeroFeeBody": "A taxa de 10% é do cliente e vem por cima do seu preço. O que combina com o cliente é exactamente o que recebe.",
+  "zeroFeeCta": "Criar conta de prestador"
 }

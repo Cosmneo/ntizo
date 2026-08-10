@@ -1,0 +1,20 @@
+{
+  "accountTitle": "Mi cuenta",
+  "accountSubtitle": "Tus datos en Ntizo.",
+  "fieldName": "Nombre",
+  "fieldEmail": "Correo electrónico",
+  "fieldPhone": "Número de móvil",
+  "notSet": "Sin rellenar",
+  "verifyPhonePrompt": "¿Aún no has confirmado tu número?",
+  "verifyPhoneLink": "Verifica tu móvil",
+  "bookingsTitle": "Mis reservas",
+  "bookingsEmptyTitle": "Todavía no hay reservas",
+  "bookingsEmptyBody": "Cuando reserves un servicio aparecerá aquí con su fecha y estado.",
+  "browseProviders": "Ver proveedores",
+  "messagesTitle": "Mensajes",
+  "messagesEmptyTitle": "Sin mensajes",
+  "messagesEmptyBody": "Las conversaciones con proveedores aparecerán aquí cuando inicies una.",
+  "favouritesTitle": "Favoritos",
+  "favouritesEmptyTitle": "Aún no has guardado nada",
+  "favouritesEmptyBody": "Guarda los proveedores que te gusten y encuéntralos aquí después."
+}
