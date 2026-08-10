@@ -4,6 +4,7 @@ import { useOnboarding } from "@/features/onboarding/viewmodel/use-onboarding";
 import { WizardLayout } from "@/features/onboarding/ui/wizard-chrome";
 import { PhaseProvider } from "@/features/onboarding/ui/phases/phase-provider";
 import { PhasePayout } from "@/features/onboarding/ui/phases/phase-payout";
+import { PhaseMedia } from "./phases/phase-media";
 import { PhaseDocuments } from "@/features/onboarding/ui/phases/phase-documents";
 import { PhaseReview } from "@/features/onboarding/ui/phases/phase-review";
 import { STEP_ORDER, type WizardStep } from "@/features/onboarding/domain/screen-model";
@@ -43,7 +44,7 @@ export function OnboardingPage() {
           components={{
             a: (
               <Link
-                to="/provider/overview"
+                to="/provider"
                 className="font-semibold text-[var(--color-primary)]"
               />
             ),
@@ -68,6 +69,10 @@ export function OnboardingPage() {
         />
       ) : null}
 
+      {vm.step === "media" ? (
+        <PhaseMedia onBack={vm.back} onContinue={vm.advance} />
+      ) : null}
+
       {vm.step === "payout" ? (
         <PhasePayout
           draft={vm.draft}
@@ -83,6 +88,8 @@ export function OnboardingPage() {
           uploads={vm.uploads}
           onUpload={vm.addUpload}
           onRemove={vm.removeUpload}
+          busy={vm.uploadingDocument}
+          errorKey={vm.documentErrorKey}
           onBack={vm.back}
           onContinue={vm.advance}
         />

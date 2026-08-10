@@ -12,7 +12,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
@@ -20,7 +20,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <HeaderActions showAccount={false} />
           </div>
         </header>
-        <main className="flex-1 p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </SidebarInset>

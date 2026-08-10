@@ -45,7 +45,7 @@ export function PhaseReview({ providerName }: { providerName: string }) {
       </ul>
 
       <div className="mt-9">
-        <Link to="/provider/overview">
+        <Link to="/provider">
           <Button>{t("review.cta")}</Button>
         </Link>
       </div>

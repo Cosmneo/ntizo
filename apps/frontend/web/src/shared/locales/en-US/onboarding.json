@@ -85,6 +85,7 @@
     "type": "Business type",
     "identity": "Your details",
     "location": "Location",
+    "media": "Photos",
     "payout": "Getting paid",
     "documents": "Documents",
     "review": "Under review"
@@ -132,5 +133,14 @@
     "active": "In progress",
     "stepPrefix": "Step"
   },
-  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>"
+  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>",
+  "media": {
+    "title": "Show customers your work",
+    "description": "A logo and a few photographs are the difference between a listing people scroll past and one they tap. You can add more at any time.",
+    "portfolioHint": "Photographs of finished work. These live on your business page — each service you create later gets photos of its own.",
+    "empty": "Add up to {{max}} to start with.",
+    "full": "That is {{max}} — plenty to start. Add the rest from settings.",
+    "later": "Nothing here is required to finish. Everything can be added or replaced later from your workspace settings.",
+    "skip": "Skip for now"
+  }
 }

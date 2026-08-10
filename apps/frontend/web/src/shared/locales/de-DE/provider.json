@@ -109,5 +109,48 @@
   "settingsSave": "Save changes",
   "settingsSaving": "Saving…",
   "settingsDiscard": "Discard",
-  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay.",
+  "settingsBrand": "Marke und Fotos",
+  "settingsBrandBlurb": "Wie Ihr Betrieb für Suchende auf dem Marktplatz aussieht.",
+  "settingsLogo": "Logo",
+  "settingsLogoHint": "Erscheint neben Ihrem Namen in den Ergebnissen. Quadratisch funktioniert am besten. JPG, PNG oder WebP, bis 5 MB.",
+  "settingsPortfolio": "Portfolio",
+  "settingsPortfolioHint": "Fotos Ihrer Arbeit. Sie erscheinen auf der Betriebsseite — einzelne Leistungen bekommen eigene Fotos.",
+  "settingsPortfolioEmpty": "Noch keine Fotos.",
+  "settingsPortfolioFull": "Sie haben das Limit von {{max}} Fotos erreicht.",
+  "settingsImageChoose": "Bild wählen",
+  "settingsImageReplace": "Ersetzen",
+  "settingsImageRemove": "Entfernen",
+  "settingsImageAdd": "Foto hinzufügen",
+  "mediaReject": {
+    "type": "Diese Datei ist kein JPG-, PNG- oder WebP-Bild.",
+    "size": "Dieses Bild ist größer als 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an.",
+    "FORBIDDEN": "Sie dürfen für diesen Betrieb keine Bilder hochladen.",
+    "TOO_LARGE": "Dieses Bild ist größer als 5 MB.",
+    "UNACCEPTED_TYPE": "Diese Datei ist kein JPG-, PNG- oder WebP-Bild.",
+    "MEDIA_STORAGE_UNCONFIGURED": "Der Bildspeicher ist in dieser Umgebung noch nicht eingerichtet.",
+    "GENERIC": "Der Upload ist fehlgeschlagen. Prüfen Sie Ihre Verbindung."
+  },
+  "settingsDocuments": "Verifizierung",
+  "settingsDocumentsBlurb": "Ausweis- und Compliance-Dokumente. Alles, was Sie bei der Anmeldung übersprungen haben, lässt sich hier nachholen.",
+  "documentsReplace": "Ersetzen",
+  "documentsReplaceWarning": "Ein akzeptiertes Dokument zu ersetzen schickt es zurück in die Prüfung. Das bereits akzeptierte bleibt erhalten — ein neuer Upload erbt dessen Freigabe nie.",
+  "documentsReverification": "Ein bereits akzeptiertes Dokument wurde ersetzt, daher wird Ihre Verifizierung erneut geprüft. Sie können währenddessen weiterarbeiten.",
+  "documentStatus": {
+    "pending": "Wird geprüft",
+    "accepted": "Akzeptiert",
+    "rejected": "Abgelehnt",
+    "superseded": "Ersetzt"
+  },
+  "documentError": {
+    "UNAUTHENTICATED": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an.",
+    "FORBIDDEN": "Sie dürfen für diesen Betrieb keine Dokumente hochladen.",
+    "TOO_LARGE": "Diese Datei ist größer als 10 MB.",
+    "UNACCEPTED_TYPE": "Diese Datei ist kein JPG, PNG, WebP oder PDF.",
+    "DOCUMENT_STORAGE_UNCONFIGURED": "Der Dokumentspeicher ist in dieser Umgebung noch nicht eingerichtet.",
+    "GENERIC": "Der Upload ist fehlgeschlagen. Prüfen Sie Ihre Verbindung."
+  }
 }

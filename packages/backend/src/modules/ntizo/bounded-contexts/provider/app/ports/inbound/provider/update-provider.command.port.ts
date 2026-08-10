@@ -5,6 +5,8 @@ export interface UpdateProviderInput {
   providerId: string;
   name?: string;
   description?: string;
+  logoKey?: string;
+  photoKeys?: string[];
   address?: AddressProps;
 }
 

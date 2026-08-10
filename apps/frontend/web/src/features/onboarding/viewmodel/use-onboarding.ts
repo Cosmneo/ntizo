@@ -24,6 +24,7 @@ import {
 } from "@/features/onboarding/domain/validation";
 import { useCreateProvider } from "@/features/provider/viewmodel/use-provider-mutations";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { useDocumentUpload } from "@/features/provider/viewmodel/use-document-upload";
 
 /**
  * The wizard's state, and the one place that decides when to talk to the server.
@@ -36,7 +37,7 @@ import { useActiveProvider } from "@/features/provider/viewmodel/use-active-prov
 export function useOnboarding() {
   const navigate = useNavigate();
   const create = useCreateProvider();
-  const { setActive, refresh } = useActiveProvider();
+  const { setActive, refresh, activeProvider } = useActiveProvider();
 
   const [step, setStep] = useState<WizardStep>(FIRST_STEP);
   const [uploads, setUploads] = useState<DocumentUpload[]>([]);
@@ -97,11 +98,13 @@ export function useOnboarding() {
       });
       await refresh();
       if (providerId) setActive(providerId);
-      setStep("payout");
+      setStep("media");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "error.createFailed");
     }
   }, [draft, create, refresh, setActive]);
+
+  const documentUpload = useDocumentUpload(activeProvider?.id);
 
   const advance = useCallback(() => {
     const stepErrors = validateStep(step, draft);
@@ -130,17 +133,28 @@ export function useOnboarding() {
   }, [step, navigate]);
 
   /**
-   * Records a picked document.
+   * Sends a picked document, then records it.
    *
-   * Metadata only, for now — see the route's note. One entry per type, because
-   * a second upload of the same document replaces it rather than queueing two.
+   * A real upload now, not metadata held in memory. It runs at a step that
+   * comes after the one creating the provider, which it has to: the route
+   * refuses anyone who is not a member of the provider they are uploading for,
+   * so there is no key space to write into until the row exists.
+   *
+   * One entry per type in the local list, because a second upload of the same
+   * document replaces it rather than queueing two — and on the server the same
+   * thing happens properly: the previous row is superseded, never overwritten.
    */
-  const addUpload = useCallback((type: ProviderDocumentType, file: File) => {
-    setUploads((current) => [
-      ...current.filter((u) => u.type !== type),
-      { type, fileName: file.name, size: file.size },
-    ]);
-  }, []);
+  const addUpload = useCallback(
+    async (type: ProviderDocumentType, file: File) => {
+      const result = await documentUpload.send(type, file);
+      if (!result) return;
+      setUploads((current) => [
+        ...current.filter((u) => u.type !== type),
+        { type, fileName: file.name, size: file.size },
+      ]);
+    },
+    [documentUpload],
+  );
 
   const removeUpload = useCallback((type: ProviderDocumentType) => {
     setUploads((current) => current.filter((u) => u.type !== type));
@@ -158,6 +172,8 @@ export function useOnboarding() {
       uploads,
       addUpload,
       removeUpload,
+      uploadingDocument: documentUpload.busy,
+      documentErrorKey: documentUpload.errorKey,
       advance,
       back,
     }),
@@ -171,6 +187,8 @@ export function useOnboarding() {
       uploads,
       addUpload,
       removeUpload,
+      documentUpload.busy,
+      documentUpload.errorKey,
       advance,
       back,
     ],

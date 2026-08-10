@@ -109,5 +109,48 @@
   "settingsSave": "Save changes",
   "settingsSaving": "Saving…",
   "settingsDiscard": "Discard",
-  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay.",
+  "settingsBrand": "Merk en foto's",
+  "settingsBrandBlurb": "Hoe je bedrijf eruitziet voor wie de marktplaats doorzoekt.",
+  "settingsLogo": "Logo",
+  "settingsLogoHint": "Staat naast je naam in de resultaten. Vierkant werkt het best. JPG, PNG of WebP, tot 5 MB.",
+  "settingsPortfolio": "Portfolio",
+  "settingsPortfolioHint": "Foto's van je werk. Deze staan op je bedrijfspagina — losse diensten krijgen hun eigen foto's.",
+  "settingsPortfolioEmpty": "Nog geen foto's.",
+  "settingsPortfolioFull": "Je hebt de limiet van {{max}} foto's bereikt.",
+  "settingsImageChoose": "Afbeelding kiezen",
+  "settingsImageReplace": "Vervangen",
+  "settingsImageRemove": "Verwijderen",
+  "settingsImageAdd": "Foto toevoegen",
+  "mediaReject": {
+    "type": "Dat bestand is geen JPG-, PNG- of WebP-afbeelding.",
+    "size": "Die afbeelding is groter dan 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Je sessie is verlopen. Log opnieuw in en probeer het nogmaals.",
+    "FORBIDDEN": "Je mag geen afbeeldingen uploaden voor dit bedrijf.",
+    "TOO_LARGE": "Die afbeelding is groter dan 5 MB.",
+    "UNACCEPTED_TYPE": "Dat bestand is geen JPG-, PNG- of WebP-afbeelding.",
+    "MEDIA_STORAGE_UNCONFIGURED": "Afbeeldingsopslag is nog niet ingesteld in deze omgeving.",
+    "GENERIC": "Het uploaden is mislukt. Controleer je verbinding en probeer opnieuw."
+  },
+  "settingsDocuments": "Verificatie",
+  "settingsDocumentsBlurb": "Identiteits- en compliancedocumenten. Alles wat je bij de aanmelding oversloeg kun je hier afronden.",
+  "documentsReplace": "Vervangen",
+  "documentsReplaceWarning": "Een geaccepteerd document vervangen stuurt het terug ter beoordeling. Het al geaccepteerde blijft bewaard — een nieuwe upload erft die goedkeuring nooit.",
+  "documentsReverification": "Een al geaccepteerd document is vervangen, dus je verificatie wordt opnieuw beoordeeld. Je kunt ondertussen blijven werken.",
+  "documentStatus": {
+    "pending": "Wacht op beoordeling",
+    "accepted": "Geaccepteerd",
+    "rejected": "Afgewezen",
+    "superseded": "Vervangen"
+  },
+  "documentError": {
+    "UNAUTHENTICATED": "Je sessie is verlopen. Log opnieuw in en probeer het nogmaals.",
+    "FORBIDDEN": "Je mag geen documenten uploaden voor dit bedrijf.",
+    "TOO_LARGE": "Dat bestand is groter dan 10 MB.",
+    "UNACCEPTED_TYPE": "Dat bestand is geen JPG, PNG, WebP of PDF.",
+    "DOCUMENT_STORAGE_UNCONFIGURED": "Documentopslag is nog niet ingesteld in deze omgeving.",
+    "GENERIC": "Het uploaden is mislukt. Controleer je verbinding en probeer opnieuw."
+  }
 }

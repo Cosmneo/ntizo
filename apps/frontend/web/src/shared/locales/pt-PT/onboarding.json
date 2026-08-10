@@ -85,6 +85,7 @@
     "type": "Tipo de negócio",
     "identity": "Identificação",
     "location": "Localização",
+    "media": "Fotografias",
     "payout": "Como receber",
     "documents": "Documentos",
     "review": "Em análise"
@@ -132,5 +133,14 @@
     "active": "Em curso",
     "stepPrefix": "Passo"
   },
-  "alreadyProvider": "Já é prestador? <a>Ir para o painel</a>"
+  "alreadyProvider": "Já é prestador? <a>Ir para o painel</a>",
+  "media": {
+    "title": "Mostre o seu trabalho",
+    "description": "Um logótipo e algumas fotografias fazem a diferença entre um anúncio que passa despercebido e um em que as pessoas tocam. Pode acrescentar mais quando quiser.",
+    "portfolioHint": "Fotografias de trabalhos concluídos. Ficam na página do seu negócio — cada serviço que criar depois tem as suas próprias fotografias.",
+    "empty": "Comece com até {{max}}.",
+    "full": "São {{max}} — mais do que suficiente para começar. Acrescente as restantes nas definições.",
+    "later": "Nada aqui é obrigatório para terminar. Pode acrescentar ou substituir tudo mais tarde nas definições do workspace.",
+    "skip": "Ignorar por agora"
+  }
 }

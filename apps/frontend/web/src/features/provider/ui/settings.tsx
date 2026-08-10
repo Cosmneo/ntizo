@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Building2, MapPin, Undo2 } from "lucide-react";
+import { AlertTriangle, Building2, Images, MapPin, ShieldCheck, Undo2 } from "lucide-react";
 import {
   Badge,
   Button,
   CitySelect,
   CountrySelect,
+  GalleryUpload,
   Input,
+  LogoUpload,
   Label,
   Select,
   cn,
 } from "@ntizo/frontend-ui";
-import { PROVIDER_TYPES, ProviderStatus } from "@ntizo/shared";
+import { PROVIDER_TYPES, ProviderStatus, ProviderType } from "@ntizo/shared";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useCities } from "@/features/account/viewmodel/use-cities";
 import { providerErrorMessage } from "../viewmodel/error-message";
@@ -22,7 +24,13 @@ import {
   useDeactivateProvider,
   useUpdateProvider,
 } from "../viewmodel/use-provider-mutations";
+import { useImageUpload } from "../viewmodel/use-image-upload";
+import { DocumentsSection } from "./documents-section";
+import { SettingsNav, type SettingsSection } from "./settings-nav";
 import type { ProviderAddress, ProviderDetail } from "../domain/types";
+
+/** Matches the column cap on the mutation input. */
+const MAX_PORTFOLIO_IMAGES = 24;
 
 /** Everything the form owns, in one shape so "has it changed" is one comparison. */
 interface Draft {
@@ -33,6 +41,9 @@ interface Draft {
   district: string;
   country: string;
   postalCode: string;
+  /** Keys, not URLs — the server composes URLs when it reads them back. */
+  logoKey: string | null;
+  photoKeys: string[];
 }
 
 function draftFrom(detail: ProviderDetail | undefined): Draft {
@@ -45,6 +56,8 @@ function draftFrom(detail: ProviderDetail | undefined): Draft {
     district: address.district ?? "",
     country: address.country ?? "MZ",
     postalCode: address.postalCode ?? "",
+    logoKey: detail?.logo?.key ?? null,
+    photoKeys: (detail?.photos ?? []).map((p) => p.key),
   };
 }
 
@@ -61,7 +74,7 @@ export function SettingsPage() {
   const { t: ta } = useTranslation("account");
   const { t: tc } = useTranslation("auth");
   const { activeProvider } = useActiveProvider();
-  const { data: detail, isLoading, error } = useProviderDetail(activeProvider?.id);
+  const { data: detail, isLoading, error, refetch } = useProviderDetail(activeProvider?.id);
   const updateMut = useUpdateProvider(activeProvider?.id ?? "");
   const deactivateMut = useDeactivateProvider();
   const nav = useNavigate();
@@ -75,14 +88,36 @@ export function SettingsPage() {
   useEffect(() => setDraft(saved), [saved]);
 
   const cityQuery = useCities(draft.country, draft.city);
+  const media = useImageUpload(activeProvider?.id);
+
+  // Where a just-uploaded key can be shown from. The saved pairs carry their
+  // own URL; an image uploaded a second ago is not in `detail` yet, so its URL
+  // is remembered here until the next refetch supplies it.
+  const [freshUrls, setFreshUrls] = useState<Record<string, string>>({});
+  const urlFor = (key: string): string | null =>
+    freshUrls[key] ??
+    detail?.photos?.find((p) => p.key === key)?.url ??
+    (detail?.logo?.key === key ? detail.logo.url : null);
 
   // What the save bar reads. Comparing the whole shape rather than tracking a
   // flag per field means a value edited and put back does not count as a
   // change — which is what "unsaved changes" should mean.
-  const dirty = useMemo(
-    () => (Object.keys(saved) as Array<keyof Draft>).some((k) => saved[k] !== draft[k]),
-    [saved, draft],
-  );
+  const changed = useMemo(() => {
+    const keys = Object.keys(saved) as Array<keyof Draft>;
+    return new Set(
+      keys.filter((k) => {
+        const a = saved[k];
+        const b = draft[k];
+        // `photoKeys` is an array: `!==` compares references and would report
+        // every render as a change, leaving the save bar permanently lit.
+        if (Array.isArray(a) && Array.isArray(b)) {
+          return a.length !== b.length || a.some((v, i) => v !== b[i]);
+        }
+        return a !== b;
+      }),
+    );
+  }, [saved, draft]);
+  const dirty = changed.size > 0;
 
   if (!activeProvider) return null;
   if (isLoading) return <p className="type-body">…</p>;
@@ -95,6 +130,41 @@ export function SettingsPage() {
   }
 
   const patch = (next: Partial<Draft>) => setDraft((d) => ({ ...d, ...next }));
+
+  // One source for both dots and copy: the set of fields that actually differ.
+  const navSections: SettingsSection[] = [
+    {
+      id: "brand",
+      label: t("settingsBrand"),
+      icon: <Images className="h-4 w-4" />,
+      dirty: changed.has("logoKey") || changed.has("photoKeys"),
+    },
+    {
+      id: "identity",
+      label: t("settingsIdentity"),
+      icon: <Building2 className="h-4 w-4" />,
+      dirty: changed.has("name") || changed.has("description"),
+    },
+    {
+      id: "address",
+      label: t("settingsAddress"),
+      icon: <MapPin className="h-4 w-4" />,
+      dirty: (["street", "city", "district", "country", "postalCode"] as const).some((k) =>
+        changed.has(k),
+      ),
+    },
+    {
+      id: "documents",
+      label: t("settingsDocuments"),
+      icon: <ShieldCheck className="h-4 w-4" />,
+    },
+    {
+      id: "danger",
+      label: t("dangerZone"),
+      icon: <AlertTriangle className="h-4 w-4" />,
+      tone: "danger",
+    },
+  ];
 
   async function save() {
     setMessage(null);
@@ -112,6 +182,8 @@ export function SettingsPage() {
           country: draft.country,
           postalCode: draft.postalCode.trim(),
         },
+        logoKey: draft.logoKey,
+        photoKeys: draft.photoKeys,
       });
       setMessage(t("settingsSaved"));
     } catch (err) {
@@ -129,7 +201,10 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl pb-28">
+    <div className="mx-auto max-w-6xl pb-28 lg:grid lg:grid-cols-[196px_minmax(0,1fr)] lg:gap-10">
+      <SettingsNav sections={navSections} title={t("settings")} />
+
+      <div className="min-w-0">
       {/* What the workspace IS, before what can be changed about it. These are
           the values support asks for and nobody can edit, so they are read-only
           facts rather than empty fields. */}
@@ -154,7 +229,73 @@ export function SettingsPage() {
         </dl>
       </section>
 
+<Section
+        id="brand"
+        icon={<Images className="h-5 w-5" />}
+        title={t("settingsBrand")}
+        blurb={t("settingsBrandBlurb")}
+      >
+        <div className="grid gap-7">
+          <LogoUpload
+            url={draft.logoKey ? urlFor(draft.logoKey) : null}
+            onSelect={(file) => {
+              void media.upload("logo", file).then((r) => {
+                if (!r) return;
+                if (r.url) setFreshUrls((m) => ({ ...m, [r.key]: r.url! }));
+                patch({ logoKey: r.key });
+              });
+            }}
+            onClear={() => patch({ logoKey: null })}
+            onReject={(reason) => setMessage(t(`mediaReject.${reason}`))}
+            busy={media.busy}
+            label={t("settingsLogo")}
+            hint={t("settingsLogoHint")}
+            chooseText={t("settingsImageChoose")}
+            replaceText={t("settingsImageReplace")}
+            removeText={t("settingsImageRemove")}
+          />
+
+          <div className="border-t border-[var(--color-border)] pt-6">
+            <p className="type-body-medium font-semibold">{t("settingsPortfolio")}</p>
+            <p className="type-caption mt-0.5 mb-4 text-[var(--color-muted-foreground)]">
+              {t("settingsPortfolioHint")}
+            </p>
+            <GalleryUpload
+              urls={draft.photoKeys.map(urlFor).filter((u): u is string => u !== null)}
+              onSelect={(files) => {
+                void media.uploadMany("photo", files).then((results) => {
+                  if (results.length === 0) return;
+                  setFreshUrls((m) => {
+                    const next = { ...m };
+                    for (const r of results) if (r.url) next[r.key] = r.url;
+                    return next;
+                  });
+                  patch({ photoKeys: [...draft.photoKeys, ...results.map((r) => r.key)] });
+                });
+              }}
+              onRemoveUrl={(url) =>
+                patch({ photoKeys: draft.photoKeys.filter((k) => urlFor(k) !== url) })
+              }
+              onReject={(reason) => setMessage(t(`mediaReject.${reason}`))}
+              busy={media.busy}
+              max={MAX_PORTFOLIO_IMAGES}
+              addText={t("settingsImageAdd")}
+              emptyText={t("settingsPortfolioEmpty")}
+              fullText={t("settingsPortfolioFull", { max: MAX_PORTFOLIO_IMAGES })}
+              removeText={t("settingsImageRemove")}
+            />
+          </div>
+
+          {media.errorKey && (
+            <p className="type-caption text-[var(--color-destructive)]">
+              {t(media.errorKey)}
+            </p>
+          )}
+        </div>
+      </Section>
+
       <Section
+        id="identity"
         icon={<Building2 className="h-5 w-5" />}
         title={t("settingsIdentity")}
         blurb={t("settingsIdentityBlurb")}
@@ -207,6 +348,7 @@ export function SettingsPage() {
       </Section>
 
       <Section
+        id="address"
         icon={<MapPin className="h-5 w-5" />}
         title={t("settingsAddress")}
         blurb={t("settingsAddressBlurb")}
@@ -269,7 +411,25 @@ export function SettingsPage() {
         </div>
       </Section>
 
+      {/* Everything the wizard let someone skip, finishable here — and the only
+          screen a rejection has to appear on. */}
       <Section
+        id="documents"
+        icon={<ShieldCheck className="h-5 w-5" />}
+        title={t("settingsDocuments")}
+        blurb={t("settingsDocumentsBlurb")}
+      >
+        <DocumentsSection
+          providerId={activeProvider.id}
+          providerType={(detail?.type ?? ProviderType.Individual) as ProviderType}
+          documents={detail?.documents ?? []}
+          reverificationRequestedAt={detail?.reverificationRequestedAt ?? null}
+          onUploaded={() => void refetch()}
+        />
+      </Section>
+
+      <Section
+        id="danger"
         icon={<AlertTriangle className="h-5 w-5 text-[var(--color-destructive)]" />}
         title={t("dangerZone")}
         blurb={t("deactivateWarning")}
@@ -284,7 +444,7 @@ export function SettingsPage() {
           appears only when dirty moves the page under the reader at the moment
           they edit their first field. */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5">
           <div className="min-w-0">
             <p className="type-body-medium font-semibold">
               {dirty ? t("settingsUnsaved") : (message ?? t("settingsNoChanges"))}
@@ -312,6 +472,7 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -334,12 +495,14 @@ function Fact({ label, value, mono }: { label: string; value: string; mono?: boo
 }
 
 function Section({
+  id,
   icon,
   title,
   blurb,
   tone,
   children,
 }: {
+  id: string;
   icon: React.ReactNode;
   title: string;
   blurb: string;
@@ -348,8 +511,10 @@ function Section({
 }) {
   return (
     <section
+      id={id}
+      // Anchored links land under the sticky page header without this.
       className={cn(
-        "mt-5 rounded-[var(--radius-card)] border p-6",
+        "mt-5 scroll-mt-6 rounded-[var(--radius-card)] border p-6",
         tone === "danger"
           ? "border-[color-mix(in_srgb,var(--color-destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-destructive)_4%,transparent)]"
           : "border-[var(--color-border)]",

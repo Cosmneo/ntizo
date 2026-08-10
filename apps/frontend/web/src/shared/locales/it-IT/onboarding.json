@@ -85,6 +85,7 @@
     "type": "Business type",
     "identity": "Your details",
     "location": "Location",
+    "media": "Foto",
     "payout": "Getting paid",
     "documents": "Documents",
     "review": "Under review"
@@ -132,5 +133,14 @@
     "active": "In progress",
     "stepPrefix": "Step"
   },
-  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>"
+  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>",
+  "media": {
+    "title": "Mostra il tuo lavoro",
+    "description": "Un logo e qualche fotografia fanno la differenza fra un annuncio che si scorre e uno che si apre. Puoi aggiungerne altre quando vuoi.",
+    "portfolioHint": "Fotografie di lavori finiti. Compaiono sulla pagina della tua attività — ogni servizio creato in seguito avrà le sue foto.",
+    "empty": "Inizia con un massimo di {{max}}.",
+    "full": "Sono {{max}}, più che sufficienti per iniziare. Aggiungi il resto dalle impostazioni.",
+    "later": "Nulla di tutto questo è necessario per finire. Puoi aggiungere o sostituire tutto in seguito dalle impostazioni.",
+    "skip": "Salta per ora"
+  }
 }

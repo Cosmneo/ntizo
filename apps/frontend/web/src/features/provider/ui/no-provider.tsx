@@ -22,7 +22,7 @@ export function NoProviderPage() {
       const { providerId } = await registerMut.mutateAsync({});
       await refresh();
       if (providerId) setActive(providerId);
-      nav({ to: "/provider/overview" });
+      nav({ to: "/provider" });
     } catch {
       /* error state via mutation */
     }
@@ -53,7 +53,7 @@ export function NoProviderPage() {
         onOpenChange={setDialogOpen}
         onCreated={(id) => {
           setActive(id);
-          nav({ to: "/provider/overview" });
+          nav({ to: "/provider" });
         }}
       />
     </div>

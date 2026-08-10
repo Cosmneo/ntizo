@@ -36,6 +36,20 @@
       "when": 1786374531949,
       "tag": "0004_tricky_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786387792128,
+      "tag": "0005_bent_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786388955070,
+      "tag": "0006_cultured_spirit",
+      "breakpoints": true
     }
   ]
 }

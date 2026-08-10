@@ -15,3 +15,4 @@ export type {
   ProviderInviteRow,
   NewProviderInviteRow,
 } from "./provider-invite.schema";
+export * from "./provider-document.schema";

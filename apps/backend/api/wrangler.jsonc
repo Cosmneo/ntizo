@@ -4,38 +4,67 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-02-12",
   "compatibility_flags": ["nodejs_compat"],
-  "vars": { "STAGE": "local", "LOG_LEVEL": "info" },
+  "vars": {
+    "STAGE": "local",
+    "LOG_LEVEL": "info",
+    "MEDIA_PUBLIC_URL_BASE": "http://localhost:8788/api/media"
+  },
 
   // Provider identity documents.
   //
   // `r2_buckets` is NOT inheritable in wrangler: an env that omits it gets no
   // bucket at all rather than this one, so every stage below declares its own.
   //
+  // Local media is served by this Worker's own `GET /api/media/*`, because
+  // `wrangler dev` writes to a simulated R2 on disk that no `r2.dev` URL can
+  // reach. Every deployed stage points at its bucket's public URL instead, so
+  // that route is dead code outside local development.
   // No `MEDIA_PUBLIC_URL_BASE` here, unlike the reference project's media
   // bucket. These are identity papers: nothing about them may be served from a
   // public r2.dev URL, and reads go through an authenticated Worker route so
   // the only way to see one is to be an administrator asking for it.
+  // Two buckets, two postures, and the difference is the whole design.
+  // DOCUMENTS holds identity papers and has no public URL — reads go through
+  // an authenticated Worker route. MEDIA holds logos and portfolio photos,
+  // which exist to be shown to strangers, so it is public-read and its base
+  // URL is how they are served.
   "r2_buckets": [
-    { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-local" }
+    { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-local" },
+    { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-local" }
   ],
 
   "env": {
     "dev": {
-      "vars": { "STAGE": "dev", "LOG_LEVEL": "info" },
+      "vars": {
+        "STAGE": "dev",
+        "LOG_LEVEL": "info",
+        "MEDIA_PUBLIC_URL_BASE": "https://pub-292f4ba0836f4ea88891c12dffdd4711.r2.dev"
+      },
       "r2_buckets": [
-        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" }
+        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" },
+        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-dev" }
       ]
     },
     "qa": {
-      "vars": { "STAGE": "qa", "LOG_LEVEL": "info" },
+      "vars": {
+        "STAGE": "qa",
+        "LOG_LEVEL": "info",
+        "MEDIA_PUBLIC_URL_BASE": "https://pub-5989f9bee8264cbf986a8bd2c8bd1e69.r2.dev"
+      },
       "r2_buckets": [
-        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" }
+        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" },
+        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-qa" }
       ]
     },
     "prod": {
-      "vars": { "STAGE": "prod", "LOG_LEVEL": "warn" },
+      "vars": {
+        "STAGE": "prod",
+        "LOG_LEVEL": "warn",
+        "MEDIA_PUBLIC_URL_BASE": "https://pub-a476c46654eb4872983914195f2918d8.r2.dev"
+      },
       "r2_buckets": [
-        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" }
+        { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" },
+        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-prod" }
       ]
     }
   }

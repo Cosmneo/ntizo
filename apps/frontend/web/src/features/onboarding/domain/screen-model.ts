@@ -11,6 +11,7 @@ export type WizardStep =
   | "type"
   | "identity"
   | "location"
+  | "media"
   | "payout"
   | "documents"
   | "review";
@@ -19,6 +20,9 @@ export const STEP_ORDER: readonly WizardStep[] = [
   "type",
   "identity",
   "location",
+  // Immediately after creation, because uploads are refused until the provider
+  // row exists — and next to identity in spirit, which is where it belongs.
+  "media",
   "payout",
   "documents",
   "review",

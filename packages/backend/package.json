@@ -34,7 +34,9 @@
     "./modules/ntizo/write/user": "./src/modules/ntizo/write/user/index.ts",
     "./modules/ntizo/public": "./src/modules/ntizo/public/schema.ts",
     "./modules/ntizo/public/provider": "./src/modules/ntizo/public/provider/index.ts",
-    "./modules/ntizo/public/city": "./src/modules/ntizo/public/city/index.ts"
+    "./modules/ntizo/public/city": "./src/modules/ntizo/public/city/index.ts",
+    "./modules/ntizo/media": "./src/modules/ntizo/shared/infrastructure/media/index.ts",
+    "./modules/ntizo/documents": "./src/modules/ntizo/shared/infrastructure/documents/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -57,7 +59,10 @@
     "db:cities:dev:seed": "STAGE=dev bun run scripts/seed-cities.ts",
     "db:cities:qa:seed": "STAGE=qa bun run scripts/seed-cities.ts",
     "db:cities:prod:seed": "STAGE=prod bun run scripts/seed-cities.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:slugs:dev:backfill": "STAGE=dev bun run scripts/backfill-provider-slugs.ts",
+    "db:slugs:qa:backfill": "STAGE=qa bun run scripts/backfill-provider-slugs.ts",
+    "db:slugs:prod:backfill": "STAGE=prod bun run scripts/backfill-provider-slugs.ts"
   },
   "dependencies": {
     "@cosmneo/onion-lasagna": "1.0.0-beta.3",

@@ -85,6 +85,7 @@
     "type": "Business type",
     "identity": "Your details",
     "location": "Location",
+    "media": "Fotos",
     "payout": "Getting paid",
     "documents": "Documents",
     "review": "Under review"
@@ -132,5 +133,14 @@
     "active": "In progress",
     "stepPrefix": "Step"
   },
-  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>"
+  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>",
+  "media": {
+    "title": "Zeigen Sie Ihre Arbeit",
+    "description": "Ein Logo und ein paar Fotos entscheiden darüber, ob ein Eintrag überscrollt oder angetippt wird. Sie können jederzeit mehr hinzufügen.",
+    "portfolioHint": "Fotos abgeschlossener Arbeiten. Sie stehen auf Ihrer Betriebsseite — jede später angelegte Leistung bekommt eigene Fotos.",
+    "empty": "Starten Sie mit bis zu {{max}}.",
+    "full": "Das sind {{max}} — genug für den Anfang. Den Rest über die Einstellungen.",
+    "later": "Nichts davon ist zum Abschließen nötig. Alles lässt sich später in den Einstellungen ergänzen oder ersetzen.",
+    "skip": "Vorerst überspringen"
+  }
 }

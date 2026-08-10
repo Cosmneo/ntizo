@@ -8,6 +8,7 @@ export * from "./components/checkbox";
 export * from "./components/phone-input";
 export * from "./components/city-select";
 export * from "./components/select";
+export * from "./components/image-upload";
 export * from "./components/date-picker";
 export * from "./components/country-select";
 export * from "./components/otp-input";

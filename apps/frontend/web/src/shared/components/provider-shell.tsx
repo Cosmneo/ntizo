@@ -40,7 +40,13 @@ export function ProviderShell({ children }: { children: ReactNode }) {
     <PageHeaderContext.Provider value={headerCtx}>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
+        {/* The shell holds the viewport; only `main` scrolls. Before this the
+            whole document scrolled, so the sidebar and the page header slid
+            away with the content — on a dashboard, where those two are how you
+            get anywhere, that is the navigation leaving exactly when a long
+            page makes it useful. It also broke every `sticky` inside a page,
+            which is why the settings rail appeared to come unstuck. */}
+        <SidebarInset className="h-svh min-h-0 overflow-hidden">
           <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-6">
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-6" />
@@ -84,7 +90,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
             )}
           </div>
         </header>
-          <main className="flex-1 p-6">
+          <main className="min-h-0 flex-1 overflow-y-auto p-6">
             {children}
           </main>
         </SidebarInset>

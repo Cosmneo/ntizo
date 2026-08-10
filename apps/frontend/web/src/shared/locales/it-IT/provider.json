@@ -109,5 +109,48 @@
   "settingsSave": "Save changes",
   "settingsSaving": "Saving…",
   "settingsDiscard": "Discard",
-  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay.",
+  "settingsBrand": "Marchio e foto",
+  "settingsBrandBlurb": "Come appare la tua attività a chi naviga nel marketplace.",
+  "settingsLogo": "Logo",
+  "settingsLogoHint": "Compare accanto al nome nei risultati. Il quadrato funziona meglio. JPG, PNG o WebP, fino a 5 MB.",
+  "settingsPortfolio": "Portfolio",
+  "settingsPortfolioHint": "Fotografie del tuo lavoro. Appaiono sulla pagina dell'attività — ogni servizio avrà le sue foto.",
+  "settingsPortfolioEmpty": "Ancora nessuna foto.",
+  "settingsPortfolioFull": "Hai raggiunto il limite di {{max}} foto.",
+  "settingsImageChoose": "Scegli immagine",
+  "settingsImageReplace": "Sostituisci",
+  "settingsImageRemove": "Rimuovi",
+  "settingsImageAdd": "Aggiungi foto",
+  "mediaReject": {
+    "type": "Quel file non è un'immagine JPG, PNG o WebP.",
+    "size": "Quell'immagine supera i 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "La sessione è scaduta. Accedi di nuovo e riprova.",
+    "FORBIDDEN": "Non hai il permesso di caricare immagini per questa attività.",
+    "TOO_LARGE": "Quell'immagine supera i 5 MB.",
+    "UNACCEPTED_TYPE": "Quel file non è un'immagine JPG, PNG o WebP.",
+    "MEDIA_STORAGE_UNCONFIGURED": "L'archiviazione immagini non è ancora configurata in questo ambiente.",
+    "GENERIC": "Il caricamento non è riuscito. Controlla la connessione e riprova."
+  },
+  "settingsDocuments": "Verifica",
+  "settingsDocumentsBlurb": "Documenti d'identità e di conformità. Tutto ciò che hai saltato in fase di registrazione può essere completato qui.",
+  "documentsReplace": "Sostituisci",
+  "documentsReplaceWarning": "Sostituire un documento accettato lo rimanda in verifica. Quello già accettato resta — un nuovo caricamento non ne eredita mai l'approvazione.",
+  "documentsReverification": "Un documento già accettato è stato sostituito, quindi la verifica è di nuovo in corso. Nel frattempo puoi continuare a lavorare.",
+  "documentStatus": {
+    "pending": "In attesa di verifica",
+    "accepted": "Accettato",
+    "rejected": "Rifiutato",
+    "superseded": "Sostituito"
+  },
+  "documentError": {
+    "UNAUTHENTICATED": "La sessione è scaduta. Accedi di nuovo e riprova.",
+    "FORBIDDEN": "Non hai il permesso di caricare documenti per questa attività.",
+    "TOO_LARGE": "Quel file supera i 10 MB.",
+    "UNACCEPTED_TYPE": "Quel file non è un JPG, PNG, WebP o PDF.",
+    "DOCUMENT_STORAGE_UNCONFIGURED": "L'archiviazione documenti non è ancora configurata in questo ambiente.",
+    "GENERIC": "Il caricamento non è riuscito. Controlla la connessione e riprova."
+  }
 }

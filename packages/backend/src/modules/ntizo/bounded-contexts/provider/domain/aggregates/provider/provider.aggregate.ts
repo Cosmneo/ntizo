@@ -41,6 +41,10 @@ export interface ProviderProps {
   slug: string;
   status: ProviderStatus;
   description?: string;
+  /** R2 key of the logo, not a URL — see the schema for why. */
+  logoKey?: string;
+  /** R2 keys of the portfolio, in the order they should be shown. */
+  photoKeys?: string[];
   address?: Address;
   createdAt: Date;
   updatedAt: Date;

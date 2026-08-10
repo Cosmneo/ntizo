@@ -109,5 +109,48 @@
   "settingsSave": "Save changes",
   "settingsSaving": "Saving…",
   "settingsDiscard": "Discard",
-  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay.",
+  "settingsBrand": "Marca y fotos",
+  "settingsBrandBlurb": "Cómo ven tu negocio quienes navegan por el marketplace.",
+  "settingsLogo": "Logotipo",
+  "settingsLogoHint": "Aparece junto a tu nombre en los resultados. Cuadrado funciona mejor. JPG, PNG o WebP, hasta 5 MB.",
+  "settingsPortfolio": "Portafolio",
+  "settingsPortfolioHint": "Fotografías de tu trabajo. Aparecen en la página del negocio: cada servicio tendrá sus propias fotos al crearlo.",
+  "settingsPortfolioEmpty": "Aún no hay fotos.",
+  "settingsPortfolioFull": "Has alcanzado el límite de {{max}} fotos.",
+  "settingsImageChoose": "Elegir imagen",
+  "settingsImageReplace": "Reemplazar",
+  "settingsImageRemove": "Quitar",
+  "settingsImageAdd": "Añadir foto",
+  "mediaReject": {
+    "type": "Ese archivo no es una imagen JPG, PNG o WebP.",
+    "size": "Esa imagen supera los 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Tu sesión caducó. Inicia sesión de nuevo y reintenta.",
+    "FORBIDDEN": "No tienes permiso para subir imágenes de este negocio.",
+    "TOO_LARGE": "Esa imagen supera los 5 MB.",
+    "UNACCEPTED_TYPE": "Ese archivo no es una imagen JPG, PNG o WebP.",
+    "MEDIA_STORAGE_UNCONFIGURED": "El almacenamiento de imágenes no está configurado en este entorno.",
+    "GENERIC": "La subida no se completó. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "settingsDocuments": "Verificación",
+  "settingsDocumentsBlurb": "Documentos de identidad y cumplimiento. Todo lo que omitiste al registrarte puede completarse aquí.",
+  "documentsReplace": "Reemplazar",
+  "documentsReplaceWarning": "Reemplazar un documento aceptado lo envía de nuevo a revisión. El ya aceptado se conserva: una subida nueva nunca hereda su aprobación.",
+  "documentsReverification": "Se reemplazó un documento que ya había sido aceptado, así que tu verificación se está revisando otra vez. Mientras tanto puedes seguir trabajando.",
+  "documentStatus": {
+    "pending": "En revisión",
+    "accepted": "Aceptado",
+    "rejected": "Rechazado",
+    "superseded": "Reemplazado"
+  },
+  "documentError": {
+    "UNAUTHENTICATED": "Tu sesión caducó. Inicia sesión de nuevo y reintenta.",
+    "FORBIDDEN": "No tienes permiso para subir documentos de este negocio.",
+    "TOO_LARGE": "Ese archivo supera los 10 MB.",
+    "UNACCEPTED_TYPE": "Ese archivo no es un JPG, PNG, WebP o PDF.",
+    "DOCUMENT_STORAGE_UNCONFIGURED": "El almacenamiento de documentos no está configurado en este entorno.",
+    "GENERIC": "La subida no se completó. Revisa tu conexión e inténtalo de nuevo."
+  }
 }

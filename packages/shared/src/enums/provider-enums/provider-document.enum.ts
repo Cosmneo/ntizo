@@ -105,6 +105,13 @@ export enum ProviderDocumentStatus {
   Accepted = "accepted",
   /** Checked and refused — unreadable, expired, not the right document. */
   Rejected = "rejected",
+  /**
+   * Replaced by a newer upload of the same type.
+   *
+   * Kept, never deleted. This is what stops an approval migrating onto bytes
+   * that arrived after it — see `provider-document.schema.ts`.
+   */
+  Superseded = "superseded",
 }
 
 export const PROVIDER_DOCUMENT_STATUSES = Object.values(ProviderDocumentStatus);
@@ -129,4 +136,34 @@ export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
 export function isAcceptedDocumentMime(mime: string): boolean {
   return (DOCUMENT_MIME_TYPES as readonly string[]).includes(mime);
+}
+
+/**
+ * Does replacing this document put the provider back in front of a reviewer?
+ *
+ * Yes exactly when the thing being replaced had already been approved. That is
+ * the case worth catching: a real document gets the badge, and the file is then
+ * swapped for a forgery that nobody ever checked. The replacement cannot
+ * inherit the old approval — it arrives `Pending` like any other upload — but
+ * the *provider* would otherwise stay `Active` on the strength of an approval
+ * that no longer describes anything on file.
+ *
+ * A pending or rejected document being replaced is just someone fixing a blurry
+ * photograph, and re-opening a review that never closed would only add noise.
+ */
+export function replacementNeedsReview(
+  previous: ProviderDocumentStatus | null | undefined,
+): boolean {
+  return previous === ProviderDocumentStatus.Accepted;
+}
+
+/** The document that currently counts for a type: the newest not superseded. */
+export function currentDocument<T extends { type: string; status: string; uploadedAt: string }>(
+  documents: readonly T[],
+  type: string,
+): T | null {
+  const live = documents
+    .filter((d) => d.type === type && d.status !== ProviderDocumentStatus.Superseded)
+    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+  return live[0] ?? null;
 }

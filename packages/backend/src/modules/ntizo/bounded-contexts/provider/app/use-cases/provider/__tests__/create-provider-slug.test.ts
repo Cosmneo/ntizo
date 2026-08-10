@@ -8,6 +8,7 @@ import type {
 } from "../../../ports/outbound";
 import type { OutboxPort } from "../../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../../domain/aggregates";
+import { slugCandidates } from "../../../../domain/services/provider-slug";
 import type { ExecutionContext } from "../../../../../../shared/infrastructure/execution-context";
 
 class SilentOutbox implements OutboxPort {
@@ -53,7 +54,7 @@ function ctx(): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
-function run(taken: string[], slug = "salao-beleza") {
+function run(taken: string[], name = "Salão Beleza") {
   const repos = makeRepos(taken);
   const command = new CreateProviderCommand(
     repos.providerRepo,
@@ -66,42 +67,139 @@ function run(taken: string[], slug = "salao-beleza") {
     execute: () =>
       command.execute(ctx(), {
         type: "individual",
-        name: "Salão Beleza",
-        slug,
+        name,
+        // A hint the client sends. The command is expected to ignore it.
+        slug: "salao-beleza",
       }),
   };
 }
 
-describe("CreateProviderCommand — slug collisions", () => {
-  it("uses the requested slug when it is free", async () => {
+describe("slugCandidates", () => {
+  const ID = "0192f3a4-5b6c-7d8e-9f01-234567890abc";
+
+  it("always carries a suffix, even with nothing to collide with", () => {
+    // The property the whole change is for. A bare `salao-beleza` would mean
+    // the first business to register wins the name and everyone else is
+    // numbered after it — a ranking nobody earned, decided by a race.
+    const [first] = slugCandidates("Salão Beleza", ID);
+    expect(first).toMatch(/^salao-beleza-[0-9a-hjkmnp-tv-z]{6}$/);
+  });
+
+  it("is a pure function of name and id", () => {
+    const a = [...slugCandidates("Salão Beleza", ID)];
+    const b = [...slugCandidates("Salão Beleza", ID)];
+    expect(a).toEqual(b);
+  });
+
+  it("gives two businesses of the same name different slugs", () => {
+    const [a] = slugCandidates("Salão Beleza", ID);
+    const [b] = slugCandidates("Salão Beleza", "0192f3a4-5b6c-7d8e-9f01-234567890abd");
+    expect(a).not.toBe(b);
+  });
+
+  it("folds accents through decomposition rather than dropping them", () => {
+    // Stripping non-ASCII without NFKD gives `salo`; a naive replace gives
+    // `sal-o`. Neither is the word.
+    const [slug] = slugCandidates("Salão", ID);
+    expect(slug!.startsWith("salao-")).toBe(true);
+  });
+
+  it("still produces a usable slug when the name leaves no ASCII stem", () => {
+    // A name written entirely in another script reduces to nothing. The
+    // suffix alone is a working URL; refusing to create the business is not.
+    const [slug] = slugCandidates("東京サービス", ID);
+    expect(slug).toMatch(/^[0-9a-hjkmnp-tv-z]{6}$/);
+  });
+
+  it("lengthens the suffix rather than repeating one", () => {
+    const candidates = [...slugCandidates("Salão Beleza", ID)];
+    const suffixes = candidates.map((c) => c.replace("salao-beleza-", ""));
+    expect(new Set(suffixes).size).toBe(candidates.length);
+    expect(suffixes.map((s) => s.length)).toEqual([6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it("omits the letters that misread when typed back", () => {
+    // Crockford drops i, l, o and u so a slug read off a screen cannot become
+    // a different one — and cannot accidentally spell a word.
+    for (const slug of slugCandidates("Salão Beleza", ID)) {
+      expect(slug.replace("salao-beleza-", "")).not.toMatch(/[ilou]/);
+    }
+  });
+});
+
+describe("CreateProviderCommand — slugs", () => {
+  it("saves the first free candidate", async () => {
     const { execute, saved } = run([]);
     await execute();
-    expect(saved[0]?.slug).toBe("salao-beleza");
+    expect(saved[0]!.slug).toMatch(/^salao-beleza-[0-9a-hjkmnp-tv-z]{6}$/);
   });
 
-  it("finds a free variation rather than failing", async () => {
-    // Two businesses may legitimately share a name — one in Maputo, one in
-    // Beira. Before this the second hit the unique index and the wizard showed
+  it("ignores the slug the client asked for", async () => {
+    // The client sends a slugified name as a hint. Honouring it would let two
+    // clients race for one URL, and let a caller claim someone else's.
+    const { execute, saved } = run([]);
+    await execute();
+    expect(saved[0]!.slug).not.toBe("salao-beleza");
+  });
+
+  it("lengthens the suffix when the short one is taken", async () => {
+    // The id is minted inside the command, so the candidates cannot be
+    // precomputed here. Refusing the first N answers is equivalent and does
+    // not depend on knowing them.
+    const seen: string[] = [];
+    const providerRepo = {
+      async findBySlug(slug: string) {
+        seen.push(slug);
+        return seen.length <= 2 ? ({} as Provider) : null;
+      },
+      async save(p: Provider) {
+        saved.push(p);
+      },
+    } as unknown as ProviderRepositoryPort;
+
+    const saved: Provider[] = [];
+    const command = new CreateProviderCommand(
+      providerRepo,
+      { async save() {} } as unknown as ProviderMemberRepositoryPort,
+      unitOfWork,
+      new SilentOutbox(),
+    );
+    await command.execute(ctx(), {
+      type: "individual",
+      name: "Salão Beleza",
+      slug: "salao-beleza",
+    });
+
+    expect(seen).toHaveLength(3);
+    expect(seen.map((slug) => slug.replace("salao-beleza-", "").length)).toEqual([
+      6, 7, 8,
+    ]);
+    expect(saved[0]!.slug).toBe(seen[2]!);
+  });
+
+  it("two businesses with the same name both get created", async () => {
+    // Before this, the second hit `provider_slug_unique` and the wizard showed
     // "an unexpected error occurred" to someone who has never seen a slug.
-    const { execute, saved } = run(["salao-beleza"]);
-    await execute();
-    expect(saved[0]?.slug).toBe("salao-beleza-2");
+    const first = run([]);
+    await first.execute();
+    const second = run([first.saved[0]!.slug]);
+    await second.execute();
+
+    expect(second.saved).toHaveLength(1);
+    expect(second.saved[0]!.slug).not.toBe(first.saved[0]!.slug);
   });
 
-  it("keeps counting past the first collision", async () => {
-    const { execute, saved } = run(["salao-beleza", "salao-beleza-2", "salao-beleza-3"]);
-    await execute();
-    expect(saved[0]?.slug).toBe("salao-beleza-4");
-  });
-
-  it("still creates the business when every tidy option is taken", async () => {
-    // Refusing to create a business because fifty others share its name would
-    // be the schema deciding who may trade.
-    const taken = ["salao-beleza", ...Array.from({ length: 60 }, (_, i) => `salao-beleza-${i + 2}`)];
-    const { execute, saved } = run(taken);
-    await execute();
-    expect(saved).toHaveLength(1);
-    expect(saved[0]?.slug).toMatch(/^salao-beleza-\d+$/);
-    expect(taken).not.toContain(saved[0]!.slug);
+  it("refuses rather than inventing a thirteenth character", async () => {
+    // Seven collisions running on one id is not a namespace problem — it is a
+    // bug somewhere else, and minting a longer slug would hide it.
+    const command = new CreateProviderCommand(
+      { async findBySlug() { return {} as Provider; } } as unknown as ProviderRepositoryPort,
+      { async save() {} } as unknown as ProviderMemberRepositoryPort,
+      unitOfWork,
+      new SilentOutbox(),
+    );
+    await expect(
+      command.execute(ctx(), { type: "individual", name: "Salão Beleza", slug: "x" }),
+    ).rejects.toThrow("PROVIDER_SLUG_EXHAUSTED");
   });
 });

@@ -85,6 +85,7 @@
     "type": "Business type",
     "identity": "Your details",
     "location": "Location",
+    "media": "Foto's",
     "payout": "Getting paid",
     "documents": "Documents",
     "review": "Under review"
@@ -132,5 +133,14 @@
     "active": "In progress",
     "stepPrefix": "Step"
   },
-  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>"
+  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>",
+  "media": {
+    "title": "Laat je werk zien",
+    "description": "Een logo en een paar foto's maken het verschil tussen een advertentie die men voorbijscrolt en een die men aantikt. Je kunt er altijd meer toevoegen.",
+    "portfolioHint": "Foto's van afgerond werk. Deze staan op je bedrijfspagina — elke dienst die je later aanmaakt krijgt eigen foto's.",
+    "empty": "Begin met maximaal {{max}}.",
+    "full": "Dat zijn er {{max}} — ruim genoeg om te starten. Voeg de rest toe via instellingen.",
+    "later": "Niets hiervan is nodig om af te ronden. Alles kan later worden toegevoegd of vervangen via de instellingen.",
+    "skip": "Nu overslaan"
+  }
 }

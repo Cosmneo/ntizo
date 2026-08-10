@@ -6,6 +6,8 @@ import {
   type ProviderDocumentType,
 } from "@ntizo/shared";
 import { getAuth } from "@ntizo/backend/modules/better-auth";
+import { recordDocumentUpload } from "@ntizo/backend/modules/ntizo/documents";
+import { canWriteProviderMedia } from "./provider-access";
 import type { AppBindings } from "./types";
 
 /**
@@ -49,6 +51,14 @@ export function mountDocuments(app: Hono<{ Bindings: AppBindings }>) {
     const session = await getAuth().api.getSession({ headers: c.req.raw.headers });
     if (!session?.user) return c.json({ error: "UNAUTHENTICATED" }, 401);
 
+
+    const providerId = c.req.param("providerId");
+    if (!(await canWriteProviderMedia(providerId, session.user.id))) {
+      // 403, not 404: the caller is authenticated and this says nothing about
+      // whether the provider exists.
+      return c.json({ error: "FORBIDDEN" }, 403);
+    }
+
     const bucket = c.env.DOCUMENTS_BUCKET;
     if (!bucket) {
       // Said out loud rather than swallowed. A 500 with no explanation would
@@ -71,7 +81,6 @@ export function mountDocuments(app: Hono<{ Bindings: AppBindings }>) {
       return c.json({ error: "TOO_LARGE" }, 413);
     }
 
-    const providerId = c.req.param("providerId");
     const key = storageKey(providerId, type, Date.now());
 
     // The buffer, not `file.stream()`: the DOM stream a `File` hands back is
@@ -91,8 +100,39 @@ export function mountDocuments(app: Hono<{ Bindings: AppBindings }>) {
       },
     });
 
+    // Recorded after the bytes land, never before. A row pointing at a key
+    // that does not exist is a broken link in the review queue; an object with
+    // no row is an orphan nobody sees — the cheaper of the two failures.
+    //
+    // This is also where a replacement stops being a replacement: the previous
+    // document of this type is superseded rather than overwritten, the new one
+    // is inserted `pending` whatever the provider's standing, and if what it
+    // replaced had been *accepted* the provider is flagged for re-verification.
+    // An approval belongs to the bytes a reviewer looked at and cannot follow
+    // the document type onto bytes that arrived afterwards.
+    const record = await recordDocumentUpload({
+      providerId,
+      type,
+      storageKey: key,
+      fileName: file.name.slice(0, 200),
+      contentType: file.type,
+      uploadedByUserId: session.user.id,
+    });
+
     // The key, never a URL. There is no URL that works without this Worker.
-    return c.json({ key, size: file.size, contentType: file.type }, 201);
+    return c.json(
+      {
+        key,
+        size: file.size,
+        contentType: file.type,
+        documentId: record.id,
+        status: record.status,
+        // Said out loud so the wizard and the settings page can explain what
+        // just happened rather than showing a silent status change.
+        reopensReview: record.reopensReview,
+      },
+      201,
+    );
   });
 
   /**

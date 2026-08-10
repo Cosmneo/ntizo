@@ -109,5 +109,48 @@
   "settingsSave": "Guardar alterações",
   "settingsSaving": "A guardar…",
   "settingsDiscard": "Descartar",
-  "deactivateWarning": "A desactivação esconde o prestador dos clientes e impede novas reservas. As reservas já confirmadas mantêm-se."
+  "deactivateWarning": "A desactivação esconde o prestador dos clientes e impede novas reservas. As reservas já confirmadas mantêm-se.",
+  "settingsBrand": "Marca e fotografias",
+  "settingsBrandBlurb": "Como o seu negócio aparece a quem procura no marketplace.",
+  "settingsLogo": "Logótipo",
+  "settingsLogoHint": "Aparece ao lado do seu nome nos resultados de pesquisa. Quadrado resulta melhor. JPG, PNG ou WebP, até 5 MB.",
+  "settingsPortfolio": "Portefólio",
+  "settingsPortfolioHint": "Fotografias do seu trabalho. Aparecem na página do negócio — cada serviço tem as suas próprias fotografias quando o criar.",
+  "settingsPortfolioEmpty": "Ainda sem fotografias.",
+  "settingsPortfolioFull": "Atingiu o limite de {{max}} fotografias.",
+  "settingsImageChoose": "Escolher imagem",
+  "settingsImageReplace": "Substituir",
+  "settingsImageRemove": "Remover",
+  "settingsImageAdd": "Adicionar foto",
+  "mediaReject": {
+    "type": "Esse ficheiro não é uma imagem JPG, PNG ou WebP.",
+    "size": "Essa imagem tem mais de 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "A sessão expirou. Inicie sessão novamente e repita o envio.",
+    "FORBIDDEN": "Não tem permissão para enviar imagens deste negócio.",
+    "TOO_LARGE": "Essa imagem tem mais de 5 MB.",
+    "UNACCEPTED_TYPE": "Esse ficheiro não é uma imagem JPG, PNG ou WebP.",
+    "MEDIA_STORAGE_UNCONFIGURED": "O armazenamento de imagens ainda não está configurado neste ambiente.",
+    "GENERIC": "O envio não foi concluído. Verifique a ligação e tente novamente."
+  },
+  "settingsDocuments": "Verificação",
+  "settingsDocumentsBlurb": "Documentos de identidade e conformidade. Tudo o que ignorou no registo pode ser concluído aqui.",
+  "documentsReplace": "Substituir",
+  "documentsReplaceWarning": "Substituir um documento aceite envia-o novamente para análise. O que já foi aceite é mantido — um novo envio nunca herda essa aprovação.",
+  "documentsReverification": "Um documento que já tinha sido aceite foi substituído, por isso a sua verificação está a ser analisada de novo. Pode continuar a trabalhar entretanto.",
+  "documentStatus": {
+    "pending": "A aguardar análise",
+    "accepted": "Aceite",
+    "rejected": "Recusado",
+    "superseded": "Substituído"
+  },
+  "documentError": {
+    "UNAUTHENTICATED": "A sessão expirou. Inicie sessão novamente e repita o envio.",
+    "FORBIDDEN": "Não tem permissão para enviar documentos deste negócio.",
+    "TOO_LARGE": "Esse ficheiro tem mais de 10 MB.",
+    "UNACCEPTED_TYPE": "Esse ficheiro não é um JPG, PNG, WebP ou PDF.",
+    "DOCUMENT_STORAGE_UNCONFIGURED": "O armazenamento de documentos ainda não está configurado neste ambiente.",
+    "GENERIC": "O envio não foi concluído. Verifique a ligação e tente novamente."
+  }
 }

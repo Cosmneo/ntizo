@@ -29,10 +29,8 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
-import { Route as ProviderMembersRouteImport } from './routes/provider/members'
+import { Route as ProviderSlugRouteRouteImport } from './routes/provider/$slug/route'
 import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
-import { Route as ProviderOverviewRouteImport } from './routes/provider/overview'
-import { Route as ProviderSettingsRouteImport } from './routes/provider/settings'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 import { Route as CustomerAccountIndexRouteImport } from './routes/_customer/account/index'
@@ -43,6 +41,9 @@ import { Route as CustomerAccountPaymentMethodsRouteImport } from './routes/_cus
 import { Route as CustomerAccountPreferencesRouteImport } from './routes/_customer/account/preferences'
 import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/account/security'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
+import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
+import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
+import { Route as ProviderSlugSettingsRouteImport } from './routes/provider/$slug/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -142,24 +143,14 @@ const ProviderIndexRoute = ProviderIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProviderRouteRoute,
 } as any)
-const ProviderMembersRoute = ProviderMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
+const ProviderSlugRouteRoute = ProviderSlugRouteRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
   getParentRoute: () => ProviderRouteRoute,
 } as any)
 const ProviderNoProviderRoute = ProviderNoProviderRouteImport.update({
   id: '/no-provider',
   path: '/no-provider',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const ProviderOverviewRoute = ProviderOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => ProviderRouteRoute,
-} as any)
-const ProviderSettingsRoute = ProviderSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
   getParentRoute: () => ProviderRouteRoute,
 } as any)
 const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
@@ -216,6 +207,21 @@ const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   path: '/accept-invite/$token',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const ProviderSlugMembersRoute = ProviderSlugMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
+const ProviderSlugOverviewRoute = ProviderSlugOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
+const ProviderSlugSettingsRoute = ProviderSlugSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/account': typeof CustomerAccountRouteRouteWithChildren
+  '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
@@ -234,10 +241,7 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
-  '/provider/members': typeof ProviderMembersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
-  '/provider/overview': typeof ProviderOverviewRoute
-  '/provider/settings': typeof ProviderSettingsRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/provider/': typeof ProviderIndexRoute
@@ -249,6 +253,9 @@ export interface FileRoutesByFullPath {
   '/account/preferences': typeof CustomerAccountPreferencesRoute
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
+  '/provider/$slug/members': typeof ProviderSlugMembersRoute
+  '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
+  '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/account/': typeof CustomerAccountIndexRoute
 }
 export interface FileRoutesByTo {
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/become-provider': typeof BecomeProviderRoute
   '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
+  '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
@@ -265,10 +273,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
-  '/provider/members': typeof ProviderMembersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
-  '/provider/overview': typeof ProviderOverviewRoute
-  '/provider/settings': typeof ProviderSettingsRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/admin': typeof AdminIndexRoute
   '/provider': typeof ProviderIndexRoute
@@ -280,6 +285,9 @@ export interface FileRoutesByTo {
   '/account/preferences': typeof CustomerAccountPreferencesRoute
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
+  '/provider/$slug/members': typeof ProviderSlugMembersRoute
+  '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
+  '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/account': typeof CustomerAccountIndexRoute
 }
 export interface FileRoutesById {
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
+  '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/_customer/bookings': typeof CustomerBookingsRoute
   '/_customer/favourites': typeof CustomerFavouritesRoute
   '/_customer/messages': typeof CustomerMessagesRoute
@@ -302,10 +311,7 @@ export interface FileRoutesById {
   '/_public/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
-  '/provider/members': typeof ProviderMembersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
-  '/provider/overview': typeof ProviderOverviewRoute
-  '/provider/settings': typeof ProviderSettingsRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/provider/': typeof ProviderIndexRoute
@@ -317,6 +323,9 @@ export interface FileRoutesById {
   '/_customer/account/preferences': typeof CustomerAccountPreferencesRoute
   '/_customer/account/security': typeof CustomerAccountSecurityRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
+  '/provider/$slug/members': typeof ProviderSlugMembersRoute
+  '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
+  '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/_customer/account/': typeof CustomerAccountIndexRoute
 }
 export interface FileRouteTypes {
@@ -329,6 +338,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/verify-phone'
     | '/account'
+    | '/provider/$slug'
     | '/bookings'
     | '/favourites'
     | '/messages'
@@ -338,10 +348,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin/dashboard'
     | '/admin/users'
-    | '/provider/members'
     | '/provider/no-provider'
-    | '/provider/overview'
-    | '/provider/settings'
     | '/providers/$slug'
     | '/admin/'
     | '/provider/'
@@ -353,6 +360,9 @@ export interface FileRouteTypes {
     | '/account/preferences'
     | '/account/security'
     | '/accept-invite/$token'
+    | '/provider/$slug/members'
+    | '/provider/$slug/overview'
+    | '/provider/$slug/settings'
     | '/account/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/become-provider'
     | '/onboarding'
     | '/verify-phone'
+    | '/provider/$slug'
     | '/bookings'
     | '/favourites'
     | '/messages'
@@ -369,10 +380,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin/dashboard'
     | '/admin/users'
-    | '/provider/members'
     | '/provider/no-provider'
-    | '/provider/overview'
-    | '/provider/settings'
     | '/providers/$slug'
     | '/admin'
     | '/provider'
@@ -384,6 +392,9 @@ export interface FileRouteTypes {
     | '/account/preferences'
     | '/account/security'
     | '/accept-invite/$token'
+    | '/provider/$slug/members'
+    | '/provider/$slug/overview'
+    | '/provider/$slug/settings'
     | '/account'
   id:
     | '__root__'
@@ -396,6 +407,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/verify-phone'
     | '/_customer/account'
+    | '/provider/$slug'
     | '/_customer/bookings'
     | '/_customer/favourites'
     | '/_customer/messages'
@@ -405,10 +417,7 @@ export interface FileRouteTypes {
     | '/_public/sign-up'
     | '/admin/dashboard'
     | '/admin/users'
-    | '/provider/members'
     | '/provider/no-provider'
-    | '/provider/overview'
-    | '/provider/settings'
     | '/providers/$slug'
     | '/admin/'
     | '/provider/'
@@ -420,6 +429,9 @@ export interface FileRouteTypes {
     | '/_customer/account/preferences'
     | '/_customer/account/security'
     | '/_public/accept-invite/$token'
+    | '/provider/$slug/members'
+    | '/provider/$slug/overview'
+    | '/provider/$slug/settings'
     | '/_customer/account/'
   fileRoutesById: FileRoutesById
 }
@@ -578,11 +590,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProviderIndexRouteImport
       parentRoute: typeof ProviderRouteRoute
     }
-    '/provider/members': {
-      id: '/provider/members'
-      path: '/members'
-      fullPath: '/provider/members'
-      preLoaderRoute: typeof ProviderMembersRouteImport
+    '/provider/$slug': {
+      id: '/provider/$slug'
+      path: '/$slug'
+      fullPath: '/provider/$slug'
+      preLoaderRoute: typeof ProviderSlugRouteRouteImport
       parentRoute: typeof ProviderRouteRoute
     }
     '/provider/no-provider': {
@@ -590,20 +602,6 @@ declare module '@tanstack/react-router' {
       path: '/no-provider'
       fullPath: '/provider/no-provider'
       preLoaderRoute: typeof ProviderNoProviderRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/overview': {
-      id: '/provider/overview'
-      path: '/overview'
-      fullPath: '/provider/overview'
-      preLoaderRoute: typeof ProviderOverviewRouteImport
-      parentRoute: typeof ProviderRouteRoute
-    }
-    '/provider/settings': {
-      id: '/provider/settings'
-      path: '/settings'
-      fullPath: '/provider/settings'
-      preLoaderRoute: typeof ProviderSettingsRouteImport
       parentRoute: typeof ProviderRouteRoute
     }
     '/providers/': {
@@ -675,6 +673,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/accept-invite/$token'
       preLoaderRoute: typeof PublicAcceptInviteTokenRouteImport
       parentRoute: typeof PublicRouteRoute
+    }
+    '/provider/$slug/members': {
+      id: '/provider/$slug/members'
+      path: '/members'
+      fullPath: '/provider/$slug/members'
+      preLoaderRoute: typeof ProviderSlugMembersRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
+    '/provider/$slug/overview': {
+      id: '/provider/$slug/overview'
+      path: '/overview'
+      fullPath: '/provider/$slug/overview'
+      preLoaderRoute: typeof ProviderSlugOverviewRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
+    '/provider/$slug/settings': {
+      id: '/provider/$slug/settings'
+      path: '/settings'
+      fullPath: '/provider/$slug/settings'
+      preLoaderRoute: typeof ProviderSlugSettingsRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
     }
   }
 }
@@ -756,19 +775,30 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface ProviderSlugRouteRouteChildren {
+  ProviderSlugMembersRoute: typeof ProviderSlugMembersRoute
+  ProviderSlugOverviewRoute: typeof ProviderSlugOverviewRoute
+  ProviderSlugSettingsRoute: typeof ProviderSlugSettingsRoute
+}
+
+const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
+  ProviderSlugMembersRoute: ProviderSlugMembersRoute,
+  ProviderSlugOverviewRoute: ProviderSlugOverviewRoute,
+  ProviderSlugSettingsRoute: ProviderSlugSettingsRoute,
+}
+
+const ProviderSlugRouteRouteWithChildren =
+  ProviderSlugRouteRoute._addFileChildren(ProviderSlugRouteRouteChildren)
+
 interface ProviderRouteRouteChildren {
-  ProviderMembersRoute: typeof ProviderMembersRoute
+  ProviderSlugRouteRoute: typeof ProviderSlugRouteRouteWithChildren
   ProviderNoProviderRoute: typeof ProviderNoProviderRoute
-  ProviderOverviewRoute: typeof ProviderOverviewRoute
-  ProviderSettingsRoute: typeof ProviderSettingsRoute
   ProviderIndexRoute: typeof ProviderIndexRoute
 }
 
 const ProviderRouteRouteChildren: ProviderRouteRouteChildren = {
-  ProviderMembersRoute: ProviderMembersRoute,
+  ProviderSlugRouteRoute: ProviderSlugRouteRouteWithChildren,
   ProviderNoProviderRoute: ProviderNoProviderRoute,
-  ProviderOverviewRoute: ProviderOverviewRoute,
-  ProviderSettingsRoute: ProviderSettingsRoute,
   ProviderIndexRoute: ProviderIndexRoute,
 }
 

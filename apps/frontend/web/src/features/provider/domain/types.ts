@@ -39,6 +39,33 @@ export interface ProviderAddress {
   postalCode?: string;
 }
 
+export interface UpdateProviderBody {
+  name?: string;
+  description?: string;
+  address?: ProviderAddress;
+  /** Keys only. The read model returns pairs; the write side stores keys. */
+  logoKey?: string | null;
+  photoKeys?: string[];
+}
+
+export interface ProviderDocument {
+  id: string;
+  /** A `ProviderDocumentType`. */
+  type: string;
+  /** A `ProviderDocumentStatus` — never `superseded`, which the server excludes. */
+  status: string;
+  fileName: string | null;
+  uploadedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+}
+
+export interface ProviderImage {
+  key: string;
+  /** Null locally, where no public base serves the media bucket. */
+  url: string | null;
+}
+
 export interface ProviderDetail {
   id: string;
   name: string;
@@ -47,6 +74,12 @@ export interface ProviderDetail {
   status: ProviderStatus;
   description?: string;
   address?: ProviderAddress;
+  /** Key plus composed URL. The form shows the URL and saves the key. */
+  logo?: ProviderImage | null;
+  photos?: ProviderImage[];
+  documents?: ProviderDocument[];
+  /** Set when an accepted document was replaced. */
+  reverificationRequestedAt?: string | null;
   members?: ProviderMember[];
   invites?: ProviderInvite[];
 }

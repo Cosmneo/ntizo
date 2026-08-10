@@ -36,6 +36,8 @@ export function PhaseDocuments({
   uploads,
   onUpload,
   onRemove,
+  busy,
+  errorKey,
   onBack,
   onContinue,
 }: {
@@ -43,10 +45,13 @@ export function PhaseDocuments({
   uploads: readonly DocumentUpload[];
   onUpload: (type: ProviderDocumentType, file: File) => void;
   onRemove: (type: ProviderDocumentType) => void;
+  busy?: boolean;
+  errorKey?: string | null;
   onBack: () => void;
   onContinue: () => void;
 }) {
   const { t } = useTranslation("onboarding");
+  const { t: tp } = useTranslation("provider");
   const type = (draft.type || ProviderType.Individual) as ProviderType;
 
   const held = new Set(uploads.map((u) => u.type));
@@ -77,6 +82,12 @@ export function PhaseDocuments({
         ))}
       </div>
 
+      {errorKey && (
+        <p className="type-caption mt-4 text-[var(--color-destructive)]">
+          {tp(errorKey)}
+        </p>
+      )}
+
       <p className="type-caption mt-5 text-[var(--color-muted-foreground)]">
         {t("documents.privacy")}
       </p>
@@ -85,12 +96,14 @@ export function PhaseDocuments({
         onBack={onBack}
         backLabel={t("back")}
         secondary={
-          <Button type="button" variant="outline" onClick={onContinue}>
+          <Button type="button" variant="outline" onClick={onContinue} disabled={busy}>
             {t("documents.skip")}
           </Button>
         }
       >
-        <Button onClick={onContinue}>{t("continue")}</Button>
+        <Button onClick={onContinue} disabled={busy}>
+          {t("continue")}
+        </Button>
       </StepFooter>
     </>
   );

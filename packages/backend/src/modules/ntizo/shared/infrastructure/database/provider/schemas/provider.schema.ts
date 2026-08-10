@@ -24,6 +24,43 @@ export const provider = providerSchema.table("provider", {
   description: text("description"),
 
   // Embedded Address VO
+  /**
+   * The logo, as an R2 key rather than a URL.
+   *
+   * A key survives the bucket moving, the public base changing and the CDN in
+   * front of it changing; a stored URL survives none of those. The reader
+   * composes one from `MEDIA_PUBLIC_URL_BASE`.
+   */
+  logoKey: text("logo_key"),
+
+  /**
+   * The portfolio, as an ordered list of R2 keys.
+   *
+   * On the provider rather than in its own table: they have no lifecycle of
+   * their own, nothing references one individually, and order matters — which
+   * an array gives for free and a table would need a column for.
+   *
+   * Distinct from a service's photographs, which will live with the service.
+   * These answer "is this provider's work any good"; those answer "what am I
+   * buying". Same medium, different question, different place.
+   */
+  photoKeys: text("photo_keys").array(),
+
+  /**
+   * Set when a document that had already been accepted is replaced.
+   *
+   * A flag rather than a status change, deliberately. Dropping the provider
+   * back to `pending` would take a working business offline on suspicion, and
+   * the commonest reason to re-upload an accepted ID is that the old one
+   * expired. But the swap must not be invisible either — this is what puts
+   * them back in front of a reviewer while they keep trading.
+   *
+   * Cleared when the replacement is reviewed.
+   */
+  reverificationRequestedAt: timestamp("reverification_requested_at", {
+    withTimezone: true,
+  }),
+
   addressStreet: text("address_street"),
   addressCity: text("address_city"),
   addressDistrict: text("address_district"),

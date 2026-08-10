@@ -15,6 +15,7 @@ import type {
 } from "../../ports/outbound";
 import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../domain/aggregates/provider";
+import { slugCandidates } from "../../../domain/services/provider-slug";
 import { Address } from "../../../domain/value-objects/address.vo";
 import { ProviderMember } from "../../../domain/entities/provider-member";
 import { ProviderMemberAdded } from "../../../domain/events";
@@ -33,12 +34,16 @@ export class CreateProviderCommand implements CreateProviderPort {
   ): Promise<CreateProviderOutput> {
     const requester = requireAuthenticated(ctx);
 
+    // Computed first: the slug is derived from it, which is what makes slug
+    // generation a pure function of (name, id) rather than a probe loop.
+    const providerId = randomUUID();
+
     const provider = Provider.create({
-      id: randomUUID(),
+      id: providerId,
       ownerUserId: requester.userId,
       type: input.type,
       name: input.name,
-      slug: await this.freeSlug(input.slug),
+      slug: await this.freeSlug(input.name, providerId),
       description: input.description,
       address: input.address ? Address.create(input.address) : undefined,
     });
@@ -89,17 +94,21 @@ export class CreateProviderCommand implements CreateProviderPort {
    * still collide, and the unique index remains the thing that guarantees
    * correctness. What changes is that the common case stops failing.
    */
-  private async freeSlug(requested: string): Promise<string> {
-    if (!(await this.providerRepo.findBySlug(requested))) return requested;
-
-    // Bounded: past a handful of identically-named businesses, a longer suffix
-    // is not more helpful and the loop should not become a scan.
-    for (let n = 2; n <= 50; n += 1) {
-      const candidate = `${requested}-${n}`;
+  /**
+   * The first candidate nobody holds.
+   *
+   * `input.slug` is ignored on purpose. The client sends a slugified name as a
+   * hint, and honouring it would let two clients race for the same URL and let
+   * a caller choose someone else's. The name is the input; the URL is ours.
+   */
+  private async freeSlug(name: string, providerId: string): Promise<string> {
+    for (const candidate of slugCandidates(name, providerId)) {
       if (!(await this.providerRepo.findBySlug(candidate))) return candidate;
     }
-    // Out of tidy options. A random tail always terminates and is still a
-    // working URL, which beats refusing to create the business.
-    return `${requested}-${Math.floor(Date.now() % 100000)}`;
+    // Twelve base32 characters over one id have collided seven times running.
+    // That is not a namespace problem, it is a bug somewhere else — and
+    // silently minting a thirteenth would hide it.
+    throw new Error("PROVIDER_SLUG_EXHAUSTED");
   }
+
 }

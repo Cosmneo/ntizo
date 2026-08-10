@@ -435,41 +435,34 @@ happens to pass both explicitly.
 **Trigger:** the next caller of `providerList` that omits `limit` or `offset`,
 or the next slice written from that file as a template.
 
-## 21. Provider documents: the buckets are declared, not created
+## 21. Documents: the read leg and the admin review queue
 
-`wrangler.jsonc` now declares `DOCUMENTS_BUCKET` for local, dev, qa and prod,
-and `POST /api/documents/:providerId/:type` writes to it — session checked,
-MIME and size re-checked server-side, `no-store` on the object, the uploader's
-id in custom metadata. It answers `503 DOCUMENT_STORAGE_UNCONFIGURED` when the
-binding is absent, which is the state today.
+Uploading works end to end now. `POST /api/documents/:providerId/:type` checks
+the session, checks *membership* (403 for an authenticated stranger), re-checks
+MIME and size, puts the bytes under a timestamped key, and records a row in
+`ntizo_provider.provider_document`. The wizard and the settings page both use
+it. Replacing a document supersedes the previous row rather than overwriting
+it, and replacing an **accepted** one sets `provider.reverification_requested_at`.
 
-**The four buckets now exist** on the account
-(`fb80ea1e…`), created with `wrangler r2 bucket create`, and
-`wrangler r2 bucket dev-url get` reports public access **disabled** on every
-one. Keep it that way: the reference project's media bucket has a public
-`r2.dev` URL because it serves photographs of activities; these hold ID cards
-and tax certificates, and that is why the read leg goes through the Worker.
+Two things are still missing, and they are the same thing twice:
 
-Verified end to end against `wrangler dev` with the binding attached: a PDF
-returns 201 with its key, an SVG 415, an 11 MB file 413, an unknown document
-type 400, and an anonymous caller 401 before any of that is evaluated.
+- `GET /api/documents/*` returns **501**. Authentication is checked, authorisation
+  is not, because who may read whose papers is a decision that belongs with the
+  review queue. Guessing would mean handing an ID card to the wrong person.
+- Nothing moves a document out of `pending`. `accepted` and `rejected` exist in
+  the enum, the read model carries `rejectionReason`, and the settings page
+  renders all three states — but only a manual `UPDATE` can produce them today.
 
-Still outstanding after the buckets exist:
+The table is built for the queue: `provider_document_status_idx` is
+`(status, uploaded_at)`, which is exactly "everything still waiting, oldest
+first". `supersedes_id` chains the history, so "what was approved, and when did
+it change" is answerable.
 
-1. **The read leg returns 501.** Who may read whose document is a decision that
-   belongs with the admin review queue, and that queue does not exist. It
-   refuses everyone until it does, because the failure mode of guessing is
-   handing someone's ID card to the wrong person.
-2. **The wizard does not call the endpoint.** It records a file's name and size;
-   wiring the POST needs the provider id, which exists only after the location
-   step.
-3. **A `provider_document` table** — provider, type, key, status, reviewer,
-   timestamps — so the admin queue has something to list.
-4. **A retention decision.** How long an identity document is held after a
-   decision. Keeping them indefinitely is what happens if nobody chooses.
+Also undecided: **retention**. An identity document kept forever is a liability;
+one deleted too early is an audit that cannot be reconstructed. Nothing expires
+these objects today.
 
-**Trigger:** before any provider is asked to upload in an environment that is
-not local.
+**Trigger:** the admin providers queue — task #31.
 
 ## 22. The location map needs a Google Maps key
 
@@ -490,3 +483,36 @@ it is the search UI that is missing, not the plumbing.
 
 **Trigger:** when a Google Cloud project with Maps JavaScript, Geocoding and
 (for the search box) Places enabled and billing active exists.
+
+## 23. Slugs changed shape; existing links break
+
+Provider slugs now always carry a Crockford-base32 suffix derived from the
+provider's id (`salao-beleza-wgcz6r`), and the slug is a route parameter:
+`/provider/$slug/overview`. `scripts/backfill-provider-slugs.ts` rewrote the ten
+rows in dev that held bare or numbered slugs; it is idempotent and dry-runs
+without `--apply`.
+
+It has **not** been run against qa or prod, which also have neither migrations
+0002–0006 nor the cities seed.
+
+Rewriting a slug rewrites a URL. That is free while the only links are in dev
+and in this repository, and it stops being free the moment a provider shares
+their page. At that point this becomes a redirect table — keep the old slug,
+303 to the new one — rather than an `UPDATE`.
+
+**Trigger:** before any provider page URL is shared outside the team, or before
+the first qa/prod deploy.
+
+## 24. Local media is served by the Worker, not a bucket URL
+
+`wrangler dev` writes to a simulated R2 on disk that no `r2.dev` URL can reach,
+so locally `MEDIA_PUBLIC_URL_BASE` points at `http://localhost:8788/api/media`
+and `GET /api/media/*` streams objects out of the binding. Every deployed stage
+points at its bucket's public URL, so that route is unused outside local dev.
+
+It is deliberately unauthenticated — it reads the *public* bucket, whose objects
+are already served anonymously from a CDN URL in every stage. If a private
+variant of that bucket ever appears, this route must not be pointed at it.
+
+**Trigger:** if media ever moves behind signed URLs, or a second, private media
+bucket is introduced.

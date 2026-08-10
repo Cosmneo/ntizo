@@ -4,6 +4,7 @@ import type {
   CreateProviderBody,
   InviteMemberBody,
   ProviderDetail,
+  UpdateProviderBody,
   ProviderRole,
   ProviderSummary,
   RegisterMeBody,
@@ -19,6 +20,10 @@ const BY_ID = `
     providerById(input: $input) {
       id name slug type status description ownerUserId
       address { street city district country postalCode }
+      logo { key url }
+      photos { key url }
+      documents { id type status fileName uploadedAt reviewedAt rejectionReason }
+      reverificationRequestedAt
       members { userId email name role joinedAt }
       invites { id email role status }
     }
@@ -76,7 +81,7 @@ export async function registerMe(body: RegisterMeBody = {}) {
 
 export async function updateProvider(
   providerId: string,
-  body: Partial<Pick<ProviderDetail, "name" | "description" | "address">>,
+  body: UpdateProviderBody,
 ) {
   // The whole body, `address` included. It used to be accepted here and
   // dropped — the same silent discard `createProvider` had, and with the same

@@ -109,5 +109,48 @@
   "settingsSave": "Save changes",
   "settingsSaving": "Saving…",
   "settingsDiscard": "Discard",
-  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay."
+  "deactivateWarning": "Deactivating hides the provider from customers and stops new bookings. Bookings already confirmed stay.",
+  "settingsBrand": "Marque et photos",
+  "settingsBrandBlurb": "L'image de votre entreprise pour les personnes qui parcourent la marketplace.",
+  "settingsLogo": "Logo",
+  "settingsLogoHint": "Affiché à côté de votre nom dans les résultats. Le carré fonctionne mieux. JPG, PNG ou WebP, jusqu'à 5 Mo.",
+  "settingsPortfolio": "Portfolio",
+  "settingsPortfolioHint": "Photographies de votre travail. Elles apparaissent sur la page de l'entreprise — chaque service aura ses propres photos.",
+  "settingsPortfolioEmpty": "Pas encore de photos.",
+  "settingsPortfolioFull": "Vous avez atteint la limite de {{max}} photos.",
+  "settingsImageChoose": "Choisir une image",
+  "settingsImageReplace": "Remplacer",
+  "settingsImageRemove": "Retirer",
+  "settingsImageAdd": "Ajouter une photo",
+  "mediaReject": {
+    "type": "Ce fichier n'est pas une image JPG, PNG ou WebP.",
+    "size": "Cette image dépasse 5 Mo."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Votre session a expiré. Reconnectez-vous puis réessayez.",
+    "FORBIDDEN": "Vous n'avez pas la permission d'envoyer des images pour cette entreprise.",
+    "TOO_LARGE": "Cette image dépasse 5 Mo.",
+    "UNACCEPTED_TYPE": "Ce fichier n'est pas une image JPG, PNG ou WebP.",
+    "MEDIA_STORAGE_UNCONFIGURED": "Le stockage d'images n'est pas encore configuré sur cet environnement.",
+    "GENERIC": "L'envoi a échoué. Vérifiez votre connexion et réessayez."
+  },
+  "settingsDocuments": "Vérification",
+  "settingsDocumentsBlurb": "Pièces d'identité et documents de conformité. Tout ce que vous avez passé à l'inscription peut être complété ici.",
+  "documentsReplace": "Remplacer",
+  "documentsReplaceWarning": "Remplacer un document accepté le renvoie en vérification. Celui déjà accepté est conservé — un nouvel envoi n'hérite jamais de son approbation.",
+  "documentsReverification": "Un document déjà accepté a été remplacé, votre vérification est donc réexaminée. Vous pouvez continuer à travailler entre-temps.",
+  "documentStatus": {
+    "pending": "En attente d'examen",
+    "accepted": "Accepté",
+    "rejected": "Refusé",
+    "superseded": "Remplacé"
+  },
+  "documentError": {
+    "UNAUTHENTICATED": "Votre session a expiré. Reconnectez-vous puis réessayez.",
+    "FORBIDDEN": "Vous n'avez pas la permission d'envoyer des documents pour cette entreprise.",
+    "TOO_LARGE": "Ce fichier dépasse 10 Mo.",
+    "UNACCEPTED_TYPE": "Ce fichier n'est pas un JPG, PNG, WebP ou PDF.",
+    "DOCUMENT_STORAGE_UNCONFIGURED": "Le stockage de documents n'est pas encore configuré sur cet environnement.",
+    "GENERIC": "L'envoi a échoué. Vérifiez votre connexion et réessayez."
+  }
 }

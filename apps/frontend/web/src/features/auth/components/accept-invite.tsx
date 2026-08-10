@@ -25,7 +25,7 @@ export function AcceptInvite() {
     accept(token)
       .then(() => {
         setStatus("ok");
-        setTimeout(() => nav({ to: "/provider/overview" }), 800);
+        setTimeout(() => nav({ to: "/provider" }), 800);
       })
       .catch((e) => {
         setStatus("error");

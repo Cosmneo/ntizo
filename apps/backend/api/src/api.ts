@@ -4,6 +4,8 @@ import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/use
 import { mountPrivateGraphql } from "./graphql/private";
 import { mountPublicGraphql } from "./graphql/public";
 import { mountDocuments } from "./documents";
+import { mountMedia } from "./media";
+import { configureMediaUrlBase } from "@ntizo/backend/modules/ntizo/media";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
 import { authCors } from "./middlewares/cors";
@@ -12,6 +14,13 @@ import type { AppBindings } from "./types";
 const app = new Hono<{ Bindings: AppBindings }>();
 
 app.use("*", configMiddleware);
+
+// `MEDIA_PUBLIC_URL_BASE` is a per-request binding, and the read tier composes
+// image URLs from it. Captured here because a repository cannot reach `c.env`.
+app.use("*", async (c, next) => {
+  configureMediaUrlBase(c.env.MEDIA_PUBLIC_URL_BASE);
+  await next();
+});
 app.use("/api/*", authCors);
 // /graphql's own CORS enforcement lives inside mountPrivateGraphql
 // (graphql/cors.ts) rather than as a Hono middleware here — Yoga's bundled
@@ -45,6 +54,9 @@ mountPublicGraphql(app);
 // Identity documents. Its own mount: multipart in, bytes out — neither of
 // which GraphQL carries well.
 mountDocuments(app);
+
+// Logos and portfolio photos. Public-read, unlike documents.
+mountMedia(app);
 
 // Health check
 app.get("/", (c) => c.json({ status: "ok", service: "ntizo-api" }));
