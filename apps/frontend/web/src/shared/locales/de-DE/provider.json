@@ -165,5 +165,36 @@
     "cancel": "Abbrechen",
     "confirm": "Diesen Ausschnitt verwenden",
     "zoom": "Zoom"
-  }
+  },
+  "peopleTitle": "Personen im Workspace",
+  "peopleShown": "{{shown}} von {{total}} angezeigt",
+  "peopleSearchPlaceholder": "Personen oder Rollen suchen",
+  "peopleFilter": "Filtern",
+  "peoplePerson": "Person",
+  "peopleRole": "Rolle",
+  "peopleStatusLabel": "Status",
+  "peopleDate": "Datum",
+  "peopleActions": "Aktionen",
+  "peopleRoles": {
+    "owner": "Inhaber",
+    "admin": "Administrator",
+    "staff": "Mitarbeiter"
+  },
+  "peopleStatus": {
+    "active": "Aktiv",
+    "invited": "Eingeladen",
+    "expired": "Abgelaufen"
+  },
+  "peopleInvitePending": "Einladung gesendet — noch nicht angenommen",
+  "peopleEmpty": "Noch niemand hier. Laden Sie jemanden ein.",
+  "peopleNoMatches": "Niemand passt zu diesen Filtern.",
+  "peopleFilterTitle": "Personen filtern",
+  "peopleAllRoles": "Alle Rollen",
+  "peopleAllStatuses": "Alle Status",
+  "peopleClearFilters": "Filter zurücksetzen",
+  "peopleMakeAdmin": "Zum Administrator machen",
+  "peopleMakeStaff": "Zum Mitarbeiter machen",
+  "peopleRemove": "Aus dem Workspace entfernen",
+  "peopleRevoke": "Einladung widerrufen",
+  "close": "Schließen"
 }

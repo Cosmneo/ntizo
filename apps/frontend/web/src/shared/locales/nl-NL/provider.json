@@ -165,5 +165,36 @@
     "cancel": "Annuleren",
     "confirm": "Deze uitsnede gebruiken",
     "zoom": "Zoom"
-  }
+  },
+  "peopleTitle": "Mensen in de werkruimte",
+  "peopleShown": "{{shown}} van {{total}} getoond",
+  "peopleSearchPlaceholder": "Zoek mensen of rollen",
+  "peopleFilter": "Filteren",
+  "peoplePerson": "Persoon",
+  "peopleRole": "Rol",
+  "peopleStatusLabel": "Status",
+  "peopleDate": "Datum",
+  "peopleActions": "Acties",
+  "peopleRoles": {
+    "owner": "Eigenaar",
+    "admin": "Beheerder",
+    "staff": "Medewerker"
+  },
+  "peopleStatus": {
+    "active": "Actief",
+    "invited": "Uitgenodigd",
+    "expired": "Verlopen"
+  },
+  "peopleInvitePending": "Uitnodiging verstuurd — nog niet geaccepteerd",
+  "peopleEmpty": "Nog niemand hier. Nodig iemand uit om te beginnen.",
+  "peopleNoMatches": "Niemand voldoet aan deze filters.",
+  "peopleFilterTitle": "Mensen filteren",
+  "peopleAllRoles": "Alle rollen",
+  "peopleAllStatuses": "Alle statussen",
+  "peopleClearFilters": "Filters wissen",
+  "peopleMakeAdmin": "Beheerder maken",
+  "peopleMakeStaff": "Medewerker maken",
+  "peopleRemove": "Uit werkruimte verwijderen",
+  "peopleRevoke": "Uitnodiging intrekken",
+  "close": "Sluiten"
 }

@@ -42,11 +42,14 @@ export async function uploadProviderImage(
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/api/media/${providerId}/${kind}`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/media/${providerId}/${kind}`,
+    {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    },
+  );
 
   const text = await response.text();
   let body: (UploadedImage & { error?: string }) | undefined;

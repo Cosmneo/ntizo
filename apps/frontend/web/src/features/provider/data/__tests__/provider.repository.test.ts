@@ -8,7 +8,9 @@ describe("providerQueries.mine", () => {
   it("exposes a stable query key and unwraps the flattened field", async () => {
     const spy = vi
       .spyOn(client, "sessionGraphql")
-      .mockResolvedValue({ providerMine: [{ id: "p1", name: "Org" }] } as never);
+      .mockResolvedValue({
+        providerMine: [{ id: "p1", name: "Org" }],
+      } as never);
 
     const opts = providerQueries.mine();
     expect(opts.queryKey).toEqual(["providers", "mine"]);

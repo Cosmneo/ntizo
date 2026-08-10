@@ -44,7 +44,9 @@ function errorKeyFor(err: unknown): string {
  * separate, deliberate act, so a provider who picks the wrong photograph can
  * discard rather than undo.
  */
-export function useImageUpload(providerId: string | undefined): ImageUploadState {
+export function useImageUpload(
+  providerId: string | undefined,
+): ImageUploadState {
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 

@@ -22,7 +22,9 @@ export function useProviderDetail(id: string | undefined) {
  */
 export async function countMyProviders(): Promise<number> {
   try {
-    const queryFn = providerQueries.mine().queryFn as () => Promise<ProviderSummary[]>;
+    const queryFn = providerQueries.mine().queryFn as () => Promise<
+      ProviderSummary[]
+    >;
     return (await queryFn()).length;
   } catch {
     return 0;
@@ -46,7 +48,9 @@ export const ACTIVE_PROVIDER_KEY = "ntizo.activeProviderId";
  */
 export async function preferredProviderSlug(): Promise<string | null> {
   try {
-    const queryFn = providerQueries.mine().queryFn as () => Promise<ProviderSummary[]>;
+    const queryFn = providerQueries.mine().queryFn as () => Promise<
+      ProviderSummary[]
+    >;
     const providers = await queryFn();
     if (providers.length === 0) return null;
     const stored =

@@ -165,5 +165,36 @@
     "cancel": "Cancel",
     "confirm": "Use this framing",
     "zoom": "Zoom"
-  }
+  },
+  "peopleTitle": "Workspace people",
+  "peopleShown": "{{shown}} of {{total}} shown",
+  "peopleSearchPlaceholder": "Search people or roles",
+  "peopleFilter": "Filter",
+  "peoplePerson": "Person",
+  "peopleRole": "Role",
+  "peopleStatusLabel": "Status",
+  "peopleDate": "Date",
+  "peopleActions": "Actions",
+  "peopleRoles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "staff": "Staff"
+  },
+  "peopleStatus": {
+    "active": "Active",
+    "invited": "Invited",
+    "expired": "Expired"
+  },
+  "peopleInvitePending": "Invitation sent — not accepted yet",
+  "peopleEmpty": "Nobody here yet. Invite someone to get started.",
+  "peopleNoMatches": "Nobody matches those filters.",
+  "peopleFilterTitle": "Filter people",
+  "peopleAllRoles": "All roles",
+  "peopleAllStatuses": "All statuses",
+  "peopleClearFilters": "Clear filters",
+  "peopleMakeAdmin": "Make admin",
+  "peopleMakeStaff": "Make staff",
+  "peopleRemove": "Remove from workspace",
+  "peopleRevoke": "Revoke invitation",
+  "close": "Close"
 }

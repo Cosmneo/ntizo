@@ -28,7 +28,10 @@ export function useActiveProvider() {
   // loading or errored, which would change the identity of every dep array
   // below on each render. Memoising keeps the effect from re-firing forever —
   // the same failure mode that made usePageHeader loop.
-  const providers: ProviderSummary[] = useMemo(() => query.data ?? [], [query.data]);
+  const providers: ProviderSummary[] = useMemo(
+    () => query.data ?? [],
+    [query.data],
+  );
 
   const activeProvider = useMemo(() => {
     const fromUrl = slug ? providers.find((p) => p.slug === slug) : undefined;

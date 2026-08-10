@@ -11,6 +11,8 @@ export interface ProviderMember {
   email: string;
   name?: string;
   role: ProviderRole;
+  /** ISO. Sent by `providerById` and shown as the row's date. */
+  joinedAt?: string;
 }
 
 export interface ProviderInvite {

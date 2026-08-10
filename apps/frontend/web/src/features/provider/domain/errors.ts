@@ -18,7 +18,8 @@ const CODE_I18N_KEYS: Partial<Record<string, string>> = {
   NOT_PROVIDER_OWNER: "errors.notProviderOwner",
   INVITE_NOT_FOUND: "errors.inviteNotFound",
   MEMBER_NOT_FOUND: "errors.memberNotFound",
-  INDIVIDUAL_PROVIDER_CANNOT_HAVE_MEMBERS: "errors.individualProviderCannotHaveMembers",
+  INDIVIDUAL_PROVIDER_CANNOT_HAVE_MEMBERS:
+    "errors.individualProviderCannotHaveMembers",
   // Thrown by the read-side detail projection (get-provider-detail.projection.ts),
   // not by bounded-contexts/provider/domain/exceptions — still a reachable,
   // stable code the web client branches on.

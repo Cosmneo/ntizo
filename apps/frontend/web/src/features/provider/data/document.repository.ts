@@ -33,11 +33,14 @@ export async function uploadProviderDocument(
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/api/documents/${providerId}/${type}`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/documents/${providerId}/${type}`,
+    {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    },
+  );
 
   const text = await response.text();
   let body: (UploadedDocument & { error?: string }) | undefined;
@@ -50,7 +53,8 @@ export async function uploadProviderDocument(
     }
   }
 
-  if (!response.ok) throw new DocumentUploadError(body?.error ?? `HTTP_${response.status}`);
+  if (!response.ok)
+    throw new DocumentUploadError(body?.error ?? `HTTP_${response.status}`);
   if (!body) throw new DocumentUploadError("MALFORMED_RESPONSE");
   return body;
 }

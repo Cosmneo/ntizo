@@ -1,19 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
+import { UserPlus } from "lucide-react";
 import {
-  Building2,
-  CheckCircle2,
-  ChevronDown,
-  Mail,
-  Shield,
-  Trash2,
-  UserPlus,
-  Users,
-} from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
   Button,
   Dialog,
   DialogContent,
@@ -23,7 +12,6 @@ import {
   DialogTitle,
   Input,
   Label,
-  Skeleton,
   Select,
 } from "@ntizo/frontend-ui";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
@@ -36,35 +24,38 @@ import {
   useRevokeInvite,
   useUpdateMemberRole,
 } from "../viewmodel/use-member-mutations";
+import {
+  EMPTY_FILTERS,
+  filterPeople,
+  toPeopleRows,
+  type PeopleFilters,
+  type PersonRow,
+} from "../domain/people";
+import { PeopleFilterSheet, filterCount } from "./people-filters";
+import { PeopleTable } from "./people-table";
 import type { ProviderRole } from "../domain/types";
 
-const ROLE_STYLES: Record<
-  ProviderRole,
-  { label: string; pill: string; dot: string }
-> = {
-  owner: {
-    label: "Owner",
-    pill: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    dot: "bg-emerald-400",
-  },
-  admin: {
-    label: "Admin",
-    pill: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    dot: "bg-emerald-400",
-  },
-  staff: {
-    label: "Staff",
-    pill: "bg-violet-500/15 text-violet-400 border-violet-500/30",
-    dot: "bg-violet-400",
-  },
-};
-
-/** The two roles a member can hold. One list, so the two pickers cannot disagree. */
+/** The two roles an invitation can carry. Owner is not one of them. */
 const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
   { value: "staff", label: "Staff" },
 ];
 
+/**
+ * Who is on this workspace.
+ *
+ * One table, not two. Members and pending invitations were separate lists, and
+ * the split described how the data is stored rather than the question being
+ * asked — an invitation sent yesterday is part of the answer to "who is on my
+ * team", just with "waiting" attached. It also let one person appear twice the
+ * moment an invitation was accepted, and made the counts at the top ambiguous
+ * because there were two of them.
+ *
+ * The five stat cards that used to sit above went with it. Four of them
+ * restated the table's own contents, one restated the workspace name that is
+ * already the page header, and together they pushed the actual list below the
+ * fold.
+ */
 export function MembersPage() {
   const { t } = useTranslation("provider");
   const { activeProvider } = useActiveProvider();
@@ -79,15 +70,23 @@ export function MembersPage() {
   const revokeMut = useRevokeInvite(activeProvider?.id ?? "");
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<PeopleFilters>(EMPTY_FILTERS);
   const [actionError, setActionError] = useState<string | null>(null);
 
   usePageHeader(t("members"), activeProvider?.name);
   usePageAction(
     <Button size="sm" onClick={() => setInviteOpen(true)}>
       <UserPlus className="mr-2 h-4 w-4" />
-      Invite member
+      {t("sendInvite")}
     </Button>,
   );
+
+  const rows = useMemo(
+    () => toPeopleRows(detail?.members ?? [], detail?.invites ?? []),
+    [detail?.members, detail?.invites],
+  );
+  const visible = useMemo(() => filterPeople(rows, filters), [rows, filters]);
 
   const inviteForm = useForm({
     defaultValues: { email: "", role: "staff" as ProviderRole },
@@ -108,236 +107,57 @@ export function MembersPage() {
   if (!activeProvider) return null;
   if (error) {
     return (
-      <p className="text-sm text-destructive">
+      <p className="type-body text-[var(--color-destructive)]">
         {providerErrorMessage(t, error)}
       </p>
     );
   }
-  const members = detail?.members ?? [];
-  const invites = detail?.invites ?? [];
-  const myRole =
-    members.find((m) => m.email && activeProvider.role)?.role ??
-    activeProvider.role ??
-    "—";
+
+  /** Every mutation reports the same way, so the page has one error line. */
+  async function run(work: Promise<unknown>) {
+    setActionError(null);
+    try {
+      await work;
+    } catch (e) {
+      setActionError(providerErrorMessage(t, e));
+    }
+  }
+
+  // Owners and admins manage the team; staff can look. Checked again on the
+  // server — this only decides whether to offer the control.
+  const canManage =
+    activeProvider.role === "owner" || activeProvider.role === "admin";
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          label="Organization"
-          icon={<Building2 className="h-4 w-4" />}
-          value={activeProvider.name}
-          hint={activeProvider.type}
-        />
-        <StatCard
-          label="Team Members"
-          icon={<Users className="h-4 w-4" />}
-          value={isLoading ? "…" : String(members.length)}
-          hint="active members"
-        />
-        <StatCard
-          label="Your Role"
-          icon={<Shield className="h-4 w-4" />}
-          value={ROLE_STYLES[myRole as ProviderRole]?.label ?? String(myRole)}
-          hint="in this organization"
-        />
-        <StatCard
-          label="Pending Invites"
-          icon={<Mail className="h-4 w-4" />}
-          value={isLoading ? "…" : String(invites.length)}
-          hint={invites.length === 0 ? "no pending invites" : "awaiting"}
-        />
-        <StatCard
-          label="Status"
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          value="Active"
-          hint="organization operational"
-          hintClassName="text-emerald-400"
-        />
-      </div>
+    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      {actionError && (
+        <p className="type-body text-[var(--color-destructive)]">
+          {actionError}
+        </p>
+      )}
 
-      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+      <PeopleTable
+        rows={visible}
+        total={rows.length}
+        loading={isLoading}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={filterCount(filters)}
+        canManage={canManage}
+        onChangeRole={(row: PersonRow, role: ProviderRole) =>
+          void run(roleMut.mutateAsync({ userId: row.key, role }))
+        }
+        onRemove={(row: PersonRow) => void run(removeMut.mutateAsync(row.key))}
+        onRevoke={(row: PersonRow) => void run(revokeMut.mutateAsync(row.key))}
+      />
 
-      {/* Members + invites table */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-5 py-4">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Active members
-          </span>
-        </div>
-        <div className="flex items-end justify-between border-b border-border px-5 py-3">
-          <span className="text-sm text-muted-foreground">Member</span>
-          <span className="text-sm text-muted-foreground">Role</span>
-        </div>
-
-        {isLoading ? (
-          <MemberSkeletons />
-        ) : members.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            {t("noMembers")}
-          </div>
-        ) : (
-          <ul className="divide-y divide-border px-5">
-            {members.map((m) => {
-              const initials = (m.name ?? m.email ?? "?")
-                .split(" ")
-                .map((p) => p[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase();
-              const style = ROLE_STYLES[m.role];
-              return (
-                <li key={m.userId} className="flex items-center gap-3 py-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="text-xs">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">
-                      {m.name ?? m.email}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {m.email}
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <Select
-                      value={m.role}
-                      onChange={(role) => {
-                        setActionError(null);
-                        roleMut.mutate(
-                          { userId: m.userId, role: role as ProviderRole },
-                          {
-                            onError: (err) =>
-                              setActionError(providerErrorMessage(t, err)),
-                          },
-                        );
-                      }}
-                      options={ROLE_OPTIONS}
-                      className="w-36"
-                    />
-                    <ChevronDown
-                      className={`pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 ${style.dot.replace("bg-", "text-")}`}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(t("removeConfirm"))) {
-                        setActionError(null);
-                        removeMut.mutate(m.userId, {
-                          onError: (err) =>
-                            setActionError(providerErrorMessage(t, err)),
-                        });
-                      }
-                    }}
-                    className="ml-2 rounded p-1 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {/* Pending invitations — same card */}
-        <div className="border-y border-border bg-card/60 px-5 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Pending invitations
-          </span>
-        </div>
-        {isLoading ? (
-          <div className="space-y-3 px-5 py-6">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-40" />
-          </div>
-        ) : invites.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No pending invitations
-          </div>
-        ) : (
-          <ul className="divide-y divide-border px-5">
-            {invites.map((inv) => (
-              <li key={inv.id} className="flex items-center gap-3 py-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                  {inv.email.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">
-                    {inv.email}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {inv.status ?? "pending"}
-                  </div>
-                </div>
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${ROLE_STYLES[inv.role as ProviderRole]?.pill ?? ""}`}
-                >
-                  {ROLE_STYLES[inv.role as ProviderRole]?.label ?? inv.role}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActionError(null);
-                    revokeMut.mutate(inv.id, {
-                      onError: (err) =>
-                        setActionError(providerErrorMessage(t, err)),
-                    });
-                  }}
-                  className="ml-2 rounded p-1 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Roles & permissions */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-5 py-4">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Roles & permissions
-          </span>
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-              <th className="px-5 py-3 text-left font-medium">Role</th>
-              <th className="px-5 py-3 text-center font-medium">Bookings</th>
-              <th className="px-5 py-3 text-center font-medium">Members</th>
-              <th className="px-5 py-3 text-center font-medium">Billing</th>
-              <th className="px-5 py-3 text-center font-medium">Settings</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            <PermissionRow
-              role="Owner"
-              dot="bg-emerald-400"
-              cells={["Full", "Full", "Full", "Full"]}
-            />
-            <PermissionRow
-              role="Admin"
-              dot="bg-emerald-400"
-              cells={["Full", "Full", "View", "Full"]}
-            />
-            <PermissionRow
-              role="Staff"
-              dot="bg-violet-400"
-              cells={["Assigned", "—", "—", "—"]}
-            />
-          </tbody>
-        </table>
-      </div>
-
-      <div className="text-xs text-muted-foreground">
-        {members.length} member{members.length === 1 ? "" : "s"} ·{" "}
-        {invites.length} pending
-      </div>
+      <PeopleFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        filters={filters}
+        onChange={setFilters}
+      />
 
       {/* Invite dialog */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
@@ -410,82 +230,5 @@ export function MembersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  hint,
-  icon,
-  hintClassName,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  icon: React.ReactNode;
-  hintClassName?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
-          {label}
-        </span>
-        <span className="text-muted-foreground">{icon}</span>
-      </div>
-      <div className="mt-3 truncate text-2xl font-bold">{value}</div>
-      <div
-        className={`mt-1 text-xs text-muted-foreground ${hintClassName ?? ""}`}
-      >
-        {hint}
-      </div>
-    </div>
-  );
-}
-
-function MemberSkeletons() {
-  return (
-    <ul className="divide-y divide-border">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <li key={i} className="flex items-center gap-3 py-3">
-          <Skeleton className="h-9 w-9 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-3.5 w-40" />
-            <Skeleton className="h-3 w-52" />
-          </div>
-          <Skeleton className="h-6 w-20 rounded-full" />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function PermissionRow({
-  role,
-  dot,
-  cells,
-}: {
-  role: string;
-  dot: string;
-  cells: string[];
-}) {
-  return (
-    <tr>
-      <td className="px-5 py-3">
-        <div className="flex items-center gap-2 font-medium">
-          <span className={`h-2 w-2 rounded-full ${dot}`} />
-          {role}
-        </div>
-      </td>
-      {cells.map((c, i) => (
-        <td
-          key={i}
-          className={`px-5 py-3 text-center ${c === "—" ? "text-muted-foreground" : "text-emerald-400"}`}
-        >
-          {c}
-        </td>
-      ))}
-    </tr>
   );
 }

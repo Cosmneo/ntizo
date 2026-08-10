@@ -35,9 +35,12 @@ export const providerQueries = {
     queryOptions({
       queryKey: ["providers", "mine"] as const,
       queryFn: async () => {
-        const d = await sessionGraphql<{ providerMine: ProviderSummary[] }>(MINE, {
-          input: {},
-        });
+        const d = await sessionGraphql<{ providerMine: ProviderSummary[] }>(
+          MINE,
+          {
+            input: {},
+          },
+        );
         return d.providerMine;
       },
     }),
@@ -46,9 +49,12 @@ export const providerQueries = {
     queryOptions({
       queryKey: ["providers", providerId] as const,
       queryFn: async () => {
-        const d = await sessionGraphql<{ providerById: ProviderDetail }>(BY_ID, {
-          input: { providerId },
-        });
+        const d = await sessionGraphql<{ providerById: ProviderDetail }>(
+          BY_ID,
+          {
+            input: { providerId },
+          },
+        );
         return d.providerById;
       },
     }),
@@ -70,7 +76,9 @@ export async function createProvider(body: CreateProviderBody) {
 }
 
 export async function registerMe(body: RegisterMeBody = {}) {
-  const d = await sessionGraphql<{ providerRegisterMe: { providerId: string } }>(
+  const d = await sessionGraphql<{
+    providerRegisterMe: { providerId: string };
+  }>(
     `mutation($input: ProviderRegisterMeInput!) {
        providerRegisterMe(input: $input) { providerId }
      }`,
@@ -117,7 +125,9 @@ export async function inviteMember(providerId: string, body: InviteMemberBody) {
 }
 
 export async function acceptInvite(token: string) {
-  const d = await sessionGraphql<{ providerInvitesAccept: { providerId: string } }>(
+  const d = await sessionGraphql<{
+    providerInvitesAccept: { providerId: string };
+  }>(
     `mutation($input: ProviderInvitesAcceptInput!) {
        providerInvitesAccept(input: $input) { providerId }
      }`,

@@ -165,5 +165,36 @@
     "cancel": "Cancelar",
     "confirm": "Usar este encuadre",
     "zoom": "Zoom"
-  }
+  },
+  "peopleTitle": "Personas del espacio",
+  "peopleShown": "{{shown}} de {{total}} mostradas",
+  "peopleSearchPlaceholder": "Buscar personas o roles",
+  "peopleFilter": "Filtrar",
+  "peoplePerson": "Persona",
+  "peopleRole": "Rol",
+  "peopleStatusLabel": "Estado",
+  "peopleDate": "Fecha",
+  "peopleActions": "Acciones",
+  "peopleRoles": {
+    "owner": "Propietario",
+    "admin": "Administrador",
+    "staff": "Personal"
+  },
+  "peopleStatus": {
+    "active": "Activo",
+    "invited": "Invitado",
+    "expired": "Caducado"
+  },
+  "peopleInvitePending": "Invitación enviada, aún sin aceptar",
+  "peopleEmpty": "Todavía no hay nadie. Invita a alguien para empezar.",
+  "peopleNoMatches": "Nadie coincide con esos filtros.",
+  "peopleFilterTitle": "Filtrar personas",
+  "peopleAllRoles": "Todos los roles",
+  "peopleAllStatuses": "Todos los estados",
+  "peopleClearFilters": "Limpiar filtros",
+  "peopleMakeAdmin": "Hacer administrador",
+  "peopleMakeStaff": "Hacer personal",
+  "peopleRemove": "Quitar del espacio",
+  "peopleRevoke": "Revocar invitación",
+  "close": "Cerrar"
 }

@@ -165,5 +165,36 @@
     "cancel": "Cancelar",
     "confirm": "Usar este enquadramento",
     "zoom": "Ampliação"
-  }
+  },
+  "peopleTitle": "Pessoas do workspace",
+  "peopleShown": "{{shown}} de {{total}} mostradas",
+  "peopleSearchPlaceholder": "Procurar pessoas ou funções",
+  "peopleFilter": "Filtrar",
+  "peoplePerson": "Pessoa",
+  "peopleRole": "Função",
+  "peopleStatusLabel": "Estado",
+  "peopleDate": "Data",
+  "peopleActions": "Acções",
+  "peopleRoles": {
+    "owner": "Proprietário",
+    "admin": "Administrador",
+    "staff": "Colaborador"
+  },
+  "peopleStatus": {
+    "active": "Activo",
+    "invited": "Convidado",
+    "expired": "Expirado"
+  },
+  "peopleInvitePending": "Convite enviado — ainda não aceite",
+  "peopleEmpty": "Ainda ninguém aqui. Convide alguém para começar.",
+  "peopleNoMatches": "Ninguém corresponde a esses filtros.",
+  "peopleFilterTitle": "Filtrar pessoas",
+  "peopleAllRoles": "Todas as funções",
+  "peopleAllStatuses": "Todos os estados",
+  "peopleClearFilters": "Limpar filtros",
+  "peopleMakeAdmin": "Tornar administrador",
+  "peopleMakeStaff": "Tornar colaborador",
+  "peopleRemove": "Remover do workspace",
+  "peopleRevoke": "Revogar convite",
+  "close": "Fechar"
 }
