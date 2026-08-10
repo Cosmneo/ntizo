@@ -330,3 +330,30 @@ badges each need a dark counterpart. That is a design decision, not a rename.
 **Trigger:** before dark mode is advertised as a feature, or the first time
 someone reports the landing "ignoring" their theme. Until then the page is
 consistent with itself, which is the part that was actually broken.
+
+## 17. Every anonymous page view now logs an authentication error
+
+The shared header and the mobile bar both read the session, and they render on
+public pages — so `user.me` fires on the landing page and the directory for
+visitors who have no session. The client handles the answer correctly (the
+repository narrows "not signed in" to `null`), but the API logs each one at
+error level:
+
+```
+[api] ✘ [ERROR] GraphQL resolver error [user.me] { message: 'Authentication required' }
+```
+
+Nine of them in one e2e run. In production that is one error line per
+anonymous visitor per page, on the two pages built to be crawled — enough to
+bury a real error, and enough to make an alert on error rate meaningless.
+
+Two halves to the fix, and the second matters more:
+
+- An anonymous caller asking "who am I" is not an error. `user.me` could
+  answer `null` for a request with no session instead of raising, and log
+  nothing.
+- The header does not need a round trip to decide it is signed out. The
+  session cookie's presence is knowable without asking the API.
+
+**Trigger:** before the first deploy that has real traffic, or the first time
+someone tries to alert on backend error rate and finds it dominated by this.

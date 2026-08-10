@@ -16,6 +16,7 @@ import {
   Separator,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
+import { useClearSessionQueryCache } from "@/features/user/viewmodel/use-current-user";
 import { resolveDestinationForSession } from "@/features/provider/viewmodel/post-login";
 import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
@@ -26,6 +27,7 @@ export function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { next } = useSearch({ strict: false }) as { next?: string };
+  const clearSessionQueryCache = useClearSessionQueryCache();
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
@@ -37,6 +39,15 @@ export function SignIn() {
             password: value.password,
           });
           if (error) return { form: error.message ?? "Sign in failed" };
+          // Clear before navigating, for the same reason sign-out does.
+          //
+          // The sign-in page is itself signed out, so any session-scoped
+          // query mounted on it — `user.me` among them, now that the mobile
+          // bar reads it on every page — resolves to "not signed in" and
+          // that answer sits in the cache. Navigating without clearing hands
+          // the authenticated shell the signed-out result, and it renders an
+          // account menu with no account in it.
+          clearSessionQueryCache();
           navigate({ to: await resolveDestinationForSession(next ?? null) });
           return null;
         } catch (err) {

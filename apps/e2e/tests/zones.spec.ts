@@ -8,17 +8,18 @@ test("a customer does not see the Provider or Admin zone links", async ({ page }
   await fillSignInForm(page, customer);
   await page.waitForURL("http://localhost:3000/");
 
-  // The zone switcher only lives inside the provider/admin shells. Any
-  // authenticated user may reach /provider/no-provider (becoming a
-  // provider is opt-in, not gated), so it's a real, always-reachable page
-  // to read the switcher's actual contents off of for a plain customer.
+  // Any authenticated user may reach /provider/no-provider — becoming a
+  // provider is opt-in, not gated — so it is a real, always-reachable page to
+  // read the switcher off for a plain customer.
   await page.goto("/provider");
   await page.waitForURL(/\/provider\/no-provider/);
 
-  const zoneNav = page.getByRole("navigation", { name: "Zone switcher" });
-  await expect(zoneNav.getByRole("link", { name: "Landing" })).toBeVisible();
-  await expect(zoneNav.getByRole("link", { name: "Provider" })).toHaveCount(0);
-  await expect(zoneNav.getByRole("link", { name: "Admin" })).toHaveCount(0);
+  // No switcher at all, not a switcher with one entry. A customer who owns no
+  // provider has nowhere to switch to, and a lone "Customer" pill would imply
+  // a choice that does not exist. Admin is never a segment for anyone; it
+  // lives in the account menu.
+  await expect(page.getByRole("navigation", { name: "Switch view" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Provider dashboard" })).toHaveCount(0);
 });
 
 test("/admin bounces a non-admin to the landing page", async ({ page }) => {

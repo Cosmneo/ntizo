@@ -77,10 +77,10 @@ test("signing in as a different user shows that user's session, not the previous
   await fillSignInForm(page, admin);
   await page.waitForURL(/\/admin/);
 
-  const zoneNav = page.getByRole("navigation", { name: "Zone switcher" });
+  // The admin's own name, not the previous user's — the whole point of this
+  // test. Admin is not a segment in the pill any more; it is reached from the
+  // account menu, so only the identity assertion belongs here.
   await expect(page.locator('[data-sidebar="menu-button"]').filter({ hasText: admin.name })).toBeVisible();
-  await expect(zoneNav.getByRole("link", { name: "Admin" })).toBeVisible();
-  await expect(zoneNav.getByRole("link", { name: "Provider" })).toHaveCount(0);
 
   await signOutViaSidebar(page, admin.name);
   await page.waitForURL(/\/sign-in/);
@@ -96,7 +96,10 @@ test("signing in as a different user shows that user's session, not the previous
   ).toBeVisible();
   await expect(page.getByText(admin.name)).toHaveCount(0);
 
-  const providerZoneNav = page.getByRole("navigation", { name: "Zone switcher" });
+  // This user owns a provider, so the pill has somewhere to switch to and
+  // renders both segments. Admin is not one of them for anybody.
+  const providerZoneNav = page.getByRole("navigation", { name: "Switch view" });
   await expect(providerZoneNav.getByRole("link", { name: "Provider" })).toBeVisible();
+  await expect(providerZoneNav.getByRole("link", { name: "Customer" })).toBeVisible();
   await expect(providerZoneNav.getByRole("link", { name: "Admin" })).toHaveCount(0);
 });
