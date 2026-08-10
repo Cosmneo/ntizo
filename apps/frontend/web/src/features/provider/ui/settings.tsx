@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Building2, Images, MapPin, ShieldCheck, Undo2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  Images,
+  MapPin,
+  ShieldCheck,
+  Undo2,
+} from "lucide-react";
 import {
   Badge,
   Button,
@@ -74,7 +81,12 @@ export function SettingsPage() {
   const { t: ta } = useTranslation("account");
   const { t: tc } = useTranslation("auth");
   const { activeProvider } = useActiveProvider();
-  const { data: detail, isLoading, error, refetch } = useProviderDetail(activeProvider?.id);
+  const {
+    data: detail,
+    isLoading,
+    error,
+    refetch,
+  } = useProviderDetail(activeProvider?.id);
   const updateMut = useUpdateProvider(activeProvider?.id ?? "");
   const deactivateMut = useDeactivateProvider();
   const nav = useNavigate();
@@ -149,9 +161,9 @@ export function SettingsPage() {
       id: "address",
       label: t("settingsAddress"),
       icon: <MapPin className="h-4 w-4" />,
-      dirty: (["street", "city", "district", "country", "postalCode"] as const).some((k) =>
-        changed.has(k),
-      ),
+      dirty: (
+        ["street", "city", "district", "country", "postalCode"] as const
+      ).some((k) => changed.has(k)),
     },
     {
       id: "documents",
@@ -201,253 +213,296 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl pb-28 lg:grid lg:grid-cols-[196px_minmax(0,1fr)] lg:gap-10">
-      <SettingsNav sections={navSections} title={t("settings")} />
+    <>
+      <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[196px_minmax(0,1fr)] lg:gap-10">
+        <SettingsNav sections={navSections} title={t("settings")} />
 
-      <div className="min-w-0">
-      {/* What the workspace IS, before what can be changed about it. These are
+        <div className="min-w-0">
+          {/* What the workspace IS, before what can be changed about it. These are
           the values support asks for and nobody can edit, so they are read-only
           facts rather than empty fields. */}
-      <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
-        <h2 className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-          {t("settingsSnapshot")}
-        </h2>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Fact label={t("settingsWorkspaceId")} value={detail?.id ?? ""} mono />
-          <Fact label={t("settingsSlug")} value={detail?.slug ?? ""} mono />
-          <Fact label={t("settingsType")} value={t(`type.${detail?.type}`)} />
-          <div>
-            <dt className="type-caption text-[var(--color-muted-foreground)]">
-              {t("settingsStatus")}
-            </dt>
-            <dd className="mt-1.5">
-              <Badge tone={STATUS_TONE[detail?.status ?? ""] ?? "info"}>
-                {t(`status.${detail?.status}`)}
-              </Badge>
-            </dd>
-          </div>
-        </dl>
-      </section>
+          <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
+            <h2 className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
+              {t("settingsSnapshot")}
+            </h2>
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Fact
+                label={t("settingsWorkspaceId")}
+                value={detail?.id ?? ""}
+                mono
+              />
+              <Fact label={t("settingsSlug")} value={detail?.slug ?? ""} mono />
+              <Fact
+                label={t("settingsType")}
+                value={t(`type.${detail?.type}`)}
+              />
+              <div>
+                <dt className="type-caption text-[var(--color-muted-foreground)]">
+                  {t("settingsStatus")}
+                </dt>
+                <dd className="mt-1.5">
+                  <Badge tone={STATUS_TONE[detail?.status ?? ""] ?? "info"}>
+                    {t(`status.${detail?.status}`)}
+                  </Badge>
+                </dd>
+              </div>
+            </dl>
+          </section>
 
-<Section
-        id="brand"
-        icon={<Images className="h-5 w-5" />}
-        title={t("settingsBrand")}
-        blurb={t("settingsBrandBlurb")}
-      >
-        <div className="grid gap-7">
-          <LogoUpload
-            url={draft.logoKey ? urlFor(draft.logoKey) : null}
-            onSelect={(file) => {
-              void media.upload("logo", file).then((r) => {
-                if (!r) return;
-                if (r.url) setFreshUrls((m) => ({ ...m, [r.key]: r.url! }));
-                patch({ logoKey: r.key });
-              });
-            }}
-            onClear={() => patch({ logoKey: null })}
-            onReject={(reason) => setMessage(t(`mediaReject.${reason}`))}
-            busy={media.busy}
-            label={t("settingsLogo")}
-            hint={t("settingsLogoHint")}
-            chooseText={t("settingsImageChoose")}
-            replaceText={t("settingsImageReplace")}
-            removeText={t("settingsImageRemove")}
-          />
-
-          <div className="border-t border-[var(--color-border)] pt-6">
-            <p className="type-body-medium font-semibold">{t("settingsPortfolio")}</p>
-            <p className="type-caption mt-0.5 mb-4 text-[var(--color-muted-foreground)]">
-              {t("settingsPortfolioHint")}
-            </p>
-            <GalleryUpload
-              urls={draft.photoKeys.map(urlFor).filter((u): u is string => u !== null)}
-              onSelect={(files) => {
-                void media.uploadMany("photo", files).then((results) => {
-                  if (results.length === 0) return;
-                  setFreshUrls((m) => {
-                    const next = { ...m };
-                    for (const r of results) if (r.url) next[r.key] = r.url;
-                    return next;
+          <Section
+            id="brand"
+            icon={<Images className="h-5 w-5" />}
+            title={t("settingsBrand")}
+            blurb={t("settingsBrandBlurb")}
+          >
+            <div className="grid gap-7">
+              <LogoUpload
+                url={draft.logoKey ? urlFor(draft.logoKey) : null}
+                onSelect={(file) => {
+                  void media.upload("logo", file).then((r) => {
+                    if (!r) return;
+                    if (r.url) setFreshUrls((m) => ({ ...m, [r.key]: r.url! }));
+                    patch({ logoKey: r.key });
                   });
-                  patch({ photoKeys: [...draft.photoKeys, ...results.map((r) => r.key)] });
-                });
-              }}
-              onRemoveUrl={(url) =>
-                patch({ photoKeys: draft.photoKeys.filter((k) => urlFor(k) !== url) })
-              }
-              onReject={(reason) => setMessage(t(`mediaReject.${reason}`))}
-              busy={media.busy}
-              max={MAX_PORTFOLIO_IMAGES}
-              addText={t("settingsImageAdd")}
-              emptyText={t("settingsPortfolioEmpty")}
-              fullText={t("settingsPortfolioFull", { max: MAX_PORTFOLIO_IMAGES })}
-              removeText={t("settingsImageRemove")}
-            />
-          </div>
+                }}
+                onClear={() => patch({ logoKey: null })}
+                onReject={(reason) => setMessage(t(`mediaReject.${reason}`))}
+                busy={media.busy}
+                label={t("settingsLogo")}
+                hint={t("settingsLogoHint")}
+                chooseText={t("settingsImageChoose")}
+                replaceText={t("settingsImageReplace")}
+                removeText={t("settingsImageRemove")}
+              />
 
-          {media.errorKey && (
-            <p className="type-caption text-[var(--color-destructive)]">
-              {t(media.errorKey)}
-            </p>
-          )}
-        </div>
-      </Section>
+              <div className="border-t border-[var(--color-border)] pt-6">
+                <p className="type-body-medium font-semibold">
+                  {t("settingsPortfolio")}
+                </p>
+                <p className="type-caption mt-0.5 mb-4 text-[var(--color-muted-foreground)]">
+                  {t("settingsPortfolioHint")}
+                </p>
+                <GalleryUpload
+                  urls={draft.photoKeys
+                    .map(urlFor)
+                    .filter((u): u is string => u !== null)}
+                  onSelect={(files) => {
+                    void media.uploadMany("photo", files).then((results) => {
+                      if (results.length === 0) return;
+                      setFreshUrls((m) => {
+                        const next = { ...m };
+                        for (const r of results) if (r.url) next[r.key] = r.url;
+                        return next;
+                      });
+                      patch({
+                        photoKeys: [
+                          ...draft.photoKeys,
+                          ...results.map((r) => r.key),
+                        ],
+                      });
+                    });
+                  }}
+                  onRemoveUrl={(url) =>
+                    patch({
+                      photoKeys: draft.photoKeys.filter(
+                        (k) => urlFor(k) !== url,
+                      ),
+                    })
+                  }
+                  onReject={(reason) => setMessage(t(`mediaReject.${reason}`))}
+                  busy={media.busy}
+                  max={MAX_PORTFOLIO_IMAGES}
+                  addText={t("settingsImageAdd")}
+                  emptyText={t("settingsPortfolioEmpty")}
+                  fullText={t("settingsPortfolioFull", {
+                    max: MAX_PORTFOLIO_IMAGES,
+                  })}
+                  removeText={t("settingsImageRemove")}
+                />
+              </div>
 
-      <Section
-        id="identity"
-        icon={<Building2 className="h-5 w-5" />}
-        title={t("settingsIdentity")}
-        blurb={t("settingsIdentityBlurb")}
-      >
-        <div className="grid gap-5">
-          <div className="grid gap-1.5">
-            <Label htmlFor="name">{t("settingsName")}</Label>
-            <Input
-              id="name"
-              value={draft.name}
-              onChange={(e) => patch({ name: e.target.value })}
-            />
-          </div>
+              {media.errorKey && (
+                <p className="type-caption text-[var(--color-destructive)]">
+                  {t(media.errorKey)}
+                </p>
+              )}
+            </div>
+          </Section>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="description">{t("settingsDescription")}</Label>
-            <p className="type-caption text-[var(--color-muted-foreground)]">
-              {t("settingsDescriptionHint")}
-            </p>
-            <textarea
-              id="description"
-              rows={3}
-              value={draft.description}
-              onChange={(e) => patch({ description: e.target.value })}
-              className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-            />
-          </div>
+          <Section
+            id="identity"
+            icon={<Building2 className="h-5 w-5" />}
+            title={t("settingsIdentity")}
+            blurb={t("settingsIdentityBlurb")}
+          >
+            <div className="grid gap-5">
+              <div className="grid gap-1.5">
+                <Label htmlFor="name">{t("settingsName")}</Label>
+                <Input
+                  id="name"
+                  value={draft.name}
+                  onChange={(e) => patch({ name: e.target.value })}
+                />
+              </div>
 
-          {/* Read-only, and said out loud rather than rendered as a dead
+              <div className="grid gap-1.5">
+                <Label htmlFor="description">{t("settingsDescription")}</Label>
+                <p className="type-caption text-[var(--color-muted-foreground)]">
+                  {t("settingsDescriptionHint")}
+                </p>
+                <textarea
+                  id="description"
+                  rows={3}
+                  value={draft.description}
+                  onChange={(e) => patch({ description: e.target.value })}
+                  className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
+                />
+              </div>
+
+              {/* Read-only, and said out loud rather than rendered as a dead
               dropdown. The type decides how the calendar and the team work;
               changing it after the fact is a migration, not a setting. */}
-          <div className="grid gap-1.5">
-            <Label htmlFor="type">{t("settingsType")}</Label>
-            <Select
-              id="type"
-              value={detail?.type ?? ""}
-              onChange={() => undefined}
-              disabled
-              options={PROVIDER_TYPES.map((value) => ({
-                value,
-                label: t(`type.${value}`),
-              }))}
-              ariaLabel={t("settingsType")}
-            />
-            <p className="type-caption text-[var(--color-muted-foreground)]">
-              {t("settingsTypeLocked")}
-            </p>
-          </div>
-        </div>
-      </Section>
+              <div className="grid gap-1.5">
+                <Label htmlFor="type">{t("settingsType")}</Label>
+                <Select
+                  id="type"
+                  value={detail?.type ?? ""}
+                  onChange={() => undefined}
+                  disabled
+                  options={PROVIDER_TYPES.map((value) => ({
+                    value,
+                    label: t(`type.${value}`),
+                  }))}
+                  ariaLabel={t("settingsType")}
+                />
+                <p className="type-caption text-[var(--color-muted-foreground)]">
+                  {t("settingsTypeLocked")}
+                </p>
+              </div>
+            </div>
+          </Section>
 
-      <Section
-        id="address"
-        icon={<MapPin className="h-5 w-5" />}
-        title={t("settingsAddress")}
-        blurb={t("settingsAddressBlurb")}
-      >
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="grid gap-1.5">
-            <Label htmlFor="country">{ta("addrCountry")}</Label>
-            <CountrySelect
-              id="country"
-              value={draft.country}
-              onChange={(code) => patch({ country: code, city: "" })}
-              locale={i18n.resolvedLanguage ?? i18n.language}
-              ariaLabel={ta("addrCountry")}
-              searchPlaceholder={tc("countrySearchPlaceholder")}
-              noResultsText={tc("countryNoResults")}
-            />
-          </div>
+          <Section
+            id="address"
+            icon={<MapPin className="h-5 w-5" />}
+            title={t("settingsAddress")}
+            blurb={t("settingsAddressBlurb")}
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="country">{ta("addrCountry")}</Label>
+                <CountrySelect
+                  id="country"
+                  value={draft.country}
+                  onChange={(code) => patch({ country: code, city: "" })}
+                  locale={i18n.resolvedLanguage ?? i18n.language}
+                  ariaLabel={ta("addrCountry")}
+                  searchPlaceholder={tc("countrySearchPlaceholder")}
+                  noResultsText={tc("countryNoResults")}
+                />
+              </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="city">{ta("addrCity")}</Label>
-            <CitySelect
-              id="city"
-              value={draft.city}
-              onChange={(city) => patch({ city })}
-              cities={cityQuery.cities}
-              loading={cityQuery.loading}
-              placeholder={ta("addrCityPlaceholder")}
-              toggleLabel={ta("addrCityToggle")}
-              noResultsText={ta("addrCityNoResults")}
-              loadingText={ta("addrCityLoading")}
-            />
-          </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="city">{ta("addrCity")}</Label>
+                <CitySelect
+                  id="city"
+                  value={draft.city}
+                  onChange={(city) => patch({ city })}
+                  cities={cityQuery.cities}
+                  loading={cityQuery.loading}
+                  placeholder={ta("addrCityPlaceholder")}
+                  toggleLabel={ta("addrCityToggle")}
+                  noResultsText={ta("addrCityNoResults")}
+                  loadingText={ta("addrCityLoading")}
+                />
+              </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="district">{ta("addrDistrict")}</Label>
-            <Input
-              id="district"
-              value={draft.district}
-              onChange={(e) => patch({ district: e.target.value })}
-            />
-          </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="district">{ta("addrDistrict")}</Label>
+                <Input
+                  id="district"
+                  value={draft.district}
+                  onChange={(e) => patch({ district: e.target.value })}
+                />
+              </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="postalCode">{ta("addrPostalCode")}</Label>
-            <Input
-              id="postalCode"
-              value={draft.postalCode}
-              onChange={(e) => patch({ postalCode: e.target.value })}
-            />
-          </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="postalCode">{ta("addrPostalCode")}</Label>
+                <Input
+                  id="postalCode"
+                  value={draft.postalCode}
+                  onChange={(e) => patch({ postalCode: e.target.value })}
+                />
+              </div>
 
-          <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="street">{ta("addrLine1")}</Label>
-            <Input
-              id="street"
-              value={draft.street}
-              onChange={(e) => patch({ street: e.target.value })}
-            />
-          </div>
-        </div>
-      </Section>
+              <div className="grid gap-1.5 sm:col-span-2">
+                <Label htmlFor="street">{ta("addrLine1")}</Label>
+                <Input
+                  id="street"
+                  value={draft.street}
+                  onChange={(e) => patch({ street: e.target.value })}
+                />
+              </div>
+            </div>
+          </Section>
 
-      {/* Everything the wizard let someone skip, finishable here — and the only
+          {/* Everything the wizard let someone skip, finishable here — and the only
           screen a rejection has to appear on. */}
-      <Section
-        id="documents"
-        icon={<ShieldCheck className="h-5 w-5" />}
-        title={t("settingsDocuments")}
-        blurb={t("settingsDocumentsBlurb")}
-      >
-        <DocumentsSection
-          providerId={activeProvider.id}
-          providerType={(detail?.type ?? ProviderType.Individual) as ProviderType}
-          documents={detail?.documents ?? []}
-          reverificationRequestedAt={detail?.reverificationRequestedAt ?? null}
-          onUploaded={() => void refetch()}
-        />
-      </Section>
+          <Section
+            id="documents"
+            icon={<ShieldCheck className="h-5 w-5" />}
+            title={t("settingsDocuments")}
+            blurb={t("settingsDocumentsBlurb")}
+          >
+            <DocumentsSection
+              providerId={activeProvider.id}
+              providerType={
+                (detail?.type ?? ProviderType.Individual) as ProviderType
+              }
+              documents={detail?.documents ?? []}
+              reverificationRequestedAt={
+                detail?.reverificationRequestedAt ?? null
+              }
+              onUploaded={() => void refetch()}
+            />
+          </Section>
 
-      <Section
-        id="danger"
-        icon={<AlertTriangle className="h-5 w-5 text-[var(--color-destructive)]" />}
-        title={t("dangerZone")}
-        blurb={t("deactivateWarning")}
-        tone="danger"
-      >
-        <Button variant="destructive" onClick={() => void deactivate()}>
-          {t("deactivate")}
-        </Button>
-      </Section>
+          <Section
+            id="danger"
+            icon={
+              <AlertTriangle className="h-5 w-5 text-[var(--color-destructive)]" />
+            }
+            title={t("dangerZone")}
+            blurb={t("deactivateWarning")}
+            tone="danger"
+          >
+            <Button variant="destructive" onClick={() => void deactivate()}>
+              {t("deactivate")}
+            </Button>
+          </Section>
+        </div>
+      </div>
 
-      {/* Fixed, and present whether or not anything changed. A save bar that
-          appears only when dirty moves the page under the reader at the moment
-          they edit their first field. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur">
+      {/* Sticky inside the scrolling content, not fixed to the viewport.
+          Fixed spanned the whole window and laid itself over the foot of the
+          sidebar, hiding the account menu — and raising its z-index would only
+          have swapped which of the two covered the other. The bar belongs to
+          the column it saves, so it lives there and ends where that column
+          does. The negative margins cancel `main`'s padding so it still reads
+          as a bar rather than a card footer, and the negative `bottom`
+          cancels its bottom padding so the bar sits flush instead of floating
+          24px clear of the edge.
+
+          Present whether or not anything changed: a save bar that appears only
+          when dirty moves the page under the reader at the moment they edit
+          their first field. */}
+      <div className="sticky -bottom-6 z-20 -mx-6 -mb-6 mt-6 border-t border-[var(--color-border)] bg-[var(--color-background)]/95 px-6 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5">
           <div className="min-w-0">
             <p className="type-body-medium font-semibold">
-              {dirty ? t("settingsUnsaved") : (message ?? t("settingsNoChanges"))}
+              {dirty
+                ? t("settingsUnsaved")
+                : (message ?? t("settingsNoChanges"))}
             </p>
             <p className="type-caption text-[var(--color-muted-foreground)]">
               {t("settingsSaveHint")}
@@ -466,22 +521,34 @@ export function SettingsPage() {
               <Undo2 className="h-4 w-4" />
               {t("settingsDiscard")}
             </Button>
-            <Button disabled={!dirty || updateMut.isPending} onClick={() => void save()}>
+            <Button
+              disabled={!dirty || updateMut.isPending}
+              onClick={() => void save()}
+            >
               {updateMut.isPending ? t("settingsSaving") : t("settingsSave")}
             </Button>
           </div>
         </div>
       </div>
-      </div>
-    </div>
+    </>
   );
 }
 
 /** A value nobody can change, shown as one. */
-function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Fact({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="min-w-0">
-      <dt className="type-caption text-[var(--color-muted-foreground)]">{label}</dt>
+      <dt className="type-caption text-[var(--color-muted-foreground)]">
+        {label}
+      </dt>
       <dd
         className={cn(
           "type-body-medium mt-1 truncate font-semibold",
@@ -533,7 +600,9 @@ function Section({
         </span>
         <div className="min-w-0">
           <h2 className="type-h3 font-semibold">{title}</h2>
-          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{blurb}</p>
+          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+            {blurb}
+          </p>
         </div>
       </div>
       {children}
