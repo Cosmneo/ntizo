@@ -132,17 +132,27 @@ function Hero({ ctaTo, t }: { ctaTo: string; t: T }) {
 /**
  * The two kinds of provider.
  *
- * Ntizo's own distinction and the first real decision a visitor makes, so it
- * gets the page's largest cards and its only artwork below the fold: a person
+ * Ntizo's own distinction and the first real decision a visitor makes: a person
  * offering their own labour and an establishment with staff need different
- * things, and someone reading this is working out which one they are.
+ * calendars and different teams, and someone reading this is working out which
+ * one they are.
+ *
+ * Built to the reference's shape after two attempts that were not. The numeral
+ * is two digits sitting on the seam rather than one floating in the middle of
+ * the artwork — at the seam it belongs to both halves and joins them; in the
+ * middle it belongs to neither. The corners are nearly square, because a pill
+ * that size reads as a button. And there is no checklist: three ticks under
+ * every card turned a choice into a specification, so the differentiator is one
+ * sentence and one tag.
  */
 function Paths({ t }: { t: T }) {
   const paths = ["individual", "organization"] as const;
 
   return (
-    <section className="py-24">
-      <div className="page-shell">
+    <section className="relative isolate py-24">
+      <GridTexture />
+
+      <div className="page-shell relative">
         <div className="max-w-[62ch]">
           <Eyebrow>{t("pathsEyebrow")}</Eyebrow>
           <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
@@ -153,48 +163,75 @@ function Paths({ t }: { t: T }) {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-2">
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
           {paths.map((key, i) => (
             <article
               key={key}
-              className="group overflow-hidden rounded-[28px] border transition-transform duration-300 hover:-translate-y-1"
+              className="overflow-hidden rounded-[10px] border transition-transform duration-300 hover:-translate-y-1"
               style={{ borderColor: "var(--l-border)", background: CARD }}
             >
-              <div className="relative h-44 overflow-hidden">
+              <div className="relative h-52">
                 <SurfaceArt seed={31 + i * 7} className="h-full w-full" />
-                {/* Inside the image, not straddling its edge. Overhanging the
-                    seam is the nicer idea and it cannot work here: the card
-                    clips its corners, so the numeral came out sliced in half
-                    and read as a rendering fault rather than a flourish. */}
+                {/* Sits ON the seam, and two digits rather than one: at this
+                    size a single glyph reads as a stray character, and floating
+                    it mid-image made it belong to neither half. */}
                 <span
                   aria-hidden="true"
-                  className="font-rounded absolute bottom-3 left-7 text-[5rem] leading-[0.8] font-extrabold tabular-nums text-white/85 [text-shadow:0_2px_24px_rgba(19,23,27,.35)]"
+                  className="font-rounded absolute bottom-0 left-7 translate-y-[0.14em] text-[5.5rem] leading-[0.78] font-extrabold text-white tabular-nums [text-shadow:0_2px_20px_rgba(19,23,27,.45)]"
                 >
-                  {i + 1}
+                  {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
 
-              <div className="px-7 pt-7 pb-8">
-                <h3 className="font-rounded text-2xl font-extrabold tracking-[-0.02em]">
+              <div className="px-8 pt-9 pb-8">
+                <h3 className="font-rounded text-[clamp(1.35rem,2.2vw,1.7rem)] font-extrabold tracking-[-0.02em]">
                   {t(`path.${key}.title`)}
                 </h3>
                 <p className="mt-3 leading-relaxed text-[color:var(--l-muted)]">
                   {t(`path.${key}.body`)}
                 </p>
-                <ul className="mt-6 grid gap-2.5 border-t p-0 pt-6" style={{ borderColor: "var(--l-border)" }}>
-                  {["a", "b", "c"].map((point) => (
-                    <li key={point} className="flex list-none items-start gap-3 text-[15px]">
-                      <Check className="mt-1 h-4 w-4 shrink-0" style={{ color: ACCENT }} />
-                      {t(`path.${key}.point.${point}`)}
-                    </li>
-                  ))}
-                </ul>
+                {/* One fact, not a list. It is the thing that actually differs
+                    between the two, which is what the reader came for. */}
+                <span
+                  className="font-rounded mt-6 inline-flex items-center rounded-full border px-3.5 py-1.5 text-[11px] font-extrabold tracking-[0.12em] uppercase"
+                  style={{
+                    borderColor: `color-mix(in srgb, ${ACCENT} 35%, transparent)`,
+                    color: ACCENT,
+                  }}
+                >
+                  {t(`path.${key}.tag`)}
+                </span>
               </div>
             </article>
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * A faint square grid behind a section.
+ *
+ * The light ground reads as empty at this width — the reference carries a
+ * texture for the same reason. Faint enough to be felt rather than seen, and
+ * masked at the edges so it does not end in a hard line.
+ */
+function GridTexture() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 -z-10 opacity-[0.55]"
+      style={{
+        backgroundImage:
+          "linear-gradient(var(--l-border) 1px, transparent 1px)," +
+          "linear-gradient(90deg, var(--l-border) 1px, transparent 1px)",
+        backgroundSize: "88px 88px",
+        maskImage: "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
+        WebkitMaskImage:
+          "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
+      }}
+    />
   );
 }
 

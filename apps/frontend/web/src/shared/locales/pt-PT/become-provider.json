@@ -12,21 +12,13 @@
   "path": {
     "individual": {
       "title": "Por conta própria",
-      "body": "Você é o serviço. Uma agenda, o seu perfil, os seus preços.",
-      "point": {
-        "a": "Defina as horas em que trabalha",
-        "b": "Pacotes de preço fixo ou por hora",
-        "c": "Em casa do cliente, no seu espaço ou à distância"
-      }
+      "body": "Você é o serviço: o seu perfil, os seus preços, as horas que escolher. Trabalha em casa do cliente, no seu espaço ou à distância.",
+      "tag": "Uma agenda — a sua"
     },
     "organization": {
       "title": "Estabelecimento com equipa",
-      "body": "Um negócio com várias pessoas. Reservas em paralelo, conforme quem está disponível.",
-      "point": {
-        "a": "Vários funcionários, várias reservas à mesma hora",
-        "b": "Convide a equipa e defina o que cada um pode fazer",
-        "c": "Horário do estabelecimento e folgas por pessoa"
-      }
+      "body": "Vários funcionários sob um nome, com reservas em paralelo conforme quem está livre. Convide a equipa e defina o que cada um pode fazer.",
+      "tag": "Uma agenda por funcionário"
     }
   },
   "pricingTitle": "Zero de comissão para si",

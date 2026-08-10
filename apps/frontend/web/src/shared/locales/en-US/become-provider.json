@@ -12,21 +12,13 @@
   "path": {
     "individual": {
       "title": "On your own",
-      "body": "You are the service. One calendar, your profile, your prices.",
-      "point": {
-        "a": "Set the hours you work",
-        "b": "Fixed-price packages or by the hour",
-        "c": "At the customer's, at your place, or remote"
-      }
+      "body": "You are the service: your profile, your prices, the hours you choose. Work at the customer's, at your place, or remote.",
+      "tag": "One calendar — yours"
     },
     "organization": {
       "title": "A business with staff",
-      "body": "Several people under one name. Bookings run in parallel, as staff are free.",
-      "point": {
-        "a": "Several staff, several bookings at the same hour",
-        "b": "Invite your team and decide what each can do",
-        "c": "Opening hours for the business, time off per person"
-      }
+      "body": "Several staff under one name, with bookings running in parallel as people are free. Invite your team and set what each can do.",
+      "tag": "One calendar per member of staff"
     }
   },
   "pricingTitle": "Zero commission for you",
