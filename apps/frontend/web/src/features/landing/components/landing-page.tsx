@@ -1,242 +1,29 @@
-import {
-  Compass,
-  Wrench,
-  Users,
-  HelpCircle,
-  Heart,
-  Globe,
-  MapPin,
-  Calendar,
-} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { Hero } from "@/features/landing/ui/hero";
+import {
+  Categories,
+  LANDING_VARS,
+  PopularProviders,
+  ProviderCall,
+  Stories,
+} from "@/features/landing/ui/sections";
 
-const NAVY = "#0e1f37";
-const ACCENT = "#007AFF";
-const CARD = "#ffffff";
-const MUTED = "#6b7a90";
-const BORDER = "#dde6f3";
+import { BORDER, CARD, MUTED, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 
-// `labelKey`, not `label`: the array is module-scope, evaluated once at import
-// time, so a translated string baked in here would freeze at whatever locale
-// happened to load first and never follow a language change.
-const NAV_ITEMS = [
-  { key: "explore", labelKey: "nav.explore", icon: Compass },
-  { key: "services", labelKey: "nav.services", icon: Wrench },
-  { key: "providers", labelKey: "nav.providers", icon: Users },
-  { key: "how", labelKey: "nav.howItWorks", icon: HelpCircle },
-] as const;
 
 export function LandingPage() {
   return (
-    <main style={page}>
-      <Header />
+    // The palette travels to the sections as local custom properties, so the
+    // page keeps its own colours instead of each block re-deciding them.
+    <main style={{ ...page, ...LANDING_VARS }}>
       <Hero />
+      <Categories />
+      <PopularProviders />
+      <Stories />
+      <ProviderCall />
       <Footer />
     </main>
-  );
-}
-
-function Header() {
-  const { t } = useTranslation("landing"); // t:Header
-  return (
-    <header style={header}>
-      <a href="/" style={logoLink}>
-        <img src="/brand/logo-primary.svg" alt="Ntizo" style={{ height: 32 }} />
-      </a>
-
-      <nav style={navPill}>
-        {NAV_ITEMS.map((item, i) => {
-          const Icon = item.icon;
-          const active = i === 0;
-          return (
-            <a
-              key={item.key}
-              href={`#${item.key}`}
-              style={active ? navItemActive : navItem}
-            >
-              <Icon size={16} />
-              <span>{t(item.labelKey)}</span>
-            </a>
-          );
-        })}
-      </nav>
-
-      <div style={headerRight}>
-        <button type="button" style={iconBtn} aria-label={t("favorites")}>
-          <Heart size={18} />
-        </button>
-        <button type="button" style={langBtn}>
-          <Globe size={16} />
-          <span>EN · USD</span>
-        </button>
-        <Link to="/sign-in" style={signInBtn}>
-          {t("signIn")}
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-function Hero() {
-  const { t } = useTranslation("landing"); // t:Hero
-  return (
-    <section style={hero}>
-      <Cloud style={{ top: 20, left: 80, opacity: 0.6 }} />
-      <Cloud style={{ top: 90, right: 120, opacity: 0.5, transform: "scale(0.7)" }} />
-      <Sparkle style={{ top: 60, right: 60, color: ACCENT }} />
-      <Sparkle style={{ bottom: 220, left: 40, color: NAVY }} />
-
-      <div style={heroInner}>
-        <div style={heroText}>
-          <h1 style={heroH1}>
-            <span>{t("heroLine1")}</span>
-            <br />
-            <span style={{ position: "relative", display: "inline-block" }}>
-              {t("heroLine2")}
-              <Underline />
-            </span>
-            <br />
-            <span style={{ color: ACCENT }}>{t("heroLine3")}</span>
-          </h1>
-          <p style={heroSub}>
-            {t("heroSubtitle")}
-          </p>
-        </div>
-
-        <div style={heroIllustration} aria-hidden>
-          <div style={blobBack} />
-          <div style={blobFront} />
-          <div style={ground} />
-          <img
-            src="/brand/icon-primary.svg"
-            alt=""
-            style={{
-              position: "relative",
-              width: 320,
-              height: 320,
-              filter: "drop-shadow(0 24px 48px rgba(14,31,55,0.18))",
-            }}
-          />
-          <Sparkle style={{ top: 30, right: 30, color: ACCENT, transform: "scale(1.4)" }} />
-          <Sparkle style={{ bottom: 80, left: 20, color: NAVY }} />
-          <Sparkle style={{ top: 150, left: 0, color: ACCENT, transform: "scale(0.8)" }} />
-        </div>
-      </div>
-
-      <SearchBar />
-    </section>
-  );
-}
-
-function Cloud({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg
-      width="80"
-      height="40"
-      viewBox="0 0 80 40"
-      style={{ position: "absolute", ...style }}
-      aria-hidden
-    >
-      <ellipse cx="20" cy="25" rx="14" ry="10" fill="#fff" />
-      <ellipse cx="40" cy="20" rx="18" ry="14" fill="#fff" />
-      <ellipse cx="60" cy="25" rx="14" ry="10" fill="#fff" />
-    </svg>
-  );
-}
-
-function Sparkle({ style }: { style?: React.CSSProperties & { color?: string } }) {
-  const color = style?.color ?? NAVY;
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      style={{ position: "absolute", ...style }}
-      aria-hidden
-    >
-      <path
-        d="M12 2 L13.5 10.5 L22 12 L13.5 13.5 L12 22 L10.5 13.5 L2 12 L10.5 10.5 Z"
-        fill={color}
-        opacity="0.7"
-      />
-    </svg>
-  );
-}
-
-function Underline() {
-  return (
-    <svg
-      width="100%"
-      height="14"
-      viewBox="0 0 200 14"
-      style={{
-        position: "absolute",
-        left: 0,
-        bottom: -6,
-        width: "100%",
-      }}
-      aria-hidden
-    >
-      <path
-        d="M2 8 Q 50 -2, 100 6 T 198 6"
-        stroke={ACCENT}
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-function SearchBar() {
-  const { t } = useTranslation("landing"); // t:SearchBar
-  return (
-    <div style={searchOuter}>
-      <div style={searchTabs}>
-        {NAV_ITEMS.slice(0, 4).map((it, i) => {
-          const Icon = it.icon;
-          const active = i === 0;
-          return (
-            <button key={it.key} type="button" style={active ? tabActive : tab}>
-              <Icon size={16} />
-              <span>{t(it.labelKey)}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={searchPill}>
-        <SearchField label={t("searchWhat")} placeholder={t("anyService")} icon={<Wrench size={18} />} />
-        <SearchField label={t("searchWhere")} placeholder={t("addCity")} icon={<MapPin size={18} />} />
-        <SearchField label={t("searchWhen")} placeholder={t("anyDate")} icon={<Calendar size={18} />} />
-        <SearchField label={t("searchWho")} placeholder={t("onePerson")} icon={<Users size={18} />} />
-        <button type="button" style={searchBtn}>
-          {t("search")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SearchField({
-  label,
-  placeholder,
-  icon,
-}: {
-  label: string;
-  placeholder: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div style={searchField}>
-      <div style={searchFieldIcon}>{icon}</div>
-      <div style={searchFieldLabelWrap}>
-        <div style={searchFieldLabel}>{label}</div>
-        <div style={searchFieldValue}>{placeholder}</div>
-      </div>
-    </div>
   );
 }
 
@@ -413,268 +200,48 @@ function LinkedInGlyph() {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background:
-    "radial-gradient(ellipse at top, #e7f0ff 0%, #f3f7ff 40%, #fafbff 100%)",
-  fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif",
+  // Tint Blue BG, flat. The old three-stop radial gradient predates the design
+  // system, which has one soft background rather than a ramp.
+  background: PAGE_TOP,
+  // No fontFamily here. It used to pin a system stack, which overrode Inter
+  // on the whole page — the design system's body face never reached it.
   color: NAVY,
 };
 
-const header: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 16,
-  padding: "20px 48px",
-  maxWidth: 1320,
-  margin: "0 auto",
-};
 
-const logoLink: React.CSSProperties = { display: "inline-flex" };
 
-const navPill: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  background: CARD,
-  padding: 6,
-  borderRadius: 999,
-  border: `1px solid ${BORDER}`,
-  boxShadow: "0 4px 16px rgba(14, 31, 55, 0.06)",
-};
 
-const navItem: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "10px 16px",
-  borderRadius: 999,
-  fontSize: 13,
-  fontWeight: 500,
-  color: NAVY,
-  textDecoration: "none",
-};
 
-const navItemActive: React.CSSProperties = {
-  ...navItem,
-  background: NAVY,
-  color: "#fff",
-};
 
-const headerRight: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
 
-const iconBtn: React.CSSProperties = {
-  width: 38,
-  height: 38,
-  borderRadius: 999,
-  border: `1px solid ${BORDER}`,
-  background: CARD,
-  color: NAVY,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-};
 
-const langBtn: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "9px 14px",
-  borderRadius: 999,
-  border: `1px solid ${BORDER}`,
-  background: CARD,
-  fontSize: 13,
-  fontWeight: 500,
-  color: NAVY,
-  cursor: "pointer",
-};
 
-const signInBtn: React.CSSProperties = {
-  padding: "10px 18px",
-  borderRadius: 999,
-  background: NAVY,
-  color: "#fff",
-  textDecoration: "none",
-  fontSize: 13,
-  fontWeight: 600,
-};
 
-const hero: React.CSSProperties = {
-  position: "relative",
-  maxWidth: 1320,
-  margin: "0 auto",
-  padding: "40px 48px 80px",
-};
 
-const heroInner: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1.5fr 1fr",
-  gap: 32,
-  alignItems: "center",
-};
 
-const heroText: React.CSSProperties = {};
 
-const heroH1: React.CSSProperties = {
-  fontSize: 56,
-  lineHeight: 1.05,
-  margin: 0,
-  fontWeight: 800,
-  letterSpacing: "-0.02em",
-};
 
-const heroSub: React.CSSProperties = {
-  marginTop: 20,
-  maxWidth: 440,
-  fontSize: 14,
-  lineHeight: 1.6,
-  color: MUTED,
-};
 
-const heroIllustration: React.CSSProperties = {
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  height: 380,
-};
 
-const blobBack: React.CSSProperties = {
-  position: "absolute",
-  width: 420,
-  height: 420,
-  borderRadius: "50%",
-  background:
-    "radial-gradient(circle, rgba(0,122,255,0.22) 0%, rgba(0,122,255,0) 70%)",
-};
 
-const blobFront: React.CSSProperties = {
-  position: "absolute",
-  width: 280,
-  height: 280,
-  borderRadius: "50%",
-  background:
-    "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 70%)",
-};
 
-const ground: React.CSSProperties = {
-  position: "absolute",
-  bottom: 30,
-  width: 320,
-  height: 28,
-  borderRadius: "50%",
-  background:
-    "radial-gradient(ellipse, rgba(14,31,55,0.18) 0%, rgba(14,31,55,0) 70%)",
-  filter: "blur(4px)",
-};
 
-const searchOuter: React.CSSProperties = {
-  marginTop: 32,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 14,
-};
 
-const searchTabs: React.CSSProperties = {
-  display: "flex",
-  gap: 24,
-  background: "transparent",
-};
 
-const tab: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "6px 2px",
-  border: "none",
-  background: "transparent",
-  fontSize: 12,
-  fontWeight: 500,
-  color: MUTED,
-  cursor: "pointer",
-  borderBottom: "2px solid transparent",
-};
 
-const tabActive: React.CSSProperties = {
-  ...tab,
-  color: ACCENT,
-  fontWeight: 700,
-  borderBottom: `2px solid ${ACCENT}`,
-};
 
-const searchPill: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 880,
-  display: "flex",
-  alignItems: "center",
-  background: CARD,
-  borderRadius: 999,
-  padding: 8,
-  border: `1px solid ${BORDER}`,
-  boxShadow: "0 14px 36px rgba(14, 31, 55, 0.1)",
-  gap: 2,
-};
 
-const searchField: React.CSSProperties = {
-  flex: 1,
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "6px 14px",
-  cursor: "pointer",
-  borderRadius: 999,
-};
 
-const searchFieldIcon: React.CSSProperties = {
-  width: 22,
-  height: 22,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: MUTED,
-  flexShrink: 0,
-};
 
-const searchFieldLabel: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  color: NAVY,
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-};
 
-const searchFieldValue: React.CSSProperties = {
-  fontSize: 12,
-  color: MUTED,
-  marginTop: 1,
-  whiteSpace: "nowrap",
-};
-
-const searchFieldLabelWrap: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const searchBtn: React.CSSProperties = {
-  padding: "10px 22px",
-  borderRadius: 999,
-  background: ACCENT,
-  color: "#fff",
-  border: "none",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-  marginLeft: 4,
-};
 
 const footer: React.CSSProperties = {
   marginTop: 60,
-  background: "#f4f6fa",
-  padding: "60px 48px 32px",
+  background: PAGE_TOP,
+  // 24px, matching `.page-shell`'s gutter. At 48 the footer's content sat
+  // inset from every section above it on anything narrower than ~1416px —
+  // the same 1320 ceiling, a different edge.
+  padding: "60px 24px 32px",
 };
 
 const footerGrid: React.CSSProperties = {
@@ -735,7 +302,7 @@ const socialIcon: React.CSSProperties = {
   width: 38,
   height: 38,
   borderRadius: 999,
-  background: "#e6ebf3",
+  background: BORDER,
   color: "#4a5b78",
   display: "inline-flex",
   alignItems: "center",
