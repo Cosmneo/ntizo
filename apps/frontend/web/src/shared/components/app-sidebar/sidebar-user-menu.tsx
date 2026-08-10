@@ -34,6 +34,7 @@ import {
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { useProviderDetail } from "@/features/provider/viewmodel/use-providers";
 import { CreateProviderDialog } from "@/features/provider/ui/create-provider-dialog";
 import { applyThemePreference } from "@/shared/lib/theme";
 
@@ -43,6 +44,8 @@ export function SidebarUserMenu() {
   const { t: tc } = useTranslation("common");
   const { data: user } = useCurrentUser();
   const { providers, activeProvider, setActive } = useActiveProvider();
+  // Cached alongside the settings page's own read; costs nothing extra here.
+  const { data: detail } = useProviderDetail(activeProvider?.id);
   const [dialogOpen, setDialogOpen] = useState(false);
   const nav = useNavigate();
   const signOut = useSignOut();
@@ -111,8 +114,18 @@ export function SidebarUserMenu() {
                   and switching one is the thing most often wanted here. */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="py-2">
-                  <div className="mr-2 flex aspect-square h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
-                    {orgInitials}
+                  {/* The logo, where the sidebar can still show one. It used to
+                      have a block of its own at the top of the sidebar; that
+                      block duplicated a switcher this menu already is, so it
+                      went, and this is the mark's remaining home in the chrome.
+                      Only the active workspace gets one — the rows below would
+                      each cost a detail fetch to find theirs. */}
+                  <div className="mr-2 flex aspect-square h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
+                    {detail?.logo?.url ? (
+                      <img src={detail.logo.url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      orgInitials
+                    )}
                   </div>
                   <div className="flex flex-1 flex-col leading-tight">
                     <span className="text-sm font-medium">
