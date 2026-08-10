@@ -307,3 +307,26 @@ Localised bodies must be counted, not just translated.
 
 **Trigger:** before launch in Mozambique, where Portuguese is the working
 language and the SMS is the one message a user cannot skim past.
+
+## 16. The landing page is light-only, and the theme switcher now exposes it
+
+The Appearance submenu toggles a `.dark` class the design tokens key off, and
+every screen built on those tokens follows it — the directory, the account
+pages, auth, provider and admin. The landing page does not: its palette is a
+set of hardcoded hex constants and a light radial gradient, written before the
+tokens existed.
+
+The moment the switcher shipped this became visible rather than theoretical.
+A visitor whose system is in dark mode got a black search field on a white
+page, because `ServiceSearch` follows the tokens and the page around it does
+not. `landing-page.tsx` now pins the token values to its own light palette,
+which makes the page internally consistent — but it pins them to *light*, so
+choosing Dark leaves the landing light while the rest of the app turns.
+
+Making it genuinely dark-capable is not a mapping exercise: the gradient, the
+navy heading colour, the white product illustration and the two dark app-store
+badges each need a dark counterpart. That is a design decision, not a rename.
+
+**Trigger:** before dark mode is advertised as a feature, or the first time
+someone reports the landing "ignoring" their theme. Until then the page is
+consistent with itself, which is the part that was actually broken.
