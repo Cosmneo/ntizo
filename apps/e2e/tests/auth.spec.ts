@@ -10,7 +10,15 @@ test("sign up, verify, sign in, and land on the right zone", async ({ page }) =>
   await page.getByLabel("First name").fill("Signup");
   await page.getByLabel("Last name").fill("Flow");
   await page.getByLabel("Email", { exact: true }).fill(email);
+  // National digits only — the country selector supplies the +258, and the
+  // field is required, so omitting it blocks submission at the browser's own
+  // validation and the form never reaches the API.
+  await page.getByLabel("Mobile number").fill("841234567");
   await page.getByLabel("Password", { exact: true }).fill(password);
+  // Required, and validated again on submit. Leaving it unticked blocks the
+  // form at the browser's own validation, so the page simply never changes —
+  // which is how this spec failed silently once the checkbox was added.
+  await page.getByRole("checkbox", { name: /i accept/i }).check();
   await page.getByRole("button", { name: /create account/i }).click();
 
   // The real POST /api/auth/sign-up/email round-trip completed and the form
@@ -24,7 +32,9 @@ test("sign up, verify, sign in, and land on the right zone", async ({ page }) =>
   // customer (no role passed, matching what a real signup produces).
   await verifyUserByEmail(email);
 
-  await page.getByRole("link", { name: /^sign in$/i }).click();
+  // "Back to sign in" — the link on the check-your-email view, not the
+  // "Sign in" one at the foot of the form, which this view has replaced.
+  await page.getByRole("link", { name: /back to sign in/i }).click();
   await page.waitForURL(/\/sign-in/);
   await fillSignInForm(page, { email, password });
 
