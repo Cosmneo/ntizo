@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
+import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
 import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
@@ -47,6 +48,11 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
 const ProviderRouteRoute = ProviderRouteRouteImport.update({
   id: '/provider',
   path: '/provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyPhoneRoute = VerifyPhoneRouteImport.update({
+  id: '/verify-phone',
+  path: '/verify-phone',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PublicForgotPasswordRoute = PublicForgotPasswordRouteImport.update({
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/verify-phone': typeof VerifyPhoneRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/verify-phone': typeof VerifyPhoneRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/verify-phone': typeof VerifyPhoneRoute
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/sign-in': typeof PublicSignInRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/provider'
+    | '/verify-phone'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/verify-phone'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/provider'
+    | '/verify-phone'
     | '/_public/forgot-password'
     | '/_public/reset-password'
     | '/_public/sign-in'
@@ -263,6 +275,7 @@ export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
+  VerifyPhoneRoute: typeof VerifyPhoneRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
 }
@@ -295,6 +308,13 @@ declare module '@tanstack/react-router' {
       path: '/provider'
       fullPath: '/provider'
       preLoaderRoute: typeof ProviderRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-phone': {
+      id: '/verify-phone'
+      path: '/verify-phone'
+      fullPath: '/verify-phone'
+      preLoaderRoute: typeof VerifyPhoneRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_public/forgot-password': {
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
+  VerifyPhoneRoute: VerifyPhoneRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
 }

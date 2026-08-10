@@ -21,6 +21,12 @@ export const user = authSchema.table("user", {
     .notNull(),
   firstName: text("first_name").default(""),
   lastName: text("last_name").default(""),
+  // Added by better-auth's phone-number plugin. Stored in E.164 (`+258…`),
+  // enforced by phoneNumberValidator in better-auth.ts. Nullable because a
+  // phone is optional at signup and absent entirely for social logins; unique
+  // so one number cannot back two accounts.
+  phoneNumber: text("phone_number").unique(),
+  phoneNumberVerified: boolean("phone_number_verified").default(false),
   // TODO(ntizo): role is managed by Ntizo user BC, but better-auth needs a column.
   role: text("role").default("customer").notNull(),
 });

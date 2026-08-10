@@ -265,3 +265,45 @@ yet, so no database besides the already-fixed `dev` is at risk.
 minimum documented manual steps per target database — before
 `DEPLOY_ENABLED` is ever set to `true`. Do not attempt the backfill now;
 there is nothing yet that needs it.
+
+## 14. The phone number is stored in two places that can disagree
+
+Phone verification writes to `better_auth.user.phone_number` (added by the
+better-auth phone-number plugin, with `phone_number_verified` beside it). The
+domain has its own field, `ntizo_user.profile.phone_number`, which predates it
+and is written by nothing on the signup path — the sign-up hook receives only
+`userId`, `email`, `firstName` and `lastName`.
+
+So today a user who signs up with a phone has it in `better_auth`, an empty
+`phone_number` on their Profile, and no mechanism keeping the two in step. Any
+code that reads the Profile's number sees nothing; any code that reads
+better-auth's bypasses the domain.
+
+Neither is obviously the right home. The verified flag has to live where
+better-auth writes it, but a marketplace that texts providers about bookings
+wants the number inside the User bounded context, not in the auth module.
+
+**Trigger:** resolve before anything outside the auth flow reads or writes a
+phone number — the first booking notification, provider contact details, or a
+profile edit screen. Deciding then is cheap; discovering it after two features
+have each picked a different column is not.
+
+## 15. Verification email and SMS are English-only, in an app with 8 locales
+
+`verifyEmailTemplate`, `resetPasswordTemplate` and `verifyPhoneTemplate` all
+return fixed English strings, while the UI ships pt-MZ, pt-PT, en-US, es-ES,
+de-DE, fr-FR, it-IT and nl-NL. A user who registers in Portuguese gets a
+Portuguese form and an English SMS.
+
+The SMS was written English to match the emails rather than localise one half
+of the same signup. The fix is one decision covering both: a locale carried
+from the request (better-auth's `sendOTP` and email hooks both receive the
+endpoint context, so `Accept-Language` is reachable) and a small message table
+per template. No i18n framework belongs on the backend for this.
+
+Note the SMS constraint that the emails do not share: providers bill per
+160-character GSM-7 segment, and a single accented character halves that to 70.
+Localised bodies must be counted, not just translated.
+
+**Trigger:** before launch in Mozambique, where Portuguese is the working
+language and the SMS is the one message a user cannot skim past.

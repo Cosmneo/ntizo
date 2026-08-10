@@ -16,7 +16,12 @@ import {
   type EmailMessage,
   type EmailServicePort,
 } from "@ntizo/backend/shared/infra/email";
-import { registerEmailService } from "@ntizo/backend/modules/better-auth";
+import {
+  ConsoleSmsServiceAdapter,
+  type SmsMessage,
+  type SmsServicePort,
+} from "@ntizo/backend/shared/infra/sms";
+import { registerEmailService, registerSmsService } from "@ntizo/backend/modules/better-auth";
 import { infraStore } from "@ntizo/backend/shared/infra";
 
 /**
@@ -63,4 +68,43 @@ class LazyEmailServiceAdapter implements EmailServicePort {
 const emailService = new LazyEmailServiceAdapter();
 registerEmailService(emailService);
 
-export { emailService };
+/**
+ * Same lazy shape as the email service, for the phone-verification OTP.
+ *
+ * There is deliberately no env-var check here: no paid SMS provider has been
+ * chosen yet, so there is no key to look for. Inventing one now would mean a
+ * deployed stage could "have" the variable set and still send nothing.
+ *
+ * Adding a provider is one file plus two lines: implement SmsServicePort as
+ * e.g. TwilioSmsServiceAdapter, then return it here when its key is present —
+ * exactly how resolveEmailService picks Resend above.
+ */
+function resolveSmsService(): SmsServicePort {
+  const stage = infraStore.getEnv().STAGE ?? "local";
+
+  if (stage !== "local") {
+    throw new Error(
+      `[bootstrap] No SMS provider is configured, so phone verification cannot ` +
+        `work when STAGE="${stage}". Implement SmsServicePort for a provider and ` +
+        "select it in resolveSmsService(), or leave phone verification unused.",
+    );
+  }
+
+  console.info(
+    "[bootstrap] Using the console SMS adapter. Verification codes will be " +
+      "printed to this terminal.",
+  );
+  return new ConsoleSmsServiceAdapter();
+}
+
+class LazySmsServiceAdapter implements SmsServicePort {
+  async sendSms(message: SmsMessage): Promise<void> {
+    const service = resolveSmsService();
+    await service.sendSms(message);
+  }
+}
+
+const smsService = new LazySmsServiceAdapter();
+registerSmsService(smsService);
+
+export { emailService, smsService };

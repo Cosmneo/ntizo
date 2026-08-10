@@ -4,6 +4,15 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
+    // The base config turns declarations on, but this package publishes its
+    // TypeScript source directly (see the `exports` map — every entry is a
+    // .ts file) and `noEmit` means no .d.ts is ever produced. Leaving it on
+    // still runs the declaration-emit portability checks, which reject
+    // better-auth's plugin types for referencing its own nested copy of zod
+    // (TS2742) — a naming constraint on a file that is never written.
+    // Consumers compile from source and resolve those types normally.
+    "declaration": false,
+    "declarationMap": false,
     "rootDir": "src",
     "baseUrl": "."
   },

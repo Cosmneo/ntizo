@@ -25,6 +25,7 @@
     "./shared/infra/logger": "./src/shared/infrastructure/logger/index.ts",
     "./shared/infra/config": "./src/shared/infrastructure/config/stage-properties.ts",
     "./shared/infra/email": "./src/shared/infrastructure/email/index.ts",
+    "./shared/infra/sms": "./src/shared/infrastructure/sms/index.ts",
     "./modules/ntizo/graphql/context": "./src/modules/ntizo/graphql/context.ts",
     "./modules/ntizo/graphql/private-schema": "./src/modules/ntizo/graphql/private-schema.ts",
     "./modules/ntizo/read/provider": "./src/modules/ntizo/read/provider/index.ts",
@@ -61,6 +62,7 @@
     "better-auth": "1.6.2",
     "drizzle-orm": "^0.36.0",
     "hono": "^4.11.9",
+    "libphonenumber-js": "^1.13.10",
     "postgres": "^3.4.8",
     "resend": "^4.0.0",
     "zod": "^4.4.3"

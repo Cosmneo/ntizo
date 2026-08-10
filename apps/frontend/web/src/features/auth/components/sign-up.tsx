@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { Eye, EyeOff, UserPlus, MailCheck } from "lucide-react";
+import { isValidPhoneNumber } from "libphonenumber-js";
 import {
   Button,
   Card,
@@ -14,6 +15,7 @@ import {
   InputGroupButton,
   InputGroupInput,
   Label,
+  PhoneInput,
   Separator,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
@@ -21,7 +23,7 @@ import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 
 export function SignUp() {
-  const { t } = useTranslation("auth");
+  const { t, i18n } = useTranslation("auth");
   const { t: tc } = useTranslation("common");
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export function SignUp() {
       firstName: "",
       lastName: "",
       email: "",
+      phone: "",
       password: "",
       acceptTerms: false,
     },
@@ -40,6 +43,10 @@ export function SignUp() {
         // attribute gives fast feedback, this is the one that cannot be
         // removed with devtools.
         if (!value.acceptTerms) return { form: t("mustAcceptTerms") };
+        // Re-checked against the same library the server validates with, so
+        // a number that passes here cannot be rejected there. `value.phone`
+        // is already E.164 — PhoneInput emits nothing else.
+        if (!isValidPhoneNumber(value.phone)) return { form: t("invalidPhone") };
         try {
           const { error } = await authClient.signUp.email({
             email: value.email,
@@ -47,6 +54,7 @@ export function SignUp() {
             name: `${value.firstName} ${value.lastName}`.trim(),
             firstName: value.firstName,
             lastName: value.lastName,
+            phoneNumber: value.phone,
             // Absolute, and pointing at this app. better-auth builds the
             // verification link off its own baseURL (the API origin) and
             // redirects here afterwards — without this the user lands on the
@@ -168,6 +176,32 @@ export function SignUp() {
                     onChange={(e) => field.handleChange(e.target.value)}
                     required
                   />
+                </div>
+              )}
+            </form.Field>
+
+            <form.Field name="phone">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={field.name}>{t("phone")}</Label>
+                  <PhoneInput
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={(next) => field.handleChange(next)}
+                    onBlur={field.handleBlur}
+                    // Mozambique is the launch market, so it is the sensible
+                    // first guess — but every country is one search away.
+                    defaultCountry="MZ"
+                    locale={i18n.language}
+                    placeholder={t("phonePlaceholder")}
+                    searchPlaceholder={t("countrySearchPlaceholder")}
+                    noResultsText={t("countryNoResults")}
+                    countrySelectLabel={t("countrySelectLabel")}
+                    required
+                  />
+                  <p className="text-xs text-[var(--color-muted-foreground)]">
+                    {t("phoneHint")}
+                  </p>
                 </div>
               )}
             </form.Field>

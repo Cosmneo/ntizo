@@ -3,6 +3,9 @@
 
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { phoneNumber } from "better-auth/plugins/phone-number";
+import { isValidPhoneNumber } from "libphonenumber-js";
+import { normalizeSignUpPhoneNumber } from "./phone-number";
 import { eq } from "drizzle-orm";
 import { db } from "../infrastructure/client/drizzle";
 import * as schema from "../infrastructure/database/schema";
@@ -13,6 +16,8 @@ import {
   verifyEmailTemplate,
   resetPasswordTemplate,
 } from "../../../shared/infrastructure/email";
+import type { SmsServicePort } from "../../../shared/infrastructure/sms";
+import { verifyPhoneTemplate } from "../../../shared/infrastructure/sms";
 
 export interface SignUpHookInput {
   userId: string;
@@ -24,6 +29,7 @@ export type SignUpHook = (input: SignUpHookInput) => Promise<void>;
 
 let _auth: ReturnType<typeof createAuthInstance> | undefined;
 let _emailService: EmailServicePort | undefined;
+let _smsService: SmsServicePort | undefined;
 let _signUpHook: SignUpHook | undefined;
 
 /**
@@ -41,6 +47,24 @@ export function registerEmailService(service: EmailServicePort) {
  */
 export function registerSignUpHook(hook: SignUpHook) {
   _signUpHook = hook;
+}
+
+/**
+ * Registers the SMS service used to deliver phone-verification codes.
+ * Must be called during api bootstrap, before the first OTP request.
+ */
+export function registerSmsService(service: SmsServicePort) {
+  _smsService = service;
+}
+
+function requireSmsService(): SmsServicePort {
+  if (!_smsService) {
+    throw new Error(
+      "[better-auth] SmsService not registered. " +
+        "Call registerSmsService() during api bootstrap.",
+    );
+  }
+  return _smsService;
 }
 
 function requireEmailService(): EmailServicePort {
@@ -77,6 +101,36 @@ function createAuthInstance() {
     // in package.json, but a pin is discipline and this is structure — a
     // routine bump cannot reach it.
     database: drizzleAdapter(db, { provider: "pg", schema, transaction: false }),
+    plugins: [
+      phoneNumber({
+        // Both values are passed explicitly even though they match the
+        // plugin's defaults, because two things outside this file depend on
+        // them: the SMS body says "expires in 5 minutes", and the
+        // verification screen renders a fixed number of input boxes. A default
+        // that shifted in a version bump would make the copy lie and the UI
+        // unfillable, with nothing failing loudly.
+        otpLength: 6,
+        expiresIn: 300,
+        sendOTP: async ({ phoneNumber: to, code }) => {
+          const svc = requireSmsService();
+          await svc.sendSms({ to, body: verifyPhoneTemplate(code) });
+        },
+        // Called with no default country, so a bare national number is
+        // rejected and only E.164 (`+258…`) passes.
+        //
+        // This guards the plugin's own routes (send-otp, update) ONLY. It is
+        // NOT reached during signup, where the number arrives as an ordinary
+        // additional field — verified against the running server, which
+        // happily stored a bare "841234567" until the create hook below was
+        // added. Both are needed; neither covers the other.
+        phoneNumberValidator: (value) => isValidPhoneNumber(value),
+        // Deliberately false: sign-in must not depend on phone verification.
+        // No SMS provider is configured yet (see resolveSmsService in the api
+        // bootstrap), so requiring it would lock every account out of the
+        // platform the moment this deploys.
+        requireVerification: false,
+      }),
+    ],
     user: {
       additionalFields: {
         firstName: { type: "string", required: false, defaultValue: "" },
@@ -141,6 +195,25 @@ function createAuthInstance() {
     databaseHooks: {
       user: {
         create: {
+          /**
+           * Validates and normalises the phone number at signup.
+           *
+           * The plugin's `phoneNumberValidator` never runs here — signup
+           * writes `phoneNumber` as a plain additional field — so without
+           * this the API accepts any string. Client-side validation does not
+           * substitute: it is one curl away from being skipped.
+           *
+           * Normalising matters as much as validating. `isValidPhoneNumber`
+           * accepts "+258 84 987 6543", and storing it verbatim would sit
+           * alongside "+258849876543" as a second row for one phone, which
+           * the unique index cannot catch because the strings differ.
+           */
+          before: async (authUser) => {
+            const raw = (authUser as Record<string, unknown>).phoneNumber;
+            const normalized = normalizeSignUpPhoneNumber(raw);
+            if (normalized === undefined) return;
+            return { data: { ...authUser, phoneNumber: normalized } };
+          },
           after: async (authUser) => {
             if (!_signUpHook) return;
             const u = authUser as Record<string, unknown>;

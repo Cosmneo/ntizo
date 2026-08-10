@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import { inferAdditionalFields, phoneNumberClient } from "better-auth/client/plugins";
 
 // This package publishes its TS source directly (see package.json `exports`)
 // and has no build step, so it is compiled as part of whichever Vite app
@@ -38,8 +38,15 @@ export const authClient = createAuthClient({
         // Declared by the backend and present on the session at runtime.
         // Without it here, session.user.role does not typecheck.
         role: { type: "string", required: false },
+        // Written at signup, so the OTP screen can read back the number it
+        // is verifying instead of asking for it a second time.
+        phoneNumber: { type: "string", required: false },
+        phoneNumberVerified: { type: "boolean", required: false },
       },
     }),
+    // Adds authClient.phoneNumber.{sendOtp,verify,update}. Must stay paired
+    // with the phoneNumber() server plugin in better-auth.ts.
+    phoneNumberClient(),
   ],
   fetchOptions: { credentials: "include" },
 });
