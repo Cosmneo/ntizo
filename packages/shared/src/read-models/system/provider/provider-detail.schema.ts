@@ -98,3 +98,28 @@ export type ProviderImageDTO = z.infer<typeof providerImageReadModel>;
 export type ProviderMemberDTO = z.infer<typeof providerMemberReadModel>;
 export type ProviderInviteDTO = z.infer<typeof providerInviteReadModel>;
 export type ProviderDetailDTO = z.infer<typeof providerDetailReadModel>;
+
+/**
+ * What the accept-invite page may show before anyone is signed in.
+ *
+ * Holding the token is the credential — it was mailed to the invitee and to
+ * nobody else — so this is deliberately readable without a session: the page
+ * has to say *what* is being joined before asking someone to create an account
+ * for it, or the sign-up is a leap of faith.
+ *
+ * Nothing here that the invitation email did not already contain. The email
+ * carries the workspace, the inviter and the role; repeating them costs
+ * nothing and withholding them would only make the page useless.
+ */
+export const providerInvitePublicReadModel = z.object({
+  providerName: z.string(),
+  inviterName: z.string(),
+  role: z.enum(["admin", "staff"]),
+  /** Who it was sent to, so the page can spot a mismatched session. */
+  email: z.string(),
+  /** `pending` | `accepted` | `revoked` | `declined` | `expired`. */
+  status: z.string(),
+  expiresAt: z.string(),
+});
+
+export type ProviderInvitePublicDTO = z.infer<typeof providerInvitePublicReadModel>;

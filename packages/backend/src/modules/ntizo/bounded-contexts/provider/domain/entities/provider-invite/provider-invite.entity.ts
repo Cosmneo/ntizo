@@ -27,6 +27,8 @@ export interface ProviderInviteProps {
   role: ProviderInviteRole;
   token: string;
   status: ProviderInviteStatus;
+  /** Who sent it. Null on rows written before the column existed. */
+  invitedByUserId: string | null;
   expiresAt: Date;
   createdAt: Date;
 }
@@ -45,6 +47,7 @@ export class ProviderInvite {
     role: ProviderInviteRole;
     token: string;
     expiresAt: Date;
+    invitedByUserId?: string;
   }): ProviderInvite {
     return new ProviderInvite({
       id: params.id,
@@ -53,6 +56,7 @@ export class ProviderInvite {
       role: params.role,
       token: params.token,
       status: "pending",
+      invitedByUserId: params.invitedByUserId ?? null,
       expiresAt: params.expiresAt,
       createdAt: new Date(),
     });
@@ -75,6 +79,9 @@ export class ProviderInvite {
   }
   get status() {
     return this.props.status;
+  }
+  get invitedByUserId() {
+    return this.props.invitedByUserId;
   }
   get expiresAt() {
     return this.props.expiresAt;

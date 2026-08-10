@@ -17,6 +17,7 @@ export const providerInviteMapper = {
       role: row.role as ProviderInviteRole,
       token: row.token,
       status: row.status as ProviderInviteStatus,
+      invitedByUserId: row.invitedByUserId,
       expiresAt: row.expiresAt,
       createdAt: row.createdAt,
     });
@@ -31,6 +32,7 @@ export const providerInviteMapper = {
       role: json.role,
       token: json.token,
       status: json.status,
+      invitedByUserId: json.invitedByUserId,
       expiresAt: json.expiresAt,
       createdAt: json.createdAt,
     };

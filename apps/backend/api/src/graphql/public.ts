@@ -8,6 +8,10 @@ import {
   bootstrapCityPublic,
   createCityPublicHandlers,
 } from "@ntizo/backend/modules/ntizo/public/city";
+import {
+  bootstrapInvitePublic,
+  createInvitePublicHandlers,
+} from "@ntizo/backend/modules/ntizo/public/invite";
 import { buildYoga } from "./build-yoga";
 import { buildHardeningPlugins } from "./hardening";
 import type { AppBindings } from "../types";
@@ -23,12 +27,14 @@ function getYoga(stage: string) {
   if (!yoga) {
     const providerPublic = bootstrapProviderPublic();
     const cityPublic = bootstrapCityPublic();
+    const invitePublic = bootstrapInvitePublic();
 
     yoga = buildYoga({
       schema: publicSchema,
       fields: [
         ...createProviderPublicHandlers(providerPublic.useCases),
         ...createCityPublicHandlers(cityPublic.useCases),
+        ...createInvitePublicHandlers(invitePublic.useCases),
       ] as Parameters<typeof buildYoga>[0]["fields"],
       plugins: buildHardeningPlugins(stage),
       // No context factory. The private mount resolves a session here; this one
@@ -95,6 +101,9 @@ export function mountPublicGraphql(app: Hono<{ Bindings: AppBindings }>) {
     for (const [k, v] of Object.entries(publicCorsHeaders())) merged.set(k, v);
     // Yoga's bundled CORS may have set a credentials header; it must not survive.
     merged.delete("access-control-allow-credentials");
-    return new Response(response.body, { status: response.status, headers: merged });
+    return new Response(response.body, {
+      status: response.status,
+      headers: merged,
+    });
   });
 }

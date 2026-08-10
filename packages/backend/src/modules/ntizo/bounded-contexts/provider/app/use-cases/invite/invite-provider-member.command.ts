@@ -75,6 +75,7 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
       role: input.role,
       token,
       expiresAt,
+      invitedByUserId: requester.userId,
     });
 
     await this.unitOfWork.atomicExecute(async () => {
@@ -109,13 +110,30 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
       ...(locale ? { locale } : {}),
     });
 
-    await this.emailService.sendEmail({
-      to: [invite.email],
-      subject: mail.subject,
-      htmlBody: mail.html,
-      textBody: mail.text,
-    });
+    // Reported, not thrown. The invite row and its event are already durably
+    // committed by this point, so a mail failure that rejected the mutation
+    // would tell the caller nothing happened while something did — and the
+    // obvious response, trying again, mints a second invitation.
+    //
+    // Silence would be worse in the other direction: the invitee is never
+    // going to hear about it. So the outcome travels back and the UI says so.
+    let emailSent = true;
+    try {
+      await this.emailService.sendEmail({
+        to: [invite.email],
+        subject: mail.subject,
+        htmlBody: mail.html,
+        textBody: mail.text,
+      });
+    } catch (error) {
+      emailSent = false;
+      console.error("[invite] the invitation email did not send", {
+        inviteId: invite.id,
+        providerId: provider.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
-    return { inviteId: invite.id, token };
+    return { inviteId: invite.id, token, emailSent };
   }
 }

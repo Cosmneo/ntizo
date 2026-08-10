@@ -12,7 +12,18 @@ export const providerInvite = providerSchema.table(
     email: text("email").notNull(),
     role: text("role").notNull(), // "admin" | "staff"
     token: text("token").notNull().unique(),
-    status: text("status").notNull().default("pending"),
+    /**
+   * Who sent it.
+   *
+   * Absent until now, which meant the accept page had to name the workspace
+   * *owner* as the inviter — wrong every time an admin does the inviting, and
+   * the email already knew the right answer because it addresses the invitee
+   * by the sender's name. Nullable for rows written before this column
+   * existed; the page falls back to the workspace name for those.
+   */
+  invitedByUserId: text("invited_by_user_id"),
+
+  status: text("status").notNull().default("pending"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

@@ -76,10 +76,11 @@ describe("toUserRole", () => {
 });
 
 describe("mapProviderInviteSendOutput", () => {
-  it("returns exactly { inviteId } — the invite token is never projected through", () => {
+  it("returns exactly { inviteId, emailSent } — the invite token is never projected through", () => {
     const projected = mapProviderInviteSendOutput({
       inviteId: "inv-1",
       token: "super-secret-invite-token",
+      emailSent: true,
     });
 
     // `toEqual` already fails on an extra key (verified: bun:test's toEqual
@@ -88,9 +89,21 @@ describe("mapProviderInviteSendOutput", () => {
     // `return result;`). The explicit key-set and `in` checks below assert
     // the absence directly, so the failure reason is unambiguous rather than
     // relying on toEqual's mismatch diff.
-    expect(projected).toEqual({ inviteId: "inv-1" });
-    expect(Object.keys(projected).sort()).toEqual(["inviteId"]);
+    expect(projected).toEqual({ inviteId: "inv-1", emailSent: true });
+    expect(Object.keys(projected).sort()).toEqual(["emailSent", "inviteId"]);
     expect("token" in projected).toBe(false);
+  });
+
+  it("carries a failed send through rather than swallowing it", () => {
+    // The invite row exists either way. This is the only signal the caller
+    // has that nobody was actually told about it.
+    expect(
+      mapProviderInviteSendOutput({
+        inviteId: "inv-1",
+        token: "t",
+        emailSent: false,
+      }).emailSent,
+    ).toBe(false);
   });
 });
 

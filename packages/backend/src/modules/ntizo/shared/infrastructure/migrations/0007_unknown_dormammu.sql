@@ -1,0 +1,1 @@
+ALTER TABLE "ntizo_provider"."provider_invite" ADD COLUMN "invited_by_user_id" text;

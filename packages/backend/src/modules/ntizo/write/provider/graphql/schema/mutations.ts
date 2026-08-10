@@ -85,7 +85,9 @@ export const inviteProviderMember = defineMutation({
       role: z.enum(["admin", "staff"]),
     }),
   ),
-  output: zodSchema(z.object({ inviteId: z.string().min(1) })),
+  output: zodSchema(
+    z.object({ inviteId: z.string().min(1), emailSent: z.boolean() }),
+  ),
   docs: { summary: "Invite a member to a provider", tags: ["Provider"] },
 });
 

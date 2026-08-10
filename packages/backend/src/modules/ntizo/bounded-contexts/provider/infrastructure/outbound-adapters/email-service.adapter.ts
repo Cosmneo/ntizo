@@ -6,12 +6,16 @@
 import {
   type EmailMessage,
   type EmailServicePort,
-  ResendEmailServiceAdapter,
+  LazyEmailServiceAdapter,
 } from "../../../../../../shared/infrastructure/email";
 
 export class ProviderEmailServiceAdapter implements EmailServicePort {
   constructor(
-    private readonly inner: EmailServicePort = new ResendEmailServiceAdapter(),
+        // Lazy, so the adapter is chosen from the request's env on each send —
+    // Resend where a key exists, the console adapter on a local machine. It
+    // used to construct a Resend client unconditionally, which is why every
+    // invitation failed locally while verification emails printed fine.
+    private readonly inner: EmailServicePort = new LazyEmailServiceAdapter(),
   ) {}
 
   async sendEmail(message: EmailMessage): Promise<void> {

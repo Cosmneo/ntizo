@@ -24,8 +24,8 @@ export interface ProviderWriteModule {
  */
 export function mapProviderInviteSendOutput(
   result: InviteProviderMemberOutput,
-): { inviteId: string } {
-  return { inviteId: result.inviteId };
+): { inviteId: string; emailSent: boolean } {
+  return { inviteId: result.inviteId, emailSent: result.emailSent };
 }
 
 /**

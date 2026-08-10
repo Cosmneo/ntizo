@@ -6,6 +6,7 @@ import {
 } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { providerPublicSchema } from "./provider/graphql/schema/queries";
+import { invitePublicSchema } from "./invite/graphql/schema/queries";
 import { cityPublicSchema } from "./city/graphql/schema/queries";
 
 /**
@@ -52,6 +53,7 @@ export const publicSchema = mergeGraphQLSchemas(
   healthSchema,
   providerPublicSchema,
   cityPublicSchema,
+  invitePublicSchema,
 );
 
 export type PublicSchema = typeof publicSchema;
