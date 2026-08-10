@@ -53,76 +53,134 @@ export function countryName(code: string, locale: string): string {
 }
 
 /**
- * Common cities per country, for typeahead only.
+ * Suggested cities per country, for typeahead only.
  *
- * Suggestions, never constraints: the field stays free text, because no
- * curated list survives contact with a real address. Coverage is deliberately
- * launch-shaped — heavy on Mozambique, a little Portugal and South Africa,
- * nothing else. A country with no entry gets a plain input with no popover,
- * which is the correct behaviour rather than a degraded one.
+ * Suggestions, never constraints: the field stays free text, because no list
+ * survives contact with a real address. Which is exactly why the list needs a
+ * rule — a country whose list is "the cities somebody thought of" looks broken
+ * the moment a user notices their own is missing, and every hand-picked list
+ * has that hole somewhere.
+ *
+ * **The rule: every first-level administrative capital, without exception.**
+ * Districts in Portugal, provinces in Mozambique and South Africa, states in
+ * Brazil. It is the one cut that cannot silently drop a whole region — an
+ * archipelago, a province, an interior state — the way "largest by population"
+ * always does. Mozambique, the launch market, also carries its cities above
+ * roughly 50 000, where the extra coverage earns its keep.
+ *
+ * Sorted alphabetically, not by size. A size ranking has to be defended and
+ * re-defended; alphabetical is scannable and ranks nobody. Adding a country
+ * means applying the rule to it, not adding its famous cities.
+ *
+ * Everywhere else gets a plain input and free text. That is the correct
+ * behaviour rather than a degraded one: an empty dropdown would read as "your
+ * city does not exist", and a four-city list of a country reads as a promise
+ * we did not keep.
  *
  * Keyed by `string` rather than `CountryCode` on purpose: this is a partial
  * map, and typing the key would make TypeScript demand all 245.
  */
 export const COMMON_CITIES: Readonly<Record<string, readonly string[]>> = {
+  // The eleven provincial capitals, plus the cities above roughly 50 000.
   MZ: [
+    "Angoche",
+    "Beira",
+    "Chimoio",
+    "Chókwè",
+    "Cuamba",
+    "Dondo",
+    "Gurué",
+    "Ilha de Moçambique",
+    "Inhambane",
+    "Lichinga",
+    "Manica",
     "Maputo",
     "Matola",
-    "Beira",
-    "Nampula",
-    "Chimoio",
+    "Maxixe",
+    "Mocuba",
+    "Montepuez",
     "Nacala",
+    "Nampula",
+    "Pemba",
     "Quelimane",
     "Tete",
+    "Vilankulo",
     "Xai-Xai",
-    "Lichinga",
-    "Pemba",
-    "Inhambane",
-    "Maxixe",
-    "Gurué",
-    "Angoche",
-    "Cuamba",
-    "Montepuez",
-    "Dondo",
-    "Manica",
-    "Chókwè",
   ],
+  // The eighteen district capitals of the mainland, plus the capitals of the
+  // two autonomous regions — Funchal for Madeira, and for the Azores all three
+  // seats of the regional government: Ponta Delgada, Angra do Heroísmo, Horta.
   PT: [
-    "Lisboa",
-    "Porto",
-    "Braga",
-    "Coimbra",
-    "Faro",
+    "Angra do Heroísmo",
     "Aveiro",
-    "Funchal",
-    "Setúbal",
+    "Beja",
+    "Braga",
+    "Bragança",
+    "Castelo Branco",
+    "Coimbra",
     "Évora",
-    "Guimarães",
-    "Cascais",
-    "Sintra",
-    "Vila Nova de Gaia",
-    "Almada",
+    "Faro",
+    "Funchal",
+    "Guarda",
+    "Horta",
+    "Leiria",
+    "Lisboa",
+    "Ponta Delgada",
+    "Portalegre",
+    "Porto",
+    "Santarém",
+    "Setúbal",
+    "Viana do Castelo",
+    "Vila Real",
+    "Viseu",
   ],
+  // The nine provincial capitals, plus the seats of the eight metropolitan
+  // municipalities.
   ZA: [
-    "Johannesburg",
+    "Bhisho",
+    "Bloemfontein",
     "Cape Town",
     "Durban",
-    "Pretoria",
-    "Port Elizabeth",
-    "Bloemfontein",
-    "Nelspruit",
+    "East London",
+    "Germiston",
+    "Gqeberha",
+    "Johannesburg",
+    "Kimberley",
+    "Mahikeng",
+    "Mbombela",
+    "Pietermaritzburg",
     "Polokwane",
+    "Pretoria",
   ],
+  // The twenty-six state capitals, plus Brasília for the Federal District.
   BR: [
-    "São Paulo",
-    "Rio de Janeiro",
-    "Brasília",
-    "Salvador",
-    "Fortaleza",
+    "Aracaju",
+    "Belém",
     "Belo Horizonte",
+    "Boa Vista",
+    "Brasília",
+    "Campo Grande",
+    "Cuiabá",
     "Curitiba",
-    "Recife",
+    "Florianópolis",
+    "Fortaleza",
+    "Goiânia",
+    "João Pessoa",
+    "Macapá",
+    "Maceió",
+    "Manaus",
+    "Natal",
+    "Palmas",
     "Porto Alegre",
+    "Porto Velho",
+    "Recife",
+    "Rio Branco",
+    "Rio de Janeiro",
+    "Salvador",
+    "São Luís",
+    "São Paulo",
+    "Teresina",
+    "Vitória",
   ],
 };
 
