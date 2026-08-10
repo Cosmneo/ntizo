@@ -14,3 +14,4 @@ export {
   type ProviderMemberDTO,
   type ProviderInviteDTO,
 } from "./provider-detail.schema";
+export * from "./provider-admin.schema";

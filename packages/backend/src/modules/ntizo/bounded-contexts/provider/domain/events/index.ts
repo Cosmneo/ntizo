@@ -45,6 +45,30 @@ export class ProviderDeactivated extends BaseDomainEvent<{
   }
 }
 
+/**
+ * An administrator decided whether this business may trade.
+ *
+ * Its own event, not a reuse of `provider.deactivated`. Suspending, rejecting
+ * and reinstating are three different things to whoever reads the log later,
+ * and one event name for all of them would make the log unable to answer the
+ * only question anyone asks of it: what happened, and who decided.
+ */
+export class ProviderStatusDecided extends BaseDomainEvent<{
+  providerId: string;
+  from: string;
+  to: string;
+  decidedByUserId: string;
+}> {
+  constructor(payload: {
+    providerId: string;
+    from: string;
+    to: string;
+    decidedByUserId: string;
+  }) {
+    super("provider.status.decided", payload.providerId, payload);
+  }
+}
+
 export class ProviderMemberAdded extends BaseDomainEvent<{
   providerId: string;
   userId: string;

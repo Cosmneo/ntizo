@@ -7,6 +7,11 @@
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Address } from "../../value-objects/address.vo";
 import {
+  ProviderStatus as SharedProviderStatus,
+  canTransition,
+} from "@ntizo/shared";
+import { InvalidProviderStatusTransitionError } from "../../exceptions";
+import {
   IndividualProviderCannotHaveMembersError,
   InsufficientProviderPermissionsError,
   NotProviderOwnerError,
@@ -14,11 +19,19 @@ import {
 import {
   ProviderCreated,
   ProviderDeactivated,
+  ProviderStatusDecided,
   ProviderUpdated,
 } from "../../events";
 
 export type ProviderType = "individual" | "organization";
-export type ProviderStatus = "pending" | "active" | "suspended" | "archived";
+/**
+ * Re-exported from the shared enum rather than declared here.
+ *
+ * The local union drifted: it carried `archived` and no `rejected`, so the
+ * domain could not express the decision an admin actually makes on a pending
+ * application.
+ */
+export type ProviderStatus = SharedProviderStatus;
 
 export interface ProviderProps {
   id: string;
@@ -60,7 +73,14 @@ export class Provider {
       type: params.type,
       name: params.name,
       slug: params.slug,
-      status: "active",
+      // Live on creation, not pending.
+      //
+      // This is why the admin review queue is empty: nothing ever enters it.
+      // Flipping this to `Pending` turns registration into an application — a
+      // real product change, since a provider registering today can trade
+      // immediately and afterwards would wait for someone to look. Left as it
+      // was rather than changed while building the queue around it.
+      status: SharedProviderStatus.Active,
       description: params.description,
       address: params.address,
       createdAt: now,
@@ -149,9 +169,30 @@ export class Provider {
   }
 
   deactivate(): void {
-    this.props.status = "suspended";
+    this.props.status = SharedProviderStatus.Suspended;
     this.props.updatedAt = new Date();
     this._events.push(new ProviderDeactivated({ providerId: this.props.id }));
+  }
+
+  /**
+   * An administrator's decision about whether this business may trade.
+   *
+   * The legal moves live in the shared enum and are checked here rather than
+   * at the edge: the UI only offers legal ones, and the UI is not the thing
+   * that has to be right. Rejecting a business that already traded and
+   * suspending one that never did are both refused — they read the same to
+   * whoever clicks and mean different things afterwards.
+   */
+  decide(to: SharedProviderStatus, decidedByUserId: string): void {
+    const from = this.props.status;
+    if (!canTransition(from, to)) {
+      throw new InvalidProviderStatusTransitionError(from, to);
+    }
+    this.props.status = to;
+    this.props.updatedAt = new Date();
+    this._events.push(
+      new ProviderStatusDecided({ providerId: this.props.id, from, to, decidedByUserId }),
+    );
   }
 
   // ---- events ------------------------------------------------------------

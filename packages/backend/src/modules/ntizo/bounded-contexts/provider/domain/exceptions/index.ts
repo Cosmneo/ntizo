@@ -79,3 +79,22 @@ export class IndividualProviderCannotHaveMembersError extends UnprocessableError
     this.name = "IndividualProviderCannotHaveMembersError";
   }
 }
+
+/**
+ * A status change the lifecycle does not allow.
+ *
+ * Thrown by `Provider.decide` rather than checked at the edge: the admin screen
+ * only offers legal moves, and the screen is not the thing that has to be
+ * right. Two of the refusals matter — rejecting a business that already traded,
+ * and suspending an application that never did — because both read the same to
+ * whoever clicks and mean different things to the business afterwards.
+ */
+export class InvalidProviderStatusTransitionError extends UnprocessableError {
+  constructor(from: string, to: string) {
+    super({
+      message: `A provider cannot go from ${from} to ${to}`,
+      code: "INVALID_PROVIDER_STATUS_TRANSITION",
+    });
+    this.name = "InvalidProviderStatusTransitionError";
+  }
+}
