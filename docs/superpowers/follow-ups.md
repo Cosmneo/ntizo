@@ -216,14 +216,20 @@ console adapter lazily when no key is present.
 
 ---
 
-## 12. Migration chains exist only for `dev`
+## ~~12. Migration chains exist only for `dev`~~ — RESOLVED 2026-08-09
 
-`drizzle.config.ts` writes to `migrations/${stage}`; qa and prod have no chain.
-Pre-existing, but Phase 3A added the first whole new schema
-(`CREATE SCHEMA "ntizo_outbox"`), so it is the first migration whose absence
-would break the app at runtime rather than merely drift.
+Phase 3B collapsed the per-stage chains into **one chain per module**. `out` is
+now stage-independent in both configs; only `dbCredentials.url` varies by stage,
+which is the only thing that should. There are zero stage directories left.
 
-**Trigger:** before the first deploy to any stage other than local.
+It turned out to be a design flaw rather than a missing step: generating per
+stage meant the same schema change produced independently numbered chains, and
+a `qa` chain generated later would have been a single migration creating
+everything rather than the incremental history — leaving dev and qa databases
+permanently incomparable.
+
+Entry 13 below is what remains of this area, and it is the one with a hard
+deadline.
 
 ---
 
