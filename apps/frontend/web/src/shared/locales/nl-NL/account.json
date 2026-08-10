@@ -106,6 +106,7 @@
   "addrLabelPlaceholder": "Thuis, Kantoor…",
   "addrCountry": "Land",
   "addrCity": "Stad",
+  "addrCityPlaceholder": "Begin de stad te typen",
   "addrDistrict": "Wijk",
   "addrLine1": "Adres",
   "addrDirections": "Hoe je er komt",
@@ -115,11 +116,5 @@
   "addrMakeDefault": "Standaard maken",
   "addrDeleted": "Adres verwijderd",
   "edit": "Bewerken",
-  "delete": "Verwijderen",
-  "country": {
-    "MZ": "Mozambique",
-    "PT": "Portugal",
-    "ZA": "Zuid-Afrika",
-    "BR": "Brazilië"
-  }
+  "delete": "Verwijderen"
 }

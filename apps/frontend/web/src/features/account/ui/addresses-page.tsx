@@ -4,18 +4,17 @@ import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { MapPin, Plus, Star, Trash2 } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
-import { Badge, Button, Input, Label } from "@ntizo/frontend-ui";
+import {
+  Badge,
+  Button,
+  CitySelect,
+  CountrySelect,
+  Input,
+  Label,
+  countryName,
+} from "@ntizo/frontend-ui";
 import { useAddressMutations, useMyAddresses } from "@/features/account/viewmodel/use-addresses";
 import { EmptyState } from "@/features/account/ui/empty-state";
-
-/**
- * Country stays a two-letter code end to end.
- *
- * A short list rather than all 245: these are the markets the platform
- * serves, and a picker of every country on earth is a worse experience than
- * one of the four somebody might plausibly need. It grows when a market does.
- */
-const COUNTRIES = ["MZ", "PT", "ZA", "BR"] as const;
 
 function AddressForm({
   initial,
@@ -36,7 +35,8 @@ function AddressForm({
   }) => Promise<void>;
   submitting: boolean;
 }) {
-  const { t } = useTranslation("account");
+  const { t, i18n } = useTranslation("account");
+  const { t: tc } = useTranslation("auth");
 
   const form = useForm({
     defaultValues: {
@@ -106,18 +106,26 @@ function AddressForm({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={field.name}>{t("addrCountry")}</Label>
-              <select
+              {/* The same searchable list the phone field uses. A four-entry
+                  hardcoded select was wrong twice over: it named the markets
+                  we happen to serve today as the only places a customer can
+                  live, and it disagreed with the phone field about how a
+                  country is spelled. */}
+              <CountrySelect
                 id={field.name}
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                className="type-body h-11 rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-              >
-                {COUNTRIES.map((code) => (
-                  <option key={code} value={code}>
-                    {t(`country.${code}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={(code) => {
+                  field.handleChange(code);
+                  // The city suggestions belong to a country. Keeping the old
+                  // city after switching would leave "Maputo, Portugal" on
+                  // screen, which the user has to notice to fix.
+                  form.setFieldValue("city", "");
+                }}
+                locale={i18n.resolvedLanguage ?? i18n.language}
+                ariaLabel={t("addrCountry")}
+                searchPlaceholder={tc("countrySearchPlaceholder")}
+                noResultsText={tc("countryNoResults")}
+              />
             </div>
           )}
         </form.Field>
@@ -126,12 +134,18 @@ function AddressForm({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={field.name}>{t("addrCity")}</Label>
-              <Input
-                id={field.name}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                required
-              />
+              <form.Subscribe selector={(st) => st.values.country}>
+                {(country) => (
+                  <CitySelect
+                    id={field.name}
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    country={country}
+                    placeholder={t("addrCityPlaceholder")}
+                    required
+                  />
+                )}
+              </form.Subscribe>
             </div>
           )}
         </form.Field>
@@ -222,12 +236,15 @@ function AddressCard({
   onMakeDefault: () => void;
   busy: boolean;
 }) {
-  const { t } = useTranslation("account");
+  const { t, i18n } = useTranslation("account");
   const lines = [
     address.line1,
     address.line2,
     [address.district, address.city].filter(Boolean).join(", "),
-    t(`country.${address.country}`, { defaultValue: address.country }),
+    // Named by the platform, not by a `country.MZ` translation key. The picker
+    // offers every country there is, so a key-per-country table would need 245
+    // entries in each of the eight languages to stop this line reading "JP".
+    countryName(address.country, i18n.resolvedLanguage ?? i18n.language),
   ].filter(Boolean);
 
   return (

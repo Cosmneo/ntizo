@@ -106,6 +106,7 @@
   "addrLabelPlaceholder": "Home, Office…",
   "addrCountry": "Country",
   "addrCity": "City",
+  "addrCityPlaceholder": "Start typing a city",
   "addrDistrict": "District",
   "addrLine1": "Street address",
   "addrDirections": "How to find it",
@@ -115,11 +116,5 @@
   "addrMakeDefault": "Make default",
   "addrDeleted": "Address deleted",
   "edit": "Edit",
-  "delete": "Delete",
-  "country": {
-    "MZ": "Mozambique",
-    "PT": "Portugal",
-    "ZA": "South Africa",
-    "BR": "Brazil"
-  }
+  "delete": "Delete"
 }

@@ -106,6 +106,7 @@
   "addrLabelPlaceholder": "Domicile, Bureau…",
   "addrCountry": "Pays",
   "addrCity": "Ville",
+  "addrCityPlaceholder": "Commencez à saisir la ville",
   "addrDistrict": "Quartier",
   "addrLine1": "Adresse",
   "addrDirections": "Comment y arriver",
@@ -115,11 +116,5 @@
   "addrMakeDefault": "Définir par défaut",
   "addrDeleted": "Adresse supprimée",
   "edit": "Modifier",
-  "delete": "Supprimer",
-  "country": {
-    "MZ": "Mozambique",
-    "PT": "Portugal",
-    "ZA": "Afrique du Sud",
-    "BR": "Brésil"
-  }
+  "delete": "Supprimer"
 }

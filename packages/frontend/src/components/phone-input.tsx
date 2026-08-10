@@ -1,13 +1,13 @@
 import * as React from "react";
 import {
   AsYouType,
-  getCountries,
   getCountryCallingCode,
   isValidPhoneNumber,
   parsePhoneNumberFromString,
   type CountryCode,
 } from "libphonenumber-js";
 import { cn, regionalFlag } from "../lib/utils";
+import { buildCountryList, type CountryEntry } from "../lib/countries";
 
 export interface PhoneInputProps {
   /** The number in E.164 (`+258841234567`), or `""` while incomplete. */
@@ -28,34 +28,6 @@ export interface PhoneInputProps {
   required?: boolean;
   className?: string;
   onBlur?: () => void;
-}
-
-interface CountryEntry {
-  code: CountryCode;
-  name: string;
-  dial: string;
-  flag: string;
-}
-
-/**
- * Builds the country list for one locale.
- *
- * Names come from `Intl.DisplayNames` rather than a checked-in table, so all
- * eight app languages are covered by the platform and nothing has to be
- * re-translated when a country is renamed. Sorting uses a locale collator —
- * a plain `<` would put "Ãfrica do Sul" after "Zimbabué" in Portuguese.
- */
-function buildCountries(locale: string): CountryEntry[] {
-  const display = new Intl.DisplayNames([locale], { type: "region" });
-  const collator = new Intl.Collator(locale);
-  return getCountries()
-    .map((code) => ({
-      code,
-      name: display.of(code) ?? code,
-      dial: `+${getCountryCallingCode(code)}`,
-      flag: regionalFlag(code),
-    }))
-    .sort((a, b) => collator.compare(a.name, b.name));
 }
 
 export function PhoneInput({
@@ -92,7 +64,7 @@ export function PhoneInput({
   // render path, where its output can differ from the browser's and would
   // then mismatch on hydration.
   const countries = React.useMemo(
-    () => (open ? buildCountries(locale) : []),
+    () => (open ? buildCountryList(locale) : []),
     [open, locale],
   );
 

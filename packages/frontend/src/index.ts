@@ -6,6 +6,8 @@ export * from "./components/badge";
 export * from "./components/card"
 export * from "./components/checkbox";
 export * from "./components/phone-input";
+export * from "./components/city-select";
+export * from "./components/country-select";
 export * from "./components/otp-input";
 export * from "./components/split-brand-layout";
 export * from "./components/separator";
@@ -18,3 +20,5 @@ export * from "./components/table";
 export * from "./components/skeleton";
 export { useIsMobile } from "./hooks/use-mobile";
 export { cn, regionalFlag } from "./lib/utils";
+export { buildCountryList, citiesForCountry, countryName, COMMON_CITIES } from "./lib/countries";
+export type { CountryEntry } from "./lib/countries";
