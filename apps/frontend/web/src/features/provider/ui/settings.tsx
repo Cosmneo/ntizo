@@ -214,7 +214,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[196px_minmax(0,1fr)] lg:gap-10">
+      <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[224px_minmax(0,1fr)] lg:gap-10">
         <SettingsNav sections={navSections} title={t("settings")} />
 
         <div className="min-w-0">

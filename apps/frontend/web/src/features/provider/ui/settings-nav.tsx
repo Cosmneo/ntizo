@@ -96,7 +96,11 @@ export function SettingsNav({
           {sections.map((section) => {
             const active = current === section.id;
             return (
-              <li key={section.id}>
+              // `min-w-0` because a grid item defaults to `min-width: auto`,
+              // which refuses to shrink below its content — so the row grew
+              // past the rail instead of letting the label truncate. Invisible
+              // until the container added padding and took 24px away.
+              <li key={section.id} className="min-w-0">
                 <a
                   href={`#${section.id}`}
                   aria-current={active ? "true" : undefined}
