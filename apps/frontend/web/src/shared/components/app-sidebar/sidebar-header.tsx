@@ -1,24 +1,33 @@
 import { useTranslation } from "react-i18next";
 import { SidebarHeader, SidebarMenu, SidebarMenuItem } from "@ntizo/frontend-ui";
-import { NtizoMark } from "@/shared/components/icons";
 
+/**
+ * The zone's masthead: the wordmark, and which zone this is.
+ *
+ * No coloured tile. There was one — a brand-blue square with the mark inside —
+ * and it came from the sidebar template rather than from any decision here. It
+ * cost twice: the mark was navy on blue and barely legible, and squeezing a
+ * logo into a 20px square makes it a texture rather than a logo. The wordmark
+ * is the thing people recognise, so it is what shows.
+ *
+ * Collapsed to icons the wordmark has nowhere to go, so the mark alone takes
+ * over — still with no tile behind it.
+ */
 export function AppSidebarHeader() {
   const { t } = useTranslation("provider");
   return (
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
-          <div className="flex items-center gap-2 px-2 py-1.5">
-            <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-[var(--color-sidebar-primary)] text-[var(--color-sidebar-primary-foreground)]">
-              {/* The white mark, not the primary one. The tile is brand blue,
-                  so the coloured mark was navy on blue — a shape you could only
-                  make out by knowing it was there. */}
-              <NtizoMark className="size-5" variant="white" />
-            </div>
-            <div className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-semibold text-sm text-[var(--color-sidebar-primary)]">
-                Ntizo
-              </span>
+          <div className="flex items-center gap-2.5 px-2 py-2">
+            <img
+              src="/brand/icon-primary.svg"
+              alt=""
+              aria-hidden="true"
+              className="hidden size-9 shrink-0 group-data-[collapsible=icon]:block"
+            />
+            <div className="grid gap-1 group-data-[collapsible=icon]:hidden">
+              <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-8 w-auto" />
               <span className="truncate text-[11px] text-[var(--color-muted-foreground)]">
                 {t("providerConsole")}
               </span>
