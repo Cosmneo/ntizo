@@ -35,19 +35,23 @@
   "step": {
     "apply": {
       "title": "Apply",
-      "body": "Create the account and tell us what you do and where. It takes a few minutes."
+      "body": "Create the account and tell us what you do and where. It takes a few minutes.",
+      "tag": "≈ 5 minutes"
     },
     "review": {
       "title": "Verification",
-      "body": "We confirm who you are before showing you to customers. It is what makes the verified badge mean something."
+      "body": "We confirm who you are before showing you to customers. It is what makes the verified badge mean something.",
+      "tag": "1 to 2 days"
     },
     "publish": {
       "title": "Publish services",
-      "body": "Prices, duration and availability. Bookable slots are generated for you."
+      "body": "Prices, duration and availability. Bookable slots are generated for you.",
+      "tag": "whenever you like"
     },
     "earn": {
       "title": "Get paid",
-      "body": "Payment is held until the job is done, then released to you."
+      "body": "Payment is held until the job is done, then released to you.",
+      "tag": "once it's done"
     }
   },
   "requirementsTitle": "What you need",
@@ -70,5 +74,8 @@
   "pathsEyebrow": "Pick your path",
   "pricingEyebrow": "What it costs you",
   "stepsEyebrow": "From signing up to your first booking",
-  "requirementsEyebrow": "Before you start"
+  "requirementsEyebrow": "Before you start",
+  "closingTitle": "Ready to start earning?",
+  "closingBody": "Joining is free, and there is nothing to pay until your first booking.",
+  "closingTalk": "Talk to us"
 }

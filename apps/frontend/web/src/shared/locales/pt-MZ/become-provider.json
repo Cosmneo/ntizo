@@ -35,19 +35,23 @@
   "step": {
     "apply": {
       "title": "Candidate-se",
-      "body": "Crie a conta e diga-nos o que faz e onde. Leva alguns minutos."
+      "body": "Crie a conta e diga-nos o que faz e onde. Leva alguns minutos.",
+      "tag": "≈ 5 minutos"
     },
     "review": {
       "title": "Verificação",
-      "body": "Confirmamos a sua identidade antes de o mostrar aos clientes. É o que dá valor ao selo de verificado."
+      "body": "Confirmamos a sua identidade antes de o mostrar aos clientes. É o que dá valor ao selo de verificado.",
+      "tag": "1 a 2 dias"
     },
     "publish": {
       "title": "Publique serviços",
-      "body": "Preços, duração e disponibilidade. Os horários livres são gerados automaticamente."
+      "body": "Preços, duração e disponibilidade. Os horários livres são gerados automaticamente.",
+      "tag": "quando quiser"
     },
     "earn": {
       "title": "Receba",
-      "body": "O pagamento fica retido até o serviço estar concluído, e depois segue para si."
+      "body": "O pagamento fica retido até o serviço estar concluído, e depois segue para si.",
+      "tag": "após concluir"
     }
   },
   "requirementsTitle": "O que precisa de ter",
@@ -70,5 +74,8 @@
   "pathsEyebrow": "Escolha o seu caminho",
   "pricingEyebrow": "O que lhe custa",
   "stepsEyebrow": "Do registo à primeira reserva",
-  "requirementsEyebrow": "Antes de começar"
+  "requirementsEyebrow": "Antes de começar",
+  "closingTitle": "Pronto para começar a ganhar?",
+  "closingBody": "A inscrição é gratuita e não há nada a pagar até ter a primeira reserva.",
+  "closingTalk": "Falar connosco"
 }

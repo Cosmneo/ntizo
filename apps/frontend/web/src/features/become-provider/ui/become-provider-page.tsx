@@ -6,6 +6,7 @@ import { ACCENT, CARD, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { SiteHeader } from "@/shared/components/site-header";
+import { Footer } from "@/features/landing/ui/footer";
 
 /**
  * The public case for becoming a provider.
@@ -35,7 +36,9 @@ export function BecomeProviderPage() {
       <Paths t={t} />
       <Pricing ctaTo={ctaTo} t={t} />
       <Steps t={t} />
-      <Requirements ctaTo={ctaTo} t={t} />
+      <Requirements t={t} />
+      <Closing ctaTo={ctaTo} t={t} />
+      <Footer />
     </main>
   );
 }
@@ -242,13 +245,18 @@ function Pricing({ ctaTo, t }: { ctaTo: string; t: T }) {
 }
 
 /**
- * What happens after signing up.
+ * What happens after signing up, as an alternating stair.
  *
- * A rail rather than a card grid, because these are ordered and a grid says
- * they are not. Step two says the application is reviewed, and that is not
- * decoration: registering creates a pending provider that customers cannot find
- * until an administrator approves it. Leaving it out would make the wait
- * afterwards look like something broken.
+ * It was a thin four-column rail of small numbered circles, which gave four
+ * equal footnotes to the part of the page that explains the whole commitment.
+ * Each step is a full row now: an oversized outlined numeral with the words on
+ * one side, a panel on the other, and a hairline between rows so the sequence
+ * reads as one staircase rather than four cards.
+ *
+ * Step two says the application is reviewed, and that is not decoration:
+ * registering creates a pending provider customers cannot find until an
+ * administrator approves it. Leaving it out would make the wait look like a
+ * fault.
  */
 function Steps({ t }: { t: T }) {
   const steps = ["apply", "review", "publish", "earn"] as const;
@@ -263,34 +271,51 @@ function Steps({ t }: { t: T }) {
           </h2>
         </div>
 
-        <ol className="mt-14 grid gap-x-8 gap-y-10 p-0 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((key, i) => (
-            <li key={key} className="relative list-none">
-              {/* The rule runs from each step towards the next, so the row
-                  reads as one sequence rather than four boxes. It stops at the
-                  last, which has nothing to point at. */}
-              {i < steps.length - 1 ? (
-                <span
-                  aria-hidden="true"
-                  className="absolute top-5 left-12 hidden h-px w-[calc(100%-1rem)] lg:block"
-                  style={{ background: "var(--l-border)" }}
-                />
-              ) : null}
-
-              <span
-                className="font-rounded relative z-10 grid h-10 w-10 place-items-center rounded-full text-[15px] font-extrabold text-white tabular-nums"
-                style={{ background: ACCENT }}
+        <ol className="mt-16 grid gap-0 p-0">
+          {steps.map((key, i) => {
+            const artFirst = i % 2 === 1;
+            return (
+              <li
+                key={key}
+                className="grid list-none items-center gap-10 border-t py-14 first:border-t-0 first:pt-0 md:grid-cols-2 md:gap-16"
+                style={{ borderColor: "var(--l-border)" }}
               >
-                {i + 1}
-              </span>
-              <h3 className="font-rounded mt-5 text-xl font-extrabold tracking-[-0.02em]">
-                {t(`step.${key}.title`)}
-              </h3>
-              <p className="mt-2.5 leading-relaxed text-[color:var(--l-muted)]">
-                {t(`step.${key}.body`)}
-              </p>
-            </li>
-          ))}
+                <div className={artFirst ? "md:order-2" : undefined}>
+                  {/* Outlined, not filled: at this size a solid numeral would
+                      outshout the sentence beside it, which is the part that
+                      has something to say. */}
+                  <span
+                    aria-hidden="true"
+                    className="font-rounded block text-[clamp(3.5rem,7vw,5.5rem)] leading-[0.8] font-extrabold tabular-nums"
+                    style={{
+                      color: "transparent",
+                      WebkitTextStroke: `2px ${ACCENT}`,
+                    }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="font-rounded mt-6 text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em]">
+                    {t(`step.${key}.title`)}
+                  </h3>
+                  <p className="mt-3 max-w-[46ch] text-[17px] leading-relaxed text-[color:var(--l-muted)]">
+                    {t(`step.${key}.body`)}
+                  </p>
+                </div>
+
+                <div
+                  className={`relative h-56 overflow-hidden rounded-[24px] ${artFirst ? "md:order-1" : ""}`}
+                >
+                  <SurfaceArt seed={53 + i * 11} className="h-full w-full" />
+                  <span
+                    className="font-rounded absolute bottom-4 left-4 rounded-full px-3.5 py-1.5 text-[11px] font-extrabold tracking-[0.1em] text-white uppercase"
+                    style={{ background: NAVY }}
+                  >
+                    {t(`step.${key}.tag`)}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       </div>
     </section>
@@ -298,47 +323,94 @@ function Steps({ t }: { t: T }) {
 }
 
 /**
- * The requirements and the last ask, in one band.
+ * What you need before starting.
  *
- * Merged deliberately: a separate closing section would have been a third
- * "start now" on one page, and the honest place for the final call is right
- * after the list of what it costs the reader to say yes.
+ * A ruled grid rather than a card of paragraphs: these are conditions to check
+ * against yourself one at a time, and a table is what people read a checklist
+ * in. The hairlines belong to the cells, so the block reads as one object.
  */
-function Requirements({ ctaTo, t }: { ctaTo: string; t: T }) {
+function Requirements({ t }: { t: T }) {
   const items = ["identity", "payout", "terms"] as const;
 
   return (
-    <section className="pb-28">
+    <section className="pb-24">
       <div className="page-shell">
+        <div className="max-w-[62ch]">
+          <Eyebrow>{t("requirementsEyebrow")}</Eyebrow>
+          <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
+            {t("requirementsTitle")}
+          </h2>
+          <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">
+            {t("requirementsBlurb")}
+          </p>
+        </div>
+
         <div
-          className="rounded-[32px] border p-10 md:p-14"
+          className="mt-12 grid overflow-hidden rounded-[24px] border md:grid-cols-3"
           style={{ borderColor: "var(--l-border)", background: CARD }}
         >
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div className="max-w-[62ch]">
-              <Eyebrow>{t("requirementsEyebrow")}</Eyebrow>
-              <h2 className="font-rounded mt-5 text-[clamp(1.9rem,3.6vw,2.8rem)] leading-[1.05] font-extrabold tracking-[-0.03em] text-balance">
-                {t("requirementsTitle")}
-              </h2>
-              <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">
-                {t("requirementsBlurb")}
+          {items.map((key) => (
+            <article
+              key={key}
+              className="border-t p-8 first:border-t-0 md:border-t-0 md:border-l md:first:border-l-0"
+              style={{ borderColor: "var(--l-border)" }}
+            >
+              <span
+                className="grid h-9 w-9 place-items-center rounded-full"
+                style={{ background: `color-mix(in srgb, ${ACCENT} 12%, transparent)` }}
+              >
+                <Check className="h-4.5 w-4.5" style={{ color: ACCENT }} />
+              </span>
+              <h3 className="font-rounded mt-5 text-lg font-extrabold tracking-[-0.01em]">
+                {t(`requirement.${key}.title`)}
+              </h3>
+              <p className="mt-2.5 leading-relaxed text-[color:var(--l-muted)]">
+                {t(`requirement.${key}.body`)}
               </p>
-            </div>
-            <PrimaryCta to={ctaTo} label={t("cta")} />
-          </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <dl className="mt-12 grid gap-x-10 gap-y-8 border-t p-0 pt-12 md:grid-cols-3" style={{ borderColor: "var(--l-border)" }}>
-            {items.map((key) => (
-              <div key={key}>
-                <dt className="font-rounded text-lg font-extrabold tracking-[-0.01em]">
-                  {t(`requirement.${key}.title`)}
-                </dt>
-                <dd className="mt-2 leading-relaxed text-[color:var(--l-muted)]">
-                  {t(`requirement.${key}.body`)}
-                </dd>
-              </div>
-            ))}
-          </dl>
+/**
+ * The last ask, full-bleed and dark.
+ *
+ * Its own band rather than a button bolted to the requirements block, because
+ * the page needs somewhere to end. It also carries the way out for someone not
+ * ready to commit — a question answered by a person beats a form abandoned.
+ */
+function Closing({ ctaTo, t }: { ctaTo: string; t: T }) {
+  return (
+    <section className="relative isolate overflow-hidden py-28 text-center" style={{ background: NAVY }}>
+      <SurfaceArt seed={91} hero className="absolute inset-0 -z-10 h-full w-full" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(19,23,27,.9) 0%, rgba(19,23,27,.72) 50%, rgba(19,23,27,.94) 100%)",
+        }}
+      />
+
+      <div className="page-shell text-white">
+        <h2 className="font-rounded mx-auto max-w-[20ch] text-[clamp(2.2rem,5vw,4rem)] leading-[1.02] font-extrabold tracking-[-0.035em] text-balance">
+          {t("closingTitle")}
+        </h2>
+        <p className="mx-auto mt-5 max-w-[46ch] text-[17px] leading-relaxed text-white/75">
+          {t("closingBody")}
+        </p>
+
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <PrimaryCta to={ctaTo} label={t("cta")} />
+          <a
+            href="mailto:ola@ntizo.com"
+            className="font-rounded inline-flex items-center justify-center rounded-full border border-white/25 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/60 hover:bg-white/10"
+          >
+            {t("closingTalk")}
+          </a>
         </div>
       </div>
     </section>
