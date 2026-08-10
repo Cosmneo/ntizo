@@ -20,7 +20,7 @@ export function Footer() {
             <img
               src="/brand/logo-primary.svg"
               alt="Ntizo"
-              style={{ height: 32 }}
+              style={{ height: 28 }}
             />
             <p style={footerDesc}>
               Your gateway to trusted local services across the globe — book,

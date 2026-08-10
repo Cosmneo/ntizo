@@ -39,7 +39,7 @@ export function SiteHeader({
           <img
             src={overlay ? "/brand/logo-white.svg" : "/brand/logo-primary.svg"}
             alt="Ntizo"
-            className="h-8"
+            className="h-7"
           />
         </Link>
 

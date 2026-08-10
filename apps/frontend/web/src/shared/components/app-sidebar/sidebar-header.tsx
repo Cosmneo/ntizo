@@ -24,10 +24,10 @@ export function AppSidebarHeader() {
               src="/brand/icon-primary.svg"
               alt=""
               aria-hidden="true"
-              className="hidden size-9 shrink-0 group-data-[collapsible=icon]:block"
+              className="hidden h-8 w-auto shrink-0 group-data-[collapsible=icon]:block"
             />
             <div className="grid gap-1 group-data-[collapsible=icon]:hidden">
-              <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-8 w-auto" />
+              <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-7 w-auto" />
               <span className="truncate text-[11px] text-[var(--color-muted-foreground)]">
                 {t("providerConsole")}
               </span>

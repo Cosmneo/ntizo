@@ -29,7 +29,7 @@ export function AuthLayout({ title, subtitle, children, footer, icon }: AuthLayo
             {icon ? (
               <div className="mb-3 rounded-full bg-[var(--color-secondary)] p-3">{icon}</div>
             ) : (
-              <NtizoMark className="h-10 w-10 mb-2" />
+              <NtizoMark className="mb-2 h-10 w-auto" />
             )}
             <h1 className="text-lg font-semibold">{title}</h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">{subtitle}</p>
