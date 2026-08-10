@@ -120,5 +120,22 @@
   "addrMakeDefault": "Hacer predeterminada",
   "addrDeleted": "Dirección eliminada",
   "edit": "Editar",
-  "delete": "Eliminar"
+  "delete": "Eliminar",
+  "fieldDateOfBirthPlaceholder": "Sin definir",
+  "datePickerToday": "Hoy",
+  "datePickerClear": "Borrar",
+  "languageSearchPlaceholder": "Buscar idioma",
+  "languageNoResults": "No se encontró ningún idioma",
+  "datePickerMonth": "Mes",
+  "datePickerYear": "Año",
+  "datePickerYearSearch": "Buscar año",
+  "navLanguage": "Idioma",
+  "appearance": "Apariencia",
+  "appearanceBlurb": "Modo de color usado mientras navega por Ntizo.",
+  "appearanceLabel": "Tema",
+  "theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  }
 }

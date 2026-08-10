@@ -24,6 +24,7 @@ import {
   Input,
   Label,
   Skeleton,
+  Select,
 } from "@ntizo/frontend-ui";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
 import { providerErrorMessage } from "../viewmodel/error-message";
@@ -57,6 +58,12 @@ const ROLE_STYLES: Record<
     dot: "bg-violet-400",
   },
 };
+
+/** The two roles a member can hold. One list, so the two pickers cannot disagree. */
+const ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "staff", label: "Staff" },
+];
 
 export function MembersPage() {
   const { t } = useTranslation("provider");
@@ -195,27 +202,21 @@ export function MembersPage() {
                     </div>
                   </div>
                   <div className="relative">
-                    <select
+<Select
                       value={m.role}
-                      onChange={(e) => {
+                      onChange={(role) => {
                         setActionError(null);
                         roleMut.mutate(
-                          {
-                            userId: m.userId,
-                            role: e.target.value as ProviderRole,
-                          },
+                          { userId: m.userId, role: role as ProviderRole },
                           {
                             onError: (err) =>
                               setActionError(providerErrorMessage(t, err)),
                           },
                         );
                       }}
-                      className={`appearance-none rounded-full border px-3 py-1 pr-7 text-xs font-medium ${style.pill} cursor-pointer focus:outline-none`}
-                    >
-                      <option value="owner">Owner</option>
-                      <option value="admin">Admin</option>
-                      <option value="staff">Staff</option>
-                    </select>
+                      options={ROLE_OPTIONS}
+                      className="w-36"
+                    />
                     <ChevronDown
                       className={`pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 ${style.dot.replace("bg-", "text-")}`}
                     />
@@ -373,16 +374,11 @@ export function MembersPage() {
               {(field) => (
                 <div className="flex flex-col gap-1.5">
                   <Label>{t("role")}</Label>
-                  <select
+<Select
                     value={field.state.value}
-                    onChange={(e) =>
-                      field.handleChange(e.target.value as ProviderRole)
-                    }
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="staff">Staff</option>
-                  </select>
+                    onChange={(role) => field.handleChange(role as ProviderRole)}
+                    options={ROLE_OPTIONS}
+                  />
                 </div>
               )}
             </inviteForm.Field>

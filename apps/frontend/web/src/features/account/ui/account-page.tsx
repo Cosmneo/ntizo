@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { BadgeCheck, Pencil, Sparkles } from "lucide-react";
+import { BadgeCheck, Cake, Clock, Languages, Pencil, Sparkles, UserRound } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback, Badge, Button } from "@ntizo/frontend-ui";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useMyProviders } from "@/features/provider/viewmodel/use-providers";
@@ -17,29 +18,55 @@ function initialsOf(source: string): string {
     .toUpperCase();
 }
 
-/** A label above its value, for the grid of personal details. */
-function Detail({ label, value }: { label: string; value: string | null }) {
+/**
+ * One personal detail: a small label with its value directly under it.
+ *
+ * Label above value, not label-left value-right. The old layout put the two in
+ * opposite corners of a wide column, so reading "date of birth" meant crossing
+ * empty space to find the date — and with two of these per row, the eye could
+ * not tell which value belonged to which label without checking twice.
+ */
+function Detail({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string | null;
+}) {
   const { t } = useTranslation("account");
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2">
-      <dt className="type-body-medium text-[var(--color-muted-foreground)]">{label}</dt>
-      <dd
-        className={
-          value
-            ? "type-body-medium text-right font-semibold"
-            : "type-body-medium text-right text-[var(--color-muted-foreground)] italic"
-        }
-      >
-        {value || t("notSet")}
-      </dd>
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
+        <Icon className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+      </span>
+      <div className="min-w-0">
+        <dt className="type-caption text-[var(--color-muted-foreground)]">{label}</dt>
+        <dd
+          className={
+            value
+              ? "type-body-medium mt-0.5 font-semibold"
+              : "type-body-medium mt-0.5 text-[var(--color-muted-foreground)]"
+          }
+        >
+          {value || t("notSet")}
+        </dd>
+      </div>
     </div>
   );
 }
 
-/** One of the three figures under the details. */
+/**
+ * One of the three figures under the details.
+ *
+ * On its own tinted panel rather than floating on the card. Three numbers in a
+ * row with nothing around them read as a header for the section below; the
+ * panel says they are the content.
+ */
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="text-center">
+    <div className="rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] px-4 py-3.5 text-center">
       <div className="type-h2 tabular-nums">{value}</div>
       <div className="type-caption mt-1 text-[var(--color-muted-foreground)]">{label}</div>
     </div>
@@ -109,27 +136,30 @@ export function AccountPage() {
           <ProfileForm user={user} onDone={() => setEditing(false)} />
         ) : (
           <>
-            <dl className="mt-6 grid gap-x-10 border-t border-[var(--color-border)] pt-4 sm:grid-cols-2">
+            <dl className="mt-6 grid gap-5 border-t border-[var(--color-border)] pt-6 sm:grid-cols-2 lg:grid-cols-4">
               <Detail
+                icon={Cake}
                 label={t("fieldDateOfBirth")}
                 value={user.dateOfBirth ? dateFmt.format(new Date(user.dateOfBirth)) : null}
               />
               <Detail
-                label={t("fieldLanguages")}
-                value={t(`language.${user.language}`, { defaultValue: user.language })}
-              />
-              <Detail
+                icon={UserRound}
                 label={t("fieldGender")}
                 value={user.gender ? t(`gender.${user.gender}`) : null}
               />
-              <Detail label={t("fieldTimezone")} value={user.timezone} />
+              <Detail
+                icon={Languages}
+                label={t("fieldLanguages")}
+                value={t(`language.${user.language}`, { defaultValue: user.language })}
+              />
+              <Detail icon={Clock} label={t("fieldTimezone")} value={user.timezone} />
             </dl>
 
             {/* Two of these three have nowhere to come from yet. They are
                 shown at zero rather than hidden: a customer with no bookings
                 is the normal state at launch, and an empty row says that
                 more honestly than an absent one. */}
-            <div className="mt-4 grid grid-cols-3 gap-4 border-t border-[var(--color-border)] pt-5">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Stat value="0" label={t("statBookings")} />
               <Stat value="—" label={t("statRating")} />
               <Stat

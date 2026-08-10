@@ -120,5 +120,22 @@
   "addrMakeDefault": "Standaard maken",
   "addrDeleted": "Adres verwijderd",
   "edit": "Bewerken",
-  "delete": "Verwijderen"
+  "delete": "Verwijderen",
+  "fieldDateOfBirthPlaceholder": "Niet ingevuld",
+  "datePickerToday": "Vandaag",
+  "datePickerClear": "Wissen",
+  "languageSearchPlaceholder": "Taal zoeken",
+  "languageNoResults": "Geen taal gevonden",
+  "datePickerMonth": "Maand",
+  "datePickerYear": "Jaar",
+  "datePickerYearSearch": "Jaar zoeken",
+  "navLanguage": "Taal",
+  "appearance": "Weergave",
+  "appearanceBlurb": "De kleurmodus terwijl je Ntizo gebruikt.",
+  "appearanceLabel": "Thema",
+  "theme": {
+    "light": "Licht",
+    "dark": "Donker",
+    "system": "Systeem"
+  }
 }
