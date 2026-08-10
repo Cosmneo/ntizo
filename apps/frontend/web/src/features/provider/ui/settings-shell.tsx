@@ -77,7 +77,9 @@ export function Section({
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="type-h3 font-semibold">{title}</h2>
-          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{blurb}</p>
+          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+            {blurb}
+          </p>
         </div>
       </div>
       {children}
