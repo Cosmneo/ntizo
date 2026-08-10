@@ -16,8 +16,10 @@ const SECTIONS = [
   { to: "/account/addresses", key: "navAddresses", exact: false },
   { to: "/account/payment-methods", key: "navPaymentMethods", exact: false },
   { to: "/account/security", key: "navSecurity", exact: false },
+  // Language and notifications both live here, as tabs. They answer the same
+  // question — how the app should behave for this person — and a sidebar that
+  // lists every setting separately stops being navigation.
   { to: "/account/preferences", key: "navPreferences", exact: false },
-  { to: "/account/notifications", key: "navNotifications", exact: false },
   { to: "/account/legal", key: "navLegal", exact: false },
 ] as const;
 

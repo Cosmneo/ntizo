@@ -9,7 +9,11 @@ import {
 } from "@ntizo/shared";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { EmptyState } from "@/features/account/ui/empty-state";
-import { LanguagePreference } from "@/features/account/ui/language-preference";
+import {
+  AppearancePreference,
+  LanguagePreference,
+} from "@/features/account/ui/language-preference";
+import { Setting } from "@/features/account/ui/setting";
 
 function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
   return (
@@ -130,27 +134,36 @@ export function SecurityPage() {
   );
 }
 
+/**
+ * Preferences: language, appearance and notifications, one under the other.
+ *
+ * They were three places — two sidebar entries and a submenu in the account
+ * dropdown. All three answer the same question, how the app should behave for
+ * this person, and splitting that across a sidebar turns navigation into a
+ * table of contents.
+ */
 export function PreferencesPage() {
   const { t } = useTranslation("account");
+
   return (
     <>
       <SectionHeading title={t("navPreferences")} blurb={t("preferencesBlurb")} />
       <Panel>
         <LanguagePreference />
+        <AppearancePreference />
+        <NotificationSettings />
       </Panel>
     </>
   );
 }
 
-export function NotificationsPage() {
+function NotificationSettings() {
   const { t } = useTranslation("account");
   const buckets = Object.values(NotificationBucket);
 
   return (
-    <>
-      <SectionHeading title={t("navNotifications")} blurb={t("notificationsBlurb")} />
-
-      <Panel>
+    <Setting title={t("navNotifications")} blurb={t("notificationsBlurb")}>
+      <>
         {/* Only the switchable buckets appear. Confirmations, refunds and
             sign-in alerts are transactional — they are sent regardless, and
             offering a switch that does nothing would be a lie. The list comes
@@ -204,8 +217,8 @@ export function NotificationsPage() {
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           {t("notificationsPending")}
         </p>
-      </Panel>
-    </>
+      </>
+    </Setting>
   );
 }
 
