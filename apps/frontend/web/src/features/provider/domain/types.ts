@@ -62,6 +62,23 @@ export interface ProviderDocument {
   rejectionReason: string | null;
 }
 
+/**
+ * An invitation as its holder may see it, before signing in.
+ *
+ * In `domain/` rather than beside the query that fetches it: the accept page
+ * renders it, and `ui/` may not reach into `data/`. The shape is the contract
+ * between them, so it belongs to neither.
+ */
+export interface PublicInvite {
+  providerName: string;
+  inviterName: string;
+  role: "admin" | "staff";
+  /** Who it was sent to, so the page can spot a mismatched session. */
+  email: string;
+  status: "pending" | "accepted" | "revoked" | "declined" | "expired";
+  expiresAt: string;
+}
+
 export interface ProviderImage {
   key: string;
   /** Null locally, where no public base serves the media bucket. */
