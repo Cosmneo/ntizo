@@ -47,6 +47,8 @@ export class UpdateProviderCommand implements UpdateProviderPort {
       name: input.name,
       description: input.description,
       address: input.address ? Address.create(input.address) : undefined,
+      logoKey: input.logoKey,
+      photoKeys: input.photoKeys,
     });
 
     await this.unitOfWork.atomicExecute(async () => {

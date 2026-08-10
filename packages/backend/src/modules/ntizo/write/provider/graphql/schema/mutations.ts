@@ -47,7 +47,11 @@ export const updateProvider = defineMutation({
       // Keys, not URLs — the upload route hands back a key and the reader
       // composes the URL from the public base, so a bucket or CDN move does
       // not rewrite every row.
-      logoKey: z.string().max(300).optional(),
+      // `.nullable()`, because removing the logo has to be expressible.
+      // Optional alone means "leave it alone" and nothing else, so the remove
+      // button sent `null`, validation refused it, and the control could never
+      // have worked.
+      logoKey: z.string().max(300).nullable().optional(),
       photoKeys: z.array(z.string().max(300)).max(24).optional(),
       // The command has always accepted an address; only this schema did not
       // declare one, which is why the settings page shipped with its address

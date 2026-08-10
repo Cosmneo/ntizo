@@ -5,7 +5,8 @@ export interface UpdateProviderInput {
   providerId: string;
   name?: string;
   description?: string;
-  logoKey?: string;
+  /** `null` clears it; omitted leaves it alone. */
+  logoKey?: string | null;
   photoKeys?: string[];
   address?: AddressProps;
 }

@@ -163,11 +163,18 @@ export class Provider {
     name?: string;
     description?: string;
     address?: Address;
+    /** `null` clears it; `undefined` leaves it alone. */
+    logoKey?: string | null;
+    photoKeys?: string[];
   }): void {
     if (params.name !== undefined) this.props.name = params.name;
     if (params.description !== undefined)
       this.props.description = params.description;
     if (params.address !== undefined) this.props.address = params.address;
+    // Distinguishing null from undefined is what lets the logo be *removed*.
+    // Treating both as "no change" would make the remove button do nothing.
+    if (params.logoKey !== undefined) this.props.logoKey = params.logoKey ?? undefined;
+    if (params.photoKeys !== undefined) this.props.photoKeys = params.photoKeys;
     this.props.updatedAt = new Date();
     this._events.push(new ProviderUpdated({ providerId: this.props.id }));
   }

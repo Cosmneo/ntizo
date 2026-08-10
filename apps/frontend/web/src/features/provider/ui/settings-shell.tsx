@@ -91,7 +91,13 @@ export function Section({
 export function SettingsSaveBar({ children }: { children: React.ReactNode }) {
   return (
     <div className="sticky -bottom-6 z-20 -mx-6 -mb-6 mt-6 border-t border-[var(--color-border)] bg-[var(--color-background)]/95 px-6 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+      {/* One row, always. It wrapped before, so a long message — a save error,
+          a translation that runs longer than English — pushed the buttons onto
+          a second line and the bar grew *upward*, over the page it was
+          anchored to. The message truncates instead: the bar's job is the two
+          controls, and a control that moves under a finger mid-tap is worse
+          than a sentence cut short. */}
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5">
         {children}
       </div>
     </div>

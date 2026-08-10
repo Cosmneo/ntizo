@@ -126,25 +126,24 @@ export class DrizzleProviderRepository implements ProviderRepositoryPort {
   async save(provider: Provider): Promise<void> {
     const db = getDb();
     const values = providerMapper.toPersistence(provider);
+    // Everything the mapper produced, minus what must never change on an
+    // update. Hand-listing the mutable columns is what silently lost the logo
+    // and portfolio keys: the aggregate carried them, the mutation accepted
+    // them, the mapper wrote them into `values` — and this object, three
+    // layers further down, simply had no such fields, so the UPDATE never
+    // mentioned them and Postgres left the columns as they were.
+    //
+    // Derived from `values` instead, so a column added to the table and the
+    // mapper is saved without anyone remembering to come back here.
+    const { id, ownerUserId, type, createdAt, ...mutable } = values;
+    void id;
+    void ownerUserId;
+    void type;
+    void createdAt;
+
     await db
       .insert(providerTable)
       .values(values)
-      .onConflictDoUpdate({
-        target: providerTable.id,
-        set: {
-          name: values.name,
-          slug: values.slug,
-          status: values.status,
-          description: values.description,
-          addressStreet: values.addressStreet,
-          addressCity: values.addressCity,
-          addressDistrict: values.addressDistrict,
-          addressCountry: values.addressCountry,
-          addressPostalCode: values.addressPostalCode,
-          addressLat: values.addressLat,
-          addressLng: values.addressLng,
-          updatedAt: values.updatedAt,
-        },
-      });
+      .onConflictDoUpdate({ target: providerTable.id, set: mutable });
   }
 }

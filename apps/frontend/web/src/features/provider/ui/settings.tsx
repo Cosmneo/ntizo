@@ -505,10 +505,12 @@ export function SettingsPage() {
           their first field. */}
       <SettingsSaveBar>
         <div className="min-w-0">
-          <p className="type-body-medium font-semibold">
+          <p className="type-body-medium truncate font-semibold">
             {dirty ? t("settingsUnsaved") : (message ?? t("settingsNoChanges"))}
           </p>
-          <p className="type-caption text-[var(--color-muted-foreground)]">
+          {/* Hidden on narrow screens rather than allowed to wrap: it is a
+              hint, and the bar's height is load-bearing. */}
+          <p className="type-caption hidden truncate text-[var(--color-muted-foreground)] sm:block">
             {t("settingsSaveHint")}
           </p>
         </div>
