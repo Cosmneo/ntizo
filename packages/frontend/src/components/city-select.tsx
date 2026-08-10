@@ -1,68 +1,65 @@
 import * as React from "react";
-import { citiesForCountry } from "../lib/countries";
 import { cn } from "../lib/utils";
 
 export interface CitySelectProps {
   value: string;
   onChange: (next: string) => void;
-  /** ISO 3166-1 alpha-2. Decides which cities are offered, if any. */
-  country: string;
+  /**
+   * The cities to offer, already filtered by whoever fetched them.
+   *
+   * This component does no filtering of its own. It used to hold a list of
+   * names written by hand, which is the reason for the comment: a curated list
+   * silently drops whole regions, and nothing catches it except somebody from
+   * the missing one trying to type their own city. The names now come from a
+   * gazetteer, and this component's only job is to show them.
+   */
+  cities: readonly string[];
+  /** True while a fetch is in flight. Only changes the empty state's wording. */
+  loading?: boolean;
   id?: string;
   required?: boolean;
   placeholder?: string;
   /** Names the open/close control for screen readers. */
   toggleLabel?: string;
+  /** Shown when nothing matches and nothing is loading. */
+  noResultsText?: string;
+  loadingText?: string;
   className?: string;
 }
 
 /**
- * A city field: pick from the country's list, or type your own.
+ * A city field: pick one, or type your own.
  *
- * A combobox rather than a select, and the distinction is the whole point. A
- * select refuses anything absent from the list, and no curated list of cities
- * survives contact with a real address — Mozambique alone has hundreds of
- * places somebody legitimately lives. The list covers the common case; typing
- * covers every other one.
+ * A combobox rather than a select, and the distinction is the point. A select
+ * refuses anything absent from the list, and no list is complete enough for
+ * that — not even a gazetteer of 235 000 places, which still has no entry for
+ * a settlement too new or too small to have been surveyed. The list covers the
+ * common case; typing covers the rest.
  *
- * Clicking the field opens the full list unfiltered, so it behaves like the
- * picker it looks like. Typing narrows it. The chevron is not decoration: a
- * bare input gives no sign there is a list behind it, and a list nobody knows
- * about is a list nobody uses.
- *
- * A country with no curated list renders a plain input with no chevron and no
- * popover. That is correct rather than degraded — an empty dropdown would
- * suggest the city does not exist.
+ * Clicking the field opens the list, so it behaves like the picker it looks
+ * like. The chevron is not decoration: a bare input gives no sign there is a
+ * list behind it, and a list nobody knows about is a list nobody uses.
  */
 export function CitySelect({
   value,
   onChange,
-  country,
+  cities,
+  loading = false,
   id,
   required,
   placeholder,
   toggleLabel,
+  noResultsText,
+  loadingText,
   className,
 }: CitySelectProps) {
   const [open, setOpen] = React.useState(false);
-  // Off until the user types. Opening the field shows every city, so it reads
-  // as a picker; narrowing only starts once there is a query to narrow by.
-  const [filtering, setFiltering] = React.useState(false);
   const [active, setActive] = React.useState(0);
 
   const rootRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
   const listId = `${id ?? "city"}-listbox`;
-
-  const cities = React.useMemo(() => citiesForCountry(country), [country]);
-  const hasSuggestions = cities.length > 0;
-
-  const suggestions = React.useMemo(() => {
-    if (!hasSuggestions) return [];
-    const q = filtering ? value.trim().toLowerCase() : "";
-    if (!q) return cities;
-    return cities.filter((c) => c.toLowerCase().includes(q));
-  }, [cities, value, hasSuggestions, filtering]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -73,50 +70,47 @@ export function CitySelect({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  // Start on the city already chosen, so opening a filled field and pressing
-  // down moves from where the user is rather than from the top of the list.
-  React.useEffect(() => {
-    if (!open) return;
-    const i = suggestions.findIndex((c) => c.toLowerCase() === value.trim().toLowerCase());
-    setActive(i >= 0 ? i : 0);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Back to the top whenever the offered set changes. Keeping the old index
+  // would leave the highlight on whatever row happens to sit at that position
+  // in the new list, which is not the row the user was looking at.
+  React.useEffect(() => setActive(0), [cities]);
 
   React.useEffect(() => {
     if (!open) return;
     listRef.current?.children[active]?.scrollIntoView({ block: "nearest" });
   }, [active, open]);
 
-  function pick(city: string) {
-    onChange(city);
+  function pick(cityName: string) {
+    onChange(cityName);
     setOpen(false);
-    setFiltering(false);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (!hasSuggestions) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       if (!open) {
-        setFiltering(false);
         setOpen(true);
         return;
       }
-      setActive((i) => Math.min(i + 1, suggestions.length - 1));
+      setActive((i) => Math.min(i + 1, cities.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter" && open) {
       // Only when the list is open, so Enter still submits the form otherwise.
-      const city = suggestions[active];
-      if (city) {
+      const cityName = cities[active];
+      if (cityName) {
         e.preventDefault();
-        pick(city);
+        pick(cityName);
       }
     } else if (e.key === "Escape" && open) {
       e.preventDefault();
       setOpen(false);
     }
   }
+
+  const empty = cities.length === 0;
+  const emptyText = loading ? loadingText : noResultsText;
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -129,86 +123,86 @@ export function CitySelect({
           value={value}
           placeholder={placeholder}
           autoComplete="address-level2"
-          role={hasSuggestions ? "combobox" : undefined}
-          aria-expanded={hasSuggestions ? open : undefined}
-          aria-controls={hasSuggestions && open ? listId : undefined}
-          aria-autocomplete={hasSuggestions ? "list" : undefined}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={open ? listId : undefined}
+          aria-autocomplete="list"
           onChange={(e) => {
             onChange(e.target.value);
-            if (hasSuggestions) {
-              setFiltering(true);
-              setOpen(true);
-            }
+            setOpen(true);
           }}
-          onFocus={() => {
-            if (hasSuggestions) {
-              setFiltering(false);
-              setOpen(true);
-            }
-          }}
+          onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
           className="type-body h-full min-w-0 flex-1 bg-transparent px-3.5 placeholder:text-[var(--color-muted-foreground)] focus-visible:outline-none"
         />
-        {hasSuggestions ? (
-          <button
-            type="button"
-            tabIndex={-1}
-            aria-label={toggleLabel}
-            // `mousedown`, so the toggle decides the state before the input's
-            // focus handler reopens what this click was meant to close.
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setFiltering(false);
-              setOpen((v) => !v);
-              inputRef.current?.focus();
-            }}
-            className="grid h-full w-10 shrink-0 place-items-center text-[var(--color-muted-foreground)]"
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={toggleLabel}
+          // `mousedown`, so the toggle decides the state before the input's
+          // focus handler reopens what this click was meant to close.
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setOpen((v) => !v);
+            inputRef.current?.focus();
+          }}
+          className="grid h-full w-10 shrink-0 place-items-center text-[var(--color-muted-foreground)]"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
           >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-        ) : null}
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
       </div>
 
-      {open && suggestions.length > 0 ? (
+      {open ? (
         <ul
           ref={listRef}
           id={listId}
           role="listbox"
           className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-[var(--radius-card-sm)] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-md"
         >
-          {suggestions.map((city, i) => {
-            const chosen = city.toLowerCase() === value.trim().toLowerCase();
-            return (
-              <li
-                key={city}
-                role="option"
-                aria-selected={chosen}
-                onMouseEnter={() => setActive(i)}
-                // `mousedown`, so the choice lands before the input's blur
-                // tears the popover down under the pointer.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  pick(city);
-                }}
-                className={cn(
-                  "type-body cursor-pointer px-3.5 py-2",
-                  i === active && "bg-[var(--color-muted)]",
-                  chosen && "font-semibold",
-                )}
-              >
-                {city}
+          {empty ? (
+            // Never silently blank. An empty popover with no words in it reads
+            // as broken, and the two reasons it can be empty — still loading,
+            // nothing matched — call for different patience from the user.
+            emptyText ? (
+              <li className="type-body px-3.5 py-2 text-[var(--color-muted-foreground)]">
+                {emptyText}
               </li>
-            );
-          })}
+            ) : null
+          ) : (
+            cities.map((cityName, i) => {
+              const chosen = cityName.toLowerCase() === value.trim().toLowerCase();
+              return (
+                <li
+                  key={cityName}
+                  role="option"
+                  aria-selected={chosen}
+                  onMouseEnter={() => setActive(i)}
+                  // `mousedown`, so the choice lands before the input's blur
+                  // tears the popover down under the pointer.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    pick(cityName);
+                  }}
+                  className={cn(
+                    "type-body cursor-pointer px-3.5 py-2",
+                    i === active && "bg-[var(--color-muted)]",
+                    chosen && "font-semibold",
+                  )}
+                >
+                  {cityName}
+                </li>
+              );
+            })
+          )}
         </ul>
       ) : null}
     </div>

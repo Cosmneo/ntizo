@@ -29,6 +29,13 @@
       "when": 1786370999589,
       "tag": "0003_known_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786374531949,
+      "tag": "0004_tricky_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

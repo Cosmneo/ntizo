@@ -33,7 +33,8 @@
     "./modules/ntizo/write/provider": "./src/modules/ntizo/write/provider/index.ts",
     "./modules/ntizo/write/user": "./src/modules/ntizo/write/user/index.ts",
     "./modules/ntizo/public": "./src/modules/ntizo/public/schema.ts",
-    "./modules/ntizo/public/provider": "./src/modules/ntizo/public/provider/index.ts"
+    "./modules/ntizo/public/provider": "./src/modules/ntizo/public/provider/index.ts",
+    "./modules/ntizo/public/city": "./src/modules/ntizo/public/city/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -53,6 +54,9 @@
     "db:ntizo:qa:studio": "STAGE=qa drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts",
     "db:ntizo:prod:migrate": "STAGE=prod drizzle-kit migrate --config ./src/modules/ntizo/drizzle.config.ts",
     "db:ntizo:prod:studio": "STAGE=prod drizzle-kit studio --config ./src/modules/ntizo/drizzle.config.ts",
+    "db:cities:dev:seed": "STAGE=dev bun run scripts/seed-cities.ts",
+    "db:cities:qa:seed": "STAGE=qa bun run scripts/seed-cities.ts",
+    "db:cities:prod:seed": "STAGE=prod bun run scripts/seed-cities.ts",
     "lint": "eslint ."
   },
   "dependencies": {

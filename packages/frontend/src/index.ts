@@ -20,5 +20,5 @@ export * from "./components/table";
 export * from "./components/skeleton";
 export { useIsMobile } from "./hooks/use-mobile";
 export { cn, regionalFlag } from "./lib/utils";
-export { buildCountryList, citiesForCountry, countryName, COMMON_CITIES } from "./lib/countries";
+export { buildCountryList, countryName } from "./lib/countries";
 export type { CountryEntry } from "./lib/countries";

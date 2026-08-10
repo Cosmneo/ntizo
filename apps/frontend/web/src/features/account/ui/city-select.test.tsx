@@ -2,9 +2,19 @@ import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CitySelect, citiesForCountry } from "@ntizo/frontend-ui";
+import { CitySelect } from "@ntizo/frontend-ui";
 
-function Harness({ country, initial = "" }: { country: string; initial?: string }) {
+const MAPUTO = ["Maputo", "Matola", "Beira", "Nampula"];
+
+function Harness({
+  cities = MAPUTO,
+  initial = "",
+  loading = false,
+}: {
+  cities?: string[];
+  initial?: string;
+  loading?: boolean;
+}) {
   const [city, setCity] = useState(initial);
   return (
     <>
@@ -13,106 +23,86 @@ function Harness({ country, initial = "" }: { country: string; initial?: string 
         id="city"
         value={city}
         onChange={setCity}
-        country={country}
+        cities={cities}
+        loading={loading}
         toggleLabel="Show cities"
+        noResultsText="No city found"
+        loadingText="Searching…"
       />
     </>
   );
 }
 
 describe("CitySelect", () => {
-  it("keeps a city that is not in the suggestions", async () => {
-    // The whole reason this is an input and not a select. Mozambique has
-    // hundreds of places somebody legitimately lives, and a list of twenty
-    // that refuses the other ones is a form nobody can complete.
+  it("keeps a city the gazetteer does not offer", async () => {
+    // The reason this is an input and not a select. 235 000 places is not all
+    // of them: a settlement too new or too small to have been surveyed is not
+    // in any gazetteer, and the person who lives there still has to book.
     const user = userEvent.setup();
-    render(<Harness country="MZ" />);
+    render(<Harness cities={[]} />);
 
     const field = screen.getByLabelText("City");
     await user.type(field, "Namaacha");
 
     expect(field).toHaveValue("Namaacha");
-    expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
-  it("offers the country's cities and fills the field when one is chosen", async () => {
+  it("fills the field from the list", async () => {
     const user = userEvent.setup();
-    render(<Harness country="MZ" />);
-
-    await user.type(screen.getByLabelText("City"), "map");
-    await user.click(screen.getByRole("option", { name: "Maputo" }));
-
-    expect(screen.getByLabelText("City")).toHaveValue("Maputo");
-  });
-
-  it("suggests nothing for a country with no curated list", async () => {
-    // An empty dropdown would read as "your city does not exist". A plain
-    // input says nothing, which is the truth.
-    const user = userEvent.setup();
-    render(<Harness country="JP" />);
+    render(<Harness />);
 
     await user.click(screen.getByLabelText("City"));
+    await user.click(screen.getByRole("option", { name: "Matola" }));
 
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("City")).toHaveValue("Matola");
   });
 
-  it("opens the whole list from the chevron, not just what matches", async () => {
+  it("opens the list from the chevron", async () => {
     // The affordance that says a list exists. Without it the field is a text
     // box, and a list nobody knows about is a list nobody uses.
     const user = userEvent.setup();
-    render(<Harness country="MZ" initial="Beira" />);
+    render(<Harness />);
 
     await user.click(screen.getByRole("button", { name: "Show cities" }));
 
-    const shown = screen.getAllByRole("option").map((o) => o.textContent);
-    expect(shown).toContain("Maputo");
-    expect(shown).toContain("Beira");
+    expect(screen.getAllByRole("option")).toHaveLength(MAPUTO.length);
   });
 
-  it("drops the typed filter when reopened from the chevron", async () => {
-    // Reaching the chevron from a field that already has focus and a query is
-    // the only path where the button's own state handling runs — focusing an
-    // already-focused input fires no focus event to reset it.
+  it("says why the list is empty rather than showing a blank popover", async () => {
+    // Empty and silent reads as broken. The two reasons it can be empty ask
+    // for different patience, so they say different things.
     const user = userEvent.setup();
-    render(<Harness country="MZ" />);
+    const { rerender } = render(<Harness cities={[]} loading />);
 
-    await user.type(screen.getByLabelText("City"), "map");
-    expect(screen.getAllByRole("option")).toHaveLength(1);
+    await user.click(screen.getByLabelText("City"));
+    expect(screen.getByText("Searching…")).toBeInTheDocument();
 
-    const chevron = screen.getByRole("button", { name: "Show cities" });
-    await user.click(chevron); // closes
-    await user.click(chevron); // reopens, unfiltered
-
-    expect(screen.getAllByRole("option").map((o) => o.textContent)).toContain("Matola");
-  });
-
-  it("hides the chevron when there is nothing to open", async () => {
-    render(<Harness country="JP" />);
-
-    expect(screen.queryByRole("button", { name: "Show cities" })).not.toBeInTheDocument();
+    rerender(<Harness cities={[]} loading={false} />);
+    expect(screen.getByText("No city found")).toBeInTheDocument();
   });
 
   it("picks with the keyboard alone", async () => {
     const user = userEvent.setup();
-    render(<Harness country="MZ" />);
+    render(<Harness />);
 
     await user.click(screen.getByLabelText("City"));
     await user.keyboard("{ArrowDown}{Enter}");
 
-    // Down once from the top of an unfiltered list lands on the second entry.
-    // Read from the list rather than named, so curating the cities does not
-    // break a test about the arrow keys.
-    expect(screen.getByLabelText("City")).toHaveValue(citiesForCountry("MZ")[1]);
+    expect(screen.getByLabelText("City")).toHaveValue(MAPUTO[1]);
   });
 
-  it("does not offer another country's cities", async () => {
+  it("moves the highlight back to the top when the offered set changes", async () => {
+    // Otherwise the highlight sits at whatever row happens to occupy that
+    // index in the new list, which is not the row the user was looking at.
     const user = userEvent.setup();
-    render(<Harness country="PT" />);
+    const { rerender } = render(<Harness />);
 
-    await user.type(screen.getByLabelText("City"), "a");
+    await user.click(screen.getByLabelText("City"));
+    await user.keyboard("{ArrowDown}{ArrowDown}");
 
-    const shown = screen.getAllByRole("option").map((o) => o.textContent);
-    expect(shown).not.toContain("Maputo");
-    expect(shown).toContain("Braga");
+    rerender(<Harness cities={["Pemba", "Tete"]} />);
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByLabelText("City")).toHaveValue("Pemba");
   });
 });

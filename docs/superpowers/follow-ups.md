@@ -399,3 +399,38 @@ the picker has nothing to read.
 **Trigger:** the provider onboarding wizard needs the payout direction of
 exactly this model, so build the wiring with that flow rather than twice. The
 customer-facing page can come from the same commands.
+
+## 19. The city gazetteer is seeded per environment, and only dev has it
+
+`ntizo_reference.city` holds 235 206 places from the GeoNames `cities500` dump.
+The table is created by migration `0004`, but a migration cannot fill it: the
+rows arrive from `bun run db:cities:<stage>:seed`, which downloads the dump and
+upserts it. **Dev is seeded. qa and prod are not.**
+
+An unseeded environment does not fail loudly. The address form's city picker
+simply offers nothing and falls back to free text — which is exactly what it is
+designed to do when a country has no data, so the symptom looks like a working
+feature with an empty list. Nothing in the build, the tests or the migration
+catches it.
+
+Migrations `0002` and `0003` (addresses, payment methods) are also dev-only.
+
+**Trigger:** before either environment serves a real address form. Run the
+stage's migrate, then the stage's seed, then probe
+`{ citySearch(input:{country:"MZ"}) { name } }` against that stage's
+`/public/graphql` and check the first row is Maputo. The probe is the check —
+the seed's own output reports what it inserted, not what the endpoint returns.
+
+## 20. A zod `.default()` does not reach the GraphQL schema
+
+`limit: z.number().default(10)` still emits as `Int!`, so every caller must send
+it. Found by probing the running schema; nothing type-checks it, and the field
+looks correct in the source.
+
+`public/city` now uses `.optional()` with the default in the projection beside
+the clamp. **`public/provider`'s `listPublicProviders` still has `.default(20)`
+and `.default(0)`** — harmless today only because the directory repository
+happens to pass both explicitly.
+
+**Trigger:** the next caller of `providerList` that omits `limit` or `offset`,
+or the next slice written from that file as a template.

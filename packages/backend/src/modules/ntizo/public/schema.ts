@@ -6,6 +6,7 @@ import {
 } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { providerPublicSchema } from "./provider/graphql/schema/queries";
+import { cityPublicSchema } from "./city/graphql/schema/queries";
 
 /**
  * The PUBLIC (anonymous-tier) schema barrel.
@@ -40,11 +41,17 @@ const health = defineQuery({
 const healthSchema = defineGraphQLSchema({ _health: health });
 
 /**
- * `_health` stays merged rather than being dropped now that a real slice
- * exists: `mergeGraphQLSchemas` needs two or more arguments to select its
- * typed overload, and a single-argument call widens the result to the bare
- * config, collapsing the frontend's inferred method tree to `never`.
+ * `_health` stays merged rather than being dropped now that real slices exist:
+ * `mergeGraphQLSchemas` needs two or more arguments to select its typed
+ * overload, and a single-argument call widens the result to the bare config,
+ * collapsing the frontend's inferred method tree to `never`. With two real
+ * slices it is no longer load-bearing for that, but it is still the only field
+ * that answers when both of them are broken.
  */
-export const publicSchema = mergeGraphQLSchemas(healthSchema, providerPublicSchema);
+export const publicSchema = mergeGraphQLSchemas(
+  healthSchema,
+  providerPublicSchema,
+  cityPublicSchema,
+);
 
 export type PublicSchema = typeof publicSchema;

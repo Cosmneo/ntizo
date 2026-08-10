@@ -14,7 +14,71 @@ import {
   countryName,
 } from "@ntizo/frontend-ui";
 import { useAddressMutations, useMyAddresses } from "@/features/account/viewmodel/use-addresses";
+import { useCities } from "@/features/account/viewmodel/use-cities";
 import { EmptyState } from "@/features/account/ui/empty-state";
+
+/**
+ * Bridges the city field to the gazetteer.
+ *
+ * Its own component because the query has to key off the country, and a hook
+ * cannot be called inside the `Subscribe` render prop that supplies it. The
+ * search term IS the field's value: the user is typing the city they want, and
+ * a separate query box for the same thing would be one box too many.
+ */
+function CityField({
+  id,
+  country,
+  value,
+  onChange,
+}: {
+  id: string;
+  country: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const { t } = useTranslation("account");
+  const { cities, loading } = useCities(country, value);
+
+  return (
+    <CitySelect
+      id={id}
+      value={value}
+      onChange={onChange}
+      cities={cities}
+      loading={loading}
+      placeholder={t("addrCityPlaceholder")}
+      toggleLabel={t("addrCityToggle")}
+      noResultsText={t("addrCityNoResults")}
+      loadingText={t("addrCityLoading")}
+      required
+    />
+  );
+}
+
+/**
+ * Attribution for the city data.
+ *
+ * Not optional politeness: GeoNames ships under CC BY 4.0, and the licence
+ * requires crediting the source wherever the data is shown. It sits by the
+ * field it describes rather than in a page nobody opens.
+ */
+function CityDataCredit() {
+  const { t } = useTranslation("account");
+  return (
+    <p className="type-caption text-[var(--color-muted-foreground)]">
+      {t("addrCityCredit")}{" "}
+      <a
+        href="https://www.geonames.org/"
+        target="_blank"
+        rel="noreferrer noopener"
+        className="underline underline-offset-2"
+      >
+        GeoNames
+      </a>{" "}
+      (CC BY 4.0)
+    </p>
+  );
+}
 
 function AddressForm({
   initial,
@@ -136,14 +200,11 @@ function AddressForm({
               <Label htmlFor={field.name}>{t("addrCity")}</Label>
               <form.Subscribe selector={(st) => st.values.country}>
                 {(country) => (
-                  <CitySelect
+                  <CityField
                     id={field.name}
+                    country={country}
                     value={field.state.value}
                     onChange={field.handleChange}
-                    country={country}
-                    placeholder={t("addrCityPlaceholder")}
-                    toggleLabel={t("addrCityToggle")}
-                    required
                   />
                 )}
               </form.Subscribe>
@@ -220,6 +281,8 @@ function AddressForm({
           {t("cancel")}
         </Button>
       </div>
+
+      <CityDataCredit />
     </form>
   );
 }
