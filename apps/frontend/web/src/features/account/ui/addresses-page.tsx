@@ -142,6 +142,7 @@ function AddressForm({
                     onChange={field.handleChange}
                     country={country}
                     placeholder={t("addrCityPlaceholder")}
+                    toggleLabel={t("addrCityToggle")}
                     required
                   />
                 )}

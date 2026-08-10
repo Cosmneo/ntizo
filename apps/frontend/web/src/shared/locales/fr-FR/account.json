@@ -107,6 +107,7 @@
   "addrCountry": "Pays",
   "addrCity": "Ville",
   "addrCityPlaceholder": "Commencez à saisir la ville",
+  "addrCityToggle": "Afficher les villes",
   "addrDistrict": "Quartier",
   "addrLine1": "Adresse",
   "addrDirections": "Comment y arriver",

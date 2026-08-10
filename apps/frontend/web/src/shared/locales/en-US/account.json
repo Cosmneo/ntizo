@@ -107,6 +107,7 @@
   "addrCountry": "Country",
   "addrCity": "City",
   "addrCityPlaceholder": "Start typing a city",
+  "addrCityToggle": "Show cities",
   "addrDistrict": "District",
   "addrLine1": "Street address",
   "addrDirections": "How to find it",
