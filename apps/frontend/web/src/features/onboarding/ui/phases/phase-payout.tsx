@@ -1,7 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Banknote, Smartphone } from "lucide-react";
-import { Button, Input, cn } from "@ntizo/frontend-ui";
-import { PaymentMethodType, PAYOUT_CAPABLE_TYPES } from "@ntizo/shared";
+import { Button, Input, PhoneInput, cn } from "@ntizo/frontend-ui";
+import {
+  PAYOUT_CAPABLE_TYPES,
+  PaymentIdentifierKind,
+  PaymentMethodType,
+  identifierKindFor,
+} from "@ntizo/shared";
 import type { ProviderDraft } from "@/features/onboarding/domain/draft";
 import { Field, HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
 
@@ -34,7 +39,8 @@ export function PhasePayout({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const { t } = useTranslation("onboarding");
+  const { t, i18n } = useTranslation("onboarding");
+  const { t: ta } = useTranslation("auth");
 
   return (
     <>
@@ -90,11 +96,34 @@ export function PhasePayout({
             hint={t(`payout.method.${draft.payoutType}.identifierHint`)}
             htmlFor="payout-identifier"
           >
-            <Input
-              id="payout-identifier"
-              value={draft.payoutIdentifier}
-              onChange={(e) => onChange({ payoutIdentifier: e.target.value })}
-            />
+            {/* A mobile wallet is keyed by a phone number, so it gets the phone
+                field — the same one sign-up uses, with the country prefix
+                picked rather than typed. The aggregate stores these in E.164
+                and rejects bare national digits, so a plain text box here would
+                collect something the backend then refuses.
+
+                Which kind of string a method takes is the shared enum's
+                answer, not a list repeated here. */}
+            {identifierKindFor(draft.payoutType as PaymentMethodType) ===
+            PaymentIdentifierKind.PhoneNumber ? (
+              <PhoneInput
+                id="payout-identifier"
+                value={draft.payoutIdentifier}
+                onChange={(next) => onChange({ payoutIdentifier: next })}
+                defaultCountry="MZ"
+                locale={i18n.resolvedLanguage ?? i18n.language}
+                placeholder={ta("phonePlaceholder")}
+                searchPlaceholder={ta("countrySearchPlaceholder")}
+                noResultsText={ta("countryNoResults")}
+                countrySelectLabel={ta("countrySelectLabel")}
+              />
+            ) : (
+              <Input
+                id="payout-identifier"
+                value={draft.payoutIdentifier}
+                onChange={(e) => onChange({ payoutIdentifier: e.target.value })}
+              />
+            )}
           </Field>
         </div>
       ) : null}
