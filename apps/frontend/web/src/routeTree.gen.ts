@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomerRouteRouteImport } from './routes/_customer/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as BecomeProviderRouteImport } from './routes/become-provider'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
 import { Route as CustomerAccountRouteRouteImport } from './routes/_customer/account/route'
@@ -58,6 +59,11 @@ const PublicRouteRoute = PublicRouteRouteImport.update({
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BecomeProviderRoute = BecomeProviderRouteImport.update({
+  id: '/become-provider',
+  path: '/become-provider',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProviderRouteRoute = ProviderRouteRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/become-provider': typeof BecomeProviderRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/account': typeof CustomerAccountRouteRouteWithChildren
   '/bookings': typeof CustomerBookingsRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/become-provider': typeof BecomeProviderRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/become-provider': typeof BecomeProviderRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
   '/_customer/bookings': typeof CustomerBookingsRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/provider'
+    | '/become-provider'
     | '/verify-phone'
     | '/account'
     | '/bookings'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/become-provider'
     | '/verify-phone'
     | '/bookings'
     | '/favourites'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/provider'
+    | '/become-provider'
     | '/verify-phone'
     | '/_customer/account'
     | '/_customer/bookings'
@@ -405,6 +417,7 @@ export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
+  BecomeProviderRoute: typeof BecomeProviderRoute
   VerifyPhoneRoute: typeof VerifyPhoneRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
@@ -438,6 +451,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/become-provider': {
+      id: '/become-provider'
+      path: '/become-provider'
+      fullPath: '/become-provider'
+      preLoaderRoute: typeof BecomeProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/provider': {
@@ -742,6 +762,7 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
+  BecomeProviderRoute: BecomeProviderRoute,
   VerifyPhoneRoute: VerifyPhoneRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,

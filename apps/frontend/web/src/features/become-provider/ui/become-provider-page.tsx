@@ -1,0 +1,346 @@
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { ArrowRight, Check } from "lucide-react";
+import { LANDING_VARS } from "@/features/landing/ui/sections";
+import { ACCENT, CARD, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import { SurfaceArt } from "@/features/landing/ui/surface-art";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { SiteHeader } from "@/shared/components/site-header";
+
+/**
+ * The public case for becoming a provider.
+ *
+ * Public on purpose. Until now the only way in was a row inside the account
+ * menu, so the one person the funnel exists for — someone who has not signed up
+ * — could never see it.
+ *
+ * Built as an editorial page, not a stack of centred cards. The first version
+ * of this file was exactly that stack and read as a settings screen with a
+ * headline: everything centred, every block the same weight, nothing to look at
+ * between one paragraph and the next. What carries a page with no photography
+ * is contrast — a dark hero against a light body, one oversized number per
+ * card, headings that sit left where the eye already is.
+ */
+export function BecomeProviderPage() {
+  const { t } = useTranslation("becomeProvider");
+  const { data: user } = useCurrentUser();
+
+  // Signed in, so the pitch is over: go to the workspace. Anonymous visitors
+  // sign up first and come back by the same route.
+  const ctaTo = user ? "/provider" : "/sign-up";
+
+  return (
+    <main style={{ ...LANDING_VARS, background: PAGE_TOP }} className="text-[color:var(--l-navy)]">
+      <Hero ctaTo={ctaTo} t={t} />
+      <Paths t={t} />
+      <Pricing ctaTo={ctaTo} t={t} />
+      <Steps t={t} />
+      <Requirements ctaTo={ctaTo} t={t} />
+    </main>
+  );
+}
+
+type T = (key: string) => string;
+
+/** The eyebrow, with the rule that keeps it from floating. */
+function Eyebrow({ children, onDark = false }: { children: string; onDark?: boolean }) {
+  return (
+    <span
+      className={`font-rounded inline-flex items-center gap-3 text-[12px] font-bold tracking-[0.18em] uppercase ${
+        onDark ? "text-white/65" : "text-[color:var(--l-muted)]"
+      }`}
+    >
+      <span aria-hidden="true" className="h-px w-8" style={{ background: ACCENT }} />
+      {children}
+    </span>
+  );
+}
+
+function PrimaryCta({ to, label }: { to: string; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="font-rounded inline-flex items-center gap-2.5 rounded-full px-8 py-4 font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
+      style={{ background: ACCENT }}
+    >
+      {label}
+      <ArrowRight className="h-4 w-4" />
+    </Link>
+  );
+}
+
+/**
+ * Full-bleed and dark, with the content sitting low and left.
+ *
+ * Centred hero text is what the landing page already does; repeating it here
+ * would make the two pages read as one long scroll. Low-and-left also leaves
+ * the right half to the artwork, which is the only image this product has.
+ */
+function Hero({ ctaTo, t }: { ctaTo: string; t: T }) {
+  return (
+    <header className="relative isolate flex min-h-[660px] flex-col" style={{ background: NAVY }}>
+      <SurfaceArt seed={17} hero className="absolute inset-0 -z-10 h-full w-full" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(19,23,27,.82) 0%, rgba(19,23,27,.35) 38%, rgba(19,23,27,.86) 100%)," +
+            "linear-gradient(94deg, rgba(19,23,27,.9) 6%, rgba(19,23,27,.35) 58%, rgba(19,23,27,0) 88%)",
+        }}
+      />
+
+      <SiteHeader overlay />
+
+      <div className="page-shell flex flex-1 flex-col justify-end pt-24 pb-20 text-white">
+        <Eyebrow onDark>{t("eyebrow")}</Eyebrow>
+
+        <h1 className="font-rounded mt-6 max-w-[17ch] text-[clamp(2.6rem,6.2vw,5rem)] leading-[0.98] font-extrabold tracking-[-0.035em]">
+          {t("title")} <span style={{ color: ACCENT }}>{t("titleAccent")}</span>
+        </h1>
+
+        <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-white/80">
+          {t("subtitle")}
+        </p>
+
+        <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <PrimaryCta to={ctaTo} label={t("cta")} />
+          <Link
+            to="/providers"
+            className="font-rounded inline-flex items-center justify-center rounded-full border border-white/30 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/70 hover:bg-white/10"
+          >
+            {t("ctaSecondary")}
+          </Link>
+        </div>
+
+        <ul className="mt-10 flex flex-col gap-2 border-t border-white/15 p-0 pt-6 text-sm text-white/75 sm:flex-row sm:gap-9">
+          {["trustFree", "trustPaid", "trustLocal"].map((key) => (
+            <li key={key} className="flex list-none items-center gap-2">
+              <Check className="h-4 w-4" style={{ color: ACCENT }} />
+              {t(key)}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * The two kinds of provider.
+ *
+ * Ntizo's own distinction and the first real decision a visitor makes, so it
+ * gets the page's largest cards and its only artwork below the fold: a person
+ * offering their own labour and an establishment with staff need different
+ * things, and someone reading this is working out which one they are.
+ */
+function Paths({ t }: { t: T }) {
+  const paths = ["individual", "organization"] as const;
+
+  return (
+    <section className="py-24">
+      <div className="page-shell">
+        <div className="max-w-[62ch]">
+          <Eyebrow>{t("pathsEyebrow")}</Eyebrow>
+          <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
+            {t("pathsTitle")}
+          </h2>
+          <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">
+            {t("pathsBlurb")}
+          </p>
+        </div>
+
+        <div className="mt-14 grid gap-6 md:grid-cols-2">
+          {paths.map((key, i) => (
+            <article
+              key={key}
+              className="group overflow-hidden rounded-[28px] border transition-transform duration-300 hover:-translate-y-1"
+              style={{ borderColor: "var(--l-border)", background: CARD }}
+            >
+              <div className="relative h-44 overflow-hidden">
+                <SurfaceArt seed={31 + i * 7} className="h-full w-full" />
+                {/* Inside the image, not straddling its edge. Overhanging the
+                    seam is the nicer idea and it cannot work here: the card
+                    clips its corners, so the numeral came out sliced in half
+                    and read as a rendering fault rather than a flourish. */}
+                <span
+                  aria-hidden="true"
+                  className="font-rounded absolute bottom-3 left-7 text-[5rem] leading-[0.8] font-extrabold tabular-nums text-white/85 [text-shadow:0_2px_24px_rgba(19,23,27,.35)]"
+                >
+                  {i + 1}
+                </span>
+              </div>
+
+              <div className="px-7 pt-7 pb-8">
+                <h3 className="font-rounded text-2xl font-extrabold tracking-[-0.02em]">
+                  {t(`path.${key}.title`)}
+                </h3>
+                <p className="mt-3 leading-relaxed text-[color:var(--l-muted)]">
+                  {t(`path.${key}.body`)}
+                </p>
+                <ul className="mt-6 grid gap-2.5 border-t p-0 pt-6" style={{ borderColor: "var(--l-border)" }}>
+                  {["a", "b", "c"].map((point) => (
+                    <li key={point} className="flex list-none items-start gap-3 text-[15px]">
+                      <Check className="mt-1 h-4 w-4 shrink-0" style={{ color: ACCENT }} />
+                      {t(`path.${key}.point.${point}`)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The commission, stated as the page's loudest thing.
+ *
+ * It is the first question anyone asks and the strongest answer this product
+ * has, so it is a full-bleed dark band rather than a card: the provider is paid
+ * the price they set, and the ten percent is the customer's.
+ */
+function Pricing({ ctaTo, t }: { ctaTo: string; t: T }) {
+  return (
+    <section className="relative isolate overflow-hidden py-24" style={{ background: NAVY }}>
+      <span
+        aria-hidden="true"
+        className="absolute -top-24 -left-24 -z-10 h-[420px] w-[420px] rounded-full opacity-[0.14]"
+        style={{ background: ACCENT }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute -right-32 -bottom-32 -z-10 h-[380px] w-[380px] rounded-full opacity-[0.14]"
+        style={{ background: ACCENT }}
+      />
+
+      <div className="page-shell grid items-center gap-12 md:grid-cols-[auto_minmax(0,1fr)]">
+        <span
+          className="font-rounded text-[clamp(6rem,16vw,12rem)] leading-[0.8] font-extrabold tracking-tighter tabular-nums"
+          style={{ color: ACCENT }}
+        >
+          0%
+        </span>
+
+        <div className="text-white">
+          <Eyebrow onDark>{t("pricingEyebrow")}</Eyebrow>
+          <h2 className="font-rounded mt-5 max-w-[20ch] text-[clamp(1.9rem,4vw,3rem)] leading-[1.05] font-extrabold tracking-[-0.03em] text-balance">
+            {t("pricingTitle")}
+          </h2>
+          <p className="mt-5 max-w-[54ch] text-[17px] leading-relaxed text-white/75">
+            {t("pricingBody")}
+          </p>
+          <div className="mt-8">
+            <PrimaryCta to={ctaTo} label={t("cta")} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * What happens after signing up.
+ *
+ * A rail rather than a card grid, because these are ordered and a grid says
+ * they are not. Step two says the application is reviewed, and that is not
+ * decoration: registering creates a pending provider that customers cannot find
+ * until an administrator approves it. Leaving it out would make the wait
+ * afterwards look like something broken.
+ */
+function Steps({ t }: { t: T }) {
+  const steps = ["apply", "review", "publish", "earn"] as const;
+
+  return (
+    <section className="py-24">
+      <div className="page-shell">
+        <div className="max-w-[62ch]">
+          <Eyebrow>{t("stepsEyebrow")}</Eyebrow>
+          <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
+            {t("stepsTitle")}
+          </h2>
+        </div>
+
+        <ol className="mt-14 grid gap-x-8 gap-y-10 p-0 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((key, i) => (
+            <li key={key} className="relative list-none">
+              {/* The rule runs from each step towards the next, so the row
+                  reads as one sequence rather than four boxes. It stops at the
+                  last, which has nothing to point at. */}
+              {i < steps.length - 1 ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-5 left-12 hidden h-px w-[calc(100%-1rem)] lg:block"
+                  style={{ background: "var(--l-border)" }}
+                />
+              ) : null}
+
+              <span
+                className="font-rounded relative z-10 grid h-10 w-10 place-items-center rounded-full text-[15px] font-extrabold text-white tabular-nums"
+                style={{ background: ACCENT }}
+              >
+                {i + 1}
+              </span>
+              <h3 className="font-rounded mt-5 text-xl font-extrabold tracking-[-0.02em]">
+                {t(`step.${key}.title`)}
+              </h3>
+              <p className="mt-2.5 leading-relaxed text-[color:var(--l-muted)]">
+                {t(`step.${key}.body`)}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The requirements and the last ask, in one band.
+ *
+ * Merged deliberately: a separate closing section would have been a third
+ * "start now" on one page, and the honest place for the final call is right
+ * after the list of what it costs the reader to say yes.
+ */
+function Requirements({ ctaTo, t }: { ctaTo: string; t: T }) {
+  const items = ["identity", "payout", "terms"] as const;
+
+  return (
+    <section className="pb-28">
+      <div className="page-shell">
+        <div
+          className="rounded-[32px] border p-10 md:p-14"
+          style={{ borderColor: "var(--l-border)", background: CARD }}
+        >
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="max-w-[62ch]">
+              <Eyebrow>{t("requirementsEyebrow")}</Eyebrow>
+              <h2 className="font-rounded mt-5 text-[clamp(1.9rem,3.6vw,2.8rem)] leading-[1.05] font-extrabold tracking-[-0.03em] text-balance">
+                {t("requirementsTitle")}
+              </h2>
+              <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">
+                {t("requirementsBlurb")}
+              </p>
+            </div>
+            <PrimaryCta to={ctaTo} label={t("cta")} />
+          </div>
+
+          <dl className="mt-12 grid gap-x-10 gap-y-8 border-t p-0 pt-12 md:grid-cols-3" style={{ borderColor: "var(--l-border)" }}>
+            {items.map((key) => (
+              <div key={key}>
+                <dt className="font-rounded text-lg font-extrabold tracking-[-0.01em]">
+                  {t(`requirement.${key}.title`)}
+                </dt>
+                <dd className="mt-2 leading-relaxed text-[color:var(--l-muted)]">
+                  {t(`requirement.${key}.body`)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}

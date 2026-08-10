@@ -175,7 +175,7 @@ export function AccountPage() {
           workspace does not need to be invited into it. */}
       {!isProvider ? (
         <Link
-          to="/provider"
+          to="/become-provider"
           className="mt-4 flex flex-wrap items-center gap-4 rounded-[var(--radius-card)] bg-[var(--color-primary)] p-5 text-white"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-white/20">

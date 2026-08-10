@@ -126,17 +126,18 @@ export function UserMenu() {
 
         <DropdownMenuSeparator />
 
-        {/* Exactly one of these two shows. Both point at /provider, which
-            already decides: it redirects to the dashboard for someone who
-            owns a provider and to the create-one page for someone who does
-            not, so the label is the only thing that differs. */}
+        {/* Exactly one of these two shows, and they go to different places.
+            Someone who already provides wants their workspace; someone who
+            does not has not decided yet, and dropping them straight into a
+            setup form skips the part where they find out what they are
+            signing up for. */}
         {showProvider ? (
           <DropdownMenuItem onSelect={() => navigate({ to: "/provider" })}>
             <LayoutGrid className="h-4 w-4" />
             {t("providerDashboard")}
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem onSelect={() => navigate({ to: "/provider" })}>
+          <DropdownMenuItem onSelect={() => navigate({ to: "/become-provider" })}>
             <Sparkles className="h-4 w-4" />
             {t("becomeProvider")}
           </DropdownMenuItem>

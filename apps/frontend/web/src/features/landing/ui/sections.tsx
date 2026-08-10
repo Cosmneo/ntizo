@@ -202,8 +202,11 @@ export function ProviderCall() {
             {t("zeroFeeTitle")}
           </h2>
           <p className="mx-auto mt-4 max-w-[48ch] text-white/75">{t("zeroFeeBody")}</p>
+          {/* The page, not the sign-up form. This block makes an offer;
+              sending someone straight to a password field answers a question
+              they have not asked yet. */}
           <Link
-            to="/sign-up"
+            to="/become-provider"
             className="font-rounded mt-8 inline-block rounded-full bg-[color:var(--l-accent)] px-9 py-4 font-extrabold text-white"
           >
             {t("zeroFeeCta")}
