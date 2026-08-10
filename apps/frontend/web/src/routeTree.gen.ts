@@ -10,10 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CustomerRouteRouteImport } from './routes/_customer/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
+import { Route as CustomerAccountRouteImport } from './routes/_customer/account'
+import { Route as CustomerBookingsRouteImport } from './routes/_customer/bookings'
+import { Route as CustomerFavouritesRouteImport } from './routes/_customer/favourites'
+import { Route as CustomerMessagesRouteImport } from './routes/_customer/messages'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
 import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
@@ -36,6 +41,10 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerRouteRoute = CustomerRouteRouteImport.update({
+  id: '/_customer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicRouteRoute = PublicRouteRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
@@ -54,6 +63,26 @@ const VerifyPhoneRoute = VerifyPhoneRouteImport.update({
   id: '/verify-phone',
   path: '/verify-phone',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerAccountRoute = CustomerAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
+const CustomerBookingsRoute = CustomerBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
+const CustomerFavouritesRoute = CustomerFavouritesRouteImport.update({
+  id: '/favourites',
+  path: '/favourites',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
+const CustomerMessagesRoute = CustomerMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => CustomerRouteRoute,
 } as any)
 const PublicForgotPasswordRoute = PublicForgotPasswordRouteImport.update({
   id: '/forgot-password',
@@ -141,6 +170,10 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
   '/verify-phone': typeof VerifyPhoneRoute
+  '/account': typeof CustomerAccountRoute
+  '/bookings': typeof CustomerBookingsRoute
+  '/favourites': typeof CustomerFavouritesRoute
+  '/messages': typeof CustomerMessagesRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
@@ -161,6 +194,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/verify-phone': typeof VerifyPhoneRoute
+  '/account': typeof CustomerAccountRoute
+  '/bookings': typeof CustomerBookingsRoute
+  '/favourites': typeof CustomerFavouritesRoute
+  '/messages': typeof CustomerMessagesRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
@@ -181,10 +218,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_customer': typeof CustomerRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
   '/verify-phone': typeof VerifyPhoneRoute
+  '/_customer/account': typeof CustomerAccountRoute
+  '/_customer/bookings': typeof CustomerBookingsRoute
+  '/_customer/favourites': typeof CustomerFavouritesRoute
+  '/_customer/messages': typeof CustomerMessagesRoute
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/sign-in': typeof PublicSignInRoute
@@ -209,6 +251,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/provider'
     | '/verify-phone'
+    | '/account'
+    | '/bookings'
+    | '/favourites'
+    | '/messages'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
@@ -229,6 +275,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/verify-phone'
+    | '/account'
+    | '/bookings'
+    | '/favourites'
+    | '/messages'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
@@ -248,10 +298,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_customer'
     | '/_public'
     | '/admin'
     | '/provider'
     | '/verify-phone'
+    | '/_customer/account'
+    | '/_customer/bookings'
+    | '/_customer/favourites'
+    | '/_customer/messages'
     | '/_public/forgot-password'
     | '/_public/reset-password'
     | '/_public/sign-in'
@@ -272,6 +327,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CustomerRouteRoute: typeof CustomerRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
@@ -287,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_customer': {
+      id: '/_customer'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof CustomerRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_public': {
@@ -316,6 +379,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/verify-phone'
       preLoaderRoute: typeof VerifyPhoneRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_customer/account': {
+      id: '/_customer/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof CustomerAccountRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
+    '/_customer/bookings': {
+      id: '/_customer/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof CustomerBookingsRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
+    '/_customer/favourites': {
+      id: '/_customer/favourites'
+      path: '/favourites'
+      fullPath: '/favourites'
+      preLoaderRoute: typeof CustomerFavouritesRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
+    '/_customer/messages': {
+      id: '/_customer/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof CustomerMessagesRouteImport
+      parentRoute: typeof CustomerRouteRoute
     }
     '/_public/forgot-password': {
       id: '/_public/forgot-password'
@@ -432,6 +523,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CustomerRouteRouteChildren {
+  CustomerAccountRoute: typeof CustomerAccountRoute
+  CustomerBookingsRoute: typeof CustomerBookingsRoute
+  CustomerFavouritesRoute: typeof CustomerFavouritesRoute
+  CustomerMessagesRoute: typeof CustomerMessagesRoute
+}
+
+const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
+  CustomerAccountRoute: CustomerAccountRoute,
+  CustomerBookingsRoute: CustomerBookingsRoute,
+  CustomerFavouritesRoute: CustomerFavouritesRoute,
+  CustomerMessagesRoute: CustomerMessagesRoute,
+}
+
+const CustomerRouteRouteWithChildren = CustomerRouteRoute._addFileChildren(
+  CustomerRouteRouteChildren,
+)
+
 interface PublicRouteRouteChildren {
   PublicForgotPasswordRoute: typeof PublicForgotPasswordRoute
   PublicResetPasswordRoute: typeof PublicResetPasswordRoute
@@ -492,6 +601,7 @@ const ProviderRouteRouteWithChildren = ProviderRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CustomerRouteRoute: CustomerRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,

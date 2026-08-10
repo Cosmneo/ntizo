@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
+import { MobileNav } from "@/shared/components/mobile-nav";
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -30,10 +32,21 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
+  // Re-applies the stored theme on every load. Without it the preference is
+  // written and then ignored: the class lives on <html>, which the server
+  // renders without it, so a dark-mode user gets a white page until they
+  // reopen the menu.
+  useEffect(() => applyThemePreference(readThemePreference()), []);
+
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <Outlet />
+        {/* Bottom padding only where the bar exists, so content on a phone
+            can scroll clear of it instead of ending underneath. */}
+        <div className="pb-14 md:pb-0">
+          <Outlet />
+        </div>
+        <MobileNav />
         <Toaster position="bottom-right" richColors closeButton />
       </QueryClientProvider>
     </RootDocument>
