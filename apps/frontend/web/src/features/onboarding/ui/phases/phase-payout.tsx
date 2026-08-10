@@ -8,7 +8,11 @@ import {
   identifierKindFor,
 } from "@ntizo/shared";
 import type { ProviderDraft } from "@/features/onboarding/domain/draft";
-import { Field, HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
+import {
+  Field,
+  HeroQuestion,
+  StepFooter,
+} from "@/features/onboarding/ui/wizard-chrome";
 
 const ICONS: Partial<Record<string, typeof Banknote>> = {
   [PaymentMethodType.MPesa]: Smartphone,
@@ -49,7 +53,11 @@ export function PhasePayout({
         description={t("payout.description")}
       />
 
-      <div role="radiogroup" aria-label={t("payout.title")} className="grid gap-3">
+      <div
+        role="radiogroup"
+        aria-label={t("payout.title")}
+        className="grid gap-3"
+      >
         {PAYOUT_CAPABLE_TYPES.map((type) => {
           const Icon = ICONS[type] ?? Banknote;
           const selected = draft.payoutType === type;
@@ -59,7 +67,9 @@ export function PhasePayout({
               type="button"
               role="radio"
               aria-checked={selected}
-              onClick={() => onChange({ payoutType: type, payoutIdentifier: "" })}
+              onClick={() =>
+                onChange({ payoutType: type, payoutIdentifier: "" })
+              }
               className={cn(
                 "flex items-center gap-3.5 rounded-[var(--radius-card-sm)] border px-5 py-4 text-left transition-colors",
                 selected

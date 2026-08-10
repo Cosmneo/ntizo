@@ -42,7 +42,9 @@ export function ProfileForm({
             // screen and the user emptied it, which is an instruction.
             bio: value.bio.trim() || null,
             dateOfBirth: value.dateOfBirth || null,
-            gender: value.gender ? (value.gender as (typeof GENDERS)[number]) : null,
+            gender: value.gender
+              ? (value.gender as (typeof GENDERS)[number])
+              : null,
           });
           toast.success(t("saved"));
           onDone();
@@ -67,7 +69,9 @@ export function ProfileForm({
       <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
         {(error) =>
           error ? (
-            <p className="type-body-medium text-[var(--color-destructive)]">{error.form}</p>
+            <p className="type-body-medium text-[var(--color-destructive)]">
+              {error.form}
+            </p>
           ) : null
         }
       </form.Subscribe>
@@ -151,7 +155,10 @@ export function ProfileForm({
                   // option, which is an answer. Both are offered, because
                   // clearing a field you filled in must be possible.
                   { value: "", label: t("notSet") },
-                  ...GENDERS.map((g) => ({ value: g, label: t(`gender.${g}`) })),
+                  ...GENDERS.map((g) => ({
+                    value: g,
+                    label: t(`gender.${g}`),
+                  })),
                 ]}
               />
             </div>
@@ -175,7 +182,9 @@ export function ProfileForm({
       </form.Field>
 
       <div className="flex gap-3">
-        <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+        <form.Subscribe
+          selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+        >
           {([canSubmit, isSubmitting]) => (
             <Button type="submit" disabled={!canSubmit}>
               {isSubmitting ? t("saving") : t("save")}

@@ -152,5 +152,18 @@
     "UNACCEPTED_TYPE": "Quel file non è un JPG, PNG, WebP o PDF.",
     "DOCUMENT_STORAGE_UNCONFIGURED": "L'archiviazione documenti non è ancora configurata in questo ambiente.",
     "GENERIC": "Il caricamento non è riuscito. Controlla la connessione e riprova."
+  },
+  "crop": {
+    "logo": {
+      "title": "Inquadra il logo",
+      "hint": "Quadrato, così appare uguale ovunque. Trascina per spostare, rotella o cursore per ingrandire."
+    },
+    "photo": {
+      "title": "Inquadra la foto",
+      "hint": "Tutte le foto del portfolio hanno questa forma, così la pagina non risulta mai irregolare. Trascina per spostare, rotella o cursore per ingrandire."
+    },
+    "cancel": "Annulla",
+    "confirm": "Usa questa inquadratura",
+    "zoom": "Zoom"
   }
 }

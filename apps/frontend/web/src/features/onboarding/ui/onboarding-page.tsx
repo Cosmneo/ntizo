@@ -7,7 +7,10 @@ import { PhasePayout } from "@/features/onboarding/ui/phases/phase-payout";
 import { PhaseMedia } from "./phases/phase-media";
 import { PhaseDocuments } from "@/features/onboarding/ui/phases/phase-documents";
 import { PhaseReview } from "@/features/onboarding/ui/phases/phase-review";
-import { STEP_ORDER, type WizardStep } from "@/features/onboarding/domain/screen-model";
+import {
+  STEP_ORDER,
+  type WizardStep,
+} from "@/features/onboarding/domain/screen-model";
 
 /**
  * The provider onboarding wizard.
@@ -35,7 +38,9 @@ export function OnboardingPage() {
         stepPrefix: t("status.stepPrefix"),
       }}
       // The last screen has nothing behind it to go back to.
-      {...(vm.step !== "type" && vm.step !== "review" ? { onBack: vm.back } : {})}
+      {...(vm.step !== "type" && vm.step !== "review"
+        ? { onBack: vm.back }
+        : {})}
       backLabel={t("back")}
       footerNote={
         <Trans
@@ -58,7 +63,9 @@ export function OnboardingPage() {
         </p>
       ) : null}
 
-      {vm.step === "type" || vm.step === "identity" || vm.step === "location" ? (
+      {vm.step === "type" ||
+      vm.step === "identity" ||
+      vm.step === "location" ? (
         <PhaseProvider
           sub={vm.step}
           draft={vm.draft}
@@ -95,7 +102,9 @@ export function OnboardingPage() {
         />
       ) : null}
 
-      {vm.step === "review" ? <PhaseReview providerName={vm.draft.name} /> : null}
+      {vm.step === "review" ? (
+        <PhaseReview providerName={vm.draft.name} />
+      ) : null}
     </WizardLayout>
   );
 }

@@ -8,7 +8,13 @@
  */
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { BORDER, CARD, MUTED, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import {
+  BORDER,
+  CARD,
+  MUTED,
+  NAVY,
+  PAGE_TOP,
+} from "@/features/landing/ui/palette";
 
 export function Footer() {
   const { t } = useTranslation("landing"); // t:Footer
@@ -29,7 +35,10 @@ export function Footer() {
           </div>
 
           <FooterCol title={t("footer.support")}>
-            <FooterMeta label="Toll Free Customer Care" value="+1 (800) 000-0000" />
+            <FooterMeta
+              label="Toll Free Customer Care"
+              value="+1 (800) 000-0000"
+            />
             <FooterMeta label="Need live support?" value="hello@ntizo.com" />
           </FooterCol>
 
@@ -50,34 +59,55 @@ export function Footer() {
 
           <FooterCol title={t("footer.getTheApp")}>
             <a href="#" style={appBadge}>
-              <span style={{ fontSize: 11, opacity: 0.8 }}>{t("footer.downloadOnThe")}</span>
+              <span style={{ fontSize: 11, opacity: 0.8 }}>
+                {t("footer.downloadOnThe")}
+              </span>
               <span style={{ fontSize: 15, fontWeight: 600 }}>App Store</span>
             </a>
             <a href="#" style={appBadge}>
-              <span style={{ fontSize: 11, opacity: 0.8 }}>{t("footer.getItOn")}</span>
+              <span style={{ fontSize: 11, opacity: 0.8 }}>
+                {t("footer.getItOn")}
+              </span>
               <span style={{ fontSize: 15, fontWeight: 600 }}>Google Play</span>
             </a>
           </FooterCol>
         </div>
 
-        <div className="mx-auto mt-12 flex max-w-[1320px] flex-col items-start justify-between gap-6 border-t pt-8 sm:flex-row sm:items-center"
-          style={{ borderColor: BORDER }}>
+        <div
+          className="mx-auto mt-12 flex max-w-[1320px] flex-col items-start justify-between gap-6 border-t pt-8 sm:flex-row sm:items-center"
+          style={{ borderColor: BORDER }}
+        >
           <div>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
               {t("footer.ourSocials")}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <SocialIcon><FacebookGlyph /></SocialIcon>
-              <SocialIcon><InstagramGlyph /></SocialIcon>
-              <SocialIcon><XGlyph /></SocialIcon>
-              <SocialIcon><LinkedInGlyph /></SocialIcon>
+              <SocialIcon>
+                <FacebookGlyph />
+              </SocialIcon>
+              <SocialIcon>
+                <InstagramGlyph />
+              </SocialIcon>
+              <SocialIcon>
+                <XGlyph />
+              </SocialIcon>
+              <SocialIcon>
+                <LinkedInGlyph />
+              </SocialIcon>
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
               {t("footer.acceptedPayments")}
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+              }}
+            >
               <PayChip color="#1a1f71">VISA</PayChip>
               <PayChip color="#eb001b">MC</PayChip>
               <PayChip color="#0066b2">AMEX</PayChip>
@@ -122,8 +152,17 @@ function FooterLink({
   href?: string;
   children: React.ReactNode;
 }) {
-  if (to) return <Link to={to} style={footerLink}>{children}</Link>;
-  return <a href={href ?? "#"} style={footerLink}>{children}</a>;
+  if (to)
+    return (
+      <Link to={to} style={footerLink}>
+        {children}
+      </Link>
+    );
+  return (
+    <a href={href ?? "#"} style={footerLink}>
+      {children}
+    </a>
+  );
 }
 
 function FooterMeta({ label, value }: { label: string; value: string }) {
@@ -143,10 +182,14 @@ function SocialIcon({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PayChip({ color, children }: { color: string; children: React.ReactNode }) {
-  return (
-    <span style={{ ...payChip, color }}>{children}</span>
-  );
+function PayChip({
+  color,
+  children,
+}: {
+  color: string;
+  children: React.ReactNode;
+}) {
+  return <span style={{ ...payChip, color }}>{children}</span>;
 }
 
 function FacebookGlyph() {
@@ -158,7 +201,16 @@ function FacebookGlyph() {
 }
 function InstagramGlyph() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="2" y="2" width="20" height="20" rx="5" />
       <path d="M16 11.4A4 4 0 1 1 12.6 8 4 4 0 0 1 16 11.4z" />
       <line x1="17.5" y1="6.5" x2="17.5" y2="6.5" />
@@ -181,34 +233,6 @@ function LinkedInGlyph() {
 }
 
 /* ---------- styles ---------- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * The footer's own styles.

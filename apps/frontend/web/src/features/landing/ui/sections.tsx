@@ -9,7 +9,14 @@ import {
   initialsOf,
 } from "@/features/landing/domain/mock-content";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
-import { ACCENT, BORDER, CARD, MUTED, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import {
+  ACCENT,
+  BORDER,
+  CARD,
+  MUTED,
+  NAVY,
+  PAGE_TOP,
+} from "@/features/landing/ui/palette";
 
 /**
  * The landing palette, exposed to the sections below as local custom
@@ -39,7 +46,9 @@ function Head({
   return (
     <div className="mb-9 flex items-end justify-between gap-8">
       <div>
-        <h2 className="font-rounded text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h2>
+        <h2 className="font-rounded text-3xl font-extrabold tracking-tight sm:text-4xl">
+          {title}
+        </h2>
         <p className="mt-2 max-w-[54ch] text-[color:var(--l-muted)]">{blurb}</p>
       </div>
       {more ? (
@@ -71,7 +80,9 @@ export function Categories() {
                 seed={i + 1}
                 className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
               />
-              <b className="font-rounded mt-3 block text-sm font-bold">{t(cat.labelKey)}</b>
+              <b className="font-rounded mt-3 block text-sm font-bold">
+                {t(cat.labelKey)}
+              </b>
             </Link>
           ))}
         </div>
@@ -121,7 +132,9 @@ export function PopularProviders() {
                     </span>
                   ) : null}
                 </div>
-                <span className="text-sm text-[color:var(--l-muted)]">{t(p.roleKey)}</span>
+                <span className="text-sm text-[color:var(--l-muted)]">
+                  {t(p.roleKey)}
+                </span>
                 <span className="flex items-center gap-1.5 text-sm tabular-nums">
                   <Star className="h-3.5 w-3.5 fill-[#f5a524] text-[#f5a524]" />
                   {rf.format(p.rating)}
@@ -129,7 +142,9 @@ export function PopularProviders() {
                     ({t("reviewCount", { count: p.reviews })})
                   </span>
                 </span>
-                <span className="text-sm text-[color:var(--l-muted)]">{p.city}</span>
+                <span className="text-sm text-[color:var(--l-muted)]">
+                  {p.city}
+                </span>
                 <span className="mt-1 text-sm">
                   {t("fromPrice")}{" "}
                   <b className="font-rounded font-extrabold tabular-nums">
@@ -167,11 +182,18 @@ export function Stories() {
                 </span>
               </div>
               <div className="grid gap-1.5 p-4">
-                <span aria-hidden="true" className="tracking-[0.1em] text-[#f5a524]">
+                <span
+                  aria-hidden="true"
+                  className="tracking-[0.1em] text-[#f5a524]"
+                >
                   ★★★★★
                 </span>
-                <p className="text-sm text-[color:var(--l-muted)]">{t(s.quoteKey)}</p>
-                <span className="font-rounded mt-1 text-sm font-bold">{s.author}</span>
+                <p className="text-sm text-[color:var(--l-muted)]">
+                  {t(s.quoteKey)}
+                </p>
+                <span className="font-rounded mt-1 text-sm font-bold">
+                  {s.author}
+                </span>
               </div>
             </article>
           ))}
@@ -201,7 +223,9 @@ export function ProviderCall() {
           <h2 className="font-rounded mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
             {t("zeroFeeTitle")}
           </h2>
-          <p className="mx-auto mt-4 max-w-[48ch] text-white/75">{t("zeroFeeBody")}</p>
+          <p className="mx-auto mt-4 max-w-[48ch] text-white/75">
+            {t("zeroFeeBody")}
+          </p>
           {/* The page, not the sign-up form. This block makes an offer;
               sending someone straight to a password field answers a question
               they have not asked yet. */}

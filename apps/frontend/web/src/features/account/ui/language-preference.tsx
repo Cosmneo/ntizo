@@ -48,7 +48,9 @@ export function LanguagePreference() {
 
   async function choose(locale: string) {
     try {
-      await update.mutateAsync({ language: locale as (typeof LOCALES)[number] });
+      await update.mutateAsync({
+        language: locale as (typeof LOCALES)[number],
+      });
       void i18n.changeLanguage(locale);
       toast.success(t("saved"));
     } catch (error) {

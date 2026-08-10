@@ -112,11 +112,14 @@ export function SettingsNav({
                     active
                       ? "bg-[var(--color-background)] font-semibold text-[var(--color-foreground)] shadow-sm"
                       : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-background)]/60 hover:text-[var(--color-foreground)]",
-                    section.tone === "danger" && "text-[var(--color-destructive)]",
+                    section.tone === "danger" &&
+                      "text-[var(--color-destructive)]",
                   )}
                 >
                   <span className="shrink-0 opacity-80">{section.icon}</span>
-                  <span className="min-w-0 flex-1 truncate">{section.label}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {section.label}
+                  </span>
                   {section.dirty && (
                     // The one thing this rail knows that the headings don't:
                     // where the unsaved edit is, when it has been scrolled off.

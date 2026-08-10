@@ -152,5 +152,18 @@
     "UNACCEPTED_TYPE": "Dat bestand is geen JPG, PNG, WebP of PDF.",
     "DOCUMENT_STORAGE_UNCONFIGURED": "Documentopslag is nog niet ingesteld in deze omgeving.",
     "GENERIC": "Het uploaden is mislukt. Controleer je verbinding en probeer opnieuw."
+  },
+  "crop": {
+    "logo": {
+      "title": "Logo uitsnijden",
+      "hint": "Vierkant, zodat het overal hetzelfde oogt. Sleep om te verplaatsen, scroll of schuif om te zoomen."
+    },
+    "photo": {
+      "title": "Foto uitsnijden",
+      "hint": "Alle portfoliofoto's hebben deze vorm, zodat je pagina er nooit rommelig uitziet. Sleep om te verplaatsen, scroll of schuif om te zoomen."
+    },
+    "cancel": "Annuleren",
+    "confirm": "Deze uitsnede gebruiken",
+    "zoom": "Zoom"
   }
 }

@@ -44,13 +44,18 @@ function StepRail({
         const last = i === STEP_ORDER.length - 1;
 
         return (
-          <li key={step} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3.5">
+          <li
+            key={step}
+            className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3.5"
+          >
             <div className="grid justify-items-center">
               <span
                 className={cn(
                   "grid h-8 w-8 place-items-center rounded-full border-2 text-[13px] font-bold tabular-nums transition-colors",
-                  done && "border-[var(--color-primary)] bg-[var(--color-primary)] text-white",
-                  active && "border-[var(--color-primary)] text-[var(--color-primary)]",
+                  done &&
+                    "border-[var(--color-primary)] bg-[var(--color-primary)] text-white",
+                  active &&
+                    "border-[var(--color-primary)] text-[var(--color-primary)]",
                   !done &&
                     !active &&
                     "border-[var(--color-border)] text-[var(--color-muted-foreground)]",
@@ -65,7 +70,9 @@ function StepRail({
                   aria-hidden="true"
                   className={cn(
                     "my-1 w-0.5 flex-1 rounded-full",
-                    done ? "bg-[var(--color-primary)]" : "bg-[var(--color-border)]",
+                    done
+                      ? "bg-[var(--color-primary)]"
+                      : "bg-[var(--color-border)]",
                   )}
                   style={{ minHeight: 28 }}
                 />
@@ -145,7 +152,11 @@ export function WizardLayout({
       <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
         <aside className="hidden rounded-[var(--radius-card)] bg-[var(--color-background)] p-7 lg:flex lg:flex-col">
           <Link to="/" className="mb-9 block">
-            <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-7 w-auto" />
+            <img
+              src="/brand/logo-primary.svg"
+              alt="Ntizo"
+              className="h-7 w-auto"
+            />
           </Link>
 
           <StepRail
@@ -178,7 +189,11 @@ export function WizardLayout({
                   {backLabel}
                 </button>
               ) : (
-                <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-6 w-auto" />
+                <img
+                  src="/brand/logo-primary.svg"
+                  alt="Ntizo"
+                  className="h-6 w-auto"
+                />
               )}
               <span className="type-caption rounded-full bg-[var(--color-muted)] px-3 py-1 font-semibold tabular-nums">
                 {statusLabels.stepPrefix} {step}/{total}
@@ -287,7 +302,9 @@ export function Field({
         {label}
       </label>
       {hint ? (
-        <p className="type-caption text-[var(--color-muted-foreground)]">{hint}</p>
+        <p className="type-caption text-[var(--color-muted-foreground)]">
+          {hint}
+        </p>
       ) : null}
       {children}
       {error ? (

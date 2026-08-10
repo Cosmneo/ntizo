@@ -12,10 +12,26 @@ import { LandingPage } from "./landing-page";
 
 function renderInRouter() {
   const rootRoute = createRootRoute();
-  const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: LandingPage });
-  const signIn = createRoute({ getParentRoute: () => rootRoute, path: "/sign-in", component: () => <div>signin</div> });
-  const admin = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: () => <div>admin</div> });
-  const signUp = createRoute({ getParentRoute: () => rootRoute, path: "/sign-up", component: () => <div>signup</div> });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: LandingPage,
+  });
+  const signIn = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/sign-in",
+    component: () => <div>signin</div>,
+  });
+  const admin = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/admin",
+    component: () => <div>admin</div>,
+  });
+  const signUp = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/sign-up",
+    component: () => <div>signup</div>,
+  });
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, signIn, admin, signUp]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
@@ -37,7 +53,9 @@ describe("LandingPage", () => {
     // Matched on the heading rather than an exact text node: the headline is
     // one h1 split across a coloured span and a line break, so no single
     // element holds "Find it." on its own any more.
-    expect(await screen.findByRole("heading", { level: 1, name: /find it/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /find it/i }),
+    ).toBeInTheDocument();
     const signIn = screen.getByRole("link", { name: "Sign in" });
     expect(signIn.getAttribute("href")).toBe("/sign-in");
   });
@@ -50,7 +68,9 @@ describe("LandingPage", () => {
       "Popular services",
       "Customer stories",
     ]) {
-      expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: heading }),
+      ).toBeInTheDocument();
     }
   });
 

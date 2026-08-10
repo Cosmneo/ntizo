@@ -152,5 +152,18 @@
     "UNACCEPTED_TYPE": "Ce fichier n'est pas un JPG, PNG, WebP ou PDF.",
     "DOCUMENT_STORAGE_UNCONFIGURED": "Le stockage de documents n'est pas encore configuré sur cet environnement.",
     "GENERIC": "L'envoi a échoué. Vérifiez votre connexion et réessayez."
+  },
+  "crop": {
+    "logo": {
+      "title": "Cadrez votre logo",
+      "hint": "Carré, pour un rendu identique partout. Faites glisser pour déplacer, la molette ou le curseur pour zoomer."
+    },
+    "photo": {
+      "title": "Cadrez votre photo",
+      "hint": "Toutes les photos du portfolio ont cette forme, votre page ne paraît jamais irrégulière. Glissez pour déplacer, molette ou curseur pour zoomer."
+    },
+    "cancel": "Annuler",
+    "confirm": "Utiliser ce cadrage",
+    "zoom": "Zoom"
   }
 }

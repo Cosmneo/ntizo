@@ -11,7 +11,13 @@ import { EmptyState } from "@/features/account/ui/empty-state";
  * there. Each moves out on its own the moment it grows real content.
  */
 
-function Shell({ title, children }: { title: string; children: React.ReactNode }) {
+function Shell({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="type-h1">{title}</h1>

@@ -34,7 +34,9 @@ function parseComponents(
   const route = find("route")?.long_name;
 
   return {
-    ...(route ? { street: [route, streetNumber].filter(Boolean).join(", ") } : {}),
+    ...(route
+      ? { street: [route, streetNumber].filter(Boolean).join(", ") }
+      : {}),
     ...(find("locality", "administrative_area_level_2")?.long_name
       ? { city: find("locality", "administrative_area_level_2")!.long_name }
       : {}),
@@ -44,7 +46,9 @@ function parseComponents(
     ...(find("postal_code")?.long_name
       ? { postalCode: find("postal_code")!.long_name }
       : {}),
-    ...(find("country")?.short_name ? { country: find("country")!.short_name } : {}),
+    ...(find("country")?.short_name
+      ? { country: find("country")!.short_name }
+      : {}),
   };
 }
 
@@ -72,7 +76,9 @@ export function LocationMap({
   const { t } = useTranslation("onboarding");
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<MapsLoadResult | null>(null);
-  const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
+  const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +102,10 @@ export function LocationMap({
       clickableIcons: false,
     });
 
-    const marker = new state.marker.AdvancedMarkerElement({ map, gmpDraggable: true });
+    const marker = new state.marker.AdvancedMarkerElement({
+      map,
+      gmpDraggable: true,
+    });
     const geocoder = state.geocoding ? new state.geocoding.Geocoder() : null;
 
     async function place(position: google.maps.LatLngLiteral) {
@@ -113,7 +122,9 @@ export function LocationMap({
         const { results } = await geocoder.geocode({ location: position });
         const first = results[0];
         onPick(
-          first ? { ...position, ...parseComponents(first.address_components) } : position,
+          first
+            ? { ...position, ...parseComponents(first.address_components) }
+            : position,
         );
       } catch {
         // A failed lookup must not lose the pin the user just dropped.
@@ -121,9 +132,12 @@ export function LocationMap({
       }
     }
 
-    const clickListener = map.addListener("click", (e: google.maps.MapMouseEvent) => {
-      if (e.latLng) void place(e.latLng.toJSON());
-    });
+    const clickListener = map.addListener(
+      "click",
+      (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) void place(e.latLng.toJSON());
+      },
+    );
     const dragListener = marker.addListener("dragend", () => {
       const position = marker.position;
       if (position) void place(position as google.maps.LatLngLiteral);

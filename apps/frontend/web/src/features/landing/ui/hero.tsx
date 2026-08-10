@@ -18,7 +18,11 @@ export function Hero() {
 
   return (
     <section className="relative isolate grid min-h-[560px] items-center">
-      <SurfaceArt seed={3} hero className="absolute inset-0 -z-20 h-full w-full" />
+      <SurfaceArt
+        seed={3}
+        hero
+        className="absolute inset-0 -z-20 h-full w-full"
+      />
       {/* A light hand: just enough at the top and bottom to keep the header
           controls and the promise line legible, and almost nothing across the
           middle. The previous values darkened the whole image to near-black,
@@ -30,19 +34,21 @@ export function Hero() {
 
       <SiteHeader overlay />
 
-
       <div className="page-shell pb-24 pt-32 text-center text-white">
         <p className="font-rounded text-[13px] font-bold uppercase tracking-[0.14em] text-white/70">
           {t("cities")}
         </p>
 
         <h1 className="font-rounded mt-4 text-[clamp(2.9rem,6.6vw,5rem)] font-extrabold leading-[1.02] tracking-[-0.035em] [text-shadow:0_2px_30px_rgba(0,0,0,.35)]">
-          {t("heroLine1")} <span style={{ color: ACCENT }}>{t("heroLine2")}</span>
+          {t("heroLine1")}{" "}
+          <span style={{ color: ACCENT }}>{t("heroLine2")}</span>
           <br />
           {t("heroLine3")}
         </h1>
 
-        <p className="mx-auto mt-6 max-w-[40ch] text-[17px] text-white/90">{t("heroSubtitle")}</p>
+        <p className="mx-auto mt-6 max-w-[40ch] text-[17px] text-white/90">
+          {t("heroSubtitle")}
+        </p>
 
         <ServiceSearch className="mx-auto mt-9 max-w-[720px] !py-1.5 !pl-6" />
 
@@ -64,7 +70,10 @@ export function Hero() {
 
       {/* The wave is filled with the page background, so it reads as the page
           rising over the image rather than as a shape drawn on top of it. */}
-      <div aria-hidden="true" className="absolute inset-x-0 -bottom-px z-10 leading-[0]">
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 -bottom-px z-10 leading-[0]"
+      >
         <svg
           viewBox="0 0 1440 90"
           preserveAspectRatio="none"

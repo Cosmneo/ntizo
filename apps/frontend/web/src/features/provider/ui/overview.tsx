@@ -21,11 +21,8 @@ export function OverviewPage() {
   );
 
   if (!activeProvider) {
-    return (
-      <p className="text-muted-foreground">{t("noActiveProvider")}</p>
-    );
+    return <p className="text-muted-foreground">{t("noActiveProvider")}</p>;
   }
-
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,7 +64,6 @@ export function OverviewPage() {
           icon={<Star className="h-4 w-4" />}
         />
       </div>
-
     </div>
   );
 }
@@ -98,4 +94,3 @@ function StatCard({
     </Card>
   );
 }
-

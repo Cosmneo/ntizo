@@ -34,7 +34,9 @@ export function Setting({
           </span>
         ) : null}
       </div>
-      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{blurb}</p>
+      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+        {blurb}
+      </p>
 
       <div className="mt-4">
         {label ? (

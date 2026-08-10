@@ -152,5 +152,18 @@
     "UNACCEPTED_TYPE": "Diese Datei ist kein JPG, PNG, WebP oder PDF.",
     "DOCUMENT_STORAGE_UNCONFIGURED": "Der Dokumentspeicher ist in dieser Umgebung noch nicht eingerichtet.",
     "GENERIC": "Der Upload ist fehlgeschlagen. Prüfen Sie Ihre Verbindung."
+  },
+  "crop": {
+    "logo": {
+      "title": "Logo ausrichten",
+      "hint": "Quadratisch, damit es überall gleich aussieht. Ziehen zum Verschieben, Rad oder Regler zum Zoomen."
+    },
+    "photo": {
+      "title": "Foto ausrichten",
+      "hint": "Alle Portfoliofotos haben dieses Format, damit Ihre Seite nie unruhig wirkt. Ziehen zum Verschieben, Rad oder Regler zum Zoomen."
+    },
+    "cancel": "Abbrechen",
+    "confirm": "Diesen Ausschnitt verwenden",
+    "zoom": "Zoom"
   }
 }

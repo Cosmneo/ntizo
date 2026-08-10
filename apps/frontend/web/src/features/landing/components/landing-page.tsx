@@ -10,7 +10,6 @@ import {
 import { NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 import { Footer } from "@/features/landing/ui/footer";
 
-
 export function LandingPage() {
   return (
     // The palette travels to the sections as local custom properties, so the

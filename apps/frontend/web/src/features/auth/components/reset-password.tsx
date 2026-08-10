@@ -33,7 +33,8 @@ export function ResetPassword() {
     validators: {
       onSubmitAsync: async ({ value }) => {
         if (!token) return { form: t("resetTokenMissing") };
-        if (value.password !== value.confirm) return { form: t("passwordsDoNotMatch") };
+        if (value.password !== value.confirm)
+          return { form: t("passwordsDoNotMatch") };
         try {
           const { error } = await authClient.resetPassword({
             newPassword: value.password,
@@ -56,7 +57,10 @@ export function ResetPassword() {
       title={t("newPasswordTitle")}
       subtitle={t("newPasswordSubtitle")}
       footer={
-        <Link to="/sign-in" className="text-[var(--color-accent)] hover:underline">
+        <Link
+          to="/sign-in"
+          className="text-[var(--color-accent)] hover:underline"
+        >
           {t("backToSignInArrow")}
         </Link>
       }
@@ -71,7 +75,9 @@ export function ResetPassword() {
         <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
           {(err) =>
             err ? (
-              <div className="text-sm text-[var(--color-destructive)] text-center">{err.form}</div>
+              <div className="text-sm text-[var(--color-destructive)] text-center">
+                {err.form}
+              </div>
             ) : null
           }
         </form.Subscribe>
@@ -93,13 +99,21 @@ export function ResetPassword() {
                 <InputGroupAddon align="inline-end">
                   <InputGroupButton
                     onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                    aria-label={
+                      showPassword ? t("hidePassword") : t("showPassword")
+                    }
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </InputGroupButton>
                 </InputGroupAddon>
               </InputGroup>
-              <p className="text-xs text-[var(--color-muted-foreground)]">{t("passwordHint")}</p>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                {t("passwordHint")}
+              </p>
             </div>
           )}
         </form.Field>
@@ -120,7 +134,9 @@ export function ResetPassword() {
           )}
         </form.Field>
 
-        <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+        <form.Subscribe
+          selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+        >
           {([canSubmit, isSubmitting]) => (
             <Button type="submit" className="w-full" disabled={!canSubmit}>
               <KeyRound className="h-4 w-4" />

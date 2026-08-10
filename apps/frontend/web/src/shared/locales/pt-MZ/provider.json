@@ -152,5 +152,18 @@
     "UNACCEPTED_TYPE": "Esse ficheiro não é um JPG, PNG, WebP ou PDF.",
     "DOCUMENT_STORAGE_UNCONFIGURED": "O armazenamento de documentos ainda não está configurado neste ambiente.",
     "GENERIC": "O envio não foi concluído. Verifique a ligação e tente novamente."
+  },
+  "crop": {
+    "logo": {
+      "title": "Enquadre o logótipo",
+      "hint": "Quadrado, para ficar igual em todo o lado onde aparecer. Arraste para mover, use a roda ou o cursor para ampliar."
+    },
+    "photo": {
+      "title": "Enquadre a fotografia",
+      "hint": "Todas as fotografias do portefólio têm esta forma, para a sua página nunca ficar desalinhada. Arraste para mover, use a roda ou o cursor para ampliar."
+    },
+    "cancel": "Cancelar",
+    "confirm": "Usar este enquadramento",
+    "zoom": "Ampliação"
   }
 }

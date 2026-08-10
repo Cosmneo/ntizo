@@ -2,6 +2,12 @@ import * as React from "react";
 import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
+import {
+  ImageCropper,
+  LOGO_CROP,
+  PHOTO_CROP,
+  type CropTarget,
+} from "./image-cropper";
 
 /**
  * Image pickers — one square for the logo, a grid for the portfolio.
@@ -45,9 +51,22 @@ function usePreviews(files: readonly File[]): string[] {
   return urls;
 }
 
+/** Copy the cropper needs. Passed down rather than translated here — this
+ *  package has no i18n and must not grow one. */
+export interface CropStrings {
+  title: string;
+  hint: string;
+  cancel: string;
+  confirm: string;
+  zoom: string;
+}
+
 interface PickerProps {
-  /** Fires only with files that passed `rejectImage`. */
+  /** Fires only with files that passed `rejectImage`, and after cropping. */
   onSelect: (files: File[]) => void;
+  /** Frame every pick to this shape before handing it up. */
+  crop: CropTarget;
+  cropStrings: CropStrings;
   onReject?: (reason: ImageRejection, file: File) => void;
   disabled?: boolean;
   multiple?: boolean;
@@ -67,11 +86,18 @@ function Picker({
   onReject,
   disabled,
   multiple,
+  crop,
+  cropStrings,
   children,
   className,
 }: PickerProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = React.useState(false);
+  // Picked but not yet framed. A queue rather than one file, because choosing
+  // six photographs at once should crop six times, not five silently at the
+  // wrong shape.
+  const [queue, setQueue] = React.useState<File[]>([]);
+  const [cropped, setCropped] = React.useState<File[]>([]);
 
   function take(list: FileList | null) {
     if (!list) return;
@@ -81,7 +107,25 @@ function Picker({
       if (reason) onReject?.(reason, file);
       else accepted.push(file);
     }
-    if (accepted.length) onSelect(multiple ? accepted : accepted.slice(0, 1));
+    if (accepted.length) setQueue(multiple ? accepted : accepted.slice(0, 1));
+  }
+
+  /** Cancelling drops the whole queue: it is one act of picking, undone. */
+  function abandon() {
+    setQueue([]);
+    setCropped([]);
+  }
+
+  function accept(file: File) {
+    const done = [...cropped, file];
+    const rest = queue.slice(1);
+    if (rest.length === 0) {
+      onSelect(done);
+      abandon();
+      return;
+    }
+    setCropped(done);
+    setQueue(rest);
   }
 
   return (
@@ -115,6 +159,23 @@ function Picker({
         }}
       />
       {children(() => inputRef.current?.click(), dragging)}
+
+      {queue[0] && (
+        <ImageCropper
+          // Keyed on the file so moving to the next one in the queue resets
+          // the zoom and pan rather than inheriting the previous framing.
+          key={`${queue[0].name}-${queue[0].lastModified}-${cropped.length}`}
+          file={queue[0]}
+          target={crop}
+          title={cropStrings.title}
+          hint={cropStrings.hint}
+          cancelText={cropStrings.cancel}
+          confirmText={cropStrings.confirm}
+          zoomLabel={cropStrings.zoom}
+          onCancel={abandon}
+          onConfirm={accept}
+        />
+      )}
     </div>
   );
 }
@@ -127,6 +188,7 @@ export interface LogoUploadProps {
   onSelect: (file: File) => void;
   onClear?: () => void;
   onReject?: (reason: ImageRejection, file: File) => void;
+  cropStrings: CropStrings;
   busy?: boolean;
   disabled?: boolean;
   label: string;
@@ -144,6 +206,7 @@ export function LogoUpload({
   onSelect,
   onClear,
   onReject,
+  cropStrings,
   busy,
   disabled,
   label,
@@ -153,7 +216,10 @@ export function LogoUpload({
   removeText,
   className,
 }: LogoUploadProps) {
-  const pendingFiles = React.useMemo(() => (pending ? [pending] : []), [pending]);
+  const pendingFiles = React.useMemo(
+    () => (pending ? [pending] : []),
+    [pending],
+  );
   const [preview] = usePreviews(pendingFiles);
   const shown = preview ?? url ?? null;
 
@@ -162,6 +228,8 @@ export function LogoUpload({
       onSelect={(files) => files[0] && onSelect(files[0])}
       onReject={onReject}
       disabled={disabled || busy}
+      crop={LOGO_CROP}
+      cropStrings={cropStrings}
       className={className}
     >
       {(open, dragging) => (
@@ -235,6 +303,7 @@ export interface GalleryUploadProps {
   onRemoveUrl: (url: string) => void;
   onRemovePending?: (index: number) => void;
   onReject?: (reason: ImageRejection, file: File) => void;
+  cropStrings: CropStrings;
   busy?: boolean;
   disabled?: boolean;
   max: number;
@@ -262,6 +331,7 @@ export function GalleryUpload({
   onRemoveUrl,
   onRemovePending,
   onReject,
+  cropStrings,
   busy,
   disabled,
   max,
@@ -282,6 +352,8 @@ export function GalleryUpload({
       onSelect={(files) => onSelect(files.slice(0, Math.max(0, max - total)))}
       onReject={onReject}
       disabled={disabled || busy || full}
+      crop={PHOTO_CROP}
+      cropStrings={cropStrings}
       className={className}
     >
       {(open, dragging) => (
@@ -301,7 +373,9 @@ export function GalleryUpload({
                 key={`${file.name}-${file.lastModified}-${i}`}
                 src={previews[i] ?? ""}
                 removeText={removeText}
-                onRemove={onRemovePending ? () => onRemovePending(i) : undefined}
+                onRemove={
+                  onRemovePending ? () => onRemovePending(i) : undefined
+                }
                 disabled={disabled || busy}
                 busy={busy}
               />

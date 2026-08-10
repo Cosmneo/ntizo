@@ -101,7 +101,8 @@ export function CreateProviderDialog({ open, onOpenChange, onCreated }: Props) {
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
-                    if (!slugTouched) form.setFieldValue("slug", slugify(e.target.value));
+                    if (!slugTouched)
+                      form.setFieldValue("slug", slugify(e.target.value));
                   }}
                 />
               </div>
@@ -147,10 +148,16 @@ export function CreateProviderDialog({ open, onOpenChange, onCreated }: Props) {
           </form.Subscribe>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               {t("cancel", { ns: "common", defaultValue: "Cancel" })}
             </Button>
-            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+            <form.Subscribe
+              selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+            >
               {([canSubmit, isSubmitting]) => (
                 <Button type="submit" disabled={!canSubmit}>
                   {isSubmitting ? t("creating") : t("create")}

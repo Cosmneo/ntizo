@@ -16,7 +16,13 @@ interface AuthLayoutProps {
   icon?: ReactNode;
 }
 
-export function AuthLayout({ title, subtitle, children, footer, icon }: AuthLayoutProps) {
+export function AuthLayout({
+  title,
+  subtitle,
+  children,
+  footer,
+  icon,
+}: AuthLayoutProps) {
   const { t } = useTranslation("common");
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-[var(--color-background)] px-4">
@@ -27,12 +33,16 @@ export function AuthLayout({ title, subtitle, children, footer, icon }: AuthLayo
               ntizo
             </span>
             {icon ? (
-              <div className="mb-3 rounded-full bg-[var(--color-secondary)] p-3">{icon}</div>
+              <div className="mb-3 rounded-full bg-[var(--color-secondary)] p-3">
+                {icon}
+              </div>
             ) : (
               <NtizoMark className="mb-2 h-10 w-auto" />
             )}
             <h1 className="text-lg font-semibold">{title}</h1>
-            <p className="text-sm text-[var(--color-muted-foreground)]">{subtitle}</p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {subtitle}
+            </p>
           </div>
           {children}
           <p className="text-center text-sm text-[var(--color-muted-foreground)]">

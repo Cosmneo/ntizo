@@ -68,7 +68,11 @@ const ROLE_OPTIONS = [
 export function MembersPage() {
   const { t } = useTranslation("provider");
   const { activeProvider } = useActiveProvider();
-  const { data: detail, isLoading, error } = useProviderDetail(activeProvider?.id);
+  const {
+    data: detail,
+    isLoading,
+    error,
+  } = useProviderDetail(activeProvider?.id);
   const removeMut = useRemoveMember(activeProvider?.id ?? "");
   const roleMut = useUpdateMemberRole(activeProvider?.id ?? "");
   const inviteMut = useInviteMember(activeProvider?.id ?? "");
@@ -104,7 +108,9 @@ export function MembersPage() {
   if (!activeProvider) return null;
   if (error) {
     return (
-      <p className="text-sm text-destructive">{providerErrorMessage(t, error)}</p>
+      <p className="text-sm text-destructive">
+        {providerErrorMessage(t, error)}
+      </p>
     );
   }
   const members = detail?.members ?? [];
@@ -133,9 +139,7 @@ export function MembersPage() {
         <StatCard
           label="Your Role"
           icon={<Shield className="h-4 w-4" />}
-          value={
-            ROLE_STYLES[myRole as ProviderRole]?.label ?? String(myRole)
-          }
+          value={ROLE_STYLES[myRole as ProviderRole]?.label ?? String(myRole)}
           hint="in this organization"
         />
         <StatCard
@@ -153,9 +157,7 @@ export function MembersPage() {
         />
       </div>
 
-      {actionError && (
-        <p className="text-sm text-destructive">{actionError}</p>
-      )}
+      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
       {/* Members + invites table */}
       <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -186,12 +188,11 @@ export function MembersPage() {
                 .toUpperCase();
               const style = ROLE_STYLES[m.role];
               return (
-                <li
-                  key={m.userId}
-                  className="flex items-center gap-3 py-3"
-                >
+                <li key={m.userId} className="flex items-center gap-3 py-3">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                    <AvatarFallback className="text-xs">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">
@@ -202,7 +203,7 @@ export function MembersPage() {
                     </div>
                   </div>
                   <div className="relative">
-<Select
+                    <Select
                       value={m.role}
                       onChange={(role) => {
                         setActionError(null);
@@ -242,7 +243,6 @@ export function MembersPage() {
           </ul>
         )}
 
-
         {/* Pending invitations — same card */}
         <div className="border-y border-border bg-card/60 px-5 py-3">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -261,15 +261,14 @@ export function MembersPage() {
         ) : (
           <ul className="divide-y divide-border px-5">
             {invites.map((inv) => (
-              <li
-                key={inv.id}
-                className="flex items-center gap-3 py-3"
-              >
+              <li key={inv.id} className="flex items-center gap-3 py-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                   {inv.email.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{inv.email}</div>
+                  <div className="truncate text-sm font-medium">
+                    {inv.email}
+                  </div>
                   <div className="truncate text-xs text-muted-foreground">
                     {inv.status ?? "pending"}
                   </div>
@@ -374,9 +373,11 @@ export function MembersPage() {
               {(field) => (
                 <div className="flex flex-col gap-1.5">
                   <Label>{t("role")}</Label>
-<Select
+                  <Select
                     value={field.state.value}
-                    onChange={(role) => field.handleChange(role as ProviderRole)}
+                    onChange={(role) =>
+                      field.handleChange(role as ProviderRole)
+                    }
                     options={ROLE_OPTIONS}
                   />
                 </div>

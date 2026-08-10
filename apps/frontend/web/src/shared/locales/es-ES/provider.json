@@ -152,5 +152,18 @@
     "UNACCEPTED_TYPE": "Ese archivo no es un JPG, PNG, WebP o PDF.",
     "DOCUMENT_STORAGE_UNCONFIGURED": "El almacenamiento de documentos no está configurado en este entorno.",
     "GENERIC": "La subida no se completó. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "crop": {
+    "logo": {
+      "title": "Encuadra tu logotipo",
+      "hint": "Cuadrado, para que se vea igual en todas partes. Arrastra para mover; rueda o control deslizante para ampliar."
+    },
+    "photo": {
+      "title": "Encuadra tu foto",
+      "hint": "Todas las fotos del portafolio comparten esta forma, así tu página nunca se ve irregular. Arrastra para mover; rueda o deslizante para ampliar."
+    },
+    "cancel": "Cancelar",
+    "confirm": "Usar este encuadre",
+    "zoom": "Zoom"
   }
 }

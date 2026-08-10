@@ -24,7 +24,9 @@ export function EmptyState({
         {icon}
       </span>
       <h2 className="text-lg font-medium">{title}</h2>
-      <p className="max-w-md text-sm text-[var(--color-muted-foreground)]">{body}</p>
+      <p className="max-w-md text-sm text-[var(--color-muted-foreground)]">
+        {body}
+      </p>
       {action}
     </div>
   );

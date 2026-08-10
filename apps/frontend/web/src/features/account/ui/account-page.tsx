@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { BadgeCheck, Cake, Clock, Languages, Pencil, Sparkles, UserRound } from "lucide-react";
+import {
+  BadgeCheck,
+  Cake,
+  Clock,
+  Languages,
+  Pencil,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback, Badge, Button } from "@ntizo/frontend-ui";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
@@ -42,7 +50,9 @@ function Detail({
         <Icon className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </span>
       <div className="min-w-0">
-        <dt className="type-caption text-[var(--color-muted-foreground)]">{label}</dt>
+        <dt className="type-caption text-[var(--color-muted-foreground)]">
+          {label}
+        </dt>
         <dd
           className={
             value
@@ -68,7 +78,9 @@ function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] px-4 py-3.5 text-center">
       <div className="type-h2 tabular-nums">{value}</div>
-      <div className="type-caption mt-1 text-[var(--color-muted-foreground)]">{label}</div>
+      <div className="type-caption mt-1 text-[var(--color-muted-foreground)]">
+        {label}
+      </div>
     </div>
   );
 }
@@ -90,7 +102,10 @@ export function AccountPage() {
     month: "short",
     year: "numeric",
   });
-  const monthFmt = new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" });
+  const monthFmt = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    year: "numeric",
+  });
 
   // Verified means email and phone, the two signals that exist. Identity
   // documents are a provider's obligation and live with their workspace, so
@@ -140,7 +155,11 @@ export function AccountPage() {
               <Detail
                 icon={Cake}
                 label={t("fieldDateOfBirth")}
-                value={user.dateOfBirth ? dateFmt.format(new Date(user.dateOfBirth)) : null}
+                value={
+                  user.dateOfBirth
+                    ? dateFmt.format(new Date(user.dateOfBirth))
+                    : null
+                }
               />
               <Detail
                 icon={UserRound}
@@ -150,9 +169,15 @@ export function AccountPage() {
               <Detail
                 icon={Languages}
                 label={t("fieldLanguages")}
-                value={t(`language.${user.language}`, { defaultValue: user.language })}
+                value={t(`language.${user.language}`, {
+                  defaultValue: user.language,
+                })}
               />
-              <Detail icon={Clock} label={t("fieldTimezone")} value={user.timezone} />
+              <Detail
+                icon={Clock}
+                label={t("fieldTimezone")}
+                value={user.timezone}
+              />
             </dl>
 
             {/* Two of these three have nowhere to come from yet. They are
@@ -182,8 +207,12 @@ export function AccountPage() {
             <Sparkles className="h-5 w-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="type-h3 block font-semibold">{t("becomeProviderTitle")}</span>
-            <span className="type-body block text-white/85">{t("becomeProviderBody")}</span>
+            <span className="type-h3 block font-semibold">
+              {t("becomeProviderTitle")}
+            </span>
+            <span className="type-body block text-white/85">
+              {t("becomeProviderBody")}
+            </span>
           </span>
           <span className="type-button rounded-[var(--radius-card-sm)] bg-white px-5 py-3 text-[var(--color-primary)]">
             {t("becomeProviderCta")}

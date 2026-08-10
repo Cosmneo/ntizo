@@ -29,13 +29,17 @@ export function AcceptInvite() {
       })
       .catch((e) => {
         setStatus("error");
-        setError(e instanceof Error ? providerErrorMessage(t, e) : t("inviteError"));
+        setError(
+          e instanceof Error ? providerErrorMessage(t, e) : t("inviteError"),
+        );
       });
   }, [token, nav, t, accept]);
 
   return (
     <AuthLayout title={t("acceptInvite")} subtitle="" footer={null}>
-      {status === "pending" && <p className="text-center">{t("acceptingInvite")}</p>}
+      {status === "pending" && (
+        <p className="text-center">{t("acceptingInvite")}</p>
+      )}
       {status === "ok" && <p className="text-center">{t("inviteAccepted")}</p>}
       {status === "error" && (
         <p className="text-center text-[var(--color-destructive)]">{error}</p>

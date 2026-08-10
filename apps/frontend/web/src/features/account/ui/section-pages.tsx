@@ -19,7 +19,9 @@ function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
   return (
     <div className="mb-5">
       <h1 className="type-h1">{title}</h1>
-      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{blurb}</p>
+      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+        {blurb}
+      </p>
     </div>
   );
 }
@@ -36,7 +38,10 @@ export function PaymentMethodsPage() {
   const { t } = useTranslation("account");
   return (
     <>
-      <SectionHeading title={t("navPaymentMethods")} blurb={t("paymentsBlurb")} />
+      <SectionHeading
+        title={t("navPaymentMethods")}
+        blurb={t("paymentsBlurb")}
+      />
       <EmptyState
         icon={<CreditCard className="h-6 w-6" />}
         title={t("paymentsEmptyTitle")}
@@ -91,7 +96,11 @@ export function SecurityPage() {
         {/* Email is confirmed by definition: sign-in requires it. Showing the
             row anyway is what makes the phone row below it read as an
             outstanding task rather than an oddity. */}
-        <VerificationRow label={t("fieldEmail")} value={user?.email ?? null} verified />
+        <VerificationRow
+          label={t("fieldEmail")}
+          value={user?.email ?? null}
+          verified
+        />
         <VerificationRow
           label={t("fieldPhone")}
           value={user?.phoneNumber ?? null}
@@ -115,7 +124,9 @@ export function SecurityPage() {
               <KeyRound className="h-5 w-5 text-[var(--color-primary)]" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="type-body-medium font-semibold">{t("passwordTitle")}</div>
+              <div className="type-body-medium font-semibold">
+                {t("passwordTitle")}
+              </div>
               <div className="type-body text-[var(--color-muted-foreground)]">
                 {t("passwordBlurb")}
               </div>
@@ -147,7 +158,10 @@ export function PreferencesPage() {
 
   return (
     <>
-      <SectionHeading title={t("navPreferences")} blurb={t("preferencesBlurb")} />
+      <SectionHeading
+        title={t("navPreferences")}
+        blurb={t("preferencesBlurb")}
+      />
       <Panel>
         <LanguagePreference />
         <AppearancePreference />
@@ -183,7 +197,9 @@ function NotificationSettings() {
                   >
                     {t(`channel.${channel}`)}
                     {isMeteredChannel(channel) ? (
-                      <span className="block text-[10px] opacity-70">{t("channelCosts")}</span>
+                      <span className="block text-[10px] opacity-70">
+                        {t("channelCosts")}
+                      </span>
                     ) : null}
                   </th>
                 ))}
@@ -191,8 +207,13 @@ function NotificationSettings() {
             </thead>
             <tbody>
               {buckets.map((bucket) => (
-                <tr key={bucket} className="border-t border-[var(--color-border)]">
-                  <td className="type-body-medium py-3.5">{t(`bucket.${bucket}`)}</td>
+                <tr
+                  key={bucket}
+                  className="border-t border-[var(--color-border)]"
+                >
+                  <td className="type-body-medium py-3.5">
+                    {t(`bucket.${bucket}`)}
+                  </td>
                   {OPTIONAL_NOTIFICATION_CHANNELS.map((channel) => (
                     <td key={channel} className="py-3.5 text-center">
                       <input

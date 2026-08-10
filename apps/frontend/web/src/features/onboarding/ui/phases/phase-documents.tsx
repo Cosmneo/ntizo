@@ -14,7 +14,10 @@ import type {
   DocumentUpload,
   ProviderDraft,
 } from "@/features/onboarding/domain/draft";
-import { HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
+import {
+  HeroQuestion,
+  StepFooter,
+} from "@/features/onboarding/ui/wizard-chrome";
 
 /**
  * The documents that make the verified badge mean something.
@@ -59,7 +62,10 @@ export function PhaseDocuments({
 
   return (
     <>
-      <HeroQuestion title={t("documents.title")} description={t("documents.description")} />
+      <HeroQuestion
+        title={t("documents.title")}
+        description={t("documents.description")}
+      />
 
       <div className="grid gap-4">
         <IdentitySlot
@@ -96,7 +102,12 @@ export function PhaseDocuments({
         onBack={onBack}
         backLabel={t("back")}
         secondary={
-          <Button type="button" variant="outline" onClick={onContinue} disabled={busy}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onContinue}
+            disabled={busy}
+          >
             {t("documents.skip")}
           </Button>
         }
@@ -140,7 +151,9 @@ function IdentitySlot({
 
   return (
     <div className="rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-5">
-      <p className="type-body-medium font-semibold">{t("documents.identity.label")}</p>
+      <p className="type-body-medium font-semibold">
+        {t("documents.identity.label")}
+      </p>
       <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
         {t("documents.identity.hint")}
       </p>
@@ -175,13 +188,21 @@ function DocumentSlot({
   onRemove: (type: ProviderDocumentType) => void;
 }) {
   if (upload) {
-    return <UploadedRow label={label} upload={upload} onRemove={() => onRemove(type)} />;
+    return (
+      <UploadedRow
+        label={label}
+        upload={upload}
+        onRemove={() => onRemove(type)}
+      />
+    );
   }
 
   return (
     <div className="rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-5">
       <p className="type-body-medium font-semibold">{label}</p>
-      <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">{hint}</p>
+      <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
+        {hint}
+      </p>
       <div className="mt-4">
         <FilePicker
           id={`doc-${type}`}
@@ -265,7 +286,11 @@ function FilePicker({
           // event otherwise, which reads as the second attempt being ignored.
           e.target.value = "";
           if (!file) return;
-          if (!isAcceptedDocumentMime(file.type) || file.size > MAX_DOCUMENT_BYTES) return;
+          if (
+            !isAcceptedDocumentMime(file.type) ||
+            file.size > MAX_DOCUMENT_BYTES
+          )
+            return;
           onPick(file);
         }}
       />

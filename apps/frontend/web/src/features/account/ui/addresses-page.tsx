@@ -13,7 +13,10 @@ import {
   Label,
   countryName,
 } from "@ntizo/frontend-ui";
-import { useAddressMutations, useMyAddresses } from "@/features/account/viewmodel/use-addresses";
+import {
+  useAddressMutations,
+  useMyAddresses,
+} from "@/features/account/viewmodel/use-addresses";
 import { useCities } from "@/features/account/viewmodel/use-cities";
 import { EmptyState } from "@/features/account/ui/empty-state";
 
@@ -128,7 +131,9 @@ function AddressForm({
           });
           return null;
         } catch (error) {
-          return { form: error instanceof Error ? error.message : t("saveFailed") };
+          return {
+            form: error instanceof Error ? error.message : t("saveFailed"),
+          };
         }
       },
     },
@@ -145,7 +150,9 @@ function AddressForm({
       <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
         {(error) =>
           error ? (
-            <p className="type-body-medium text-[var(--color-destructive)]">{error.form}</p>
+            <p className="type-body-medium text-[var(--color-destructive)]">
+              {error.form}
+            </p>
           ) : null
         }
       </form.Subscribe>
@@ -320,7 +327,9 @@ function AddressCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="type-h3 font-semibold">{address.label}</span>
-            {address.isDefault ? <Badge tone="info">{t("addrDefault")}</Badge> : null}
+            {address.isDefault ? (
+              <Badge tone="info">{t("addrDefault")}</Badge>
+            ) : null}
           </div>
           <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
             {lines.join(" · ")}
@@ -338,7 +347,12 @@ function AddressCard({
           {t("edit")}
         </Button>
         {!address.isDefault ? (
-          <Button variant="ghost" size="sm" onClick={onMakeDefault} disabled={busy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onMakeDefault}
+            disabled={busy}
+          >
             <Star className="h-4 w-4" />
             {t("addrMakeDefault")}
           </Button>

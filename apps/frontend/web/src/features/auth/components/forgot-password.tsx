@@ -45,8 +45,13 @@ export function ForgotPassword() {
         icon={<MailCheck className="h-6 w-6 text-[var(--color-primary)]" />}
       >
         <div className="flex flex-col items-center gap-4 text-center">
-          <p className="text-sm text-[var(--color-muted-foreground)]">{t("resetSent")}</p>
-          <Link to="/sign-in" className="text-sm text-[var(--color-accent)] hover:underline">
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            {t("resetSent")}
+          </p>
+          <Link
+            to="/sign-in"
+            className="text-sm text-[var(--color-accent)] hover:underline"
+          >
             {t("backToSignInArrow")}
           </Link>
         </div>
@@ -84,7 +89,9 @@ export function ForgotPassword() {
           )}
         </form.Field>
 
-        <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+        <form.Subscribe
+          selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+        >
           {([canSubmit, isSubmitting]) => (
             <Button type="submit" className="w-full" disabled={!canSubmit}>
               <KeyRound className="h-4 w-4" />

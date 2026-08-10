@@ -36,7 +36,9 @@ export function VerifyPhone() {
     setBusy(true);
     setError(null);
     try {
-      const { error: err } = await authClient.phoneNumber.sendOtp({ phoneNumber });
+      const { error: err } = await authClient.phoneNumber.sendOtp({
+        phoneNumber,
+      });
       if (err) {
         setError(err.message ?? t("otpSendFailed"));
         return;
@@ -113,7 +115,11 @@ export function VerifyPhone() {
   return (
     <AuthLayout
       title={t("verifyPhoneTitle")}
-      subtitle={sent ? t("otpSentTo", { phone: phoneNumber }) : t("verifyPhoneSubtitle", { phone: phoneNumber })}
+      subtitle={
+        sent
+          ? t("otpSentTo", { phone: phoneNumber })
+          : t("verifyPhoneSubtitle", { phone: phoneNumber })
+      }
       icon={<MessageSquare className="h-6 w-6 text-[var(--color-primary)]" />}
       footer={
         <Link to="/" className="text-[var(--color-accent)] hover:underline">
@@ -123,7 +129,9 @@ export function VerifyPhone() {
     >
       <div className="flex flex-col gap-4">
         {error ? (
-          <p className="text-center text-sm text-[var(--color-destructive)]">{error}</p>
+          <p className="text-center text-sm text-[var(--color-destructive)]">
+            {error}
+          </p>
         ) : null}
 
         {sent ? (
@@ -134,7 +142,9 @@ export function VerifyPhone() {
               onComplete={verify}
               disabled={busy}
               autoFocus
-              digitLabel={(position, total) => t("otpDigitLabel", { position, total })}
+              digitLabel={(position, total) =>
+                t("otpDigitLabel", { position, total })
+              }
             />
             <Button
               type="button"
@@ -150,11 +160,18 @@ export function VerifyPhone() {
               disabled={cooldown > 0 || busy}
               className="text-sm text-[var(--color-accent)] hover:underline disabled:cursor-not-allowed disabled:text-[var(--color-muted-foreground)] disabled:no-underline"
             >
-              {cooldown > 0 ? t("resendIn", { seconds: cooldown }) : t("resendCode")}
+              {cooldown > 0
+                ? t("resendIn", { seconds: cooldown })
+                : t("resendCode")}
             </button>
           </>
         ) : (
-          <Button type="button" className="w-full" disabled={busy} onClick={send}>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={busy}
+            onClick={send}
+          >
             {busy ? t("sending") : t("sendCode")}
           </Button>
         )}

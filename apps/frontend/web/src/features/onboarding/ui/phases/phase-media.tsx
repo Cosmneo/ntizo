@@ -2,9 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, GalleryUpload, LogoUpload } from "@ntizo/frontend-ui";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { useCropStrings } from "@/features/provider/viewmodel/use-crop-strings";
 import { useImageUpload } from "@/features/provider/viewmodel/use-image-upload";
 import { useUpdateProvider } from "@/features/provider/viewmodel/use-provider-mutations";
-import { HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
+import {
+  HeroQuestion,
+  StepFooter,
+} from "@/features/onboarding/ui/wizard-chrome";
 
 /** Kept below the 24 the settings page allows: a wizard is not the place to fill a gallery. */
 const WIZARD_PHOTO_LIMIT = 8;
@@ -36,11 +40,17 @@ export function PhaseMedia({
   const { t: tp } = useTranslation("provider");
   const { activeProvider } = useActiveProvider();
   const media = useImageUpload(activeProvider?.id);
+  const logoCrop = useCropStrings("logo");
+  const photoCrop = useCropStrings("photo");
   const update = useUpdateProvider(activeProvider?.id ?? "");
 
   // Keys are the truth on the server; these are what to show while here.
-  const [logo, setLogo] = useState<{ key: string; url: string | null } | null>(null);
-  const [photos, setPhotos] = useState<{ key: string; url: string | null }[]>([]);
+  const [logo, setLogo] = useState<{ key: string; url: string | null } | null>(
+    null,
+  );
+  const [photos, setPhotos] = useState<{ key: string; url: string | null }[]>(
+    [],
+  );
   const [rejection, setRejection] = useState<string | null>(null);
 
   const busy = media.busy || update.isPending;
@@ -61,10 +71,14 @@ export function PhaseMedia({
 
   return (
     <>
-      <HeroQuestion title={t("media.title")} description={t("media.description")} />
+      <HeroQuestion
+        title={t("media.title")}
+        description={t("media.description")}
+      />
 
       <div className="grid gap-7">
         <LogoUpload
+          cropStrings={logoCrop}
           url={logo?.url ?? null}
           onSelect={(file) => {
             setRejection(null);
@@ -88,12 +102,17 @@ export function PhaseMedia({
         />
 
         <div className="border-t border-[var(--color-border)] pt-6">
-          <p className="type-body-medium font-semibold">{tp("settingsPortfolio")}</p>
+          <p className="type-body-medium font-semibold">
+            {tp("settingsPortfolio")}
+          </p>
           <p className="type-caption mt-0.5 mb-4 text-[var(--color-muted-foreground)]">
             {t("media.portfolioHint")}
           </p>
           <GalleryUpload
-            urls={photos.map((p) => p.url).filter((u): u is string => u !== null)}
+            cropStrings={photoCrop}
+            urls={photos
+              .map((p) => p.url)
+              .filter((u): u is string => u !== null)}
             onSelect={(files) => {
               setRejection(null);
               void media.uploadMany("photo", files).then((results) => {
@@ -133,7 +152,12 @@ export function PhaseMedia({
         onBack={onBack}
         backLabel={t("back")}
         secondary={
-          <Button type="button" variant="outline" onClick={onContinue} disabled={busy}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onContinue}
+            disabled={busy}
+          >
             {t("media.skip")}
           </Button>
         }

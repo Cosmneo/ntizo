@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CheckCircle2, Clock, FileText, Upload, XCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { Badge, Button, cn } from "@ntizo/frontend-ui";
 import {
   DOCUMENT_MIME_TYPES,
@@ -64,7 +71,9 @@ export function DocumentsSection({
   const upload = useDocumentUpload(providerId);
 
   const held = new Map(documents.map((d) => [d.type, d]));
-  const identity = IDENTITY_DOCUMENT_TYPES.map((type) => held.get(type)).find(Boolean);
+  const identity = IDENTITY_DOCUMENT_TYPES.map((type) => held.get(type)).find(
+    Boolean,
+  );
 
   async function send(type: ProviderDocumentType, file: File) {
     const result = await upload.send(type, file);
@@ -84,7 +93,9 @@ export function DocumentsSection({
         <DocumentRow
           document={identity}
           label={to(`documents.type.${identity.type}.label`)}
-          onReplace={(file) => void send(identity.type as ProviderDocumentType, file)}
+          onReplace={(file) =>
+            void send(identity.type as ProviderDocumentType, file)
+          }
           busy={upload.busy}
         />
       ) : (
@@ -123,7 +134,9 @@ export function DocumentsSection({
       })}
 
       {upload.errorKey && (
-        <p className="type-caption text-[var(--color-destructive)]">{t(upload.errorKey)}</p>
+        <p className="type-caption text-[var(--color-destructive)]">
+          {t(upload.errorKey)}
+        </p>
       )}
 
       <p className="type-caption text-[var(--color-muted-foreground)]">
@@ -231,7 +244,9 @@ function EmptySlot({
   return (
     <div className="rounded-[var(--radius-card-sm)] border border-dashed border-[var(--color-border)] p-5">
       <p className="type-body-medium font-semibold">{label}</p>
-      <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">{hint}</p>
+      <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
+        {hint}
+      </p>
       <div
         className={cn(
           "mt-4 grid gap-2",
@@ -294,7 +309,11 @@ function FilePicker({
           // event otherwise, which reads as the second attempt being ignored.
           e.target.value = "";
           if (!file) return;
-          if (!isAcceptedDocumentMime(file.type) || file.size > MAX_DOCUMENT_BYTES) return;
+          if (
+            !isAcceptedDocumentMime(file.type) ||
+            file.size > MAX_DOCUMENT_BYTES
+          )
+            return;
           onPick(file);
         }}
       />

@@ -31,7 +31,9 @@ export function NoProviderPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-semibold mb-2">{t("welcomeTitle")}</h1>
-      <p className="text-[var(--color-muted-foreground)] mb-6">{t("welcomeSubtitle")}</p>
+      <p className="text-[var(--color-muted-foreground)] mb-6">
+        {t("welcomeSubtitle")}
+      </p>
 
       <div className="flex gap-3">
         <Button onClick={handleAuto} disabled={registerMut.isPending}>

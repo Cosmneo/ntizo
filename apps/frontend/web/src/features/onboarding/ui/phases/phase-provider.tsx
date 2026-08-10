@@ -1,12 +1,22 @@
 import { useTranslation } from "react-i18next";
 import { Building2, User } from "lucide-react";
-import { Button, CitySelect, CountrySelect, Input, cn } from "@ntizo/frontend-ui";
+import {
+  Button,
+  CitySelect,
+  CountrySelect,
+  Input,
+  cn,
+} from "@ntizo/frontend-ui";
 import type { ProviderType } from "@ntizo/shared";
 import { useCities } from "@/features/account/viewmodel/use-cities";
 import type { ProviderDraft } from "@/features/onboarding/domain/draft";
 import type { FieldKey } from "@/features/onboarding/domain/validation";
 import type { WizardStep } from "@/features/onboarding/domain/screen-model";
-import { Field, HeroQuestion, StepFooter } from "@/features/onboarding/ui/wizard-chrome";
+import {
+  Field,
+  HeroQuestion,
+  StepFooter,
+} from "@/features/onboarding/ui/wizard-chrome";
 import { LocationMap } from "@/features/onboarding/ui/location-map";
 
 export interface PhaseProviderProps {
@@ -50,7 +60,11 @@ export function PhaseProvider({
         {/* Cards, not a dropdown. This answer changes what every later screen
             asks and what the workspace can do afterwards, so it deserves to be
             read rather than picked from a list that hides one of the two. */}
-        <div role="radiogroup" aria-label={t("type.title")} className="grid gap-4 sm:grid-cols-2">
+        <div
+          role="radiogroup"
+          aria-label={t("type.title")}
+          className="grid gap-4 sm:grid-cols-2"
+        >
           {options.map(({ value, icon: Icon }) => {
             const selected = draft.type === value;
             return (
@@ -88,7 +102,9 @@ export function PhaseProvider({
           })}
         </div>
         {err("type") ? (
-          <p className="type-caption mt-3 text-[var(--color-destructive)]">{err("type")}</p>
+          <p className="type-caption mt-3 text-[var(--color-destructive)]">
+            {err("type")}
+          </p>
         ) : null}
 
         <StepFooter backLabel={t("back")}>
@@ -107,20 +123,30 @@ export function PhaseProvider({
         />
 
         <div className="grid gap-5">
-          <Field label={t("identity.nameLabel")} hint={t("identity.nameHint")} error={err("name")} htmlFor="name">
+          <Field
+            label={t("identity.nameLabel")}
+            hint={t("identity.nameHint")}
+            error={err("name")}
+            htmlFor="name"
+          >
             <Input
               id="name"
               value={draft.name}
               autoFocus
               onChange={(e) => onChange({ name: e.target.value })}
-              placeholder={t(`identity.namePlaceholder.${draft.type || "individual"}`)}
+              placeholder={t(
+                `identity.namePlaceholder.${draft.type || "individual"}`,
+              )}
               // Enter advances. On a phone the Continue button is below the
               // keyboard, and reaching it means dismissing the keyboard first.
               onKeyDown={(e) => e.key === "Enter" && onContinue()}
             />
           </Field>
 
-          <Field label={t("identity.descriptionLabel")} hint={t("identity.descriptionHint")}>
+          <Field
+            label={t("identity.descriptionLabel")}
+            hint={t("identity.descriptionHint")}
+          >
             <textarea
               rows={4}
               value={draft.description}
@@ -167,7 +193,11 @@ export function PhaseProvider({
           }
         />
 
-        <Field label={ta("addrCountry")} error={err("country")} htmlFor="country">
+        <Field
+          label={ta("addrCountry")}
+          error={err("country")}
+          htmlFor="country"
+        >
           <CountrySelect
             id="country"
             value={draft.country}
@@ -201,7 +231,11 @@ export function PhaseProvider({
           />
         </Field>
 
-        <Field label={ta("addrLine1")} hint={t("location.streetHint")} htmlFor="street">
+        <Field
+          label={ta("addrLine1")}
+          hint={t("location.streetHint")}
+          htmlFor="street"
+        >
           <Input
             id="street"
             value={draft.street}

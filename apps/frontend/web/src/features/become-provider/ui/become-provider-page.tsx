@@ -31,7 +31,10 @@ export function BecomeProviderPage() {
   const ctaTo = user ? "/provider" : "/sign-up";
 
   return (
-    <main style={{ ...LANDING_VARS, background: PAGE_TOP }} className="text-[color:var(--l-navy)]">
+    <main
+      style={{ ...LANDING_VARS, background: PAGE_TOP }}
+      className="text-[color:var(--l-navy)]"
+    >
       <Hero ctaTo={ctaTo} t={t} />
       <Paths t={t} />
       <Pricing ctaTo={ctaTo} t={t} />
@@ -46,14 +49,24 @@ export function BecomeProviderPage() {
 type T = (key: string) => string;
 
 /** The eyebrow, with the rule that keeps it from floating. */
-function Eyebrow({ children, onDark = false }: { children: string; onDark?: boolean }) {
+function Eyebrow({
+  children,
+  onDark = false,
+}: {
+  children: string;
+  onDark?: boolean;
+}) {
   return (
     <span
       className={`font-rounded inline-flex items-center gap-3 text-[12px] font-bold tracking-[0.18em] uppercase ${
         onDark ? "text-white/65" : "text-[color:var(--l-muted)]"
       }`}
     >
-      <span aria-hidden="true" className="h-px w-8" style={{ background: ACCENT }} />
+      <span
+        aria-hidden="true"
+        className="h-px w-8"
+        style={{ background: ACCENT }}
+      />
       {children}
     </span>
   );
@@ -81,8 +94,15 @@ function PrimaryCta({ to, label }: { to: string; label: string }) {
  */
 function Hero({ ctaTo, t }: { ctaTo: string; t: T }) {
   return (
-    <header className="relative isolate flex min-h-[660px] flex-col" style={{ background: NAVY }}>
-      <SurfaceArt seed={17} hero className="absolute inset-0 -z-10 h-full w-full" />
+    <header
+      className="relative isolate flex min-h-[660px] flex-col"
+      style={{ background: NAVY }}
+    >
+      <SurfaceArt
+        seed={17}
+        hero
+        className="absolute inset-0 -z-10 h-full w-full"
+      />
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10"
@@ -227,7 +247,8 @@ function GridTexture() {
           "linear-gradient(var(--l-border) 1px, transparent 1px)," +
           "linear-gradient(90deg, var(--l-border) 1px, transparent 1px)",
         backgroundSize: "88px 88px",
-        maskImage: "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
+        maskImage:
+          "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
         WebkitMaskImage:
           "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
       }}
@@ -244,7 +265,10 @@ function GridTexture() {
  */
 function Pricing({ ctaTo, t }: { ctaTo: string; t: T }) {
   return (
-    <section className="relative isolate overflow-hidden py-24" style={{ background: NAVY }}>
+    <section
+      className="relative isolate overflow-hidden py-24"
+      style={{ background: NAVY }}
+    >
       <span
         aria-hidden="true"
         className="absolute -top-24 -left-24 -z-10 h-[420px] w-[420px] rounded-full opacity-[0.14]"
@@ -394,7 +418,9 @@ function Requirements({ t }: { t: T }) {
             >
               <span
                 className="grid h-9 w-9 place-items-center rounded-full"
-                style={{ background: `color-mix(in srgb, ${ACCENT} 12%, transparent)` }}
+                style={{
+                  background: `color-mix(in srgb, ${ACCENT} 12%, transparent)`,
+                }}
               >
                 <Check className="h-4.5 w-4.5" style={{ color: ACCENT }} />
               </span>
@@ -421,8 +447,15 @@ function Requirements({ t }: { t: T }) {
  */
 function Closing({ ctaTo, t }: { ctaTo: string; t: T }) {
   return (
-    <section className="relative isolate overflow-hidden py-28 text-center" style={{ background: NAVY }}>
-      <SurfaceArt seed={91} hero className="absolute inset-0 -z-10 h-full w-full" />
+    <section
+      className="relative isolate overflow-hidden py-28 text-center"
+      style={{ background: NAVY }}
+    >
+      <SurfaceArt
+        seed={91}
+        hero
+        className="absolute inset-0 -z-10 h-full w-full"
+      />
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10"

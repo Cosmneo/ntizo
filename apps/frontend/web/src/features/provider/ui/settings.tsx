@@ -31,6 +31,7 @@ import {
   useDeactivateProvider,
   useUpdateProvider,
 } from "../viewmodel/use-provider-mutations";
+import { useCropStrings } from "../viewmodel/use-crop-strings";
 import { useImageUpload } from "../viewmodel/use-image-upload";
 import { DocumentsSection } from "./documents-section";
 import { SettingsNav, type SettingsSection } from "./settings-nav";
@@ -101,6 +102,8 @@ export function SettingsPage() {
 
   const cityQuery = useCities(draft.country, draft.city);
   const media = useImageUpload(activeProvider?.id);
+  const logoCrop = useCropStrings("logo");
+  const photoCrop = useCropStrings("photo");
 
   // Where a just-uploaded key can be shown from. The saved pairs carry their
   // own URL; an image uploaded a second ago is not in `detail` yet, so its URL
@@ -257,6 +260,7 @@ export function SettingsPage() {
           >
             <div className="grid gap-7">
               <LogoUpload
+                cropStrings={logoCrop}
                 url={draft.logoKey ? urlFor(draft.logoKey) : null}
                 onSelect={(file) => {
                   void media.upload("logo", file).then((r) => {
@@ -283,6 +287,7 @@ export function SettingsPage() {
                   {t("settingsPortfolioHint")}
                 </p>
                 <GalleryUpload
+                  cropStrings={photoCrop}
                   urls={draft.photoKeys
                     .map(urlFor)
                     .filter((u): u is string => u !== null)}
