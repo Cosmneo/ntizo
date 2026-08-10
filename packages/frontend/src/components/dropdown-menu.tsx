@@ -110,7 +110,7 @@ export function DropdownMenuContent({
       ref={ref}
       style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
       className={cn(
-        "fixed z-[9999] min-w-[12rem] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] p-1 text-[var(--color-popover-foreground)] shadow-2xl",
+        "fixed z-[9999] min-w-[12rem] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] p-1.5 text-[var(--color-popover-foreground)] shadow-2xl",
         className,
       )}
     >
@@ -131,7 +131,7 @@ export function DropdownMenuItem({
     <div
       role="menuitem"
       className={cn(
-        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-[var(--color-secondary)]",
+        "flex cursor-pointer select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm outline-none hover:bg-[var(--color-secondary)]",
         className,
       )}
       onClick={(e) => {
@@ -153,7 +153,7 @@ export function DropdownMenuLabel({
   return (
     <div
       className={cn(
-        "px-2 py-1.5 text-xs font-semibold text-[var(--color-muted-foreground)]",
+        "px-3 py-2 text-xs font-semibold text-[var(--color-muted-foreground)]",
         className,
       )}
       {...props}
@@ -167,7 +167,7 @@ export function DropdownMenuSeparator({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("-mx-1 my-1 h-px bg-[var(--color-border)]", className)}
+      className={cn("-mx-1.5 my-1.5 h-px bg-[var(--color-border)]", className)}
       {...props}
     />
   );
@@ -205,7 +205,7 @@ export function DropdownMenuSubTrigger({
       onMouseEnter={() => sub.setOpen(true)}
       onClick={() => sub.setOpen(!sub.open)}
       className={cn(
-        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-[var(--color-secondary)] data-[state=open]:bg-[var(--color-secondary)]",
+        "flex cursor-pointer select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm outline-none hover:bg-[var(--color-secondary)] data-[state=open]:bg-[var(--color-secondary)]",
         sub.open && "bg-[var(--color-secondary)]",
         className,
       )}
@@ -277,7 +277,7 @@ export function DropdownMenuSubContent({
       style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
       onClick={() => parent?.setOpen(false)}
       className={cn(
-        "fixed z-[10000] min-w-[12rem] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] p-1 text-[var(--color-popover-foreground)] shadow-2xl",
+        "fixed z-[10000] min-w-[12rem] overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] p-1.5 text-[var(--color-popover-foreground)] shadow-2xl",
         className,
       )}
     >

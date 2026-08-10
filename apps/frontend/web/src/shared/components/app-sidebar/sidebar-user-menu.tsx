@@ -88,7 +88,7 @@ export function SidebarUserMenu() {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-64" side="right">
-              <DropdownMenuLabel className="px-2 py-2">
+              <DropdownMenuLabel className="px-3 py-3">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs">{initials}</AvatarFallback>
@@ -106,30 +106,30 @@ export function SidebarUserMenu() {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem onSelect={() => nav({ to: "/provider/account" })}>
-                <UserIcon className="mr-2 h-4 w-4" />
+                <UserIcon className="h-4 w-4" />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => nav({ to: "/provider/settings" })}>
-                <Settings className="mr-2 h-4 w-4" />
+                <Settings className="h-4 w-4" />
                 {t("settings")}
               </DropdownMenuItem>
 
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <Palette className="mr-2 h-4 w-4" />
+                  <Palette className="h-4 w-4" />
                   Theme
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-44">
                   <DropdownMenuItem>
-                    <Sun className="mr-2 h-4 w-4" />
+                    <Sun className="h-4 w-4" />
                     Light
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Moon className="mr-2 h-4 w-4" />
+                    <Moon className="h-4 w-4" />
                     Dark
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Monitor className="mr-2 h-4 w-4" />
+                    <Monitor className="h-4 w-4" />
                     System
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
@@ -173,7 +173,7 @@ export function SidebarUserMenu() {
                   })}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                     {t("createNew")}
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
@@ -184,7 +184,7 @@ export function SidebarUserMenu() {
                 onSelect={handleSignOut}
                 className="text-destructive focus:text-destructive"
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="h-4 w-4" />
                 {ta("signOut")}
               </DropdownMenuItem>
             </DropdownMenuContent>

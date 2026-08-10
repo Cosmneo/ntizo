@@ -65,20 +65,20 @@ export function SidebarUserMenu() {
               <DropdownMenuLabel>{user?.email ?? ""}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <UserIcon className="mr-2 h-4 w-4" />
+                <UserIcon className="h-4 w-4" />
                 My Account
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Palette className="mr-2 h-4 w-4" />
+                <Palette className="h-4 w-4" />
                 Theme
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Languages className="mr-2 h-4 w-4" />
+                <Languages className="h-4 w-4" />
                 Language
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="h-4 w-4" />
                 {ta("signOut")}
               </DropdownMenuItem>
             </DropdownMenuContent>

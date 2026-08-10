@@ -87,7 +87,7 @@ export function UserMenu() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="px-2 py-2">
+        <DropdownMenuLabel className="px-3 py-3">
           <div className="flex items-center gap-2">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-[var(--color-primary)] text-xs font-semibold text-white">
@@ -108,19 +108,19 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onSelect={() => navigate({ to: "/account" })}>
-          <UserIcon className="mr-2 h-4 w-4" />
+          <UserIcon className="h-4 w-4" />
           {t("myAccount")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/bookings" })}>
-          <CalendarDays className="mr-2 h-4 w-4" />
+          <CalendarDays className="h-4 w-4" />
           {t("myBookings")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/messages" })}>
-          <MessageSquare className="mr-2 h-4 w-4" />
+          <MessageSquare className="h-4 w-4" />
           {t("messages")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/favourites" })}>
-          <Heart className="mr-2 h-4 w-4" />
+          <Heart className="h-4 w-4" />
           {t("favourites")}
         </DropdownMenuItem>
 
@@ -132,12 +132,12 @@ export function UserMenu() {
             not, so the label is the only thing that differs. */}
         {showProvider ? (
           <DropdownMenuItem onSelect={() => navigate({ to: "/provider" })}>
-            <LayoutGrid className="mr-2 h-4 w-4" />
+            <LayoutGrid className="h-4 w-4" />
             {t("providerDashboard")}
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem onSelect={() => navigate({ to: "/provider" })}>
-            <Sparkles className="mr-2 h-4 w-4" />
+            <Sparkles className="h-4 w-4" />
             {t("becomeProvider")}
           </DropdownMenuItem>
         )}
@@ -146,7 +146,7 @@ export function UserMenu() {
             the affordance, not the control. */}
         {showAdmin ? (
           <DropdownMenuItem onSelect={() => navigate({ to: "/admin" })}>
-            <Shield className="mr-2 h-4 w-4" />
+            <Shield className="h-4 w-4" />
             {t("adminDashboard")}
           </DropdownMenuItem>
         ) : null}
@@ -155,7 +155,7 @@ export function UserMenu() {
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <Palette className="mr-2 h-4 w-4" />
+            <Palette className="h-4 w-4" />
             {t("appearance")}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-44">
@@ -167,7 +167,7 @@ export function UserMenu() {
               ] as Array<[ThemePreference, typeof Sun, string]>
             ).map(([value, Icon, key]) => (
               <DropdownMenuItem key={value} onSelect={() => applyThemePreference(value)}>
-                <Icon className="mr-2 h-4 w-4" />
+                <Icon className="h-4 w-4" />
                 {t(key)}
               </DropdownMenuItem>
             ))}
@@ -180,7 +180,7 @@ export function UserMenu() {
           onSelect={() => void handleSignOut()}
           className="text-[var(--color-destructive)]"
         >
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOut className="h-4 w-4" />
           {ta("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
