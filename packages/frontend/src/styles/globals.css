@@ -8,7 +8,15 @@
 
   --color-background: #ffffff;
   --color-foreground: #0e1f37;
-  --color-primary: #00244d;
+  /* Brand blue, sampled from the approved mockups (#1853FD in the sign-in
+     panel, the primary button and the wordmark — one colour in all three).
+     Replaces the previous navy #00244d.
+
+     Contrast note: white on this is 5.68:1, which passes WCAG AA for normal
+     text but not AAA; the navy was 15.45:1. That is a deliberate, accepted
+     trade for the brand, not an oversight. Anything smaller than body text on
+     this background should be checked before it ships. */
+  --color-primary: #1853fd;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f4f6fa;
   --color-secondary-foreground: #0e1f37;

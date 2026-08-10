@@ -8,16 +8,29 @@ interface AuthLayoutProps {
   subtitle: string;
   children: ReactNode;
   footer: ReactNode;
+  /**
+   * Replaces the default brand mark with a page-specific glyph in a tinted
+   * circle — a padlock for password reset, a message bubble for OTP. On these
+   * screens the icon says what is about to happen, which the logo does not.
+   */
+  icon?: ReactNode;
 }
 
-export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+export function AuthLayout({ title, subtitle, children, footer, icon }: AuthLayoutProps) {
   const { t } = useTranslation("common");
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-[var(--color-background)] px-4">
       <Card className="w-full max-w-md">
         <CardContent className="flex flex-col gap-6 p-8">
           <div className="flex flex-col items-center gap-1">
-            <NtizoIcon className="h-10 w-10 mb-2" />
+            <span className="mb-3 text-2xl font-bold tracking-tight text-[var(--color-primary)]">
+              ntizo
+            </span>
+            {icon ? (
+              <div className="mb-3 rounded-full bg-[var(--color-secondary)] p-3">{icon}</div>
+            ) : (
+              <NtizoIcon className="h-10 w-10 mb-2" />
+            )}
             <h1 className="text-lg font-semibold">{title}</h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">{subtitle}</p>
           </div>

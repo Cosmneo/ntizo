@@ -2,7 +2,8 @@ export * from "./components/button";
 export * from "./components/input";
 export * from "./components/input-group";
 export * from "./components/label";
-export * from "./components/card";
+export * from "./components/card"
+export * from "./components/checkbox";
 export * from "./components/separator";
 export * from "./components/avatar";
 export * from "./components/dropdown-menu";

@@ -2,28 +2,44 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
-import { Eye, EyeOff, UserPlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus, MailCheck } from "lucide-react";
 import {
   Button,
+  Card,
+  CardContent,
+  Checkbox,
   Input,
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
   Label,
+  Separator,
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
-import { AuthLayout } from "@/features/auth/components/auth-layout";
+import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
+import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 
 export function SignUp() {
   const { t } = useTranslation("auth");
+  const { t: tc } = useTranslation("common");
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { firstName: "", lastName: "", email: "", password: "" },
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      acceptTerms: false,
+    },
     validators: {
       onSubmitAsync: async ({ value }) => {
+        // Checked here as well as via the input's `required`: the native
+        // attribute gives fast feedback, this is the one that cannot be
+        // removed with devtools.
+        if (!value.acceptTerms) return { form: t("mustAcceptTerms") };
         try {
           const { error } = await authClient.signUp.email({
             email: value.email,
@@ -54,138 +70,202 @@ export function SignUp() {
     },
   });
 
+  const panel = {
+    pitch: t("pitchSignUp"),
+    pointsAsList: true as const,
+    points: [t("proofVerified"), t("proofEscrow"), t("proofRealReviews")],
+  };
+
   if (submitted) {
     return (
-      <AuthLayout
-        title={t("checkYourEmail")}
-        subtitle={t("verificationSent", { email: submitted })}
-        footer={
-          <>
-            {t("alreadyHaveAccount")}{" "}
-            <Link to="/sign-in" className="text-[var(--color-accent)] hover:underline">
-              {t("signIn")}
+      <AuthSplitLayout {...panel}>
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+            <div className="rounded-full bg-[var(--color-muted)] p-3">
+              <MailCheck className="h-6 w-6 text-[var(--color-accent)]" />
+            </div>
+            <h1 className="text-xl font-semibold">{t("checkYourEmail")}</h1>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {t("verificationSent", { email: submitted })}
+            </p>
+            <Link to="/sign-in" className="text-sm text-[var(--color-accent)] hover:underline">
+              {t("backToSignIn")}
             </Link>
-          </>
-        }
-      >
-        <div />
-      </AuthLayout>
+          </CardContent>
+        </Card>
+      </AuthSplitLayout>
     );
   }
 
   return (
-    <AuthLayout
-      title={t("createYourAccount")}
-      subtitle={t("joinAsProvider")}
-      footer={
-        <>
-          {t("alreadyHaveAccount")}{" "}
-          <Link to="/sign-in" className="text-[var(--color-accent)] hover:underline">
-            {t("signIn")}
-          </Link>
-        </>
-      }
-    >
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void form.handleSubmit();
-        }}
-      >
-        <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
-          {(err) =>
-            err ? (
-              <div className="text-sm text-[var(--color-destructive)] text-center">
-                {err.form}
-              </div>
-            ) : null
-          }
-        </form.Subscribe>
+    <AuthSplitLayout {...panel}>
+      <Card>
+        <CardContent className="flex flex-col gap-6 p-8">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold">{t("createYourAccount")}</h1>
+            <p className="text-sm text-[var(--color-muted-foreground)]">{t("fastAndFree")}</p>
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <form.Field name="firstName">
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={field.name}>{t("firstName")}</Label>
-                <Input
-                  id={field.name}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-          </form.Field>
-          <form.Field name="lastName">
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={field.name}>{t("lastName")}</Label>
-                <Input
-                  id={field.name}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-          </form.Field>
-        </div>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void form.handleSubmit();
+            }}
+          >
+            <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
+              {(err) =>
+                err ? (
+                  <div className="text-sm text-[var(--color-destructive)] text-center">
+                    {err.form}
+                  </div>
+                ) : null
+              }
+            </form.Subscribe>
 
-        <form.Field name="email">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={field.name}>{t("email")}</Label>
-              <Input
-                id={field.name}
-                type="email"
-                placeholder={t("emailPlaceholder")}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                required
-              />
+            {/* Two fields, not one "full name". A single field forces a guess
+                at where the surname begins, and the profile stores them
+                separately — the mockup shows one field, but the data model and
+                Mozambican naming both argue against it. */}
+            <div className="grid grid-cols-2 gap-3">
+              <form.Field name="firstName">
+                {(field) => (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={field.name}>{t("firstName")}</Label>
+                    <Input
+                      id={field.name}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+              </form.Field>
+              <form.Field name="lastName">
+                {(field) => (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={field.name}>{t("lastName")}</Label>
+                    <Input
+                      id={field.name}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+              </form.Field>
             </div>
-          )}
-        </form.Field>
 
-        <form.Field name="password">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={field.name}>{t("password")}</Label>
-              <InputGroup>
-                <InputGroupInput
-                  id={field.name}
-                  type={showPassword ? "text" : "password"}
-                  placeholder={t("createPassword")}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  required
-                  minLength={8}
-                />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton onClick={() => setShowPassword((v) => !v)}>
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-              <p className="text-xs text-[var(--color-muted-foreground)]">{t("passwordHint")}</p>
+            <form.Field name="email">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={field.name}>{t("email")}</Label>
+                  <Input
+                    id={field.name}
+                    type="email"
+                    placeholder={t("emailPlaceholder")}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+            </form.Field>
+
+            <form.Field name="password">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={field.name}>{t("password")}</Label>
+                  <InputGroup>
+                    <InputGroupInput
+                      id={field.name}
+                      type={showPassword ? "text" : "password"}
+                      placeholder={t("createPassword")}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      required
+                      minLength={8}
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <p className="text-xs text-[var(--color-muted-foreground)]">
+                    {t("passwordHint")}
+                  </p>
+                </div>
+              )}
+            </form.Field>
+
+            <form.Field name="acceptTerms">
+              {(field) => (
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    id={field.name}
+                    checked={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                    className="mt-0.5"
+                    required
+                  />
+                  <span className="text-[var(--color-muted-foreground)]">{t("acceptTerms")}</span>
+                </label>
+              )}
+            </form.Field>
+
+            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+              {([canSubmit, isSubmitting]) => (
+                <Button type="submit" className="w-full" disabled={!canSubmit}>
+                  <UserPlus className="h-4 w-4" />
+                  {isSubmitting ? t("creatingAccount") : t("createAccount")}
+                </Button>
+              )}
+            </form.Subscribe>
+
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs text-[var(--color-muted-foreground)]">
+                {tc("orContinueWith")}
+              </span>
+              <Separator className="flex-1" />
             </div>
-          )}
-        </form.Field>
 
-        <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
-          {([canSubmit, isSubmitting]) => (
-            <Button type="submit" className="w-full" disabled={!canSubmit}>
-              <UserPlus className="h-4 w-4" />
-              {isSubmitting ? t("creatingAccount") : t("createAccount")}
-            </Button>
-          )}
-        </form.Subscribe>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  authClient.signIn.social({ provider: "google", callbackURL: "/sign-in" })
+                }
+              >
+                <GoogleIcon className="h-4 w-4" />
+                {tc("google")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  authClient.signIn.social({ provider: "microsoft", callbackURL: "/sign-in" })
+                }
+              >
+                <MicrosoftIcon className="h-4 w-4" />
+                {tc("microsoft")}
+              </Button>
+            </div>
+          </form>
 
-        <p className="text-xs text-center text-[var(--color-muted-foreground)]">
-          {t("terms")}
-        </p>
-      </form>
-    </AuthLayout>
+          <p className="text-center text-sm text-[var(--color-muted-foreground)]">
+            {t("alreadyHaveAccount")}{" "}
+            <Link to="/sign-in" className="text-[var(--color-accent)] hover:underline">
+              {t("signIn")}
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </AuthSplitLayout>
   );
 }

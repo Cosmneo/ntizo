@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
+import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
+import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-password'
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
 import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -46,6 +48,16 @@ const ProviderRouteRoute = ProviderRouteRouteImport.update({
   id: '/provider',
   path: '/provider',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PublicForgotPasswordRoute = PublicForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicResetPasswordRoute = PublicResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => PublicRouteRoute,
 } as any)
 const PublicSignInRoute = PublicSignInRouteImport.update({
   id: '/sign-in',
@@ -122,6 +134,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/forgot-password': typeof PublicForgotPasswordRoute
+  '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -139,6 +153,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof PublicForgotPasswordRoute
+  '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -160,6 +176,8 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/_public/forgot-password': typeof PublicForgotPasswordRoute
+  '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/sign-in': typeof PublicSignInRoute
   '/_public/sign-up': typeof PublicSignUpRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -181,6 +199,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/provider'
+    | '/forgot-password'
+    | '/reset-password'
     | '/sign-in'
     | '/sign-up'
     | '/admin/dashboard'
@@ -198,6 +218,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
+    | '/reset-password'
     | '/sign-in'
     | '/sign-up'
     | '/admin/dashboard'
@@ -218,6 +240,8 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/provider'
+    | '/_public/forgot-password'
+    | '/_public/reset-password'
     | '/_public/sign-in'
     | '/_public/sign-up'
     | '/admin/dashboard'
@@ -272,6 +296,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/provider'
       preLoaderRoute: typeof ProviderRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_public/forgot-password': {
+      id: '/_public/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof PublicForgotPasswordRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/reset-password': {
+      id: '/_public/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof PublicResetPasswordRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
     '/_public/sign-in': {
       id: '/_public/sign-in'
@@ -375,12 +413,16 @@ declare module '@tanstack/react-router' {
 }
 
 interface PublicRouteRouteChildren {
+  PublicForgotPasswordRoute: typeof PublicForgotPasswordRoute
+  PublicResetPasswordRoute: typeof PublicResetPasswordRoute
   PublicSignInRoute: typeof PublicSignInRoute
   PublicSignUpRoute: typeof PublicSignUpRoute
   PublicAcceptInviteTokenRoute: typeof PublicAcceptInviteTokenRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicForgotPasswordRoute: PublicForgotPasswordRoute,
+  PublicResetPasswordRoute: PublicResetPasswordRoute,
   PublicSignInRoute: PublicSignInRoute,
   PublicSignUpRoute: PublicSignUpRoute,
   PublicAcceptInviteTokenRoute: PublicAcceptInviteTokenRoute,

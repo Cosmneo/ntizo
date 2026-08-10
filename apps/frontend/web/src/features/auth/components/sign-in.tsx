@@ -5,6 +5,8 @@ import { useForm } from "@tanstack/react-form";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import {
   Button,
+  Card,
+  CardContent,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -15,7 +17,7 @@ import {
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
 import { resolveDestinationForSession } from "@/features/provider/viewmodel/post-login";
-import { AuthLayout } from "@/features/auth/components/auth-layout";
+import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 
 export function SignIn() {
@@ -51,119 +53,135 @@ export function SignIn() {
   });
 
   return (
-    <AuthLayout
-      title="Ntizo"
-      subtitle={t("signInToAccount")}
-      footer={
-        <>
-          {t("dontHaveAccount")}{" "}
-          <Link to="/sign-up" className="text-[var(--color-accent)] hover:underline">
-            {t("signUp")}
-          </Link>
-        </>
-      }
+    <AuthSplitLayout
+      pitch={t("pitchSignIn")}
+      points={[t("proofVerified"), t("proofSecurePayment"), t("proofRealReviews")]}
     >
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void form.handleSubmit();
-        }}
-      >
-        <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
-          {(error) =>
-            error ? (
-              <div className="text-sm text-[var(--color-destructive)] text-center">
-                {error.form}
-              </div>
-            ) : null
-          }
-        </form.Subscribe>
+      <Card>
+        <CardContent className="flex flex-col gap-6 p-8">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-xl font-semibold">{t("welcomeBack")}</h1>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {t("signInToAccount")}
+            </p>
+          </div>
 
-        <form.Field name="email">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={field.name}>{t("email")}</Label>
-              <Input
-                id={field.name}
-                type="email"
-                placeholder={t("emailPlaceholder")}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-                required
-              />
-            </div>
-          )}
-        </form.Field>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void form.handleSubmit();
+            }}
+          >
+            <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
+              {(error) =>
+                error ? (
+                  <div className="text-sm text-[var(--color-destructive)] text-center">
+                    {error.form}
+                  </div>
+                ) : null
+              }
+            </form.Subscribe>
 
-        <form.Field name="password">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={field.name}>{t("password")}</Label>
-              <InputGroup>
-                <InputGroupInput
-                  id={field.name}
-                  type={showPassword ? "text" : "password"}
-                  placeholder={t("passwordPlaceholder")}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  required
-                />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+            <form.Field name="email">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={field.name}>{t("email")}</Label>
+                  <Input
+                    id={field.name}
+                    type="email"
+                    placeholder={t("emailPlaceholder")}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+            </form.Field>
+
+            <form.Field name="password">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={field.name}>{t("password")}</Label>
+                  <InputGroup>
+                    <InputGroupInput
+                      id={field.name}
+                      type={showPassword ? "text" : "password"}
+                      placeholder={t("passwordPlaceholder")}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      required
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <Link
+                    to="/forgot-password"
+                    className="self-end text-xs text-[var(--color-accent)] hover:underline"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
+                    {t("forgotPassword")}
+                  </Link>
+                </div>
+              )}
+            </form.Field>
+
+            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+              {([canSubmit, isSubmitting]) => (
+                <Button type="submit" className="w-full" disabled={!canSubmit}>
+                  <LogIn className="h-4 w-4" />
+                  {isSubmitting ? t("signingIn") : t("signIn")}
+                </Button>
+              )}
+            </form.Subscribe>
+
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs text-[var(--color-muted-foreground)]">
+                {tc("orContinueWith")}
+              </span>
+              <Separator className="flex-1" />
             </div>
-          )}
-        </form.Field>
 
-        <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
-          {([canSubmit, isSubmitting]) => (
-            <Button type="submit" className="w-full" disabled={!canSubmit}>
-              <LogIn className="h-4 w-4" />
-              {isSubmitting ? t("signingIn") : t("signIn")}
-            </Button>
-          )}
-        </form.Subscribe>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  authClient.signIn.social({ provider: "google", callbackURL: "/sign-in" })
+                }
+              >
+                <GoogleIcon className="h-4 w-4" />
+                {tc("google")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  authClient.signIn.social({ provider: "microsoft", callbackURL: "/sign-in" })
+                }
+              >
+                <MicrosoftIcon className="h-4 w-4" />
+                {tc("microsoft")}
+              </Button>
+            </div>
+          </form>
 
-        <div className="flex items-center gap-3">
-          <Separator className="flex-1" />
-          <span className="text-xs text-[var(--color-muted-foreground)]">
-            {tc("orContinueWith")}
-          </span>
-          <Separator className="flex-1" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              authClient.signIn.social({ provider: "google", callbackURL: "/sign-in" })
-            }
-          >
-            <GoogleIcon className="h-4 w-4" />
-            {tc("google")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              authClient.signIn.social({ provider: "microsoft", callbackURL: "/sign-in" })
-            }
-          >
-            <MicrosoftIcon className="h-4 w-4" />
-            {tc("microsoft")}
-          </Button>
-        </div>
-      </form>
-    </AuthLayout>
+          <p className="text-center text-sm text-[var(--color-muted-foreground)]">
+            {t("dontHaveAccount")}{" "}
+            <Link to="/sign-up" className="text-[var(--color-accent)] hover:underline">
+              {t("signUp")}
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </AuthSplitLayout>
   );
 }
