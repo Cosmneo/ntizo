@@ -1,4 +1,4 @@
-import type { Locale } from "@ntizo/shared";
+import type { Locale, Gender } from "@ntizo/shared";
 import type { ExecutionContext } from "../../../../../shared/infrastructure/execution-context";
 
 /**
@@ -19,6 +19,9 @@ export interface UpdateMyProfileInput {
   avatarUrl?: string | null;
   language?: Locale;
   timezone?: string;
+  /** ISO `YYYY-MM-DD`, or null to clear. Converted to a Date in the command. */
+  dateOfBirth?: string | null;
+  gender?: Gender | null;
 }
 
 export interface UpdateMyProfilePort {

@@ -1,6 +1,6 @@
 // Profile aggregate — extended personal data, one-to-one with User.
 
-import type { Locale } from "@ntizo/shared";
+import type { Locale, Gender } from "@ntizo/shared";
 
 export interface ProfileProps {
   userId: string;
@@ -13,7 +13,7 @@ export interface ProfileProps {
   language: Locale;
   timezone: string;
   dateOfBirth: Date | null;
-  gender: string | null;
+  gender: Gender | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -140,6 +140,21 @@ export class Profile {
   updatePreferences(params: { language?: Locale; timezone?: string }): void {
     if (params.language !== undefined) this.props.language = params.language;
     if (params.timezone !== undefined) this.props.timezone = params.timezone;
+    this.props.updatedAt = new Date();
+  }
+
+  /**
+   * Date of birth and gender, kept apart from name and contact.
+   *
+   * Its own method because the two fields are optional personal details a user
+   * may never fill in and may later clear — folding them into `updateContact`
+   * would make "I changed my bio" and "I disclosed my gender" the same
+   * operation, and make a null in one indistinguishable from a null in the
+   * other at the call site.
+   */
+  updatePersonal(params: { dateOfBirth?: Date | null; gender?: Gender | null }): void {
+    if (params.dateOfBirth !== undefined) this.props.dateOfBirth = params.dateOfBirth;
+    if (params.gender !== undefined) this.props.gender = params.gender;
     this.props.updatedAt = new Date();
   }
 

@@ -34,11 +34,11 @@
     }
   },
   "devDependencies": {
-    "@ntizo/typescript-config": "workspace:*",
-    "typescript": "5.9.2",
-    "vitest": "^4.1.4",
     "@ntizo/eslint-config": "workspace:*",
-    "eslint": "^9.0.0"
+    "@ntizo/typescript-config": "workspace:*",
+    "eslint": "^9.0.0",
+    "typescript": "5.9.2",
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "zod": "^4.4.3"

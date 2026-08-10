@@ -48,8 +48,10 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
       input.avatarUrl !== undefined;
     const touchesPreferences =
       input.language !== undefined || input.timezone !== undefined;
+    const touchesPersonal =
+      input.dateOfBirth !== undefined || input.gender !== undefined;
 
-    if (!touchesName && !touchesContact && !touchesPreferences) return;
+    if (!touchesName && !touchesContact && !touchesPreferences && !touchesPersonal) return;
 
     if (touchesName) {
       profile.updateName({
@@ -69,6 +71,20 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
       profile.updatePreferences({
         language: input.language,
         timezone: input.timezone,
+      });
+    }
+    if (touchesPersonal) {
+      profile.updatePersonal({
+        // The input carries an ISO date string; the aggregate holds a Date.
+        // `null` clears the field and must survive the conversion, so it is
+        // checked before the constructor rather than passed into it.
+        dateOfBirth:
+          input.dateOfBirth === undefined
+            ? undefined
+            : input.dateOfBirth === null
+              ? null
+              : new Date(input.dateOfBirth),
+        gender: input.gender,
       });
     }
 

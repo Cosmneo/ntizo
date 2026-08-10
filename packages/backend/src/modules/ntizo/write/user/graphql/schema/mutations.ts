@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LOCALES, genderSchema } from "@ntizo/shared";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
@@ -27,8 +28,15 @@ export const updateMyProfile = defineMutation({
       phoneNumber: z.string().nullable().optional(),
       bio: z.string().nullable().optional(),
       avatarUrl: z.string().url().nullable().optional(),
-      language: z.enum(["pt-MZ", "pt-PT", "en-US"]).optional(),
+      // Derived from the shared list, not restated. The literal here carried
+      // three locales while the web app shipped eight, so a user who picked
+      // Deutsch in the header could never save it.
+      language: z.enum(LOCALES).optional(),
       timezone: z.string().min(1).optional(),
+      // The columns already existed on the profile; only the input was
+      // missing them, so nothing here needs a migration.
+      dateOfBirth: z.string().date().nullable().optional(),
+      gender: genderSchema.nullable().optional(),
     }),
   ),
   output: zodSchema(okResult),

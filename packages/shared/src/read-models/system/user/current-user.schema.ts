@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { userRoleSchema } from "../../../enums/user-enums";
+import { LOCALES } from "../../../enums/system-enums";
 
 export const currentUserReadModel = z.object({
   id: z.string().min(1),
@@ -16,7 +17,9 @@ export const currentUserReadModel = z.object({
   avatarUrl: z.string().nullable(),
   phoneNumber: z.string().nullable(),
   bio: z.string().nullable(),
-  language: z.enum(["pt-MZ", "pt-PT", "en-US"]),
+  // Derived, not restated — the third copy of this list was the one that
+  // drifted out of step with the eight locales the app ships.
+  language: z.enum(LOCALES),
   timezone: z.string(),
 });
 

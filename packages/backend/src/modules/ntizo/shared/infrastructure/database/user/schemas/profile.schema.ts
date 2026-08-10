@@ -1,5 +1,5 @@
 import { date, text, timestamp } from "drizzle-orm/pg-core";
-import type { Locale } from "@ntizo/shared";
+import type { Gender, Locale } from "@ntizo/shared";
 import { user, userSchema } from "./user.schema";
 
 // profile — extended, one row per user, FK to user.id.
@@ -16,7 +16,7 @@ export const profile = userSchema.table("profile", {
   language: text("language").$type<Locale>().notNull().default("en-US"),
   timezone: text("timezone").notNull().default("UTC"),
   dateOfBirth: date("date_of_birth"),
-  gender: text("gender"),
+  gender: text("gender").$type<Gender>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

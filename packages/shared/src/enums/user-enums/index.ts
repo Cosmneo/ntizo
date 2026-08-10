@@ -35,3 +35,17 @@ export function toUserRole(value: unknown): UserRole {
 export type UserStatus = "active" | "pending" | "suspended";
 
 export type VerificationStatus = "pending" | "verified" | "rejected";
+
+/**
+ * Gender, as offered on the profile.
+ *
+ * "undisclosed" is a value the user can choose, distinct from the column
+ * being null — null means "never asked or never answered", this means "asked
+ * and declined". Collapsing the two would lose the difference the moment
+ * anyone reports on it.
+ */
+export const GENDERS = ["female", "male", "other", "undisclosed"] as const;
+
+export const genderSchema = z.enum(GENDERS);
+
+export type Gender = (typeof GENDERS)[number];
