@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { DEFAULT_LOCALE } from "@ntizo/shared";
 import { CreateCategoryCommand } from "../app/use-cases/create-category.command";
 import { UpdateCategoryCommand } from "../app/use-cases/update-category.command";
+import { ReorderCategoriesCommand } from "../app/use-cases/reorder-categories.command";
 import type {
   CategoryRepositoryPort,
   CreateCategoryInput,
@@ -13,6 +14,15 @@ class FakeRepo implements CategoryRepositoryPort {
   updated: UpdateCategoryInput[] = [];
   taken = new Set<string>();
   existingIds = new Set<string>(["cat-1"]);
+  highestSort = 6;
+  reordered: readonly string[] | null = null;
+
+  async nextSortOrder(): Promise<number> {
+    return this.highestSort + 1;
+  }
+  async reorder(orderedIds: readonly string[]): Promise<void> {
+    this.reordered = orderedIds;
+  }
 
   async create(input: CreateCategoryInput): Promise<string> {
     this.created.push(input);
@@ -105,9 +115,17 @@ describe("CreateCategoryCommand", () => {
     });
   });
 
-  it("defaults to active, at the front of no particular order", async () => {
+  it("defaults to active, and appends after everything that exists", async () => {
+    // Not zero. Every new category landing at position zero puts the newest
+    // thing first and ties it with every other one created the same way — and
+    // a tie is broken by whatever the database feels like.
     await create.execute({ translations: [base()] });
-    expect(repo.created[0]).toMatchObject({ isActive: true, sortOrder: 0 });
+    expect(repo.created[0]).toMatchObject({ isActive: true, sortOrder: 7 });
+  });
+
+  it("still honours a position when one is given", async () => {
+    await create.execute({ sortOrder: 2, translations: [base()] });
+    expect(repo.created[0]!.sortOrder).toBe(2);
   });
 });
 
@@ -153,5 +171,36 @@ describe("UpdateCategoryCommand", () => {
   it("passes a null image through, so removing one is expressible", async () => {
     await update.execute({ categoryId: "cat-1", imageKey: null });
     expect(repo.updated[0]).toHaveProperty("imageKey", null);
+  });
+});
+
+describe("ReorderCategoriesCommand", () => {
+  let reorder: ReorderCategoriesCommand;
+  beforeEach(() => {
+    repo.existingIds = new Set(["a", "b", "c"]);
+    reorder = new ReorderCategoriesCommand(repo);
+  });
+
+  it("passes the order through as given", async () => {
+    await reorder.execute({ orderedIds: ["c", "a", "b"] });
+    expect(repo.reordered).toEqual(["c", "a", "b"]);
+  });
+
+  it("refuses an id that is not there, before writing anything", async () => {
+    // Checked up front: a partial reorder leaves the list in a state nobody
+    // asked for and no screen explains.
+    await expect(
+      reorder.execute({ orderedIds: ["a", "ghost", "b"] }),
+    ).rejects.toMatchObject({ code: "CATEGORY_NOT_FOUND" });
+    expect(repo.reordered).toBeNull();
+  });
+
+  it("refuses a list with the same id twice", async () => {
+    // A client that has lost track of its own rows. Deduplicating quietly
+    // would write an order that is missing something.
+    await expect(
+      reorder.execute({ orderedIds: ["a", "b", "a"] }),
+    ).rejects.toMatchObject({ code: "CATEGORY_ORDER_INVALID" });
+    expect(repo.reordered).toBeNull();
   });
 });

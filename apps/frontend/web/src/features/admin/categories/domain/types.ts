@@ -50,7 +50,6 @@ export function emptyForm(): {
   icon: string;
   imageKey: string | null;
   imageUrl: string | null;
-  sortOrder: number;
   isActive: boolean;
   names: Record<Locale, string>;
 } {
@@ -59,7 +58,6 @@ export function emptyForm(): {
     icon: "",
     imageKey: null,
     imageUrl: null,
-    sortOrder: 0,
     isActive: true,
     names: Object.fromEntries(LOCALES.map((l) => [l, ""])) as Record<Locale, string>,
   };
@@ -71,7 +69,6 @@ export function formFrom(category: AdminCategory): ReturnType<typeof emptyForm> 
   form.icon = category.icon ?? "";
   form.imageKey = category.imageKey;
   form.imageUrl = category.imageUrl;
-  form.sortOrder = category.sortOrder;
   form.isActive = category.isActive;
   for (const t of category.translations) form.names[t.locale] = t.name;
   return form;
@@ -89,3 +86,25 @@ export function canSave(names: Record<Locale, string>): boolean {
 
 export { DEFAULT_LOCALE, LOCALES };
 export type { Locale };
+
+/**
+ * The list with one row moved by `delta` places.
+ *
+ * Written here rather than in the page so the drag path and the menu path
+ * produce the same result from the same code — two implementations of "move
+ * this up" is two chances for them to disagree about what the ends do.
+ * Clamped: moving the first row up is a no-op, not a wrap to the bottom.
+ */
+export function moved<T extends { id: string }>(
+  rows: readonly T[],
+  id: string,
+  delta: number,
+): T[] {
+  const from = rows.findIndex((r) => r.id === id);
+  if (from < 0) return [...rows];
+  const to = Math.min(Math.max(from + delta, 0), rows.length - 1);
+  if (to === from) return [...rows];
+  const next = [...rows];
+  next.splice(to, 0, next.splice(from, 1)[0]!);
+  return next;
+}

@@ -80,7 +80,6 @@
   "categoryIcon": "Icona",
   "categoryIconHint": "Nome di un'icona Lucide, per i posti troppo piccoli per l'immagine.",
   "categoryOrder": "Ordine",
-  "categoryOrderHint": "Posizione nella pagina iniziale. Il minore viene prima.",
   "categoryActive": "Visibile ai clienti",
   "categoryActiveHint": "Nascondere non elimina: servizi e prenotazioni continuano a puntarci.",
   "categoryImage": "Immagine",
@@ -98,7 +97,8 @@
   "categoryError": {
     "CATEGORY_CODE_TAKEN": "Esiste già una categoria con questo codice.",
     "CATEGORY_DEFAULT_NAME_REQUIRED": "Manca il nome nella lingua di base.",
-    "CATEGORY_NOT_FOUND": "Quella categoria non esiste più."
+    "CATEGORY_NOT_FOUND": "Quella categoria non esiste più.",
+    "CATEGORY_ORDER_INVALID": "L'elenco è cambiato nel frattempo. Ricarica e riprova."
   },
   "categoryUploadError": {
     "TOO_LARGE": "L'immagine è troppo grande.",
@@ -115,5 +115,9 @@
     "it-IT": "Italiano",
     "nl-NL": "Olandese"
   },
+  "categoryReorder": "Riordina",
+  "categoryReorderSearching": "Cancella la ricerca per riordinare.",
+  "categoryMoveUp": "Sposta su",
+  "categoryMoveDown": "Sposta giù",
   "close": "Chiudi"
 }

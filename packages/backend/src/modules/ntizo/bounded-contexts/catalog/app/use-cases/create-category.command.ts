@@ -49,11 +49,16 @@ export class CreateCategoryCommand {
     if (!code) throw new CategoryNameRequiredError();
     if (await this.repo.codeTaken(code)) throw new CategoryCodeTakenError(code);
 
+    // Appended, not dropped at zero. The form no longer asks for a position —
+    // nobody creating a category knows what number it should hold — and the
+    // list is reordered by dragging afterwards.
+    const sortOrder = input.sortOrder ?? (await this.repo.nextSortOrder());
+
     const categoryId = await this.repo.create({
       code,
       icon: input.icon ?? null,
       imageKey: input.imageKey ?? null,
-      sortOrder: input.sortOrder ?? 0,
+      sortOrder,
       isActive: input.isActive ?? true,
       translations: translations.map((t) => ({
         locale: t.locale,

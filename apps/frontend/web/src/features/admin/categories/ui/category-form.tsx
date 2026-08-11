@@ -97,7 +97,6 @@ export function CategoryFormSheet({
         ...(editing || form.code.trim() ? { code: form.code.trim() } : {}),
         icon: form.icon.trim() || null,
         imageKey: form.imageKey,
-        sortOrder: form.sortOrder,
         isActive: form.isActive,
         // Every language, including the blank ones. The server drops them, and
         // sending them is what makes clearing a translation expressible — a
@@ -235,28 +234,17 @@ export function CategoryFormSheet({
             />
           </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label={t("categoryIcon")} hint={t("categoryIconHint")}>
-              <Input
-                value={form.icon}
-                onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
-                placeholder="wrench"
-              />
-            </Field>
-            <Field label={t("categoryOrder")} hint={t("categoryOrderHint")}>
-              <Input
-                type="number"
-                min={0}
-                value={String(form.sortOrder)}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    sortOrder: Number(e.target.value) || 0,
-                  }))
-                }
-              />
-            </Field>
-          </div>
+          {/* No position field. Nobody creating a category knows what number
+              it should hold, and typing one is the wrong way to express "after
+              that one" — the list is dragged into order instead, and a new
+              category is appended by the server. */}
+          <Field label={t("categoryIcon")} hint={t("categoryIconHint")}>
+            <Input
+              value={form.icon}
+              onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
+              placeholder="wrench"
+            />
+          </Field>
 
           <label className="flex items-start gap-3">
             <Checkbox

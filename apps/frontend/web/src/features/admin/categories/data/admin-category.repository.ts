@@ -15,6 +15,11 @@ const CREATE = `
     categoryCreate(input: $input) { categoryId }
   }`;
 
+const REORDER = `
+  mutation CategoryReorder($input: CategoryReorderInput!) {
+    categoryReorder(input: $input) { ok }
+  }`;
+
 const UPDATE = `
   mutation CategoryUpdate($input: CategoryUpdateInput!) {
     categoryUpdate(input: $input) { ok }
@@ -43,6 +48,10 @@ export const adminCategoryQueries = {
       },
     }),
 };
+
+export async function reorderCategories(orderedIds: string[]): Promise<void> {
+  await sessionGraphql(REORDER, { input: { orderedIds } });
+}
 
 export async function saveCategory(input: SaveCategoryInput): Promise<void> {
   if (input.categoryId) {

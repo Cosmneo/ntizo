@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { GripVertical, Search, SlidersHorizontal } from "lucide-react";
 import { Button, Input, Skeleton, cn } from "@ntizo/frontend-ui";
 
 /**
@@ -81,6 +82,7 @@ export function CollectionCard({
   noMatchesText,
   filtered,
   skeletonPlaceholders = 5,
+  reorder,
 }: {
   title: string;
   shown: number;
@@ -110,6 +112,29 @@ export function CollectionCard({
   filtered: boolean;
   /** How many rows to draw while loading. Five fills a screen without lying. */
   skeletonPlaceholders?: number;
+  /**
+   * Makes the table rows draggable, and reports the new order.
+   *
+   * Desktop only, and that is not an omission: HTML5 drag events do not fire
+   * for touch, and a handle a finger cannot use is a control that lies about
+   * being one. A list that offers this must also offer moving a row from its
+   * menu — which works by keyboard, by touch, and by mouse — and that lives
+   * with the caller, because only the caller knows what its rows can do.
+   */
+  reorder?: {
+    /** The complete list of row keys, in their new order. */
+    onReorder: (orderedKeys: string[]) => void;
+    /** Accessible name for the handle, e.g. "Reorder". */
+    handleLabel: string;
+    /**
+     * Set when dragging cannot express a real order right now — a filtered or
+     * searched list is a subset, and rearranging a subset says nothing about
+     * where those rows sit among the ones not shown. The handles are drawn
+     * disabled with this as their tooltip rather than removed, so the control
+     * does not vanish and reappear as somebody types.
+     */
+    disabledReason?: string | undefined;
+  };
 }) {
   const { t } = useTranslation("provider");
   const isEmpty = !loading && rows.length === 0;
@@ -117,6 +142,19 @@ export function CollectionCard({
   // rest become cells on desktop and label/value pairs on mobile.
   const restColumns = columns.slice(1);
   const emptyMessage = filtered ? noMatchesText : emptyText;
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const canDrag = Boolean(reorder && !reorder.disabledReason);
+
+  /** Moves the dragged row to where it was dropped and reports the whole list. */
+  function dropOn(targetKey: string) {
+    if (!reorder || !draggingKey || draggingKey === targetKey) return;
+    const keys = rows.map((r) => r.key);
+    const from = keys.indexOf(draggingKey);
+    const to = keys.indexOf(targetKey);
+    if (from < 0 || to < 0) return;
+    keys.splice(to, 0, keys.splice(from, 1)[0]!);
+    reorder.onReorder(keys);
+  }
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
@@ -164,6 +202,9 @@ export function CollectionCard({
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-y border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-muted)_35%,transparent)]">
+              {/* Deliberately unlabelled: a column header over a drag handle
+                  would be read out on every row and names nothing. */}
+              {reorder && <th className="w-8" aria-hidden="true" />}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -184,11 +225,12 @@ export function CollectionCard({
                 columns={columns}
                 restColumns={restColumns}
                 count={skeletonPlaceholders}
+                hasHandle={Boolean(reorder)}
               />
             ) : isEmpty ? (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={columns.length + (reorder ? 1 : 0)}
                   className="type-body px-5 py-14 text-center text-[var(--color-muted-foreground)]"
                 >
                   {emptyMessage}
@@ -198,8 +240,43 @@ export function CollectionCard({
               rows.map((row) => (
                 <tr
                   key={row.key}
-                  className="border-b border-[var(--color-border)] last:border-b-0"
+                  // `draggable` on the row, not on the handle: a handle alone
+                  // drags a 16px icon and shows the reader nothing about what
+                  // is moving. The handle is what says the row can move.
+                  draggable={canDrag}
+                  onDragStart={() => setDraggingKey(row.key)}
+                  onDragEnd={() => setDraggingKey(null)}
+                  onDragOver={(e) => {
+                    // Without this the drop event never fires — the default
+                    // action of dragover is to refuse the drop.
+                    if (canDrag) e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    dropOn(row.key);
+                    setDraggingKey(null);
+                  }}
+                  className={cn(
+                    "border-b border-[var(--color-border)] last:border-b-0",
+                    draggingKey === row.key && "opacity-40",
+                  )}
                 >
+                  {reorder && (
+                    <td className="w-8 pl-3">
+                      <span
+                        aria-label={reorder.handleLabel}
+                        title={reorder.disabledReason ?? reorder.handleLabel}
+                        className={cn(
+                          "grid h-8 w-5 place-items-center text-[var(--color-muted-foreground)]",
+                          canDrag
+                            ? "cursor-grab active:cursor-grabbing"
+                            : "cursor-not-allowed opacity-40",
+                        )}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </span>
+                    </td>
+                  )}
                   <td className="py-3.5 pl-5">{row.primary}</td>
                   {restColumns.map((column) => (
                     <td
@@ -310,10 +387,12 @@ function TableSkeleton({
   columns,
   restColumns,
   count,
+  hasHandle,
 }: {
   columns: readonly CollectionColumn[];
   restColumns: readonly CollectionColumn[];
   count: number;
+  hasHandle: boolean;
 }) {
   return (
     <>
@@ -322,6 +401,7 @@ function TableSkeleton({
           key={i}
           className="border-b border-[var(--color-border)] last:border-b-0"
         >
+          {hasHandle && <td className="w-8" />}
           <td className={cn("py-3.5", columns[0]?.className ?? "pl-5")}>
             <PrimarySkeleton />
           </td>

@@ -36,6 +36,10 @@ export function createCatalogWriteHandlers(mod: CatalogWriteModule) {
       requireAdmin(ctx);
       return uc.createCategory.execute(args.input);
     })
+    .handle("category.reorder", async (args, ctx) => {
+      requireAdmin(ctx);
+      return uc.reorderCategories.execute({ orderedIds: args.input.orderedIds });
+    })
     .handle("category.update", async (args, ctx) => {
       requireAdmin(ctx);
       const { categoryId, ...rest } = args.input;

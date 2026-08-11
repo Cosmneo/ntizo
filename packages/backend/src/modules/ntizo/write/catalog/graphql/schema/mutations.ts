@@ -54,11 +54,26 @@ export const updateCategory = defineMutation({
   docs: { summary: "Update a service category", tags: ["Admin", "Catalog"] },
 });
 
+/**
+ * A complete order, not a single position.
+ *
+ * `min(1)` because an empty list is a client bug, not an instruction to leave
+ * everything alone — and silently accepting it would hide the bug.
+ */
+export const reorderCategories = defineMutation({
+  input: zodSchema(
+    z.object({ orderedIds: z.array(z.string().min(1)).min(1).max(500) }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Set the display order of every category", tags: ["Admin", "Catalog"] },
+});
+
 export const catalogWriteSchema = defineGraphQLSchema(
   {
     category: {
       create: createCategory,
       update: updateCategory,
+      reorder: reorderCategories,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

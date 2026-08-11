@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, MoreHorizontal, Plus } from "lucide-react";
 import {
   Badge,
   Button,
@@ -13,12 +13,15 @@ import { CollectionCard } from "@/shared/components/collection-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
 import { CategoryFormSheet } from "./category-form";
+import { adminCategoryQueries } from "../data/admin-category.repository";
 import {
   useAdminCategories,
+  useReorderCategories,
   useSaveCategory,
 } from "../viewmodel/use-admin-categories";
 import {
   adminName,
+  moved,
   translatedCount,
   TOTAL_LOCALES,
   type AdminCategory,
@@ -40,8 +43,12 @@ export function AdminCategoriesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const query = useAdminCategories(search.trim() ? { search: search.trim() } : {});
+  const listInput = search.trim() ? { search: search.trim() } : {};
+  const query = useAdminCategories(listInput);
   const save = useSaveCategory();
+  const reorder = useReorderCategories(
+    adminCategoryQueries.all(listInput).queryKey,
+  );
 
   usePageHeader(t("categoriesTitle"), t("categoriesSubtitle"));
   usePageAction(
@@ -58,6 +65,15 @@ export function AdminCategoriesPage() {
   );
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
+  // Dragging within a search result would be rearranging a subset, which says
+  // nothing about where those rows sit among the ones not shown. The handles
+  // stay, disabled, with the reason as their tooltip — vanishing controls are
+  // worse than refused ones.
+  const searching = search.trim() !== "";
+
+  function applyOrder(next: readonly AdminCategory[]) {
+    reorder.mutate(next.map((c) => c.id));
+  }
 
   function openEdit(category: AdminCategory) {
     setEditing(category);
@@ -110,7 +126,15 @@ export function AdminCategoriesPage() {
         ]}
         emptyText={t("categoriesEmpty")}
         noMatchesText={t("categoriesNoMatches")}
-        filtered={search.trim() !== ""}
+        filtered={searching}
+        reorder={{
+          handleLabel: t("categoryReorder"),
+          onReorder: (keys) => {
+            const byId = new Map(rows.map((c) => [c.id, c]));
+            applyOrder(keys.flatMap((k) => (byId.has(k) ? [byId.get(k)!] : [])));
+          },
+          ...(searching ? { disabledReason: t("categoryReorderSearching") } : {}),
+        }}
         rows={rows.map((category) => {
           const translated = translatedCount(category);
           return {
@@ -143,6 +167,9 @@ export function AdminCategoriesPage() {
             actions: (
               <RowActions
                 category={category}
+                isFirst={rows[0]?.id === category.id}
+                isLast={rows[rows.length - 1]?.id === category.id}
+                onMove={(delta) => applyOrder(moved(rows, category.id, delta))}
                 onEdit={() => openEdit(category)}
                 onToggle={() =>
                   save.mutate({
@@ -207,10 +234,16 @@ function CategoryCell({
 
 function RowActions({
   category,
+  isFirst,
+  isLast,
+  onMove,
   onEdit,
   onToggle,
 }: {
   category: AdminCategory;
+  isFirst: boolean;
+  isLast: boolean;
+  onMove: (delta: number) => void;
   onEdit: () => void;
   onToggle: () => void;
 }) {
@@ -230,6 +263,19 @@ function RowActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={onEdit}>{t("categoryEdit")}</DropdownMenuItem>
+        {/* The same reordering, reachable without a mouse. HTML5 drag events
+            do not fire for touch and cannot be driven from a keyboard, so a
+            list whose only way to reorder is dragging cannot be reordered by
+            most of the ways people use one. Disabled at the ends rather than
+            hidden, so the menu does not change shape row by row. */}
+        <DropdownMenuItem disabled={isFirst} onSelect={() => onMove(-1)}>
+          <ArrowUp className="h-4 w-4" />
+          {t("categoryMoveUp")}
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={isLast} onSelect={() => onMove(1)}>
+          <ArrowDown className="h-4 w-4" />
+          {t("categoryMoveDown")}
+        </DropdownMenuItem>
         {/* Hidden, never deleted: services and bookings point at a category and
             their history has to keep meaning what it meant. */}
         <DropdownMenuItem onSelect={onToggle}>

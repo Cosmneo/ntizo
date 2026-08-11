@@ -46,3 +46,13 @@ export class CategoryNotFoundError extends NotFoundError {
     this.name = "CategoryNotFoundError";
   }
 }
+
+export class CategoryOrderInvalidError extends UnprocessableError {
+  constructor(reason: string) {
+    super({
+      message: `The requested category order is not usable: ${reason}`,
+      code: "CATEGORY_ORDER_INVALID",
+    });
+    this.name = "CategoryOrderInvalidError";
+  }
+}

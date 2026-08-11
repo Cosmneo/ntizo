@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   category,
@@ -73,6 +73,30 @@ export class DrizzleCategoryRepository implements CategoryRepositoryPort {
         }
       }
     });
+  }
+
+  async nextSortOrder(): Promise<number> {
+    const [row] = await getDb()
+      .select({ max: sql<number | null>`max(${category.sortOrder})` })
+      .from(category);
+    return (row?.max ?? -1) + 1;
+  }
+
+  async reorder(orderedIds: readonly string[]): Promise<void> {
+    // One UPDATE with a CASE, not one per row. A loop would leave the list
+    // half-reordered for as long as it ran, and any read landing in the middle
+    // would see two categories claiming the same position.
+    const cases = sql.join(
+      orderedIds.map((id, i) => sql`when ${category.id} = ${id}::uuid then ${i}`),
+      sql` `,
+    );
+    await getDb()
+      .update(category)
+      .set({
+        sortOrder: sql`case ${cases} else ${category.sortOrder} end`,
+        updatedAt: new Date(),
+      })
+      .where(inArray(category.id, [...orderedIds]));
   }
 
   async codeTaken(code: string, exceptId?: string): Promise<boolean> {

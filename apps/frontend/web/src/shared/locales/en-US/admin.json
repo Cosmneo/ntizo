@@ -80,7 +80,6 @@
   "categoryIcon": "Icon",
   "categoryIconHint": "A Lucide icon name, for the places too small for the image.",
   "categoryOrder": "Order",
-  "categoryOrderHint": "Position on the home page. Lower comes first.",
   "categoryActive": "Visible to customers",
   "categoryActiveHint": "Hiding does not delete: services and bookings still point at it.",
   "categoryImage": "Image",
@@ -98,7 +97,8 @@
   "categoryError": {
     "CATEGORY_CODE_TAKEN": "A category with that code already exists.",
     "CATEGORY_DEFAULT_NAME_REQUIRED": "The base-language name is missing.",
-    "CATEGORY_NOT_FOUND": "That category no longer exists."
+    "CATEGORY_NOT_FOUND": "That category no longer exists.",
+    "CATEGORY_ORDER_INVALID": "The list changed in the meantime. Reload and try again."
   },
   "categoryUploadError": {
     "TOO_LARGE": "That image is too large.",
@@ -115,5 +115,9 @@
     "it-IT": "Italian",
     "nl-NL": "Dutch"
   },
+  "categoryReorder": "Reorder",
+  "categoryReorderSearching": "Clear the search to reorder.",
+  "categoryMoveUp": "Move up",
+  "categoryMoveDown": "Move down",
   "close": "Close"
 }

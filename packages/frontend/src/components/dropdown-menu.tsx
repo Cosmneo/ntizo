@@ -159,18 +159,37 @@ export function DropdownMenuContent({
 export function DropdownMenuItem({
   className,
   onSelect,
+  disabled,
   children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { onSelect?: () => void }) {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  onSelect?: () => void;
+  /**
+   * Shown, but refused.
+   *
+   * Present so an item that is only sometimes available — "move up" on the
+   * first row — can stay in place instead of disappearing, which would make
+   * the menu a different shape on every row and move the item below it under
+   * the pointer. `aria-disabled` rather than removing the handler alone: a
+   * screen reader has to be told, not just left with a control that silently
+   * does nothing.
+   */
+  disabled?: boolean;
+}) {
   const ctx = React.useContext(Ctx)!;
   return (
     <div
       role="menuitem"
+      aria-disabled={disabled || undefined}
       className={cn(
-        "flex cursor-pointer select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm outline-none hover:bg-[var(--color-secondary)]",
+        "flex select-none items-center gap-3 rounded-md px-3 py-2.5 text-sm outline-none",
+        disabled
+          ? "cursor-not-allowed opacity-40"
+          : "cursor-pointer hover:bg-[var(--color-secondary)]",
         className,
       )}
       onClick={(e) => {
+        if (disabled) return;
         props.onClick?.(e);
         onSelect?.();
         ctx.setOpen(false);

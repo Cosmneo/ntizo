@@ -31,6 +31,23 @@ export interface UpdateCategoryInput {
 
 export interface CategoryRepositoryPort {
   create(input: CreateCategoryInput): Promise<string>;
+  /**
+   * Where a new category goes: after everything that already exists.
+   *
+   * Asked for rather than defaulted to 0. Every new category landing at
+   * position zero puts the newest thing first on the home page and silently
+   * ties it with every other one created the same way — and a tie is resolved
+   * by whatever the database feels like, which is not an order anybody chose.
+   */
+  nextSortOrder(): Promise<number>;
+  /**
+   * Writes a complete order: the first id gets 0, the next 1, and so on.
+   *
+   * The whole list rather than one moved row, and one statement rather than
+   * one per row. Moving a category between two others shifts every position
+   * after it, so "set this one to 3" is only ever half an instruction.
+   */
+  reorder(orderedIds: readonly string[]): Promise<void>;
   update(input: UpdateCategoryInput): Promise<void>;
   /** For the uniqueness check, excluding a row when updating it. */
   codeTaken(code: string, exceptId?: string): Promise<boolean>;
