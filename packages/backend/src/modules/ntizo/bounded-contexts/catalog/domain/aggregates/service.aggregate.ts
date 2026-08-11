@@ -149,7 +149,7 @@ export class Service {
       minMinutes: params.minMinutes,
       stepMinutes: params.stepMinutes,
       isDefault: false,
-      sortOrder: this.props.options.length,
+      sortOrder: this.nextSortOrder(),
       isActive: true,
       translations: [{ locale: this.props.sourceLocale, name: params.name }],
     });
@@ -268,6 +268,16 @@ export class Service {
   archive(): void {
     this.props.status = "archived";
     this.touch();
+  }
+
+  // `options.length` is only the right next slot while nothing has ever
+  // been removed. Once a remove has happened the array is shorter, but a
+  // surviving option can still carry a sortOrder higher than that new
+  // length, so appending at `length` can land on a value already in use.
+  // The highest sortOrder actually present, plus one, is never claimed
+  // twice.
+  private nextSortOrder(): number {
+    return this.props.options.reduce((max, o) => Math.max(max, o.sortOrder), -1) + 1;
   }
 
   private normaliseDefaults(): void {

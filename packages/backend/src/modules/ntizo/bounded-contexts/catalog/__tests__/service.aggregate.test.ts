@@ -110,6 +110,73 @@ describe("options", () => {
       ),
     ).toBe("OPTION_DURATION_NOT_ALLOWED");
   });
+
+  it("keeps sortOrder unique after a remove and a re-add", () => {
+    // options.length is not a stable source for the next slot once
+    // something has been removed — the array shrinks, but a surviving
+    // option can still hold a sortOrder higher than the new length.
+    const s = newService();
+    s.addOption(fixedOption);
+    s.addOption({ ...fixedOption, id: "opt-2", name: "Cabelo e barba", durationMinutes: 50 });
+    s.removeOption("opt-1");
+    s.addOption({ ...fixedOption, id: "opt-3", name: "Barba", durationMinutes: 20 });
+    const sortOrders = s.toJSON().options.map((o) => o.sortOrder);
+    expect(new Set(sortOrders).size).toBe(sortOrders.length);
+  });
+});
+
+describe("updateOption", () => {
+  it("lands a valid update", () => {
+    const s = newService();
+    s.addOption(fixedOption);
+    s.updateOption("opt-1", { amountMinor: 45000 });
+    expect(s.toJSON().options[0]!.amountMinor).toBe(45000);
+  });
+
+  it("refuses an update that would make the shape illegal", () => {
+    const s = newService();
+    s.addOption(fixedOption);
+    // A fixed option has no minimum or step — its duration is the block.
+    expect(codeOf(() => s.updateOption("opt-1", { minMinutes: 30 }))).toBe(
+      "OPTION_DURATION_NOT_ALLOWED",
+    );
+    // Switching to hourly while the old fixed duration is still on the
+    // option is the same illegal shape from the other side.
+    expect(codeOf(() => s.updateOption("opt-1", { pricingMode: "hourly" }))).toBe(
+      "OPTION_DURATION_NOT_ALLOWED",
+    );
+  });
+
+  it("moves the default off the first when a second is made default", () => {
+    const s = newService();
+    s.addOption(fixedOption);
+    s.addOption({ ...fixedOption, id: "opt-2", name: "Cabelo e barba", durationMinutes: 50 });
+    s.updateOption("opt-2", { isDefault: true });
+    const options = s.toJSON().options;
+    expect(options.find((o) => o.id === "opt-1")!.isDefault).toBe(false);
+    expect(options.find((o) => o.id === "opt-2")!.isDefault).toBe(true);
+  });
+});
+
+describe("reorderOptions", () => {
+  it("applies the given order", () => {
+    const s = newService();
+    s.addOption(fixedOption);
+    s.addOption({ ...fixedOption, id: "opt-2", name: "Cabelo e barba", durationMinutes: 50 });
+    s.reorderOptions(["opt-2", "opt-1"]);
+    expect(s.toJSON().options.map((o) => o.id)).toEqual(["opt-2", "opt-1"]);
+  });
+
+  it("keeps an option the caller did not mention, at the end", () => {
+    const s = newService();
+    s.addOption(fixedOption);
+    s.addOption({ ...fixedOption, id: "opt-2", name: "Cabelo e barba", durationMinutes: 50 });
+    s.addOption({ ...fixedOption, id: "opt-3", name: "Barba", durationMinutes: 20 });
+    // opt-3 is deliberately left out of the list — a stale caller must not
+    // be able to delete it by omission.
+    s.reorderOptions(["opt-2", "opt-1"]);
+    expect(s.toJSON().options.map((o) => o.id)).toEqual(["opt-2", "opt-1", "opt-3"]);
+  });
 });
 
 describe("publishing", () => {
@@ -127,6 +194,15 @@ describe("publishing", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.removeTranslation("pt-MZ");
+    expect(codeOf(() => s.publish())).toBe("SERVICE_NAME_REQUIRED");
+  });
+
+  it("refuses to publish with only whitespace in the source name", () => {
+    // A row exists — it just has nothing in it. Checking presence alone
+    // would let this through.
+    const s = newService();
+    s.addOption(fixedOption);
+    s.setTranslation("pt-MZ", "   ", null);
     expect(codeOf(() => s.publish())).toBe("SERVICE_NAME_REQUIRED");
   });
 });
