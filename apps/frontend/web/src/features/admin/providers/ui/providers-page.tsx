@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, Badge, Skeleton } from "@ntizo/frontend-ui";
+import { Avatar, AvatarFallback, Badge } from "@ntizo/frontend-ui";
 import { ProviderStatus } from "@ntizo/shared";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { initialsFrom } from "@/shared/lib/initials";
@@ -71,24 +71,30 @@ export function AdminProvidersPage() {
         activeFilterCount={status ? 1 : 0}
         columns={[
           { key: "business", label: t("providersBusiness"), className: "pl-5" },
-          { key: "owner", label: t("providersOwner") },
-          { key: "status", label: t("providersStatus") },
+          { key: "owner", label: t("providersOwner"), skeletonWidth: "w-44" },
+          {
+            key: "status",
+            label: t("providersStatus"),
+            skeletonWidth: "w-20",
+            skeletonShape: "badge",
+          },
           {
             key: "commission",
             label: t("providersCommission"),
             align: "right",
+            skeletonWidth: "w-12",
           },
           {
             key: "applied",
             label: t("providersApplied"),
             align: "right",
             className: "pr-5",
+            skeletonWidth: "w-24",
           },
         ]}
         emptyText={t("providersEmpty")}
         noMatchesText={t("providersNoMatches")}
         filtered={search.trim() !== "" || status !== ""}
-        skeletonRows={<RowSkeletons />}
         rows={rows.map((provider) => ({
           key: provider.id,
           primary: <Business provider={provider} />,
@@ -158,37 +164,3 @@ function Business({ provider }: { provider: AdminProvider }) {
   );
 }
 
-function RowSkeletons() {
-  return (
-    <>
-      {Array.from({ length: 4 }, (_, i) => (
-        <tr
-          key={i}
-          className="border-b border-[var(--color-border)] last:border-b-0"
-        >
-          <td className="py-3.5 pl-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-              <div className="grid gap-1.5">
-                <Skeleton className="h-[19px] w-40" />
-                <Skeleton className="h-[17px] w-28" />
-              </div>
-            </div>
-          </td>
-          <td className="py-3.5 pr-4">
-            <Skeleton className="h-[19px] w-44" />
-          </td>
-          <td className="py-3.5 pr-4">
-            <Skeleton className="h-[22px] w-20 rounded-full" />
-          </td>
-          <td className="py-3.5 pr-4">
-            <Skeleton className="ml-auto h-[19px] w-12" />
-          </td>
-          <td className="py-3.5 pr-5">
-            <Skeleton className="ml-auto h-[19px] w-24" />
-          </td>
-        </tr>
-      ))}
-    </>
-  );
-}

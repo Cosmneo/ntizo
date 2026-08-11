@@ -34,6 +34,22 @@ export interface CollectionColumn {
    * label is noise on the screen with the least room for any.
    */
   hideOnCard?: boolean;
+  /**
+   * Width of this column's placeholder while loading, as a utility class.
+   *
+   * A guess at how wide the real value tends to be — an email is not a badge.
+   * Only the width: everything else about the placeholder is decided here, so
+   * the loading state cannot drift from the loaded one column by column.
+   */
+  skeletonWidth?: string;
+  /**
+   * What this column's placeholder is shaped like.
+   *
+   * A badge is 2px taller than a line of text and reads as a pill rather than
+   * a bar — the only column shape a caller has to say out loud, because it is
+   * the only one the column descriptor cannot see for itself.
+   */
+  skeletonShape?: "text" | "badge";
 }
 
 export interface CollectionRow {
@@ -64,7 +80,7 @@ export function CollectionCard({
   emptyText,
   noMatchesText,
   filtered,
-  skeletonRows,
+  skeletonPlaceholders = 5,
 }: {
   title: string;
   shown: number;
@@ -92,7 +108,8 @@ export function CollectionCard({
    * has no providers at all.
    */
   filtered: boolean;
-  skeletonRows: React.ReactNode;
+  /** How many rows to draw while loading. Five fills a screen without lying. */
+  skeletonPlaceholders?: number;
 }) {
   const { t } = useTranslation("provider");
   const isEmpty = !loading && rows.length === 0;
@@ -163,7 +180,11 @@ export function CollectionCard({
           </thead>
           <tbody>
             {loading ? (
-              skeletonRows
+              <TableSkeleton
+                columns={columns}
+                restColumns={restColumns}
+                count={skeletonPlaceholders}
+              />
             ) : isEmpty ? (
               <tr>
                 <td
@@ -204,14 +225,11 @@ export function CollectionCard({
       {/* ── Narrow screens: one card per row ──────────────────────────────── */}
       <div className="border-t border-[var(--color-border)] md:hidden">
         {loading ? (
-          <div className="grid gap-3 p-4">
-            {Array.from({ length: 3 }, (_, i) => (
-              <Skeleton
-                key={i}
-                className="h-[104px] rounded-[var(--radius-card-sm)]"
-              />
-            ))}
-          </div>
+          <CardSkeleton
+            restColumns={restColumns}
+            count={skeletonPlaceholders}
+            hasActions={columns.some((c) => c.key === "actions")}
+          />
         ) : isEmpty ? (
           <p className="type-body px-4 py-12 text-center text-[var(--color-muted-foreground)]">
             {emptyMessage}
@@ -253,6 +271,157 @@ export function CollectionCard({
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The primary column while it loads: a monogram and the two lines under it.
+ *
+ * Every list built on this card puts an avatar and a name over a secondary
+ * line in its first column, so the shape is the card's rather than each
+ * caller's — three call sites were writing the same twelve lines.
+ */
+function PrimarySkeleton() {
+  return (
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+      {/* No gap: the two lines it stands in for are adjacent `<p>` with no
+          margin between them, and 19 + 17 is exactly the 36px the avatar
+          beside them is tall. A gap here makes the text block the taller of
+          the two and every row grows by it. */}
+      <div className="grid">
+        <Skeleton className="h-[19px] w-36" />
+        <Skeleton className="h-[17px] w-52 max-w-full" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The table's loading state, drawn from the same columns as the rows.
+ *
+ * Generated rather than handed in. The callers used to pass a `<tr>` fragment
+ * they wrote by hand, which meant a new column appeared in the table and not
+ * in its skeleton — the header would say five things and the placeholder show
+ * four, and nothing fails when that happens.
+ */
+function TableSkeleton({
+  columns,
+  restColumns,
+  count,
+}: {
+  columns: readonly CollectionColumn[];
+  restColumns: readonly CollectionColumn[];
+  count: number;
+}) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <tr
+          key={i}
+          className="border-b border-[var(--color-border)] last:border-b-0"
+        >
+          <td className={cn("py-3.5", columns[0]?.className ?? "pl-5")}>
+            <PrimarySkeleton />
+          </td>
+          {restColumns.map((column) => (
+            <td
+              key={column.key}
+              className={cn(
+                "type-body py-3.5",
+                column.className ?? "pr-4",
+                column.align === "right" && "text-right",
+              )}
+            >
+              {column.key === "actions" ? (
+                <Skeleton className="ml-auto h-8 w-8 rounded-full" />
+              ) : (
+                // Inline, so the cell's line box gives the row the height the
+                // real text gives it, and so `text-align` reaches it — a
+                // block-level placeholder ignores alignment, which is what put
+                // the actions menu 88px left of its own column.
+                <Skeleton
+                  className={cn(
+                    "inline-block align-middle",
+                    column.skeletonShape === "badge"
+                      ? "h-[22px] rounded-full"
+                      : "h-[13px]",
+                    column.skeletonWidth ?? "w-24",
+                  )}
+                />
+              )}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+/**
+ * The phone's loading state: the card, not a grey block standing in for one.
+ *
+ * The block was 104px against a real card's 213 and there were three of them
+ * against eight rows, so the page more than quintupled in height the moment it
+ * loaded. Built from the same columns as the real card, the height follows
+ * from the same structure instead of from a number somebody has to remember to
+ * update.
+ */
+function CardSkeleton({
+  restColumns,
+  count,
+  hasActions,
+}: {
+  restColumns: readonly CollectionColumn[];
+  count: number;
+  hasActions: boolean;
+}) {
+  const pairs = restColumns.filter((c) => c.key !== "actions" && !c.hideOnCard);
+
+  return (
+    <div className="grid gap-3 p-4">
+      {Array.from({ length: count }, (_, i) => (
+        <div
+          key={i}
+          className="rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <PrimarySkeleton />
+            </div>
+            {hasActions && <Skeleton className="h-8 w-8 shrink-0 rounded-full" />}
+          </div>
+          <dl className="mt-3 grid gap-2 border-t border-[var(--color-border)] pt-3">
+            {pairs.map((column) => (
+              // The same classes as the real pair, so the line box sets the
+              // row height exactly as it does when there is text in it. A
+              // block placeholder sizes itself instead, and made every row
+              // 19px against the real 23 — four pairs a card, five cards, and
+              // the list grows by a hundred pixels the moment it loads.
+              <div
+                key={column.key}
+                className="flex items-baseline justify-between gap-4"
+              >
+                <dt className="type-caption shrink-0">
+                  <Skeleton className="inline-block h-[12px] w-16 align-middle" />
+                </dt>
+                <dd className="type-body m-0 min-w-0">
+                  <Skeleton
+                    className={cn(
+                      "inline-block align-middle",
+                      column.skeletonShape === "badge"
+                        ? "h-[22px] rounded-full"
+                        : "h-[13px]",
+                      column.skeletonWidth ?? "w-24",
+                    )}
+                  />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
     </div>
   );
 }

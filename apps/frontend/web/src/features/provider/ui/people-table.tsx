@@ -10,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Skeleton,
 } from "@ntizo/frontend-ui";
 import type { PeopleFilters, PersonRow, PersonStatus } from "../domain/people";
 import type { ProviderRole } from "../domain/types";
@@ -84,9 +83,14 @@ export function PeopleTable({
       activeFilterCount={activeFilterCount}
       columns={[
         { key: "person", label: t("peoplePerson"), className: "pl-5" },
-        { key: "role", label: t("peopleRole") },
-        { key: "status", label: t("peopleStatusLabel") },
-        { key: "date", label: t("peopleDate") },
+        { key: "role", label: t("peopleRole"), skeletonWidth: "w-16" },
+        {
+          key: "status",
+          label: t("peopleStatusLabel"),
+          skeletonWidth: "w-20",
+          skeletonShape: "badge",
+        },
+        { key: "date", label: t("peopleDate"), skeletonWidth: "w-24" },
         {
           key: "actions",
           label: t("peopleActions"),
@@ -97,7 +101,6 @@ export function PeopleTable({
       emptyText={t("peopleEmpty")}
       noMatchesText={t("peopleNoMatches")}
       filtered={total > 0 && rows.length !== total}
-      skeletonRows={<RowSkeletons />}
       rows={rows.map((row) => ({
         key: row.key,
         primary: <Person row={row} />,
@@ -214,37 +217,3 @@ function RowActions({
   );
 }
 
-function RowSkeletons() {
-  return (
-    <>
-      {Array.from({ length: 3 }, (_, i) => (
-        <tr
-          key={i}
-          className="border-b border-[var(--color-border)] last:border-b-0"
-        >
-          <td className="py-3.5 pl-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-              <div className="grid gap-1.5">
-                <Skeleton className="h-[19px] w-36" />
-                <Skeleton className="h-[17px] w-52" />
-              </div>
-            </div>
-          </td>
-          <td className="py-3.5 pr-4">
-            <Skeleton className="h-[19px] w-16" />
-          </td>
-          <td className="py-3.5 pr-4">
-            <Skeleton className="h-[22px] w-20 rounded-full" />
-          </td>
-          <td className="py-3.5 pr-4">
-            <Skeleton className="h-[19px] w-24" />
-          </td>
-          <td className="py-3.5 pr-5">
-            <Skeleton className="ml-auto h-8 w-8 rounded-full" />
-          </td>
-        </tr>
-      ))}
-    </>
-  );
-}

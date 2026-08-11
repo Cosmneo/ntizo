@@ -40,7 +40,6 @@ function renderCard(overrides: Partial<Parameters<typeof CollectionCard>[0]> = {
       emptyText="Nobody here yet."
       noMatchesText="Nothing matches."
       filtered={false}
-      skeletonRows={null}
       {...overrides}
     />,
   );
@@ -103,5 +102,63 @@ describe("CollectionCard", () => {
   it("offers no filter button when there is nothing to filter by", () => {
     renderCard();
     expect(screen.queryByRole("button", { name: /filter/i })).toBeNull();
+  });
+});
+
+describe("CollectionCard while loading", () => {
+  /**
+   * The loading state is generated from the same columns as the loaded one, so
+   * these assert the two agree in shape. A skeleton with fewer cells than the
+   * table has headers is the failure this replaces: nothing errors, the page
+   * just jumps when the data lands.
+   */
+  function renderLoading(overrides = {}) {
+    return renderCard({ loading: true, rows: [], shown: 0, total: 0, ...overrides });
+  }
+
+  it("draws a placeholder row per requested placeholder, with a cell per column", () => {
+    const { container } = renderLoading({ skeletonPlaceholders: 3 });
+    const bodyRows = container.querySelectorAll("tbody tr");
+    expect(bodyRows).toHaveLength(3);
+    for (const row of bodyRows) {
+      expect(row.querySelectorAll("td")).toHaveLength(columns.length);
+    }
+  });
+
+  it("draws the same number of cards as table rows", () => {
+    const { container } = renderLoading({ skeletonPlaceholders: 4 });
+    // The card list is a plain div while loading — there are no rows to list.
+    const cards = container.querySelectorAll("dl");
+    expect(cards).toHaveLength(4);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(4);
+  });
+
+  it("gives each card one labelled pair per column shown on a card", () => {
+    // person is the primary block and actions is a control, so neither is a
+    // pair: four columns leave two.
+    const { container } = renderLoading({ skeletonPlaceholders: 1 });
+    expect(container.querySelectorAll("dl > div")).toHaveLength(2);
+  });
+
+  it("follows hideOnCard, so the placeholder is not taller than the card it stands in for", () => {
+    const { container } = renderLoading({
+      skeletonPlaceholders: 1,
+      columns: [...columns.slice(0, 2), { key: "date", label: "Date", hideOnCard: true }],
+    });
+    expect(container.querySelectorAll("dl > div")).toHaveLength(1);
+  });
+
+  it("shows neither empty message while loading", () => {
+    renderLoading();
+    expect(screen.queryByText("Nobody here yet.")).toBeNull();
+    expect(screen.queryByText("Nothing matches.")).toBeNull();
+  });
+
+  it("keeps the search box live, so typing is not interrupted when the query refetches", () => {
+    // A new search term is a new query key with no cached data, which reads as
+    // loading. Replacing the input with a placeholder would unmount it after
+    // the first character and take the focus with it.
+    renderLoading({ search: "sal" });
+    expect(screen.getByPlaceholderText("Search")).toBeTruthy();
   });
 });
