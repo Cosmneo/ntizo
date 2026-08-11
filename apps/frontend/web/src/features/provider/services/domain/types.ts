@@ -2,6 +2,7 @@ import {
   LOCALES,
   type Locale,
   type ServiceBookingMode,
+  type ServiceLocationType,
   type ServicePricingMode,
   type ServiceStatus,
 } from "@ntizo/shared";
@@ -12,6 +13,12 @@ export interface ServiceTranslation {
   description: string | null;
 }
 
+/** An option's own name, per language — the same per-field translation shape as the service's. */
+export interface OptionTranslation {
+  locale: Locale;
+  name: string;
+}
+
 export interface ServiceOption {
   id: string;
   pricingMode: ServicePricingMode;
@@ -19,14 +26,21 @@ export interface ServiceOption {
   currency: string;
   durationMinutes: number | null;
   minMinutes: number | null;
+  /** Null for a fixed option — only an hourly one is booked in steps. */
+  stepMinutes: number | null;
   isDefault: boolean;
   isActive: boolean;
+  sortOrder: number;
+  translations: OptionTranslation[];
 }
 
 export interface ProviderService {
   id: string;
+  /** The write side's key for the category — `categoryCode` is what the reader sees, this is what a save call sends back. */
+  categoryId: string;
   categoryCode: string;
   sourceLocale: Locale;
+  locationType: ServiceLocationType;
   bookingMode: ServiceBookingMode;
   status: ServiceStatus;
   imageUrls: string[];
@@ -35,6 +49,19 @@ export interface ProviderService {
 }
 
 export const TOTAL_LOCALES = LOCALES.length;
+
+/**
+ * The badge colour for each status.
+ *
+ * Shared between the list and the editor's own status control so the same
+ * status never reads as two different colours depending on which screen
+ * shows it.
+ */
+export const STATUS_TONE: Record<ServiceStatus, "success" | "warning" | "neutral"> = {
+  draft: "warning",
+  published: "success",
+  archived: "neutral",
+};
 
 /**
  * The name to show the provider who owns this service.
@@ -100,4 +127,4 @@ export function formatOptionPrice(option: ServiceOption, locale: string): string
   return option.pricingMode === "hourly" ? `${amount} / h` : amount;
 }
 
-export type { Locale, ServiceBookingMode, ServicePricingMode, ServiceStatus };
+export type { Locale, ServiceBookingMode, ServiceLocationType, ServicePricingMode, ServiceStatus };

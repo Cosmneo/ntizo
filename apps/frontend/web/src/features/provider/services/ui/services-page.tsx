@@ -1,26 +1,29 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge } from "@ntizo/frontend-ui";
+import { MoreHorizontal, Plus } from "lucide-react";
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { initialsFrom } from "@/shared/lib/initials";
-import { usePageHeader } from "@/shared/lib/page-header";
+import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useServices } from "../viewmodel/use-services";
+import { ServiceFormSheet } from "./service-form";
 import {
   defaultOption,
   formatOptionPrice,
   ownerName,
   translatedCount,
+  STATUS_TONE,
   TOTAL_LOCALES,
   type ProviderService,
-  type ServiceStatus,
 } from "../domain/types";
-
-const STATUS_TONE: Record<ServiceStatus, "success" | "warning" | "neutral"> = {
-  draft: "warning",
-  published: "success",
-  archived: "neutral",
-};
 
 /**
  * A provider's own catalogue: what they sell, in what languages, and whether
@@ -38,8 +41,22 @@ export function ServicesPage() {
   const query = useServices(activeProvider?.id);
 
   const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<ProviderService | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   usePageHeader(t("nav.services"), activeProvider?.name);
+  usePageAction(
+    <Button
+      size="sm"
+      onClick={() => {
+        setEditing(null);
+        setFormOpen(true);
+      }}
+    >
+      <Plus className="h-4 w-4" />
+      <span className="hidden sm:inline">{t("serviceNew")}</span>
+    </Button>,
+  );
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
 
@@ -58,6 +75,11 @@ export function ServicesPage() {
   }, [rows, search, locale]);
 
   if (!activeProvider) return null;
+
+  function openEdit(service: ProviderService) {
+    setEditing(service);
+    setFormOpen(true);
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -89,12 +111,20 @@ export function ServicesPage() {
             label: t("servicesStatusLabel"),
             skeletonWidth: "w-20",
             skeletonShape: "badge",
+          },
+          {
+            key: "actions",
+            label: t("servicesActions"),
+            align: "right",
             className: "pr-5",
           },
         ]}
         emptyText={t("servicesEmpty")}
         noMatchesText={t("servicesNoMatches")}
         filtered={search.trim() !== ""}
+        // No `reorder`: there is no mutation to set the display order of a
+        // provider's own service list (unlike its options, which have
+        // `service.options.reorder`) — only sorting/filtering, nothing to drag.
         rows={visible.map((service) => {
           const translated = translatedCount(service);
           const option = defaultOption(service);
@@ -123,12 +153,16 @@ export function ServicesPage() {
                 </Badge>
               ),
             },
-            // No row menu: editing and publishing a service have no route or
-            // mutation yet (Task 11). The same call the admin's provider
-            // queue made — a control that opens onto nothing is worse than a
-            // row with no menu at all.
+            actions: <RowActions onEdit={() => openEdit(service)} />,
           };
         })}
+      />
+
+      <ServiceFormSheet
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        editing={editing}
+        providerId={activeProvider.id}
       />
     </div>
   );
@@ -165,5 +199,31 @@ function ServiceCell({
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Edit only — no move-up/move-down. There is no mutation that orders a
+ * provider's services against one another (only within one service's
+ * options), so unlike the admin category list's menu this one has nothing
+ * to reorder.
+ */
+function RowActions({ onEdit }: { onEdit: () => void }) {
+  const { t } = useTranslation("provider");
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <button
+          type="button"
+          aria-label={t("servicesActions")}
+          className="ml-auto grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={onEdit}>{t("serviceEdit")}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
