@@ -780,40 +780,40 @@ describe("promoteNextDefault", () => {
 
 describe("canPublish", () => {
   it("refuses a priced service with no options", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "priced",
         categoryId: "cat",
         hasSourceName: true,
         optionCount: 0,
       }),
-    ).toThrow(/SERVICE_NEEDS_OPTION/);
+    )).toBe("SERVICE_NEEDS_OPTION");
   });
 
   it("refuses a quote service that somehow has options", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "quote",
         categoryId: "cat",
         hasSourceName: true,
         optionCount: 1,
       }),
-    ).toThrow(/SERVICE_QUOTE_HAS_OPTIONS/);
+    )).toBe("SERVICE_QUOTE_HAS_OPTIONS");
   });
 
   it("refuses a service with no name in the locale it was written in", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "priced",
         categoryId: "cat",
         hasSourceName: false,
         optionCount: 1,
       }),
-    ).toThrow(/SERVICE_NAME_REQUIRED/);
+    )).toBe("SERVICE_NAME_REQUIRED");
   });
 
   it("accepts a priced service with a category, a name and one option", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "priced",
         categoryId: "cat",
@@ -1074,6 +1074,20 @@ Create `service.aggregate.test.ts`:
 import { describe, expect, it } from "bun:test";
 import { Service } from "../domain/aggregates/service.aggregate";
 
+/**
+ * The kit's errors carry `code` beside `message`, not inside it — so
+ * `toThrow(/CODE/)` matches nothing and passes or fails for the wrong reason.
+ * Assert on the code itself.
+ */
+const codeOf = (fn: () => void): unknown => {
+  try {
+    fn();
+  } catch (error) {
+    return (error as { code?: unknown }).code;
+  }
+  return undefined;
+};
+
 function newService(over: Partial<Parameters<typeof Service.create>[0]> = {}) {
   return Service.create({
     id: "svc-1",
@@ -1139,7 +1153,7 @@ describe("options", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.publish();
-    expect(() => s.removeOption("opt-1")).toThrow(/OPTION_LAST_ONE/);
+    expect(codeOf(() => s.removeOption("opt-1"))).toBe("OPTION_LAST_ONE");
   });
 
   it("allows a draft to be emptied", () => {
@@ -1152,7 +1166,7 @@ describe("options", () => {
 
   it("refuses an option on a quote service", () => {
     const s = newService({ bookingMode: "quote" });
-    expect(() => s.addOption(fixedOption)).toThrow(/SERVICE_QUOTE_HAS_OPTIONS/);
+    expect(codeOf(() => s.addOption(fixedOption))).toBe("SERVICE_QUOTE_HAS_OPTIONS");
   });
 
   it("refuses an hourly option carrying a duration", () => {
@@ -1165,13 +1179,13 @@ describe("options", () => {
         minMinutes: 120,
         stepMinutes: 60,
       }),
-    ).toThrow(/OPTION_DURATION_NOT_ALLOWED/);
+    )).toBe("OPTION_DURATION_NOT_ALLOWED");
   });
 });
 
 describe("publishing", () => {
   it("refuses a priced service with no options", () => {
-    expect(() => newService().publish()).toThrow(/SERVICE_NEEDS_OPTION/);
+    expect(codeOf(() => newService().publish())).toBe("SERVICE_NEEDS_OPTION");
   });
 
   it("publishes a quote service with none", () => {
@@ -1184,7 +1198,7 @@ describe("publishing", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.removeTranslation("pt-MZ");
-    expect(() => s.publish()).toThrow(/SERVICE_NAME_REQUIRED/);
+    expect(codeOf(() => s.publish())).toBe("SERVICE_NAME_REQUIRED");
   });
 });
 
