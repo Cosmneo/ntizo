@@ -19,6 +19,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     providerInviteRepository,
     emailService,
     inviterLocale,
+    walletRepository,
     unitOfWork,
     outboxPort,
   } = adapters;
@@ -27,6 +28,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     createProvider: new CreateProviderCommand(
       providerRepository,
       providerMemberRepository,
+      walletRepository,
       unitOfWork,
       outboxPort,
     ),

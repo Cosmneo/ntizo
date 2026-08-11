@@ -516,3 +516,35 @@ variant of that bucket ever appears, this route must not be pointed at it.
 
 **Trigger:** if media ever moves behind signed URLs, or a second, private media
 bucket is introduced.
+
+## 25. The wizard's payout details are collected and thrown away
+
+`payoutType` and `payoutIdentifier` are gathered on the wizard's payout step,
+held in the browser draft, and never sent anywhere. No mutation accepts them
+and no column stores them, so a provider fills that screen in and the platform
+has no idea where to pay them.
+
+The wallet exists now, and its balance will build up with nowhere to send it.
+
+**Trigger:** before the first real booking is paid for.
+
+## 26. The wallet has no entries yet, by design
+
+`ntizo_provider.wallet` is created with every workspace and
+`ntizo_provider.wallet_entry` is ready, but nothing writes an entry: the
+payment flows do not exist. `deltasFor` decides how each entry type moves the
+two balances and is tested; `WalletRepositoryPort` deliberately exposes only
+creation, because a port with methods nobody calls is a design guess wearing
+an interface.
+
+Decided and not yet built:
+- The platform's own ledger. Commission is 10% from the customer and 0% from
+  the provider, so it never touches a provider wallet — it is Ntizo's revenue
+  and needs somewhere of its own.
+- Payout lifecycle (requested → processing → paid → failed). `PayoutReversed`
+  exists as an entry type for the failure leg; nothing drives it.
+- Reconciliation: `balance_after_minor` is written on every entry so a
+  divergence between the cached balance and the sum of entries can be located,
+  but no job compares them.
+
+**Trigger:** the booking + payment bounded context.

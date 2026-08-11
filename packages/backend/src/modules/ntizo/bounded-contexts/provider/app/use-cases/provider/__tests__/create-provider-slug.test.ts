@@ -1,4 +1,12 @@
 import { describe, expect, it } from "bun:test";
+
+/** Records that a wallet was asked for, so a test can assert it happened. */
+const walletCalls: { providerId: string }[] = [];
+const walletRepo = {
+  async createForProvider(input: { providerId: string }) {
+    walletCalls.push(input);
+  },
+};
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { CreateProviderCommand } from "../create-provider.command";
@@ -57,9 +65,10 @@ function ctx(): ExecutionContext {
 function run(taken: string[], name = "Salão Beleza") {
   const repos = makeRepos(taken);
   const command = new CreateProviderCommand(
-    repos.providerRepo,
-    repos.memberRepo,
-    unitOfWork,
+      repos.providerRepo,
+      repos.memberRepo,
+      walletRepo as never,
+      unitOfWork,
     new SilentOutbox(),
   );
   return {
@@ -127,6 +136,55 @@ describe("slugCandidates", () => {
   });
 });
 
+describe("CreateProviderCommand — wallet", () => {
+  it("creates a wallet with the workspace", async () => {
+    // Up front, so no payment path ever has to carry a "no wallet yet" branch
+    // — and forget it in one of them.
+    walletCalls.length = 0;
+    const { execute, saved } = run([]);
+    await execute();
+
+    expect(walletCalls).toHaveLength(1);
+    expect(walletCalls[0]!.providerId).toBe(saved[0]!.id);
+  });
+
+  it("creates it inside the same transaction as the provider", async () => {
+    // A provider committed without a wallet is the state this is here to make
+    // impossible, so the two writes rise and fall together.
+    walletCalls.length = 0;
+    const repos = makeRepos([]);
+    let insideTransaction = false;
+    const failing = {
+      atomicExecute: async <T,>(work: () => Promise<T>): Promise<T> => {
+        insideTransaction = true;
+        try {
+          return await work();
+        } finally {
+          insideTransaction = false;
+        }
+      },
+    } as UnitOfWorkPort;
+
+    const seen: boolean[] = [];
+    const watchingWallet = {
+      async createForProvider() {
+        seen.push(insideTransaction);
+      },
+    };
+
+    const command = new CreateProviderCommand(
+      repos.providerRepo,
+      repos.memberRepo,
+      watchingWallet as never,
+      failing,
+      new SilentOutbox(),
+    );
+    await command.execute(ctx(), { type: "individual", name: "Salão", slug: "s" });
+
+    expect(seen).toEqual([true]);
+  });
+});
+
 describe("CreateProviderCommand — slugs", () => {
   it("saves the first free candidate", async () => {
     const { execute, saved } = run([]);
@@ -161,6 +219,7 @@ describe("CreateProviderCommand — slugs", () => {
     const command = new CreateProviderCommand(
       providerRepo,
       { async save() {} } as unknown as ProviderMemberRepositoryPort,
+      walletRepo as never,
       unitOfWork,
       new SilentOutbox(),
     );
@@ -195,6 +254,7 @@ describe("CreateProviderCommand — slugs", () => {
     const command = new CreateProviderCommand(
       { async findBySlug() { return {} as Provider; } } as unknown as ProviderRepositoryPort,
       { async save() {} } as unknown as ProviderMemberRepositoryPort,
+      walletRepo as never,
       unitOfWork,
       new SilentOutbox(),
     );

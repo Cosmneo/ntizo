@@ -3,3 +3,4 @@ export type { ProviderMemberRepositoryPort } from "./provider-member.repository.
 export type { ProviderInviteRepositoryPort } from "./provider-invite.repository.port";
 export type { EmailServicePort, EmailMessage } from "./email-service.port";
 export * from "./inviter-locale.port";
+export * from "./wallet.repository.port";

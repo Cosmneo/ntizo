@@ -12,6 +12,7 @@ import type {
 import type {
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
+  WalletRepositoryPort,
 } from "../../ports/outbound";
 import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../domain/aggregates/provider";
@@ -20,10 +21,13 @@ import { Address } from "../../../domain/value-objects/address.vo";
 import { ProviderMember } from "../../../domain/entities/provider-member";
 import { ProviderMemberAdded } from "../../../domain/events";
 
+const DEFAULT_WALLET_CURRENCY = "MZN";
+
 export class CreateProviderCommand implements CreateProviderPort {
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
+    private readonly walletRepo: WalletRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
@@ -59,6 +63,17 @@ export class CreateProviderCommand implements CreateProviderPort {
         role: "owner",
       });
       await this.memberRepo.save(ownerMember);
+
+      // In the same transaction as the provider, so a workspace never exists
+      // without somewhere for its money to land. Doing it lazily at the first
+      // payment would mean the branch "no wallet yet" has to be written into
+      // every payment path, and forgotten in one of them.
+      await this.walletRepo.createForProvider({
+        providerId: provider.id,
+        // One currency per wallet. Mozambique at launch; a provider trading in
+        // another gets another wallet rather than a wallet with two balances.
+        currency: DEFAULT_WALLET_CURRENCY,
+      });
 
       // Mirrors accept-provider-invite.command.ts: every member row must
       // have a matching event, so a future projection rebuilding

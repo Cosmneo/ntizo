@@ -1,4 +1,12 @@
 import { describe, expect, it } from "bun:test";
+
+/** Records that a wallet was asked for, so a test can assert it happened. */
+const walletCalls: { providerId: string }[] = [];
+const walletRepo = {
+  async createForProvider(input: { providerId: string }) {
+    walletCalls.push(input);
+  },
+};
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import type { ProviderListItemDTO } from "@ntizo/shared";
@@ -155,6 +163,7 @@ describe("CreateProviderCommand — atomicity", () => {
     const command = new CreateProviderCommand(
       providerRepo,
       memberRepo,
+      walletRepo as never,
       unitOfWork,
       new FakeOutboxPort(),
     );
@@ -190,6 +199,7 @@ describe("CreateProviderCommand — events", () => {
     const command = new CreateProviderCommand(
       providerRepo,
       memberRepo,
+      walletRepo as never,
       unitOfWork,
       outboxPort,
     );
