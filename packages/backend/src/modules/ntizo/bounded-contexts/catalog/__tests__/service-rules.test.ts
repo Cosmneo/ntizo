@@ -73,6 +73,18 @@ describe("assertOptionShape", () => {
       "OPTION_PRICE_INVALID",
     );
   });
+
+  it("refuses a fixed option carrying a minimum or a step", () => {
+    // The mirror of the hourly case above: a fixed option's duration IS the
+    // block, so a minimum or step left over from switching pricing modes is
+    // a value slice 2 would misread as "this is actually hourly-shaped."
+    expect(codeOf(() => assertOptionShape(fixed({ minMinutes: 30 })))).toBe(
+      "OPTION_DURATION_NOT_ALLOWED",
+    );
+    expect(codeOf(() => assertOptionShape(fixed({ stepMinutes: 15 })))).toBe(
+      "OPTION_DURATION_NOT_ALLOWED",
+    );
+  });
 });
 
 describe("withSingleDefault", () => {
@@ -91,6 +103,18 @@ describe("withSingleDefault", () => {
       { id: "a", isDefault: true, sortOrder: 0 },
       { id: "b", isDefault: true, sortOrder: 1 },
     ]);
+    expect(out.filter((o) => o.isDefault).map((o) => o.id)).toEqual(["a"]);
+  });
+
+  it("breaks a tie by sortOrder, not by array position", () => {
+    // Array position and sortOrder deliberately disagree here — "b" comes
+    // first in the array but "a" has the lower sortOrder. A test where they
+    // agree (as above) would still pass with the .sort() call deleted.
+    const out = withSingleDefault([
+      { id: "b", isDefault: true, sortOrder: 1 },
+      { id: "a", isDefault: true, sortOrder: 0 },
+    ]);
+    expect(out.map((o) => o.id)).toEqual(["a", "b"]);
     expect(out.filter((o) => o.isDefault).map((o) => o.id)).toEqual(["a"]);
   });
 
@@ -126,6 +150,19 @@ describe("promoteNextDefault", () => {
 });
 
 describe("canPublish", () => {
+  it("refuses a service with no category", () => {
+    expect(
+      codeOf(() =>
+        canPublish({
+          bookingMode: "priced",
+          categoryId: null,
+          hasSourceName: true,
+          optionCount: 1,
+        }),
+      ),
+    ).toBe("SERVICE_CATEGORY_REQUIRED");
+  });
+
   it("refuses a priced service with no options", () => {
     expect(
       codeOf(() =>
