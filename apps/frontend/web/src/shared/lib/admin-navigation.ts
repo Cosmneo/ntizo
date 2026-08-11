@@ -1,4 +1,4 @@
-import { Briefcase, LayoutDashboard, Users } from "lucide-react";
+import { Briefcase, LayoutDashboard, Tags, Users } from "lucide-react";
 import type { NavGroup } from "@/shared/lib/navigation";
 
 /** The admin zone: the platform. Same rule as the provider zone — no personal account. */
@@ -12,6 +12,9 @@ export const adminNavGroups: readonly NavGroup[] = [
       // them needs looking at.
       { titleKey: "nav.providers", url: "/admin/providers", icon: Briefcase },
       { titleKey: "nav.users", url: "/admin/users", icon: Users },
+      // The catalog last: it is set up once and revisited, where the two above
+      // are looked at daily.
+      { titleKey: "nav.categories", url: "/admin/categories", icon: Tags },
     ],
   },
 ] as const;

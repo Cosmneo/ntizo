@@ -2,13 +2,14 @@ import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Star } from "lucide-react";
+import { Skeleton } from "@ntizo/frontend-ui";
 import {
-  MOCK_CATEGORIES,
   MOCK_PROVIDERS,
   MOCK_STORIES,
   initialsOf,
 } from "@/features/landing/domain/mock-content";
 import { ScrollRail } from "./scroll-rail";
+import { useCategories } from "@/features/landing/viewmodel/use-categories";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import {
   ACCENT,
@@ -83,6 +84,13 @@ function Head({
 
 export function Categories() {
   const { t } = useTranslation("landing");
+  // Real categories now, in the reader's language: the server resolves the
+  // name and falls back to the platform's own where a translation is missing,
+  // so switching language changes these the way it changes everything else.
+  // They used to be eight translation keys, which worked only for a list
+  // developers shipped — the point of the admin form is the ninth.
+  const { data: categories, isLoading } = useCategories();
+  const rail = categories ?? [];
   return (
     <section id="categorias" className="py-20">
       <div className="page-shell">
@@ -92,17 +100,44 @@ export function Categories() {
           more={{ label: t("seeAll"), to: "/providers" }}
         />
         <ScrollRail columns={4} cardWidth="44%">
-          {MOCK_CATEGORIES.map((cat, i) => (
-            <Link key={cat.labelKey} to="/providers" className="group">
-              <SurfaceArt
-                seed={i + 1}
-                className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
-              />
-              <b className="font-rounded mt-3 block text-sm font-bold">
-                {t(cat.labelKey)}
-              </b>
-            </Link>
-          ))}
+          {isLoading
+            ? // Eight, because eight is what lands. A smaller placeholder set
+              // would shorten the rail and then jerk it back out again.
+              Array.from({ length: 8 }, (_, i) => (
+                <div key={i}>
+                  <Skeleton className="aspect-[16/11] w-full rounded-2xl" />
+                  <Skeleton className="mt-3 h-[17px] w-24" />
+                </div>
+              ))
+            : rail.map((cat, i) => (
+                <Link
+                  key={cat.id}
+                  // Plain, until the directory can filter by category. A link
+                  // carrying a parameter the page ignores is a control that
+                  // lies about being one.
+                  to="/providers"
+                  className="group"
+                >
+                  {cat.imageUrl ? (
+                    <img
+                      src={cat.imageUrl}
+                      alt=""
+                      className="aspect-[16/11] w-full rounded-2xl object-cover outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
+                    />
+                  ) : (
+                    // The generated art stays as the stand-in for a category
+                    // with no photograph yet — seeded by position, so the same
+                    // tile keeps the same pattern between visits.
+                    <SurfaceArt
+                      seed={i + 1}
+                      className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
+                    />
+                  )}
+                  <b className="font-rounded mt-3 block text-sm font-bold">
+                    {cat.name}
+                  </b>
+                </Link>
+              ))}
         </ScrollRail>
       </div>
     </section>

@@ -78,6 +78,13 @@
       "when": 1786433716777,
       "tag": "0010_legal_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786445574576,
+      "tag": "0011_brown_sabretooth",
+      "breakpoints": true
     }
   ]
 }

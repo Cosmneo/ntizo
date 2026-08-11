@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import { getAuth } from "@ntizo/backend/modules/better-auth";
 import { canWriteProviderMedia } from "./provider-access";
+import { isPlatformAdmin } from "./admin-access";
 import type { AppBindings } from "./types";
 
 /**
@@ -62,6 +63,50 @@ export function mountMedia(app: Hono<{ Bindings: AppBindings }>) {
         "cache-control": object.httpMetadata?.cacheControl ?? "public, max-age=31536000, immutable",
       },
     });
+  });
+
+  /**
+   * A category's image, uploaded by an administrator.
+   *
+   * A route of its own rather than a `kind` on the provider one: the thing
+   * that differs is not where the key sits but *who may write it*. Folding an
+   * admin-only upload into a route whose guard asks "are you a member of this
+   * provider" would mean answering that question about something that has no
+   * members.
+   */
+  app.post("/api/media/category/:categoryId", async (c) => {
+    const session = await getAuth().api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user) return c.json({ error: "UNAUTHENTICATED" }, 401);
+    if (!(await isPlatformAdmin(session.user.id))) {
+      return c.json({ error: "FORBIDDEN" }, 403);
+    }
+
+    const bucket = c.env.MEDIA_BUCKET;
+    if (!bucket) return c.json({ error: "MEDIA_STORAGE_UNCONFIGURED" }, 503);
+
+    const form = await c.req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) return c.json({ error: "NO_FILE" }, 400);
+    // Re-checked here: `accept` is a hint to the file dialog, and the size
+    // check in the browser runs in code the caller controls.
+    if (!isImage(file.type)) return c.json({ error: "UNACCEPTED_TYPE" }, 415);
+    if (file.size > MAX_IMAGE_BYTES) return c.json({ error: "TOO_LARGE" }, 413);
+
+    // The id is only a folder here. A category that does not exist yet gets a
+    // key anyway — the form uploads before it saves — and an orphaned object
+    // costs a few kilobytes, where blocking the upload would mean no image on
+    // any category created in one pass.
+    const key = `category/${c.req.param("categoryId")}/${Date.now()}`;
+    await bucket.put(key, await file.arrayBuffer(), {
+      httpMetadata: {
+        contentType: file.type,
+        cacheControl: "public, max-age=31536000, immutable",
+      },
+      customMetadata: { uploadedByUserId: session.user.id },
+    });
+
+    const categoryBase = c.env.MEDIA_PUBLIC_URL_BASE;
+    return c.json({ key, url: categoryBase ? `${categoryBase}/${key}` : null }, 201);
   });
 
   /**

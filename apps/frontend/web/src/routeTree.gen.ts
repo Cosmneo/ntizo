@@ -26,6 +26,7 @@ import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
 import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
@@ -127,6 +128,11 @@ const PublicSignUpRoute = PublicSignUpRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -317,6 +325,7 @@ export interface FileRoutesById {
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/sign-in': typeof PublicSignInRoute
   '/_public/sign-up': typeof PublicSignUpRoute
+  '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -355,6 +364,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
     | '/provider/no-provider'
@@ -388,6 +398,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
     | '/provider/no-provider'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/_public/reset-password'
     | '/_public/sign-in'
     | '/_public/sign-up'
+    | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
     | '/provider/no-provider'
@@ -579,6 +591,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/categories': {
+      id: '/admin/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/dashboard': {
@@ -779,6 +798,7 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
 )
 
 interface AdminRouteRouteChildren {
+  AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -786,6 +806,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminCategoriesRoute: AdminCategoriesRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,

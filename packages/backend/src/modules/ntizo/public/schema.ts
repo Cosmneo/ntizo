@@ -8,6 +8,7 @@ import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { providerPublicSchema } from "./provider/graphql/schema/queries";
 import { invitePublicSchema } from "./invite/graphql/schema/queries";
 import { cityPublicSchema } from "./city/graphql/schema/queries";
+import { catalogPublicSchema } from "./catalog/graphql/schema/queries";
 
 /**
  * The PUBLIC (anonymous-tier) schema barrel.
@@ -54,6 +55,7 @@ export const publicSchema = mergeGraphQLSchemas(
   providerPublicSchema,
   cityPublicSchema,
   invitePublicSchema,
+  catalogPublicSchema,
 );
 
 export type PublicSchema = typeof publicSchema;
