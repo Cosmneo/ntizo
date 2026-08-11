@@ -1,5 +1,6 @@
 import {
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   UnprocessableError,
 } from "@cosmneo/onion-lasagna";
@@ -122,5 +123,15 @@ export class LastOptionError extends ConflictError {
       code: "OPTION_LAST_ONE",
     });
     this.name = "LastOptionError";
+  }
+}
+
+export class NotProviderMemberError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "This workspace is not one you belong to",
+      code: "NOT_PROVIDER_MEMBER",
+    });
+    this.name = "NotProviderMemberError";
   }
 }
