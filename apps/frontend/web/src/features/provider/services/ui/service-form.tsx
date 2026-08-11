@@ -11,6 +11,7 @@ import {
   draftFrom,
   emptyDraft,
   IN_PERSON_LOCATION_TYPES,
+  serviceLifecycle,
   type ServiceDraft,
 } from "../domain/service-draft";
 import { STATUS_TONE, type ProviderService } from "../domain/types";
@@ -86,6 +87,13 @@ export function ServiceFormSheet({
     ? (servicesQuery.data?.find((s) => s.id === serviceId) ?? null)
     : null;
 
+  // The one signal for "has this been saved" — see the doc comment on
+  // `serviceLifecycle`. Everything below that depends on that question reads
+  // this, not `editing` (which only ever reflects how the sheet was opened,
+  // not whether a same-session save has since happened) and not `serviceId`
+  // directly (so there is one place, not several, that could drift).
+  const lifecycle = serviceLifecycle({ serviceId, bookingMode: draft.bookingMode });
+
   const ready = canSubmit(draft) && !save.isPending;
 
   async function submit() {
@@ -128,7 +136,7 @@ export function ServiceFormSheet({
       <SheetContent side="right" className="flex w-full max-w-lg flex-col">
         <div className="flex items-start justify-between border-b border-[var(--color-border)] px-5 py-4">
           <h2 className="type-h3 font-semibold">
-            {editing ? t("serviceEdit") : t("serviceNew")}
+            {lifecycle.isSaved ? t("serviceEdit") : t("serviceNew")}
           </h2>
           <button
             type="button"
@@ -271,12 +279,12 @@ export function ServiceFormSheet({
               { value: "priced", label: t("serviceBookingMode.priced") },
               { value: "quote", label: t("serviceBookingMode.quote") },
             ]}
-            disabled={Boolean(editing)}
-            disabledHint={editing ? t("serviceBookingModeLocked") : undefined}
+            disabled={!lifecycle.canChangeBookingMode}
+            disabledHint={!lifecycle.canChangeBookingMode ? t("serviceBookingModeLocked") : undefined}
           />
 
           {draft.bookingMode === "priced" &&
-            (serviceId ? (
+            (lifecycle.showOptionsEditor && serviceId ? (
               <OptionsEditor
                 providerId={providerId}
                 serviceId={serviceId}

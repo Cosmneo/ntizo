@@ -67,6 +67,55 @@ export function canSubmit(draft: ServiceDraft): boolean {
 }
 
 /**
+ * What the sheet may currently do, derived from a single signal: whether
+ * this service has been saved.
+ *
+ * `serviceId` is that signal, and the *only* one — not the `editing` prop
+ * the sheet was opened with. The sheet deliberately stays open after a
+ * same-session create, so a service created in this visit has `serviceId`
+ * set while `editing` is still whatever it was on open (usually `null`).
+ * A version of this check that read `editing` instead once let someone
+ * create a `quote` service, flip it to `priced` without closing the sheet,
+ * and submit an option through the editor that had just appeared — the
+ * server's own `SERVICE_QUOTE_HAS_OPTIONS` refusal is exactly the wasted
+ * round trip this rule exists to make unreachable. Every place in the form
+ * that means "has this been saved" reads `isSaved` here, not `serviceId`
+ * or `editing` directly, so there is exactly one place to get it right.
+ */
+export interface ServiceLifecycle {
+  /** Whether the service exists on the server yet. */
+  isSaved: boolean;
+  /**
+   * Whether `bookingMode` can still be chosen.
+   *
+   * Only before the first save — `service.update` carries no field for it,
+   * because changing it out from under a service that may already have
+   * priced options (or a quote form) would leave one of the two in a shape
+   * the other invariant refuses.
+   */
+  canChangeBookingMode: boolean;
+  /**
+   * Whether the options editor has anywhere to write to.
+   *
+   * `service.options.add` needs a real `serviceId`, and only a priced
+   * service may have any options at all.
+   */
+  showOptionsEditor: boolean;
+}
+
+export function serviceLifecycle(input: {
+  serviceId: string | null;
+  bookingMode: ServiceBookingMode;
+}): ServiceLifecycle {
+  const isSaved = input.serviceId !== null;
+  return {
+    isSaved,
+    canChangeBookingMode: !isSaved,
+    showOptionsEditor: isSaved && input.bookingMode === "priced",
+  };
+}
+
+/**
  * What "in person" expands to once it is chosen.
  *
  * `at_provider` first: the common case for the trades this market launches
