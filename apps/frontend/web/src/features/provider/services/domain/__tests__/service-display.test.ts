@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatOptionPrice, ownerName, translatedCount } from "../types";
+import { formatOptionPrice, optionSourceName, orderedLocales, ownerName, translatedCount } from "../types";
 
 const svc = {
   sourceLocale: "pt-MZ",
@@ -50,5 +50,42 @@ describe("formatOptionPrice", () => {
     );
     expect(out).toMatch(/250/);
     expect(out).toMatch(/\//);
+  });
+});
+
+describe("orderedLocales", () => {
+  it("puts the source locale first and keeps the platform order for the rest", () => {
+    const out = orderedLocales("fr-FR");
+    expect(out[0]).toBe("fr-FR");
+    expect(out).toHaveLength(8);
+    expect(new Set(out).size).toBe(8);
+    // The platform order minus the source, unchanged otherwise — "fr-FR" is
+    // not just present, the rest is not shuffled around it.
+    expect(out.slice(1)).toEqual(["pt-MZ", "pt-PT", "en-US", "es-ES", "de-DE", "it-IT", "nl-NL"]);
+  });
+
+  it("leaves the default order alone when the source is already first", () => {
+    expect(orderedLocales("pt-MZ")[0]).toBe("pt-MZ");
+  });
+});
+
+describe("optionSourceName", () => {
+  it("reads the option's name in the locale it was written in", () => {
+    const option = {
+      translations: [
+        { locale: "pt-MZ", name: "Padrão" },
+        { locale: "en-US", name: "Standard" },
+      ],
+    } as never;
+    expect(optionSourceName(option, "pt-MZ")).toBe("Padrão");
+  });
+
+  it("falls back to whatever translation exists if the source one is somehow missing", () => {
+    const option = { translations: [{ locale: "en-US", name: "Standard" }] } as never;
+    expect(optionSourceName(option, "pt-MZ")).toBe("Standard");
+  });
+
+  it("returns empty when there is nothing to show", () => {
+    expect(optionSourceName({ translations: [] } as never, "pt-MZ")).toBe("");
   });
 });

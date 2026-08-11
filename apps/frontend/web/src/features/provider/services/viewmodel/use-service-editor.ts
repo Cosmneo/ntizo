@@ -15,6 +15,7 @@ import {
   updateServiceOption,
   type CreateServiceInput,
   type ServiceOptionInput,
+  type SetServiceTranslationInput,
 } from "../data/service.repository";
 import type { ProviderService, ServiceOption } from "../domain/types";
 
@@ -85,6 +86,25 @@ export function useSetServiceStatus(providerId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { serviceId: string; status: ServiceStatus }) => setServiceStatus(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: servicesKey(providerId) }),
+  });
+}
+
+/**
+ * Writes one language's copy for a service or, with `optionId`, for one of
+ * its options.
+ *
+ * Its own mutation rather than folded into `useSaveService`: the
+ * translations sheet calls this once per box, one language at a time, and
+ * `useSaveService` only ever writes the source locale as half of a bigger
+ * save. Invalidates the same list `useSaveService` does, so the sheet's own
+ * "which languages are filled in" reflects a save the moment it lands,
+ * without a query of its own.
+ */
+export function useSetServiceTranslation(providerId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SetServiceTranslationInput) => setServiceTranslation(input),
     onSuccess: () => qc.invalidateQueries({ queryKey: servicesKey(providerId) }),
   });
 }

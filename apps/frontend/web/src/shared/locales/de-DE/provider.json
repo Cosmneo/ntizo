@@ -217,6 +217,16 @@
     "payout": "Auszahlung",
     "adjustment": "Anpassung"
   },
+  "locales": {
+    "pt-MZ": "Portugiesisch (Mosambik)",
+    "pt-PT": "Portugiesisch (Portugal)",
+    "en-US": "Englisch",
+    "es-ES": "Spanisch",
+    "de-DE": "Deutsch",
+    "fr-FR": "Französisch",
+    "it-IT": "Italienisch",
+    "nl-NL": "Niederländisch"
+  },
   "servicesTitle": "Leistungen",
   "servicesSearchPlaceholder": "Leistungen oder Kategorien suchen",
   "servicesService": "Leistung",
@@ -267,6 +277,7 @@
   "servicePublish": "Veröffentlichen",
   "serviceUnpublish": "Veröffentlichung aufheben",
   "serviceArchive": "Archivieren",
+  "serviceTranslate": "Übersetzen",
   "serviceSaveNew": "Leistung erstellen",
   "serviceSaveExisting": "Änderungen speichern",
   "serviceSaveFailed": "Beim Speichern der Leistung ist etwas schiefgelaufen. Versuchen Sie es erneut.",
@@ -284,6 +295,12 @@
     "OPTION_LAST_ONE": "Eine veröffentlichte Leistung kann nicht ohne Optionen bleiben.",
     "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf dieses Unternehmen."
   },
+  "translationsTitle": "Übersetzungen",
+  "translationsHint": "Nur die Sprache, in der Sie dies geschrieben haben, ist erforderlich. Alle anderen sind optional — lassen Sie leer, was Sie noch nicht geschrieben haben, jetzt oder später.",
+  "translationsServiceSection": "Leistung",
+  "translationsOptionSection": "Option: {{name}}",
+  "translationsSourceBadge": "In dieser Sprache geschrieben",
+  "translationSaveFailed": "Beim Speichern dieser Übersetzung ist etwas schiefgelaufen. Versuchen Sie es erneut.",
   "optionAdd": "Option hinzufügen",
   "optionName": "Name der Option",
   "optionNamePlaceholder": "z. B. Standard",

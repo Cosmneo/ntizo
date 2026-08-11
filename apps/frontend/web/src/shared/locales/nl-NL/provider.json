@@ -217,6 +217,16 @@
     "payout": "Uitbetaling",
     "adjustment": "Correctie"
   },
+  "locales": {
+    "pt-MZ": "Portugees (Mozambique)",
+    "pt-PT": "Portugees (Portugal)",
+    "en-US": "Engels",
+    "es-ES": "Spaans",
+    "de-DE": "Duits",
+    "fr-FR": "Frans",
+    "it-IT": "Italiaans",
+    "nl-NL": "Nederlands"
+  },
   "servicesTitle": "Diensten",
   "servicesSearchPlaceholder": "Zoek diensten of categorieën",
   "servicesService": "Dienst",
@@ -267,6 +277,7 @@
   "servicePublish": "Publiceren",
   "serviceUnpublish": "Publicatie ongedaan maken",
   "serviceArchive": "Archiveren",
+  "serviceTranslate": "Vertalen",
   "serviceSaveNew": "Dienst aanmaken",
   "serviceSaveExisting": "Wijzigingen opslaan",
   "serviceSaveFailed": "Er is iets misgegaan bij het opslaan van de dienst. Probeer het opnieuw.",
@@ -284,6 +295,12 @@
     "OPTION_LAST_ONE": "Een gepubliceerde dienst kan niet zonder opties blijven.",
     "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf."
   },
+  "translationsTitle": "Vertalingen",
+  "translationsHint": "Alleen de taal waarin je dit hebt geschreven is verplicht. Alle andere zijn optioneel — laat leeg wat je nog niet hebt geschreven, nu of later.",
+  "translationsServiceSection": "Dienst",
+  "translationsOptionSection": "Optie: {{name}}",
+  "translationsSourceBadge": "In deze taal geschreven",
+  "translationSaveFailed": "Er is iets misgegaan bij het opslaan van deze vertaling. Probeer het opnieuw.",
   "optionAdd": "Optie toevoegen",
   "optionName": "Naam van de optie",
   "optionNamePlaceholder": "bijv. Standaard",

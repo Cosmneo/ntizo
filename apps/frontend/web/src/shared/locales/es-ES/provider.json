@@ -217,6 +217,16 @@
     "payout": "Retiro",
     "adjustment": "Ajuste"
   },
+  "locales": {
+    "pt-MZ": "Portugués (Mozambique)",
+    "pt-PT": "Portugués (Portugal)",
+    "en-US": "Inglés",
+    "es-ES": "Español",
+    "de-DE": "Alemán",
+    "fr-FR": "Francés",
+    "it-IT": "Italiano",
+    "nl-NL": "Neerlandés"
+  },
   "servicesTitle": "Servicios",
   "servicesSearchPlaceholder": "Buscar servicios o categorías",
   "servicesService": "Servicio",
@@ -267,6 +277,7 @@
   "servicePublish": "Publicar",
   "serviceUnpublish": "Despublicar",
   "serviceArchive": "Archivar",
+  "serviceTranslate": "Traducir",
   "serviceSaveNew": "Crear servicio",
   "serviceSaveExisting": "Guardar cambios",
   "serviceSaveFailed": "Algo ha salido mal al guardar el servicio. Inténtalo de nuevo.",
@@ -284,6 +295,12 @@
     "OPTION_LAST_ONE": "Un servicio publicado no puede quedarse sin opciones.",
     "NOT_PROVIDER_MEMBER": "No tienes acceso a este negocio."
   },
+  "translationsTitle": "Traducciones",
+  "translationsHint": "Solo es obligatorio el idioma en el que escribiste esto. Todos los demás son opcionales: deja en blanco lo que aún no hayas escrito, ahora o más tarde.",
+  "translationsServiceSection": "Servicio",
+  "translationsOptionSection": "Opción: {{name}}",
+  "translationsSourceBadge": "Escrito en este idioma",
+  "translationSaveFailed": "Algo ha salido mal al guardar esta traducción. Inténtalo de nuevo.",
   "optionAdd": "Añadir opción",
   "optionName": "Nombre de la opción",
   "optionNamePlaceholder": "p. ej. Estándar",

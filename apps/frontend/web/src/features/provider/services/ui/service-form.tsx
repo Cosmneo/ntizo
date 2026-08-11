@@ -6,6 +6,7 @@ import type { ServiceStatus } from "@ntizo/shared";
 import { useServices } from "../viewmodel/use-services";
 import { useCategoryOptions, useSaveService, useSetServiceStatus } from "../viewmodel/use-service-editor";
 import { OptionsEditor } from "./options-editor";
+import { TranslationsSheet } from "./translations-sheet";
 import {
   canSubmit,
   draftFrom,
@@ -53,6 +54,7 @@ export function ServiceFormSheet({
   const [draft, setDraft] = useState<ServiceDraft>(emptyDraft);
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [translationsOpen, setTranslationsOpen] = useState(false);
   // Which of the two top-level answers is showing, tracked apart from
   // `draft.locationType`: that field alone cannot tell "never answered"
   // apart from "answered 'in person', hasn't picked which one yet" — both
@@ -80,6 +82,10 @@ export function ServiceFormSheet({
       setLocationChoice("");
     }
     setError(null);
+    // Closed alongside the form it lives behind — reopening the form to a
+    // different service must not leave last time's translations sheet open
+    // over it.
+    setTranslationsOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
@@ -132,189 +138,211 @@ export function ServiceFormSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full max-w-lg flex-col">
-        <div className="flex items-start justify-between border-b border-[var(--color-border)] px-5 py-4">
-          <h2 className="type-h3 font-semibold">
-            {lifecycle.isSaved ? t("serviceEdit") : t("serviceNew")}
-          </h2>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label={t("close")}
-            className="grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="flex w-full max-w-lg flex-col">
+          <div className="flex items-start justify-between border-b border-[var(--color-border)] px-5 py-4">
+            <h2 className="type-h3 font-semibold">
+              {lifecycle.isSaved ? t("serviceEdit") : t("serviceNew")}
+            </h2>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              aria-label={t("close")}
+              className="grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
-        <div className="grid flex-1 content-start gap-6 overflow-y-auto p-5">
-          {error && (
-            <p className="type-body text-[var(--color-destructive)]">{error}</p>
-          )}
-
-          {current && (
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Badge tone={STATUS_TONE[current.status]}>
-                {t(`servicesStatus.${current.status}`)}
-              </Badge>
-              {current.status === "draft" && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={setStatus.isPending}
-                  onClick={() => void changeStatus("published")}
-                >
-                  {t("servicePublish")}
-                </Button>
-              )}
-              {current.status === "published" && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={setStatus.isPending}
-                  onClick={() => void changeStatus("draft")}
-                >
-                  {t("serviceUnpublish")}
-                </Button>
-              )}
-              {current.status !== "archived" && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={setStatus.isPending}
-                  onClick={() => void changeStatus("archived")}
-                >
-                  {t("serviceArchive")}
-                </Button>
-              )}
-            </div>
-          )}
-
-          <Field label={t("serviceCategory")}>
-            <Select
-              id="service-category"
-              value={draft.categoryId}
-              onChange={(v) => setDraft((d) => ({ ...d, categoryId: v }))}
-              options={categories.options}
-              placeholder={t(
-                categories.loading ? "serviceCategoryLoading" : "serviceCategoryPlaceholder",
-              )}
-              disabled={categories.loading}
-              ariaLabel={t("serviceCategory")}
-              searchPlaceholder={t("serviceCategorySearchPlaceholder")}
-              noResultsText={t("serviceCategoryNoResults")}
-            />
-          </Field>
-
-          <Field label={t("serviceName")}>
-            <Input
-              id="service-name"
-              value={draft.name}
-              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder={t("serviceNamePlaceholder")}
-            />
-          </Field>
-
-          <Field label={t("serviceDescription")} hint={t("serviceDescriptionHint")}>
-            <textarea
-              id="service-description"
-              rows={3}
-              value={draft.description}
-              onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-              className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-            />
-          </Field>
-
-          {/* Asked in two steps and stored as one value: "in person" is the
-              umbrella over three of the four `locationType`s, not a peer of
-              them, so it never becomes a value of its own. The second step
-              only appears once "in person" has actually been chosen — not
-              merely whenever the value isn't "remote", which is also true of
-              the unanswered state and would show both steps at once before
-              either has been picked. */}
-          <Choice
-            label={t("serviceLocationQuestion")}
-            value={locationChoice}
-            onChange={(choice) => {
-              setLocationChoice(choice);
-              if (choice === "remote") setDraft((d) => ({ ...d, locationType: "remote" }));
-              else setDraft((d) => ({ ...d, locationType: "" }));
-            }}
-            options={[
-              { value: "remote", label: t("serviceLocationRemote") },
-              { value: "in_person", label: t("serviceLocationInPerson") },
-            ]}
-          />
-
-          {locationChoice === "in_person" && (
-            <Choice
-              label={t("serviceWhereQuestion")}
-              value={draft.locationType}
-              onChange={(v) => setDraft((d) => ({ ...d, locationType: v }))}
-              options={IN_PERSON_LOCATION_TYPES.map((v) => ({
-                value: v,
-                label: t(`serviceLocationType.${v}`),
-              }))}
-            />
-          )}
-
-          {/* Fixed at creation: `service.update` has no field for it, because
-              changing it out from under a service that already has priced
-              options (or a quote form) would leave one of the two in a shape
-              the other invariant refuses. */}
-          <Choice
-            label={t("serviceBookingModeQuestion")}
-            hint={t(
-              draft.bookingMode === "priced"
-                ? "serviceBookingModeHint"
-                : "serviceBookingModeQuoteHint",
+          <div className="grid flex-1 content-start gap-6 overflow-y-auto p-5">
+            {error && (
+              <p className="type-body text-[var(--color-destructive)]">{error}</p>
             )}
-            value={draft.bookingMode}
-            onChange={(v) => setDraft((d) => ({ ...d, bookingMode: v }))}
-            options={[
-              { value: "priced", label: t("serviceBookingMode.priced") },
-              { value: "quote", label: t("serviceBookingMode.quote") },
-            ]}
-            disabled={!lifecycle.canChangeBookingMode}
-            disabledHint={!lifecycle.canChangeBookingMode ? t("serviceBookingModeLocked") : undefined}
-          />
 
-          {draft.bookingMode === "priced" &&
-            (lifecycle.showOptionsEditor && serviceId ? (
-              <OptionsEditor
-                providerId={providerId}
-                serviceId={serviceId}
-                sourceLocale={draft.sourceLocale}
-                options={current?.options ?? []}
+            {current && (
+              <div className="flex flex-wrap items-center gap-2.5">
+                <Badge tone={STATUS_TONE[current.status]}>
+                  {t(`servicesStatus.${current.status}`)}
+                </Badge>
+                {current.status === "draft" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={setStatus.isPending}
+                    onClick={() => void changeStatus("published")}
+                  >
+                    {t("servicePublish")}
+                  </Button>
+                )}
+                {current.status === "published" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={setStatus.isPending}
+                    onClick={() => void changeStatus("draft")}
+                  >
+                    {t("serviceUnpublish")}
+                  </Button>
+                )}
+                {current.status !== "archived" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={setStatus.isPending}
+                    onClick={() => void changeStatus("archived")}
+                  >
+                    {t("serviceArchive")}
+                  </Button>
+                )}
+                {/* Behind its own button, never a field in this form — the
+                    main form only ever carries the source language. */}
+                <Button type="button" size="sm" variant="outline" onClick={() => setTranslationsOpen(true)}>
+                  {t("serviceTranslate")}
+                </Button>
+              </div>
+            )}
+
+            <Field label={t("serviceCategory")}>
+              <Select
+                id="service-category"
+                value={draft.categoryId}
+                onChange={(v) => setDraft((d) => ({ ...d, categoryId: v }))}
+                options={categories.options}
+                placeholder={t(
+                  categories.loading ? "serviceCategoryLoading" : "serviceCategoryPlaceholder",
+                )}
+                disabled={categories.loading}
+                ariaLabel={t("serviceCategory")}
+                searchPlaceholder={t("serviceCategorySearchPlaceholder")}
+                noResultsText={t("serviceCategoryNoResults")}
               />
-            ) : (
+            </Field>
+
+            <Field label={t("serviceName")}>
+              <Input
+                id="service-name"
+                value={draft.name}
+                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                placeholder={t("serviceNamePlaceholder")}
+              />
+            </Field>
+
+            <Field label={t("serviceDescription")} hint={t("serviceDescriptionHint")}>
+              <textarea
+                id="service-description"
+                rows={3}
+                value={draft.description}
+                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
+              />
+            </Field>
+
+            {/* Asked in two steps and stored as one value: "in person" is the
+                umbrella over three of the four `locationType`s, not a peer of
+                them, so it never becomes a value of its own. The second step
+                only appears once "in person" has actually been chosen — not
+                merely whenever the value isn't "remote", which is also true of
+                the unanswered state and would show both steps at once before
+                either has been picked. */}
+            <Choice
+              label={t("serviceLocationQuestion")}
+              value={locationChoice}
+              onChange={(choice) => {
+                setLocationChoice(choice);
+                if (choice === "remote") setDraft((d) => ({ ...d, locationType: "remote" }));
+                else setDraft((d) => ({ ...d, locationType: "" }));
+              }}
+              options={[
+                { value: "remote", label: t("serviceLocationRemote") },
+                { value: "in_person", label: t("serviceLocationInPerson") },
+              ]}
+            />
+
+            {locationChoice === "in_person" && (
+              <Choice
+                label={t("serviceWhereQuestion")}
+                value={draft.locationType}
+                onChange={(v) => setDraft((d) => ({ ...d, locationType: v }))}
+                options={IN_PERSON_LOCATION_TYPES.map((v) => ({
+                  value: v,
+                  label: t(`serviceLocationType.${v}`),
+                }))}
+              />
+            )}
+
+            {/* Fixed at creation: `service.update` has no field for it, because
+                changing it out from under a service that already has priced
+                options (or a quote form) would leave one of the two in a shape
+                the other invariant refuses. */}
+            <Choice
+              label={t("serviceBookingModeQuestion")}
+              hint={t(
+                draft.bookingMode === "priced"
+                  ? "serviceBookingModeHint"
+                  : "serviceBookingModeQuoteHint",
+              )}
+              value={draft.bookingMode}
+              onChange={(v) => setDraft((d) => ({ ...d, bookingMode: v }))}
+              options={[
+                { value: "priced", label: t("serviceBookingMode.priced") },
+                { value: "quote", label: t("serviceBookingMode.quote") },
+              ]}
+              disabled={!lifecycle.canChangeBookingMode}
+              disabledHint={!lifecycle.canChangeBookingMode ? t("serviceBookingModeLocked") : undefined}
+            />
+
+            {draft.bookingMode === "priced" &&
+              (lifecycle.showOptionsEditor && serviceId ? (
+                <OptionsEditor
+                  providerId={providerId}
+                  serviceId={serviceId}
+                  sourceLocale={draft.sourceLocale}
+                  options={current?.options ?? []}
+                />
+              ) : (
+                <p className="type-body rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] px-3.5 py-2.5 text-[var(--color-muted-foreground)]">
+                  {t("serviceOptionsSaveFirst")}
+                </p>
+              ))}
+
+            {draft.bookingMode === "quote" && (
               <p className="type-body rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] px-3.5 py-2.5 text-[var(--color-muted-foreground)]">
-                {t("serviceOptionsSaveFirst")}
+                {t("serviceOptionsQuoteNote")}
               </p>
-            ))}
+            )}
+          </div>
 
-          {draft.bookingMode === "quote" && (
-            <p className="type-body rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] px-3.5 py-2.5 text-[var(--color-muted-foreground)]">
-              {t("serviceOptionsQuoteNote")}
-            </p>
-          )}
-        </div>
+          <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] px-5 py-4">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              {t("close")}
+            </Button>
+            <Button type="button" disabled={!ready} onClick={() => void submit()}>
+              {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {serviceId ? t("serviceSaveExisting") : t("serviceSaveNew")}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] px-5 py-4">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            {t("close")}
-          </Button>
-          <Button type="button" disabled={!ready} onClick={() => void submit()}>
-            {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {serviceId ? t("serviceSaveExisting") : t("serviceSaveNew")}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+      {/* A sibling of the form's own sheet, not nested inside its
+          `SheetContent` — that panel unmounts the moment the form closes
+          (`if (!ctx.open) return null`), and this one needs to survive that
+          for exactly as long as `translationsOpen` says it should. Rendered
+          after the form's sheet in the tree so it paints on top when both are
+          open, the same way a dialog opened from within another one does. */}
+      {current && (
+        <TranslationsSheet
+          open={translationsOpen}
+          onOpenChange={setTranslationsOpen}
+          service={current}
+          providerId={providerId}
+        />
+      )}
+    </>
   );
 }
 

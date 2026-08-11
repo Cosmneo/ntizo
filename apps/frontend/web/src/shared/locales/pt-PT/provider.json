@@ -217,6 +217,16 @@
     "payout": "Levantamento",
     "adjustment": "Ajuste"
   },
+  "locales": {
+    "pt-MZ": "Português (Moçambique)",
+    "pt-PT": "Português (Portugal)",
+    "en-US": "Inglês",
+    "es-ES": "Espanhol",
+    "de-DE": "Alemão",
+    "fr-FR": "Francês",
+    "it-IT": "Italiano",
+    "nl-NL": "Neerlandês"
+  },
   "servicesTitle": "Serviços",
   "servicesSearchPlaceholder": "Procurar serviços ou categorias",
   "servicesService": "Serviço",
@@ -267,6 +277,7 @@
   "servicePublish": "Publicar",
   "serviceUnpublish": "Despublicar",
   "serviceArchive": "Arquivar",
+  "serviceTranslate": "Traduzir",
   "serviceSaveNew": "Criar serviço",
   "serviceSaveExisting": "Guardar alterações",
   "serviceSaveFailed": "Ocorreu um erro ao guardar o serviço. Tente novamente.",
@@ -284,6 +295,12 @@
     "OPTION_LAST_ONE": "Um serviço publicado não pode ficar sem opções.",
     "NOT_PROVIDER_MEMBER": "Não tem acesso a este negócio."
   },
+  "translationsTitle": "Traduções",
+  "translationsHint": "Só é obrigatório o idioma em que escreveu isto. Todos os outros são opcionais — pode deixar em branco o que ainda não escreveu, agora ou mais tarde.",
+  "translationsServiceSection": "Serviço",
+  "translationsOptionSection": "Opção: {{name}}",
+  "translationsSourceBadge": "Escrito neste idioma",
+  "translationSaveFailed": "Ocorreu um erro ao guardar esta tradução. Tente novamente.",
   "optionAdd": "Adicionar opção",
   "optionName": "Nome da opção",
   "optionNamePlaceholder": "ex.: Padrão",

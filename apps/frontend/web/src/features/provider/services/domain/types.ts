@@ -127,4 +127,33 @@ export function formatOptionPrice(option: ServiceOption, locale: string): string
   return option.pricingMode === "hourly" ? `${amount} / h` : amount;
 }
 
+/**
+ * Every locale, the source one first — the order the translations sheet
+ * lists its boxes in.
+ *
+ * The language the provider actually wrote the service in leads because it
+ * is the one language every service is guaranteed to have; the rest follow
+ * in the platform's own fixed order, since there is no other principled way
+ * to rank seven optional languages against each other.
+ */
+export function orderedLocales(sourceLocale: Locale): Locale[] {
+  return [sourceLocale, ...LOCALES.filter((l) => l !== sourceLocale)];
+}
+
+/**
+ * The name to head an option's block with, in the translations sheet.
+ *
+ * The source locale's own name, not the reader's — this labels which option
+ * the block of language boxes underneath belongs to, and a name that quietly
+ * resolved through the reader's own language would make that unclear the one
+ * time it actually differs from the source.
+ */
+export function optionSourceName(option: ServiceOption, sourceLocale: Locale): string {
+  return (
+    option.translations.find((t) => t.locale === sourceLocale)?.name ??
+    option.translations[0]?.name ??
+    ""
+  );
+}
+
 export type { Locale, ServiceBookingMode, ServiceLocationType, ServicePricingMode, ServiceStatus };

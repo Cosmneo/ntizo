@@ -217,6 +217,16 @@
     "payout": "Prelievo",
     "adjustment": "Rettifica"
   },
+  "locales": {
+    "pt-MZ": "Portoghese (Mozambico)",
+    "pt-PT": "Portoghese (Portogallo)",
+    "en-US": "Inglese",
+    "es-ES": "Spagnolo",
+    "de-DE": "Tedesco",
+    "fr-FR": "Francese",
+    "it-IT": "Italiano",
+    "nl-NL": "Olandese"
+  },
   "servicesTitle": "Servizi",
   "servicesSearchPlaceholder": "Cerca servizi o categorie",
   "servicesService": "Servizio",
@@ -267,6 +277,7 @@
   "servicePublish": "Pubblica",
   "serviceUnpublish": "Rimuovi pubblicazione",
   "serviceArchive": "Archivia",
+  "serviceTranslate": "Traduci",
   "serviceSaveNew": "Crea servizio",
   "serviceSaveExisting": "Salva modifiche",
   "serviceSaveFailed": "Si è verificato un errore nel salvare il servizio. Riprova.",
@@ -284,6 +295,12 @@
     "OPTION_LAST_ONE": "Un servizio pubblicato non può restare senza opzioni.",
     "NOT_PROVIDER_MEMBER": "Non hai accesso a questa attività."
   },
+  "translationsTitle": "Traduzioni",
+  "translationsHint": "È obbligatoria solo la lingua in cui hai scritto questo. Tutte le altre sono facoltative: lascia vuoto ciò che non hai ancora scritto, ora o più tardi.",
+  "translationsServiceSection": "Servizio",
+  "translationsOptionSection": "Opzione: {{name}}",
+  "translationsSourceBadge": "Scritto in questa lingua",
+  "translationSaveFailed": "Si è verificato un errore nel salvare questa traduzione. Riprova.",
   "optionAdd": "Aggiungi opzione",
   "optionName": "Nome dell'opzione",
   "optionNamePlaceholder": "es. Standard",

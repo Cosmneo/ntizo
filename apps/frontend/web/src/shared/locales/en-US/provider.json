@@ -217,6 +217,16 @@
     "payout": "Payout",
     "adjustment": "Adjustment"
   },
+  "locales": {
+    "pt-MZ": "Portuguese (Mozambique)",
+    "pt-PT": "Portuguese (Portugal)",
+    "en-US": "English",
+    "es-ES": "Spanish",
+    "de-DE": "German",
+    "fr-FR": "French",
+    "it-IT": "Italian",
+    "nl-NL": "Dutch"
+  },
   "servicesTitle": "Services",
   "servicesSearchPlaceholder": "Search services or categories",
   "servicesService": "Service",
@@ -267,6 +277,7 @@
   "servicePublish": "Publish",
   "serviceUnpublish": "Unpublish",
   "serviceArchive": "Archive",
+  "serviceTranslate": "Translate",
   "serviceSaveNew": "Create service",
   "serviceSaveExisting": "Save changes",
   "serviceSaveFailed": "Something went wrong saving the service. Try again.",
@@ -284,6 +295,12 @@
     "OPTION_LAST_ONE": "A published service can't be left with no options.",
     "NOT_PROVIDER_MEMBER": "You don't have access to this business."
   },
+  "translationsTitle": "Translations",
+  "translationsHint": "Only the language you wrote this in is required. Every other one is optional — leave what you haven't written yet blank, now or later.",
+  "translationsServiceSection": "Service",
+  "translationsOptionSection": "Option: {{name}}",
+  "translationsSourceBadge": "Written in this language",
+  "translationSaveFailed": "Something went wrong saving this translation. Try again.",
   "optionAdd": "Add option",
   "optionName": "Option name",
   "optionNamePlaceholder": "e.g. Standard",
