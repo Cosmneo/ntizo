@@ -14,7 +14,7 @@
     "you": "Jij",
     "providers": "Aanbieders",
     "wallet": "Portemonnee",
-    "services": "Services"
+    "services": "Diensten"
   },
   "myAccount": "Mijn account",
   "noProvider": "Geen aanbieder",
@@ -217,21 +217,19 @@
     "payout": "Uitbetaling",
     "adjustment": "Correctie"
   },
-  "servicesTitle": "Services",
-  "servicesSearchPlaceholder": "Search services or categories",
-  "servicesService": "Service",
-  "servicesPrice": "Price",
-  "servicesLanguages": "Languages",
+  "servicesTitle": "Diensten",
+  "servicesSearchPlaceholder": "Zoek diensten of categorieën",
+  "servicesService": "Dienst",
+  "servicesPrice": "Prijs",
+  "servicesLanguages": "Talen",
   "servicesStatusLabel": "Status",
-  "servicesActions": "Actions",
   "servicesStatus": {
-    "draft": "Draft",
-    "published": "Published",
-    "archived": "Archived"
+    "draft": "Concept",
+    "published": "Gepubliceerd",
+    "archived": "Gearchiveerd"
   },
-  "servicesPriceOnQuote": "By quote",
-  "servicesEmpty": "No services yet.",
-  "servicesNoMatches": "No services match your search.",
-  "servicesActionsSoon": "More actions coming soon",
-  "servicesError": "Something went wrong loading your services."
+  "servicesPriceOnQuote": "Op offerte",
+  "servicesEmpty": "Nog geen diensten.",
+  "servicesNoMatches": "Geen diensten komen overeen met je zoekopdracht.",
+  "servicesError": "Er is iets misgegaan bij het laden van je diensten."
 }

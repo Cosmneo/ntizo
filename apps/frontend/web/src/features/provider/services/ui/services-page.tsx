@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal } from "lucide-react";
-import {
-  Badge,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@ntizo/frontend-ui";
+import { Badge } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { usePageHeader } from "@/shared/lib/page-header";
@@ -96,11 +89,6 @@ export function ServicesPage() {
             label: t("servicesStatusLabel"),
             skeletonWidth: "w-20",
             skeletonShape: "badge",
-          },
-          {
-            key: "actions",
-            label: t("servicesActions"),
-            align: "right",
             className: "pr-5",
           },
         ]}
@@ -135,7 +123,10 @@ export function ServicesPage() {
                 </Badge>
               ),
             },
-            actions: <RowActions />,
+            // No row menu: editing and publishing a service have no route or
+            // mutation yet (Task 11). The same call the admin's provider
+            // queue made — a control that opens onto nothing is worse than a
+            // row with no menu at all.
           };
         })}
       />
@@ -174,30 +165,5 @@ function ServiceCell({
         </p>
       </div>
     </div>
-  );
-}
-
-/**
- * The row's menu. Editing and publishing a service are separate screens this
- * task does not build — this stands in for them rather than offering a
- * control that does nothing when clicked.
- */
-function RowActions() {
-  const { t } = useTranslation("provider");
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger>
-        <button
-          type="button"
-          aria-label={t("servicesActions")}
-          className="ml-auto grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled>{t("servicesActionsSoon")}</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

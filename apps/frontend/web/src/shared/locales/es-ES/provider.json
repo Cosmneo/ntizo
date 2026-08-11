@@ -14,7 +14,7 @@
     "you": "Usted",
     "providers": "Proveedores",
     "wallet": "Cartera",
-    "services": "Services"
+    "services": "Servicios"
   },
   "myAccount": "Mi cuenta",
   "noProvider": "Sin proveedor",
@@ -217,21 +217,19 @@
     "payout": "Retiro",
     "adjustment": "Ajuste"
   },
-  "servicesTitle": "Services",
-  "servicesSearchPlaceholder": "Search services or categories",
-  "servicesService": "Service",
-  "servicesPrice": "Price",
-  "servicesLanguages": "Languages",
-  "servicesStatusLabel": "Status",
-  "servicesActions": "Actions",
+  "servicesTitle": "Servicios",
+  "servicesSearchPlaceholder": "Buscar servicios o categorías",
+  "servicesService": "Servicio",
+  "servicesPrice": "Precio",
+  "servicesLanguages": "Idiomas",
+  "servicesStatusLabel": "Estado",
   "servicesStatus": {
-    "draft": "Draft",
-    "published": "Published",
-    "archived": "Archived"
+    "draft": "Borrador",
+    "published": "Publicado",
+    "archived": "Archivado"
   },
-  "servicesPriceOnQuote": "By quote",
-  "servicesEmpty": "No services yet.",
-  "servicesNoMatches": "No services match your search.",
-  "servicesActionsSoon": "More actions coming soon",
-  "servicesError": "Something went wrong loading your services."
+  "servicesPriceOnQuote": "Según presupuesto",
+  "servicesEmpty": "Todavía no hay servicios.",
+  "servicesNoMatches": "Ningún servicio coincide con tu búsqueda.",
+  "servicesError": "Algo ha salido mal al cargar tus servicios."
 }

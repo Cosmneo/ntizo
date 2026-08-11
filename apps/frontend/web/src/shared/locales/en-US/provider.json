@@ -223,7 +223,6 @@
   "servicesPrice": "Price",
   "servicesLanguages": "Languages",
   "servicesStatusLabel": "Status",
-  "servicesActions": "Actions",
   "servicesStatus": {
     "draft": "Draft",
     "published": "Published",
@@ -232,6 +231,5 @@
   "servicesPriceOnQuote": "By quote",
   "servicesEmpty": "No services yet.",
   "servicesNoMatches": "No services match your search.",
-  "servicesActionsSoon": "More actions coming soon",
   "servicesError": "Something went wrong loading your services."
 }

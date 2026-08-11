@@ -14,7 +14,7 @@
     "you": "Sie",
     "providers": "Anbieter",
     "wallet": "Guthaben",
-    "services": "Services"
+    "services": "Leistungen"
   },
   "myAccount": "Mein Konto",
   "noProvider": "Kein Anbieter",
@@ -217,21 +217,19 @@
     "payout": "Auszahlung",
     "adjustment": "Anpassung"
   },
-  "servicesTitle": "Services",
-  "servicesSearchPlaceholder": "Search services or categories",
-  "servicesService": "Service",
-  "servicesPrice": "Price",
-  "servicesLanguages": "Languages",
+  "servicesTitle": "Leistungen",
+  "servicesSearchPlaceholder": "Leistungen oder Kategorien suchen",
+  "servicesService": "Leistung",
+  "servicesPrice": "Preis",
+  "servicesLanguages": "Sprachen",
   "servicesStatusLabel": "Status",
-  "servicesActions": "Actions",
   "servicesStatus": {
-    "draft": "Draft",
-    "published": "Published",
-    "archived": "Archived"
+    "draft": "Entwurf",
+    "published": "Veröffentlicht",
+    "archived": "Archiviert"
   },
-  "servicesPriceOnQuote": "By quote",
-  "servicesEmpty": "No services yet.",
-  "servicesNoMatches": "No services match your search.",
-  "servicesActionsSoon": "More actions coming soon",
-  "servicesError": "Something went wrong loading your services."
+  "servicesPriceOnQuote": "Auf Anfrage",
+  "servicesEmpty": "Noch keine Leistungen.",
+  "servicesNoMatches": "Keine Leistungen entsprechen Ihrer Suche.",
+  "servicesError": "Beim Laden Ihrer Leistungen ist etwas schiefgelaufen."
 }

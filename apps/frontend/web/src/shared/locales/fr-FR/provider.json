@@ -218,20 +218,18 @@
     "adjustment": "Ajustement"
   },
   "servicesTitle": "Services",
-  "servicesSearchPlaceholder": "Search services or categories",
+  "servicesSearchPlaceholder": "Rechercher des services ou des catégories",
   "servicesService": "Service",
-  "servicesPrice": "Price",
-  "servicesLanguages": "Languages",
-  "servicesStatusLabel": "Status",
-  "servicesActions": "Actions",
+  "servicesPrice": "Prix",
+  "servicesLanguages": "Langues",
+  "servicesStatusLabel": "Statut",
   "servicesStatus": {
-    "draft": "Draft",
-    "published": "Published",
-    "archived": "Archived"
+    "draft": "Brouillon",
+    "published": "Publié",
+    "archived": "Archivé"
   },
-  "servicesPriceOnQuote": "By quote",
-  "servicesEmpty": "No services yet.",
-  "servicesNoMatches": "No services match your search.",
-  "servicesActionsSoon": "More actions coming soon",
-  "servicesError": "Something went wrong loading your services."
+  "servicesPriceOnQuote": "Sur devis",
+  "servicesEmpty": "Aucun service pour l'instant.",
+  "servicesNoMatches": "Aucun service ne correspond à votre recherche.",
+  "servicesError": "Une erreur s'est produite lors du chargement de vos services."
 }
