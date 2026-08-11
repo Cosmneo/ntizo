@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, ne, or, sql, type SQL } from "drizzle-orm";
 import type {
   ProviderAdminDetailDTO,
   ProviderAdminDTO,
@@ -11,6 +11,7 @@ import { getDb } from "../../../../../../better-auth/infrastructure/client/drizz
 import {
   provider,
   providerDocument,
+  providerInvite,
   providerMember,
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import {
@@ -141,6 +142,43 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
       .where(eq(providerDocument.providerId, providerId))
       .orderBy(desc(providerDocument.uploadedAt));
 
+    // Three small reads rather than three joins onto the row above: joining
+    // any one of them multiplies it and makes every count on it wrong.
+    const [members, invites] = await Promise.all([
+      getDb()
+        .select({
+          userId: providerMember.userId,
+          role: providerMember.role,
+          joinedAt: providerMember.joinedAt,
+          email: user.email,
+          name: profile.displayName,
+        })
+        .from(providerMember)
+        .leftJoin(user, eq(user.id, providerMember.userId))
+        .leftJoin(profile, eq(profile.userId, providerMember.userId))
+        .where(eq(providerMember.providerId, providerId))
+        .orderBy(asc(providerMember.joinedAt)),
+      getDb()
+        .select({
+          id: providerInvite.id,
+          email: providerInvite.email,
+          role: providerInvite.role,
+          status: providerInvite.status,
+          expiresAt: providerInvite.expiresAt,
+          createdAt: providerInvite.createdAt,
+        })
+        .from(providerInvite)
+        // Revoked invitations are nobody's business on this screen: they were
+        // withdrawn, and listing them would read as access that exists.
+        .where(
+          and(
+            eq(providerInvite.providerId, providerId),
+            ne(providerInvite.status, "revoked"),
+          ),
+        )
+        .orderBy(desc(providerInvite.createdAt)),
+    ]);
+
     return {
       id: row.id,
       name: row.name,
@@ -159,6 +197,19 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
       ownerEmail: row.ownerEmail,
       ownerPhone: row.ownerPhone?.trim() ? row.ownerPhone : null,
       memberCount: row.memberCount,
+      members: members.map((m) => ({
+        userId: m.userId,
+        email: m.email,
+        // Empty is not a name: the column defaults to "" rather than null.
+        name: m.name?.trim() ? m.name : null,
+        role: m.role,
+        joinedAt: m.joinedAt.toISOString(),
+      })),
+      invites: invites.map((i) => ({
+        ...i,
+        expiresAt: i.expiresAt.toISOString(),
+        createdAt: i.createdAt.toISOString(),
+      })),
       logoUrl: row.logoKey ? mediaUrl(row.logoKey) : null,
       // Filtered after mapping, not before: `mediaUrl` returns null where
       // nothing serves the bucket, and a photo with no URL is a photo this

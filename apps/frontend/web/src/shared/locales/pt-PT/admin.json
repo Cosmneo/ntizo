@@ -182,5 +182,11 @@
     "REASON_REQUIRED": "Uma recusa precisa de um motivo.",
     "FORBIDDEN": "Não tem permissão para isto."
   },
+  "providerDetailId": "ID do negócio",
+  "providerDetailTeam": "Equipa",
+  "providerDetailTeamHint": "Quem pode agir por este negócio, e quem está convidado.",
+  "providerDetailNoTeam": "Sem membros nem convites.",
+  "providerDetailJoined": "Entrou a {{date}}",
+  "providerDetailInviteExpires": "Convite expira a {{date}}",
   "close": "Fechar"
 }

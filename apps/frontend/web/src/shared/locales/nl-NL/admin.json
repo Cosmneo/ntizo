@@ -182,5 +182,11 @@
     "REASON_REQUIRED": "A rejection needs a reason.",
     "FORBIDDEN": "You don't have permission for this."
   },
+  "providerDetailId": "Business ID",
+  "providerDetailTeam": "Team",
+  "providerDetailTeamHint": "Who can act for this business, and who has been invited.",
+  "providerDetailNoTeam": "No members and no invitations.",
+  "providerDetailJoined": "Joined {{date}}",
+  "providerDetailInviteExpires": "Invitation expires {{date}}",
   "close": "Sluiten"
 }

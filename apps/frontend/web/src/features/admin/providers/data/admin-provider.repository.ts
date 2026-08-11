@@ -18,6 +18,8 @@ const DETAIL = `
       memberCount logoUrl photoUrls
       addressStreet addressDistrict addressPostalCode
       reverificationRequestedAt allowedTransitions createdAt updatedAt
+      members { userId email name role joinedAt }
+      invites { id email role status expiresAt createdAt }
       documents {
         id type status fileName contentType uploadedAt reviewedAt
         rejectionReason supersedesId

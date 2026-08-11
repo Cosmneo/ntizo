@@ -30,6 +30,31 @@ export const providerDocumentReviewReadModel = z.object({
   supersedesId: z.string().nullable(),
 });
 
+/** Who has access to the workspace, and how they got it. */
+export const providerAdminMemberReadModel = z.object({
+  userId: z.string(),
+  email: z.string().nullable(),
+  name: z.string().nullable(),
+  role: z.string(),
+  joinedAt: z.string(),
+});
+
+/**
+ * An invitation that has not been accepted.
+ *
+ * Included because a pending invitation is somebody who is *about* to have
+ * access — a reviewer looking at who can act for this business and seeing only
+ * accepted members is reading half the answer.
+ */
+export const providerAdminInviteReadModel = z.object({
+  id: z.string().min(1),
+  email: z.string(),
+  role: z.string(),
+  status: z.string(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
+});
+
 export const providerAdminDetailReadModel = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -53,6 +78,9 @@ export const providerAdminDetailReadModel = z.object({
    */
   ownerPhone: z.string().nullable(),
   memberCount: z.number().int(),
+  members: z.array(providerAdminMemberReadModel),
+  /** Pending and expired both — a revoked one is nobody's business here. */
+  invites: z.array(providerAdminInviteReadModel),
   logoUrl: z.string().nullable(),
   photoUrls: z.array(z.string()),
   /** The full address as entered, not the one line the queue shows. */

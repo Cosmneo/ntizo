@@ -50,6 +50,23 @@ export interface AdminProviderDocument {
   supersedesId: string | null;
 }
 
+export interface AdminProviderMember {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  role: string;
+  joinedAt: string;
+}
+
+export interface AdminProviderInvite {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface AdminProviderDetail {
   id: string;
   name: string;
@@ -65,6 +82,8 @@ export interface AdminProviderDetail {
   ownerEmail: string | null;
   ownerPhone: string | null;
   memberCount: number;
+  members: AdminProviderMember[];
+  invites: AdminProviderInvite[];
   logoUrl: string | null;
   photoUrls: string[];
   addressStreet: string | null;

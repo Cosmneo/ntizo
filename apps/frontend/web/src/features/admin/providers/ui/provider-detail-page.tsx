@@ -20,7 +20,11 @@ import {
   useDecideProviderStatus,
   useSetProviderCommission,
 } from "../viewmodel/use-admin-providers";
-import { formatCommission } from "../domain/types";
+import {
+  formatCommission,
+  type AdminProviderInvite,
+  type AdminProviderMember,
+} from "../domain/types";
 
 const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "info"> = {
   [ProviderStatus.Active]: "success",
@@ -84,7 +88,18 @@ export function AdminProviderDetailPage() {
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex min-w-0 items-center gap-4">
+                {/* The logo, not a monogram. It was already in the read and
+                    the screen drew initials over it — an administrator looking
+                    at a business should see the mark its customers see. The
+                    monogram stays as the fallback for a business with none. */}
                 <Avatar className="h-14 w-14 shrink-0">
+                  {detail.logoUrl && (
+                    <img
+                      src={detail.logoUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                   <AvatarFallback>{initialsFrom(detail.name)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
@@ -137,6 +152,10 @@ export function AdminProviderDetailPage() {
                 }
               />
               <Pair label={t("providerDetailType")} value={t(`providerType.${detail.type}`, { defaultValue: detail.type })} />
+              {/* Shown because the provider's own settings show it, and
+                  because it is what anybody asking about this business over
+                  support will quote. */}
+              <Pair label={t("providerDetailId")} value={detail.id} mono />
             </dl>
 
             {detail.description?.trim() && (
@@ -246,6 +265,12 @@ export function AdminProviderDetailPage() {
         />
       </section>
 
+      <TeamSection
+        members={detail?.members ?? []}
+        invites={detail?.invites ?? []}
+        loading={query.isLoading}
+      />
+
       <DocumentsSection
         providerId={providerId}
         documents={detail?.documents ?? []}
@@ -269,13 +294,27 @@ export function AdminProviderDetailPage() {
   );
 }
 
-function Pair({ label, value }: { label: string; value: string | null }) {
+function Pair({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string | null;
+  mono?: boolean;
+}) {
   return (
     <div className="grid gap-0.5">
       <dt className="type-caption text-[var(--color-muted-foreground)]">
         {label}
       </dt>
-      <dd className="type-body m-0 truncate">{value?.trim() || "—"}</dd>
+      <dd
+        className={
+          mono ? "type-caption m-0 truncate font-mono" : "type-body m-0 truncate"
+        }
+      >
+        {value?.trim() || "—"}
+      </dd>
     </div>
   );
 }
@@ -350,5 +389,115 @@ function CommissionForm({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Who can act for this business.
+ *
+ * Pending invitations sit beside the members on purpose: an invitation is
+ * somebody who is *about* to have access, and a reviewer reading only the
+ * accepted list is reading half the answer to "who is this business".
+ */
+function TeamSection({
+  members,
+  invites,
+  loading,
+}: {
+  members: readonly AdminProviderMember[];
+  invites: readonly AdminProviderInvite[];
+  loading: boolean;
+}) {
+  const { t, i18n } = useTranslation("admin");
+  // Roles and invitation states are named in the `provider` namespace, where
+  // the workspace's own people list already reads them. Read from there rather
+  // than copied across: a copy is one more place for "Owner" to change on one
+  // screen and not the other. Getting this wrong is silent — i18next renders
+  // the key.
+  const { t: tp } = useTranslation("provider");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const date = (iso: string) =>
+    new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(iso));
+
+  return (
+    <section className="rounded-[var(--radius-card)] border border-[var(--color-border)]">
+      <div className="px-5 py-4">
+        <p className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
+          {t("providerDetailTeam")}
+        </p>
+        <p className="type-body mt-0.5 text-[var(--color-muted-foreground)]">
+          {t("providerDetailTeamHint")}
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="type-body border-t border-[var(--color-border)] px-5 py-8 text-center text-[var(--color-muted-foreground)]">
+          {t("providerDetailDocumentsLoading")}
+        </p>
+      ) : (
+        <ul className="grid list-none gap-0 p-0">
+          {members.map((m) => (
+            <li
+              key={m.userId}
+              className="flex items-center justify-between gap-4 border-t border-[var(--color-border)] px-5 py-3.5"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarFallback className="text-xs">
+                    {initialsFrom(m.name ?? m.email ?? "?")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="type-body-medium truncate font-semibold">
+                    {m.name ?? m.email ?? "—"}
+                  </p>
+                  <p className="type-caption truncate text-[var(--color-muted-foreground)]">
+                    {m.name ? m.email : t("providerDetailJoined", { date: date(m.joinedAt) })}
+                  </p>
+                </div>
+              </div>
+              <Badge tone={m.role === "owner" ? "success" : "info"}>
+                {tp(`peopleRoles.${m.role}`, { defaultValue: m.role })}
+              </Badge>
+            </li>
+          ))}
+
+          {invites.map((i) => (
+            <li
+              key={i.id}
+              className="flex items-center justify-between gap-4 border-t border-[var(--color-border)] px-5 py-3.5"
+            >
+              <div className="min-w-0">
+                <p className="type-body-medium truncate font-semibold">
+                  {i.email}
+                </p>
+                <p className="type-caption truncate text-[var(--color-muted-foreground)]">
+                  {t("providerDetailInviteExpires", { date: date(i.expiresAt) })}
+                </p>
+              </div>
+              <Badge tone="warning">
+                {/* The table stores `pending`; the people list calls that state
+                    `invited`, which is the word a reader understands — an
+                    invitation is not pending in the way a document is. Mapped
+                    rather than adding a second name for the same state. */}
+                {tp(`peopleStatus.${i.status === "pending" ? "invited" : i.status}`, {
+                  defaultValue: i.status,
+                })}
+              </Badge>
+            </li>
+          ))}
+
+          {members.length === 0 && invites.length === 0 && (
+            <li className="type-body border-t border-[var(--color-border)] px-5 py-8 text-center text-[var(--color-muted-foreground)]">
+              {t("providerDetailNoTeam")}
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
   );
 }
