@@ -26,6 +26,7 @@ export const providerMapper = {
       slug: row.slug,
       status: row.status as ProviderStatus,
       description: row.description ?? undefined,
+      commissionBps: row.commissionBps,
       logoKey: row.logoKey ?? undefined,
       photoKeys: row.photoKeys ?? undefined,
       address: hasAddress
@@ -54,6 +55,7 @@ export const providerMapper = {
       slug: json.slug,
       status: json.status,
       description: json.description ?? null,
+      commissionBps: json.commissionBps,
       // Missing in both directions until now, and that is where every logo
       // upload was lost: the route stored the object, the mutation accepted
       // the key, the aggregate held it — and the row handed to Postgres simply

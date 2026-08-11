@@ -2,6 +2,9 @@ import { describe, expect, it } from "bun:test";
 
 /** Records that a wallet was asked for, so a test can assert it happened. */
 const walletCalls: { providerId: string }[] = [];
+/** The platform default, as the command reads it at creation. */
+const settingsRepo = { async defaultCommissionBps() { return 1000; } };
+
 const walletRepo = {
   async createForProvider(input: { providerId: string }) {
     walletCalls.push(input);
@@ -68,6 +71,7 @@ function run(taken: string[], name = "Salão Beleza") {
       repos.providerRepo,
       repos.memberRepo,
       walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
     new SilentOutbox(),
   );
@@ -136,6 +140,67 @@ describe("slugCandidates", () => {
   });
 });
 
+describe("CreateProviderCommand — commission", () => {
+  it("stamps the platform default onto the workspace", async () => {
+    const { execute, saved } = run([]);
+    await execute();
+    expect(saved[0]!.commissionBps).toBe(1000);
+  });
+
+  it("does not move a rate an existing workspace already has", async () => {
+    // The whole reason the value is copied rather than looked up. A business
+    // agreed to a rate; changing the platform default is not permission to
+    // change the deal.
+    const first = run([]);
+    await first.execute();
+    const before = first.saved[0]!.commissionBps;
+
+    const raised = { async defaultCommissionBps() { return 1200; } };
+    const repos = makeRepos([first.saved[0]!.slug]);
+    const command = new CreateProviderCommand(
+      repos.providerRepo,
+      repos.memberRepo,
+      walletRepo as never,
+      raised as never,
+      unitOfWork,
+      new SilentOutbox(),
+    );
+    await command.execute(ctx(), { type: "individual", name: "Outro", slug: "o" });
+
+    expect(repos.saved[0]!.commissionBps).toBe(1200);
+    expect(first.saved[0]!.commissionBps).toBe(before);
+  });
+
+  it("refuses a rate outside 0–100%", async () => {
+    // Basis points, so 10 000 is the ceiling. A typo of 10000 meaning "100"
+    // would otherwise take every escudo of a booking.
+    const { execute, saved } = run([]);
+    await execute();
+    expect(() => saved[0]!.setCommissionByAdmin(10_001)).toThrow(RangeError);
+    expect(() => saved[0]!.setCommissionByAdmin(-1)).toThrow(RangeError);
+    expect(() => saved[0]!.setCommissionByAdmin(1250.5)).toThrow(RangeError);
+  });
+
+  it("lets an administrator change it", async () => {
+    const { execute, saved } = run([]);
+    await execute();
+    saved[0]!.setCommissionByAdmin(1200);
+    expect(saved[0]!.commissionBps).toBe(1200);
+  });
+
+  it("is not reachable through the provider's own update", async () => {
+    // `update()` is what the provider's settings page calls. A rate somebody
+    // sets for themselves is not a rate, so it is not a field there — and this
+    // asserts the shape rather than trusting a comment.
+    const { execute, saved } = run([]);
+    await execute();
+    const provider = saved[0]!;
+    provider.update({ name: "Novo nome" });
+    expect(provider.commissionBps).toBe(1000);
+    expect("commissionBps" in ({} as Parameters<typeof provider.update>[0])).toBe(false);
+  });
+});
+
 describe("CreateProviderCommand — wallet", () => {
   it("creates a wallet with the workspace", async () => {
     // Up front, so no payment path ever has to carry a "no wallet yet" branch
@@ -176,6 +241,7 @@ describe("CreateProviderCommand — wallet", () => {
       repos.providerRepo,
       repos.memberRepo,
       watchingWallet as never,
+      settingsRepo as never,
       failing,
       new SilentOutbox(),
     );
@@ -220,6 +286,7 @@ describe("CreateProviderCommand — slugs", () => {
       providerRepo,
       { async save() {} } as unknown as ProviderMemberRepositoryPort,
       walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       new SilentOutbox(),
     );
@@ -255,6 +322,7 @@ describe("CreateProviderCommand — slugs", () => {
       { async findBySlug() { return {} as Provider; } } as unknown as ProviderRepositoryPort,
       { async save() {} } as unknown as ProviderMemberRepositoryPort,
       walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       new SilentOutbox(),
     );

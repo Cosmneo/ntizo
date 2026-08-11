@@ -43,6 +43,7 @@ function makeProvider(): Provider {
     type: "individual",
     name: "Canalizações Namaacha",
     slug: "canalizacoes-namaacha",
+    commissionBps: 1000,
   });
 }
 

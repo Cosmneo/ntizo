@@ -11,6 +11,10 @@ import type {
 } from "../../ports/outbound";
 import type { OutboxPort } from "../../../../../shared/app/ports/outbox.port";
 import { Provider } from "../../../domain/aggregates/provider";
+import type {
+  PlatformSettingsPort,
+  WalletRepositoryPort,
+} from "../../ports/outbound";
 import { Address } from "../../../domain/value-objects/address.vo";
 import { ProviderMember } from "../../../domain/entities/provider-member";
 import { ProviderMemberAdded } from "../../../domain/events";
@@ -24,6 +28,8 @@ export class CreateProviderInternalCommand implements CreateProviderInternalPort
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
+    private readonly walletRepo: WalletRepositoryPort,
+    private readonly platformSettings: PlatformSettingsPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
@@ -31,8 +37,14 @@ export class CreateProviderInternalCommand implements CreateProviderInternalPort
   async execute(
     input: CreateProviderInternalInput,
   ): Promise<CreateProviderInternalOutput> {
+    // The same default and the same wallet as the public path. This command
+    // exists to skip the auth check, not to create a different kind of
+    // provider — a workspace made here must be indistinguishable afterwards.
+    const commissionBps = await this.platformSettings.defaultCommissionBps();
+
     const provider = Provider.create({
       id: randomUUID(),
+      commissionBps,
       ownerUserId: input.ownerUserId,
       type: input.type,
       name: input.name,
@@ -52,6 +64,13 @@ export class CreateProviderInternalCommand implements CreateProviderInternalPort
         role: "owner",
       });
       await this.memberRepo.save(ownerMember);
+
+      // Same transaction as the provider, same reason as the public path: a
+      // workspace must never exist without somewhere for its money to land.
+      await this.walletRepo.createForProvider({
+        providerId: provider.id,
+        currency: "MZN",
+      });
 
       // Mirrors accept-provider-invite.command.ts: every member row must
       // have a matching event, so a future projection rebuilding

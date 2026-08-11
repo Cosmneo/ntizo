@@ -201,6 +201,7 @@ function seedProviderAndInvite(store: Store) {
     type: "organization",
     name: "Acme Cleaning",
     slug: "acme-cleaning",
+    commissionBps: 1000,
   });
   store.providers.set(provider.id, provider);
 

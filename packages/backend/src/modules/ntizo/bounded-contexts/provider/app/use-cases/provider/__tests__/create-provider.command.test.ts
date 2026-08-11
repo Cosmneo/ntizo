@@ -2,6 +2,9 @@ import { describe, expect, it } from "bun:test";
 
 /** Records that a wallet was asked for, so a test can assert it happened. */
 const walletCalls: { providerId: string }[] = [];
+/** The platform default, as the command reads it at creation. */
+const settingsRepo = { async defaultCommissionBps() { return 1000; } };
+
 const walletRepo = {
   async createForProvider(input: { providerId: string }) {
     walletCalls.push(input);
@@ -164,6 +167,7 @@ describe("CreateProviderCommand — atomicity", () => {
       providerRepo,
       memberRepo,
       walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       new FakeOutboxPort(),
     );
@@ -200,6 +204,7 @@ describe("CreateProviderCommand — events", () => {
       providerRepo,
       memberRepo,
       walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       outboxPort,
     );

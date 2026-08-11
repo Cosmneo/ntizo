@@ -1,5 +1,6 @@
 import {
   doublePrecision,
+  integer,
   pgSchema,
   text,
   timestamp,
@@ -60,6 +61,21 @@ export const provider = providerSchema.table("provider", {
   reverificationRequestedAt: timestamp("reverification_requested_at", {
     withTimezone: true,
   }),
+
+  /**
+   * The platform fee charged to the **customer** on this provider's bookings,
+   * in basis points.
+   *
+   * Copied from `platform_settings.default_commission_bps` when the workspace
+   * is created and kept, so changing the platform default never moves the rate
+   * under a business that already signed up. An administrator can change this
+   * one; the provider cannot, and the mutation they use does not accept it.
+   *
+   * Charged to the customer. Never deducted from the provider — the provider
+   * receives the price they quoted, and that is a permanent commitment rather
+   * than a configuration.
+   */
+  commissionBps: integer("commission_bps").notNull().default(1000),
 
   addressStreet: text("address_street"),
   addressCity: text("address_city"),

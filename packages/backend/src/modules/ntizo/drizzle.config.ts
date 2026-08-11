@@ -18,6 +18,7 @@ const base: Config = {
     "ntizo_review",
     "ntizo_outbox",
     "ntizo_reference",
+    "ntizo_platform",
   ],
   verbose: true,
   strict: true,

@@ -31,6 +31,7 @@ function makeInvite(overrides: { status?: "revoked" | "accepted" } = {}) {
     type: "organization",
     name: "Salão Beleza",
     slug: "salao-beleza-aaaaaa",
+    commissionBps: 1000,
   });
   const invite = ProviderInvite.create({
     id: randomUUID(),

@@ -3,3 +3,4 @@ export {
   buildProviderInviteEmail,
 } from "./email-service.adapter";
 export * from "./drizzle-inviter-locale.adapter";
+export * from "./drizzle-platform-settings.adapter";

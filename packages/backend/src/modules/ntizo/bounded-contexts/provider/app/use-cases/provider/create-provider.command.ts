@@ -11,6 +11,7 @@ import type {
 } from "../../ports/inbound/provider";
 import type {
   ProviderMemberRepositoryPort,
+  PlatformSettingsPort,
   ProviderRepositoryPort,
   WalletRepositoryPort,
 } from "../../ports/outbound";
@@ -28,6 +29,7 @@ export class CreateProviderCommand implements CreateProviderPort {
     private readonly providerRepo: ProviderRepositoryPort,
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly walletRepo: WalletRepositoryPort,
+    private readonly platformSettings: PlatformSettingsPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
@@ -42,8 +44,14 @@ export class CreateProviderCommand implements CreateProviderPort {
     // generation a pure function of (name, id) rather than a probe loop.
     const providerId = randomUUID();
 
+    // Read once, stamped on, and never consulted again for this provider —
+    // that is the whole point of copying it. Moving the platform default later
+    // must not change a rate a business already agreed to.
+    const commissionBps = await this.platformSettings.defaultCommissionBps();
+
     const provider = Provider.create({
       id: providerId,
+      commissionBps,
       ownerUserId: requester.userId,
       type: input.type,
       name: input.name,

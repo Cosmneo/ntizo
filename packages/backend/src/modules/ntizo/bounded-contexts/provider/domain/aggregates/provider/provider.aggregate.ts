@@ -41,6 +41,14 @@ export interface ProviderProps {
   slug: string;
   status: ProviderStatus;
   description?: string;
+  /**
+   * The customer-side platform fee on this provider's bookings, in basis
+   * points. Copied from the platform default at creation and kept, so the rate
+   * a business signed up under does not move when the default does.
+   *
+   * Never a deduction from the provider — they receive the price they quoted.
+   */
+  commissionBps: number;
   /** R2 key of the logo, not a URL — see the schema for why. */
   logoKey?: string;
   /** R2 keys of the portfolio, in the order they should be shown. */
@@ -69,6 +77,8 @@ export class Provider {
     slug: string;
     description?: string;
     address?: Address;
+    /** From the platform default. Required, so it cannot be forgotten. */
+    commissionBps: number;
   }): Provider {
     const now = new Date();
     const provider = new Provider({
@@ -77,6 +87,7 @@ export class Provider {
       type: params.type,
       name: params.name,
       slug: params.slug,
+      commissionBps: params.commissionBps,
       // An application, not a live business.
       //
       // Registering creates a workspace the owner can start filling in; it does
@@ -158,6 +169,27 @@ export class Provider {
   }
 
   // ---- mutations ---------------------------------------------------------
+
+  get commissionBps() {
+    return this.props.commissionBps;
+  }
+
+  /**
+   * Only an administrator reaches this.
+   *
+   * Separate from `update()` rather than another optional field on it: that
+   * method is what the provider's own settings page calls, and a rate they can
+   * set for themselves is not a rate. Keeping it out of that shape means the
+   * mistake cannot be made by adding a line to a form.
+   */
+  setCommissionByAdmin(bps: number): void {
+    if (!Number.isInteger(bps) || bps < 0 || bps > 10_000) {
+      throw new RangeError(`commissionBps out of range: ${bps}`);
+    }
+    this.props.commissionBps = bps;
+    this.props.updatedAt = new Date();
+    this._events.push(new ProviderUpdated({ providerId: this.props.id }));
+  }
 
   update(params: {
     name?: string;
