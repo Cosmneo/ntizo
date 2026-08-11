@@ -26,6 +26,14 @@ export const providerAdminReadModel = z.object({
   country: z.string().nullable(),
   /** Who applied. An admin refusing a business needs to know whose it is. */
   ownerEmail: z.string().nullable(),
+  /**
+   * The customer-side fee on this provider's bookings, in basis points.
+   *
+   * Here because it is the one number on this screen an administrator changes,
+   * and showing the list without it would mean opening each provider to find
+   * out which ones are on a non-standard rate.
+   */
+  commissionBps: z.number().int(),
   /** ISO 8601. How long the application has been waiting is half the queue's job. */
   createdAt: z.string(),
 });

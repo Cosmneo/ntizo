@@ -43,6 +43,7 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
         description: provider.description,
         city: provider.addressCity,
         country: provider.addressCountry,
+        commissionBps: provider.commissionBps,
         ownerEmail: user.email,
         createdAt: provider.createdAt,
       })
