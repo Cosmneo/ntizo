@@ -91,78 +91,75 @@ export function AdminProvidersPage() {
           { key: "business", label: t("providersBusiness"), className: "pl-5" },
           { key: "owner", label: t("providersOwner") },
           { key: "status", label: t("providersStatus") },
-          { key: "commission", label: t("providersCommission"), align: "right" },
-          { key: "applied", label: t("providersApplied"), align: "right", className: "pr-5" },
+          {
+            key: "commission",
+            label: t("providersCommission"),
+            align: "right",
+          },
+          {
+            key: "applied",
+            label: t("providersApplied"),
+            align: "right",
+            className: "pr-5",
+          },
         ]}
         emptyText={t("providersEmpty")}
         noMatchesText={t("providersNoMatches")}
         filtered={search.trim() !== "" || status !== ""}
         skeletonRows={<RowSkeletons />}
-      >
-        {rows.map((provider) => (
-          <Row
-            key={provider.id}
-            provider={provider}
-            locale={locale}
-            appliedOn={dateFormat.format(new Date(provider.createdAt))}
-          />
-        ))}
-      </CollectionCard>
+        rows={rows.map((provider) => ({
+          key: provider.id,
+          primary: <Business provider={provider} />,
+          cells: {
+            owner: (
+              <span className="block max-w-[26ch] truncate">
+                {provider.ownerEmail ?? "—"}
+              </span>
+            ),
+            status: (
+              <Badge tone={STATUS_TONE[provider.status] ?? "info"}>
+                {t(`providerStatus.${provider.status}`)}
+              </Badge>
+            ),
+            commission: (
+              <span className="tabular-nums">
+                {formatCommission(provider.commissionBps, locale)}
+              </span>
+            ),
+            applied: (
+              <span className="tabular-nums text-[var(--color-muted-foreground)]">
+                {dateFormat.format(new Date(provider.createdAt))}
+              </span>
+            ),
+          },
+        }))}
+      />
     </div>
   );
 }
 
-function Row({
-  provider,
-  locale,
-  appliedOn,
-}: {
-  provider: AdminProvider;
-  locale: string;
-  appliedOn: string;
-}) {
-  const { t } = useTranslation("admin");
+/** Who the row is about: the icon, the name, and where they are. */
+function Business({ provider }: { provider: AdminProvider }) {
   const Icon = provider.type === "organization" ? Building2 : User;
-
   return (
-    <tr className="border-b border-[var(--color-border)] last:border-b-0">
-      <td className="py-3.5 pl-5">
-        <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
-            <Icon className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            {/* Plain text, not a link. Every row here ends in the same
-                question — "what else does this business look like" — but the
-                detail screen does not exist yet, and a link to nowhere is a
-                control that lies about being one. */}
-            <p className="type-body-medium truncate font-semibold">
-              {provider.name}
-            </p>
-            <p className="type-caption truncate text-[var(--color-muted-foreground)]">
-              {[provider.city, provider.country].filter(Boolean).join(", ") ||
-                provider.slug}
-            </p>
-          </div>
-        </div>
-      </td>
-      <td className="type-body py-3.5 pr-4">
-        <span className="block max-w-[22ch] truncate">
-          {provider.ownerEmail ?? "—"}
-        </span>
-      </td>
-      <td className="py-3.5 pr-4">
-        <Badge tone={STATUS_TONE[provider.status] ?? "info"}>
-          {t(`providerStatus.${provider.status}`)}
-        </Badge>
-      </td>
-      <td className="type-body py-3.5 pr-4 text-right tabular-nums">
-        {formatCommission(provider.commissionBps, locale)}
-      </td>
-      <td className="type-body py-3.5 pr-5 text-right text-[var(--color-muted-foreground)] tabular-nums">
-        {appliedOn}
-      </td>
-    </tr>
+    <div className="flex items-center gap-3">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        {/* Plain text, not a link. Every row here ends in the same question —
+            "what else does this business look like" — but the detail screen
+            does not exist yet, and a link to nowhere is a control that lies
+            about being one. */}
+        <p className="type-body-medium truncate font-semibold">
+          {provider.name}
+        </p>
+        <p className="type-caption truncate text-[var(--color-muted-foreground)]">
+          {[provider.city, provider.country].filter(Boolean).join(", ") ||
+            provider.slug}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -170,7 +167,10 @@ function RowSkeletons() {
   return (
     <>
       {Array.from({ length: 4 }, (_, i) => (
-        <tr key={i} className="border-b border-[var(--color-border)] last:border-b-0">
+        <tr
+          key={i}
+          className="border-b border-[var(--color-border)] last:border-b-0"
+        >
           <td className="py-3.5 pl-5">
             <div className="flex items-center gap-3">
               <Skeleton className="h-9 w-9 shrink-0 rounded-[var(--radius-card-sm)]" />

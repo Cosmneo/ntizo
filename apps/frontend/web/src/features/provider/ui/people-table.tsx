@@ -96,63 +96,66 @@ export function PeopleTable({
         { key: "role", label: t("peopleRole") },
         { key: "status", label: t("peopleStatusLabel") },
         { key: "date", label: t("peopleDate") },
-        { key: "actions", label: t("peopleActions"), align: "right", className: "pr-5" },
+        {
+          key: "actions",
+          label: t("peopleActions"),
+          align: "right",
+          className: "pr-5",
+        },
       ]}
       emptyText={t("peopleEmpty")}
       noMatchesText={t("peopleNoMatches")}
       filtered={total > 0 && rows.length !== total}
       skeletonRows={<RowSkeletons />}
-    >
-      {              rows.map((row) => (
-                <tr
-                  key={row.key}
-                  className="border-b border-[var(--color-border)] last:border-b-0"
-                >
-                  <td className="py-3.5 pl-5">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="text-xs">
-                          {initialsOf(row)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="type-body-medium truncate font-semibold">
-                          {/* An invitation has no name, so the address stands
-                              in for one rather than leaving the cell blank. */}
-                          {row.name ?? row.email}
-                        </p>
-                        <p className="type-caption truncate text-[var(--color-muted-foreground)]">
-                          {row.name ? row.email : t("peopleInvitePending")}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="type-body py-3.5 pr-4">
-                    {t(`peopleRoles.${row.role}`)}
-                  </td>
-                  <td className="py-3.5 pr-4">
-                    <Badge tone={STATUS_TONE[row.status]}>
-                      {t(`peopleStatus.${row.status}`)}
-                    </Badge>
-                  </td>
-                  <td className="type-body py-3.5 pr-4 text-[var(--color-muted-foreground)] tabular-nums">
-                    {row.date ? dateFormat.format(new Date(row.date)) : "—"}
-                  </td>
-                  <td className="py-3.5 pr-5 text-right">
-                    <RowActions
-                      row={row}
-                      canManage={canManage}
-                      onChangeRole={onChangeRole}
-                      onRemove={onRemove}
-                      onRevoke={onRevoke}
-                    />
-                  </td>
-                </tr>
-              ))}
-    </CollectionCard>
+      rows={rows.map((row) => ({
+        key: row.key,
+        primary: <Person row={row} />,
+        cells: {
+          role: t(`peopleRoles.${row.role}`),
+          status: (
+            <Badge tone={STATUS_TONE[row.status]}>
+              {t(`peopleStatus.${row.status}`)}
+            </Badge>
+          ),
+          date: (
+            <span className="tabular-nums text-[var(--color-muted-foreground)]">
+              {row.date ? dateFormat.format(new Date(row.date)) : "—"}
+            </span>
+          ),
+        },
+        actions: (
+          <RowActions
+            row={row}
+            canManage={canManage}
+            onChangeRole={onChangeRole}
+            onRemove={onRemove}
+            onRevoke={onRevoke}
+          />
+        ),
+      }))}
+    />
   );
 }
 
+/** Who the row is about. An invitation has no name, so its address stands in. */
+function Person({ row }: { row: PersonRow }) {
+  const { t } = useTranslation("provider");
+  return (
+    <div className="flex items-center gap-3">
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarFallback className="text-xs">{initialsOf(row)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0">
+        <p className="type-body-medium truncate font-semibold">
+          {row.name ?? row.email}
+        </p>
+        <p className="type-caption truncate text-[var(--color-muted-foreground)]">
+          {row.name ? row.email : t("peopleInvitePending")}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 /**
  * What can be done to this row.
