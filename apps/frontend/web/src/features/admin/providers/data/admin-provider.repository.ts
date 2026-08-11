@@ -15,7 +15,13 @@ const DETAIL = `
     providerDetailForAdmin(input: $input) {
       id name slug type status description city country
       commissionBps ownerUserId ownerName ownerEmail ownerPhone
-      memberCount logoUrl allowedTransitions createdAt updatedAt
+      memberCount logoUrl photoUrls
+      addressStreet addressDistrict addressPostalCode
+      reverificationRequestedAt allowedTransitions createdAt updatedAt
+      documents {
+        id type status fileName contentType uploadedAt reviewedAt
+        rejectionReason supersedesId
+      }
     }
   }`;
 
@@ -68,4 +74,37 @@ export async function setProviderCommission(
   commissionBps: number,
 ): Promise<void> {
   await sessionGraphql(SET_COMMISSION, { input: { providerId, commissionBps } });
+}
+
+/** Where the API serves this document's bytes. Never the bucket key. */
+export function documentUrl(documentId: string): string {
+  const base = import.meta.env["VITE_API_URL"] ?? "http://localhost:8788";
+  return `${base}/api/documents/${documentId}`;
+}
+
+export interface ReviewDocumentInput {
+  documentId: string;
+  accept: boolean;
+  rejectionReason?: string;
+}
+
+export async function reviewDocument(input: ReviewDocumentInput): Promise<void> {
+  const base = import.meta.env["VITE_API_URL"] ?? "http://localhost:8788";
+  const res = await fetch(`${base}/api/documents/${input.documentId}/review`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      accept: input.accept,
+      ...(input.rejectionReason ? { rejectionReason: input.rejectionReason } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const { error } = (await res.json().catch(() => ({ error: "REVIEW_FAILED" }))) as {
+      error?: string;
+    };
+    // The server's code as the message, so the screen can translate it. A
+    // status number would tell the reviewer nothing about what to do next.
+    throw new Error(error ?? "REVIEW_FAILED");
+  }
 }

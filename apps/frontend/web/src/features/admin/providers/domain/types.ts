@@ -37,6 +37,19 @@ export function formatCommission(bps: number, locale: string): string {
  * the aggregate owns which moves are legal, and a button the browser offers
  * and the server then refuses is worse than no button.
  */
+export interface AdminProviderDocument {
+  id: string;
+  type: string;
+  status: string;
+  fileName: string | null;
+  contentType: string | null;
+  uploadedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  /** Set when this upload replaced an earlier one. */
+  supersedesId: string | null;
+}
+
 export interface AdminProviderDetail {
   id: string;
   name: string;
@@ -53,6 +66,12 @@ export interface AdminProviderDetail {
   ownerPhone: string | null;
   memberCount: number;
   logoUrl: string | null;
+  photoUrls: string[];
+  addressStreet: string | null;
+  addressDistrict: string | null;
+  addressPostalCode: string | null;
+  documents: AdminProviderDocument[];
+  reverificationRequestedAt: string | null;
   allowedTransitions: string[];
   createdAt: string;
   updatedAt: string;

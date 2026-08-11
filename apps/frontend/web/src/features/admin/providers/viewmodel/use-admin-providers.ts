@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminProviderQueries,
   decideProviderStatus,
+  reviewDocument,
   setProviderCommission,
+  type ReviewDocumentInput,
 } from "../data/admin-provider.repository";
 
 export function useAdminProviders(input: {
@@ -50,5 +52,19 @@ export function useDecideProviderStatus(providerId: string) {
 export function useSetProviderCommission(providerId: string) {
   return useProviderAdminAction<number>(providerId, (bps) =>
     setProviderCommission(providerId, bps),
+  );
+}
+
+/**
+ * Accepting or refusing one document.
+ *
+ * Invalidates the provider's file rather than patching the row in place: the
+ * decision can also clear the whole account's re-verification flag, and a
+ * local edit would show the document decided while the banner above it still
+ * said the account needed looking at.
+ */
+export function useReviewDocument(providerId: string) {
+  return useProviderAdminAction<ReviewDocumentInput>(providerId, (input) =>
+    reviewDocument(input),
   );
 }

@@ -12,6 +12,7 @@ import {
 } from "@ntizo/frontend-ui";
 import { ProviderStatus } from "@ntizo/shared";
 import { WalletPanel } from "@/features/wallet/ui/wallet-panel";
+import { DocumentsSection } from "./documents-section";
 import { initialsFrom } from "@/shared/lib/initials";
 import { usePageHeader } from "@/shared/lib/page-header";
 import {
@@ -121,7 +122,55 @@ export function AdminProviderDetailPage() {
                 label={t("providersCommission")}
                 value={formatCommission(detail.commissionBps, locale)}
               />
+              <Pair
+                label={t("providerDetailAddress")}
+                value={
+                  [
+                    detail.addressStreet,
+                    detail.addressDistrict,
+                    detail.city,
+                    detail.addressPostalCode,
+                    detail.country,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || null
+                }
+              />
+              <Pair label={t("providerDetailType")} value={t(`providerType.${detail.type}`, { defaultValue: detail.type })} />
             </dl>
+
+            {detail.description?.trim() && (
+              <div className="mt-5 border-t border-[var(--color-border)] pt-5">
+                <p className="type-caption text-[var(--color-muted-foreground)]">
+                  {t("providerDetailDescription")}
+                </p>
+                {/* `whitespace-pre-line` so the paragraphs the provider typed
+                    survive. Collapsed into one block it reads as a different
+                    text from the one they wrote. */}
+                <p className="type-body mt-1 whitespace-pre-line">
+                  {detail.description}
+                </p>
+              </div>
+            )}
+
+            {detail.photoUrls.length > 0 && (
+              <div className="mt-5 border-t border-[var(--color-border)] pt-5">
+                <p className="type-caption text-[var(--color-muted-foreground)]">
+                  {t("providerDetailPhotos")}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {detail.photoUrls.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                      <img
+                        src={url}
+                        alt=""
+                        className="h-24 w-32 rounded-[var(--radius-card-sm)] object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </section>
@@ -196,6 +245,13 @@ export function AdminProviderDetailPage() {
           onSave={(bps) => commission.mutate(bps)}
         />
       </section>
+
+      <DocumentsSection
+        providerId={providerId}
+        documents={detail?.documents ?? []}
+        reverificationRequestedAt={detail?.reverificationRequestedAt ?? null}
+        loading={query.isLoading}
+      />
 
       {/* ── The money ────────────────────────────────────────────────────── */}
       <section className="grid gap-3">

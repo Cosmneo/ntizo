@@ -9,6 +9,27 @@ import { PROVIDER_STATUSES } from "../../../enums/provider-enums/provider-status
  * what money is sitting against it. Not its availability or its bookings —
  * those are the provider's business and none of them change the decision.
  */
+/**
+ * A file the provider uploaded, as the reviewer sees it.
+ *
+ * The storage key is deliberately absent. The reviewer needs to *open* the
+ * document, and the route that serves it takes the document's id and checks
+ * who is asking — handing out bucket keys would put the object's address in
+ * every browser that renders this list.
+ */
+export const providerDocumentReviewReadModel = z.object({
+  id: z.string().min(1),
+  type: z.string(),
+  status: z.string(),
+  fileName: z.string().nullable(),
+  contentType: z.string().nullable(),
+  uploadedAt: z.string(),
+  reviewedAt: z.string().nullable(),
+  rejectionReason: z.string().nullable(),
+  /** Set when this upload replaced an earlier one — the swap-after-approval case. */
+  supersedesId: z.string().nullable(),
+});
+
 export const providerAdminDetailReadModel = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -33,6 +54,25 @@ export const providerAdminDetailReadModel = z.object({
   ownerPhone: z.string().nullable(),
   memberCount: z.number().int(),
   logoUrl: z.string().nullable(),
+  photoUrls: z.array(z.string()),
+  /** The full address as entered, not the one line the queue shows. */
+  addressStreet: z.string().nullable(),
+  addressDistrict: z.string().nullable(),
+  addressPostalCode: z.string().nullable(),
+  /**
+   * Every document, newest first, superseded ones included.
+   *
+   * Superseded rows are kept in the list on purpose: the reason this table is
+   * append-only is that somebody could otherwise swap an approved ID for a
+   * forged one after the fact, and a reviewer who cannot see that a document
+   * was replaced has no way to notice it happened.
+   */
+  documents: z.array(providerDocumentReviewReadModel),
+  /**
+   * Set when an approved document was replaced and the account needs looking
+   * at again. The single most important thing on this screen.
+   */
+  reverificationRequestedAt: z.string().nullable(),
   /**
    * The statuses this one may legally move to, resolved on the server.
    *

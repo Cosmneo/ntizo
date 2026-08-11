@@ -144,5 +144,43 @@
     "PROVIDER_NOT_FOUND": "Este proveedor ya no existe.",
     "ADMIN_ONLY": "No tienes permiso para esto."
   },
+  "providerDetailAddress": "Address",
+  "providerDetailType": "Type",
+  "providerDetailDescription": "Description",
+  "providerDetailPhotos": "Photos",
+  "providerDetailDocuments": "Documents",
+  "providerDetailDocumentsHint": "Everything sent in, including what has since been replaced.",
+  "providerDetailDocumentsLoading": "Loading documents…",
+  "providerDetailNoDocuments": "No documents sent yet.",
+  "providerDetailOpenDocument": "Open",
+  "providerDetailAcceptDocument": "Accept",
+  "providerDetailRejectDocument": "Reject",
+  "providerDetailConfirmReject": "Confirm rejection",
+  "providerDetailRejectReason": "Why? The provider will read this.",
+  "providerDetailReplacesEarlier": "Replaces an earlier document.",
+  "providerDetailReverification": "An approved document was replaced on {{when}}. This account needs looking at again.",
+  "providerType": {
+    "individual": "Individual",
+    "organization": "Organisation"
+  },
+  "documentType": {
+    "NATIONAL_ID": "National ID",
+    "DIRE": "DIRE",
+    "PASSPORT": "Passport",
+    "TAX_NUMBER": "Tax number",
+    "BUSINESS_LICENCE": "Business licence",
+    "COMMERCIAL_REGISTRY": "Commercial registry"
+  },
+  "documentStatus": {
+    "pending": "To review",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "superseded": "Replaced"
+  },
+  "documentReviewError": {
+    "NOT_PENDING": "This document has already been reviewed or replaced.",
+    "REASON_REQUIRED": "A rejection needs a reason.",
+    "FORBIDDEN": "You don't have permission for this."
+  },
   "close": "Cerrar"
 }

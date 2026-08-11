@@ -10,6 +10,7 @@ import {
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   provider,
+  providerDocument,
   providerMember,
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import {
@@ -99,6 +100,11 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
         ownerName: profile.displayName,
         ownerEmail: user.email,
         logoKey: provider.logoKey,
+        photoKeys: provider.photoKeys,
+        addressStreet: provider.addressStreet,
+        addressDistrict: provider.addressDistrict,
+        addressPostalCode: provider.addressPostalCode,
+        reverificationRequestedAt: provider.reverificationRequestedAt,
         createdAt: provider.createdAt,
         updatedAt: provider.updatedAt,
         // Counted in the query: a detail screen that fires one more round trip
@@ -115,6 +121,25 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
       .limit(1);
 
     if (!row) return null;
+
+    // A second query rather than a join: one provider has several documents,
+    // and joining would multiply the row above by them and make every count on
+    // it wrong.
+    const documents = await getDb()
+      .select({
+        id: providerDocument.id,
+        type: providerDocument.type,
+        status: providerDocument.status,
+        fileName: providerDocument.fileName,
+        contentType: providerDocument.contentType,
+        uploadedAt: providerDocument.uploadedAt,
+        reviewedAt: providerDocument.reviewedAt,
+        rejectionReason: providerDocument.rejectionReason,
+        supersedesId: providerDocument.supersedesId,
+      })
+      .from(providerDocument)
+      .where(eq(providerDocument.providerId, providerId))
+      .orderBy(desc(providerDocument.uploadedAt));
 
     return {
       id: row.id,
@@ -135,6 +160,22 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
       ownerPhone: row.ownerPhone?.trim() ? row.ownerPhone : null,
       memberCount: row.memberCount,
       logoUrl: row.logoKey ? mediaUrl(row.logoKey) : null,
+      // Filtered after mapping, not before: `mediaUrl` returns null where
+      // nothing serves the bucket, and a photo with no URL is a photo this
+      // screen cannot show rather than a photo that is not there.
+      photoUrls: (row.photoKeys ?? [])
+        .map((k) => mediaUrl(k))
+        .filter((u): u is string => u !== null),
+      addressStreet: row.addressStreet,
+      addressDistrict: row.addressDistrict,
+      addressPostalCode: row.addressPostalCode,
+      documents: documents.map((doc) => ({
+        ...doc,
+        uploadedAt: doc.uploadedAt.toISOString(),
+        reviewedAt: doc.reviewedAt?.toISOString() ?? null,
+      })),
+      reverificationRequestedAt:
+        row.reverificationRequestedAt?.toISOString() ?? null,
       // Resolved here so the screen and the aggregate cannot disagree about
       // what may be offered. A button the server then refuses is worse than
       // no button.

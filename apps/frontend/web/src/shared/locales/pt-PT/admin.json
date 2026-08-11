@@ -144,5 +144,43 @@
     "PROVIDER_NOT_FOUND": "Este prestador já não existe.",
     "ADMIN_ONLY": "Não tem permissão para isto."
   },
+  "providerDetailAddress": "Morada",
+  "providerDetailType": "Tipo",
+  "providerDetailDescription": "Descrição",
+  "providerDetailPhotos": "Fotografias",
+  "providerDetailDocuments": "Documentos",
+  "providerDetailDocumentsHint": "Tudo o que foi enviado, incluindo o que já foi substituído.",
+  "providerDetailDocumentsLoading": "A carregar documentos…",
+  "providerDetailNoDocuments": "Ainda não enviou documentos.",
+  "providerDetailOpenDocument": "Abrir",
+  "providerDetailAcceptDocument": "Aceitar",
+  "providerDetailRejectDocument": "Recusar",
+  "providerDetailConfirmReject": "Confirmar recusa",
+  "providerDetailRejectReason": "Porquê? O prestador vai ler isto.",
+  "providerDetailReplacesEarlier": "Substitui um documento anterior.",
+  "providerDetailReverification": "Um documento aprovado foi substituído em {{when}}. Esta conta precisa de nova análise.",
+  "providerType": {
+    "individual": "Individual",
+    "organization": "Organização"
+  },
+  "documentType": {
+    "NATIONAL_ID": "Bilhete de Identidade",
+    "DIRE": "DIRE",
+    "PASSPORT": "Passaporte",
+    "TAX_NUMBER": "NUIT",
+    "BUSINESS_LICENCE": "Alvará",
+    "COMMERCIAL_REGISTRY": "Registo comercial"
+  },
+  "documentStatus": {
+    "pending": "Por analisar",
+    "accepted": "Aceite",
+    "rejected": "Recusado",
+    "superseded": "Substituído"
+  },
+  "documentReviewError": {
+    "NOT_PENDING": "Este documento já foi analisado ou substituído.",
+    "REASON_REQUIRED": "Uma recusa precisa de um motivo.",
+    "FORBIDDEN": "Não tem permissão para isto."
+  },
   "close": "Fechar"
 }

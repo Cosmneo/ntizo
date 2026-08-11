@@ -435,34 +435,40 @@ happens to pass both explicitly.
 **Trigger:** the next caller of `providerList` that omits `limit` or `offset`,
 or the next slice written from that file as a template.
 
-## 21. Documents: the read leg and the admin review queue
+## 21. Documents: DONE, except for a queue across providers
 
-Uploading works end to end now. `POST /api/documents/:providerId/:type` checks
-the session, checks *membership* (403 for an authenticated stranger), re-checks
-MIME and size, puts the bytes under a timestamped key, and records a row in
-`ntizo_provider.provider_document`. The wizard and the settings page both use
-it. Replacing a document supersedes the previous row rather than overwriting
-it, and replacing an **accepted** one sets `provider.reverification_requested_at`.
+Both halves of this are built.
 
-Two things are still missing, and they are the same thing twice:
+`GET /api/documents/:documentId` serves the bytes to an administrator or to a
+member of the workspace the document belongs to, `private, no-store`, by
+document id rather than by storage key — a key in a URL is the object's address
+in the bucket. `POST /api/documents/:documentId/review` accepts or refuses a
+document, administrators only, and a refusal without a reason is rejected
+because the provider would be told to send it again with no idea what was
+wrong. Only a `pending` row can be decided, enforced in the WHERE rather than
+by a check-then-write, so two reviewers on the same queue cannot overwrite each
+other; a no-op comes back 409 rather than as an error.
 
-- `GET /api/documents/*` returns **501**. Authentication is checked, authorisation
-  is not, because who may read whose papers is a decision that belongs with the
-  review queue. Guessing would mean handing an ID card to the wrong person.
-- Nothing moves a document out of `pending`. `accepted` and `rejected` exist in
-  the enum, the read model carries `rejectionReason`, and the settings page
-  renders all three states — but only a manual `UPDATE` can produce them today.
+The review route is registered **before** the upload route, and that ordering
+is load-bearing: `/api/documents/:providerId/:type` matches any two segments,
+so it also matches `/api/documents/<id>/review`. With the upload first, every
+review was answered by its membership check and came back 403 with an
+administrator's session.
 
-The table is built for the queue: `provider_document_status_idx` is
-`(status, uploaded_at)`, which is exactly "everything still waiting, oldest
-first". `supersedes_id` chains the history, so "what was approved, and when did
-it change" is answerable.
+The administrator's provider file shows every document including superseded
+ones, which is the point — the reason the table is append-only is that an
+approved ID could otherwise be swapped for a forged one, and a reviewer who
+cannot see that a document was replaced cannot notice it happened. Verified end
+to end: upload → accept → replace → the old row goes `superseded`, the new one
+is `pending` and marked as replacing it, and the account is flagged for
+re-verification.
 
-Also undecided: **retention**. An identity document kept forever is a liability;
-one deleted too early is an audit that cannot be reconstructed. Nothing expires
-these objects today.
+**What is still missing:** a queue *across* providers. Today a reviewer finds
+pending documents by opening one provider at a time. The index for it already
+exists — `provider_document_status_idx` is `(status, uploaded_at)`, which is
+exactly "everything still waiting, oldest first".
 
-**Trigger:** the admin providers queue — task #31.
+**Trigger:** when more than a handful of providers are waiting at once.
 
 ## 22. The location map needs a Google Maps key
 
@@ -525,6 +531,13 @@ and no column stores them, so a provider fills that screen in and the platform
 has no idea where to pay them.
 
 The wallet exists now, and its balance will build up with nowhere to send it.
+
+The administrator's provider file now shows everything else the wizard
+collects — the address as entered, the description, the photographs, and every
+document with its review state. Payout is the one thing on that screen that
+cannot be shown, because it was never stored. Anybody adding it should add the
+column and the mutation together with the panel on the provider file, so the
+reviewer can see where the money is going before they approve.
 
 **Trigger:** before the first real booking is paid for.
 

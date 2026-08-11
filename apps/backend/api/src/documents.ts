@@ -6,8 +6,13 @@ import {
   type ProviderDocumentType,
 } from "@ntizo/shared";
 import { getAuth } from "@ntizo/backend/modules/better-auth";
-import { recordDocumentUpload } from "@ntizo/backend/modules/ntizo/documents";
+import {
+  findDocumentById,
+  recordDocumentUpload,
+  reviewDocument,
+} from "@ntizo/backend/modules/ntizo/documents";
 import { canWriteProviderMedia } from "./provider-access";
+import { isPlatformAdmin } from "./admin-access";
 import type { AppBindings } from "./types";
 
 /**
@@ -34,6 +39,60 @@ function isKnownType(value: string): value is ProviderDocumentType {
 }
 
 export function mountDocuments(app: Hono<{ Bindings: AppBindings }>) {
+  /**
+   * Decide about one document.
+   *
+   * A REST route beside the upload rather than a GraphQL mutation, because it
+   * belongs with the two legs it sits between — the upload that created the
+   * row and the read that serves the bytes — and splitting the three across
+   * two transports would put the same authorisation rule in two places.
+   *
+   * Registered BEFORE the upload, and that is load-bearing.
+   * `/api/documents/:providerId/:type` matches any two segments, so it also
+   * matches `/api/documents/<id>/review`; with the upload first, every review
+   * was answered by the upload handler's membership check and came back 403
+   * with an administrator's session. Found by calling it, not by reading it.
+   * Safe in this order because `:type` is a closed enum that will never
+   * contain "review", so no real upload can be swallowed by this.
+   */
+  app.post("/api/documents/:documentId/review", async (c) => {
+    const session = await getAuth().api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user) return c.json({ error: "UNAUTHENTICATED" }, 401);
+    // Administrators only, unlike the read below: a provider may look at their
+    // own papers and must never be the one who approves them.
+    if (!(await isPlatformAdmin(session.user.id))) {
+      return c.json({ error: "FORBIDDEN" }, 403);
+    }
+
+    const body = (await c.req.json().catch(() => null)) as {
+      accept?: unknown;
+      rejectionReason?: unknown;
+    } | null;
+    if (typeof body?.accept !== "boolean") {
+      return c.json({ error: "ACCEPT_REQUIRED" }, 400);
+    }
+    const reason =
+      typeof body.rejectionReason === "string"
+        ? body.rejectionReason.trim().slice(0, 500)
+        : null;
+    // A refusal with no reason is one the provider cannot act on: they are
+    // told to send it again with no idea what was wrong with it.
+    if (!body.accept && !reason) {
+      return c.json({ error: "REASON_REQUIRED" }, 400);
+    }
+
+    const result = await reviewDocument({
+      documentId: c.req.param("documentId"),
+      accept: body.accept,
+      reviewerUserId: session.user.id,
+      rejectionReason: reason,
+    });
+    // 409, not 404: the document exists, it just is not in a state anybody can
+    // decide about — already reviewed, or superseded by a later upload.
+    if (!result.applied) return c.json({ error: "NOT_PENDING" }, 409);
+    return c.json(result, 200);
+  });
+
   /**
    * Upload one document.
    *
@@ -136,16 +195,52 @@ export function mountDocuments(app: Hono<{ Bindings: AppBindings }>) {
   });
 
   /**
-   * Read one back.
+   * Read one back, by document id.
    *
-   * Authentication is checked here and authorisation is NOT yet: who may read
-   * whose documents is a decision that belongs with the admin review queue,
-   * which does not exist. Until it does this route refuses everyone, because
-   * the failure mode of guessing is handing an ID card to the wrong person.
+   * This refused everyone until now, on the grounds that who may read whose
+   * documents is a decision belonging with the admin review queue and the
+   * queue did not exist. It does now, and this is that decision: an
+   * administrator, or somebody who belongs to the workspace the document is
+   * about. Nobody else, ever — the failure mode is handing an identity card to
+   * the wrong person.
+   *
+   * By id rather than by storage key. A key in a URL is the object's address
+   * in the bucket, and a screen that renders one has published it to every
+   * browser that loaded the page; an id is meaningless without this route's
+   * check standing behind it.
+   *
+   * `private, no-store`: these must not sit in a shared cache or on disk after
+   * the tab closes, which is exactly what the media route's year-long
+   * `immutable` would do.
    */
-  app.get("/api/documents/*", async (c) => {
+  app.get("/api/documents/:documentId", async (c) => {
     const session = await getAuth().api.getSession({ headers: c.req.raw.headers });
     if (!session?.user) return c.json({ error: "UNAUTHENTICATED" }, 401);
-    return c.json({ error: "DOCUMENT_READ_NOT_IMPLEMENTED" }, 501);
+
+    const doc = await findDocumentById(c.req.param("documentId"));
+    // The permission check and the existence check answer together, so a
+    // stranger guessing ids cannot learn which ones exist from the difference
+    // between a 403 and a 404.
+    const allowed =
+      doc !== null &&
+      ((await isPlatformAdmin(session.user.id)) ||
+        (await canWriteProviderMedia(doc.providerId, session.user.id)));
+    if (!allowed || !doc) return c.json({ error: "FORBIDDEN" }, 403);
+
+    const bucket = c.env.DOCUMENTS_BUCKET;
+    if (!bucket) return c.json({ error: "DOCUMENT_STORAGE_UNCONFIGURED" }, 503);
+
+    const object = await bucket.get(doc.storageKey);
+    if (!object) return c.json({ error: "NOT_FOUND" }, 404);
+
+    return new Response(object.body as unknown as BodyInit, {
+      headers: {
+        "content-type": doc.contentType ?? "application/octet-stream",
+        "cache-control": "private, no-store",
+        // `inline` so a reviewer sees the document in the tab rather than
+        // collecting a folder of downloaded ID cards on their laptop.
+        "content-disposition": `inline; filename="${(doc.fileName ?? "document").replace(/"/g, "")}"`,
+      },
+    });
   });
 }
