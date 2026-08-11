@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { NotProviderMemberError, ServiceNotFoundError } from "../../domain/exceptions";
+import {
+  NotProviderMemberError,
+  OptionOrderInvalidError,
+  ServiceNotFoundError,
+} from "../../domain/exceptions";
 import type { Service } from "../../domain/aggregates/service.aggregate";
 import type { ServiceRepositoryPort } from "../ports/outbound/service.repository.port";
 
@@ -63,7 +67,16 @@ export class ManageOptionsCommand {
 
   async reorder(input: Scoped & { orderedIds: string[] }): Promise<{ ok: true }> {
     const service = await this.load(input);
-    service.reorderOptions(input.orderedIds);
+    // Refused rather than deduplicated, mirroring
+    // ReorderCategoriesCommand: a list with the same id twice is a client
+    // that has lost track of its own rows, and `Service.reorderOptions`'s
+    // `flatMap` would otherwise write two entries claiming one option,
+    // corrupting the aggregate's option list instead of just misordering it.
+    const ids = input.orderedIds;
+    if (new Set(ids).size !== ids.length) {
+      throw new OptionOrderInvalidError("the same option appears twice");
+    }
+    service.reorderOptions(ids);
     await this.repo.save(service);
     return { ok: true };
   }

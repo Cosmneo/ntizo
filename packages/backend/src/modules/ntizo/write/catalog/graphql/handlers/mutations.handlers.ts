@@ -80,15 +80,7 @@ export function createCatalogWriteHandlers(mod: CatalogWriteModule) {
       uc.manageOptions.reorder({ requesterUserId: requireUser(ctx), ...args.input }),
     )
     .handle("service.translation.set", async (args, ctx) =>
-      uc.setServiceTranslation.execute({
-        requesterUserId: requireUser(ctx),
-        ...args.input,
-        // The schema leaves `description` optional (a blank box in the form),
-        // but the command's field is required-and-nullable — "absent" and
-        // "explicitly cleared" mean the same thing here, so default the
-        // former into the latter rather than widen the command's type.
-        description: args.input.description ?? null,
-      }),
+      uc.setServiceTranslation.execute({ requesterUserId: requireUser(ctx), ...args.input }),
     )
     .build();
 }

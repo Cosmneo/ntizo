@@ -180,7 +180,15 @@ export const setServiceTranslation = defineMutation({
       optionId: z.string().min(1).optional(),
       locale: localeSchema,
       name: z.string().trim().min(1).max(160),
-      description: z.string().trim().max(2000).nullable().optional(),
+      // Nullable, but not `.optional()` — unlike the rest of this file. This
+      // mutation is a full set of the translation row, not a patch:
+      // `Service.setTranslation` has no "leave the description alone" path,
+      // so a rename-only call that let `description` default away would
+      // silently discard whatever was saved. Same reasoning as the option's
+      // `durationMinutes`/`minMinutes`/`stepMinutes` and `quoteForm.intro`
+      // above — every caller states its intent, even when the intent is
+      // "there is none".
+      description: z.string().trim().max(2000).nullable(),
     }),
   ),
   output: zodSchema(z.object({ ok: z.literal(true) })),

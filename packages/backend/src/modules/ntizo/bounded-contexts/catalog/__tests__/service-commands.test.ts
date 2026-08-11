@@ -166,6 +166,48 @@ describe("ManageOptionsCommand", () => {
       }),
     ).rejects.toMatchObject({ code: "NOT_PROVIDER_MEMBER" });
   });
+
+  it("refuses a reorder list with the same option id twice", async () => {
+    const id = await withService();
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId: id,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId: id,
+      pricingMode: "fixed",
+      amountMinor: 50000,
+      currency: "MZN",
+      durationMinutes: 60,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Cabelo e barba",
+    });
+    const before = repo.stored.get(id)!.toJSON().options;
+    const [first, second] = before;
+
+    // Mirrors ReorderCategoriesCommand: a repeated id is refused, not
+    // deduplicated. `Service.reorderOptions`'s `flatMap` would otherwise
+    // write two entries claiming the same option, corrupting the list.
+    await expect(
+      new ManageOptionsCommand(repo).reorder({
+        requesterUserId: "user-1",
+        serviceId: id,
+        orderedIds: [first!.id, second!.id, first!.id],
+      }),
+    ).rejects.toMatchObject({ code: "OPTION_ORDER_INVALID" });
+
+    // Untouched: the option list is exactly what it was before the call.
+    expect(repo.stored.get(id)!.toJSON().options).toEqual(before);
+  });
 });
 
 describe("SetServiceStatusCommand", () => {

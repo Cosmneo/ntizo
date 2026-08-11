@@ -116,6 +116,16 @@ export class OptionPriceInvalidError extends UnprocessableError {
   }
 }
 
+export class OptionOrderInvalidError extends UnprocessableError {
+  constructor(reason: string) {
+    super({
+      message: `The requested option order is not usable: ${reason}`,
+      code: "OPTION_ORDER_INVALID",
+    });
+    this.name = "OptionOrderInvalidError";
+  }
+}
+
 export class LastOptionError extends ConflictError {
   constructor() {
     super({
