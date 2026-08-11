@@ -3134,7 +3134,7 @@ English text rather than a guess, as the categories did.
 In the running app, on each of the list, the form and the sheet:
 
 ```js
-document.body.innerText.match(/service[A-Z]\w+|options[A-Z]\w+/g)
+document.body.innerText.match(/service[A-Z]\w+|option[A-Z]\w+/g)
 ```
 
 Expected: `null`. A missing key renders as the key and never fails a build —
