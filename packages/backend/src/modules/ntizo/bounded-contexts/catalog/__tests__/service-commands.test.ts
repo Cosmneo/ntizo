@@ -269,6 +269,27 @@ describe("UpdateServiceCommand", () => {
     // Never got to the mutation: category is unchanged.
     expect(repo.stored.get(serviceId)!.toJSON().categoryId).toBe("cat-1");
   });
+
+  it("refuses a quote form on a priced service", async () => {
+    // `base` is `bookingMode: "priced"`. This input type carries `quoteForm`
+    // regardless of the service's booking mode — nothing upstream of the
+    // aggregate stops it, so the aggregate itself has to.
+    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    await expect(
+      new UpdateServiceCommand(repo).execute({
+        requesterUserId: "user-1",
+        serviceId,
+        quoteForm: {
+          responseHours: 24,
+          askDeadline: true,
+          askPhotos: true,
+          askLocation: true,
+          intro: null,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "SERVICE_QUOTE_FORM_NOT_ALLOWED" });
+    expect(repo.stored.get(serviceId)!.toJSON().quoteForm).toBeNull();
+  });
 });
 
 describe("SetServiceTranslationCommand", () => {

@@ -168,7 +168,10 @@ export function optionDraftFrom(option: ServiceOption, sourceLocale: Locale): Op
   return {
     name: source?.name ?? "",
     pricingMode: option.pricingMode,
-    amount: String(option.amountMinor / 100).replace(".", ","),
+    // `.toFixed(2)`, not a bare `String(...)` — 30050 minor units is 300.50,
+    // and `String(300.5)` drops the trailing zero a provider never typed,
+    // rendering the edit field as "300,5" instead of what they wrote.
+    amount: (option.amountMinor / 100).toFixed(2).replace(".", ","),
     duration: option.durationMinutes !== null ? String(option.durationMinutes) : "",
     min: option.minMinutes !== null ? String(option.minMinutes) : "",
     step: option.stepMinutes !== null ? String(option.stepMinutes) : "",

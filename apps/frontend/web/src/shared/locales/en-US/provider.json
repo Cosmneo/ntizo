@@ -239,6 +239,7 @@
     "archived": "Archived"
   },
   "servicesPriceOnQuote": "By quote",
+  "servicesPriceNone": "No price yet",
   "servicesEmpty": "No services yet.",
   "servicesNoMatches": "No services match your search.",
   "servicesError": "Something went wrong loading your services.",
@@ -286,6 +287,7 @@
     "SERVICE_NOT_FOUND": "This service could not be found.",
     "SERVICE_NEEDS_OPTION": "A priced service needs at least one option before it can be published.",
     "SERVICE_QUOTE_HAS_OPTIONS": "A quote service can't have options — the price isn't known in advance.",
+    "SERVICE_QUOTE_FORM_NOT_ALLOWED": "A priced service can't have a quote form — its price is already set through its options.",
     "SERVICE_NAME_REQUIRED": "The service needs a name in the language it was written in.",
     "SERVICE_CATEGORY_REQUIRED": "The service needs a category.",
     "OPTION_DURATION_REQUIRED": "This option needs the right duration fields for the pricing mode chosen.",

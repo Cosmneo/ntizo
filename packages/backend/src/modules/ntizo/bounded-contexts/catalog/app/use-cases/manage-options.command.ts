@@ -46,7 +46,11 @@ export class ManageOptionsCommand {
     minMinutes?: number | null;
     stepMinutes?: number | null;
     isDefault?: boolean;
-    isActive?: boolean;
+    // No `isActive` here: it existed only to carry the GraphQL input
+    // through to `Service.updateOption`, and the mutation no longer accepts
+    // it (see `updateServiceOption`'s schema). `Service.updateOption` itself
+    // still honours `isActive` when given one directly — that is slice 2's
+    // business, not this command's.
     name?: string;
   }): Promise<{ ok: true }> {
     const service = await this.load(input);

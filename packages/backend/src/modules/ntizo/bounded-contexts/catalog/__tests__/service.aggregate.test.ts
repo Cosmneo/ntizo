@@ -207,6 +207,27 @@ describe("publishing", () => {
   });
 });
 
+describe("setQuoteForm", () => {
+  const form = {
+    responseHours: 24,
+    askDeadline: false,
+    askPhotos: false,
+    askLocation: false,
+    intro: "Diga-me o que precisa.",
+  };
+
+  it("refuses a priced service — the mirror of a quote service refusing an option", () => {
+    const s = newService();
+    expect(codeOf(() => s.setQuoteForm(form))).toBe("SERVICE_QUOTE_FORM_NOT_ALLOWED");
+  });
+
+  it("accepts it on a quote service", () => {
+    const s = newService({ bookingMode: "quote" });
+    s.setQuoteForm(form);
+    expect(s.toJSON().quoteForm).toEqual(form);
+  });
+});
+
 describe("translations", () => {
   it("adds one without touching the source", () => {
     const s = newService();

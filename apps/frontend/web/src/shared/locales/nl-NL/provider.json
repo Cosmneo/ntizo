@@ -239,6 +239,7 @@
     "archived": "Gearchiveerd"
   },
   "servicesPriceOnQuote": "Op offerte",
+  "servicesPriceNone": "Nog geen prijs",
   "servicesEmpty": "Nog geen diensten.",
   "servicesNoMatches": "Geen diensten komen overeen met je zoekopdracht.",
   "servicesError": "Er is iets misgegaan bij het laden van je diensten.",
@@ -286,6 +287,7 @@
     "SERVICE_NOT_FOUND": "Deze dienst is niet gevonden.",
     "SERVICE_NEEDS_OPTION": "Een dienst met prijs heeft minstens één optie nodig voordat hij gepubliceerd kan worden.",
     "SERVICE_QUOTE_HAS_OPTIONS": "Een dienst op offerte kan geen opties hebben — de prijs staat niet vooraf vast.",
+    "SERVICE_QUOTE_FORM_NOT_ALLOWED": "Een dienst met prijs kan geen offerteformulier hebben — de prijs staat al vast via de opties.",
     "SERVICE_NAME_REQUIRED": "De dienst heeft een naam nodig in de taal waarin hij is geschreven.",
     "SERVICE_CATEGORY_REQUIRED": "De dienst heeft een categorie nodig.",
     "OPTION_DURATION_REQUIRED": "Deze optie heeft de juiste duurvelden nodig voor de gekozen prijsvorm.",

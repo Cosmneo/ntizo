@@ -239,6 +239,7 @@
     "archived": "Archivé"
   },
   "servicesPriceOnQuote": "Sur devis",
+  "servicesPriceNone": "Pas encore de prix",
   "servicesEmpty": "Aucun service pour l'instant.",
   "servicesNoMatches": "Aucun service ne correspond à votre recherche.",
   "servicesError": "Une erreur s'est produite lors du chargement de vos services.",
@@ -286,6 +287,7 @@
     "SERVICE_NOT_FOUND": "Ce service est introuvable.",
     "SERVICE_NEEDS_OPTION": "Un service avec prix a besoin d'au moins une option avant de pouvoir être publié.",
     "SERVICE_QUOTE_HAS_OPTIONS": "Un service sur devis ne peut pas avoir d'options — le prix n'est pas connu à l'avance.",
+    "SERVICE_QUOTE_FORM_NOT_ALLOWED": "Un service avec prix ne peut pas avoir de formulaire de devis — le prix est déjà fixé par les options.",
     "SERVICE_NAME_REQUIRED": "Le service a besoin d'un nom dans la langue dans laquelle il a été rédigé.",
     "SERVICE_CATEGORY_REQUIRED": "Le service a besoin d'une catégorie.",
     "OPTION_DURATION_REQUIRED": "Cette option a besoin des bons champs de durée pour le mode de tarification choisi.",

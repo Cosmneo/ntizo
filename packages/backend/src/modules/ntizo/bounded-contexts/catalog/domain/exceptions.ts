@@ -85,6 +85,17 @@ export class QuoteServiceHasOptionsError extends ConflictError {
   }
 }
 
+/** The mirror of {@link QuoteServiceHasOptionsError}: the same rule, guarded from the other side. */
+export class QuoteFormNotAllowedError extends ConflictError {
+  constructor() {
+    super({
+      message: "A priced service cannot have a quote form — its price is already set through its options",
+      code: "SERVICE_QUOTE_FORM_NOT_ALLOWED",
+    });
+    this.name = "QuoteFormNotAllowedError";
+  }
+}
+
 export class ServiceNameRequiredError extends UnprocessableError {
   constructor() {
     super({

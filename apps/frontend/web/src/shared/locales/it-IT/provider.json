@@ -239,6 +239,7 @@
     "archived": "Archiviato"
   },
   "servicesPriceOnQuote": "Su preventivo",
+  "servicesPriceNone": "Ancora nessun prezzo",
   "servicesEmpty": "Non ci sono ancora servizi.",
   "servicesNoMatches": "Nessun servizio corrisponde alla tua ricerca.",
   "servicesError": "Qualcosa è andato storto nel caricare i tuoi servizi.",
@@ -286,6 +287,7 @@
     "SERVICE_NOT_FOUND": "Non è stato possibile trovare questo servizio.",
     "SERVICE_NEEDS_OPTION": "Un servizio con prezzo ha bisogno di almeno un'opzione prima di poter essere pubblicato.",
     "SERVICE_QUOTE_HAS_OPTIONS": "Un servizio su preventivo non può avere opzioni — il prezzo non è noto in anticipo.",
+    "SERVICE_QUOTE_FORM_NOT_ALLOWED": "Un servizio con prezzo non può avere un modulo di preventivo — il prezzo è già definito dalle opzioni.",
     "SERVICE_NAME_REQUIRED": "Il servizio ha bisogno di un nome nella lingua in cui è stato scritto.",
     "SERVICE_CATEGORY_REQUIRED": "Il servizio ha bisogno di una categoria.",
     "OPTION_DURATION_REQUIRED": "Questa opzione ha bisogno dei campi di durata giusti per il tipo di prezzo scelto.",

@@ -239,6 +239,7 @@
     "archived": "Archivado"
   },
   "servicesPriceOnQuote": "Según presupuesto",
+  "servicesPriceNone": "Todavía sin precio",
   "servicesEmpty": "Todavía no hay servicios.",
   "servicesNoMatches": "Ningún servicio coincide con tu búsqueda.",
   "servicesError": "Algo ha salido mal al cargar tus servicios.",
@@ -286,6 +287,7 @@
     "SERVICE_NOT_FOUND": "No se pudo encontrar este servicio.",
     "SERVICE_NEEDS_OPTION": "Un servicio con precio necesita al menos una opción antes de poder publicarse.",
     "SERVICE_QUOTE_HAS_OPTIONS": "Un servicio por presupuesto no puede tener opciones — el precio no se conoce de antemano.",
+    "SERVICE_QUOTE_FORM_NOT_ALLOWED": "Un servicio con precio no puede tener un formulario de presupuesto — el precio ya se define mediante las opciones.",
     "SERVICE_NAME_REQUIRED": "El servicio necesita un nombre en el idioma en que se escribió.",
     "SERVICE_CATEGORY_REQUIRED": "El servicio necesita una categoría.",
     "OPTION_DURATION_REQUIRED": "Esta opción necesita los campos de duración correctos para el tipo de precio elegido.",

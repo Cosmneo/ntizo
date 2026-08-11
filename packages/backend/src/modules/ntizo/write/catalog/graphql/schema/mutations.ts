@@ -146,7 +146,13 @@ export const updateServiceOption = defineMutation({
       serviceId: z.string().min(1),
       optionId: z.string().min(1),
       isDefault: z.boolean().optional(),
-      isActive: z.boolean().optional(),
+      // `isActive` deliberately not accepted here: nothing on the server
+      // honours it yet — not `listPublished`'s default-option lookup, not
+      // `canPublish`'s option count, and the public read model has no field
+      // for it. Accepting it would let a caller reach a state nothing reads
+      // correctly. Honouring it properly (and giving the provider a control
+      // for it) is slice 2 scope; the column and `Service.updateOption`'s
+      // handling of it are untouched.
     }),
   ),
   output: zodSchema(z.object({ ok: z.literal(true) })),

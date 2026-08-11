@@ -3,6 +3,7 @@ import {
   canSubmit,
   draftFrom,
   emptyDraft,
+  moved,
   optionDraftFrom,
   optionErrors,
   parseAmountMinor,
@@ -165,10 +166,12 @@ describe("optionDraftFrom", () => {
       sortOrder: 0,
       translations: [{ locale: "pt-MZ", name: "Padrão" }],
     };
+    // 30050 minor units is 300,50 — the trailing zero has to survive, or the
+    // edit field shows a number the provider never typed.
     expect(optionDraftFrom(option, "pt-MZ")).toEqual({
       name: "Padrão",
       pricingMode: "fixed",
-      amount: "300,5",
+      amount: "300,50",
       duration: "45",
       min: "",
       step: "",
@@ -189,10 +192,13 @@ describe("optionDraftFrom", () => {
       sortOrder: 1,
       translations: [{ locale: "pt-MZ", name: "Urgente" }],
     };
+    // Always two decimal places, even for a whole number — the same
+    // convention `formatOptionPrice` uses, so a round amount doesn't read as
+    // a special case with fewer digits than a non-round one.
     expect(optionDraftFrom(option, "pt-MZ")).toEqual({
       name: "Urgente",
       pricingMode: "hourly",
-      amount: "150",
+      amount: "150,00",
       duration: "",
       min: "60",
       step: "30",
@@ -227,5 +233,35 @@ describe("toOptionInput", () => {
       minMinutes: 60,
       stepMinutes: 30,
     });
+  });
+});
+
+describe("moved", () => {
+  const rows = [{ id: "a" }, { id: "b" }, { id: "c" }];
+
+  it("moves a row down by delta", () => {
+    expect(moved(rows, "a", 1).map((r) => r.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("moves a row up by delta", () => {
+    expect(moved(rows, "c", -1).map((r) => r.id)).toEqual(["a", "c", "b"]);
+  });
+
+  it("clamps at the top — moving the first row up is a no-op, not a wrap to the bottom", () => {
+    expect(moved(rows, "a", -1).map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("clamps at the bottom — moving the last row down is a no-op, not a wrap to the top", () => {
+    expect(moved(rows, "c", 1).map((r) => r.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("moves by more than one place at once, for a keyboard or menu jump", () => {
+    expect(moved(rows, "a", 2).map((r) => r.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("returns an unchanged copy, not the same reference, when the id isn't found", () => {
+    const out = moved(rows, "nope", 1);
+    expect(out.map((r) => r.id)).toEqual(["a", "b", "c"]);
+    expect(out).not.toBe(rows);
   });
 });

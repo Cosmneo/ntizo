@@ -109,15 +109,37 @@ export function defaultOption(service: ProviderService): ServiceOption | null {
   return pool.find((o) => o.isDefault) ?? pool[0] ?? null;
 }
 
+/** What the provider's list should show in a service's price cell. */
+export type PriceCell =
+  | { kind: "quote" }
+  | { kind: "priced"; option: ServiceOption }
+  | { kind: "none" };
+
+/**
+ * Which price cell a service's row gets, on the provider's own list.
+ *
+ * Keyed off `bookingMode` first, never off whether a default option exists —
+ * a `priced` service between being created and getting its first option is a
+ * state the form deliberately produces, and reading `quote`'s "By quote"
+ * there would tell the provider their fixed-price service is something it is
+ * not. `quote` short-circuits before `defaultOption` even runs, since a quote
+ * service is never expected to carry one.
+ */
+export function priceCell(service: ProviderService): PriceCell {
+  if (service.bookingMode === "quote") return { kind: "quote" };
+  const option = defaultOption(service);
+  return option ? { kind: "priced", option } : { kind: "none" };
+}
+
 /**
  * The price to lead an option with: what a fixed job costs, or what an hour
  * of an hourly one costs.
  *
- * The division by 100 happens here and only here — every other layer carries
- * `amountMinor` as an integer. The two modes are made to read differently
- * ("300,00 MTn" against "250,00 MTn / h") rather than alike, because a
- * customer who mistakes an hourly rate for the whole job's price is a
- * dispute, not a UI nitpick.
+ * The division by 100 happens here, for display, and in `optionDraftFrom`,
+ * for editing — every other layer carries `amountMinor` as an integer. The
+ * two modes are made to read differently ("300,00 MTn" against "250,00 MTn /
+ * h") rather than alike, because a customer who mistakes an hourly rate for
+ * the whole job's price is a dispute, not a UI nitpick.
  */
 export function formatOptionPrice(option: ServiceOption, locale: string): string {
   const amount = new Intl.NumberFormat(locale, {

@@ -5,7 +5,7 @@ import {
   promoteNextDefault,
   withSingleDefault,
 } from "../service-rules";
-import { LastOptionError, QuoteServiceHasOptionsError } from "../exceptions";
+import { LastOptionError, QuoteFormNotAllowedError, QuoteServiceHasOptionsError } from "../exceptions";
 import {
   ServiceCreated,
   ServicePublished,
@@ -241,6 +241,13 @@ export class Service {
   }
 
   setQuoteForm(form: QuoteFormProps): void {
+    // The mirror of `addOption`'s `QuoteServiceHasOptionsError` guard: a
+    // quote service has a form and a priced one has options, and nothing
+    // upstream of the aggregate enforced the priced side of that until now —
+    // `UpdateServiceCommand` only ever calls this when `input.quoteForm` is
+    // present, but its input type carries `quoteForm` regardless of
+    // `bookingMode`.
+    if (this.props.bookingMode !== "quote") throw new QuoteFormNotAllowedError();
     this.props.quoteForm = form;
     this.touch();
   }

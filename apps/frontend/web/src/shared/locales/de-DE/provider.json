@@ -239,6 +239,7 @@
     "archived": "Archiviert"
   },
   "servicesPriceOnQuote": "Auf Anfrage",
+  "servicesPriceNone": "Noch kein Preis",
   "servicesEmpty": "Noch keine Leistungen.",
   "servicesNoMatches": "Keine Leistungen entsprechen Ihrer Suche.",
   "servicesError": "Beim Laden Ihrer Leistungen ist etwas schiefgelaufen.",
@@ -286,6 +287,7 @@
     "SERVICE_NOT_FOUND": "Diese Leistung konnte nicht gefunden werden.",
     "SERVICE_NEEDS_OPTION": "Eine Leistung mit Preis braucht mindestens eine Option, bevor sie veröffentlicht werden kann.",
     "SERVICE_QUOTE_HAS_OPTIONS": "Eine Leistung auf Anfrage kann keine Optionen haben — der Preis steht nicht im Voraus fest.",
+    "SERVICE_QUOTE_FORM_NOT_ALLOWED": "Eine Leistung mit Preis kann kein Anfrageformular haben — der Preis steht bereits durch die Optionen fest.",
     "SERVICE_NAME_REQUIRED": "Die Leistung braucht einen Namen in der Sprache, in der sie verfasst wurde.",
     "SERVICE_CATEGORY_REQUIRED": "Die Leistung braucht eine Kategorie.",
     "OPTION_DURATION_REQUIRED": "Diese Option braucht die richtigen Dauerfelder für die gewählte Preisart.",

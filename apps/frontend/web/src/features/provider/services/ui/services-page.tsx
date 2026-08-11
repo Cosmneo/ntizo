@@ -16,9 +16,9 @@ import { useActiveProvider } from "@/features/provider/viewmodel/use-active-prov
 import { useServices } from "../viewmodel/use-services";
 import { ServiceFormSheet } from "./service-form";
 import {
-  defaultOption,
   formatOptionPrice,
   ownerName,
+  priceCell,
   translatedCount,
   STATUS_TONE,
   TOTAL_LOCALES,
@@ -127,18 +127,19 @@ export function ServicesPage() {
         // `service.options.reorder`) — only sorting/filtering, nothing to drag.
         rows={visible.map((service) => {
           const translated = translatedCount(service);
-          const option = defaultOption(service);
+          const cell = priceCell(service);
           return {
             key: service.id,
             primary: <ServiceCell service={service} locale={locale} />,
             cells: {
-              price: option ? (
-                formatOptionPrice(option, locale)
-              ) : (
-                <span className="text-[var(--color-muted-foreground)]">
-                  {t("servicesPriceOnQuote")}
-                </span>
-              ),
+              price:
+                cell.kind === "priced" ? (
+                  formatOptionPrice(cell.option, locale)
+                ) : (
+                  <span className="text-[var(--color-muted-foreground)]">
+                    {t(cell.kind === "quote" ? "servicesPriceOnQuote" : "servicesPriceNone")}
+                  </span>
+                ),
               languages: (
                 // One tone in every state, unlike the admin category list's
                 // amber-until-complete: a category is platform content an
