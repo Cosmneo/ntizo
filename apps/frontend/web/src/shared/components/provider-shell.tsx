@@ -43,21 +43,32 @@ export function ProviderShell({ children }: { children: ReactNode }) {
             get anywhere, that is the navigation leaving exactly when a long
             page makes it useful. It also broke every `sticky` inside a page,
             which is why the settings rail appeared to come unstuck. */}
-        <SidebarInset className="h-[calc(100svh-3.5rem)] min-h-0 overflow-hidden md:h-svh">
-          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-6">
+        <SidebarInset className="h-svh min-h-0 overflow-hidden">
+          {/* Everything that is not the title stands down by breakpoint. On a
+              390px screen the trigger, a separator, two lines of title, a
+              64-unit search box, a bell and a New-service button were all
+              competing for the same row: the title wrapped to four lines and
+              pushed the header off its own height. What a person needs here on
+              a phone is where they are and the way back to the menu. */}
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 sm:px-6">
             <SidebarTrigger />
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-base font-semibold">{header.title}</span>
+            <Separator orientation="vertical" className="hidden h-6 sm:block" />
+            {/* `min-w-0` because a flex child defaults to `min-width: auto` and
+                will not shrink below its own text — without it `truncate` on
+                the lines inside never engages. */}
+            <div className="flex min-w-0 flex-1 flex-col leading-tight">
+              <span className="truncate text-base font-semibold">
+                {header.title}
+              </span>
               {header.subtitle && (
-                <span className="text-xs text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                   {header.subtitle}
                 </span>
               )}
             </div>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <HeaderActions showAccount={false} />
-              <div className="relative">
+              <div className="relative hidden lg:block">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="search"
@@ -71,7 +82,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 aria-label="Notifications"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent"
+                className="relative hidden h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent sm:inline-flex"
               >
                 <Bell className="h-4 w-4" />
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
@@ -82,7 +93,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
                   className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
                   <Plus className="h-4 w-4" />
-                  New service
+                  <span className="hidden sm:inline">New service</span>
                 </button>
               )}
             </div>

@@ -33,7 +33,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <PageHeaderContext.Provider value={headerCtx}>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset className="h-[calc(100svh-3.5rem)] min-h-0 overflow-hidden md:h-svh">
+        <SidebarInset className="h-svh min-h-0 overflow-hidden">
           <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 sm:px-6">
             <SidebarTrigger />
             <Separator orientation="vertical" className="hidden h-6 sm:block" />

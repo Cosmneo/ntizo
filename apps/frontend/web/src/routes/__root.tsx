@@ -6,7 +6,9 @@ import {
   HeadContent,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
+import { zoneOwnsChrome } from "@/shared/lib/zones";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -38,15 +40,25 @@ function RootComponent() {
   // reopen the menu.
   useEffect(() => applyThemePreference(readThemePreference()), []);
 
+  // The provider and admin zones draw their own navigation — a sidebar, with
+  // its trigger in their header. The customer bottom bar over that is a second
+  // navigation whose four destinations all lead out of the zone the person is
+  // working in, and it covered the last row of every list on a phone.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const ownChrome = zoneOwnsChrome(pathname);
+
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        {/* Bottom padding only where the bar exists, so content on a phone
-            can scroll clear of it instead of ending underneath. */}
-        <div className="pb-14 md:pb-0">
+        {/* Bottom padding only where the bar exists, so content on a phone can
+            scroll clear of it instead of ending underneath. Where there is no
+            bar there must be no padding either: the zone shells size
+            themselves to the full viewport, and 56px of padding under that is
+            what made the document taller than the screen. */}
+        <div className={ownChrome ? undefined : "pb-14 md:pb-0"}>
           <Outlet />
         </div>
-        <MobileNav />
+        {!ownChrome && <MobileNav />}
         <Toaster position="bottom-right" richColors closeButton />
       </QueryClientProvider>
     </RootDocument>

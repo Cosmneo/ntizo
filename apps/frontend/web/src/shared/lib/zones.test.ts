@@ -5,6 +5,7 @@ import {
   canAccessProvider,
   isSafeInternalPath,
   resolvePostLoginDestination,
+  zoneOwnsChrome,
 } from "@/shared/lib/zones";
 
 const user = (role: CurrentUserDTO["role"]): CurrentUserDTO =>
@@ -79,5 +80,36 @@ describe("resolvePostLoginDestination", () => {
     expect(resolvePostLoginDestination(user("customer"), "/provider/members", 1)).toBe(
       "/provider/members",
     );
+  });
+});
+
+describe("zoneOwnsChrome", () => {
+  it("claims the provider and admin zones and their descendants", () => {
+    for (const path of [
+      "/provider",
+      "/provider/",
+      "/provider/demo-org/overview",
+      "/provider/settings/documents",
+      "/admin",
+      "/admin/users",
+      "/admin/providers",
+    ]) {
+      expect(zoneOwnsChrome(path)).toBe(true);
+    }
+  });
+
+  it("leaves the customer pages alone", () => {
+    for (const path of ["/", "/account", "/onboarding", "/become-provider", "/sign-in"]) {
+      expect(zoneOwnsChrome(path)).toBe(false);
+    }
+  });
+
+  it("does not mistake the public provider directory for the provider zone", () => {
+    // The reason this is compared by segment: "/providers" starts with
+    // "/provider", and a prefix test would strip the bottom bar from a
+    // customer page that has nothing else to navigate with.
+    expect(zoneOwnsChrome("/providers")).toBe(false);
+    expect(zoneOwnsChrome("/providers/estudio-teste-7p41a5")).toBe(false);
+    expect(zoneOwnsChrome("/administrators")).toBe(false);
   });
 });

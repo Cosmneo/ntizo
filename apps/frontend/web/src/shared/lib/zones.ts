@@ -17,6 +17,28 @@ export function canAccessProvider(
   return providerCount > 0 || PROVIDER_ROLES.has(user.role);
 }
 
+/**
+ * The zones that bring their own navigation.
+ *
+ * `/provider` and `/admin` each have a sidebar with its own trigger in the
+ * header, so the customer bottom bar on top of that is a second navigation
+ * offering four destinations that lead out of the zone you are working in.
+ */
+const OWN_CHROME = ["provider", "admin"];
+
+/**
+ * Whether this path belongs to a zone that draws its own navigation.
+ *
+ * Compared segment by segment rather than with `startsWith`, because
+ * `"/providers".startsWith("/provider")` is true — the public directory of
+ * businesses is a customer page and would lose its bottom bar to a prefix
+ * test.
+ */
+export function zoneOwnsChrome(pathname: string): boolean {
+  const [first] = pathname.split("/").filter(Boolean);
+  return first !== undefined && OWN_CHROME.includes(first);
+}
+
 /** True only for app-internal absolute paths ("/x"), never external URLs. */
 export function isSafeInternalPath(path: string | null): path is string {
   if (!path || !path.startsWith("/")) return false;
