@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Building2, User } from "lucide-react";
-import { Badge, Skeleton } from "@ntizo/frontend-ui";
+import { Avatar, AvatarFallback, Badge, Skeleton } from "@ntizo/frontend-ui";
 import { ProviderStatus } from "@ntizo/shared";
 import { CollectionCard } from "@/shared/components/collection-card";
+import { initialsFrom } from "@/shared/lib/initials";
 import { ProvidersFilterSheet } from "./providers-filters";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useAdminProviders } from "../viewmodel/use-admin-providers";
@@ -129,12 +129,18 @@ export function AdminProvidersPage() {
 
 /** Who the row is about: the icon, the name, and where they are. */
 function Business({ provider }: { provider: AdminProvider }) {
-  const Icon = provider.type === "organization" ? Building2 : User;
   return (
     <div className="flex items-center gap-3">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
-        <Icon className="h-4 w-4" />
-      </span>
+      {/* Initials rather than a type icon. A briefcase against a person told
+          you what kind of provider it was — which is already in the row, and
+          is not what somebody scanning a queue is looking for. A monogram
+          gives each business a shape you can find again, and it is what the
+          workspace's people list already shows. */}
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarFallback className="text-xs">
+          {initialsFrom(provider.name)}
+        </AvatarFallback>
+      </Avatar>
       <div className="min-w-0">
         {/* Plain text, not a link. Every row here ends in the same question —
             "what else does this business look like" — but the detail screen
@@ -162,7 +168,7 @@ function RowSkeletons() {
         >
           <td className="py-3.5 pl-5">
             <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-9 shrink-0 rounded-[var(--radius-card-sm)]" />
+              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
               <div className="grid gap-1.5">
                 <Skeleton className="h-[19px] w-40" />
                 <Skeleton className="h-[17px] w-28" />

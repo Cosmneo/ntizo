@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { MoreHorizontal } from "lucide-react";
 import { CollectionCard } from "@/shared/components/collection-card";
+import { initialsFrom } from "@/shared/lib/initials";
 import {
   Avatar,
   AvatarFallback,
@@ -20,16 +21,6 @@ const STATUS_TONE: Record<PersonStatus, "success" | "warning" | "danger"> = {
   expired: "danger",
 };
 
-function initialsOf(row: PersonRow): string {
-  const source = row.name ?? row.email;
-  return source
-    .split(/[\s@.]+/)
-    .filter(Boolean)
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 /**
  * Everyone on the workspace, in one table.
@@ -143,7 +134,7 @@ function Person({ row }: { row: PersonRow }) {
   return (
     <div className="flex items-center gap-3">
       <Avatar className="h-9 w-9 shrink-0">
-        <AvatarFallback className="text-xs">{initialsOf(row)}</AvatarFallback>
+        <AvatarFallback className="text-xs">{initialsFrom(row.name ?? row.email)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0">
         <p className="type-body-medium truncate font-semibold">
