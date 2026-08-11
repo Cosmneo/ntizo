@@ -56,3 +56,71 @@ export class CategoryOrderInvalidError extends UnprocessableError {
     this.name = "CategoryOrderInvalidError";
   }
 }
+
+export class ServiceNotFoundError extends NotFoundError {
+  constructor(public readonly serviceId: string) {
+    super({ message: `No service with id "${serviceId}"`, code: "SERVICE_NOT_FOUND" });
+    this.name = "ServiceNotFoundError";
+  }
+}
+
+export class ServiceNeedsOptionError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "A priced service needs at least one option before it can be published",
+      code: "SERVICE_NEEDS_OPTION",
+    });
+    this.name = "ServiceNeedsOptionError";
+  }
+}
+
+export class QuoteServiceHasOptionsError extends ConflictError {
+  constructor() {
+    super({
+      message: "A quote service cannot have options — its price is not knowable in advance",
+      code: "SERVICE_QUOTE_HAS_OPTIONS",
+    });
+    this.name = "QuoteServiceHasOptionsError";
+  }
+}
+
+export class ServiceNameRequiredError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "A service needs a name in the language it was written in",
+      code: "SERVICE_NAME_REQUIRED",
+    });
+    this.name = "ServiceNameRequiredError";
+  }
+}
+
+export class ServiceCategoryRequiredError extends UnprocessableError {
+  constructor() {
+    super({ message: "A service needs a category", code: "SERVICE_CATEGORY_REQUIRED" });
+    this.name = "ServiceCategoryRequiredError";
+  }
+}
+
+export class OptionDurationError extends UnprocessableError {
+  constructor(code: "OPTION_DURATION_REQUIRED" | "OPTION_DURATION_NOT_ALLOWED", reason: string) {
+    super({ message: reason, code });
+    this.name = "OptionDurationError";
+  }
+}
+
+export class OptionPriceInvalidError extends UnprocessableError {
+  constructor() {
+    super({ message: "A price must be greater than zero", code: "OPTION_PRICE_INVALID" });
+    this.name = "OptionPriceInvalidError";
+  }
+}
+
+export class LastOptionError extends ConflictError {
+  constructor() {
+    super({
+      message: "A published service cannot be left with no options",
+      code: "OPTION_LAST_ONE",
+    });
+    this.name = "LastOptionError";
+  }
+}
