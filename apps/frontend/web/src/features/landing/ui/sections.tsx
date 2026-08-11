@@ -82,6 +82,20 @@ function Head({
   );
 }
 
+/**
+ * The vertical rhythm between sections.
+ *
+ * Was a flat `py-20`, which is 160px of nothing between one section and the
+ * next — a quarter of a section's own height, on a page whose sections are
+ * 500-700px tall. The gap read as a mistake rather than as breathing room, and
+ * on a phone it meant scrolling past a screenful of empty page between every
+ * two things.
+ *
+ * Tighter on small screens on purpose: 160px is a third of a phone viewport
+ * and the same 160px is a seventh of a laptop's.
+ */
+const SECTION_PAD = "py-10 md:py-14";
+
 /** How many tiles the home page shows before "see all". */
 const LANDING_CATEGORIES = 4;
 
@@ -98,7 +112,7 @@ export function Categories() {
   const { data, isLoading } = useCategoryPreview(LANDING_CATEGORIES);
   const rail = data?.items ?? [];
   return (
-    <section id="categorias" className="py-20">
+    <section id="categorias" className={SECTION_PAD}>
       <div className="page-shell">
         <Head
           title={t("categoriesTitle")}
@@ -161,7 +175,7 @@ export function PopularProviders() {
   });
 
   return (
-    <section id="populares" className="bg-[color:var(--l-band)] py-20">
+    <section id="populares" className={`bg-[color:var(--l-band)] ${SECTION_PAD}`}>
       <div className="page-shell">
         <Head
           title={t("popularTitle")}
@@ -222,7 +236,7 @@ export function PopularProviders() {
 export function Stories() {
   const { t } = useTranslation("landing");
   return (
-    <section className="py-20">
+    <section className={SECTION_PAD}>
       <div className="page-shell">
         <Head title={t("storiesTitle")} blurb={t("storiesBlurb")} />
         <ScrollRail columns={4} className="md:grid-cols-2 lg:grid-cols-4">
