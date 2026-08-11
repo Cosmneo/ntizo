@@ -140,10 +140,16 @@ export function ServicesPage() {
                 </span>
               ),
               languages: (
-                // Amber until every language is filled in — a count alone
-                // reads as a fact about the service rather than as work
-                // outstanding, same as the category list.
-                <Badge tone={translated === TOTAL_LOCALES ? "success" : "warning"}>
+                // One tone in every state, unlike the admin category list's
+                // amber-until-complete: a category is platform content an
+                // administrator should be nudged to finish, but a provider's
+                // own service is exactly what the spec says must carry no
+                // friction over which languages it has — an amber badge here
+                // would be the reprimand the spec forbids, just spelled as a
+                // colour instead of a sentence. The count is a fact about the
+                // service, not work outstanding, so it reads the same at 1/8
+                // and 8/8.
+                <Badge tone="neutral">
                   {translated}/{TOTAL_LOCALES}
                 </Badge>
               ),
