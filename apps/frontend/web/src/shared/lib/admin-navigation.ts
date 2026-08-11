@@ -1,10 +1,17 @@
-import { LayoutDashboard, Users } from "lucide-react";
+import { Briefcase, LayoutDashboard, Users } from "lucide-react";
 import type { NavGroup } from "@/shared/lib/navigation";
 
 /** The admin zone: the platform. Same rule as the provider zone — no personal account. */
 export const adminNavGroups: readonly NavGroup[] = [
-  { labelKey: "nav.platform", items: [
-    { titleKey: "nav.dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
-    { titleKey: "nav.users", url: "/admin/users", icon: Users },
-  ] },
+  {
+    labelKey: "nav.platform",
+    items: [
+      { titleKey: "nav.dashboard", url: "/admin/dashboard", icon: LayoutDashboard },
+      // Providers before users: the review queue is the work this zone exists
+      // for, and the user list is where you go when something about one of
+      // them needs looking at.
+      { titleKey: "nav.providers", url: "/admin/providers", icon: Briefcase },
+      { titleKey: "nav.users", url: "/admin/users", icon: Users },
+    ],
+  },
 ] as const;

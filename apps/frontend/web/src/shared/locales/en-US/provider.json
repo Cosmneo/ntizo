@@ -11,7 +11,8 @@
     "invites": "Invites",
     "settings": "Settings",
     "myAccount": "My Account",
-    "you": "You"
+    "you": "You",
+    "providers": "Providers"
   },
   "myAccount": "My Account",
   "noProvider": "No provider",

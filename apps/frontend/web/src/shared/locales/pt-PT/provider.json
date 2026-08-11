@@ -11,7 +11,8 @@
     "invites": "Convites",
     "settings": "Definições",
     "myAccount": "Minha conta",
-    "you": "Você"
+    "you": "Você",
+    "providers": "Prestadores"
   },
   "myAccount": "Minha conta",
   "noProvider": "Sem prestador",

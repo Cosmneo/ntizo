@@ -8,5 +8,24 @@
     "users": "Utilisateurs",
     "you": "Vous",
     "myAccount": "Mon compte"
+  },
+  "providersTitle": "Prestataires",
+  "providersSubtitle": "Toutes les entreprises de la plateforme.",
+  "providersSearchPlaceholder": "Rechercher par nom, adresse ou propriétaire",
+  "providersBusiness": "Entreprise",
+  "providersOwner": "Propriétaire",
+  "providersStatus": "Statut",
+  "providersCommission": "Commission",
+  "providersApplied": "Candidature",
+  "providersAllStatuses": "Tous les statuts",
+  "providersEmpty": "Aucun prestataire pour l’instant.",
+  "providersNoMatches": "Aucun prestataire ne correspond.",
+  "providersError": "La liste des prestataires n’a pas pu être chargée.",
+  "providerStatus": {
+    "pending": "En attente",
+    "active": "Actif",
+    "rejected": "Refusé",
+    "suspended": "Suspendu",
+    "archived": "Archivé"
   }
 }

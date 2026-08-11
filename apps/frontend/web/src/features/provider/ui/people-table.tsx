@@ -1,17 +1,15 @@
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal, Search, SlidersHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
+import { CollectionCard } from "@/shared/components/collection-card";
 import {
   Avatar,
   AvatarFallback,
   Badge,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
   Skeleton,
-  cn,
 } from "@ntizo/frontend-ui";
 import type { PeopleFilters, PersonRow, PersonStatus } from "../domain/people";
 import type { ProviderRole } from "../domain/types";
@@ -83,73 +81,29 @@ export function PeopleTable({
   );
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
-      <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-        <div className="min-w-0">
-          <p className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-            {t("peopleTitle")}
-          </p>
-          {/* Two numbers, not one. With a filter on, "2" alone is a lie about
-              the size of the team. */}
-          <p className="type-body mt-0.5">
-            {loading ? (
-              <Skeleton className="h-[19px] w-24" />
-            ) : (
-              t("peopleShown", { shown: rows.length, total })
-            )}
-          </p>
-        </div>
-
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5">
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-            <Input
-              value={filters.query}
-              onChange={(e) =>
-                onFiltersChange({ ...filters, query: e.target.value })
-              }
-              placeholder={t("peopleSearchPlaceholder")}
-              aria-label={t("peopleSearchPlaceholder")}
-              className="pl-9"
-            />
-          </div>
-          <Button type="button" variant="outline" onClick={onOpenFilters}>
-            <SlidersHorizontal className="h-4 w-4" />
-            {t("peopleFilter")}
-            {activeFilterCount > 0 && (
-              <span className="ml-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-primary)] px-1.5 text-[11px] font-semibold text-[var(--color-primary-foreground)]">
-                {activeFilterCount}
-              </span>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-y border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-muted)_35%,transparent)]">
-              <Th className="pl-5">{t("peoplePerson")}</Th>
-              <Th>{t("peopleRole")}</Th>
-              <Th>{t("peopleStatusLabel")}</Th>
-              <Th>{t("peopleDate")}</Th>
-              <Th className="pr-5 text-right">{t("peopleActions")}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <RowSkeletons />
-            ) : rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="type-body px-5 py-14 text-center text-[var(--color-muted-foreground)]"
-                >
-                  {total === 0 ? t("peopleEmpty") : t("peopleNoMatches")}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
+    <CollectionCard
+      title={t("peopleTitle")}
+      shown={rows.length}
+      total={total}
+      loading={loading}
+      search={filters.query}
+      onSearchChange={(query) => onFiltersChange({ ...filters, query })}
+      searchPlaceholder={t("peopleSearchPlaceholder")}
+      onOpenFilters={onOpenFilters}
+      activeFilterCount={activeFilterCount}
+      columns={[
+        { key: "person", label: t("peoplePerson"), className: "pl-5" },
+        { key: "role", label: t("peopleRole") },
+        { key: "status", label: t("peopleStatusLabel") },
+        { key: "date", label: t("peopleDate") },
+        { key: "actions", label: t("peopleActions"), align: "right", className: "pr-5" },
+      ]}
+      emptyText={t("peopleEmpty")}
+      noMatchesText={t("peopleNoMatches")}
+      filtered={total > 0 && rows.length !== total}
+      skeletonRows={<RowSkeletons />}
+    >
+      {              rows.map((row) => (
                 <tr
                   key={row.key}
                   className="border-b border-[var(--color-border)] last:border-b-0"
@@ -194,33 +148,11 @@ export function PeopleTable({
                     />
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+              ))}
+    </CollectionCard>
   );
 }
 
-function Th({
-  className,
-  children,
-}: {
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <th
-      className={cn(
-        "type-caption py-2.5 pr-4 text-left font-bold tracking-[0.1em] text-[var(--color-muted-foreground)] uppercase",
-        className,
-      )}
-    >
-      {children}
-    </th>
-  );
-}
 
 /**
  * What can be done to this row.

@@ -8,5 +8,24 @@
     "users": "Users",
     "you": "You",
     "myAccount": "My account"
+  },
+  "providersTitle": "Providers",
+  "providersSubtitle": "Every business on the platform.",
+  "providersSearchPlaceholder": "Search by name, slug or owner",
+  "providersBusiness": "Business",
+  "providersOwner": "Owner",
+  "providersStatus": "Status",
+  "providersCommission": "Commission",
+  "providersApplied": "Applied",
+  "providersAllStatuses": "All statuses",
+  "providersEmpty": "No providers yet.",
+  "providersNoMatches": "No provider matches that.",
+  "providersError": "The provider list could not be loaded.",
+  "providerStatus": {
+    "pending": "Pending",
+    "active": "Active",
+    "rejected": "Rejected",
+    "suspended": "Suspended",
+    "archived": "Archived"
   }
 }

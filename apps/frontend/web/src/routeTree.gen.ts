@@ -41,6 +41,7 @@ import { Route as CustomerAccountPaymentMethodsRouteImport } from './routes/_cus
 import { Route as CustomerAccountPreferencesRouteImport } from './routes/_customer/account/preferences'
 import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/account/security'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
+import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
 import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
 import { Route as ProviderSlugSettingsRouteImport } from './routes/provider/$slug/settings'
@@ -207,6 +208,11 @@ const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   path: '/accept-invite/$token',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const AdminProvidersIndexRoute = AdminProvidersIndexRouteImport.update({
+  id: '/providers/',
+  path: '/providers/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const ProviderSlugMembersRoute = ProviderSlugMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/account/': typeof CustomerAccountIndexRoute
+  '/admin/providers/': typeof AdminProvidersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/account': typeof CustomerAccountIndexRoute
+  '/admin/providers': typeof AdminProvidersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -327,6 +335,7 @@ export interface FileRoutesById {
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/_customer/account/': typeof CustomerAccountIndexRoute
+  '/admin/providers/': typeof AdminProvidersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/overview'
     | '/provider/$slug/settings'
     | '/account/'
+    | '/admin/providers/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/overview'
     | '/provider/$slug/settings'
     | '/account'
+    | '/admin/providers'
   id:
     | '__root__'
     | '/'
@@ -433,6 +444,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/overview'
     | '/provider/$slug/settings'
     | '/_customer/account/'
+    | '/admin/providers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -674,6 +686,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicAcceptInviteTokenRouteImport
       parentRoute: typeof PublicRouteRoute
     }
+    '/admin/providers/': {
+      id: '/admin/providers/'
+      path: '/providers'
+      fullPath: '/admin/providers/'
+      preLoaderRoute: typeof AdminProvidersIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/provider/$slug/members': {
       id: '/provider/$slug/members'
       path: '/members'
@@ -763,12 +782,14 @@ interface AdminRouteRouteChildren {
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminProvidersIndexRoute: typeof AdminProvidersIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDashboardRoute: AdminDashboardRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminProvidersIndexRoute: AdminProvidersIndexRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

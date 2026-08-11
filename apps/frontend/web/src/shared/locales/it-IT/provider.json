@@ -11,7 +11,8 @@
     "invites": "Inviti",
     "settings": "Impostazioni",
     "myAccount": "Il mio account",
-    "you": "Tu"
+    "you": "Tu",
+    "providers": "Operatori"
   },
   "myAccount": "Il mio account",
   "noProvider": "Nessun fornitore",

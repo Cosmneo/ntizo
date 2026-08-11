@@ -8,5 +8,24 @@
     "users": "Benutzer",
     "you": "Sie",
     "myAccount": "Mein Konto"
+  },
+  "providersTitle": "Anbieter",
+  "providersSubtitle": "Alle Betriebe der Plattform.",
+  "providersSearchPlaceholder": "Nach Name, Adresse oder Inhaber suchen",
+  "providersBusiness": "Betrieb",
+  "providersOwner": "Inhaber",
+  "providersStatus": "Status",
+  "providersCommission": "Provision",
+  "providersApplied": "Antrag",
+  "providersAllStatuses": "Alle Status",
+  "providersEmpty": "Noch keine Anbieter.",
+  "providersNoMatches": "Kein Anbieter passt dazu.",
+  "providersError": "Die Anbieterliste konnte nicht geladen werden.",
+  "providerStatus": {
+    "pending": "Ausstehend",
+    "active": "Aktiv",
+    "rejected": "Abgelehnt",
+    "suspended": "Gesperrt",
+    "archived": "Archiviert"
   }
 }

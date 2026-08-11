@@ -8,5 +8,24 @@
     "users": "Utilizadores",
     "you": "Você",
     "myAccount": "A minha conta"
+  },
+  "providersTitle": "Prestadores",
+  "providersSubtitle": "Todos os negócios da plataforma.",
+  "providersSearchPlaceholder": "Procurar por nome, endereço ou dono",
+  "providersBusiness": "Negócio",
+  "providersOwner": "Dono",
+  "providersStatus": "Estado",
+  "providersCommission": "Comissão",
+  "providersApplied": "Candidatura",
+  "providersAllStatuses": "Todos os estados",
+  "providersEmpty": "Ainda não há prestadores.",
+  "providersNoMatches": "Nenhum prestador corresponde a isso.",
+  "providersError": "Não foi possível carregar a lista de prestadores.",
+  "providerStatus": {
+    "pending": "Pendente",
+    "active": "Activo",
+    "rejected": "Recusado",
+    "suspended": "Suspenso",
+    "archived": "Arquivado"
   }
 }

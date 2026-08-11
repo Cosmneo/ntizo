@@ -11,7 +11,8 @@
     "invites": "Invitations",
     "settings": "Paramètres",
     "myAccount": "Mon compte",
-    "you": "Vous"
+    "you": "Vous",
+    "providers": "Prestataires"
   },
   "myAccount": "Mon compte",
   "noProvider": "Aucun prestataire",

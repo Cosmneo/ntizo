@@ -8,5 +8,24 @@
     "users": "Gebruikers",
     "you": "Jij",
     "myAccount": "Mijn account"
+  },
+  "providersTitle": "Aanbieders",
+  "providersSubtitle": "Alle bedrijven op het platform.",
+  "providersSearchPlaceholder": "Zoek op naam, adres of eigenaar",
+  "providersBusiness": "Bedrijf",
+  "providersOwner": "Eigenaar",
+  "providersStatus": "Status",
+  "providersCommission": "Commissie",
+  "providersApplied": "Aanvraag",
+  "providersAllStatuses": "Alle statussen",
+  "providersEmpty": "Nog geen aanbieders.",
+  "providersNoMatches": "Geen aanbieder komt overeen.",
+  "providersError": "De aanbiederslijst kon niet worden geladen.",
+  "providerStatus": {
+    "pending": "In afwachting",
+    "active": "Actief",
+    "rejected": "Afgewezen",
+    "suspended": "Geschorst",
+    "archived": "Gearchiveerd"
   }
 }

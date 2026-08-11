@@ -8,5 +8,24 @@
     "users": "Utenti",
     "you": "Tu",
     "myAccount": "Il mio account"
+  },
+  "providersTitle": "Operatori",
+  "providersSubtitle": "Tutte le attività della piattaforma.",
+  "providersSearchPlaceholder": "Cerca per nome, indirizzo o titolare",
+  "providersBusiness": "Attività",
+  "providersOwner": "Titolare",
+  "providersStatus": "Stato",
+  "providersCommission": "Commissione",
+  "providersApplied": "Candidatura",
+  "providersAllStatuses": "Tutti gli stati",
+  "providersEmpty": "Ancora nessun operatore.",
+  "providersNoMatches": "Nessun operatore corrisponde.",
+  "providersError": "Impossibile caricare l’elenco degli operatori.",
+  "providerStatus": {
+    "pending": "In attesa",
+    "active": "Attivo",
+    "rejected": "Rifiutato",
+    "suspended": "Sospeso",
+    "archived": "Archiviato"
   }
 }

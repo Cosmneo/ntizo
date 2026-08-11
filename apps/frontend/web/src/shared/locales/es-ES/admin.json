@@ -8,5 +8,24 @@
     "users": "Usuarios",
     "you": "Usted",
     "myAccount": "Mi cuenta"
+  },
+  "providersTitle": "Proveedores",
+  "providersSubtitle": "Todos los negocios de la plataforma.",
+  "providersSearchPlaceholder": "Buscar por nombre, dirección o propietario",
+  "providersBusiness": "Negocio",
+  "providersOwner": "Propietario",
+  "providersStatus": "Estado",
+  "providersCommission": "Comisión",
+  "providersApplied": "Solicitud",
+  "providersAllStatuses": "Todos los estados",
+  "providersEmpty": "Aún no hay proveedores.",
+  "providersNoMatches": "Ningún proveedor coincide.",
+  "providersError": "No se pudo cargar la lista de proveedores.",
+  "providerStatus": {
+    "pending": "Pendiente",
+    "active": "Activo",
+    "rejected": "Rechazado",
+    "suspended": "Suspendido",
+    "archived": "Archivado"
   }
 }
