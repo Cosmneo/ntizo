@@ -76,5 +76,8 @@
   },
   "zeroFeeTitle": "commission for the people doing the work.",
   "zeroFeeBody": "The 10% fee is the customer's and sits on top of your price. What you agree with the customer is exactly what you receive.",
-  "zeroFeeCta": "Create a provider account"
+  "zeroFeeCta": "Create a provider account",
+  "categoriesEmpty": "No categories yet.",
+  "categoriesError": "Couldn't load the categories.",
+  "categoriesLoadMore": "Load more"
 }

@@ -28,6 +28,6 @@ export interface PublicNavItem {
  */
 export const PUBLIC_NAV: readonly PublicNavItem[] = [
   { key: "landing:nav.explore", to: "/", icon: Compass },
-  { key: "landing:nav.categories", to: "/providers", icon: LayoutGrid },
+  { key: "landing:nav.categories", to: "/categories", icon: LayoutGrid },
   { key: "landing:nav.providers", to: "/providers", icon: Users },
 ] as const;

@@ -76,5 +76,8 @@
   },
   "zeroFeeTitle": "Provision für alle, die die Arbeit machen.",
   "zeroFeeBody": "Die 10 % zahlt der Kunde, zusätzlich zu deinem Preis. Was du mit dem Kunden vereinbarst, bekommst du genau so.",
-  "zeroFeeCta": "Anbieterkonto erstellen"
+  "zeroFeeCta": "Anbieterkonto erstellen",
+  "categoriesEmpty": "Noch keine Kategorien.",
+  "categoriesError": "Die Kategorien konnten nicht geladen werden.",
+  "categoriesLoadMore": "Mehr laden"
 }

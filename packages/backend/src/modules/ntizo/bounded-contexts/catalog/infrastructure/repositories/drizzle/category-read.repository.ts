@@ -71,7 +71,10 @@ export class DrizzleCategoryReadRepository implements CategoryReadRepositoryPort
     return rows as CategoryRow[];
   }
 
-  async listActive(): Promise<CategoryRow[]> {
-    return (await this.base(eq(category.isActive, true))) as CategoryRow[];
+  async listActive(limit: number, offset: number): Promise<CategoryRow[]> {
+    const rows = await this.base(eq(category.isActive, true))
+      .limit(limit)
+      .offset(offset);
+    return rows as CategoryRow[];
   }
 }

@@ -9,7 +9,7 @@ import {
   initialsOf,
 } from "@/features/landing/domain/mock-content";
 import { ScrollRail } from "./scroll-rail";
-import { useCategories } from "@/features/landing/viewmodel/use-categories";
+import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import {
   ACCENT,
@@ -82,6 +82,9 @@ function Head({
   );
 }
 
+/** How many tiles the home page shows before "see all". */
+const LANDING_CATEGORIES = 4;
+
 export function Categories() {
   const { t } = useTranslation("landing");
   // Real categories now, in the reader's language: the server resolves the
@@ -89,21 +92,24 @@ export function Categories() {
   // so switching language changes these the way it changes everything else.
   // They used to be eight translation keys, which worked only for a list
   // developers shipped — the point of the admin form is the ninth.
-  const { data: categories, isLoading } = useCategories();
-  const rail = categories ?? [];
+  // Four, not all of them. The home page is an invitation to browse, and a
+  // rail of everything is a directory rendered where nobody came looking for
+  // one — "see all" is what leads to the full list.
+  const { data, isLoading } = useCategoryPreview(LANDING_CATEGORIES);
+  const rail = data?.items ?? [];
   return (
     <section id="categorias" className="py-20">
       <div className="page-shell">
         <Head
           title={t("categoriesTitle")}
           blurb={t("categoriesBlurb")}
-          more={{ label: t("seeAll"), to: "/providers" }}
+          more={{ label: t("seeAll"), to: "/categories" }}
         />
         <ScrollRail columns={4} cardWidth="44%">
           {isLoading
-            ? // Eight, because eight is what lands. A smaller placeholder set
-              // would shorten the rail and then jerk it back out again.
-              Array.from({ length: 8 }, (_, i) => (
+            ? // As many placeholders as tiles that land, so the rail does not
+              // change height when they arrive.
+              Array.from({ length: LANDING_CATEGORIES }, (_, i) => (
                 <div key={i}>
                   <Skeleton className="aspect-[16/11] w-full rounded-2xl" />
                   <Skeleton className="mt-3 h-[17px] w-24" />

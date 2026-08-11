@@ -76,5 +76,8 @@
   },
   "zeroFeeTitle": "commissie voor wie het werk doet.",
   "zeroFeeBody": "De 10% is voor de klant en komt boven op jouw prijs. Wat je met de klant afspreekt, is precies wat je ontvangt.",
-  "zeroFeeCta": "Aanbiedersaccount aanmaken"
+  "zeroFeeCta": "Aanbiedersaccount aanmaken",
+  "categoriesEmpty": "Nog geen categorieën.",
+  "categoriesError": "Kan de categorieën niet laden.",
+  "categoriesLoadMore": "Meer laden"
 }

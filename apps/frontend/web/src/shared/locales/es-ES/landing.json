@@ -76,5 +76,8 @@
   },
   "zeroFeeTitle": "de comisión para quien trabaja.",
   "zeroFeeBody": "La tarifa del 10% es del cliente y se suma a tu precio. Lo que acuerdas con el cliente es exactamente lo que recibes.",
-  "zeroFeeCta": "Crear cuenta de proveedor"
+  "zeroFeeCta": "Crear cuenta de proveedor",
+  "categoriesEmpty": "Todavía no hay categorías.",
+  "categoriesError": "No se pudieron cargar las categorías.",
+  "categoriesLoadMore": "Cargar más"
 }

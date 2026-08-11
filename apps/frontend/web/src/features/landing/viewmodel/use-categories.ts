@@ -1,16 +1,24 @@
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { categoryQueries } from "../data/category.repository";
 
 /**
- * The categories in the reader's language.
+ * The locale the reader is in.
  *
- * The locale comes from i18next rather than from a prop so this follows a
- * language change the same way every other string on the page does — the
- * server resolves the name, and the query key carries the locale so switching
- * refetches instead of reusing what was already there.
+ * From i18next rather than a prop, so these follow a language change the same
+ * way every other string on the page does.
  */
-export function useCategories() {
+function useLocale(): string {
   const { i18n } = useTranslation();
-  return useQuery(categoryQueries.all(i18n.resolvedLanguage ?? i18n.language));
+  return i18n.resolvedLanguage ?? i18n.language;
+}
+
+/** The few the home page shows above "see all". */
+export function useCategoryPreview(limit: number) {
+  return useQuery(categoryQueries.preview(useLocale(), limit));
+}
+
+/** Every category, loaded as the page is scrolled. */
+export function useAllCategories() {
+  return useInfiniteQuery(categoryQueries.all(useLocale()));
 }

@@ -12,7 +12,13 @@ export function createCatalogPublicHandlers(mod: CatalogPublicModule) {
     .handleWithUseCase("category.all", {
       // An absent locale is the platform's default rather than an error: a
       // caller that does not say gets the language the product speaks.
-      argsMapper: (args) => ({ locale: args.input.locale ?? DEFAULT_LOCALE }),
+      argsMapper: (args) => ({
+        locale: args.input.locale ?? DEFAULT_LOCALE,
+        // Enough to fill a wide screen twice over without being a page that
+        // pretends to load progressively while fetching everything.
+        limit: args.input.limit ?? 24,
+        offset: args.input.offset ?? 0,
+      }),
       useCase: mod.listCategories,
       responseMapper: (output) => output,
     })

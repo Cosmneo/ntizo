@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { localeSchema } from "@ntizo/shared";
-import { categoryReadModel } from "@ntizo/shared/read-models";
+import { categoryPageReadModel } from "@ntizo/shared/read-models";
 
 /**
  * The active categories, resolved into one language.
@@ -15,8 +15,17 @@ import { categoryReadModel } from "@ntizo/shared/read-models";
  * reason: somebody browsing with no account still has a language.
  */
 export const listCategories = defineQuery({
-  input: zodSchema(z.object({ locale: localeSchema.optional() })),
-  output: zodSchema(z.array(categoryReadModel)),
+  input: zodSchema(
+    z.object({
+      locale: localeSchema.optional(),
+      // Optional, not `.default()`: a zod default does not survive into the
+      // GraphQL schema, so the fallback belongs in the handler where it can
+      // actually run.
+      limit: z.number().int().min(1).max(48).optional(),
+      offset: z.number().int().min(0).optional(),
+    }),
+  ),
+  output: zodSchema(categoryPageReadModel),
   docs: { summary: "Active categories in one language", tags: ["Catalog"] },
 });
 

@@ -20,3 +20,16 @@ export const categoryReadModel = z.object({
 });
 
 export type CategoryDTO = z.infer<typeof categoryReadModel>;
+
+/**
+ * One page of categories.
+ *
+ * `nextOffset` rather than a total: the page that shows every category loads
+ * as it is scrolled, and what it needs is "is there more and from where".
+ */
+export const categoryPageReadModel = z.object({
+  items: z.array(categoryReadModel),
+  nextOffset: z.number().int().nullable(),
+});
+
+export type CategoryPageDTO = z.infer<typeof categoryPageReadModel>;

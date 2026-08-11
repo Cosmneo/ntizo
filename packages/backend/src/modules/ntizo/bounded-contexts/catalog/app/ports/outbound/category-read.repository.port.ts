@@ -20,8 +20,14 @@ export interface CategoryRow {
 export interface CategoryReadRepositoryPort {
   /** Every category with every translation — the administration view. */
   listAll(search: string | undefined): Promise<CategoryRow[]>;
-  /** Active categories with every translation; the caller resolves a locale. */
-  listActive(): Promise<CategoryRow[]>;
+  /**
+   * Active categories with every translation; the caller resolves a locale.
+   *
+   * Paged, because the page that shows all of them loads as you scroll. One
+   * more than asked for is fetched by the projection to answer "is there
+   * another page" without a second COUNT over the same rows.
+   */
+  listActive(limit: number, offset: number): Promise<CategoryRow[]>;
 }
 
 export type { CategoryAdminDTO };

@@ -76,5 +76,8 @@
   },
   "zeroFeeTitle": "de commission pour ceux qui travaillent.",
   "zeroFeeBody": "Les 10 % sont à la charge du client et s'ajoutent à votre prix. Ce que vous convenez avec le client est exactement ce que vous recevez.",
-  "zeroFeeCta": "Créer un compte prestataire"
+  "zeroFeeCta": "Créer un compte prestataire",
+  "categoriesEmpty": "Aucune catégorie pour l'instant.",
+  "categoriesError": "Impossible de charger les catégories.",
+  "categoriesLoadMore": "Charger plus"
 }
