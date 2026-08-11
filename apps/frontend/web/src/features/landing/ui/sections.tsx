@@ -51,16 +51,23 @@ function Head({
       <h2 className="font-rounded text-2xl font-extrabold tracking-tight sm:text-3xl md:text-4xl">
         {title}
       </h2>
-      {/* The link sits on the blurb's row and aligns to its *baseline*, not to
-          the bottom of the heading block. `items-end` put it level with the
-          blurb's last line, so it landed in a different place in every section
-          depending on whether that text ran to one line or two.
-
-          It wraps to its own line rather than shrinking: on a phone the row
-          used to squeeze both, and a call to action compressed to fit is one
-          nobody reads. */}
-      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
-        <p className="max-w-[54ch] text-[color:var(--l-muted)]">{blurb}</p>
+      {/* The link holds its place and the text wraps around it.
+          
+          Two earlier versions both moved it. `items-end` levelled it with the
+          blurb's *last* line, so it sat lower in a section whose text ran to
+          two lines. `flex-wrap` then let a long blurb push it onto a line of
+          its own, left-aligned — which is worse, because now it is in a
+          different place *and* on a different side.
+          
+          So: no wrapping, the blurb takes the space that is left
+          (`min-w-0 flex-1`) and wraps inside its own column, and the link is
+          `shrink-0` on the first baseline. It lands in the same spot in every
+          section at every width, which is the whole point of a section
+          heading being shared. */}
+      <div className="mt-2 flex items-baseline justify-between gap-x-6 sm:gap-x-8">
+        <p className="min-w-0 flex-1 max-w-[54ch] text-[color:var(--l-muted)]">
+          {blurb}
+        </p>
         {more ? (
           <Link
             to={more.to}
