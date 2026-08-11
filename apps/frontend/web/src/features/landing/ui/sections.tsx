@@ -45,21 +45,31 @@ function Head({
   more?: { label: string; to: string };
 }) {
   return (
-    <div className="mb-9 flex items-end justify-between gap-8">
-      <div>
-        <h2 className="font-rounded text-3xl font-extrabold tracking-tight sm:text-4xl">
-          {title}
-        </h2>
-        <p className="mt-2 max-w-[54ch] text-[color:var(--l-muted)]">{blurb}</p>
+    <div className="mb-7 sm:mb-9">
+      {/* A notch smaller on a phone. At 30px these titles wrap to two lines
+          and the heading eats the screen before the cards it introduces. */}
+      <h2 className="font-rounded text-2xl font-extrabold tracking-tight sm:text-3xl md:text-4xl">
+        {title}
+      </h2>
+      {/* The link sits on the blurb's row and aligns to its *baseline*, not to
+          the bottom of the heading block. `items-end` put it level with the
+          blurb's last line, so it landed in a different place in every section
+          depending on whether that text ran to one line or two.
+
+          It wraps to its own line rather than shrinking: on a phone the row
+          used to squeeze both, and a call to action compressed to fit is one
+          nobody reads. */}
+      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
+        <p className="max-w-[54ch] text-[color:var(--l-muted)]">{blurb}</p>
+        {more ? (
+          <Link
+            to={more.to}
+            className="font-rounded shrink-0 text-sm font-bold text-[color:var(--l-accent)] hover:underline"
+          >
+            {more.label}
+          </Link>
+        ) : null}
       </div>
-      {more ? (
-        <Link
-          to={more.to}
-          className="font-rounded shrink-0 text-sm font-bold text-[color:var(--l-accent)] hover:underline"
-        >
-          {more.label}
-        </Link>
-      ) : null}
     </div>
   );
 }
