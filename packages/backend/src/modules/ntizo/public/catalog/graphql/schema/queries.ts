@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { localeSchema } from "@ntizo/shared";
-import { categoryPageReadModel } from "@ntizo/shared/read-models";
+import { categoryPageReadModel, servicePageReadModel } from "@ntizo/shared/read-models";
 
 /**
  * The active categories, resolved into one language.
@@ -30,6 +30,31 @@ export const listCategories = defineQuery({
 });
 
 /**
+ * The published services, resolved into one language, of active providers.
+ *
+ * Also on the public tier, for the same reason `listCategories` is: a service
+ * page reads this signed out, and it must not depend on a session existing.
+ * `categoryCode` is optional so the same query serves both the full browse
+ * and a category filtered one, without a second field to keep in sync with
+ * this one.
+ */
+export const listServices = defineQuery({
+  input: zodSchema(
+    z.object({
+      locale: localeSchema.optional(),
+      categoryCode: z.string().min(1).max(60).optional(),
+      // Optional, not `.default()`: a zod default does not survive into the
+      // GraphQL schema, so the fallback belongs in the handler where it can
+      // actually run.
+      limit: z.number().int().min(1).max(48).optional(),
+      offset: z.number().int().min(0).optional(),
+    }),
+  ),
+  output: zodSchema(servicePageReadModel),
+  docs: { summary: "Published services in one language", tags: ["Catalog"] },
+});
+
+/**
  * No context schema, like the other public slices.
  *
  * Declaring the private one made every field on this mount demand a session,
@@ -40,4 +65,5 @@ export const listCategories = defineQuery({
  */
 export const catalogPublicSchema = defineGraphQLSchema({
   category: { all: listCategories },
+  service: { all: listServices },
 });

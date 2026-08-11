@@ -8,9 +8,11 @@ import {
   serviceQuoteForm,
   serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
-import { providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
+import { provider, providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
 import type {
+  ListPublishedServicesFilter,
   ServiceOwnerRow,
+  ServicePublicRow,
   ServiceReadRepositoryPort,
 } from "../../../app/ports/outbound/service-read.repository.port";
 
@@ -122,5 +124,87 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .where(and(eq(providerMember.providerId, providerId), eq(providerMember.userId, userId)))
       .limit(1);
     return row !== undefined;
+  }
+
+  /**
+   * Published services of active providers, paged.
+   *
+   * `category` and `provider` are joined directly rather than aggregated: a
+   * service has exactly one of each, so neither join can multiply a row the
+   * way `serviceTranslation` would. `providerStatus` comes from that join —
+   * live off the `provider` row, on every call — rather than from a column on
+   * `service`, which is what lets the projection's "published AND active"
+   * rule mean something instead of trusting a snapshot that can go stale the
+   * moment a provider is suspended.
+   *
+   * Translations and the default option are fetched in two further queries
+   * keyed by the ids this page already picked, the same reason
+   * `listForProvider` does it: joining a one-to-many here would multiply the
+   * very rows `limit`/`offset` just paged.
+   */
+  async listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]> {
+    const db = getDb();
+    const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
+    if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
+
+    const rows = await db
+      .select({
+        id: service.id,
+        providerId: service.providerId,
+        providerName: provider.name,
+        providerStatus: provider.status,
+        categoryCode: category.code,
+        status: service.status,
+        sourceLocale: service.sourceLocale,
+        locationType: service.locationType,
+        bookingMode: service.bookingMode,
+        imageKeys: service.imageKeys,
+      })
+      .from(service)
+      .innerJoin(category, eq(category.id, service.categoryId))
+      .innerJoin(provider, eq(provider.id, service.providerId))
+      .where(and(...conditions))
+      .orderBy(asc(service.sortOrder), asc(service.createdAt))
+      .limit(filter.limit)
+      .offset(filter.offset);
+
+    if (rows.length === 0) return [];
+
+    const serviceIds = rows.map((r) => r.id);
+
+    const translations = await db
+      .select()
+      .from(serviceTranslation)
+      .where(inArray(serviceTranslation.serviceId, serviceIds));
+
+    // At most one per service — the partial unique index on `is_default`
+    // guarantees it — so this is a lookup by `serviceId`, not another
+    // one-to-many relation to reconcile.
+    const defaults = await db
+      .select()
+      .from(serviceOption)
+      .where(
+        and(inArray(serviceOption.serviceId, serviceIds), eq(serviceOption.isDefault, true)),
+      );
+
+    return rows.map((r) => {
+      const opt = defaults.find((o) => o.serviceId === r.id);
+      return {
+        ...r,
+        defaultOption: opt
+          ? {
+              amountMinor: opt.amountMinor,
+              currency: opt.currency,
+              durationMinutes: opt.durationMinutes,
+              minMinutes: opt.minMinutes,
+              stepMinutes: opt.stepMinutes,
+              pricingMode: opt.pricingMode,
+            }
+          : null,
+        translations: translations
+          .filter((t) => t.serviceId === r.id)
+          .map((t) => ({ locale: t.locale, name: t.name, description: t.description })),
+      };
+    });
   }
 }

@@ -46,6 +46,11 @@ class FakeServiceReadRepository implements ServiceReadRepositoryPort {
     this.calls.push(`isProviderMember:${providerId}:${userId}`);
     return this.membership;
   }
+
+  async listPublished(): Promise<never[]> {
+    this.calls.push("listPublished");
+    return [];
+  }
 }
 
 function makeModule(repo: FakeServiceReadRepository) {
@@ -199,6 +204,9 @@ class FixedServiceReadRepository implements ServiceReadRepositoryPort {
   }
   async isProviderMember(): Promise<boolean> {
     return true;
+  }
+  async listPublished(): Promise<never[]> {
+    return [];
   }
 }
 
