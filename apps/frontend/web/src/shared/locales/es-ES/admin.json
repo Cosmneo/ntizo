@@ -31,5 +31,30 @@
   },
   "providersFilterTitle": "Filtrar proveedores",
   "providersClearFilters": "Limpiar filtros",
+  "usersTitle": "Usuarios",
+  "usersSubtitle": "Todas las personas de la plataforma.",
+  "usersSearchPlaceholder": "Buscar por nombre, correo o teléfono",
+  "usersPerson": "Persona",
+  "usersRole": "Rol",
+  "usersStatus": "Estado",
+  "usersWorkspaces": "Espacios",
+  "usersJoined": "Registro",
+  "usersAllRoles": "Todos los roles",
+  "usersEmpty": "Todavía no hay usuarios.",
+  "usersNoMatches": "Ningún usuario coincide con eso.",
+  "usersError": "No se pudo cargar la lista de usuarios.",
+  "usersFilterTitle": "Filtrar usuarios",
+  "usersClearFilters": "Borrar filtros",
+  "userRole": {
+    "customer": "Cliente",
+    "individual_provider": "Proveedor individual",
+    "organization_owner": "Propietario de organización",
+    "admin": "Administrador"
+  },
+  "userStatus": {
+    "active": "Activo",
+    "pending": "Pendiente",
+    "suspended": "Suspendido"
+  },
   "close": "Cerrar"
 }

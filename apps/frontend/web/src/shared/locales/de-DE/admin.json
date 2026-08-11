@@ -31,5 +31,30 @@
   },
   "providersFilterTitle": "Anbieter filtern",
   "providersClearFilters": "Filter zurücksetzen",
+  "usersTitle": "Benutzer",
+  "usersSubtitle": "Alle Personen auf der Plattform.",
+  "usersSearchPlaceholder": "Nach Name, E-Mail oder Telefon suchen",
+  "usersPerson": "Person",
+  "usersRole": "Rolle",
+  "usersStatus": "Status",
+  "usersWorkspaces": "Arbeitsbereiche",
+  "usersJoined": "Beitritt",
+  "usersAllRoles": "Alle Rollen",
+  "usersEmpty": "Noch keine Benutzer.",
+  "usersNoMatches": "Keine Benutzer stimmen damit überein.",
+  "usersError": "Die Benutzerliste konnte nicht geladen werden.",
+  "usersFilterTitle": "Benutzer filtern",
+  "usersClearFilters": "Filter zurücksetzen",
+  "userRole": {
+    "customer": "Kunde",
+    "individual_provider": "Einzelanbieter",
+    "organization_owner": "Organisationsinhaber",
+    "admin": "Administrator"
+  },
+  "userStatus": {
+    "active": "Aktiv",
+    "pending": "Ausstehend",
+    "suspended": "Gesperrt"
+  },
   "close": "Schließen"
 }

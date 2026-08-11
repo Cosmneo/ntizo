@@ -31,5 +31,30 @@
   },
   "providersFilterTitle": "Filtra operatori",
   "providersClearFilters": "Cancella filtri",
+  "usersTitle": "Utenti",
+  "usersSubtitle": "Tutte le persone sulla piattaforma.",
+  "usersSearchPlaceholder": "Cerca per nome, email o telefono",
+  "usersPerson": "Persona",
+  "usersRole": "Ruolo",
+  "usersStatus": "Stato",
+  "usersWorkspaces": "Spazi",
+  "usersJoined": "Iscrizione",
+  "usersAllRoles": "Tutti i ruoli",
+  "usersEmpty": "Non ci sono ancora utenti.",
+  "usersNoMatches": "Nessun utente corrisponde.",
+  "usersError": "Impossibile caricare l'elenco degli utenti.",
+  "usersFilterTitle": "Filtra utenti",
+  "usersClearFilters": "Cancella filtri",
+  "userRole": {
+    "customer": "Cliente",
+    "individual_provider": "Fornitore individuale",
+    "organization_owner": "Titolare dell'organizzazione",
+    "admin": "Amministratore"
+  },
+  "userStatus": {
+    "active": "Attivo",
+    "pending": "In attesa",
+    "suspended": "Sospeso"
+  },
   "close": "Chiudi"
 }

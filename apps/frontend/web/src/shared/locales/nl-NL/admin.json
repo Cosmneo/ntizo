@@ -31,5 +31,30 @@
   },
   "providersFilterTitle": "Aanbieders filteren",
   "providersClearFilters": "Filters wissen",
+  "usersTitle": "Gebruikers",
+  "usersSubtitle": "Iedereen op het platform.",
+  "usersSearchPlaceholder": "Zoeken op naam, e-mail of telefoon",
+  "usersPerson": "Persoon",
+  "usersRole": "Rol",
+  "usersStatus": "Status",
+  "usersWorkspaces": "Werkruimtes",
+  "usersJoined": "Aangemeld",
+  "usersAllRoles": "Alle rollen",
+  "usersEmpty": "Nog geen gebruikers.",
+  "usersNoMatches": "Geen gebruikers komen overeen.",
+  "usersError": "Kan de gebruikerslijst niet laden.",
+  "usersFilterTitle": "Gebruikers filteren",
+  "usersClearFilters": "Filters wissen",
+  "userRole": {
+    "customer": "Klant",
+    "individual_provider": "Individuele aanbieder",
+    "organization_owner": "Organisatie-eigenaar",
+    "admin": "Beheerder"
+  },
+  "userStatus": {
+    "active": "Actief",
+    "pending": "In behandeling",
+    "suspended": "Geschorst"
+  },
   "close": "Sluiten"
 }
