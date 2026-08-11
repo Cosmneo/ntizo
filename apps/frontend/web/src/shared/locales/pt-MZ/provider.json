@@ -12,7 +12,8 @@
     "settings": "Definições",
     "myAccount": "Minha conta",
     "you": "Você",
-    "providers": "Prestadores"
+    "providers": "Prestadores",
+    "wallet": "Carteira"
   },
   "myAccount": "Minha conta",
   "noProvider": "Sem prestador",
@@ -197,5 +198,22 @@
   "peopleMakeStaff": "Tornar colaborador",
   "peopleRemove": "Remover do workspace",
   "peopleRevoke": "Revogar convite",
-  "close": "Fechar"
+  "close": "Fechar",
+  "walletAvailable": "Disponível",
+  "walletAvailableHint": "O que pode levantar hoje.",
+  "walletPending": "Retido",
+  "walletPendingHint": "Já ganho, ainda em espera até a reserva ser libertada.",
+  "walletHistory": "Movimentos",
+  "walletHistoryHint": "Tudo o que entrou e saiu, do mais recente para o mais antigo.",
+  "walletEmpty": "Ainda não há movimentos. Os pagamentos ainda não estão ligados.",
+  "walletLoadMore": "Carregar mais",
+  "walletType": {
+    "booking_earning": "Trabalho concluído",
+    "booking_hold": "Reserva retida",
+    "booking_release": "Reserva libertada",
+    "booking_refund": "Reembolso",
+    "cash_settlement": "Pago em dinheiro",
+    "payout": "Levantamento",
+    "adjustment": "Ajuste"
+  }
 }

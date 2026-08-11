@@ -12,7 +12,8 @@
     "settings": "Einstellungen",
     "myAccount": "Mein Konto",
     "you": "Sie",
-    "providers": "Anbieter"
+    "providers": "Anbieter",
+    "wallet": "Guthaben"
   },
   "myAccount": "Mein Konto",
   "noProvider": "Kein Anbieter",
@@ -197,5 +198,22 @@
   "peopleMakeStaff": "Zum Mitarbeiter machen",
   "peopleRemove": "Aus dem Workspace entfernen",
   "peopleRevoke": "Einladung widerrufen",
-  "close": "Schließen"
+  "close": "Schließen",
+  "walletAvailable": "Verfügbar",
+  "walletAvailableHint": "Was Sie heute abheben können.",
+  "walletPending": "Einbehalten",
+  "walletPendingHint": "Bereits verdient, bis zur Freigabe der Buchung einbehalten.",
+  "walletHistory": "Bewegungen",
+  "walletHistoryHint": "Alles rein und raus, neueste zuerst.",
+  "walletEmpty": "Noch keine Bewegungen. Zahlungen sind noch nicht angebunden.",
+  "walletLoadMore": "Mehr laden",
+  "walletType": {
+    "booking_earning": "Auftrag abgeschlossen",
+    "booking_hold": "Buchung einbehalten",
+    "booking_release": "Buchung freigegeben",
+    "booking_refund": "Erstattung",
+    "cash_settlement": "Bar bezahlt",
+    "payout": "Auszahlung",
+    "adjustment": "Anpassung"
+  }
 }

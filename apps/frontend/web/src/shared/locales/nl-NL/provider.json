@@ -12,7 +12,8 @@
     "settings": "Instellingen",
     "myAccount": "Mijn account",
     "you": "Jij",
-    "providers": "Aanbieders"
+    "providers": "Aanbieders",
+    "wallet": "Portemonnee"
   },
   "myAccount": "Mijn account",
   "noProvider": "Geen aanbieder",
@@ -197,5 +198,22 @@
   "peopleMakeStaff": "Medewerker maken",
   "peopleRemove": "Uit werkruimte verwijderen",
   "peopleRevoke": "Uitnodiging intrekken",
-  "close": "Sluiten"
+  "close": "Sluiten",
+  "walletAvailable": "Beschikbaar",
+  "walletAvailableHint": "Wat je vandaag kunt opnemen.",
+  "walletPending": "Vastgehouden",
+  "walletPendingHint": "Al verdiend, vastgehouden tot de boeking wordt vrijgegeven.",
+  "walletHistory": "Mutaties",
+  "walletHistoryHint": "Alles in en uit, nieuwste eerst.",
+  "walletEmpty": "Nog geen mutaties. Betalingen zijn nog niet aangesloten.",
+  "walletLoadMore": "Meer laden",
+  "walletType": {
+    "booking_earning": "Klus afgerond",
+    "booking_hold": "Boeking vastgehouden",
+    "booking_release": "Boeking vrijgegeven",
+    "booking_refund": "Terugbetaling",
+    "cash_settlement": "Contant betaald",
+    "payout": "Uitbetaling",
+    "adjustment": "Correctie"
+  }
 }

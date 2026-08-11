@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { Avatar, AvatarFallback, Badge } from "@ntizo/frontend-ui";
 import { ProviderStatus } from "@ntizo/shared";
 import { CollectionCard } from "@/shared/components/collection-card";
@@ -148,13 +149,17 @@ function Business({ provider }: { provider: AdminProvider }) {
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0">
-        {/* Plain text, not a link. Every row here ends in the same question —
-            "what else does this business look like" — but the detail screen
-            does not exist yet, and a link to nowhere is a control that lies
-            about being one. */}
-        <p className="type-body-medium truncate font-semibold">
+        {/* A link now that there is somewhere to go. Every row here ends in the
+            same question — "what else does this business look like" — and until
+            the detail screen existed this was deliberately plain text, because
+            a link to nowhere is a control that lies about being one. */}
+        <Link
+          to="/admin/providers/$providerId"
+          params={{ providerId: provider.id }}
+          className="type-body-medium block truncate font-semibold hover:underline"
+        >
           {provider.name}
-        </p>
+        </Link>
         <p className="type-caption truncate text-[var(--color-muted-foreground)]">
           {[provider.city, provider.country].filter(Boolean).join(", ") ||
             provider.slug}

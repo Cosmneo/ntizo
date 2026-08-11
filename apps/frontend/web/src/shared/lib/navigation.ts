@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, Users } from "lucide-react";
+import { LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface NavItem {
@@ -20,7 +20,13 @@ export interface NavGroup { labelKey: string; items: readonly NavItem[]; }
  */
 export const providerNavGroups: readonly NavGroup[] = [
   { labelKey: "nav.work", items: [{ titleKey: "nav.overview", url: "/provider/$slug/overview", icon: LayoutDashboard }] },
-  { labelKey: "nav.management", items: [{ titleKey: "nav.members", url: "/provider/$slug/members", icon: Users }] },
+  { labelKey: "nav.management", items: [
+    { titleKey: "nav.members", url: "/provider/$slug/members", icon: Users },
+    // Under management rather than under work: the balance is something a
+    // workspace's administrators look after, not something anybody does a
+    // job in.
+    { titleKey: "nav.wallet", url: "/provider/$slug/wallet", icon: Wallet },
+  ] },
   { labelKey: "nav.organization", items: [
     { titleKey: "nav.settings", url: "/provider/$slug/settings", icon: Settings },
   ] },

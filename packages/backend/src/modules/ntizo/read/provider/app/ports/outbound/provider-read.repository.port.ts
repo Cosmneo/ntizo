@@ -1,4 +1,5 @@
 import type {
+  ProviderAdminDetailDTO,
   ProviderAdminDTO,
   ProviderDetailDTO,
   ProviderListItemDTO,
@@ -28,4 +29,12 @@ export interface ProviderAdminRepositoryPort {
   ): Promise<ProviderAdminDTO[]>;
   /** One count per status, for the queue's tab badges. */
   countByStatus(): Promise<Record<string, number>>;
+  /**
+   * One business, with everything the decision turns on.
+   *
+   * Null rather than throwing: "no such provider" is an answer this read can
+   * legitimately give — an admin can follow a stale link — and the edge is
+   * where that becomes a 404.
+   */
+  findDetailForAdmin(providerId: string): Promise<ProviderAdminDetailDTO | null>;
 }

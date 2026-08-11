@@ -119,5 +119,30 @@
   "categoryReorderSearching": "Wis de zoekopdracht om te herschikken.",
   "categoryMoveUp": "Omhoog",
   "categoryMoveDown": "Omlaag",
+  "providerDetailTitle": "Aanbieder",
+  "providerDetailError": "Kan deze aanbieder niet laden.",
+  "providerDetailEmail": "E-mail",
+  "providerDetailPhone": "Telefoon",
+  "providerDetailMembers": "Leden",
+  "providerDetailDecision": "Beslissing",
+  "providerDetailDecisionHint": "Alleen de van hieruit toegestane statuswijzigingen worden aangeboden.",
+  "providerDetailNoActions": "Gearchiveerd is definitief — hier valt niets te beslissen.",
+  "providerDetailCommissionHint": "De aan de klant berekende vergoeding. De aanbieder ziet die, maar wijzigt die niet.",
+  "providerDetailCommissionSave": "Commissie opslaan",
+  "providerDetailCommissionRange": "Tussen 0 en 100%.",
+  "providerDetailWallet": "Portemonnee",
+  "providerDetailWalletHint": "Het saldo van deze werkruimte en de mutaties erachter.",
+  "providerActionFailed": "Kon dit niet afronden.",
+  "providerAction": {
+    "active": "Goedkeuren",
+    "rejected": "Afwijzen",
+    "suspended": "Schorsen",
+    "archived": "Archiveren"
+  },
+  "providerActionError": {
+    "INVALID_PROVIDER_STATUS_TRANSITION": "Die statuswijziging is hier niet toegestaan.",
+    "PROVIDER_NOT_FOUND": "Deze aanbieder bestaat niet meer.",
+    "ADMIN_ONLY": "Je hebt hiervoor geen toestemming."
+  },
   "close": "Sluiten"
 }

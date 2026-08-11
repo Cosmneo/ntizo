@@ -29,3 +29,31 @@ export function formatCommission(bps: number, locale: string): string {
     maximumFractionDigits: 2,
   }).format(bps / 10_000);
 }
+
+/**
+ * One business, as the administrator deciding about it sees it.
+ *
+ * `allowedTransitions` comes from the server rather than being derived here:
+ * the aggregate owns which moves are legal, and a button the browser offers
+ * and the server then refuses is worse than no button.
+ */
+export interface AdminProviderDetail {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  status: string;
+  description: string | null;
+  city: string | null;
+  country: string | null;
+  commissionBps: number;
+  ownerUserId: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
+  memberCount: number;
+  logoUrl: string | null;
+  allowedTransitions: string[];
+  createdAt: string;
+  updatedAt: string;
+}

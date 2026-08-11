@@ -6,6 +6,7 @@ import type {
   ListProvidersForAdminPort,
 } from "../../app/ports/inbound";
 import { ForbiddenError } from "@cosmneo/onion-lasagna";
+import type { GetProviderDetailForAdminProjection } from "../../app/use-cases/get-provider-detail-for-admin.projection";
 import { providerReadSchema } from "../schema/queries";
 import { mapGetProviderDetailInput, mapListMyProvidersInput } from "./arg-mappers";
 
@@ -16,6 +17,7 @@ import { mapGetProviderDetailInput, mapListMyProvidersInput } from "./arg-mapper
 export interface ProviderReadModule {
   readonly listMyProviders: ListMyProvidersProjectionPort;
   readonly getProviderDetail: GetProviderDetailProjectionPort;
+  readonly getProviderDetailForAdmin: GetProviderDetailForAdminProjection;
   readonly listProvidersForAdmin: ListProvidersForAdminPort;
 }
 
@@ -33,6 +35,23 @@ export function createProviderReadHandlers(readModule: ProviderReadModule) {
       argsMapper: (args, ctx) =>
         mapGetProviderDetailInput(args.input, asNtizoGraphqlContext(ctx)),
       useCase: readModule.getProviderDetail,
+      responseMapper: (output) => output,
+    })
+    .handleWithUseCase("provider.detailForAdmin", {
+      argsMapper: (args, ctx) => {
+        // Same guard as the list, and stated again rather than shared: two
+        // fields, two decisions. A helper that both call is one edit away from
+        // relaxing a rule for a field nobody was thinking about.
+        const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
+        if (!requesterUserId || role !== "admin") {
+          throw new ForbiddenError({
+            message: "Only administrators may read a provider's file",
+            code: "ADMIN_ONLY",
+          });
+        }
+        return { providerId: args.input.providerId };
+      },
+      useCase: readModule.getProviderDetailForAdmin,
       responseMapper: (output) => output,
     })
     .handleWithUseCase("provider.allForAdmin", {

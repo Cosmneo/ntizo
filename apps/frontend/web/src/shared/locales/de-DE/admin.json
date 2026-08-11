@@ -119,5 +119,30 @@
   "categoryReorderSearching": "Suche löschen, um neu zu ordnen.",
   "categoryMoveUp": "Nach oben",
   "categoryMoveDown": "Nach unten",
+  "providerDetailTitle": "Anbieter",
+  "providerDetailError": "Dieser Anbieter konnte nicht geladen werden.",
+  "providerDetailEmail": "E-Mail",
+  "providerDetailPhone": "Telefon",
+  "providerDetailMembers": "Mitglieder",
+  "providerDetailDecision": "Entscheidung",
+  "providerDetailDecisionHint": "Nur die von hier zulässigen Statuswechsel werden angeboten.",
+  "providerDetailNoActions": "Archiviert ist endgültig — von hier gibt es nichts zu entscheiden.",
+  "providerDetailCommissionHint": "Die dem Kunden berechnete Gebühr. Der Anbieter sieht sie, ändert sie aber nicht.",
+  "providerDetailCommissionSave": "Provision speichern",
+  "providerDetailCommissionRange": "Zwischen 0 und 100%.",
+  "providerDetailWallet": "Guthaben",
+  "providerDetailWalletHint": "Der Saldo dieses Bereichs und die Bewegungen dahinter.",
+  "providerActionFailed": "Konnte nicht abgeschlossen werden.",
+  "providerAction": {
+    "active": "Genehmigen",
+    "rejected": "Ablehnen",
+    "suspended": "Sperren",
+    "archived": "Archivieren"
+  },
+  "providerActionError": {
+    "INVALID_PROVIDER_STATUS_TRANSITION": "Dieser Statuswechsel ist von hier nicht zulässig.",
+    "PROVIDER_NOT_FOUND": "Diesen Anbieter gibt es nicht mehr.",
+    "ADMIN_ONLY": "Dafür fehlt Ihnen die Berechtigung."
+  },
   "close": "Schließen"
 }

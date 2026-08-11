@@ -1,5 +1,10 @@
 import { graphqlRoutes } from "@cosmneo/onion-lasagna/graphql/server";
-import { asNtizoGraphqlContext } from "../../../../graphql/context";
+import { ForbiddenError } from "@cosmneo/onion-lasagna";
+import type { ProviderStatus } from "@ntizo/shared";
+import {
+  asNtizoGraphqlContext,
+  type NtizoGraphqlContext,
+} from "../../../../graphql/context";
 import type { ProviderBootstrap } from "../../../../bounded-contexts/provider/bootstrap";
 import type { ProviderWorkflowsBootstrap } from "../../../../orchestrations/workflows/provider/bootstrap";
 import type {
@@ -39,10 +44,41 @@ export function mapProviderInviteAcceptOutput(
   return { providerId: result.providerId };
 }
 
+/**
+ * Refuses anyone whose platform role is not `admin`.
+ *
+ * Both the id and the role: the context defaults an anonymous caller to
+ * `customer`, so a role check alone would be reading a value chosen for the
+ * absence of a user. This is the entire security surface of the two commands
+ * below — neither asserts ownership, because an administrator is not a member
+ * of the business they are deciding about.
+ */
+function requireAdmin(ctx: NtizoGraphqlContext): void {
+  if (!ctx.requesterUserId || ctx.role !== "admin") {
+    throw new ForbiddenError({
+      message: "Only administrators may decide about a provider",
+      code: "ADMIN_ONLY",
+    });
+  }
+}
+
 export function createProviderWriteHandlers(mod: ProviderWriteModule) {
   const uc = mod.provider.useCases;
 
   return graphqlRoutes(providerWriteSchema)
+    .handle("provider.admin.decideStatus", async (args, ctx) => {
+      const c = asNtizoGraphqlContext(ctx);
+      requireAdmin(c);
+      return uc.decideProviderStatus.execute(toExecutionContext(c), {
+        providerId: args.input.providerId,
+        status: args.input.status as ProviderStatus,
+      });
+    })
+    .handle("provider.admin.setCommission", async (args, ctx) => {
+      const c = asNtizoGraphqlContext(ctx);
+      requireAdmin(c);
+      return uc.setProviderCommission.execute(toExecutionContext(c), args.input);
+    })
     .handle("provider.create", async (args, ctx) =>
       uc.createProvider.execute(toExecutionContext(asNtizoGraphqlContext(ctx)), args.input),
     )

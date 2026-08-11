@@ -17,3 +17,4 @@ export {
   type ProviderInvitePublicDTO,
 } from "./provider-detail.schema";
 export * from "./provider-admin.schema";
+export * from "./provider-admin-detail.schema";

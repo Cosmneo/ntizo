@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { PROVIDER_STATUSES } from "@ntizo/shared";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 const providerIdResult = z.object({ providerId: z.string().min(1) });
@@ -138,6 +139,40 @@ export const updateProviderMemberRole = defineMutation({
   docs: { summary: "Change a member's role", tags: ["Provider"] },
 });
 
+/**
+ * Two administrator decisions, deliberately separate mutations.
+ *
+ * Approving a business and setting what it is charged are different acts with
+ * different consequences, and one mutation taking both would let a slip in the
+ * commission field ride along with an approval nobody meant to revisit.
+ *
+ * Which status moves are legal is not stated here: the aggregate owns that and
+ * the read hands the screen the list. Repeating it in the input schema would
+ * be a second copy of a rule that has to stay in step with the first.
+ */
+export const decideProviderStatus = defineMutation({
+  input: zodSchema(
+    z.object({
+      providerId: z.string().min(1),
+      status: z.enum(PROVIDER_STATUSES as [string, ...string[]]),
+    }),
+  ),
+  output: zodSchema(providerIdResult),
+  docs: { summary: "Approve, reject, suspend or archive a provider", tags: ["Admin"] },
+});
+
+export const setProviderCommission = defineMutation({
+  input: zodSchema(
+    z.object({
+      providerId: z.string().min(1),
+      /** Basis points. Bounded here as a contract; the aggregate enforces it. */
+      commissionBps: z.number().int().min(0).max(10_000),
+    }),
+  ),
+  output: zodSchema(providerIdResult),
+  docs: { summary: "Set a provider's commission", tags: ["Admin"] },
+});
+
 export const providerWriteSchema = defineGraphQLSchema(
   {
     provider: {
@@ -145,6 +180,13 @@ export const providerWriteSchema = defineGraphQLSchema(
       update: updateProvider,
       deactivate: deactivateProvider,
       registerMe: registerMeAsProvider,
+      // Nested under `admin` so the guard is visible from the field name. A
+      // reviewer scanning this tree should be able to see which mutations need
+      // one without opening the handler.
+      admin: {
+        decideStatus: decideProviderStatus,
+        setCommission: setProviderCommission,
+      },
       invites: {
         send: inviteProviderMember,
         accept: acceptProviderInvite,

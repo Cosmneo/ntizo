@@ -32,6 +32,7 @@ function makeModule(calls: string[] = []) {
       },
     },
     listProvidersForAdmin: { async execute() { return []; } },
+    getProviderDetailForAdmin: { async execute() { return {}; } } as never,
   getProviderDetail: {
       execute: async (input: { providerId: string; requestedByUserId: string }) => {
         calls.push(`detail:${input.providerId}:${input.requestedByUserId}`);
@@ -46,7 +47,8 @@ describe("createProviderReadHandlers", () => {
     const handlers = createProviderReadHandlers(makeModule());
     expect(Array.isArray(handlers)).toBe(true);
     // Three: the two member-scoped reads plus the admin queue.
-    expect(handlers.length).toBe(3);
+    // Four now: my list, my detail, the admin list and the admin detail.
+    expect(handlers.length).toBe(4);
   });
 
   it("stamps requestedByUserId from the session, never from args", async () => {

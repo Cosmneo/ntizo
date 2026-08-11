@@ -119,5 +119,30 @@
   "categoryReorderSearching": "Effacez la recherche pour réordonner.",
   "categoryMoveUp": "Monter",
   "categoryMoveDown": "Descendre",
+  "providerDetailTitle": "Prestataire",
+  "providerDetailError": "Impossible de charger ce prestataire.",
+  "providerDetailEmail": "E-mail",
+  "providerDetailPhone": "Téléphone",
+  "providerDetailMembers": "Membres",
+  "providerDetailDecision": "Décision",
+  "providerDetailDecisionHint": "Seuls les changements de statut autorisés d'ici sont proposés.",
+  "providerDetailNoActions": "Archivé est définitif — il n'y a rien à décider d'ici.",
+  "providerDetailCommissionHint": "Les frais facturés au client. Le prestataire les voit mais ne les modifie pas.",
+  "providerDetailCommissionSave": "Enregistrer la commission",
+  "providerDetailCommissionRange": "Entre 0 et 100%.",
+  "providerDetailWallet": "Portefeuille",
+  "providerDetailWalletHint": "Le solde de cet espace et les mouvements derrière.",
+  "providerActionFailed": "Impossible de terminer.",
+  "providerAction": {
+    "active": "Approuver",
+    "rejected": "Refuser",
+    "suspended": "Suspendre",
+    "archived": "Archiver"
+  },
+  "providerActionError": {
+    "INVALID_PROVIDER_STATUS_TRANSITION": "Ce changement de statut n'est pas autorisé d'ici.",
+    "PROVIDER_NOT_FOUND": "Ce prestataire n'existe plus.",
+    "ADMIN_ONLY": "Vous n'avez pas la permission."
+  },
   "close": "Fermer"
 }

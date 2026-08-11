@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import {
+  providerAdminDetailReadModel,
   providerAdminReadModel,
   providerDetailReadModel,
   providerListItemReadModel,
@@ -58,12 +59,27 @@ export const listProvidersForAdmin = defineQuery({
   docs: { summary: "Every provider, for administration", tags: ["Admin"] },
 });
 
+/**
+ * One business, for the administrator deciding about it.
+ *
+ * Separate from `provider.detail`, which a workspace's own members read: this
+ * one carries the commission and the legal next statuses and is refused to
+ * everybody but an admin, and folding the two together would mean one query
+ * whose shape and whose guard both depend on who is asking.
+ */
+export const getProviderDetailForAdmin = defineQuery({
+  input: zodSchema(z.object({ providerId: z.string().min(1) })),
+  output: zodSchema(providerAdminDetailReadModel),
+  docs: { summary: "One provider, for administration", tags: ["Admin"] },
+});
+
 export const providerReadSchema = defineGraphQLSchema(
   {
     provider: {
       mine: listMyProviders,
       byId: getProviderDetail,
       allForAdmin: listProvidersForAdmin,
+      detailForAdmin: getProviderDetailForAdmin,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

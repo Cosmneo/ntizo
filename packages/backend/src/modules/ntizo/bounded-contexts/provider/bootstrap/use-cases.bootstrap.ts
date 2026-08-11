@@ -3,6 +3,8 @@ import { CreateProviderCommand } from "../app/use-cases/provider/create-provider
 import { UpdateProviderCommand } from "../app/use-cases/provider/update-provider.command";
 import { DeactivateProviderCommand } from "../app/use-cases/provider/deactivate-provider.command";
 import { CreateProviderInternalCommand } from "../app/use-cases/provider/create-provider.internal.command";
+import { DecideProviderStatusCommand } from "../app/use-cases/provider/decide-provider-status.command";
+import { SetProviderCommissionCommand } from "../app/use-cases/provider/set-provider-commission.command";
 import { DeactivateProviderInternalCommand } from "../app/use-cases/provider/deactivate-provider.internal.command";
 import { ListMyProvidersQuery } from "../app/use-cases/provider/list-my-providers.query";
 import { InviteProviderMemberCommand } from "../app/use-cases/invite/invite-provider-member.command";
@@ -41,6 +43,21 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
       outboxPort,
     ),
     deactivateProvider: new DeactivateProviderCommand(
+      providerRepository,
+      unitOfWork,
+      outboxPort,
+    ),
+
+    // Both administrator-only, and neither asserts ownership — an admin is not
+    // a member of the business they are deciding about. That omission is the
+    // whole security surface of the two, and the check lives at the GraphQL
+    // edge, which is the one place that sees the session.
+    decideProviderStatus: new DecideProviderStatusCommand(
+      providerRepository,
+      unitOfWork,
+      outboxPort,
+    ),
+    setProviderCommission: new SetProviderCommissionCommand(
       providerRepository,
       unitOfWork,
       outboxPort,

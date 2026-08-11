@@ -119,5 +119,30 @@
   "categoryReorderSearching": "Clear the search to reorder.",
   "categoryMoveUp": "Move up",
   "categoryMoveDown": "Move down",
+  "providerDetailTitle": "Provider",
+  "providerDetailError": "Couldn't load this provider.",
+  "providerDetailEmail": "Email",
+  "providerDetailPhone": "Phone",
+  "providerDetailMembers": "Members",
+  "providerDetailDecision": "Decision",
+  "providerDetailDecisionHint": "Only the status changes allowed from here are offered.",
+  "providerDetailNoActions": "Archived is final — there is nothing to decide from here.",
+  "providerDetailCommissionHint": "The fee charged to the customer. The provider sees it but cannot change it.",
+  "providerDetailCommissionSave": "Save commission",
+  "providerDetailCommissionRange": "Between 0 and 100%.",
+  "providerDetailWallet": "Wallet",
+  "providerDetailWalletHint": "This workspace's balance and the movements behind it.",
+  "providerActionFailed": "Couldn't complete that.",
+  "providerAction": {
+    "active": "Approve",
+    "rejected": "Reject",
+    "suspended": "Suspend",
+    "archived": "Archive"
+  },
+  "providerActionError": {
+    "INVALID_PROVIDER_STATUS_TRANSITION": "That status change is not allowed from here.",
+    "PROVIDER_NOT_FOUND": "This provider no longer exists.",
+    "ADMIN_ONLY": "You don't have permission for this."
+  },
   "close": "Close"
 }

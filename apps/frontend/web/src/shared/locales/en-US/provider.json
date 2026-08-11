@@ -12,7 +12,8 @@
     "settings": "Settings",
     "myAccount": "My Account",
     "you": "You",
-    "providers": "Providers"
+    "providers": "Providers",
+    "wallet": "Wallet"
   },
   "myAccount": "My Account",
   "noProvider": "No provider",
@@ -197,5 +198,22 @@
   "peopleMakeStaff": "Make staff",
   "peopleRemove": "Remove from workspace",
   "peopleRevoke": "Revoke invitation",
-  "close": "Close"
+  "close": "Close",
+  "walletAvailable": "Available",
+  "walletAvailableHint": "What you can withdraw today.",
+  "walletPending": "Held",
+  "walletPendingHint": "Earned, still held until the booking is released.",
+  "walletHistory": "Movements",
+  "walletHistoryHint": "Everything in and out, newest first.",
+  "walletEmpty": "No movements yet. Payments are not connected yet.",
+  "walletLoadMore": "Load more",
+  "walletType": {
+    "booking_earning": "Job completed",
+    "booking_hold": "Booking held",
+    "booking_release": "Booking released",
+    "booking_refund": "Refund",
+    "cash_settlement": "Paid in cash",
+    "payout": "Payout",
+    "adjustment": "Adjustment"
+  }
 }

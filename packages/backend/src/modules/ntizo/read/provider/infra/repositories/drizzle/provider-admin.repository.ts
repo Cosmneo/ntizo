@@ -1,8 +1,22 @@
-import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
-import type { ProviderAdminDTO } from "@ntizo/shared/read-models";
+import { and, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import type {
+  ProviderAdminDetailDTO,
+  ProviderAdminDTO,
+} from "@ntizo/shared/read-models";
+import {
+  PROVIDER_STATUS_TRANSITIONS,
+  type ProviderStatus,
+} from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
-import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
-import { user } from "../../../../../shared/infrastructure/database/user/schemas";
+import {
+  provider,
+  providerMember,
+} from "../../../../../shared/infrastructure/database/provider/schemas";
+import {
+  profile,
+  user,
+} from "../../../../../shared/infrastructure/database/user/schemas";
+import { mediaUrl } from "../../../../../shared/infrastructure/media/media-url";
 import { likePattern } from "../../../../../public/provider/infra/repositories/drizzle/provider-public.repository";
 import type { ProviderAdminRepositoryPort } from "../../../app/ports/outbound/provider-read.repository.port";
 
@@ -64,6 +78,72 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
       type: row.type as ProviderAdminDTO["type"],
       createdAt: row.createdAt.toISOString(),
     }));
+  }
+
+  async findDetailForAdmin(
+    providerId: string,
+  ): Promise<ProviderAdminDetailDTO | null> {
+    const [row] = await getDb()
+      .select({
+        id: provider.id,
+        name: provider.name,
+        slug: provider.slug,
+        type: provider.type,
+        status: provider.status,
+        description: provider.description,
+        city: provider.addressCity,
+        country: provider.addressCountry,
+        ownerPhone: profile.phoneNumber,
+        commissionBps: provider.commissionBps,
+        ownerUserId: provider.ownerUserId,
+        ownerName: profile.displayName,
+        ownerEmail: user.email,
+        logoKey: provider.logoKey,
+        createdAt: provider.createdAt,
+        updatedAt: provider.updatedAt,
+        // Counted in the query: a detail screen that fires one more round trip
+        // per number on it is a screen that gets slower as it gets useful.
+        memberCount: sql<number>`(
+          select count(*)::int from ${providerMember}
+          where ${providerMember.providerId} = ${provider.id}
+        )`,
+      })
+      .from(provider)
+      .leftJoin(user, eq(user.id, provider.ownerUserId))
+      .leftJoin(profile, eq(profile.userId, provider.ownerUserId))
+      .where(eq(provider.id, providerId))
+      .limit(1);
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      type: row.type,
+      status: row.status,
+      description: row.description,
+      city: row.city,
+      country: row.country,
+      commissionBps: row.commissionBps,
+      ownerUserId: row.ownerUserId,
+      // Empty is not a name: the column defaults to "" rather than null, so
+      // `?? null` alone would hand the screen a blank where it expects an
+      // absence and would print nothing instead of the email beside it.
+      ownerName: row.ownerName?.trim() ? row.ownerName : null,
+      ownerEmail: row.ownerEmail,
+      ownerPhone: row.ownerPhone?.trim() ? row.ownerPhone : null,
+      memberCount: row.memberCount,
+      logoUrl: row.logoKey ? mediaUrl(row.logoKey) : null,
+      // Resolved here so the screen and the aggregate cannot disagree about
+      // what may be offered. A button the server then refuses is worse than
+      // no button.
+      allowedTransitions: [
+        ...(PROVIDER_STATUS_TRANSITIONS[row.status as ProviderStatus] ?? []),
+      ],
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
   }
 
   async countByStatus(): Promise<Record<string, number>> {

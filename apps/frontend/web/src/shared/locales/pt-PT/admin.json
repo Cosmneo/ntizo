@@ -119,5 +119,30 @@
   "categoryReorderSearching": "Limpe a pesquisa para reordenar.",
   "categoryMoveUp": "Mover para cima",
   "categoryMoveDown": "Mover para baixo",
+  "providerDetailTitle": "Prestador",
+  "providerDetailError": "Não foi possível carregar este prestador.",
+  "providerDetailEmail": "Email",
+  "providerDetailPhone": "Telefone",
+  "providerDetailMembers": "Membros",
+  "providerDetailDecision": "Decisão",
+  "providerDetailDecisionHint": "Só as mudanças de estado permitidas a partir daqui são oferecidas.",
+  "providerDetailNoActions": "Arquivado é definitivo — não há nada a decidir a partir daqui.",
+  "providerDetailCommissionHint": "A taxa cobrada ao cliente. O prestador vê-a mas não a altera.",
+  "providerDetailCommissionSave": "Guardar comissão",
+  "providerDetailCommissionRange": "Entre 0 e 100%.",
+  "providerDetailWallet": "Carteira",
+  "providerDetailWalletHint": "O saldo deste espaço e os movimentos por trás dele.",
+  "providerActionFailed": "Não foi possível concluir.",
+  "providerAction": {
+    "active": "Aprovar",
+    "rejected": "Recusar",
+    "suspended": "Suspender",
+    "archived": "Arquivar"
+  },
+  "providerActionError": {
+    "INVALID_PROVIDER_STATUS_TRANSITION": "Essa mudança de estado não é permitida a partir daqui.",
+    "PROVIDER_NOT_FOUND": "Este prestador já não existe.",
+    "ADMIN_ONLY": "Não tem permissão para isto."
+  },
   "close": "Fechar"
 }

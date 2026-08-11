@@ -12,7 +12,8 @@
     "settings": "Ajustes",
     "myAccount": "Mi cuenta",
     "you": "Usted",
-    "providers": "Proveedores"
+    "providers": "Proveedores",
+    "wallet": "Cartera"
   },
   "myAccount": "Mi cuenta",
   "noProvider": "Sin proveedor",
@@ -197,5 +198,22 @@
   "peopleMakeStaff": "Hacer personal",
   "peopleRemove": "Quitar del espacio",
   "peopleRevoke": "Revocar invitación",
-  "close": "Cerrar"
+  "close": "Cerrar",
+  "walletAvailable": "Disponible",
+  "walletAvailableHint": "Lo que puedes retirar hoy.",
+  "walletPending": "Retenido",
+  "walletPendingHint": "Ya ganado, retenido hasta que se libere la reserva.",
+  "walletHistory": "Movimientos",
+  "walletHistoryHint": "Todo lo que entró y salió, de lo más reciente a lo más antiguo.",
+  "walletEmpty": "Todavía no hay movimientos. Los pagos aún no están conectados.",
+  "walletLoadMore": "Cargar más",
+  "walletType": {
+    "booking_earning": "Trabajo completado",
+    "booking_hold": "Reserva retenida",
+    "booking_release": "Reserva liberada",
+    "booking_refund": "Reembolso",
+    "cash_settlement": "Pagado en efectivo",
+    "payout": "Retiro",
+    "adjustment": "Ajuste"
+  }
 }

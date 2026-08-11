@@ -119,5 +119,30 @@
   "categoryReorderSearching": "Cancella la ricerca per riordinare.",
   "categoryMoveUp": "Sposta su",
   "categoryMoveDown": "Sposta giù",
+  "providerDetailTitle": "Fornitore",
+  "providerDetailError": "Impossibile caricare questo fornitore.",
+  "providerDetailEmail": "Email",
+  "providerDetailPhone": "Telefono",
+  "providerDetailMembers": "Membri",
+  "providerDetailDecision": "Decisione",
+  "providerDetailDecisionHint": "Vengono offerti solo i cambi di stato consentiti da qui.",
+  "providerDetailNoActions": "Archiviato è definitivo: da qui non c'è nulla da decidere.",
+  "providerDetailCommissionHint": "La commissione addebitata al cliente. Il fornitore la vede ma non la cambia.",
+  "providerDetailCommissionSave": "Salva commissione",
+  "providerDetailCommissionRange": "Tra 0 e 100%.",
+  "providerDetailWallet": "Portafoglio",
+  "providerDetailWalletHint": "Il saldo di questo spazio e i movimenti dietro.",
+  "providerActionFailed": "Impossibile completare.",
+  "providerAction": {
+    "active": "Approva",
+    "rejected": "Rifiuta",
+    "suspended": "Sospendi",
+    "archived": "Archivia"
+  },
+  "providerActionError": {
+    "INVALID_PROVIDER_STATUS_TRANSITION": "Questo cambio di stato non è consentito da qui.",
+    "PROVIDER_NOT_FOUND": "Questo fornitore non esiste più.",
+    "ADMIN_ONLY": "Non hai il permesso per questo."
+  },
   "close": "Chiudi"
 }
