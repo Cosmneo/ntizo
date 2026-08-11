@@ -15,7 +15,7 @@
 - **Money is integers in minor units.** `bigint`, never a decimal or float. 300,50 MT is `30050`.
 - **Every domain refusal extends a kit error type** (`ConflictError`, `NotFoundError`, `UnprocessableError`, `ForbiddenError` from `@cosmneo/onion-lasagna`). A bare `Error` reaches the browser as "An unexpected error occurred" with code `INTERNAL_ERROR`. This has been got wrong three times on this project; every one was found by calling the endpoint, never by reading the code.
 - **A new Postgres schema must be registered in two places** — `packages/backend/src/modules/ntizo/drizzle.config.ts` `schemaFilter` and the database `index.ts`. `ntizo_catalog` is already in both; no new schema is needed here.
-- **Backend tests run under `bun:test`** (`import { describe, expect, it } from "bun:test"`). Frontend tests run under `vitest`. Using the wrong one fails typecheck.
+- **Test runner differs by package.** `packages/backend` uses `bun:test` (`import { describe, expect, it } from "bun:test"`). `packages/shared` and `apps/frontend/web` use `vitest`. Using the wrong one fails typecheck; check the package's own `test` script before writing the import.
 - **`zod.default()` does not survive into the GraphQL schema.** Use `.optional()` and apply the default in the handler's `argsMapper`.
 - **The kit's `argsMapper` is synchronous.** Any check needing a query goes in a `.handle()` body, not `handleWithUseCase`'s mapper.
 - **`ui/` may not import `data/`** — enforced by `eslint-plugin-boundaries`.
