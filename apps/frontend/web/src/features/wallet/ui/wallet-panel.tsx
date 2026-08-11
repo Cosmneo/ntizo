@@ -28,9 +28,20 @@ export function WalletPanel({
   providerId,
   /** Fewer rows and no heading, for a detail page that has its own. */
   compact = false,
+  /**
+   * Which half to draw.
+   *
+   * The balance and the ledger answer different questions with different
+   * urgencies, and on the administrator's file they belong in different
+   * places. How much a business holds is a fact about it and sits with its
+   * name; why it holds that is a list, and a list between a reviewer and the
+   * decision they came to make is a list in the way.
+   */
+  show = "all",
 }: {
   providerId: string | undefined;
   compact?: boolean;
+  show?: "all" | "balances" | "history";
 }) {
   const { t, i18n } = useTranslation("provider");
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -44,6 +55,7 @@ export function WalletPanel({
 
   return (
     <div className="grid gap-4">
+      {show !== "history" && (
       <div className="grid gap-4 sm:grid-cols-2">
         <BalanceCard
           label={t("walletAvailable")}
@@ -59,7 +71,9 @@ export function WalletPanel({
           value={wallet ? money(wallet.pendingMinor) : null}
         />
       </div>
+      )}
 
+      {show !== "balances" && (
       <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
         {!compact && (
           <div className="px-4 py-4 sm:px-5">
@@ -123,6 +137,7 @@ export function WalletPanel({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

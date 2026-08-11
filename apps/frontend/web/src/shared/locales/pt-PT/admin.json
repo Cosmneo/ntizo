@@ -194,5 +194,7 @@
     "M_PESA": "M-Pesa",
     "E_MOLA": "e-Mola"
   },
+  "providerDetailMovements": "Movimentos",
+  "providerDetailMovementsHint": "Tudo o que entrou e saiu desta carteira.",
   "close": "Fechar"
 }

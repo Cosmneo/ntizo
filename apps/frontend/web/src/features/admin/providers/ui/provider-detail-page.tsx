@@ -207,6 +207,18 @@ export function AdminProviderDetailPage() {
         )}
       </section>
 
+      {/* ── The money, at a glance ───────────────────────────────────────── */}
+      {/* Second, right under the name. How much a business is holding is a
+          fact about it, like its status and its owner — the first thing worth
+          knowing about an active one, and the thing that decides whether
+          suspending it is a small act or an expensive one.
+
+          Only the two numbers here. The ledger stays below the documents: a
+          reviewer opening a pending application came for the papers and the
+          decision, and a list of movements between them and that work is a
+          list in the way. */}
+      <WalletPanel providerId={providerId} show="balances" />
+
       {/* ── What can be done ─────────────────────────────────────────────── */}
       <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
         <p className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
@@ -295,13 +307,13 @@ export function AdminProviderDetailPage() {
       <section className="grid gap-3">
         <div>
           <p className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-            {t("providerDetailWallet")}
+            {t("providerDetailMovements")}
           </p>
           <p className="type-body mt-0.5 text-[var(--color-muted-foreground)]">
-            {t("providerDetailWalletHint")}
+            {t("providerDetailMovementsHint")}
           </p>
         </div>
-        <WalletPanel providerId={providerId} compact />
+        <WalletPanel providerId={providerId} show="history" compact />
       </section>
     </div>
   );

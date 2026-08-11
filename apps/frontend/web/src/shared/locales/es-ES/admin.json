@@ -194,5 +194,7 @@
     "M_PESA": "M-Pesa",
     "E_MOLA": "e-Mola"
   },
+  "providerDetailMovements": "Movements",
+  "providerDetailMovementsHint": "Everything in and out of this wallet.",
   "close": "Cerrar"
 }
