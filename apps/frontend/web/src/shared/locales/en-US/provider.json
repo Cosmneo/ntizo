@@ -13,7 +13,8 @@
     "myAccount": "My Account",
     "you": "You",
     "providers": "Providers",
-    "wallet": "Wallet"
+    "wallet": "Wallet",
+    "services": "Services"
   },
   "myAccount": "My Account",
   "noProvider": "No provider",
@@ -215,5 +216,22 @@
     "cash_settlement": "Paid in cash",
     "payout": "Payout",
     "adjustment": "Adjustment"
-  }
+  },
+  "servicesTitle": "Services",
+  "servicesSearchPlaceholder": "Search services or categories",
+  "servicesService": "Service",
+  "servicesPrice": "Price",
+  "servicesLanguages": "Languages",
+  "servicesStatusLabel": "Status",
+  "servicesActions": "Actions",
+  "servicesStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "archived": "Archived"
+  },
+  "servicesPriceOnQuote": "By quote",
+  "servicesEmpty": "No services yet.",
+  "servicesNoMatches": "No services match your search.",
+  "servicesActionsSoon": "More actions coming soon",
+  "servicesError": "Something went wrong loading your services."
 }

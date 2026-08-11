@@ -13,7 +13,8 @@
     "myAccount": "Il mio account",
     "you": "Tu",
     "providers": "Operatori",
-    "wallet": "Portafoglio"
+    "wallet": "Portafoglio",
+    "services": "Services"
   },
   "myAccount": "Il mio account",
   "noProvider": "Nessun fornitore",
@@ -215,5 +216,22 @@
     "cash_settlement": "Pagato in contanti",
     "payout": "Prelievo",
     "adjustment": "Rettifica"
-  }
+  },
+  "servicesTitle": "Services",
+  "servicesSearchPlaceholder": "Search services or categories",
+  "servicesService": "Service",
+  "servicesPrice": "Price",
+  "servicesLanguages": "Languages",
+  "servicesStatusLabel": "Status",
+  "servicesActions": "Actions",
+  "servicesStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "archived": "Archived"
+  },
+  "servicesPriceOnQuote": "By quote",
+  "servicesEmpty": "No services yet.",
+  "servicesNoMatches": "No services match your search.",
+  "servicesActionsSoon": "More actions coming soon",
+  "servicesError": "Something went wrong loading your services."
 }

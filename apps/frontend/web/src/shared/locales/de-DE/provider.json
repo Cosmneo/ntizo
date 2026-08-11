@@ -13,7 +13,8 @@
     "myAccount": "Mein Konto",
     "you": "Sie",
     "providers": "Anbieter",
-    "wallet": "Guthaben"
+    "wallet": "Guthaben",
+    "services": "Services"
   },
   "myAccount": "Mein Konto",
   "noProvider": "Kein Anbieter",
@@ -215,5 +216,22 @@
     "cash_settlement": "Bar bezahlt",
     "payout": "Auszahlung",
     "adjustment": "Anpassung"
-  }
+  },
+  "servicesTitle": "Services",
+  "servicesSearchPlaceholder": "Search services or categories",
+  "servicesService": "Service",
+  "servicesPrice": "Price",
+  "servicesLanguages": "Languages",
+  "servicesStatusLabel": "Status",
+  "servicesActions": "Actions",
+  "servicesStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "archived": "Archived"
+  },
+  "servicesPriceOnQuote": "By quote",
+  "servicesEmpty": "No services yet.",
+  "servicesNoMatches": "No services match your search.",
+  "servicesActionsSoon": "More actions coming soon",
+  "servicesError": "Something went wrong loading your services."
 }

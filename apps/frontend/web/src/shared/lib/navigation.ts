@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
+import { Briefcase, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface NavItem {
@@ -19,7 +19,12 @@ export interface NavGroup { labelKey: string; items: readonly NavItem[]; }
  * page two homes, and it said a workspace is a place you manage yourself.
  */
 export const providerNavGroups: readonly NavGroup[] = [
-  { labelKey: "nav.work", items: [{ titleKey: "nav.overview", url: "/provider/$slug/overview", icon: LayoutDashboard }] },
+  { labelKey: "nav.work", items: [
+    // Above overview: what a provider sells is the thing this zone exists
+    // to manage, and a dashboard of numbers about it is secondary.
+    { titleKey: "nav.services", url: "/provider/$slug/services", icon: Briefcase },
+    { titleKey: "nav.overview", url: "/provider/$slug/overview", icon: LayoutDashboard },
+  ] },
   { labelKey: "nav.management", items: [
     { titleKey: "nav.members", url: "/provider/$slug/members", icon: Users },
     // Under management rather than under work: the balance is something a

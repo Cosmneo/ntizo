@@ -16,16 +16,37 @@ export default [
         },
       },
       "boundaries/elements": [
-        { type: "domain", pattern: ["src/features/*/domain/**", "src/shared/domain/**"] },
-        { type: "data", pattern: ["src/features/*/data/**"] },
+        {
+          type: "domain",
+          pattern: [
+            "src/features/*/domain/**",
+            // provider/services nests one level deeper than the other
+            // features (provider/services/domain, not provider/domain), so
+            // the single-segment `*` above never matches it. Named
+            // explicitly rather than lumped into `ui` the way admin's is
+            // below: the whole point of this feature's layers is that `ui`
+            // cannot reach `data` directly, which the admin blanket rule
+            // would silently defeat.
+            "src/features/provider/services/domain/**",
+            "src/shared/domain/**",
+          ],
+        },
+        {
+          type: "data",
+          pattern: ["src/features/*/data/**", "src/features/provider/services/data/**"],
+        },
         {
           type: "viewmodel",
-          pattern: ["src/features/*/viewmodel/**"],
+          pattern: [
+            "src/features/*/viewmodel/**",
+            "src/features/provider/services/viewmodel/**",
+          ],
         },
         {
           type: "ui",
           pattern: [
             "src/features/*/ui/**",
+            "src/features/provider/services/ui/**",
             "src/shared/ui/**",
             "src/shared/components/**",
             "src/features/*/components/**",

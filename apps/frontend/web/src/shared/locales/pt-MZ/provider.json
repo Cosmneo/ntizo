@@ -13,7 +13,8 @@
     "myAccount": "Minha conta",
     "you": "Você",
     "providers": "Prestadores",
-    "wallet": "Carteira"
+    "wallet": "Carteira",
+    "services": "Serviços"
   },
   "myAccount": "Minha conta",
   "noProvider": "Sem prestador",
@@ -215,5 +216,22 @@
     "cash_settlement": "Pago em dinheiro",
     "payout": "Levantamento",
     "adjustment": "Ajuste"
-  }
+  },
+  "servicesTitle": "Serviços",
+  "servicesSearchPlaceholder": "Procurar serviços ou categorias",
+  "servicesService": "Serviço",
+  "servicesPrice": "Preço",
+  "servicesLanguages": "Idiomas",
+  "servicesStatusLabel": "Estado",
+  "servicesActions": "Acções",
+  "servicesStatus": {
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "archived": "Arquivado"
+  },
+  "servicesPriceOnQuote": "Por orçamento",
+  "servicesEmpty": "Ainda sem serviços.",
+  "servicesNoMatches": "Nenhum serviço corresponde à pesquisa.",
+  "servicesActionsSoon": "Mais acções brevemente",
+  "servicesError": "Ocorreu um erro ao carregar os seus serviços."
 }
