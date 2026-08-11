@@ -8,6 +8,7 @@ import {
   MOCK_STORIES,
   initialsOf,
 } from "@/features/landing/domain/mock-content";
+import { ScrollRail } from "./scroll-rail";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import {
   ACCENT,
@@ -73,7 +74,7 @@ export function Categories() {
           blurb={t("categoriesBlurb")}
           more={{ label: t("seeAll"), to: "/providers" }}
         />
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+        <ScrollRail columns={4} cardWidth="44%">
           {MOCK_CATEGORIES.map((cat, i) => (
             <Link key={cat.labelKey} to="/providers" className="group">
               <SurfaceArt
@@ -85,7 +86,7 @@ export function Categories() {
               </b>
             </Link>
           ))}
-        </div>
+        </ScrollRail>
       </div>
     </section>
   );
@@ -109,7 +110,7 @@ export function PopularProviders() {
           blurb={t("popularBlurb")}
           more={{ label: t("seeAll"), to: "/providers" }}
         />
-        <div className="grid gap-6 md:grid-cols-3">
+        <ScrollRail columns={3}>
           {MOCK_PROVIDERS.map((p, i) => (
             <Link
               key={p.id}
@@ -154,7 +155,7 @@ export function PopularProviders() {
               </div>
             </Link>
           ))}
-        </div>
+        </ScrollRail>
       </div>
     </section>
   );
@@ -166,7 +167,7 @@ export function Stories() {
     <section className="py-20">
       <div className="page-shell">
         <Head title={t("storiesTitle")} blurb={t("storiesBlurb")} />
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <ScrollRail columns={4} className="md:grid-cols-2 lg:grid-cols-4">
           {MOCK_STORIES.map((s, i) => (
             <article
               key={s.id}
@@ -197,7 +198,7 @@ export function Stories() {
               </div>
             </article>
           ))}
-        </div>
+        </ScrollRail>
       </div>
     </section>
   );
