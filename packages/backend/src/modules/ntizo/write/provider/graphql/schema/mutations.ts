@@ -45,6 +45,11 @@ export const updateProvider = defineMutation({
       providerId: z.string().min(1),
       name: z.string().min(1).optional(),
       description: z.string().optional(),
+      // Where this business is paid. `.nullable()` because clearing it has to
+      // be expressible — an optional-only field can say "leave it" but never
+      // "take it away".
+      payoutType: z.string().trim().max(40).nullable().optional(),
+      payoutIdentifier: z.string().trim().max(120).nullable().optional(),
       // Keys, not URLs — the upload route hands back a key and the reader
       // composes the URL from the public base, so a bucket or CDN move does
       // not rewrite every row.

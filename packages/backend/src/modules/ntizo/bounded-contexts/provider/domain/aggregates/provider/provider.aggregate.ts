@@ -9,8 +9,14 @@ import { Address } from "../../value-objects/address.vo";
 import {
   ProviderStatus as SharedProviderStatus,
   canTransition,
+  PaymentDirection,
+  isPaymentMethodType,
+  supportsDirection,
 } from "@ntizo/shared";
-import { InvalidProviderStatusTransitionError } from "../../exceptions";
+import {
+  InvalidPayoutDestinationError,
+  InvalidProviderStatusTransitionError,
+} from "../../exceptions";
 import {
   IndividualProviderCannotHaveMembersError,
   InsufficientProviderPermissionsError,
@@ -40,6 +46,8 @@ export interface ProviderProps {
   name: string;
   slug: string;
   status: ProviderStatus;
+  payoutType: string | null;
+  payoutIdentifier: string | null;
   description?: string;
   /**
    * The customer-side platform fee on this provider's bookings, in basis
@@ -96,6 +104,8 @@ export class Provider {
       // administrator decides — which is what makes the "verified" badge and
       // the review queue mean anything.
       status: SharedProviderStatus.Pending,
+      payoutType: null,
+      payoutIdentifier: null,
       description: params.description,
       address: params.address,
       createdAt: now,
@@ -187,6 +197,41 @@ export class Provider {
       throw new RangeError(`commissionBps out of range: ${bps}`);
     }
     this.props.commissionBps = bps;
+    this.props.updatedAt = new Date();
+    this._events.push(new ProviderUpdated({ providerId: this.props.id }));
+  }
+
+  /**
+   * Where this business is paid.
+   *
+   * Both together or neither: a method with no number and a number with no
+   * method are each half of an instruction, and storing half means the payout
+   * fails at the moment it matters instead of at the moment it was entered.
+   *
+   * A card is refused. Card networks push refunds back to the original charge,
+   * never to an arbitrary account, so "pay me on this Visa" is not a thing that
+   * can happen — `supportsDirection` already says so and this is where it is
+   * enforced rather than trusted to whichever form asked.
+   */
+  setPayoutDestination(type: string | null, identifier: string | null): void {
+    const t = type?.trim() || null;
+    const id = identifier?.trim() || null;
+    if ((t === null) !== (id === null)) {
+      throw new InvalidPayoutDestinationError(
+        "A payout destination needs both a method and an identifier",
+        "PAYOUT_INCOMPLETE",
+      );
+    }
+    if (t !== null) {
+      if (!isPaymentMethodType(t) || !supportsDirection(t, PaymentDirection.Payout)) {
+        throw new InvalidPayoutDestinationError(
+          `Not a payout-capable method: ${t}`,
+          "PAYOUT_METHOD_NOT_CAPABLE",
+        );
+      }
+    }
+    this.props.payoutType = t;
+    this.props.payoutIdentifier = id;
     this.props.updatedAt = new Date();
     this._events.push(new ProviderUpdated({ providerId: this.props.id }));
   }

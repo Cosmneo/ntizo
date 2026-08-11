@@ -523,23 +523,29 @@ variant of that bucket ever appears, this route must not be pointed at it.
 **Trigger:** if media ever moves behind signed URLs, or a second, private media
 bucket is introduced.
 
-## 25. The wizard's payout details are collected and thrown away
+## 25. DONE — the wizard's payout details are stored
 
-`payoutType` and `payoutIdentifier` are gathered on the wizard's payout step,
-held in the browser draft, and never sent anywhere. No mutation accepts them
-and no column stores them, so a provider fills that screen in and the platform
-has no idea where to pay them.
+`provider.payout_type` and `provider.payout_identifier` (migration 0012),
+written by `setPayoutDestination` on the aggregate and saved by the wizard on
+the way out of its payout step. Both together or neither: a method with no
+number is half an instruction, and storing half means the payout fails when it
+runs rather than when it was entered. A card is refused — card networks push
+refunds back to the original charge, never to an arbitrary account, which
+`supportsDirection` already said and the aggregate now enforces.
 
-The wallet exists now, and its balance will build up with nowhere to send it.
+Two plain columns rather than a `payment_method` row: a provider has exactly
+one place they are paid and the wizard asks for exactly one, so a table would
+invite a second with nothing deciding which is current. If several are ever
+needed, this becomes a foreign key and these are the migration's source.
 
-The administrator's provider file now shows everything else the wizard
-collects — the address as entered, the description, the photographs, and every
-document with its review state. Payout is the one thing on that screen that
-cannot be shown, because it was never stored. Anybody adding it should add the
-column and the mutation together with the panel on the provider file, so the
-reviewer can see where the money is going before they approve.
+Shown on the administrator's provider file and nowhere else — not the queue,
+not the public directory, not the workspace's own read.
 
-**Trigger:** before the first real booking is paid for.
+**Still missing:** the settings page has no payout block, so a provider who
+skipped the wizard step, or whose number changes, cannot fix it. The mutation
+accepts it already; it needs the form.
+
+**Trigger:** the first provider who changes bank.
 
 ## 26. The wallet has no entries yet, by design
 

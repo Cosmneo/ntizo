@@ -98,3 +98,18 @@ export class InvalidProviderStatusTransitionError extends UnprocessableError {
     this.name = "InvalidProviderStatusTransitionError";
   }
 }
+
+/**
+ * Where a business is paid, refused.
+ *
+ * `UnprocessableError`, not a bare `Error`. A bare one surfaces as
+ * "An unexpected error occurred" with an INTERNAL_ERROR code, which tells
+ * somebody who picked the wrong payment method that the server broke — and
+ * files a rejected input in the monitoring as if it were a fault.
+ */
+export class InvalidPayoutDestinationError extends UnprocessableError {
+  constructor(reason: string, code: "PAYOUT_INCOMPLETE" | "PAYOUT_METHOD_NOT_CAPABLE") {
+    super({ message: reason, code });
+    this.name = "InvalidPayoutDestinationError";
+  }
+}

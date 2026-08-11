@@ -48,6 +48,13 @@ export interface UpdateProviderBody {
   /** Keys only. The read model returns pairs; the write side stores keys. */
   logoKey?: string | null;
   photoKeys?: string[];
+  /**
+   * Where this business is paid. Both together or neither — the aggregate
+   * refuses half of an instruction, because a method with no number fails when
+   * the payout runs rather than when it was entered.
+   */
+  payoutType?: string | null;
+  payoutIdentifier?: string | null;
 }
 
 export interface ProviderDocument {

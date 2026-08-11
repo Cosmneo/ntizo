@@ -188,5 +188,11 @@
   "providerDetailNoTeam": "Sem membros nem convites.",
   "providerDetailJoined": "Entrou a {{date}}",
   "providerDetailInviteExpires": "Convite expira a {{date}}",
+  "providerDetailPayout": "Pagamento",
+  "payoutMethod": {
+    "BANK_ACCOUNT": "Conta bancária",
+    "M_PESA": "M-Pesa",
+    "E_MOLA": "e-Mola"
+  },
   "close": "Fechar"
 }

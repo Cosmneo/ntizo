@@ -14,7 +14,8 @@ const DETAIL = `
   query ProviderDetailForAdmin($input: ProviderDetailForAdminInput!) {
     providerDetailForAdmin(input: $input) {
       id name slug type status description city country
-      commissionBps ownerUserId ownerName ownerEmail ownerPhone
+      commissionBps payoutType payoutIdentifier
+      ownerUserId ownerName ownerEmail ownerPhone
       memberCount logoUrl photoUrls
       addressStreet addressDistrict addressPostalCode
       reverificationRequestedAt allowedTransitions createdAt updatedAt

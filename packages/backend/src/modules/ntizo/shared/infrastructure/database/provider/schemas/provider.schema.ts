@@ -77,6 +77,31 @@ export const provider = providerSchema.table("provider", {
    */
   commissionBps: integer("commission_bps").notNull().default(1000),
 
+  /**
+   * Where the platform sends this business its money.
+   *
+   * Two plain columns rather than a `payment_method` row, and that is a
+   * deliberate narrowing: a provider has exactly one place they are paid, the
+   * wizard asks for exactly one, and a table would invite a second with
+   * nothing deciding which is current. If a provider ever needs several, this
+   * becomes a foreign key and these become the migration's source.
+   *
+   * A `PaymentMethodType`, and only ever a payout-capable one — a card cannot
+   * be credited, which `supportsDirection` already says and the command
+   * enforces. Nullable because a provider can register and fill this in later;
+   * an account with no payout details is one that cannot be paid, not one that
+   * cannot exist.
+   */
+  payoutType: text("payout_type"),
+  /**
+   * The account number or phone number, as entered.
+   *
+   * Not a secret in the way a password is — it is what somebody prints on an
+   * invoice — but it is personal financial data, so it is never in a read a
+   * customer can reach and never in the public directory's projection.
+   */
+  payoutIdentifier: text("payout_identifier"),
+
   addressStreet: text("address_street"),
   addressCity: text("address_city"),
   addressDistrict: text("address_district"),

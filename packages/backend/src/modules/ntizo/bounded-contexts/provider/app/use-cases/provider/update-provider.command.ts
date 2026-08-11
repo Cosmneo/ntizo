@@ -51,6 +51,17 @@ export class UpdateProviderCommand implements UpdateProviderPort {
       photoKeys: input.photoKeys,
     });
 
+    // Its own method rather than another field on `update()`: it is the one
+    // thing here with a rule of its own — a card cannot be credited — and
+    // folding it in would put that rule behind a call that does five other
+    // things. Only when the caller said something about it.
+    if (input.payoutType !== undefined || input.payoutIdentifier !== undefined) {
+      provider.setPayoutDestination(
+        input.payoutType ?? null,
+        input.payoutIdentifier ?? null,
+      );
+    }
+
     await this.unitOfWork.atomicExecute(async () => {
       await this.providerRepo.save(provider);
       await this.outboxPort.publish(provider.pullEvents(), "provider");

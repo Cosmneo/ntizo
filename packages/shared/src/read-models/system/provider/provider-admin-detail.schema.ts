@@ -65,6 +65,16 @@ export const providerAdminDetailReadModel = z.object({
   city: z.string().nullable(),
   country: z.string().nullable(),
   commissionBps: z.number().int(),
+  /**
+   * Where the platform sends this business its money.
+   *
+   * On the administrator's file and nowhere else — not in the queue, not in
+   * the public directory, not in the workspace's own read. It is personal
+   * financial data, and the one person with a reason to see it is whoever is
+   * about to approve a payout.
+   */
+  payoutType: z.string().nullable(),
+  payoutIdentifier: z.string().nullable(),
   ownerUserId: z.string(),
   ownerName: z.string().nullable(),
   ownerEmail: z.string().nullable(),

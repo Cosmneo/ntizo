@@ -188,5 +188,11 @@
   "providerDetailNoTeam": "No members and no invitations.",
   "providerDetailJoined": "Joined {{date}}",
   "providerDetailInviteExpires": "Invitation expires {{date}}",
+  "providerDetailPayout": "Payout",
+  "payoutMethod": {
+    "BANK_ACCOUNT": "Bank account",
+    "M_PESA": "M-Pesa",
+    "E_MOLA": "e-Mola"
+  },
   "close": "Sluiten"
 }

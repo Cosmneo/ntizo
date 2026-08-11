@@ -97,6 +97,8 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
         country: provider.addressCountry,
         ownerPhone: profile.phoneNumber,
         commissionBps: provider.commissionBps,
+        payoutType: provider.payoutType,
+        payoutIdentifier: provider.payoutIdentifier,
         ownerUserId: provider.ownerUserId,
         ownerName: profile.displayName,
         ownerEmail: user.email,
@@ -189,6 +191,8 @@ export class DrizzleProviderAdminRepository implements ProviderAdminRepositoryPo
       city: row.city,
       country: row.country,
       commissionBps: row.commissionBps,
+      payoutType: row.payoutType,
+      payoutIdentifier: row.payoutIdentifier,
       ownerUserId: row.ownerUserId,
       // Empty is not a name: the column defaults to "" rather than null, so
       // `?? null` alone would hand the screen a blank where it expects an

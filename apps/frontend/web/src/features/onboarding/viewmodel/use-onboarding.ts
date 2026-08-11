@@ -22,7 +22,10 @@ import {
   validateStep,
   type FieldKey,
 } from "@/features/onboarding/domain/validation";
-import { useCreateProvider } from "@/features/provider/viewmodel/use-provider-mutations";
+import {
+  useCreateProvider,
+  useUpdateProvider,
+} from "@/features/provider/viewmodel/use-provider-mutations";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useDocumentUpload } from "@/features/provider/viewmodel/use-document-upload";
 
@@ -105,6 +108,7 @@ export function useOnboarding() {
   }, [draft, create, refresh, setActive]);
 
   const documentUpload = useDocumentUpload(activeProvider?.id);
+  const updateProvider = useUpdateProvider(activeProvider?.id ?? "");
 
   const advance = useCallback(() => {
     const stepErrors = validateStep(step, draft);
@@ -116,6 +120,22 @@ export function useOnboarding() {
     if (step === CREATES_PROVIDER) {
       void submit();
       return;
+    }
+    // Saved on the way out of the payout step. These were collected into the
+    // browser draft and thrown away — the wizard asked where to send the money
+    // and no mutation accepted it, so a provider filled that screen in and the
+    // platform had no idea where to pay them.
+    //
+    // A failure here does not block the wizard: the details can be set from
+    // settings afterwards, and stopping somebody on their way to the finish
+    // over a save they can redo is worse than the gap it closes.
+    if (step === "payout" && activeProvider && draft.payoutType) {
+      void updateProvider
+        .mutateAsync({
+          payoutType: draft.payoutType,
+          payoutIdentifier: draft.payoutIdentifier.trim(),
+        })
+        .catch(() => undefined);
     }
     if (step === "documents") {
       // The draft has done its job once the provider exists. Leaving it behind

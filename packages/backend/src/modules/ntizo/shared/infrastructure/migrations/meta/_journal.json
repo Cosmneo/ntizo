@@ -85,6 +85,13 @@
       "when": 1786445574576,
       "tag": "0011_brown_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786455090358,
+      "tag": "0012_colossal_vision",
+      "breakpoints": true
     }
   ]
 }

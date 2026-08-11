@@ -29,6 +29,8 @@ export const providerMapper = {
       commissionBps: row.commissionBps,
       logoKey: row.logoKey ?? undefined,
       photoKeys: row.photoKeys ?? undefined,
+      payoutType: row.payoutType,
+      payoutIdentifier: row.payoutIdentifier,
       address: hasAddress
         ? Address.create({
             street: row.addressStreet ?? undefined,
@@ -63,6 +65,12 @@ export const providerMapper = {
       // success.
       logoKey: json.logoKey ?? null,
       photoKeys: json.photoKeys ?? null,
+      // Both directions, deliberately together with the two above. The comment
+      // above is the reason: a field the aggregate holds and the mapper does
+      // not carry is a field that silently never persists, and the UI reports
+      // success either way.
+      payoutType: json.payoutType,
+      payoutIdentifier: json.payoutIdentifier,
       addressStreet: json.address?.street ?? null,
       addressCity: json.address?.city ?? null,
       addressDistrict: json.address?.district ?? null,

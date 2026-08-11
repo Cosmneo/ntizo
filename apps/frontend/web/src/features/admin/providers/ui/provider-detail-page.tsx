@@ -156,6 +156,19 @@ export function AdminProviderDetailPage() {
                   because it is what anybody asking about this business over
                   support will quote. */}
               <Pair label={t("providerDetailId")} value={detail.id} mono />
+              {/* In full, not masked. The person reading this is the one who
+                  has to send the money, and half an account number is no use
+                  to them — the protection is that this read is refused to
+                  everybody else, not that the number is hidden from the one
+                  person who needs it. */}
+              <Pair
+                label={t("providerDetailPayout")}
+                value={
+                  detail.payoutType
+                    ? `${t(`payoutMethod.${detail.payoutType}`, { defaultValue: detail.payoutType })} · ${detail.payoutIdentifier ?? "—"}`
+                    : null
+                }
+              />
             </dl>
 
             {detail.description?.trim() && (

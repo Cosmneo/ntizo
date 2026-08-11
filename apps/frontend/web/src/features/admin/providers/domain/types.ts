@@ -77,6 +77,8 @@ export interface AdminProviderDetail {
   city: string | null;
   country: string | null;
   commissionBps: number;
+  payoutType: string | null;
+  payoutIdentifier: string | null;
   ownerUserId: string;
   ownerName: string | null;
   ownerEmail: string | null;
