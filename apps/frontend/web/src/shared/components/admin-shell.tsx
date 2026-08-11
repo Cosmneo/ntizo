@@ -33,11 +33,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <PageHeaderContext.Provider value={headerCtx}>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset className="h-svh min-h-0 overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-6">
+        <SidebarInset className="h-[calc(100svh-3.5rem)] min-h-0 overflow-hidden md:h-svh">
+          <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 sm:px-6">
             <SidebarTrigger />
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex min-w-0 flex-col leading-tight">
+            <Separator orientation="vertical" className="hidden h-6 sm:block" />
+            <div className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className="truncate text-base font-semibold">{header.title}</span>
               {header.subtitle && (
                 <span className="truncate text-xs text-muted-foreground">
@@ -45,12 +45,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 </span>
               )}
             </div>
-            <div className="ml-auto flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <HeaderActions showAccount={false} />
               {action}
             </div>
           </header>
-          <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </PageHeaderContext.Provider>

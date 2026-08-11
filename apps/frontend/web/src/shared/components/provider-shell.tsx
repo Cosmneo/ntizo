@@ -43,7 +43,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
             get anywhere, that is the navigation leaving exactly when a long
             page makes it useful. It also broke every `sticky` inside a page,
             which is why the settings rail appeared to come unstuck. */}
-        <SidebarInset className="h-svh min-h-0 overflow-hidden">
+        <SidebarInset className="h-[calc(100svh-3.5rem)] min-h-0 overflow-hidden md:h-svh">
           <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-6">
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-6" />
@@ -87,7 +87,7 @@ export function ProviderShell({ children }: { children: ReactNode }) {
               )}
             </div>
           </header>
-          <main className="min-h-0 flex-1 overflow-y-auto p-6">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </PageHeaderContext.Provider>
