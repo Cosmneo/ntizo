@@ -7,7 +7,8 @@
     "dashboard": "Pannello",
     "users": "Utenti",
     "you": "Tu",
-    "myAccount": "Il mio account"
+    "myAccount": "Il mio account",
+    "providers": "Operatori"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -27,5 +28,8 @@
     "rejected": "Rifiutato",
     "suspended": "Sospeso",
     "archived": "Archiviato"
-  }
+  },
+  "providersFilterTitle": "Filtra operatori",
+  "providersClearFilters": "Cancella filtri",
+  "close": "Chiudi"
 }

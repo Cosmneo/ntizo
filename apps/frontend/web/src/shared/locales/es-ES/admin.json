@@ -7,7 +7,8 @@
     "dashboard": "Panel",
     "users": "Usuarios",
     "you": "Usted",
-    "myAccount": "Mi cuenta"
+    "myAccount": "Mi cuenta",
+    "providers": "Proveedores"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",
@@ -27,5 +28,8 @@
     "rejected": "Rechazado",
     "suspended": "Suspendido",
     "archived": "Archivado"
-  }
+  },
+  "providersFilterTitle": "Filtrar proveedores",
+  "providersClearFilters": "Limpiar filtros",
+  "close": "Cerrar"
 }

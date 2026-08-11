@@ -7,7 +7,8 @@
     "dashboard": "Tableau de bord",
     "users": "Utilisateurs",
     "you": "Vous",
-    "myAccount": "Mon compte"
+    "myAccount": "Mon compte",
+    "providers": "Prestataires"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",
@@ -27,5 +28,8 @@
     "rejected": "Refusé",
     "suspended": "Suspendu",
     "archived": "Archivé"
-  }
+  },
+  "providersFilterTitle": "Filtrer les prestataires",
+  "providersClearFilters": "Effacer les filtres",
+  "close": "Fermer"
 }

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Building2, User } from "lucide-react";
-import { Badge, Select, Skeleton } from "@ntizo/frontend-ui";
+import { Badge, Skeleton } from "@ntizo/frontend-ui";
 import { ProviderStatus } from "@ntizo/shared";
 import { CollectionCard } from "@/shared/components/collection-card";
+import { ProvidersFilterSheet } from "./providers-filters";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useAdminProviders } from "../viewmodel/use-admin-providers";
 import { formatCommission, type AdminProvider } from "../domain/types";
@@ -35,6 +36,7 @@ export function AdminProvidersPage() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const query = useAdminProviders({
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(status ? { status } : {}),
@@ -57,28 +59,6 @@ export function AdminProvidersPage() {
         </p>
       )}
 
-      {/* The status filter sits beside the search rather than in a sheet: it is
-          the queue's primary axis — "what is waiting for me" — and burying the
-          question this screen exists to answer behind a panel would be a
-          strange place to put it. */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="w-full sm:w-56">
-          <Select
-            id="status"
-            value={status}
-            onChange={setStatus}
-            ariaLabel={t("providersStatus")}
-            options={[
-              { value: "", label: t("providersAllStatuses") },
-              ...Object.values(ProviderStatus).map((value) => ({
-                value,
-                label: t(`providerStatus.${value}`),
-              })),
-            ]}
-          />
-        </div>
-      </div>
-
       <CollectionCard
         title={t("providersTitle")}
         shown={rows.length}
@@ -87,6 +67,8 @@ export function AdminProvidersPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder={t("providersSearchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={status ? 1 : 0}
         columns={[
           { key: "business", label: t("providersBusiness"), className: "pl-5" },
           { key: "owner", label: t("providersOwner") },
@@ -133,6 +115,13 @@ export function AdminProvidersPage() {
             ),
           },
         }))}
+      />
+
+      <ProvidersFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        status={status}
+        onStatusChange={setStatus}
       />
     </div>
   );

@@ -7,7 +7,8 @@
     "dashboard": "Dashboard",
     "users": "Users",
     "you": "You",
-    "myAccount": "My account"
+    "myAccount": "My account",
+    "providers": "Providers"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",
@@ -27,5 +28,8 @@
     "rejected": "Rejected",
     "suspended": "Suspended",
     "archived": "Archived"
-  }
+  },
+  "providersFilterTitle": "Filter providers",
+  "providersClearFilters": "Clear filters",
+  "close": "Close"
 }

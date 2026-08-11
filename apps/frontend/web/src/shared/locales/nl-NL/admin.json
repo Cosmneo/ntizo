@@ -7,7 +7,8 @@
     "dashboard": "Dashboard",
     "users": "Gebruikers",
     "you": "Jij",
-    "myAccount": "Mijn account"
+    "myAccount": "Mijn account",
+    "providers": "Aanbieders"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -27,5 +28,8 @@
     "rejected": "Afgewezen",
     "suspended": "Geschorst",
     "archived": "Gearchiveerd"
-  }
+  },
+  "providersFilterTitle": "Aanbieders filteren",
+  "providersClearFilters": "Filters wissen",
+  "close": "Sluiten"
 }
