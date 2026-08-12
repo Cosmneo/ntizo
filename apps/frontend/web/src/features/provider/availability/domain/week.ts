@@ -25,6 +25,25 @@ export function weekdayDisplayIndex(weekday: number): number {
   return (WEEKDAY_ORDER as readonly number[]).indexOf(weekday);
 }
 
+/** A UTC instant known to fall on a Sunday — 2023-01-01. Any weekday is this plus `weekday` days. */
+const REFERENCE_SUNDAY_UTC_MS = Date.UTC(2023, 0, 1);
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * The weekday's own name, in the reader's language — "Monday", "lundi",
+ * "Montag" — via `Intl.DateTimeFormat`, not a translation key.
+ *
+ * The platform already knows every weekday's name in every locale; storing
+ * a second copy of that in eight JSON files would be the kind of duplicate
+ * source of truth that drifts the moment one of the eight is edited alone.
+ * `timeZone: "UTC"` pins the calculation so the caller's own timezone can
+ * never shift which day of the week a given date formats as.
+ */
+export function weekdayLabel(locale: string, weekday: number): string {
+  const date = new Date(REFERENCE_SUNDAY_UTC_MS + weekday * MS_PER_DAY);
+  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(date);
+}
+
 const LABEL = /^([01]\d|2[0-4]):([0-5]\d)$/;
 
 /** `540` → `"09:00"`, `1440` (midnight at the end of the day) → `"24:00"`. */

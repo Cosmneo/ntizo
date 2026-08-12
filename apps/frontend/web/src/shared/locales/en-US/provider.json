@@ -346,15 +346,6 @@
   "availabilityWeekTitle": "Working week",
   "availabilityWeekHint": "Set the days and hours you normally work. You can add more than one time block per day.",
   "availabilityWeekdayLabel": "Day of week",
-  "availabilityWeekday": {
-    "0": "Sunday",
-    "1": "Monday",
-    "2": "Tuesday",
-    "3": "Wednesday",
-    "4": "Thursday",
-    "5": "Friday",
-    "6": "Saturday"
-  },
   "availabilityNoHours": "No hours set.",
   "availabilityStart": "Start",
   "availabilityEnd": "End",

@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, X } from "lucide-react";
 import { Button, Input, Select } from "@ntizo/frontend-ui";
-import { labelToMinutes, minutesToLabel, overlaps, weekdayDisplayIndex, WEEKDAY_ORDER } from "../domain/week";
+import {
+  labelToMinutes,
+  minutesToLabel,
+  overlaps,
+  weekdayDisplayIndex,
+  weekdayLabel,
+  WEEKDAY_ORDER,
+} from "../domain/week";
 import { availabilityErrorMessage, type AvailabilityMember, type WeeklyRuleDraft } from "../domain/types";
 import { useSetWeeklyPattern } from "../viewmodel/use-availability";
 
@@ -46,7 +53,8 @@ export function WeekEditor({
    */
   canEdit: boolean;
 }) {
-  const { t } = useTranslation("provider");
+  const { t, i18n } = useTranslation("provider");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
   const mutation = useSetWeeklyPattern(providerId);
 
   const [draft, setDraft] = useState<WeeklyRuleDraft[]>(() => toDraft(member.weekly));
@@ -124,7 +132,7 @@ export function WeekEditor({
             className="rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-3"
           >
             <p className="type-caption mb-2 font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-              {t(`availabilityWeekday.${weekday}`)}
+              {weekdayLabel(locale, weekday)}
             </p>
             <div className="grid gap-1.5">
               {(byWeekday.get(weekday) ?? []).length === 0 && (
@@ -166,7 +174,7 @@ export function WeekEditor({
             <Select
               value={String(addWeekday)}
               onChange={(v) => setAddWeekday(Number(v))}
-              options={WEEKDAY_ORDER.map((wd) => ({ value: String(wd), label: t(`availabilityWeekday.${wd}`) }))}
+              options={WEEKDAY_ORDER.map((wd) => ({ value: String(wd), label: weekdayLabel(locale, wd) }))}
               ariaLabel={t("availabilityWeekdayLabel")}
             />
           </div>

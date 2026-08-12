@@ -346,15 +346,6 @@
   "availabilityWeekTitle": "Semana de trabalho",
   "availabilityWeekHint": "Defina os dias e horas em que trabalha normalmente. Pode adicionar vários horários por dia.",
   "availabilityWeekdayLabel": "Dia da semana",
-  "availabilityWeekday": {
-    "0": "Domingo",
-    "1": "Segunda",
-    "2": "Terça",
-    "3": "Quarta",
-    "4": "Quinta",
-    "5": "Sexta",
-    "6": "Sábado"
-  },
   "availabilityNoHours": "Sem horário definido.",
   "availabilityStart": "Início",
   "availabilityEnd": "Fim",
