@@ -21,6 +21,7 @@ interface MemberRow {
   memberId: string;
   userId: string;
   role: "owner" | "admin" | "staff";
+  name: string | null;
 }
 
 interface ClosureStoreRow extends ClosureRow {
@@ -50,11 +51,15 @@ class FakeScheduleRepo implements ScheduleRepositoryPort {
   private closures: ClosureStoreRow[] = [];
   private closureSeq = 0;
   private readonly members: MemberRow[] = [
-    { providerId: "prov-1", memberId: "mem-1", userId: "user-1", role: "owner" },
-    { providerId: "prov-1", memberId: "mem-2", userId: "user-2", role: "staff" },
-    { providerId: "prov-1", memberId: "mem-3", userId: "user-3", role: "admin" },
-    { providerId: "prov-2", memberId: "mem-9", userId: "user-9", role: "owner" },
+    { providerId: "prov-1", memberId: "mem-1", userId: "user-1", role: "owner", name: "User One" },
+    { providerId: "prov-1", memberId: "mem-2", userId: "user-2", role: "staff", name: "User Two" },
+    { providerId: "prov-1", memberId: "mem-3", userId: "user-3", role: "admin", name: null },
+    { providerId: "prov-2", memberId: "mem-9", userId: "user-9", role: "owner", name: "User Nine" },
   ];
+  private readonly timezones: Record<string, string> = {
+    "prov-1": "Africa/Maputo",
+    "prov-2": "Europe/Lisbon",
+  };
 
   private key(providerId: string, memberId: string): string {
     return `${providerId}:${memberId}`;
@@ -90,10 +95,16 @@ class FakeScheduleRepo implements ScheduleRepositoryPort {
     this.closures = this.closures.filter((c) => !(c.id === closureId && c.providerId === providerId));
   }
 
-  async listMembers(providerId: string): Promise<{ memberId: string; userId: string; role: string }[]> {
+  async listMembers(
+    providerId: string,
+  ): Promise<{ memberId: string; userId: string; role: string; name: string | null }[]> {
     return this.members
       .filter((m) => m.providerId === providerId)
-      .map((m) => ({ memberId: m.memberId, userId: m.userId, role: m.role }));
+      .map((m) => ({ memberId: m.memberId, userId: m.userId, role: m.role, name: m.name }));
+  }
+
+  async findProviderTimezone(providerId: string): Promise<string> {
+    return this.timezones[providerId] ?? "Africa/Maputo";
   }
 
   async memberBelongsToProvider(providerId: string, memberId: string): Promise<boolean> {
@@ -357,13 +368,35 @@ describe("ReadAvailabilityConfigQuery", () => {
       providerId: "prov-1",
     });
     expect(result.providerId).toBe("prov-1");
+    expect(result.timezone).toBe("Africa/Maputo");
     expect(result.members.map((m) => m.memberId).sort()).toEqual(["mem-1", "mem-2", "mem-3"]);
+  });
+
+  test("every member comes back with its display name, or null when unset", async () => {
+    const result = await new ReadAvailabilityConfigQuery(repo).execute({
+      requesterUserId: "user-2",
+      providerId: "prov-1",
+    });
+    const byId = new Map(result.members.map((m) => [m.memberId, m]));
+    expect(byId.get("mem-1")?.name).toBe("User One");
+    expect(byId.get("mem-3")?.name).toBeNull();
   });
 
   test("someone who is not a member is refused", async () => {
     const query = new ReadAvailabilityConfigQuery(repo);
     expect(
       await codeOf(() => query.execute({ requesterUserId: "stranger", providerId: "prov-1" })),
+    ).toBe("NOT_PROVIDER_MEMBER");
+  });
+
+  test("a provider id belonging to another workspace is refused, not answered with an empty list", async () => {
+    // user-2 is a genuine member of prov-1 only. Asking for prov-2 must be a
+    // refusal — the same NOT_PROVIDER_MEMBER a stranger gets — never a
+    // technically-truthful empty `members` array for a workspace this
+    // requester has no part in.
+    const query = new ReadAvailabilityConfigQuery(repo);
+    expect(
+      await codeOf(() => query.execute({ requesterUserId: "user-2", providerId: "prov-2" })),
     ).toBe("NOT_PROVIDER_MEMBER");
   });
 });

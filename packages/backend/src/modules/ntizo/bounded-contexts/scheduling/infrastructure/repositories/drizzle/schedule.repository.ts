@@ -7,6 +7,7 @@ import {
 } from "../../../../../shared/infrastructure/database/scheduling/schemas";
 import { serviceMember, serviceOption, service } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import { provider, providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
+import { user, profile } from "../../../../../shared/infrastructure/database/user/schemas";
 import type { MemberSchedule } from "../../../domain/aggregates/member-schedule.aggregate";
 import type {
   ClosureRow,
@@ -105,17 +106,40 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
       .where(and(eq(houseClosure.id, closureId), eq(houseClosure.providerId, providerId)));
   }
 
+  /**
+   * Names come from ntizo's own user + profile tables, not from better-auth's
+   * user table — same rule the provider read side follows, and for the same
+   * reason: no cross-module reach.
+   */
   async listMembers(
     providerId: string,
-  ): Promise<{ memberId: string; userId: string; role: string }[]> {
-    return getDb()
+  ): Promise<{ memberId: string; userId: string; role: string; name: string | null }[]> {
+    const rows = await getDb()
       .select({
         memberId: providerMember.id,
         userId: providerMember.userId,
         role: providerMember.role,
+        name: profile.displayName,
       })
       .from(providerMember)
+      .leftJoin(user, eq(user.id, providerMember.userId))
+      .leftJoin(profile, eq(profile.userId, user.id))
       .where(eq(providerMember.providerId, providerId));
+    return rows;
+  }
+
+  async findProviderTimezone(providerId: string): Promise<string> {
+    const [row] = await getDb()
+      .select({ timezone: provider.timezone })
+      .from(provider)
+      .where(eq(provider.id, providerId))
+      .limit(1);
+    // Membership is always checked before this runs, and a member can only
+    // exist against a provider row that exists — so a miss here would mean
+    // the foreign key itself is broken, not a case this read needs to answer
+    // gracefully. `Africa/Maputo` is the column's own default, kept as the
+    // fallback the type signature has to allow either way.
+    return row?.timezone ?? "Africa/Maputo";
   }
 
   async memberBelongsToProvider(providerId: string, memberId: string): Promise<boolean> {

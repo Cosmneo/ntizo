@@ -20,11 +20,23 @@ export interface ScheduleRepositoryPort {
     note: string | null;
   }): Promise<string>;
   removeClosure(providerId: string, closureId: string): Promise<void>;
-  /** Every member id of this workspace, with its role. */
-  listMembers(providerId: string): Promise<{ memberId: string; userId: string; role: string }[]>;
+  /** Every member id of this workspace, with its role and display name. */
+  listMembers(
+    providerId: string,
+  ): Promise<{ memberId: string; userId: string; role: string; name: string | null }[]>;
   memberBelongsToProvider(providerId: string, memberId: string): Promise<boolean>;
   isProviderMember(providerId: string, userId: string): Promise<boolean>;
   isProviderOwnerOrAdmin(providerId: string, userId: string): Promise<boolean>;
+  /**
+   * Where this workspace's wall clock runs.
+   *
+   * Read straight off the provider row rather than derived from anything —
+   * the timezone is chosen explicitly on the availability screen, and
+   * `findServiceSchedulingInfo` already carries a copy scoped to one
+   * service; this is the provider-wide read the configuration screen needs
+   * without a service id in hand.
+   */
+  findProviderTimezone(providerId: string): Promise<string>;
   /**
    * Whether this person may edit that member's calendar.
    *

@@ -16,6 +16,7 @@ import {
   bootstrapWalletRead,
   createWalletReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/wallet";
+import { createSchedulingReadHandlers } from "@ntizo/backend/modules/ntizo/read/scheduling";
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
 import { createCatalogWriteHandlers } from "@ntizo/backend/modules/ntizo/write/catalog";
 import { bootstrapCatalog } from "@ntizo/backend/modules/ntizo/bounded-contexts/catalog";
@@ -65,6 +66,7 @@ function getYoga(stage: string) {
         ...createUserReadHandlers(userRead.useCases),
         ...createCatalogReadHandlers(catalogRead.useCases),
         ...createWalletReadHandlers(walletRead.useCases),
+        ...createSchedulingReadHandlers({ scheduling }),
         ...createProviderWriteHandlers({ provider, workflows }),
         ...createCatalogWriteHandlers({ catalog }),
         ...createSchedulingWriteHandlers({ scheduling }),
