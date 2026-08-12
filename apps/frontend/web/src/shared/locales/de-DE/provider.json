@@ -63,6 +63,7 @@
   "revoke": "Widerrufen",
   "remove": "Entfernen",
   "removeConfirm": "Dieses Mitglied entfernen?",
+  "membersUnpublishedTitle": "Durch das Entfernen dieser Person hatten die folgenden Leistungen niemanden mehr, der sie erbringt — ihre Veröffentlichung wurde deshalb aufgehoben:",
   "description": "Beschreibung",
   "address": "Adresse",
   "addressEditingUnavailable": "Die Adressbearbeitung ist vorübergehend nicht verfügbar.",

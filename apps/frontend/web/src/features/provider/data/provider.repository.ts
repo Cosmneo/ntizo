@@ -8,6 +8,7 @@ import type {
   ProviderRole,
   ProviderSummary,
   RegisterMeBody,
+  UnpublishedService,
 } from "../domain/types";
 
 const MINE = `
@@ -147,9 +148,17 @@ export async function revokeInvite(providerId: string, inviteId: string) {
 }
 
 export async function removeMember(providerId: string, userId: string) {
-  const d = await sessionGraphql<{ providerMembersRemove: { ok: true } }>(
+  const d = await sessionGraphql<{
+    providerMembersRemove: {
+      ok: true;
+      unpublishedServices: UnpublishedService[];
+    };
+  }>(
     `mutation($input: ProviderMembersRemoveInput!) {
-       providerMembersRemove(input: $input) { ok }
+       providerMembersRemove(input: $input) {
+         ok
+         unpublishedServices { serviceId name }
+       }
      }`,
     { input: { providerId, userId } },
   );

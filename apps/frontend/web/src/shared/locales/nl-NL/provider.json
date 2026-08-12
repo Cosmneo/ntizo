@@ -63,6 +63,7 @@
   "revoke": "Intrekken",
   "remove": "Verwijderen",
   "removeConfirm": "Dit lid verwijderen?",
+  "membersUnpublishedTitle": "Door deze persoon te verwijderen, bleven de volgende diensten zonder iemand die ze uitvoert, dus is de publicatie ervan ongedaan gemaakt:",
   "description": "Beschrijving",
   "address": "Adres",
   "addressEditingUnavailable": "Het bewerken van het adres is tijdelijk niet beschikbaar.",

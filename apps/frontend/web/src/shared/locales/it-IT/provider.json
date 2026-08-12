@@ -63,6 +63,7 @@
   "revoke": "Revoca",
   "remove": "Rimuovi",
   "removeConfirm": "Rimuovere questo membro?",
+  "membersUnpublishedTitle": "Rimuovendo questa persona, i seguenti servizi sono rimasti senza nessuno che li svolgesse, quindi ne è stata rimossa la pubblicazione:",
   "description": "Descrizione",
   "address": "Indirizzo",
   "addressEditingUnavailable": "La modifica dell'indirizzo non è temporaneamente disponibile.",

@@ -33,7 +33,7 @@ import {
 } from "../domain/people";
 import { PeopleFilterSheet, filterCount } from "./people-filters";
 import { PeopleTable } from "./people-table";
-import type { ProviderRole } from "../domain/types";
+import type { ProviderRole, UnpublishedService } from "../domain/types";
 
 /** The two roles an invitation can carry. Owner is not one of them. */
 const ROLE_OPTIONS = [
@@ -73,6 +73,13 @@ export function MembersPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<PeopleFilters>(EMPTY_FILTERS);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Services a removal just unpublished because nobody was left to perform
+  // them — named back by `providerMembersRemove` and held here until the
+  // owner dismisses it, deliberately not a toast: a toast vanishes on its
+  // own, and this is exactly the kind of change a provider must not miss.
+  const [unpublishedNotice, setUnpublishedNotice] = useState<
+    UnpublishedService[] | null
+  >(null);
 
   usePageHeader(t("members"), activeProvider?.name);
   usePageAction(
@@ -123,6 +130,26 @@ export function MembersPage() {
     }
   }
 
+  /**
+   * Removal is the one action whose response carries more than pass/fail:
+   * when the person removed was a service's last performer, the catalogue
+   * unpublished it and named it back. Surfaced here rather than folded into
+   * `run` because nothing else this page calls returns anything worth
+   * showing on success.
+   */
+  async function handleRemove(row: PersonRow) {
+    setActionError(null);
+    setUnpublishedNotice(null);
+    try {
+      const result = await removeMut.mutateAsync(row.key);
+      if (result.unpublishedServices.length > 0) {
+        setUnpublishedNotice(result.unpublishedServices);
+      }
+    } catch (e) {
+      setActionError(providerErrorMessage(t, e));
+    }
+  }
+
   // Owners and admins manage the team; staff can look. Checked again on the
   // server — this only decides whether to offer the control.
   const canManage =
@@ -134,6 +161,31 @@ export function MembersPage() {
         <p className="type-body text-[var(--color-destructive)]">
           {actionError}
         </p>
+      )}
+
+      {unpublishedNotice && unpublishedNotice.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-card-sm)] border border-[var(--color-warning)] bg-[var(--color-card)] p-4">
+          <div className="flex items-start justify-between gap-4">
+            <p className="type-body font-medium">
+              {t("membersUnpublishedTitle")}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setUnpublishedNotice(null)}
+            >
+              {t("close")}
+            </Button>
+          </div>
+          <ul className="list-disc pl-5">
+            {unpublishedNotice.map((service) => (
+              <li key={service.serviceId} className="type-body">
+                {service.name}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <PeopleTable
@@ -148,7 +200,7 @@ export function MembersPage() {
         onChangeRole={(row: PersonRow, role: ProviderRole) =>
           void run(roleMut.mutateAsync({ userId: row.key, role }))
         }
-        onRemove={(row: PersonRow) => void run(removeMut.mutateAsync(row.key))}
+        onRemove={(row: PersonRow) => void handleRemove(row)}
         onRevoke={(row: PersonRow) => void run(revokeMut.mutateAsync(row.key))}
       />
 

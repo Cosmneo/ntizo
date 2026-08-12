@@ -63,6 +63,7 @@
   "revoke": "Revoke",
   "remove": "Remove",
   "removeConfirm": "Remove this member?",
+  "membersUnpublishedTitle": "Removing this person left the following services with nobody to perform them, so they were unpublished:",
   "description": "Description",
   "address": "Address",
   "addressEditingUnavailable": "Address editing is temporarily unavailable.",

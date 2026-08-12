@@ -133,7 +133,18 @@ export const removeProviderMember = defineMutation({
   input: zodSchema(
     z.object({ providerId: z.string().min(1), userId: z.string().min(1) }),
   ),
-  output: zodSchema(okResult),
+  // Beyond `ok`: the use case may unpublish services left with no performer
+  // by this removal, and the caller — an owner in a browser — has to be told
+  // which ones, not just that the call succeeded. Named back, not counted,
+  // so the owner can act on them instead of hunting through the catalogue.
+  output: zodSchema(
+    z.object({
+      ok: z.literal(true),
+      unpublishedServices: z.array(
+        z.object({ serviceId: z.string().min(1), name: z.string() }),
+      ),
+    }),
+  ),
   docs: { summary: "Remove a member from a provider", tags: ["Provider"] },
 });
 

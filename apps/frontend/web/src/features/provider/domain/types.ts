@@ -25,6 +25,18 @@ export interface ProviderInvite {
 }
 
 /**
+ * A service the just-completed member removal left with no performer, so the
+ * catalogue unpublished it. Named back by `providerMembersRemove` — see
+ * `RemoveProviderMemberOutput` on the backend — so the Members page can tell
+ * the owner which ones went dark instead of leaving them to notice from a
+ * customer.
+ */
+export interface UnpublishedService {
+  serviceId: string;
+  name: string;
+}
+
+/**
  * The provider's address, in the backend's own words.
  *
  * It used to say `line1`, `line2` and `region` — a vocabulary the server has

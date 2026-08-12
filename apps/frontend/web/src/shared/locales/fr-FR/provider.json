@@ -63,6 +63,7 @@
   "revoke": "Révoquer",
   "remove": "Retirer",
   "removeConfirm": "Retirer ce membre ?",
+  "membersUnpublishedTitle": "En supprimant cette personne, les services suivants se sont retrouvés sans personne pour les assurer, ils ont donc été dépubliés :",
   "description": "Description",
   "address": "Adresse",
   "addressEditingUnavailable": "La modification de l'adresse est temporairement indisponible.",
