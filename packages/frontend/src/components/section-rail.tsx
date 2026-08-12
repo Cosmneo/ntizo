@@ -19,11 +19,20 @@ export interface RailSection {
   locked?: boolean;
 }
 
-const STATUS_WORD: Record<SectionStatus, string> = {
-  done: "done",
-  todo: "to do",
-  error: "has a problem",
-};
+/**
+ * The words behind the status dot and the "Optional" marker. Required, with
+ * no default: this kit ships eight locales, and a default is exactly how
+ * one of them — English — quietly ends up in the other seven, the same way
+ * it already has once elsewhere in this project. Making the caller supply
+ * every word means `check-types` catches the call site that forgot, instead
+ * of a translator catching it in production.
+ */
+export interface SectionStatusLabels {
+  done: string;
+  todo: string;
+  error: string;
+  optional: string;
+}
 
 const STATUS_DOT_CLASS: Record<SectionStatus, string> = {
   done: "bg-[var(--color-success)]",
@@ -46,12 +55,18 @@ const STATUS_DOT_CLASS: Record<SectionStatus, string> = {
  * row understandable — a low bar a component should clear on its own,
  * before it depends on the page around it to make up the difference.
  *
- * Required sections carry a marker; optional ones spell out "Optional"
- * instead. The two aren't symmetric on purpose — a compact mark is enough
- * for the default case, but "not marked" is not a safe way to say
- * "optional": it reads identically to a marker nobody has gotten to yet,
- * so the word says it plainly rather than leaving it to be inferred from
- * an absence.
+ * Required sections carry a marker; optional ones spell out
+ * `statusLabels.optional` instead. The two aren't symmetric on purpose — a
+ * compact mark is enough for the default case, but "not marked" is not a
+ * safe way to say "optional": it reads identically to a marker nobody has
+ * gotten to yet, so the word says it plainly rather than leaving it to be
+ * inferred from an absence.
+ *
+ * The status and "optional" words are `statusLabels`, not text this
+ * component carries itself — see the doc comment on `SectionStatusLabels`.
+ * The kit ships no copy of its own; this is that rule applied to the one
+ * place a status has to be spelled out in words rather than left as an
+ * enum a screen can translate on its own terms.
  *
  * Locking is the native `disabled` attribute rather than an `onClick`
  * guard that quietly no-ops: `disabled` also removes the row from the tab
@@ -63,12 +78,15 @@ export function SectionRail({
   currentId,
   onSelect,
   title,
+  statusLabels,
 }: {
   sections: readonly RailSection[];
   currentId: string;
   onSelect: (id: string) => void;
   /** Heading above the list, e.g. "Required sections". */
   title: string;
+  /** Every word the rail renders as text: the three status words and "optional". */
+  statusLabels: SectionStatusLabels;
 }) {
   const headingId = React.useId();
 
@@ -117,10 +135,10 @@ export function SectionRail({
                   />
                 ) : (
                   <span className="type-caption shrink-0 text-[var(--color-muted-foreground)]">
-                    Optional
+                    {statusLabels.optional}
                   </span>
                 )}
-                <span className="sr-only">{STATUS_WORD[section.status]}</span>
+                <span className="sr-only">{statusLabels[section.status]}</span>
               </button>
             </li>
           );
