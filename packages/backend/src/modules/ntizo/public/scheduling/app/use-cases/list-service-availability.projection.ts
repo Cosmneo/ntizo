@@ -169,11 +169,17 @@ export class ListServiceAvailability {
     // Null rather than a default for a quote service: it has no priced option
     // to read a mode from, and "fixed" would be a value that is not true.
     const pricingMode = info.defaultOption?.pricingMode ?? null;
+    // `info.memberIds`, never filtered by `input.memberId` — the roster
+    // answers "who performs this service", not "who was asked about", and a
+    // caller who named one person still needs to see everyone else to offer
+    // "anyone" or a different name next. See the read model's own doc
+    // comment for the picker-stranding bug this field exists to prevent.
     const empty: ServiceAvailabilityDTO = {
       serviceId: info.serviceId,
       timezone: info.timezone,
       bookingMode: info.bookingMode,
       pricingMode,
+      memberIds: info.memberIds,
       days: [],
     };
 
@@ -185,20 +191,24 @@ export class ListServiceAvailability {
     if (input.memberId !== undefined && !info.memberIds.includes(input.memberId)) {
       throw new ServiceMemberCannotPerformError(input.serviceId, input.memberId);
     }
-    const memberIds = input.memberId !== undefined ? [input.memberId] : info.memberIds;
+    // The members this *query* is scoped to — one, if `input.memberId` named
+    // someone, else the whole roster. Deliberately not reused for the
+    // response's own `memberIds` above/below, which is always the full
+    // roster regardless of this filter.
+    const queriedMemberIds = input.memberId !== undefined ? [input.memberId] : info.memberIds;
 
     const shape = resolveOfferShape(info);
     if (!shape) return empty;
 
     // ---- Loaded once, before the day loop. ----
     const [scheduleList, closures, busyByMember] = await Promise.all([
-      Promise.all(memberIds.map((id) => this.schedules.findByMember(info.providerId, id))),
+      Promise.all(queriedMemberIds.map((id) => this.schedules.findByMember(info.providerId, id))),
       this.schedules.listClosures(info.providerId),
-      this.busyIntervals.forMembers(memberIds, input.from, input.to),
+      this.busyIntervals.forMembers(queriedMemberIds, input.from, input.to),
     ]);
 
     const calendars: MemberCalendar[] = scheduleList.map((schedule, index) => {
-      const memberId = memberIds[index]!;
+      const memberId = queriedMemberIds[index]!;
 
       const weeklyByWeekday = new Map<number, Interval[]>();
       for (const rule of schedule.weekly) {
@@ -285,6 +295,7 @@ export class ListServiceAvailability {
       timezone: info.timezone,
       bookingMode: info.bookingMode,
       pricingMode,
+      memberIds: info.memberIds,
       days,
     };
   }

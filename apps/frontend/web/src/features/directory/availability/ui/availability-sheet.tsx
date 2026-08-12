@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { addDays, localDateAt } from "@ntizo/shared/datetime";
 import { Sheet, SheetContent, Skeleton } from "@ntizo/frontend-ui";
 import { weekOf } from "@/features/directory/availability/domain/day-strip";
-import { distinctMemberIds } from "@/features/directory/availability/domain/types";
+import { distinctMemberIds, panelMode } from "@/features/directory/availability/domain/types";
 import type { Start } from "@/features/directory/availability/domain/types";
 import { useServiceAvailability } from "@/features/directory/availability/viewmodel/use-service-availability";
 import { servicePriceCell } from "@/features/directory/services/domain/service-card";
@@ -67,24 +67,16 @@ export function AvailabilitySheet({
     to: week[6]!,
   });
 
-  // The member picker's own roster, read from the *unfiltered* window
-  // regardless of which person is currently selected. Once a specific
-  // member is picked, `data` above is scoped to that one person's own
-  // calendar and its `memberIds` never mentions anyone else — building the
-  // picker from it would erase every other option the moment one is
-  // chosen, trapping the visitor on whoever they just picked with no way
-  // back to "anyone" or to a different person. Sharing this feature's own
-  // query hook (not a second, separate one) means the very first render —
-  // where `selectedMemberId` is still `undefined` — already asks this exact
-  // question, so react-query serves it from cache rather than firing a
-  // second request; only switching to a specific member costs a new one.
-  const rosterQuery = useServiceAvailability({
-    serviceId: service.id,
-    memberId: undefined,
-    from: week[0]!,
-    to: week[6]!,
-  });
-  const memberIds = distinctMemberIds(rosterQuery.data?.days ?? []);
+  // The member picker's own roster. `data.memberIds` is the response's
+  // top-level field — who performs the service, full stop — never
+  // `data.days[].starts[].memberIds`, which is scoped to this one window and
+  // to whichever person `selectedMemberId` currently filters it to. An
+  // earlier version of this file derived the roster from the (possibly
+  // filtered, possibly windowed-to-nothing) day list; both a specific
+  // selection and an unlucky week could then collapse it to one name or
+  // zero, hiding the picker — including "anyone" — and stranding the
+  // visitor. See `domain/types.ts`'s own doc comment on `distinctMemberIds`.
+  const memberIds = distinctMemberIds(data?.memberIds ?? []);
 
   function goToWeek(nextAnchor: string) {
     setAnchorDate(nextAnchor);
@@ -126,12 +118,9 @@ export function AvailabilitySheet({
         {t(`availabilityForServiceError.${code}`, { defaultValue: t("availabilityForServiceErrorGeneric") })}
       </p>
     );
-  } else if (data.bookingMode === "quote") {
-    // The two empty-`days` cases this screen has to tell apart — a quote
-    // service genuinely has no calendar, and an entirely closed week for a
-    // priced one — are the exact ambiguity `bookingMode` exists to resolve.
-    // Branching on it here (never on `data.days.length === 0`) is what
-    // keeps those two screens from being swapped.
+  } else if (panelMode(data) === "quote") {
+    // `panelMode` is the one place this branch is decided — see its own
+    // doc comment for why it reads `bookingMode` and never `days.length`.
     body = <p className="text-sm text-[var(--color-muted-foreground)]">{t("availabilityQuoteNotice")}</p>;
   } else {
     const day = data.days.find((d) => d.date === selectedDate);

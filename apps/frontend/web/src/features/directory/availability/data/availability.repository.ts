@@ -9,6 +9,7 @@ const FOR_SERVICE = `
       timezone
       bookingMode
       pricingMode
+      memberIds
       days {
         date
         starts { minuteOfDay startsAt maxMinutes memberIds }

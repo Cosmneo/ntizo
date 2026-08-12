@@ -24,12 +24,25 @@ import { z } from "zod";
  * "Request a quote" and "Nothing free this week" are two different screens,
  * and this is the field that decides which one to draw — without a second
  * query back to the catalogue.
+ *
+ * Top-level `memberIds` is a different question from `days[].starts[].memberIds`
+ * and deliberately answers it separately: this is *who performs the service at
+ * all*, independent of any date; the per-start one is *who is free at this one
+ * moment, in this one window*. A screen that built its "who with?" picker from
+ * the per-start ids would lose a performer the instant their own window has no
+ * free time — on leave that week, not yet configured, a closure covering every
+ * day asked for — and, worse, could lose the picker's "anyone" option
+ * entirely, stranding whoever it was last filtered to. This field is the whole
+ * roster, always, so the picker never depends on what the calendar happens to
+ * show right now.
  */
 export const serviceAvailabilityReadModel = z.object({
   serviceId: z.string(),
   timezone: z.string(),
   bookingMode: z.enum(["priced", "quote"]),
   pricingMode: z.enum(["fixed", "hourly"]).nullable(),
+  /** Every id who performs this service, regardless of the requested window or `memberId` filter. */
+  memberIds: z.array(z.string()),
   days: z.array(
     z.object({
       date: z.string(),

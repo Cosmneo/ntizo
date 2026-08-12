@@ -155,6 +155,7 @@ describe("ListServiceAvailability", () => {
     expect(result.timezone).toBe("Africa/Maputo");
     expect(result.bookingMode).toBe("priced");
     expect(result.pricingMode).toBe("fixed");
+    expect(result.memberIds).toEqual([JOAO]);
     expect(result.days).toHaveLength(1);
     expect(result.days[0]!.date).toBe("2026-08-12");
     // 08:00 to the last start that finishes by 18:00, on the 30-minute grid.
@@ -323,6 +324,30 @@ describe("ListServiceAvailability", () => {
     // Still a real answer about a real service, not a stub.
     expect(result.serviceId).toBe(SERVICE);
     expect(result.timezone).toBe("Africa/Maputo");
+    // The roster is a property of the service, not of its calendar — a
+    // quote service still has performers even though it has no `days` to
+    // read them out of.
+    expect(result.memberIds).toEqual([JOAO]);
+  });
+
+  test("the roster comes back even when nobody has any starts in the window", async () => {
+    // The exact case a window-derived roster gets wrong: two performers, a
+    // closure across the whole window, and yet the answer still names both —
+    // this is what lets the public panel's "anyone"/named-person picker
+    // survive a week where nobody has any free time at all, rather than
+    // collapsing to whoever was last selected with no way back.
+    const projection = makeProjection({
+      schedules: new Map([
+        [JOAO, workingWeek(JOAO)],
+        [MARIA, workingWeek(MARIA)],
+      ]),
+      closures: [{ id: "c-1", fromDate: "2026-08-10", toDate: "2026-08-20", note: null }],
+      info: { ...baseInfo(), memberIds: [JOAO, MARIA] },
+    });
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    expect(result.days.every((d) => d.starts.length === 0)).toBe(true);
+    expect(result.memberIds).toEqual([JOAO, MARIA]);
   });
 
   test("a priced service with nothing bookable is distinguishable from a quote service", async () => {
@@ -417,6 +442,11 @@ describe("ListServiceAvailability", () => {
     for (const start of result.days[0]!.starts) {
       expect(start.memberIds).toEqual([MARIA]);
     }
+    // The top-level roster is never narrowed by `input.memberId` — asking
+    // for Maria's own calendar must not make João disappear from "who
+    // performs this at all", or a picker built from this field could never
+    // offer switching back to him.
+    expect(result.memberIds).toEqual([JOAO, MARIA]);
   });
 
   test("an unpublished service is not found", async () => {

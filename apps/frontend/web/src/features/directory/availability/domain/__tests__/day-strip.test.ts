@@ -22,6 +22,14 @@ describe("weekOf", () => {
   test("crosses a month boundary", () => {
     expect(weekOf("2026-08-31")).toContain("2026-09-06");
   });
+
+  test("a non-Monday anchor whose backward walk crosses into the previous month", () => {
+    // "2026-08-31" (the existing month-boundary test above) is itself a
+    // Monday, so its own backward walk is a no-op (`daysSinceMonday === 0`)
+    // and only the forward loop is exercised. "2026-09-02" is a Wednesday —
+    // walking back two days crosses from September into August.
+    expect(weekOf("2026-09-02")[0]).toBe("2026-08-31");
+  });
 });
 
 describe("isPast", () => {
