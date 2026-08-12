@@ -116,6 +116,13 @@ export const provider = providerSchema.table("provider", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
+
+  /**
+   * Where this workspace's wall clock runs. Chosen explicitly on the
+   * availability screen and never derived from the address country — Brazil
+   * has four.
+   */
+  timezone: text("timezone").notNull().default("Africa/Maputo"),
 });
 
 export type ProviderRow = typeof provider.$inferSelect;
