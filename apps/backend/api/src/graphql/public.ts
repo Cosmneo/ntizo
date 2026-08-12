@@ -16,6 +16,10 @@ import {
   bootstrapCatalogPublic,
   createCatalogPublicHandlers,
 } from "@ntizo/backend/modules/ntizo/public/catalog";
+import {
+  bootstrapSchedulingPublic,
+  createSchedulingPublicHandlers,
+} from "@ntizo/backend/modules/ntizo/public/scheduling";
 import { buildYoga } from "./build-yoga";
 import { buildHardeningPlugins } from "./hardening";
 import type { AppBindings } from "../types";
@@ -33,6 +37,7 @@ function getYoga(stage: string) {
     const cityPublic = bootstrapCityPublic();
     const invitePublic = bootstrapInvitePublic();
     const catalogPublic = bootstrapCatalogPublic();
+    const schedulingPublic = bootstrapSchedulingPublic();
 
     yoga = buildYoga({
       schema: publicSchema,
@@ -41,6 +46,7 @@ function getYoga(stage: string) {
         ...createCityPublicHandlers(cityPublic.useCases),
         ...createInvitePublicHandlers(invitePublic.useCases),
         ...createCatalogPublicHandlers(catalogPublic.useCases),
+        ...createSchedulingPublicHandlers(schedulingPublic.useCases),
       ] as Parameters<typeof buildYoga>[0]["fields"],
       plugins: buildHardeningPlugins(stage),
       // No context factory. The private mount resolves a session here; this one

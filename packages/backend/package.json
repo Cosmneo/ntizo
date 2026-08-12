@@ -42,6 +42,7 @@
     "./modules/ntizo/public": "./src/modules/ntizo/public/schema.ts",
     "./modules/ntizo/public/provider": "./src/modules/ntizo/public/provider/index.ts",
     "./modules/ntizo/public/catalog": "./src/modules/ntizo/public/catalog/index.ts",
+    "./modules/ntizo/public/scheduling": "./src/modules/ntizo/public/scheduling/index.ts",
     "./modules/ntizo/public/city": "./src/modules/ntizo/public/city/index.ts",
     "./modules/ntizo/public/invite": "./src/modules/ntizo/public/invite/index.ts",
     "./modules/ntizo/media": "./src/modules/ntizo/shared/infrastructure/media/index.ts",
