@@ -1,4 +1,4 @@
-import { NotProviderMemberError, ServiceNotFoundError } from "../../domain/exceptions";
+import { NotProviderOwnerOrAdminError, ServiceNotFoundError } from "../../domain/exceptions";
 import type { ServiceRepositoryPort } from "../ports/outbound/service.repository.port";
 
 export class SetServiceStatusCommand {
@@ -11,8 +11,12 @@ export class SetServiceStatusCommand {
   }): Promise<{ ok: true }> {
     const service = await this.repo.findById(input.serviceId);
     if (!service) throw new ServiceNotFoundError(input.serviceId);
-    if (!(await this.repo.isProviderMember(service.providerId, input.requesterUserId))) {
-      throw new NotProviderMemberError();
+    // Stricter than every other command in this bounded context: deciding
+    // what the business sells and when it goes live is not the same act as
+    // describing it, so this is the one place that asks for the role, not
+    // just the membership.
+    if (!(await this.repo.isProviderOwnerOrAdmin(service.providerId, input.requesterUserId))) {
+      throw new NotProviderOwnerOrAdminError();
     }
 
     // Publishing is where the invariants are checked; the aggregate throws the

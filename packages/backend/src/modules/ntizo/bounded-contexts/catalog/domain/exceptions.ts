@@ -156,3 +156,18 @@ export class NotProviderMemberError extends ForbiddenError {
     this.name = "NotProviderMemberError";
   }
 }
+
+/**
+ * Distinct from {@link NotProviderMemberError}: this one is a member — they
+ * can create, price and translate services — but publishing, unpublishing
+ * and archiving are reserved for the workspace's owner or an admin.
+ */
+export class NotProviderOwnerOrAdminError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "Only the workspace's owner or an admin can publish, unpublish, or archive a service",
+      code: "NOT_PROVIDER_OWNER_OR_ADMIN",
+    });
+    this.name = "NotProviderOwnerOrAdminError";
+  }
+}

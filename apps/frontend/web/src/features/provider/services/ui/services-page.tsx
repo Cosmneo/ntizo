@@ -76,6 +76,13 @@ export function ServicesPage() {
 
   if (!activeProvider) return null;
 
+  // Owners and admins decide what goes live; staff describe and price a
+  // service but do not publish, unpublish or archive it. Checked again on
+  // the server — this only decides whether to offer the control. See
+  // `MembersPage`'s `canManage` for the same split applied to the team list.
+  const canPublish =
+    activeProvider.role === "owner" || activeProvider.role === "admin";
+
   function openEdit(service: ProviderService) {
     setEditing(service);
     setFormOpen(true);
@@ -170,6 +177,7 @@ export function ServicesPage() {
         onOpenChange={setFormOpen}
         editing={editing}
         providerId={activeProvider.id}
+        canPublish={canPublish}
       />
     </div>
   );

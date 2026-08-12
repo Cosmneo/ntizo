@@ -33,12 +33,21 @@ export function ServiceFormSheet({
   onOpenChange,
   editing,
   providerId,
+  canPublish,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Null creates. */
   editing: ProviderService | null;
   providerId: string;
+  /**
+   * Whether the active workspace role may publish, unpublish or archive.
+   * Owner and admin only — staff can still create, price and translate a
+   * service through the rest of this form, just not decide whether it's
+   * live. The server enforces this too; hiding the controls here only keeps
+   * staff from being offered a button that refuses them.
+   */
+  canPublish: boolean;
 }) {
   const { t, i18n } = useTranslation("provider");
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -165,7 +174,11 @@ export function ServiceFormSheet({
                 <Badge tone={STATUS_TONE[current.status]}>
                   {t(`servicesStatus.${current.status}`)}
                 </Badge>
-                {current.status === "draft" && (
+                {/* Owner/admin only — a control offered and then refused by
+                    the server is worse than one never shown. Staff still see
+                    the status badge above; they just don't get the buttons
+                    that would change it. */}
+                {canPublish && current.status === "draft" && (
                   <Button
                     type="button"
                     size="sm"
@@ -176,7 +189,7 @@ export function ServiceFormSheet({
                     {t("servicePublish")}
                   </Button>
                 )}
-                {current.status === "published" && (
+                {canPublish && current.status === "published" && (
                   <Button
                     type="button"
                     size="sm"
@@ -187,7 +200,7 @@ export function ServiceFormSheet({
                     {t("serviceUnpublish")}
                   </Button>
                 )}
-                {current.status !== "archived" && (
+                {canPublish && current.status !== "archived" && (
                   <Button
                     type="button"
                     size="sm"

@@ -89,4 +89,13 @@ export class DrizzleServiceRepository implements ServiceRepositoryPort {
       .limit(1);
     return row !== undefined;
   }
+
+  async isProviderOwnerOrAdmin(providerId: string, userId: string): Promise<boolean> {
+    const [row] = await getDb()
+      .select({ role: providerMember.role })
+      .from(providerMember)
+      .where(and(eq(providerMember.providerId, providerId), eq(providerMember.userId, userId)))
+      .limit(1);
+    return row?.role === "owner" || row?.role === "admin";
+  }
 }

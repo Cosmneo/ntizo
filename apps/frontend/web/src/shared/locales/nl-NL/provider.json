@@ -295,7 +295,8 @@
     "OPTION_PRICE_INVALID": "De prijs moet groter zijn dan nul.",
     "OPTION_ORDER_INVALID": "Deze volgorde kon niet worden opgeslagen. Probeer het opnieuw.",
     "OPTION_LAST_ONE": "Een gepubliceerde dienst kan niet zonder opties blijven.",
-    "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf."
+    "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf.",
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan een dienst publiceren, de publicatie ongedaan maken of archiveren."
   },
   "translationsTitle": "Vertalingen",
   "translationsHint": "Alleen de taal waarin je dit hebt geschreven is verplicht. Alle andere zijn optioneel — laat leeg wat je nog niet hebt geschreven, nu of later.",

@@ -295,7 +295,8 @@
     "OPTION_PRICE_INVALID": "The price must be greater than zero.",
     "OPTION_ORDER_INVALID": "This order couldn't be saved. Try again.",
     "OPTION_LAST_ONE": "A published service can't be left with no options.",
-    "NOT_PROVIDER_MEMBER": "You don't have access to this business."
+    "NOT_PROVIDER_MEMBER": "You don't have access to this business.",
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Only the business's owner or an admin can publish, unpublish, or archive a service."
   },
   "translationsTitle": "Translations",
   "translationsHint": "Only the language you wrote this in is required. Every other one is optional — leave what you haven't written yet blank, now or later.",

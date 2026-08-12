@@ -295,7 +295,8 @@
     "OPTION_PRICE_INVALID": "Der Preis muss größer als null sein.",
     "OPTION_ORDER_INVALID": "Diese Reihenfolge konnte nicht gespeichert werden. Versuchen Sie es erneut.",
     "OPTION_LAST_ONE": "Eine veröffentlichte Leistung kann nicht ohne Optionen bleiben.",
-    "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf dieses Unternehmen."
+    "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf dieses Unternehmen.",
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Unternehmens oder ein Administrator kann eine Leistung veröffentlichen, ihre Veröffentlichung aufheben oder archivieren."
   },
   "translationsTitle": "Übersetzungen",
   "translationsHint": "Nur die Sprache, in der Sie dies geschrieben haben, ist erforderlich. Alle anderen sind optional — lassen Sie leer, was Sie noch nicht geschrieben haben, jetzt oder später.",

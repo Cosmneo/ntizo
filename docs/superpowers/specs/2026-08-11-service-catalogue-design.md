@@ -247,8 +247,34 @@ Following the shape the categories established.
   quote form, the repository port, `CreateService`, `UpdateService`,
   `AddOption`, `UpdateOption`, `RemoveOption`, `ReorderOptions`,
   `SetServiceStatus`, `SetTranslation`.
-- **`write/catalog`** — mutations, guarded by workspace membership
-  (`canWriteProviderMedia`'s sibling: owner or admin of *this* provider).
+- **`write/catalog`** — mutations, guarded by two different questions, not
+  one. `canWriteProviderMedia`'s actual sibling is plain workspace
+  membership (`isProviderMember`, on `providerMember` with no `role`
+  filter) — that was the precedent, and describing it as role-checked in an
+  earlier draft of this section was wrong twice over: wrong about the
+  precedent, and not what the code did.
+
+  A late review split the guard instead of picking one of its two obvious
+  answers:
+  - **Create, update, everything about options, everything about
+    translations — any member, staff included.** `isProviderMember`, same
+    as `canWriteProviderMedia`. Describing a service and pricing its options
+    is the work of whoever does the work, and the person doing it is the
+    person who knows what it is and what it takes.
+  - **`SetServiceStatus` (publish, unpublish, archive) — owner or admin
+    only.** A second port method, `isProviderOwnerOrAdmin`, checking
+    `providerMember.role`. Deciding what the business sells and when it
+    goes live is not the same act as describing it, and is the one decision
+    on this list a business's staff should not be able to make unilaterally.
+
+  Two sibling port methods, not one method with a boolean flag — the call
+  sites are what a reviewer scans, and `isProviderOwnerOrAdmin(...)` at the
+  one call site that needs it reads better than a stray `true` would.
+  **Slice 2 will face this same fork**: availability rules and date
+  overrides are "describe how I work" (any member), but whatever screen
+  turns a staff member's calendar on or off for bookings is closer to
+  "decide what the business does" — worth asking the product owner rather
+  than assuming either half of this precedent by default.
 - **`read/catalog`** — the provider's own list and detail, every translation
   unresolved, so the provider can see which languages are filled in.
 - **`public/catalog`** — the customer's read, resolved into one locale, filtered
@@ -305,6 +331,7 @@ main form.
 | `OPTION_DURATION_REQUIRED` / `OPTION_DURATION_NOT_ALLOWED` | duration against the pricing mode |
 | `OPTION_LAST_ONE` | removing the only option of a published service |
 | `NOT_PROVIDER_MEMBER` | acting on somebody else's workspace |
+| `NOT_PROVIDER_OWNER_OR_ADMIN` | a member who isn't owner or admin tries `service.setStatus` |
 
 ## Testing
 

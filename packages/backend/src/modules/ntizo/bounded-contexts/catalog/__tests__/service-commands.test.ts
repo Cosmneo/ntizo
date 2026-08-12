@@ -10,13 +10,25 @@ import type { ServiceRepositoryPort } from "../app/ports/outbound/service.reposi
 class FakeRepo implements ServiceRepositoryPort {
   saved: Service[] = [];
   stored = new Map<string, Service>();
-  members = new Set<string>(["prov-1:user-1"]);
+  // `user-1` is the owner every other describe block writes as, `user-2` is a
+  // staff member and `user-3` an admin — both members, so `isProviderMember`
+  // (every command but `SetServiceStatusCommand`) sees them the same way.
+  members = new Set<string>(["prov-1:user-1", "prov-1:user-2", "prov-1:user-3"]);
+  roles = new Map<string, "owner" | "admin" | "staff">([
+    ["prov-1:user-1", "owner"],
+    ["prov-1:user-2", "staff"],
+    ["prov-1:user-3", "admin"],
+  ]);
 
   async findById(id: string) { return this.stored.get(id) ?? null; }
   async save(s: Service) { this.saved.push(s); this.stored.set(s.id, s); }
   async delete(id: string) { this.stored.delete(id); }
   async isProviderMember(providerId: string, userId: string) {
     return this.members.has(`${providerId}:${userId}`);
+  }
+  async isProviderOwnerOrAdmin(providerId: string, userId: string) {
+    const role = this.roles.get(`${providerId}:${userId}`);
+    return role === "owner" || role === "admin";
   }
 }
 
@@ -211,6 +223,22 @@ describe("ManageOptionsCommand", () => {
 });
 
 describe("SetServiceStatusCommand", () => {
+  async function withOption() {
+    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    return serviceId;
+  }
+
   it("refuses to publish a priced service with no options", async () => {
     const { serviceId } = await new CreateServiceCommand(repo).execute(base);
     await expect(
@@ -230,9 +258,75 @@ describe("SetServiceStatusCommand", () => {
         serviceId,
         status: "archived",
       }),
-    ).rejects.toMatchObject({ code: "NOT_PROVIDER_MEMBER" });
+    ).rejects.toMatchObject({ code: "NOT_PROVIDER_OWNER_OR_ADMIN" });
     // Never got to the mutation: still a draft, not archived.
     expect(repo.stored.get(serviceId)!.toJSON().status).toBe("draft");
+  });
+
+  it("refuses a staff member trying to change status", async () => {
+    // user-2 is a plain member (added to the catalogue by `withOption`, which
+    // acts as the owner) but is only staff on this workspace — the exact
+    // split the product owner drew: any member may describe and price a
+    // service, only owner/admin may decide whether it is live.
+    const serviceId = await withOption();
+    await expect(
+      new SetServiceStatusCommand(repo).execute({
+        requesterUserId: "user-2",
+        serviceId,
+        status: "published",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_PROVIDER_OWNER_OR_ADMIN" });
+    // Never got to the mutation: still a draft, not published.
+    expect(repo.stored.get(serviceId)!.toJSON().status).toBe("draft");
+  });
+
+  it("lets an owner publish", async () => {
+    const serviceId = await withOption();
+    await new SetServiceStatusCommand(repo).execute({
+      requesterUserId: "user-1",
+      serviceId,
+      status: "published",
+    });
+    expect(repo.stored.get(serviceId)!.toJSON().status).toBe("published");
+  });
+
+  it("lets an admin publish", async () => {
+    const serviceId = await withOption();
+    await new SetServiceStatusCommand(repo).execute({
+      requesterUserId: "user-3",
+      serviceId,
+      status: "published",
+    });
+    expect(repo.stored.get(serviceId)!.toJSON().status).toBe("published");
+  });
+
+  it("still lets a staff member add an option and set a translation", async () => {
+    // The half of the decision that is easy to break by accident: tightening
+    // `SetServiceStatusCommand` must not touch `ManageOptionsCommand` or
+    // `SetServiceTranslationCommand`, which stay on plain membership.
+    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-2",
+      serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    expect(repo.stored.get(serviceId)!.toJSON().options[0]!.isDefault).toBe(true);
+
+    await new SetServiceTranslationCommand(repo).execute({
+      requesterUserId: "user-2",
+      serviceId,
+      locale: "en-US",
+      name: "Haircut",
+      description: null,
+    });
+    const translations = repo.stored.get(serviceId)!.toJSON().translations;
+    expect(translations.find((t) => t.locale === "en-US")?.name).toBe("Haircut");
   });
 });
 

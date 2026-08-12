@@ -295,7 +295,8 @@
     "OPTION_PRICE_INVALID": "Le prix doit être supérieur à zéro.",
     "OPTION_ORDER_INVALID": "Cet ordre n'a pas pu être enregistré. Réessayez.",
     "OPTION_LAST_ONE": "Un service publié ne peut pas se retrouver sans options.",
-    "NOT_PROVIDER_MEMBER": "Vous n'avez pas accès à cette entreprise."
+    "NOT_PROVIDER_MEMBER": "Vous n'avez pas accès à cette entreprise.",
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Seul le propriétaire de l'entreprise ou un administrateur peut publier, dépublier ou archiver un service."
   },
   "translationsTitle": "Traductions",
   "translationsHint": "Seule la langue dans laquelle vous avez écrit ceci est obligatoire. Toutes les autres sont facultatives — laissez vide ce que vous n'avez pas encore écrit, maintenant ou plus tard.",
