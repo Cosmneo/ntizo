@@ -4,6 +4,9 @@ export * from "./components/input-group";
 export * from "./components/label";
 export * from "./components/badge";
 export * from "./components/choice-chips";
+export * from "./components/progress-ring";
+export * from "./components/section-rail";
+export * from "./components/sticky-action-bar";
 export * from "./components/card"
 export * from "./components/checkbox";
 export * from "./components/phone-input";
