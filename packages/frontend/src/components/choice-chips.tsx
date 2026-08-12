@@ -17,11 +17,11 @@ import { cn } from "../lib/utils";
  *
  * Each input is visually hidden with the `sr-only` pattern — clipped, not
  * `display:none` or `visibility:hidden`, either of which would pull it out
- * of the tab order and defeat the entire point — and a sibling `<label>`
- * is styled from the input's real state via Tailwind's `peer-checked:` and
- * `peer-disabled:` variants. The visual and the semantic state share one
- * source of truth — the input's own `checked`/`disabled` — so they cannot
- * drift apart the way a JS-mirrored "isSelected" boolean could.
+ * of the tab order and defeat the entire point — and its enclosing `<label>`
+ * is styled from the input's real state via Tailwind's `has-*` variants. The
+ * visual and the semantic state share one source of truth — the input's own
+ * `checked`/`disabled` — so they cannot drift apart the way a JS-mirrored
+ * "isSelected" boolean could.
  */
 
 export interface ChoiceOption {
@@ -33,20 +33,28 @@ export interface ChoiceOption {
 }
 
 /**
- * The "selected" and "disabled" looks are always-on `peer-checked:` /
- * `peer-disabled:` utilities rather than a cva variant chosen from a
- * component-computed boolean — the same reasoning as the file doc comment.
- * Selected matches `badge.tsx`'s `info` tone exactly (full-strength
- * `--color-primary` text on a `color-mix` tint of itself), so a selected
- * chip and an informational badge read as the same colour decision.
+ * The "selected" and "disabled" looks are always-on utilities rather than a
+ * cva variant chosen from a component-computed boolean — the same reasoning
+ * as the file doc comment. Selected matches `badge.tsx`'s `info` tone exactly
+ * (full-strength `--color-primary` text on a `color-mix` tint of itself), so a
+ * selected chip and an informational badge read as the same colour decision.
+ *
+ * `has-[…]` and not `peer-…`, and the difference is not cosmetic. The input
+ * lives *inside* this label, so it is styled by whether the label CONTAINS a
+ * checked input. `peer-checked:` compiles to `.peer:checked ~ &` — a
+ * following-sibling combinator, which cannot reach a parent — so the whole
+ * selected look silently never applied. Nothing in jsdom could see it: no
+ * stylesheet is loaded, every state assertion reads the input's own
+ * `checked`, and the chips rendered identically selected and unselected in a
+ * real browser for as long as it took somebody to look at one.
  */
 const chipVariants = cva(
   cn(
     "type-body-medium flex min-w-0 cursor-pointer select-none flex-col items-start gap-0.5",
     "rounded-[var(--radius-field)] border border-[var(--color-border)] px-3 py-2 text-left transition-colors",
-    "peer-checked:border-transparent peer-checked:bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] peer-checked:text-[var(--color-primary)]",
-    "peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--color-ring)] peer-focus-visible:ring-offset-2",
-    "peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+    "has-[:checked]:border-transparent has-[:checked]:bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] has-[:checked]:text-[var(--color-primary)]",
+    "has-[:focus-visible]:outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-ring)] has-[:focus-visible]:ring-offset-2",
+    "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
   ),
 );
 
@@ -107,7 +115,7 @@ export function ChoiceChips({
               checked={value === option.value}
               disabled={option.disabled}
               onChange={() => onChange(option.value)}
-              className="peer sr-only"
+              className="sr-only"
             />
             <span>{option.label}</span>
             <ChipHint hint={option.hint} />
@@ -156,7 +164,7 @@ export function ChoiceChipsMulti({
                     : value.filter((v) => v !== option.value),
                 );
               }}
-              className="peer sr-only"
+              className="sr-only"
             />
             <span>{option.label}</span>
             <ChipHint hint={option.hint} />

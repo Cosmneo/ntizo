@@ -78,6 +78,22 @@ describe("ChoiceChips (single)", () => {
     render(<ChoiceChips name="where" legend="Where" options={OPTIONS} value={null} onChange={() => {}} error="Pick one" />);
     expect(screen.getByRole("radiogroup", { name: /Where/ })).toHaveAccessibleDescription("Pick one");
   });
+
+  // The other half of the same blind spot, and the one that actually shipped:
+  // the chip's whole selected look is a CSS variant, and jsdom loads no CSS,
+  // so nothing above can tell a chip that highlights when checked from one
+  // that never highlights at all. It never did — the input is a CHILD of the
+  // label, and `peer-checked:` compiles to a following-sibling combinator that
+  // cannot reach a parent. The two halves of the contract are asserted
+  // together, because either alone is satisfiable while the chip stays flat.
+  test("the selected look is a variant that can reach an input nested inside the label", () => {
+    render(<ChoiceChips name="where" legend="Where" options={OPTIONS} value="a" onChange={() => {}} />);
+    const input = screen.getByRole("radio", { name: "At the customer" });
+    const label = input.closest("label");
+    expect(label).toContainElement(input);
+    expect(label?.className).toMatch(/has-\[:checked\]:/);
+    expect(label?.className).not.toMatch(/peer-checked:/);
+  });
 });
 
 describe("ChoiceChipsMulti", () => {
@@ -122,5 +138,16 @@ describe("ChoiceChipsMulti", () => {
   test("the input is clipped, not display:none — anything else drops it from the tab order", () => {
     render(<ChoiceChipsMulti name="langs" legend="Languages" options={OPTIONS} value={[]} onChange={() => {}} />);
     expect(screen.getByRole("checkbox", { name: "At the customer" })).toHaveClass("sr-only");
+  });
+
+  // Same contract as the single-select block's, asserted separately because
+  // the two components carry their own copies of the chip markup.
+  test("the selected look is a variant that can reach an input nested inside the label", () => {
+    render(<ChoiceChipsMulti name="langs" legend="Languages" options={OPTIONS} value={["a"]} onChange={() => {}} />);
+    const input = screen.getByRole("checkbox", { name: "At the customer" });
+    const label = input.closest("label");
+    expect(label).toContainElement(input);
+    expect(label?.className).toMatch(/has-\[:checked\]:/);
+    expect(label?.className).not.toMatch(/peer-checked:/);
   });
 });
