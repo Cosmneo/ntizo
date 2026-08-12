@@ -12,6 +12,12 @@ function built() {
     bookingMode: "priced",
     name: "Corte de cabelo",
     description: "Barbearia",
+    // Neither the aggregate defaults (0 / 30) nor each other: a mapper that
+    // hardcoded either value, or that swapped which DB column feeds which
+    // prop, would produce a mismatch here that a default-valued fixture
+    // could never expose.
+    bufferMinutes: 15,
+    slotIntervalMinutes: 60,
   });
   s.addOption({
     id: "opt-1",
@@ -42,6 +48,10 @@ function builtQuote() {
     bookingMode: "quote",
     name: "Consultoria",
     description: "Consultoria personalizada",
+    // A different pair again from `built()`'s, so the two fixtures cannot
+    // both be satisfied by one wrong constant in the mapper.
+    bufferMinutes: 45,
+    slotIntervalMinutes: 15,
   });
   s.update({ imageKeys: ["service/svc-2/1"] });
   s.setTranslation("en-US", "Consulting", "Personalised consulting");
