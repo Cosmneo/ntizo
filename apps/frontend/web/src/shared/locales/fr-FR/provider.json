@@ -420,5 +420,6 @@
     "CLOSURE_RANGE_INVALID": "Cette période de fermeture ne peut pas être utilisée.",
     "EXCEPTION_NOT_FOUND": "Cette exception n'existe plus.",
     "CLOSURE_NOT_FOUND": "Cette fermeture n'existe plus."
-  }
+  },
+  "serviceTranslationsSaveFirst": "Enregistrez le service avant de le traduire."
 }

@@ -55,7 +55,7 @@ export interface ServiceDraft {
  * creating the service — the same "whoever creates it performs it" default
  * `CreateServiceCommand` applies server-side (see that command's own doc
  * comment). Left empty when the caller doesn't know it yet (the availability
- * config it comes from is still loading); `ServiceFormSheet` fills it in
+ * config it comes from is still loading); the service editor fills it in
  * itself once that resolves, for a draft that hasn't been touched.
  */
 export function emptyDraft(creatorMemberId?: string): ServiceDraft {

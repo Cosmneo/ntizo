@@ -111,7 +111,7 @@ export async function updateService(input: UpdateServiceInput): Promise<void> {
 /**
  * Sets who performs a service — the whole set, not an add/remove delta.
  * Empty is a real instruction for a draft; refused for a published service
- * with `SERVICE_NEEDS_MEMBER`, which `ServiceFormSheet` maps under this
+ * with `SERVICE_NEEDS_MEMBER`, which the service editor maps under this
  * form's own performer field rather than the generic save-failed banner.
  */
 export async function setServiceMembers(input: { serviceId: string; memberIds: string[] }): Promise<void> {

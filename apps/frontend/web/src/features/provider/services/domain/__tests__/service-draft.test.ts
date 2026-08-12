@@ -50,7 +50,7 @@ describe("emptyDraft", () => {
   });
 
   it("starts with nobody ticked when the creating member isn't known yet", () => {
-    // `ServiceFormSheet` backfills this once `availability.config` resolves;
+    // the service editor backfills this once `availability.config` resolves;
     // the draft itself must not invent a member id it was never given.
     expect(emptyDraft().memberIds).toEqual([]);
   });

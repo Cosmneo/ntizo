@@ -32,7 +32,7 @@ function deviceTimeZone(): string {
  * Mounted fresh each time a different service is selected (see
  * `services-section.tsx`, which keys it by `service.id`), so every piece of
  * local state below starts over rather than needing a reset effect — the
- * same reason `TranslationsSheet` doesn't need one either once it is only
+ * same reason the languages section doesn't need one either, now that it is
  * ever rendered while its own service is non-null.
  */
 export function AvailabilitySheet({

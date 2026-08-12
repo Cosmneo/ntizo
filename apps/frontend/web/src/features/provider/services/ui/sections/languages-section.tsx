@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, X } from "lucide-react";
-import { Badge, Button, Input, Sheet, SheetContent } from "@ntizo/frontend-ui";
+import { Loader2 } from "lucide-react";
+import { Badge, Button, Input } from "@ntizo/frontend-ui";
 import type { Locale } from "@ntizo/shared";
-import { useSetServiceTranslation } from "../viewmodel/use-service-editor";
+import { useSetServiceTranslation } from "../../viewmodel/use-service-editor";
 import {
   optionSourceName,
   orderedLocales,
   type ProviderService,
-} from "../domain/types";
+} from "../../domain/types";
 
 /**
  * Translating a service, and each of its options, into every other language
@@ -28,14 +28,10 @@ import {
  * language. Each box's own error lands right there, under the box it belongs
  * to, rather than in one shared banner at the top of the sheet.
  */
-export function TranslationsSheet({
-  open,
-  onOpenChange,
+export function LanguagesSection({
   service,
   providerId,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   service: ProviderService;
   providerId: string;
 }) {
@@ -43,21 +39,7 @@ export function TranslationsSheet({
   const locales = orderedLocales(service.sourceLocale);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full max-w-lg flex-col">
-        <div className="flex items-start justify-between border-b border-[var(--color-border)] px-5 py-4">
-          <h2 className="type-h3 font-semibold">{t("translationsTitle")}</h2>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label={t("close")}
-            className="grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="grid flex-1 content-start gap-6 overflow-y-auto p-5">
+    <div className="grid content-start gap-6">
           <p className="type-body text-[var(--color-muted-foreground)]">
             {t("translationsHint")}
           </p>
@@ -106,9 +88,7 @@ export function TranslationsSheet({
               ))}
             </TranslationGroup>
           ))}
-        </div>
-      </SheetContent>
-    </Sheet>
+    </div>
   );
 }
 

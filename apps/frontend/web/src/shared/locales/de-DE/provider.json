@@ -420,5 +420,6 @@
     "CLOSURE_RANGE_INVALID": "Dieser Schließungszeitraum kann nicht verwendet werden.",
     "EXCEPTION_NOT_FOUND": "Diese Ausnahme gibt es nicht mehr.",
     "CLOSURE_NOT_FOUND": "Diese Schließung gibt es nicht mehr."
-  }
+  },
+  "serviceTranslationsSaveFirst": "Speichern Sie die Leistung, bevor Sie sie übersetzen."
 }

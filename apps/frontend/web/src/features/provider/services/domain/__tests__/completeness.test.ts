@@ -94,8 +94,8 @@ describe("sectionStates", () => {
     expect(publishBlocker({ ...COMPLETE, individualProvider: true, memberIds: [] })).toBeNull();
   });
 
-  test("timing, languages and media are never required, and read as already complete", () => {
-    for (const id of ["timing", "languages", "media"] as const) {
+  test("timing and languages are never required, and read as already complete", () => {
+    for (const id of ["timing", "languages"] as const) {
       const s = by(COMPLETE, id);
       expect(s.required).toBe(false);
       expect(s.complete).toBe(true);

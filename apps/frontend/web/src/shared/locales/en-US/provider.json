@@ -420,5 +420,6 @@
     "CLOSURE_RANGE_INVALID": "That closure period can't be used.",
     "EXCEPTION_NOT_FOUND": "This exception no longer exists.",
     "CLOSURE_NOT_FOUND": "This closure no longer exists."
-  }
+  },
+  "serviceTranslationsSaveFirst": "Save the service before translating it."
 }

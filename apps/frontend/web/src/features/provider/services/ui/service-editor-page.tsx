@@ -36,14 +36,16 @@ import { STATUS_TONE, type ProviderService } from "../domain/types";
 import { BasicsSection } from "./sections/basics-section";
 import { PricingSection } from "./sections/pricing-section";
 import { PerformersSection } from "./sections/performers-section";
+import { TimingSection } from "./sections/timing-section";
+import { LanguagesSection } from "./sections/languages-section";
 
 /**
  * Creating and editing a service, as a full page with a section rail.
  *
- * Replaces `service-form.tsx`'s 595-line sheet (still present, still wired
- * up from nowhere as of this task — `services-page.tsx` now routes here
- * instead of opening it, and Task 6 deletes the sheet outright once the
- * remaining sections exist). Three behaviours moved across unchanged:
+ * Replaces `service-form.tsx`'s 595-line sheet, now deleted, and absorbs
+ * the separate translations sheet as a section — a panel opened from inside
+ * a panel existed only because the editor was itself a panel. Three
+ * behaviours moved across unchanged:
  *
  * 1. **Live status.** `published` reads `current?.status` from the services
  *    list's own cache (`useServices`, keyed by provider, shared with the
@@ -296,11 +298,20 @@ export function ServiceEditorPage() {
             onErrorClear={() => setMemberError(null)}
           />
         );
+      case "timing":
+        return <TimingSection draft={draft} setDraft={setDraft} fieldErrors={fieldErrors} />;
+      case "languages":
+        // Needs a saved service: `service.translation.set` addresses rows by
+        // service id, and there is no id to address until the first save.
+        return current ? (
+          <LanguagesSection service={current} providerId={provider.id} />
+        ) : (
+          <p className="type-body text-[var(--color-muted-foreground)]">
+            {t("serviceTranslationsSaveFirst")}
+          </p>
+        );
       default:
-        // Timing, languages and media — built in a later task. Listed in the
-        // rail (they come straight from `sectionStates`) but hold nothing
-        // yet.
-        return <p className="type-body text-[var(--color-muted-foreground)]">{t("comingSoon")}</p>;
+        return null;
     }
   }
 

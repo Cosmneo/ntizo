@@ -420,5 +420,6 @@
     "CLOSURE_RANGE_INVALID": "Deze sluitingsperiode kan niet worden gebruikt.",
     "EXCEPTION_NOT_FOUND": "Deze uitzondering bestaat niet meer.",
     "CLOSURE_NOT_FOUND": "Deze sluiting bestaat niet meer."
-  }
+  },
+  "serviceTranslationsSaveFirst": "Sla de dienst op voordat je hem vertaalt."
 }

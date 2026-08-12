@@ -11,7 +11,7 @@
  * it.
  */
 
-export type SectionId = "basics" | "pricing" | "performers" | "timing" | "languages" | "media";
+export type SectionId = "basics" | "pricing" | "performers" | "timing" | "languages";
 
 export interface CompletenessInput {
   categoryId: string | null;
@@ -73,7 +73,7 @@ function pricingCode(input: CompletenessInput): PricingCode {
 }
 
 /**
- * Every section the rail can show, basics first through media last — the
+ * Every section the rail can show, basics first through languages last — the
  * order the form itself walks the provider through, not the order
  * `publishBlocker` checks in (see that function for the server's own order,
  * which this array does not follow).
@@ -105,7 +105,6 @@ export function sectionStates(input: CompletenessInput): SectionState[] {
   states.push(
     { id: "timing", required: false, complete: true, blockingCode: null },
     { id: "languages", required: false, complete: true, blockingCode: null },
-    { id: "media", required: false, complete: true, blockingCode: null },
   );
 
   return states;
@@ -134,7 +133,7 @@ export function publishBlocker(input: CompletenessInput): SectionState["blocking
 /**
  * How many of the sections that must be complete before publish, are.
  *
- * Optional sections (timing, languages, media) never enter either number —
+ * Optional sections (timing, languages) never enter either number —
  * they are furniture the rail shows, not progress the provider is being
  * asked to finish before Publish stops being disabled.
  */

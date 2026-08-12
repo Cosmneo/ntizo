@@ -420,5 +420,6 @@
     "CLOSURE_RANGE_INVALID": "Esse período de encerramento não é válido.",
     "EXCEPTION_NOT_FOUND": "Esta excepção já não existe.",
     "CLOSURE_NOT_FOUND": "Este encerramento já não existe."
-  }
+  },
+  "serviceTranslationsSaveFirst": "Guarde o serviço antes de o traduzir."
 }

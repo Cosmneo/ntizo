@@ -420,5 +420,6 @@
     "CLOSURE_RANGE_INVALID": "Ese periodo de cierre no se puede usar.",
     "EXCEPTION_NOT_FOUND": "Esta excepción ya no existe.",
     "CLOSURE_NOT_FOUND": "Este cierre ya no existe."
-  }
+  },
+  "serviceTranslationsSaveFirst": "Guarda el servicio antes de traducirlo."
 }
