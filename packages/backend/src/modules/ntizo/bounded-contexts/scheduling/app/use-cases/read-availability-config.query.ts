@@ -1,5 +1,5 @@
 import type { AvailabilityConfigDTO } from "@ntizo/shared/read-models";
-import { NotProviderMemberError } from "../../../catalog/domain/exceptions";
+import { NotProviderMemberError } from "../../domain/exceptions";
 import type { ScheduleRepositoryPort } from "../ports/outbound/schedule.repository.port";
 
 export type { AvailabilityConfigDTO };

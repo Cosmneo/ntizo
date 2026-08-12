@@ -100,10 +100,12 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
     return row!.id;
   }
 
-  async removeClosure(providerId: string, closureId: string): Promise<void> {
-    await getDb()
+  async removeClosure(providerId: string, closureId: string): Promise<boolean> {
+    const deleted = await getDb()
       .delete(houseClosure)
-      .where(and(eq(houseClosure.id, closureId), eq(houseClosure.providerId, providerId)));
+      .where(and(eq(houseClosure.id, closureId), eq(houseClosure.providerId, providerId)))
+      .returning({ id: houseClosure.id });
+    return deleted.length > 0;
   }
 
   /**

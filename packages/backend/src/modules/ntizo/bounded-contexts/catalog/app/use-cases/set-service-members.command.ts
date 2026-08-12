@@ -1,8 +1,9 @@
-import { NotProviderMemberError, ServiceNeedsMemberError, ServiceNotFoundError } from "../../domain/exceptions";
-// Already exists in the scheduling bounded context, which asks the same
-// question ("does this member id belong to this provider?") for the same
-// reason — imported rather than declared a second time here.
-import { MemberNotInProviderError } from "../../../scheduling/domain/exceptions";
+import {
+  MemberNotInProviderError,
+  NotProviderMemberError,
+  ServiceNeedsMemberError,
+  ServiceNotFoundError,
+} from "../../domain/exceptions";
 import type { ServiceRepositoryPort } from "../ports/outbound/service.repository.port";
 
 export interface SetServiceMembersInput {

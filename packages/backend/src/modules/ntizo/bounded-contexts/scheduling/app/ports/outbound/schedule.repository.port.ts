@@ -19,7 +19,8 @@ export interface ScheduleRepositoryPort {
     toDate: string;
     note: string | null;
   }): Promise<string>;
-  removeClosure(providerId: string, closureId: string): Promise<void>;
+  /** True when a row was actually deleted — false when `closureId` didn't match one of this provider's closures (never existed here, or already removed). */
+  removeClosure(providerId: string, closureId: string): Promise<boolean>;
   /** Every member id of this workspace, with its role and display name. */
   listMembers(
     providerId: string,

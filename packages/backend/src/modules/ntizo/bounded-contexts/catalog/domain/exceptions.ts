@@ -191,3 +191,24 @@ export class NotProviderOwnerOrAdminError extends ForbiddenError {
     this.name = "NotProviderOwnerOrAdminError";
   }
 }
+
+/**
+ * Same `code` as the scheduling BC's own `MemberNotInProviderError` — both
+ * name the one thing "this member id is not on this provider's roster"
+ * means — but declared separately here rather than imported across bounded
+ * contexts: catalog asks this question when deciding who may perform a
+ * service, and scheduling asks the identical question when deciding whose
+ * calendar an edit targets. Same shape as {@link TimezoneInvalidError} in
+ * the provider BC: two contexts independently need the same refusal, so
+ * each owns its own class rather than one importing the other's domain
+ * layer. Do not "fix" this back into an import.
+ */
+export class MemberNotInProviderError extends NotFoundError {
+  constructor(public readonly memberId: string) {
+    super({
+      message: `No member with id "${memberId}" in this provider`,
+      code: "MEMBER_NOT_IN_PROVIDER",
+    });
+    this.name = "MemberNotInProviderError";
+  }
+}

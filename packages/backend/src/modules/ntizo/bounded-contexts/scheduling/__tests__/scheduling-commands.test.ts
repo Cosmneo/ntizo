@@ -91,8 +91,10 @@ class FakeScheduleRepo implements ScheduleRepositoryPort {
     return id;
   }
 
-  async removeClosure(providerId: string, closureId: string): Promise<void> {
+  async removeClosure(providerId: string, closureId: string): Promise<boolean> {
+    const before = this.closures.length;
     this.closures = this.closures.filter((c) => !(c.id === closureId && c.providerId === providerId));
+    return this.closures.length < before;
   }
 
   async listMembers(
@@ -358,6 +360,48 @@ describe("ManageClosuresCommand", () => {
         }),
       ),
     ).toBe("CLOSURE_RANGE_INVALID");
+  });
+
+  test("removing a closure that is already gone is refused, not silently confirmed", async () => {
+    const { closureId } = await new ManageClosuresCommand(repo).add({
+      requesterUserId: "user-1",
+      providerId: "prov-1",
+      fromDate: "2026-12-24",
+      toDate: "2026-12-26",
+      note: null,
+    });
+    // First removal succeeds and actually deletes the row.
+    const first = await new ManageClosuresCommand(repo).remove({
+      requesterUserId: "user-1",
+      providerId: "prov-1",
+      closureId,
+    });
+    expect(first).toEqual({ ok: true });
+
+    // Someone clicking remove a second time — the same id, already gone —
+    // must be told, not given back a false "it worked".
+    expect(
+      await codeOf(() =>
+        new ManageClosuresCommand(repo).remove({
+          requesterUserId: "user-1",
+          providerId: "prov-1",
+          closureId,
+        }),
+      ),
+    ).toBe("CLOSURE_NOT_FOUND");
+  });
+
+  test("removing a closure id from another workspace is refused, not confirmed", async () => {
+    // prov-2 has no closures of its own; user-1 owns prov-1 only.
+    expect(
+      await codeOf(() =>
+        new ManageClosuresCommand(repo).remove({
+          requesterUserId: "user-1",
+          providerId: "prov-1",
+          closureId: "00000000-0000-0000-0000-000000000000",
+        }),
+      ),
+    ).toBe("CLOSURE_NOT_FOUND");
   });
 });
 

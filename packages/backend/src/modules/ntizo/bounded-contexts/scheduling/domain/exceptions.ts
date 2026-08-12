@@ -119,3 +119,40 @@ export class ClosureRangeInvalidError extends UnprocessableError {
     this.name = "ClosureRangeInvalidError";
   }
 }
+
+/**
+ * Same `code` as the catalog BC's own `NotProviderMemberError` — both name
+ * the one thing "the caller has no `provider_member` row here" means — but
+ * declared separately here rather than imported across bounded contexts:
+ * catalog asks this to guard who may edit a service, and scheduling asks
+ * the identical question to guard who may read or edit a provider's
+ * availability. Same shape as {@link TimezoneInvalidError} above. Do not
+ * "fix" this back into an import.
+ */
+export class NotProviderMemberError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "This workspace is not one you belong to",
+      code: "NOT_PROVIDER_MEMBER",
+    });
+    this.name = "NotProviderMemberError";
+  }
+}
+
+/**
+ * Same `code` as the catalog BC's own `NotProviderOwnerOrAdminError` — both
+ * name the one thing "the caller is a member here, but not its owner or an
+ * admin" means — but declared separately for the same reason as
+ * {@link NotProviderMemberError} just above: scheduling guards closures
+ * with it, catalog guards publish/unpublish/archive, and neither import is
+ * worth the coupling. Do not "fix" this back into an import.
+ */
+export class NotProviderOwnerOrAdminError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "Only the workspace's owner or an admin can do this",
+      code: "NOT_PROVIDER_OWNER_OR_ADMIN",
+    });
+    this.name = "NotProviderOwnerOrAdminError";
+  }
+}

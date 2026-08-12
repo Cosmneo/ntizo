@@ -1,5 +1,8 @@
-import { NotProviderOwnerOrAdminError } from "../../../catalog/domain/exceptions";
-import { ClosureRangeInvalidError } from "../../domain/exceptions";
+import {
+  ClosureNotFoundError,
+  ClosureRangeInvalidError,
+  NotProviderOwnerOrAdminError,
+} from "../../domain/exceptions";
 import type { ScheduleRepositoryPort } from "../ports/outbound/schedule.repository.port";
 
 const CIVIL_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -51,7 +54,11 @@ export class ManageClosuresCommand {
     if (!(await this.repo.isProviderOwnerOrAdmin(input.providerId, input.requesterUserId))) {
       throw new NotProviderOwnerOrAdminError();
     }
-    await this.repo.removeClosure(input.providerId, input.closureId);
+    // `removeClosure` reports whether a row actually matched, so a closure
+    // someone else already removed is refused rather than silently
+    // confirmed — the click reads as "worked" either way otherwise.
+    const deleted = await this.repo.removeClosure(input.providerId, input.closureId);
+    if (!deleted) throw new ClosureNotFoundError(input.closureId);
     return { ok: true };
   }
 }
