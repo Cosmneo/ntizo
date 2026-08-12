@@ -265,6 +265,16 @@
     "at_customer": "At the customer's place",
     "flexible": "Depends on the job"
   },
+  "serviceMembersQuestion": "Who does this?",
+  "serviceMembersHint": "Choose who on the team can be booked for this service.",
+  "serviceBuffer": "Buffer time",
+  "serviceBufferHint": "Covers cleanup or the journey to the next address.",
+  "serviceBufferError": "Must be a number between 0 and 480 minutes.",
+  "serviceSlotInterval": "Time grid",
+  "serviceSlotIntervalHint": "How often available start times begin.",
+  "serviceSlotInterval15": "15 minutes",
+  "serviceSlotInterval30": "30 minutes",
+  "serviceSlotInterval60": "60 minutes",
   "serviceBookingModeQuestion": "How is it charged?",
   "serviceBookingMode": {
     "priced": "Priced",
@@ -296,6 +306,8 @@
     "OPTION_PRICE_INVALID": "The price must be greater than zero.",
     "OPTION_ORDER_INVALID": "This order couldn't be saved. Try again.",
     "OPTION_LAST_ONE": "A published service can't be left with no options.",
+    "SERVICE_NEEDS_MEMBER": "This service needs at least one person performing it.",
+    "MEMBER_NOT_IN_PROVIDER": "That person is no longer part of the team.",
     "NOT_PROVIDER_MEMBER": "You don't have access to this business.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Only the business's owner or an admin can publish, unpublish, or archive a service."
   },

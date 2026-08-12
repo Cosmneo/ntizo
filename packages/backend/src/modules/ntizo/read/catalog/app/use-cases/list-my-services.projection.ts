@@ -38,6 +38,9 @@ export class ListMyServicesProjection {
         .map((k) => mediaUrl(k))
         .filter((u): u is string => u !== null),
       sortOrder: r.sortOrder,
+      bufferMinutes: r.bufferMinutes,
+      slotIntervalMinutes: r.slotIntervalMinutes,
+      memberIds: r.memberIds,
       options: r.options.map((o) => ({
         id: o.id,
         pricingMode: o.pricingMode,

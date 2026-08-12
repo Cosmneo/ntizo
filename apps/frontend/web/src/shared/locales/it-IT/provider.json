@@ -265,6 +265,16 @@
     "at_customer": "A casa del cliente",
     "flexible": "Dipende dal lavoro"
   },
+  "serviceMembersQuestion": "Chi si occupa di questo servizio?",
+  "serviceMembersHint": "Scegli chi nel team può essere prenotato per questo servizio.",
+  "serviceBuffer": "Tempo cuscinetto",
+  "serviceBufferHint": "Copre la pulizia o il tragitto fino all'indirizzo successivo.",
+  "serviceBufferError": "Deve essere un numero tra 0 e 480 minuti.",
+  "serviceSlotInterval": "Griglia oraria",
+  "serviceSlotIntervalHint": "Ogni quanto iniziano gli orari disponibili.",
+  "serviceSlotInterval15": "15 minuti",
+  "serviceSlotInterval30": "30 minuti",
+  "serviceSlotInterval60": "60 minuti",
   "serviceBookingModeQuestion": "Come viene addebitato?",
   "serviceBookingMode": {
     "priced": "Con prezzo",
@@ -296,6 +306,8 @@
     "OPTION_PRICE_INVALID": "Il prezzo deve essere maggiore di zero.",
     "OPTION_ORDER_INVALID": "Non è stato possibile salvare questo ordine. Riprova.",
     "OPTION_LAST_ONE": "Un servizio pubblicato non può restare senza opzioni.",
+    "SERVICE_NEEDS_MEMBER": "Questo servizio ha bisogno di almeno una persona che lo svolga.",
+    "MEMBER_NOT_IN_PROVIDER": "Questa persona non fa più parte del team.",
     "NOT_PROVIDER_MEMBER": "Non hai accesso a questa attività.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo il proprietario dell'attività o un amministratore può pubblicare, rimuovere la pubblicazione o archiviare un servizio."
   },

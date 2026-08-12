@@ -265,6 +265,16 @@
     "at_customer": "Bei der Kundschaft zu Hause",
     "flexible": "Je nach Auftrag"
   },
+  "serviceMembersQuestion": "Wer erledigt das?",
+  "serviceMembersHint": "Wählen Sie, wer im Team für diese Leistung gebucht werden kann.",
+  "serviceBuffer": "Pufferzeit",
+  "serviceBufferHint": "Deckt die Reinigung oder den Weg zur nächsten Adresse ab.",
+  "serviceBufferError": "Muss eine Zahl zwischen 0 und 480 Minuten sein.",
+  "serviceSlotInterval": "Zeitraster",
+  "serviceSlotIntervalHint": "Wie oft die verfügbaren Startzeiten beginnen.",
+  "serviceSlotInterval15": "15 Minuten",
+  "serviceSlotInterval30": "30 Minuten",
+  "serviceSlotInterval60": "60 Minuten",
   "serviceBookingModeQuestion": "Wie wird abgerechnet?",
   "serviceBookingMode": {
     "priced": "Mit Preis",
@@ -296,6 +306,8 @@
     "OPTION_PRICE_INVALID": "Der Preis muss größer als null sein.",
     "OPTION_ORDER_INVALID": "Diese Reihenfolge konnte nicht gespeichert werden. Versuchen Sie es erneut.",
     "OPTION_LAST_ONE": "Eine veröffentlichte Leistung kann nicht ohne Optionen bleiben.",
+    "SERVICE_NEEDS_MEMBER": "Diese Leistung benötigt mindestens eine Person, die sie ausführt.",
+    "MEMBER_NOT_IN_PROVIDER": "Diese Person gehört nicht mehr zum Team.",
     "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf dieses Unternehmen.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Unternehmens oder ein Administrator kann eine Leistung veröffentlichen, ihre Veröffentlichung aufheben oder archivieren."
   },

@@ -7,6 +7,7 @@ const MINE = `
   query ServiceMine($input: ServiceMineInput!) {
     serviceMine(input: $input) {
       id categoryId categoryCode sourceLocale locationType bookingMode status imageUrls
+      bufferMinutes slotIntervalMinutes memberIds
       translations { locale name description }
       options {
         id pricingMode amountMinor currency durationMinutes minMinutes stepMinutes
@@ -56,6 +57,11 @@ const OPTION_REORDER = `
     serviceOptionsReorder(input: $input) { ok }
   }`;
 
+const SET_MEMBERS = `
+  mutation ServiceMembersSet($input: ServiceMembersSetInput!) {
+    serviceMembersSet(input: $input) { ok }
+  }`;
+
 export const serviceQueries = {
   mine: (providerId: string) =>
     queryOptions({
@@ -81,6 +87,8 @@ export interface CreateServiceInput {
   bookingMode: ServiceBookingMode;
   name: string;
   description: string | null;
+  bufferMinutes?: number;
+  slotIntervalMinutes?: 15 | 30 | 60;
 }
 
 export async function createService(input: CreateServiceInput): Promise<{ serviceId: string }> {
@@ -92,10 +100,22 @@ export interface UpdateServiceInput {
   serviceId: string;
   categoryId: string;
   locationType: ServiceLocationType;
+  bufferMinutes?: number;
+  slotIntervalMinutes?: 15 | 30 | 60;
 }
 
 export async function updateService(input: UpdateServiceInput): Promise<void> {
   await sessionGraphql(UPDATE, { input });
+}
+
+/**
+ * Sets who performs a service — the whole set, not an add/remove delta.
+ * Empty is a real instruction for a draft; refused for a published service
+ * with `SERVICE_NEEDS_MEMBER`, which `ServiceFormSheet` maps under this
+ * form's own performer field rather than the generic save-failed banner.
+ */
+export async function setServiceMembers(input: { serviceId: string; memberIds: string[] }): Promise<void> {
+  await sessionGraphql(SET_MEMBERS, { input });
 }
 
 export async function setServiceStatus(input: { serviceId: string; status: ServiceStatus }): Promise<void> {

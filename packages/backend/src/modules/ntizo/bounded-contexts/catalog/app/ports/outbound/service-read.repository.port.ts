@@ -45,6 +45,10 @@ export interface ServiceOwnerRow {
   imageKeys: string[] | null;
   sortOrder: number;
   createdAt: Date;
+  bufferMinutes: number;
+  slotIntervalMinutes: number;
+  /** `provider_member.id`s who perform this service. */
+  memberIds: string[];
   options: ServiceOwnerOptionRow[];
   translations: ServiceOwnerTranslationRow[];
   quoteForm: ServiceOwnerQuoteFormRow | null;

@@ -265,6 +265,16 @@
     "at_customer": "Em casa do cliente",
     "flexible": "Depende do caso"
   },
+  "serviceMembersQuestion": "Quem faz este serviço?",
+  "serviceMembersHint": "Escolha quem da equipa pode ser chamado para este serviço.",
+  "serviceBuffer": "Tempo de intervalo",
+  "serviceBufferHint": "Cobre a limpeza ou a viagem até ao endereço seguinte.",
+  "serviceBufferError": "Tem de ser um número entre 0 e 480 minutos.",
+  "serviceSlotInterval": "Grelha de horários",
+  "serviceSlotIntervalHint": "De quanto em quanto tempo os horários disponíveis começam.",
+  "serviceSlotInterval15": "15 minutos",
+  "serviceSlotInterval30": "30 minutos",
+  "serviceSlotInterval60": "60 minutos",
   "serviceBookingModeQuestion": "Como é cobrado?",
   "serviceBookingMode": {
     "priced": "Com preço",
@@ -296,6 +306,8 @@
     "OPTION_PRICE_INVALID": "O preço tem de ser maior que zero.",
     "OPTION_ORDER_INVALID": "Não foi possível guardar esta ordem. Tente novamente.",
     "OPTION_LAST_ONE": "Um serviço publicado não pode ficar sem opções.",
+    "SERVICE_NEEDS_MEMBER": "Este serviço precisa de, pelo menos, uma pessoa a realizá-lo.",
+    "MEMBER_NOT_IN_PROVIDER": "Essa pessoa já não faz parte da equipa.",
     "NOT_PROVIDER_MEMBER": "Não tem acesso a este negócio.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Só o proprietário do negócio ou um administrador pode publicar, despublicar ou arquivar um serviço."
   },

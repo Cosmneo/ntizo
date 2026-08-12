@@ -265,6 +265,16 @@
     "at_customer": "Bij de klant thuis",
     "flexible": "Hangt van de klus af"
   },
+  "serviceMembersQuestion": "Wie doet dit?",
+  "serviceMembersHint": "Kies wie van het team voor deze dienst geboekt kan worden.",
+  "serviceBuffer": "Buffertijd",
+  "serviceBufferHint": "Dekt het schoonmaken of de reis naar het volgende adres.",
+  "serviceBufferError": "Moet een getal tussen 0 en 480 minuten zijn.",
+  "serviceSlotInterval": "Tijdraster",
+  "serviceSlotIntervalHint": "Hoe vaak de beschikbare starttijden beginnen.",
+  "serviceSlotInterval15": "15 minuten",
+  "serviceSlotInterval30": "30 minuten",
+  "serviceSlotInterval60": "60 minuten",
   "serviceBookingModeQuestion": "Hoe wordt het berekend?",
   "serviceBookingMode": {
     "priced": "Met prijs",
@@ -296,6 +306,8 @@
     "OPTION_PRICE_INVALID": "De prijs moet groter zijn dan nul.",
     "OPTION_ORDER_INVALID": "Deze volgorde kon niet worden opgeslagen. Probeer het opnieuw.",
     "OPTION_LAST_ONE": "Een gepubliceerde dienst kan niet zonder opties blijven.",
+    "SERVICE_NEEDS_MEMBER": "Deze dienst heeft minstens één persoon nodig die hem uitvoert.",
+    "MEMBER_NOT_IN_PROVIDER": "Deze persoon maakt niet meer deel uit van het team.",
     "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan een dienst publiceren, de publicatie ongedaan maken of archiveren."
   },

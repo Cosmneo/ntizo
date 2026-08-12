@@ -141,6 +141,9 @@ const cardinalityRow: ServiceOwnerRow = {
   imageKeys: [],
   sortOrder: 0,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  bufferMinutes: 0,
+  slotIntervalMinutes: 30,
+  memberIds: ["m1"],
   options: [
     {
       id: "o1",

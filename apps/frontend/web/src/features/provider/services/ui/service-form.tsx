@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, X } from "lucide-react";
-import { Badge, Button, Input, Select, Sheet, SheetContent, cn } from "@ntizo/frontend-ui";
+import { Badge, Button, Checkbox, Input, Select, Sheet, SheetContent, cn } from "@ntizo/frontend-ui";
 import type { ServiceStatus } from "@ntizo/shared";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { isIndividualProvider } from "@/features/provider/availability/domain/types";
+import { useAvailabilityConfig } from "@/features/provider/availability/viewmodel/use-availability";
 import { useServices } from "../viewmodel/use-services";
 import { useCategoryOptions, useSaveService, useSetServiceStatus } from "../viewmodel/use-service-editor";
 import { OptionsEditor } from "./options-editor";
@@ -12,8 +15,12 @@ import {
   draftFrom,
   emptyDraft,
   IN_PERSON_LOCATION_TYPES,
+  parseBufferMinutes,
+  serviceDraftErrors,
   serviceLifecycle,
+  SLOT_INTERVAL_OPTIONS,
   type ServiceDraft,
+  type SlotIntervalMinutes,
 } from "../domain/service-draft";
 import { STATUS_TONE, type ProviderService } from "../domain/types";
 
@@ -59,10 +66,22 @@ export function ServiceFormSheet({
   // added here shows up there the moment the sheet closes, and so this sheet
   // can read the freshly created service back without a query of its own.
   const servicesQuery = useServices(providerId);
+  // Backs the "who does this" checkbox list — the same query and domain
+  // predicate the availability screen already built (see that feature's
+  // `domain/types.ts`), not a second copy of either. Started unconditionally
+  // (not gated on `open`) so it has usually already resolved by the time a
+  // provider opens this sheet.
+  const availabilityQuery = useAvailabilityConfig(providerId);
+  const currentUser = useCurrentUser();
 
   const [draft, setDraft] = useState<ServiceDraft>(emptyDraft);
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Kept apart from `error` (the top banner) on purpose: `SERVICE_NEEDS_MEMBER`
+  // and `MEMBER_NOT_IN_PROVIDER` are about one specific field, not the save
+  // as a whole, and the design calls for the refusal to appear under that
+  // field rather than as a generic "something went wrong".
+  const [memberError, setMemberError] = useState<string | null>(null);
   const [translationsOpen, setTranslationsOpen] = useState(false);
   // Which of the two top-level answers is showing, tracked apart from
   // `draft.locationType`: that field alone cannot tell "never answered"
@@ -72,6 +91,19 @@ export function ServiceFormSheet({
   // the unanswered state, and both steps would appear before either had been
   // picked.
   const [locationChoice, setLocationChoice] = useState<"remote" | "in_person" | "">("");
+
+  const availability = availabilityQuery.data;
+  // One member means the question has one answer and asking it is noise —
+  // the same predicate and the same one-member read `AvailabilityPage`
+  // already uses for its own person picker. Defaults to `true` (hidden)
+  // while the config is still loading, so the checkbox list never flashes
+  // briefly empty before its first real answer arrives.
+  const individualProvider = availability ? isIndividualProvider(availability) : true;
+  const currentUserId = currentUser.data?.id ?? null;
+  const creatorMemberId =
+    availability && currentUserId
+      ? (availability.members.find((m) => m.userId === currentUserId)?.memberId ?? null)
+      : null;
 
   // Reset every time the sheet opens, so yesterday's half-typed service does
   // not appear inside today's, the same rule the category form follows.
@@ -86,17 +118,37 @@ export function ServiceFormSheet({
       // The language the provider is writing in defaults to whatever they are
       // reading the console in — not the platform default, which for someone
       // working in French would silently start the service in Portuguese.
-      setDraft({ ...emptyDraft(), sourceLocale: locale as ServiceDraft["sourceLocale"] });
+      // `creatorMemberId` pre-ticks whoever is opening this sheet, mirroring
+      // what the server does anyway the moment the service is created — see
+      // the backfill effect below for the case where this query hasn't
+      // resolved yet at the moment this one runs.
+      setDraft({
+        ...emptyDraft(creatorMemberId ?? undefined),
+        sourceLocale: locale as ServiceDraft["sourceLocale"],
+      });
       setServiceId(null);
       setLocationChoice("");
     }
     setError(null);
+    setMemberError(null);
     // Closed alongside the form it lives behind — reopening the form to a
     // different service must not leave last time's translations sheet open
     // over it.
     setTranslationsOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
+
+  // Backfills the creating member once `useAvailabilityConfig` resolves
+  // after this sheet has already opened on a brand-new, still-untouched
+  // draft. The effect above runs once per `open`/`editing` change and can
+  // fire before that query — started the moment this component mounts, not
+  // gated on `open` — has its first answer; without this, opening the sheet
+  // quickly enough would leave `memberIds` empty even though the creator is
+  // known moments later.
+  useEffect(() => {
+    if (!open || editing || serviceId || !creatorMemberId) return;
+    setDraft((d) => (d.memberIds.length === 0 ? { ...d, memberIds: [creatorMemberId] } : d));
+  }, [open, editing, serviceId, creatorMemberId]);
 
   const current = serviceId
     ? (servicesQuery.data?.find((s) => s.id === serviceId) ?? null)
@@ -109,12 +161,27 @@ export function ServiceFormSheet({
   // directly (so there is one place, not several, that could drift).
   const lifecycle = serviceLifecycle({ serviceId, bookingMode: draft.bookingMode });
 
-  const ready = canSubmit(draft) && !save.isPending;
+  // `current?.status`, the *live* status from the services list this sheet
+  // shares its cache with — not `editing?.status`, which is only ever what
+  // the sheet happened to open with. A version of this that read `editing`
+  // would leave the performer requirement disengaged for the rest of the
+  // same session right after a same-session publish, the exact class of bug
+  // `serviceLifecycle`'s own doc comment already warns about for
+  // `canChangeBookingMode`.
+  const published = current?.status === "published";
+  const draftCtx = { individualProvider, published };
+  const fieldErrors = serviceDraftErrors(draft, draftCtx);
+  const membersErrorMessage = fieldErrors.memberIds
+    ? t(`serviceError.${fieldErrors.memberIds}`)
+    : (memberError ?? undefined);
+
+  const ready = canSubmit(draft, draftCtx) && !save.isPending;
 
   async function submit() {
-    if (!canSubmit(draft) || draft.locationType === "") return;
+    if (!canSubmit(draft, draftCtx) || draft.locationType === "") return;
     const locationType = draft.locationType;
     setError(null);
+    setMemberError(null);
     try {
       const id = await save.mutateAsync({
         // `bookingMode` is only read on the create path (see `useSaveService`)
@@ -129,10 +196,19 @@ export function ServiceFormSheet({
         bookingMode: draft.bookingMode,
         name: draft.name.trim(),
         description: draft.description.trim() || null,
+        bufferMinutes: draft.bufferMinutes,
+        slotIntervalMinutes: draft.slotIntervalMinutes,
+        memberIds: draft.memberIds,
+        skipMembers: individualProvider,
       });
       setServiceId(id);
     } catch (e) {
-      setError(serverErrorMessage(e, t));
+      const code = (e as { code?: string }).code;
+      if (code === "SERVICE_NEEDS_MEMBER" || code === "MEMBER_NOT_IN_PROVIDER") {
+        setMemberError(serverErrorMessage(e, t));
+      } else {
+        setError(serverErrorMessage(e, t));
+      }
     }
   }
 
@@ -287,6 +363,78 @@ export function ServiceFormSheet({
               />
             )}
 
+            {/* Hidden entirely for an individual provider: one member means
+                the question has one answer, and asking it is noise. The
+                workspace's member list comes from `availability.config`, the
+                same query and the same `AvailabilityMember` shape the
+                availability screen already uses — not a second copy of
+                either. */}
+            {!individualProvider && (
+              <Field
+                label={t("serviceMembersQuestion")}
+                hint={t("serviceMembersHint")}
+                error={membersErrorMessage}
+              >
+                <div className="grid gap-2">
+                  {(availability?.members ?? []).map((member) => (
+                    <label key={member.memberId} className="flex items-center gap-2.5">
+                      <Checkbox
+                        checked={draft.memberIds.includes(member.memberId)}
+                        onChange={(e) => {
+                          setMemberError(null);
+                          setDraft((d) => ({
+                            ...d,
+                            memberIds: e.target.checked
+                              ? [...d.memberIds, member.memberId]
+                              : d.memberIds.filter((id) => id !== member.memberId),
+                          }));
+                        }}
+                      />
+                      <span className="type-body">{member.name ?? member.userId}</span>
+                    </label>
+                  ))}
+                </div>
+              </Field>
+            )}
+
+            <Field
+              label={t("serviceBuffer")}
+              hint={fieldErrors.bufferMinutes ? undefined : t("serviceBufferHint")}
+              error={fieldErrors.bufferMinutes ? t("serviceBufferError") : undefined}
+            >
+              <Input
+                id="service-buffer"
+                inputMode="numeric"
+                // `0` renders as an empty box, not the digit "0" — the
+                // buffer's own default is a real, legitimate zero, but
+                // showing it as literal "0" would make an untouched field
+                // indistinguishable from one the person had to clear first.
+                // See `parseBufferMinutes`'s own doc comment for the other
+                // half of this: typing never produces `NaN`, so this input
+                // never round-trips that text back onto itself either.
+                value={draft.bufferMinutes === 0 ? "" : String(draft.bufferMinutes)}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, bufferMinutes: parseBufferMinutes(e.target.value) }))
+                }
+                placeholder="0"
+              />
+            </Field>
+
+            <Field label={t("serviceSlotInterval")} hint={t("serviceSlotIntervalHint")}>
+              <Select
+                id="service-slot-interval"
+                value={String(draft.slotIntervalMinutes)}
+                onChange={(v) =>
+                  setDraft((d) => ({ ...d, slotIntervalMinutes: Number(v) as SlotIntervalMinutes }))
+                }
+                options={SLOT_INTERVAL_OPTIONS.map((n) => ({
+                  value: String(n),
+                  label: t(`serviceSlotInterval${n}`),
+                }))}
+                ariaLabel={t("serviceSlotInterval")}
+              />
+            </Field>
+
             {/* Fixed at creation: `service.update` has no field for it, because
                 changing it out from under a service that already has priced
                 options (or a quote form) would leave one of the two in a shape
@@ -368,10 +516,13 @@ function serverErrorMessage(e: unknown, t: (key: string, opts?: Record<string, u
 function Field({
   label,
   hint,
+  error,
   children,
 }: {
   label: string;
   hint?: string;
+  /** Takes over the hint's spot when present — the same priority `OptionField` gives an option's own field errors. */
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -380,7 +531,9 @@ function Field({
         {label}
       </span>
       {children}
-      {hint && (
+      {error ? (
+        <span className="type-caption text-[var(--color-destructive)]">{error}</span>
+      ) : hint && (
         <span className="type-caption text-[var(--color-muted-foreground)]">
           {hint}
         </span>

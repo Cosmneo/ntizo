@@ -7,6 +7,12 @@ import {
 } from "@ntizo/shared";
 import type { ProviderService, ServiceOption } from "./types";
 
+/** What `service.update`/`service.create` accept for the grid — the DB's own check constraint mirrored client-side. */
+export type SlotIntervalMinutes = 15 | 30 | 60;
+
+/** The three grids, in the order the select offers them. */
+export const SLOT_INTERVAL_OPTIONS: readonly SlotIntervalMinutes[] = [15, 30, 60];
+
 /**
  * The form's own copy of a service, before it exists on the server.
  *
@@ -24,9 +30,35 @@ export interface ServiceDraft {
   description: string;
   locationType: ServiceLocationType | "";
   bookingMode: ServiceBookingMode;
+  /**
+   * Dead time after an appointment, in minutes — cleanup, or the journey to
+   * the next address. A plain number, not a string like `OptionDraft`'s
+   * amount fields: unlike a currency amount, `0` is itself the correct
+   * default (no buffer), not a placeholder for "not yet typed", so there is
+   * no separate empty state to preserve between the draft and the input.
+   */
+  bufferMinutes: number;
+  /** The grid offered start times land on, anchored to local midnight. */
+  slotIntervalMinutes: SlotIntervalMinutes;
+  /**
+   * Who performs this service — `provider_member.id`s. Empty is a real,
+   * submittable state for a draft or for an individual provider (one member,
+   * nothing to choose between); only a published organization service
+   * refuses it, and only server-side/`serviceDraftErrors` decide that, not
+   * this field's shape.
+   */
+  memberIds: string[];
 }
 
-export function emptyDraft(): ServiceDraft {
+/**
+ * A brand-new draft. `creatorMemberId`, when known, pre-ticks the person
+ * creating the service — the same "whoever creates it performs it" default
+ * `CreateServiceCommand` applies server-side (see that command's own doc
+ * comment). Left empty when the caller doesn't know it yet (the availability
+ * config it comes from is still loading); `ServiceFormSheet` fills it in
+ * itself once that resolves, for a draft that hasn't been touched.
+ */
+export function emptyDraft(creatorMemberId?: string): ServiceDraft {
   return {
     categoryId: "",
     sourceLocale: DEFAULT_LOCALE,
@@ -34,6 +66,9 @@ export function emptyDraft(): ServiceDraft {
     description: "",
     locationType: "",
     bookingMode: "priced",
+    bufferMinutes: 0,
+    slotIntervalMinutes: 30,
+    memberIds: creatorMemberId ? [creatorMemberId] : [],
   };
 }
 
@@ -47,22 +82,87 @@ export function draftFrom(service: ProviderService): ServiceDraft {
     description: source?.description ?? "",
     locationType: service.locationType,
     bookingMode: service.bookingMode,
+    bufferMinutes: service.bufferMinutes,
+    slotIntervalMinutes: service.slotIntervalMinutes,
+    memberIds: service.memberIds,
   };
+}
+
+/**
+ * The buffer input's raw text, parsed to a whole number of minutes.
+ *
+ * An empty field reads as `0` — the same "no buffer" the draft already
+ * starts with — never `NaN`. A bare `Number(...)`/`parseInt(...)` on an
+ * empty string, or on anything that isn't a plain integer, produces `NaN`,
+ * which is falsy in every range check that matters (`NaN > 480` is `false`
+ * too, so an invalid value could slip past validation silently) and renders
+ * back into the input as the literal text "NaN" the moment it round-trips.
+ * Deliberately not clamped to [0, 480] here — a typed `500` has to survive
+ * into the draft as `500` so `serviceDraftErrors` has something to refuse;
+ * clamping here would make that refusal unreachable.
+ */
+export function parseBufferMinutes(raw: string): number {
+  const trimmed = raw.trim();
+  if (trimmed === "") return 0;
+  const n = Number(trimmed);
+  return Number.isInteger(n) ? n : 0;
+}
+
+/** Which of the draft's fields would be refused, and why. Empty means ready to submit. */
+export type ServiceFieldErrors = Partial<Record<"bufferMinutes" | "memberIds", string>>;
+
+/**
+ * Context `canSubmit`/`serviceDraftErrors` need beyond the draft itself —
+ * neither lives on `ServiceDraft`, because both are facts about the
+ * *workspace* and the *service*, not about what's been typed into the form.
+ */
+export interface ServiceDraftContext {
+  /** One member total — nothing to choose between, so nobody performer is ever refused. */
+  individualProvider: boolean;
+  /** Whether the service being edited is already published. A draft, of either provider type, may have zero performers. */
+  published: boolean;
+}
+
+/** The default context for a brand-new, not-yet-published service — never blocked on performers. */
+const DEFAULT_CONTEXT: ServiceDraftContext = { individualProvider: true, published: false };
+
+/**
+ * Which of the draft's new fields are not fit to submit.
+ *
+ * `memberIds` mirrors `SetServiceMembersCommand`'s own `SERVICE_NEEDS_MEMBER`
+ * refusal — clearing the last performer of a service already on the
+ * marketplace is an edit whoever is making it can simply not make — so the
+ * same round trip the server would refuse never leaves this form. Checked
+ * only for an organization (an individual has one member and no choice to
+ * make) and only once the service is published (a draft may legitimately
+ * have nobody yet).
+ */
+export function serviceDraftErrors(
+  draft: Pick<ServiceDraft, "bufferMinutes" | "memberIds">,
+  ctx: ServiceDraftContext = DEFAULT_CONTEXT,
+): ServiceFieldErrors {
+  const errors: ServiceFieldErrors = {};
+  if (draft.bufferMinutes < 0 || draft.bufferMinutes > 480) errors.bufferMinutes = "range";
+  if (!ctx.individualProvider && ctx.published && draft.memberIds.length === 0) {
+    errors.memberIds = "SERVICE_NEEDS_MEMBER";
+  }
+  return errors;
 }
 
 /**
  * Whether the draft can be submitted.
  *
- * The same three rules the server enforces before it will publish, checked
- * here so the answer arrives before the round trip rather than as a red
- * message after it. `bookingMode` needs no check of its own — the draft
- * always carries a real value for it.
+ * The same rules the server enforces before it will publish, checked here so
+ * the answer arrives before the round trip rather than as a red message
+ * after it. `bookingMode` needs no check of its own — the draft always
+ * carries a real value for it.
  */
-export function canSubmit(draft: ServiceDraft): boolean {
+export function canSubmit(draft: ServiceDraft, ctx: ServiceDraftContext = DEFAULT_CONTEXT): boolean {
   return (
     draft.categoryId.trim().length > 0 &&
     draft.name.trim().length > 0 &&
-    draft.locationType !== ""
+    draft.locationType !== "" &&
+    Object.keys(serviceDraftErrors(draft, ctx)).length === 0
   );
 }
 
