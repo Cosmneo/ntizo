@@ -29,12 +29,20 @@ export interface ResolvedTranslation {
 export function resolveTranslation(
   rows: readonly TranslationRow[],
   locale: string,
+  /**
+   * Where to fall back when `locale` has no row.
+   *
+   * Defaults to the platform's locale, which is right for a category — that is
+   * content the platform owns. A service falls back to the locale its provider
+   * wrote in, which only the caller knows.
+   */
+  fallbackLocale: string = DEFAULT_LOCALE,
 ): ResolvedTranslation | null {
   const exact = rows.find((r) => r.locale === locale);
   if (exact) {
     return { name: exact.name, description: exact.description, isFallback: false };
   }
-  const base = rows.find((r) => r.locale === DEFAULT_LOCALE);
+  const base = rows.find((r) => r.locale === fallbackLocale);
   if (base) {
     return { name: base.name, description: base.description, isFallback: true };
   }

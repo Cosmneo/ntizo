@@ -121,3 +121,25 @@ describe("usableTranslations", () => {
     ]);
   });
 });
+
+describe("resolveTranslation with an explicit fallback", () => {
+  const rows = [
+    { locale: "pt-MZ", name: "Canalização", description: null },
+    { locale: "en-US", name: "Plumbing", description: null },
+  ];
+
+  it("falls back to the locale it was given, not to the platform default", () => {
+    // A service falls back to whatever its provider wrote in. A category falls
+    // back to the platform's own language. Same function, and the difference
+    // has to be the caller's to state.
+    expect(resolveTranslation(rows, "fr-FR", "en-US")).toEqual({
+      name: "Plumbing",
+      description: null,
+      isFallback: true,
+    });
+  });
+
+  it("still defaults to the platform locale when no fallback is given", () => {
+    expect(resolveTranslation(rows, "fr-FR")?.name).toBe("Canalização");
+  });
+});

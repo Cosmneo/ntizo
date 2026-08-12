@@ -567,3 +567,92 @@ Decided and not yet built:
   but no job compares them.
 
 **Trigger:** the booking + payment bounded context.
+
+## 27. The quote form has no editor
+
+The spec's Interface section agreed a `quote` service asks two things:
+"what to ask the customer, and the response window." `service_quote_form`
+ships with `responseHours` fixed at `48` and the three `ask*` booleans fixed
+at `true` for every quote service ever created — `Service.create` writes that
+literal object and nothing since has changed it. `service.update` accepts a
+`quoteForm` (now actually enforced against `bookingMode` — see the
+`QuoteFormNotAllowedError` guard added alongside this entry), but no frontend
+code sends one: the create form asks category, name, description, location
+and booking mode, and stops there.
+
+**Trigger:** slice 3, which reads `service_quote_form` to build the request
+form a customer sees.
+
+## 28. `save()` deletes and reinserts every option row on every write
+
+`DrizzleServiceRepository.save` deletes every `service_option` row for a
+service and reinserts the aggregate's current set, on every save — including
+a pure translation save, since `Service.setOptionTranslation` still goes
+through the same `save()`. The only FK child today is
+`service_option_translation`, which is rebuilt deliberately right after (the
+delete cascades, the insert repopulates), so nothing is lost. But the spec
+says slice 2's schedule hangs off the option, and the first cascade child
+attached to an option — a `service_schedule` row, a slot, anything with its
+own lifecycle — will be destroyed the next time a provider renames the
+service or edits an unrelated field.
+
+Also, because of the same delete-and-reinsert shape: `service_option.created_at`
+is written as the *service's* `createdAt`/`updatedAt` (`service.mapper.ts`'s
+`toPersistence` copies `json.createdAt`/`json.updatedAt` onto every option
+row), because the aggregate carries no per-option timestamps at all — and
+every surviving option's `updated_at` bumps on any unrelated save, since the
+row is dropped and reinserted with the service's current `updatedAt` whether
+that particular option changed or not.
+
+**Trigger:** before slice 2 attaches anything to an option.
+
+## 29. Dead surface on the branch
+
+Four things this slice built or inherited that nothing calls yet:
+
+- `ServiceRepositoryPort.delete` is implemented by `DrizzleServiceRepository`
+  and called by nothing — no command in `bounded-contexts/catalog/app`
+  reaches it. There is no "delete a service" use case, only archive.
+- `Service.removeTranslation` is called only by
+  `service.aggregate.test.ts`; no command exposes a way to remove one
+  language's translation once set.
+- `Service.update`'s `sortOrder` parameter is unreachable: `updateService`'s
+  GraphQL input carries `categoryId`, `locationType`, `imageKeys` and
+  `quoteForm`, never `sortOrder`, so `service.sort_order` and its
+  `(provider_id, sort_order)` index are permanently `0` for every service and
+  the provider's own list is really ordered by `created_at` (the read
+  projection's default order), not by anything the spec's index was built to
+  serve.
+- `BOOKING_PATHS`/`bookingPathSchema` in `packages/shared` have no consumer —
+  only a type-only import in `booking-summary.contract.ts`, itself part of a
+  bounded context that does not exist yet (booking is slice 4).
+
+**Trigger:** when the provider asks to reorder their services — that is what
+gives `sortOrder` a caller and makes the rest of this list worth revisiting
+alongside it.
+
+## 30. No customer-facing screen consumes `service.all`
+
+`public/catalog`'s `listServices` (`service.all`) is built, tested
+(`public/catalog/__tests__/list-services.test.ts`) and reachable over
+`/public/graphql` — but no frontend code calls it. The public read is
+reachable only by curl or a GraphQL client hitting the endpoint directly;
+there is no customer-facing route or component in
+`apps/frontend/web/src/features` that renders a published service.
+
+**Trigger:** the first customer-facing catalogue screen.
+
+## 31. `service.detail` and `service.bySlug` were in the spec's GraphQL surface and were not built
+
+The spec's GraphQL surface section lists `service.mine`, `service.detail`
+under private reads and `service.all`, `service.bySlug` under public reads.
+Only `service.mine` (`read/catalog`) and `service.all` (`public/catalog`)
+exist. Both omissions are individually defensible — a provider's own list
+doesn't yet need a single-service detail fetch when the list query returns
+full rows, and no public page exists yet to need a slug lookup (entry 30) —
+but neither was recorded as a deliberate cut until now, so a reader of the
+spec alone would expect four fields and find two.
+
+**Trigger:** whichever arrives first — a provider detail view that outgrows
+its list-query data, or the customer-facing screen from entry 30 needing a
+single service by slug.

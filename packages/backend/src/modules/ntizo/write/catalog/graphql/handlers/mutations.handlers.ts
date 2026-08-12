@@ -28,6 +28,19 @@ function requireAdmin(ctx: GraphQLHandlerContext): void {
   }
 }
 
+/**
+ * Refuses an anonymous caller; the workspace-membership check is the
+ * command's job, not the edge's, because it is a query and the kit's
+ * argsMapper is synchronous.
+ */
+function requireUser(ctx: GraphQLHandlerContext): string {
+  const { requesterUserId } = asNtizoGraphqlContext(ctx);
+  if (!requesterUserId) {
+    throw new ForbiddenError({ message: "Sign in to manage services", code: "UNAUTHENTICATED" });
+  }
+  return requesterUserId;
+}
+
 export function createCatalogWriteHandlers(mod: CatalogWriteModule) {
   const uc = mod.catalog.useCases;
 
@@ -45,5 +58,29 @@ export function createCatalogWriteHandlers(mod: CatalogWriteModule) {
       const { categoryId, ...rest } = args.input;
       return uc.updateCategory.execute({ categoryId, ...rest });
     })
+    .handle("service.create", async (args, ctx) =>
+      uc.createService.execute({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.update", async (args, ctx) =>
+      uc.updateService.execute({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.setStatus", async (args, ctx) =>
+      uc.setServiceStatus.execute({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.options.add", async (args, ctx) =>
+      uc.manageOptions.add({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.options.update", async (args, ctx) =>
+      uc.manageOptions.update({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.options.remove", async (args, ctx) =>
+      uc.manageOptions.remove({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.options.reorder", async (args, ctx) =>
+      uc.manageOptions.reorder({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
+    .handle("service.translation.set", async (args, ctx) =>
+      uc.setServiceTranslation.execute({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
     .build();
 }

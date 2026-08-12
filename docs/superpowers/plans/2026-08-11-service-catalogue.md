@@ -15,7 +15,7 @@
 - **Money is integers in minor units.** `bigint`, never a decimal or float. 300,50 MT is `30050`.
 - **Every domain refusal extends a kit error type** (`ConflictError`, `NotFoundError`, `UnprocessableError`, `ForbiddenError` from `@cosmneo/onion-lasagna`). A bare `Error` reaches the browser as "An unexpected error occurred" with code `INTERNAL_ERROR`. This has been got wrong three times on this project; every one was found by calling the endpoint, never by reading the code.
 - **A new Postgres schema must be registered in two places** — `packages/backend/src/modules/ntizo/drizzle.config.ts` `schemaFilter` and the database `index.ts`. `ntizo_catalog` is already in both; no new schema is needed here.
-- **Backend tests run under `bun:test`** (`import { describe, expect, it } from "bun:test"`). Frontend tests run under `vitest`. Using the wrong one fails typecheck.
+- **Test runner differs by package.** `packages/backend` uses `bun:test` (`import { describe, expect, it } from "bun:test"`). `packages/shared` and `apps/frontend/web` use `vitest`. Using the wrong one fails typecheck; check the package's own `test` script before writing the import.
 - **`zod.default()` does not survive into the GraphQL schema.** Use `.optional()` and apply the default in the handler's `argsMapper`.
 - **The kit's `argsMapper` is synchronous.** Any check needing a query goes in a `.handle()` body, not `handleWithUseCase`'s mapper.
 - **`ui/` may not import `data/`** — enforced by `eslint-plugin-boundaries`.
@@ -780,40 +780,40 @@ describe("promoteNextDefault", () => {
 
 describe("canPublish", () => {
   it("refuses a priced service with no options", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "priced",
         categoryId: "cat",
         hasSourceName: true,
         optionCount: 0,
       }),
-    ).toThrow(/SERVICE_NEEDS_OPTION/);
+    )).toBe("SERVICE_NEEDS_OPTION");
   });
 
   it("refuses a quote service that somehow has options", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "quote",
         categoryId: "cat",
         hasSourceName: true,
         optionCount: 1,
       }),
-    ).toThrow(/SERVICE_QUOTE_HAS_OPTIONS/);
+    )).toBe("SERVICE_QUOTE_HAS_OPTIONS");
   });
 
   it("refuses a service with no name in the locale it was written in", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "priced",
         categoryId: "cat",
         hasSourceName: false,
         optionCount: 1,
       }),
-    ).toThrow(/SERVICE_NAME_REQUIRED/);
+    )).toBe("SERVICE_NAME_REQUIRED");
   });
 
   it("accepts a priced service with a category, a name and one option", () => {
-    expect(() =>
+    expect(codeOf(() =>
       canPublish({
         bookingMode: "priced",
         categoryId: "cat",
@@ -1074,6 +1074,20 @@ Create `service.aggregate.test.ts`:
 import { describe, expect, it } from "bun:test";
 import { Service } from "../domain/aggregates/service.aggregate";
 
+/**
+ * The kit's errors carry `code` beside `message`, not inside it — so
+ * `toThrow(/CODE/)` matches nothing and passes or fails for the wrong reason.
+ * Assert on the code itself.
+ */
+const codeOf = (fn: () => void): unknown => {
+  try {
+    fn();
+  } catch (error) {
+    return (error as { code?: unknown }).code;
+  }
+  return undefined;
+};
+
 function newService(over: Partial<Parameters<typeof Service.create>[0]> = {}) {
   return Service.create({
     id: "svc-1",
@@ -1139,7 +1153,7 @@ describe("options", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.publish();
-    expect(() => s.removeOption("opt-1")).toThrow(/OPTION_LAST_ONE/);
+    expect(codeOf(() => s.removeOption("opt-1"))).toBe("OPTION_LAST_ONE");
   });
 
   it("allows a draft to be emptied", () => {
@@ -1152,7 +1166,7 @@ describe("options", () => {
 
   it("refuses an option on a quote service", () => {
     const s = newService({ bookingMode: "quote" });
-    expect(() => s.addOption(fixedOption)).toThrow(/SERVICE_QUOTE_HAS_OPTIONS/);
+    expect(codeOf(() => s.addOption(fixedOption))).toBe("SERVICE_QUOTE_HAS_OPTIONS");
   });
 
   it("refuses an hourly option carrying a duration", () => {
@@ -1165,13 +1179,13 @@ describe("options", () => {
         minMinutes: 120,
         stepMinutes: 60,
       }),
-    ).toThrow(/OPTION_DURATION_NOT_ALLOWED/);
+    )).toBe("OPTION_DURATION_NOT_ALLOWED");
   });
 });
 
 describe("publishing", () => {
   it("refuses a priced service with no options", () => {
-    expect(() => newService().publish()).toThrow(/SERVICE_NEEDS_OPTION/);
+    expect(codeOf(() => newService().publish())).toBe("SERVICE_NEEDS_OPTION");
   });
 
   it("publishes a quote service with none", () => {
@@ -1184,7 +1198,7 @@ describe("publishing", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.removeTranslation("pt-MZ");
-    expect(() => s.publish()).toThrow(/SERVICE_NAME_REQUIRED/);
+    expect(codeOf(() => s.publish())).toBe("SERVICE_NAME_REQUIRED");
   });
 });
 
@@ -3120,7 +3134,7 @@ English text rather than a guess, as the categories did.
 In the running app, on each of the list, the form and the sheet:
 
 ```js
-document.body.innerText.match(/service[A-Z]\w+|options[A-Z]\w+/g)
+document.body.innerText.match(/service[A-Z]\w+|option[A-Z]\w+/g)
 ```
 
 Expected: `null`. A missing key renders as the key and never fails a build —

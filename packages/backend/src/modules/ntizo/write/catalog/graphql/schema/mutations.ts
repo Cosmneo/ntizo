@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { LOCALES } from "@ntizo/shared";
+import {
+  LOCALES,
+  serviceBookingModeSchema,
+  serviceLocationTypeSchema,
+  servicePricingModeSchema,
+  serviceStatusSchema,
+  localeSchema,
+} from "@ntizo/shared";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
@@ -68,12 +75,150 @@ export const reorderCategories = defineMutation({
   docs: { summary: "Set the display order of every category", tags: ["Admin", "Catalog"] },
 });
 
+const optionShape = z.object({
+  pricingMode: servicePricingModeSchema,
+  amountMinor: z.number().int().min(1),
+  currency: z.string().length(3),
+  // Nullable, not merely optional: an hourly option must be able to say "no
+  // duration", and an optional-only field can say "leave it" but never
+  // "there is none".
+  durationMinutes: z.number().int().min(1).nullable(),
+  minMinutes: z.number().int().min(1).nullable(),
+  stepMinutes: z.number().int().min(1).nullable(),
+  name: z.string().trim().min(1).max(120),
+});
+
+export const createService = defineMutation({
+  input: zodSchema(
+    z.object({
+      providerId: z.string().min(1),
+      categoryId: z.string().min(1),
+      sourceLocale: localeSchema,
+      locationType: serviceLocationTypeSchema,
+      bookingMode: serviceBookingModeSchema,
+      name: z.string().trim().min(1).max(160),
+      description: z.string().trim().max(2000).nullable().optional(),
+    }),
+  ),
+  output: zodSchema(z.object({ serviceId: z.string().min(1) })),
+  docs: { summary: "Create a service", tags: ["Catalog"] },
+});
+
+export const updateService = defineMutation({
+  input: zodSchema(
+    z.object({
+      serviceId: z.string().min(1),
+      categoryId: z.string().min(1).optional(),
+      locationType: serviceLocationTypeSchema.optional(),
+      imageKeys: z.array(z.string().max(300)).optional(),
+      quoteForm: z
+        .object({
+          responseHours: z.number().int().min(1).max(720),
+          askDeadline: z.boolean(),
+          askPhotos: z.boolean(),
+          askLocation: z.boolean(),
+          intro: z.string().trim().max(400).nullable(),
+        })
+        .optional(),
+    }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Update a service", tags: ["Catalog"] },
+});
+
+export const setServiceStatus = defineMutation({
+  input: zodSchema(
+    z.object({ serviceId: z.string().min(1), status: serviceStatusSchema }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Publish, unpublish or archive a service", tags: ["Catalog"] },
+});
+
+export const addServiceOption = defineMutation({
+  input: zodSchema(optionShape.extend({ serviceId: z.string().min(1) })),
+  output: zodSchema(z.object({ optionId: z.string().min(1) })),
+  docs: { summary: "Add an option to a service", tags: ["Catalog"] },
+});
+
+export const updateServiceOption = defineMutation({
+  input: zodSchema(
+    optionShape.partial().extend({
+      serviceId: z.string().min(1),
+      optionId: z.string().min(1),
+      isDefault: z.boolean().optional(),
+      // `isActive` deliberately not accepted here: nothing on the server
+      // honours it yet — not `listPublished`'s default-option lookup, not
+      // `canPublish`'s option count, and the public read model has no field
+      // for it. Accepting it would let a caller reach a state nothing reads
+      // correctly. Honouring it properly (and giving the provider a control
+      // for it) is slice 2 scope; the column and `Service.updateOption`'s
+      // handling of it are untouched.
+    }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Update an option", tags: ["Catalog"] },
+});
+
+export const removeServiceOption = defineMutation({
+  input: zodSchema(
+    z.object({ serviceId: z.string().min(1), optionId: z.string().min(1) }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Remove an option", tags: ["Catalog"] },
+});
+
+export const reorderServiceOptions = defineMutation({
+  input: zodSchema(
+    z.object({
+      serviceId: z.string().min(1),
+      orderedIds: z.array(z.string().min(1)).min(1).max(100),
+    }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Set the display order of a service's options", tags: ["Catalog"] },
+});
+
+export const setServiceTranslation = defineMutation({
+  input: zodSchema(
+    z.object({
+      serviceId: z.string().min(1),
+      /** Present to translate an option's name; absent for the service's own. */
+      optionId: z.string().min(1).optional(),
+      locale: localeSchema,
+      name: z.string().trim().min(1).max(160),
+      // Nullable, but not `.optional()` — unlike the rest of this file. This
+      // mutation is a full set of the translation row, not a patch:
+      // `Service.setTranslation` has no "leave the description alone" path,
+      // so a rename-only call that let `description` default away would
+      // silently discard whatever was saved. Same reasoning as the option's
+      // `durationMinutes`/`minMinutes`/`stepMinutes` and `quoteForm.intro`
+      // above — every caller states its intent, even when the intent is
+      // "there is none".
+      description: z.string().trim().max(2000).nullable(),
+    }),
+  ),
+  output: zodSchema(z.object({ ok: z.literal(true) })),
+  docs: { summary: "Write one language's copy for a service", tags: ["Catalog"] },
+});
+
 export const catalogWriteSchema = defineGraphQLSchema(
   {
     category: {
       create: createCategory,
       update: updateCategory,
       reorder: reorderCategories,
+    },
+    service: {
+      create: createService,
+      update: updateService,
+      setStatus: setServiceStatus,
+      options: {
+        add: addServiceOption,
+        update: updateServiceOption,
+        remove: removeServiceOption,
+        reorder: reorderServiceOptions,
+      },
+      translation: { set: setServiceTranslation },
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

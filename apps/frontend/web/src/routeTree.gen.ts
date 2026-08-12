@@ -47,6 +47,7 @@ import { Route as AdminProvidersIndexRouteImport } from './routes/admin/provider
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
 import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
 import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
+import { Route as ProviderSlugServicesRouteImport } from './routes/provider/$slug/services'
 import { Route as ProviderSlugSettingsRouteImport } from './routes/provider/$slug/settings'
 import { Route as ProviderSlugWalletRouteImport } from './routes/provider/$slug/wallet'
 
@@ -243,6 +244,11 @@ const ProviderSlugOverviewRoute = ProviderSlugOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => ProviderSlugRouteRoute,
 } as any)
+const ProviderSlugServicesRoute = ProviderSlugServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
 const ProviderSlugSettingsRoute = ProviderSlugSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
+  '/provider/$slug/services': typeof ProviderSlugServicesRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account/': typeof CustomerAccountIndexRoute
@@ -326,6 +333,7 @@ export interface FileRoutesByTo {
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
+  '/provider/$slug/services': typeof ProviderSlugServicesRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account': typeof CustomerAccountIndexRoute
@@ -369,6 +377,7 @@ export interface FileRoutesById {
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
+  '/provider/$slug/services': typeof ProviderSlugServicesRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/_customer/account/': typeof CustomerAccountIndexRoute
@@ -411,6 +420,7 @@ export interface FileRouteTypes {
     | '/admin/providers/$providerId'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
+    | '/provider/$slug/services'
     | '/provider/$slug/settings'
     | '/provider/$slug/wallet'
     | '/account/'
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/admin/providers/$providerId'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
+    | '/provider/$slug/services'
     | '/provider/$slug/settings'
     | '/provider/$slug/wallet'
     | '/account'
@@ -490,6 +501,7 @@ export interface FileRouteTypes {
     | '/admin/providers/$providerId'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
+    | '/provider/$slug/services'
     | '/provider/$slug/settings'
     | '/provider/$slug/wallet'
     | '/_customer/account/'
@@ -778,6 +790,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProviderSlugOverviewRouteImport
       parentRoute: typeof ProviderSlugRouteRoute
     }
+    '/provider/$slug/services': {
+      id: '/provider/$slug/services'
+      path: '/services'
+      fullPath: '/provider/$slug/services'
+      preLoaderRoute: typeof ProviderSlugServicesRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
     '/provider/$slug/settings': {
       id: '/provider/$slug/settings'
       path: '/settings'
@@ -881,6 +900,7 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 interface ProviderSlugRouteRouteChildren {
   ProviderSlugMembersRoute: typeof ProviderSlugMembersRoute
   ProviderSlugOverviewRoute: typeof ProviderSlugOverviewRoute
+  ProviderSlugServicesRoute: typeof ProviderSlugServicesRoute
   ProviderSlugSettingsRoute: typeof ProviderSlugSettingsRoute
   ProviderSlugWalletRoute: typeof ProviderSlugWalletRoute
 }
@@ -888,6 +908,7 @@ interface ProviderSlugRouteRouteChildren {
 const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
   ProviderSlugMembersRoute: ProviderSlugMembersRoute,
   ProviderSlugOverviewRoute: ProviderSlugOverviewRoute,
+  ProviderSlugServicesRoute: ProviderSlugServicesRoute,
   ProviderSlugSettingsRoute: ProviderSlugSettingsRoute,
   ProviderSlugWalletRoute: ProviderSlugWalletRoute,
 }
