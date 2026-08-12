@@ -88,6 +88,13 @@ export function ChoiceChips({
 }) {
   const errorId = `${name}-error`;
   return (
+    // `role="radiogroup"` is explicit because a bare `<fieldset>` maps to
+    // the accessible role `group`, not `radiogroup` — without it,
+    // `getByRole("radiogroup", { name })` (and any AT relying on that role)
+    // finds nothing. This is not the hand-rolled-ARIA pattern the file doc
+    // comment warns against: it names the group for its accessible-name
+    // contract and touches neither keyboard handling nor focus, both of
+    // which stay entirely native.
     <fieldset role="radiogroup" aria-describedby={error ? errorId : undefined}>
       <ChipLegend legend={legend} showLegend={showLegend} />
       <div className="flex flex-wrap gap-2">

@@ -63,6 +63,17 @@ describe("ChoiceChips (single)", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  // jsdom loads no stylesheet, so a `display:none`/`visibility:hidden` class
+  // is invisible to it — the tab-stop tests above pass whether the input is
+  // actually clipped or actually removed from the tab order, because jsdom
+  // never sees the CSS that would make the difference. This asserts the
+  // class contract directly instead: `sr-only` is a promise about how the
+  // input is hidden, not just that it is, and only this test enforces it.
+  test("the input is clipped, not display:none — anything else drops it from the tab order", () => {
+    render(<ChoiceChips name="where" legend="Where" options={OPTIONS} value={null} onChange={() => {}} />);
+    expect(screen.getByRole("radio", { name: "At the customer" })).toHaveClass("sr-only");
+  });
+
   test("an error is announced with the group", () => {
     render(<ChoiceChips name="where" legend="Where" options={OPTIONS} value={null} onChange={() => {}} error="Pick one" />);
     expect(screen.getByRole("radiogroup", { name: /Where/ })).toHaveAccessibleDescription("Pick one");
@@ -103,5 +114,13 @@ describe("ChoiceChipsMulti", () => {
     screen.getByRole("checkbox", { name: "At my place" }).focus();
     await userEvent.keyboard(" ");
     expect(onChange).toHaveBeenCalledWith(["b"]);
+  });
+
+  // Same reasoning as the single-select block: the tab-stop test can't see
+  // a CSS-visibility regression in jsdom, so the `sr-only` class itself is
+  // the thing under test here.
+  test("the input is clipped, not display:none — anything else drops it from the tab order", () => {
+    render(<ChoiceChipsMulti name="langs" legend="Languages" options={OPTIONS} value={[]} onChange={() => {}} />);
+    expect(screen.getByRole("checkbox", { name: "At the customer" })).toHaveClass("sr-only");
   });
 });
