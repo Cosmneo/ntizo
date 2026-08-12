@@ -398,6 +398,7 @@
     "EXCEPTION_SHAPE_INVALID": "Questa eccezione di data non può essere usata.",
     "MEMBER_NOT_IN_PROVIDER": "Questa persona non fa più parte di questa attività.",
     "TIMEZONE_INVALID": "Questo fuso orario non è riconosciuto.",
+    "NOT_PROVIDER_MEMBER": "Non hai accesso a questa attività.",
     "NOT_SELF_OR_PROVIDER_OWNER_OR_ADMIN": "Puoi modificare solo la tua disponibilità, a meno che tu non sia il proprietario o un amministratore.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo il proprietario dell'attività o un amministratore può farlo.",
     "CLOSURE_RANGE_INVALID": "Questo periodo di chiusura non può essere usato.",

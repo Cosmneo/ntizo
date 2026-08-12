@@ -398,6 +398,7 @@
     "EXCEPTION_SHAPE_INVALID": "Esta excepção não é válida.",
     "MEMBER_NOT_IN_PROVIDER": "Esta pessoa já não faz parte deste negócio.",
     "TIMEZONE_INVALID": "Esse fuso horário não é reconhecido.",
+    "NOT_PROVIDER_MEMBER": "Não tem acesso a este negócio.",
     "NOT_SELF_OR_PROVIDER_OWNER_OR_ADMIN": "Só pode editar a sua própria disponibilidade, a não ser que seja proprietário ou administrador.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Só o proprietário do negócio ou um administrador pode fazer isto.",
     "CLOSURE_RANGE_INVALID": "Esse período de encerramento não é válido.",

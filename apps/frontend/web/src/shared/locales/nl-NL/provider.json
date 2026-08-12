@@ -398,6 +398,7 @@
     "EXCEPTION_SHAPE_INVALID": "Deze datumuitzondering kan niet worden gebruikt.",
     "MEMBER_NOT_IN_PROVIDER": "Deze persoon maakt geen deel meer uit van dit bedrijf.",
     "TIMEZONE_INVALID": "Die tijdzone wordt niet herkend.",
+    "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf.",
     "NOT_SELF_OR_PROVIDER_OWNER_OR_ADMIN": "Je kunt alleen je eigen beschikbaarheid bewerken, tenzij je eigenaar of beheerder bent.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan dit doen.",
     "CLOSURE_RANGE_INVALID": "Deze sluitingsperiode kan niet worden gebruikt.",

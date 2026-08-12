@@ -32,6 +32,8 @@
   "availabilityQuoteNotice": "This service is priced by quote. Contact the provider to get a price before it can be scheduled.",
   "availabilityForServiceErrorGeneric": "We couldn't load this service's availability right now.",
   "availabilityForServiceError": {
-    "SERVICE_NOT_FOUND": "This service isn't available anymore."
+    "SERVICE_NOT_FOUND": "This service isn't available anymore.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "That date range is too wide. Try a shorter one.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "That person no longer offers this service."
   }
 }

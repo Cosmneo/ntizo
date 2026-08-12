@@ -398,6 +398,7 @@
     "EXCEPTION_SHAPE_INVALID": "Diese Datumsausnahme kann nicht verwendet werden.",
     "MEMBER_NOT_IN_PROVIDER": "Diese Person gehört nicht mehr zu diesem Betrieb.",
     "TIMEZONE_INVALID": "Diese Zeitzone wird nicht erkannt.",
+    "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf diesen Betrieb.",
     "NOT_SELF_OR_PROVIDER_OWNER_OR_ADMIN": "Sie können nur Ihre eigene Verfügbarkeit bearbeiten, außer Sie sind Inhaber oder Administrator.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Betriebs oder ein Administrator kann das tun.",
     "CLOSURE_RANGE_INVALID": "Dieser Schließungszeitraum kann nicht verwendet werden.",

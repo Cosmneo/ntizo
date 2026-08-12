@@ -32,6 +32,8 @@
   "availabilityQuoteNotice": "Questo servizio è offerto su preventivo. Contatta il fornitore per ottenere un prezzo prima di poterlo prenotare.",
   "availabilityForServiceErrorGeneric": "Non è stato possibile caricare la disponibilità di questo servizio in questo momento.",
   "availabilityForServiceError": {
-    "SERVICE_NOT_FOUND": "Questo servizio non è più disponibile."
+    "SERVICE_NOT_FOUND": "Questo servizio non è più disponibile.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "Questo intervallo di date è troppo ampio. Prova un intervallo più breve.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Questa persona non offre più questo servizio."
   }
 }

@@ -32,6 +32,8 @@
   "availabilityQuoteNotice": "Deze dienst wordt op offerte geprijsd. Neem contact op met de aanbieder voor een prijs voordat deze kan worden ingepland.",
   "availabilityForServiceErrorGeneric": "De beschikbaarheid van deze dienst kon nu niet worden geladen.",
   "availabilityForServiceError": {
-    "SERVICE_NOT_FOUND": "Deze dienst is niet meer beschikbaar."
+    "SERVICE_NOT_FOUND": "Deze dienst is niet meer beschikbaar.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "Deze periode is te lang. Probeer een kortere periode.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Deze persoon biedt deze dienst niet meer aan."
   }
 }

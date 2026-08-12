@@ -32,6 +32,8 @@
   "availabilityQuoteNotice": "Este serviço é cotado sob orçamento. Contacte o prestador para obter um preço antes de poder ser agendado.",
   "availabilityForServiceErrorGeneric": "Não foi possível carregar a disponibilidade deste serviço agora.",
   "availabilityForServiceError": {
-    "SERVICE_NOT_FOUND": "Este serviço já não está disponível."
+    "SERVICE_NOT_FOUND": "Este serviço já não está disponível.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "Esse intervalo de datas é demasiado longo. Tente um mais curto.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Essa pessoa já não presta este serviço."
   }
 }

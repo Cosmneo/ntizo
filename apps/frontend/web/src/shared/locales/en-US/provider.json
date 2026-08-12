@@ -398,6 +398,7 @@
     "EXCEPTION_SHAPE_INVALID": "That date exception can't be used.",
     "MEMBER_NOT_IN_PROVIDER": "This person is no longer part of this business.",
     "TIMEZONE_INVALID": "That timezone isn't recognized.",
+    "NOT_PROVIDER_MEMBER": "You don't have access to this business.",
     "NOT_SELF_OR_PROVIDER_OWNER_OR_ADMIN": "You can only edit your own availability, unless you're the owner or an admin.",
     "NOT_PROVIDER_OWNER_OR_ADMIN": "Only the business's owner or an admin can do this.",
     "CLOSURE_RANGE_INVALID": "That closure period can't be used.",

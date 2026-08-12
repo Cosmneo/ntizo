@@ -29,9 +29,11 @@
   "availabilityNextWeek": "Nächste Woche",
   "availabilityDayEmpty": "An diesem Tag sind keine Zeiten frei.",
   "availabilityLengthLabel": "Dauer",
-  "availabilityQuoteNotice": "Dieser Dienst wird auf Anfrage kalkuliert. Wende dich an den Anbieter, um einen Preis zu bekommen, bevor er gebucht werden kann.",
-  "availabilityForServiceErrorGeneric": "Die Verfügbarkeit dieses Dienstes konnte gerade nicht geladen werden.",
+  "availabilityQuoteNotice": "Diese Leistung wird auf Anfrage kalkuliert. Wende dich an den Anbieter, um einen Preis zu bekommen, bevor sie gebucht werden kann.",
+  "availabilityForServiceErrorGeneric": "Die Verfügbarkeit dieser Leistung konnte gerade nicht geladen werden.",
   "availabilityForServiceError": {
-    "SERVICE_NOT_FOUND": "Dieser Dienst ist nicht mehr verfügbar."
+    "SERVICE_NOT_FOUND": "Diese Leistung ist nicht mehr verfügbar.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "Dieser Zeitraum ist zu groß. Versuch einen kürzeren.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Diese Person bietet diese Leistung nicht mehr an."
   }
 }
