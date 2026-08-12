@@ -430,5 +430,8 @@
     "house-closure": "Casa fechada",
     "member-closed": "Folga",
     "no-rule": "Sem horário"
-  }
+  },
+  "availabilityPreviewScope": "Mostrar",
+  "availabilityPreviewScopeMember": "Esta pessoa",
+  "availabilityPreviewScopeTeam": "Equipa toda"
 }

@@ -430,5 +430,8 @@
     "house-closure": "Gesloten",
     "member-closed": "Vrije dag",
     "no-rule": "Geen uren ingesteld"
-  }
+  },
+  "availabilityPreviewScope": "Tonen",
+  "availabilityPreviewScopeMember": "Deze persoon",
+  "availabilityPreviewScopeTeam": "Hele team"
 }

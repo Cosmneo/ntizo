@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { addDays, weekdayOf } from "@ntizo/shared/datetime";
 import { Loader2 } from "lucide-react";
-import { Button, Input, Select, type SelectOption } from "@ntizo/frontend-ui";
+import { Button, ChoiceChips, Input, Select, type SelectOption } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
@@ -15,6 +16,8 @@ import { useAvailabilityConfig, useSetProviderTimezone } from "../viewmodel/use-
 import { WeekEditor } from "./week-editor";
 import { ExceptionsPanel } from "./exceptions-panel";
 import { ClosuresPanel } from "./closures-panel";
+import { WeekPreview } from "./week-preview";
+import { mergeWeeks, previewWeek, weekDates } from "../domain/preview";
 
 /**
  * A provider's availability: when they (or, for an organization, each
@@ -27,13 +30,16 @@ import { ClosuresPanel } from "./closures-panel";
  * "staff" never has a reason to appear on this screen for them.
  */
 export function AvailabilityPage() {
-  const { t } = useTranslation("provider");
+  const { t, i18n } = useTranslation("provider");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
   const { activeProvider } = useActiveProvider();
   const query = useAvailabilityConfig(activeProvider?.id);
   const currentUser = useCurrentUser();
 
   usePageHeader(t("nav.availability"), activeProvider?.name);
 
+  const [mondayIso, setMondayIso] = useState<string>(() => thisMonday());
+  const [scope, setScope] = useState<"member" | "team">("member");
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const config = query.data;
@@ -78,8 +84,55 @@ export function AvailabilityPage() {
     hint: t(`peopleRoles.${m.role}`, { defaultValue: m.role }),
   }));
 
+  const dates = weekDates(mondayIso);
+  // The team view is the union of everyone's working time — when the business
+  // is reachable at all. It never appears for a one-member workspace, where
+  // it would offer a single choice and the word for "staff" must not reach
+  // that provider's screen.
+  const previewDays =
+    showPersonPicker && scope === "team"
+      ? mergeWeeks(
+          config.members.map((m) =>
+            previewWeek({ dates, weekly: m.weekly, exceptions: m.exceptions, closures: config.closures }),
+          ),
+        )
+      : selectedMember
+        ? previewWeek({
+            dates,
+            weekly: selectedMember.weekly,
+            exceptions: selectedMember.exceptions,
+            closures: config.closures,
+          })
+        : [];
+
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-8">
+    <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-start">
+      {/* The preview comes first in the DOM below `lg`, because on a phone the
+          answer matters more than the controls that produced it. */}
+      <div className="order-first grid gap-3 lg:order-last lg:sticky lg:top-4">
+        {showPersonPicker && (
+          <ChoiceChips
+            name="availability-preview-scope"
+            legend={t("availabilityPreviewScope")}
+            options={[
+              { value: "member", label: selectedMember?.name ?? t("availabilityPreviewScopeMember") },
+              { value: "team", label: t("availabilityPreviewScopeTeam") },
+            ]}
+            value={scope}
+            onChange={(v) => setScope(v as "member" | "team")}
+          />
+        )}
+        <WeekPreview
+          days={previewDays}
+          weekLabel={weekLabel(mondayIso, locale)}
+          onPreviousWeek={() => setMondayIso((d) => addDays(d, -7))}
+          onNextWeek={() => setMondayIso((d) => addDays(d, 7))}
+          onToday={() => setMondayIso(thisMonday())}
+          locale={locale}
+        />
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-8">
       {showPersonPicker && (
         <div className="grid max-w-xs gap-1.5">
           <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
@@ -163,6 +216,7 @@ export function AvailabilityPage() {
           <ClosuresPanel providerId={activeProvider.id} closures={config.closures} />
         </section>
       )}
+      </div>
     </div>
   );
 }
@@ -231,4 +285,21 @@ function TimezoneField({ providerId, timezone }: { providerId: string; timezone:
       {error && <p className="type-caption text-[var(--color-destructive)]">{error}</p>}
     </div>
   );
+}
+
+/** The Monday of the current week, as a civil date. */
+function thisMonday(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const w = weekdayOf(today);
+  // `weekdayOf` is 0 = Sunday, so Sunday is six days after its Monday.
+  return addDays(today, w === 0 ? -6 : 1 - w);
+}
+
+/** "10 – 16 August 2026", in the reader's own language. */
+function weekLabel(mondayIso: string, locale: string): string {
+  const fmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "UTC" });
+  const end = addDays(mondayIso, 6);
+  const asDate = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+  const year = new Intl.DateTimeFormat(locale, { year: "numeric", timeZone: "UTC" }).format(asDate(end));
+  return `${fmt.format(asDate(mondayIso))} – ${fmt.format(asDate(end))} ${year}`;
 }

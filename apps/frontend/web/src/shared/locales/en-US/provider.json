@@ -430,5 +430,8 @@
     "house-closure": "Closed",
     "member-closed": "Day off",
     "no-rule": "No hours set"
-  }
+  },
+  "availabilityPreviewScope": "Show",
+  "availabilityPreviewScopeMember": "This person",
+  "availabilityPreviewScopeTeam": "Whole team"
 }

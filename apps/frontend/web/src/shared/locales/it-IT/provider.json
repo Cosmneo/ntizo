@@ -430,5 +430,8 @@
     "house-closure": "Chiuso",
     "member-closed": "Giorno libero",
     "no-rule": "Nessun orario"
-  }
+  },
+  "availabilityPreviewScope": "Mostra",
+  "availabilityPreviewScopeMember": "Questa persona",
+  "availabilityPreviewScopeTeam": "Tutto il team"
 }
