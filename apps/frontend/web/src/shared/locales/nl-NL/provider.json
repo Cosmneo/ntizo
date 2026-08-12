@@ -421,5 +421,14 @@
     "EXCEPTION_NOT_FOUND": "Deze uitzondering bestaat niet meer.",
     "CLOSURE_NOT_FOUND": "Deze sluiting bestaat niet meer."
   },
-  "serviceTranslationsSaveFirst": "Sla de dienst op voordat je hem vertaalt."
+  "serviceTranslationsSaveFirst": "Sla de dienst op voordat je hem vertaalt.",
+  "availabilityPreviewTitle": "De week die dit oplevert",
+  "availabilityPreviousWeek": "Vorige week",
+  "availabilityNextWeek": "Volgende week",
+  "availabilityToday": "Vandaag",
+  "availabilityPreviewReason": {
+    "house-closure": "Gesloten",
+    "member-closed": "Vrije dag",
+    "no-rule": "Geen uren ingesteld"
+  }
 }

@@ -421,5 +421,14 @@
     "EXCEPTION_NOT_FOUND": "Esta excepción ya no existe.",
     "CLOSURE_NOT_FOUND": "Este cierre ya no existe."
   },
-  "serviceTranslationsSaveFirst": "Guarda el servicio antes de traducirlo."
+  "serviceTranslationsSaveFirst": "Guarda el servicio antes de traducirlo.",
+  "availabilityPreviewTitle": "La semana que esto produce",
+  "availabilityPreviousWeek": "Semana anterior",
+  "availabilityNextWeek": "Semana siguiente",
+  "availabilityToday": "Hoy",
+  "availabilityPreviewReason": {
+    "house-closure": "Cerrado",
+    "member-closed": "Día libre",
+    "no-rule": "Sin horario"
+  }
 }

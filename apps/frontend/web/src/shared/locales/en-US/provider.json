@@ -421,5 +421,14 @@
     "EXCEPTION_NOT_FOUND": "This exception no longer exists.",
     "CLOSURE_NOT_FOUND": "This closure no longer exists."
   },
-  "serviceTranslationsSaveFirst": "Save the service before translating it."
+  "serviceTranslationsSaveFirst": "Save the service before translating it.",
+  "availabilityPreviewTitle": "The week this produces",
+  "availabilityPreviousWeek": "Previous week",
+  "availabilityNextWeek": "Next week",
+  "availabilityToday": "Today",
+  "availabilityPreviewReason": {
+    "house-closure": "Closed",
+    "member-closed": "Day off",
+    "no-rule": "No hours set"
+  }
 }
