@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { MoreHorizontal, Plus } from "lucide-react";
 import {
   Badge,
@@ -14,7 +15,6 @@ import { initialsFrom } from "@/shared/lib/initials";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useServices } from "../viewmodel/use-services";
-import { ServiceFormSheet } from "./service-form";
 import {
   formatOptionPrice,
   ownerName,
@@ -39,23 +39,32 @@ export function ServicesPage() {
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const { activeProvider } = useActiveProvider();
   const query = useServices(activeProvider?.id);
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<ProviderService | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
 
   usePageHeader(t("nav.services"), activeProvider?.name);
+  // `null` while the workspace is still loading — without that guard, a
+  // click during that window would navigate with `slug: undefined`. Depends
+  // on the slug (not the whole `activeProvider` object, which is a fresh
+  // reference on every render) so switching workspace re-registers the
+  // button pointing at the new one.
   usePageAction(
-    <Button
-      size="sm"
-      onClick={() => {
-        setEditing(null);
-        setFormOpen(true);
-      }}
-    >
-      <Plus className="h-4 w-4" />
-      <span className="hidden sm:inline">{t("serviceNew")}</span>
-    </Button>,
+    activeProvider ? (
+      <Button
+        size="sm"
+        onClick={() =>
+          void navigate({
+            to: "/provider/$slug/services/$serviceId",
+            params: { slug: activeProvider.slug, serviceId: "new" },
+          })
+        }
+      >
+        <Plus className="h-4 w-4" />
+        <span className="hidden sm:inline">{t("serviceNew")}</span>
+      </Button>
+    ) : null,
+    [activeProvider?.slug],
   );
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
@@ -75,18 +84,6 @@ export function ServicesPage() {
   }, [rows, search, locale]);
 
   if (!activeProvider) return null;
-
-  // Owners and admins decide what goes live; staff describe and price a
-  // service but do not publish, unpublish or archive it. Checked again on
-  // the server — this only decides whether to offer the control. See
-  // `MembersPage`'s `canManage` for the same split applied to the team list.
-  const canPublish =
-    activeProvider.role === "owner" || activeProvider.role === "admin";
-
-  function openEdit(service: ProviderService) {
-    setEditing(service);
-    setFormOpen(true);
-  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -137,7 +134,7 @@ export function ServicesPage() {
           const cell = priceCell(service);
           return {
             key: service.id,
-            primary: <ServiceCell service={service} locale={locale} />,
+            primary: <ServiceCell service={service} slug={activeProvider.slug} locale={locale} />,
             cells: {
               price:
                 cell.kind === "priced" ? (
@@ -167,28 +164,31 @@ export function ServicesPage() {
                 </Badge>
               ),
             },
-            actions: <RowActions onEdit={() => openEdit(service)} />,
+            actions: (
+              <RowActions
+                onEdit={() =>
+                  void navigate({
+                    to: "/provider/$slug/services/$serviceId",
+                    params: { slug: activeProvider.slug, serviceId: service.id },
+                  })
+                }
+              />
+            ),
           };
         })}
-      />
-
-      <ServiceFormSheet
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        editing={editing}
-        providerId={activeProvider.id}
-        canPublish={canPublish}
       />
     </div>
   );
 }
 
-/** The image if there is one, the monogram if not, and the name beside it. */
+/** The image if there is one, the monogram if not, and the name beside it — the name a link to the editor page. */
 function ServiceCell({
   service,
+  slug,
   locale,
 }: {
   service: ProviderService;
+  slug: string;
   locale: string;
 }) {
   const name = ownerName(service, locale);
@@ -208,7 +208,13 @@ function ServiceCell({
         )}
       </div>
       <div className="min-w-0">
-        <p className="type-body-medium truncate font-semibold">{name}</p>
+        <Link
+          to="/provider/$slug/services/$serviceId"
+          params={{ slug, serviceId: service.id }}
+          className="type-body-medium block truncate font-semibold hover:underline"
+        >
+          {name}
+        </Link>
         <p className="type-caption truncate text-[var(--color-muted-foreground)]">
           {service.categoryCode}
         </p>

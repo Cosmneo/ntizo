@@ -248,6 +248,22 @@
   "servicesActions": "Acties",
   "serviceNew": "Nieuwe dienst",
   "serviceEdit": "Dienst bewerken",
+  "serviceRailTitle": "Onderdelen",
+  "serviceSection": {
+    "basics": "De basis",
+    "pricing": "Hoe het wordt berekend",
+    "performers": "Wie het doet",
+    "timing": "Tijden",
+    "languages": "Talen",
+    "media": "Foto's"
+  },
+  "serviceSectionStatus": {
+    "done": "Voltooid",
+    "todo": "Te doen",
+    "error": "Heeft aandacht nodig",
+    "optional": "Optioneel"
+  },
+  "serviceProgressLabel": "{{done}} van {{total}} verplichte onderdelen voltooid",
   "serviceCategory": "Categorie",
   "serviceCategoryPlaceholder": "Kies een categorie",
   "serviceCategoryLoading": "Categorieën laden…",

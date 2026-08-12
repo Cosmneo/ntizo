@@ -248,6 +248,22 @@
   "servicesActions": "Acciones",
   "serviceNew": "Nuevo servicio",
   "serviceEdit": "Editar servicio",
+  "serviceRailTitle": "Secciones",
+  "serviceSection": {
+    "basics": "Lo esencial",
+    "pricing": "Cómo se cobra",
+    "performers": "Quién lo hace",
+    "timing": "Tiempos",
+    "languages": "Idiomas",
+    "media": "Fotos"
+  },
+  "serviceSectionStatus": {
+    "done": "Completado",
+    "todo": "Por hacer",
+    "error": "Necesita atención",
+    "optional": "Opcional"
+  },
+  "serviceProgressLabel": "{{done}} de {{total}} secciones obligatorias completadas",
   "serviceCategory": "Categoría",
   "serviceCategoryPlaceholder": "Elige una categoría",
   "serviceCategoryLoading": "Cargando categorías…",

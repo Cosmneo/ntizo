@@ -248,6 +248,22 @@
   "servicesActions": "Aktionen",
   "serviceNew": "Neue Leistung",
   "serviceEdit": "Leistung bearbeiten",
+  "serviceRailTitle": "Abschnitte",
+  "serviceSection": {
+    "basics": "Das Wesentliche",
+    "pricing": "Wie es abgerechnet wird",
+    "performers": "Wer es macht",
+    "timing": "Zeiten",
+    "languages": "Sprachen",
+    "media": "Fotos"
+  },
+  "serviceSectionStatus": {
+    "done": "Fertig",
+    "todo": "Zu erledigen",
+    "error": "Braucht Aufmerksamkeit",
+    "optional": "Optional"
+  },
+  "serviceProgressLabel": "{{done}} von {{total}} erforderlichen Abschnitten fertig",
   "serviceCategory": "Kategorie",
   "serviceCategoryPlaceholder": "Kategorie wählen",
   "serviceCategoryLoading": "Kategorien werden geladen…",

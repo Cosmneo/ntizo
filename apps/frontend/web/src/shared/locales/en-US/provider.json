@@ -248,6 +248,22 @@
   "servicesActions": "Actions",
   "serviceNew": "New service",
   "serviceEdit": "Edit service",
+  "serviceRailTitle": "Sections",
+  "serviceSection": {
+    "basics": "The essentials",
+    "pricing": "How it is charged",
+    "performers": "Who does it",
+    "timing": "Timing",
+    "languages": "Languages",
+    "media": "Images"
+  },
+  "serviceSectionStatus": {
+    "done": "Done",
+    "todo": "To do",
+    "error": "Needs attention",
+    "optional": "Optional"
+  },
+  "serviceProgressLabel": "{{done}} of {{total}} required sections done",
   "serviceCategory": "Category",
   "serviceCategoryPlaceholder": "Choose a category",
   "serviceCategoryLoading": "Loading categories…",
