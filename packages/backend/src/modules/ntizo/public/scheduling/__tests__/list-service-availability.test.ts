@@ -39,6 +39,7 @@ function fakeRepo(
           slotIntervalMinutes: 30,
           bookingMode: "priced" as const,
           status: "published",
+          providerStatus: "active",
           memberIds: [JOAO],
           defaultOption: {
             pricingMode: "fixed" as const,
@@ -135,6 +136,7 @@ const HOURLY_INFO: NonNullable<SchedulingInfo> = {
   slotIntervalMinutes: 30,
   bookingMode: "priced",
   status: "published",
+  providerStatus: "active",
   memberIds: [JOAO],
   defaultOption: {
     pricingMode: "hourly",
@@ -151,6 +153,7 @@ describe("ListServiceAvailability", () => {
 
     expect(result.serviceId).toBe(SERVICE);
     expect(result.timezone).toBe("Africa/Maputo");
+    expect(result.bookingMode).toBe("priced");
     expect(result.pricingMode).toBe("fixed");
     expect(result.days).toHaveLength(1);
     expect(result.days[0]!.date).toBe("2026-08-12");
@@ -270,11 +273,17 @@ describe("ListServiceAvailability", () => {
   });
 
   test("hourly maxMinutes is the largest among the free members", async () => {
-    // Maria works only the morning that day, so from 08:00 she can carry 240
-    // minutes and João 600. The start must advertise 600 — the longest
-    // somebody can actually do — not Maria's shorter answer.
-    const maria = workingWeek(MARIA);
-    maria.addException({
+    // The **shorter** member is read first, deliberately. `memberIds` is
+    // `[JOAO, MARIA]` and the loop follows that order, so João — working only
+    // the morning that day — writes his 240 minutes into every shared start
+    // before Maria's 600 arrives. Only a rule that compares and keeps the
+    // larger produces 600; first-write-wins, last-write-wins and
+    // fill-only-if-empty all produce something else here.
+    //
+    // With the longer member first, all four rules agree at every start, which
+    // is exactly how a max that was never implemented would pass.
+    const joao = workingWeek(JOAO);
+    joao.addException({
       onDate: "2026-08-12",
       kind: "custom",
       startMinute: 480,
@@ -283,20 +292,21 @@ describe("ListServiceAvailability", () => {
     });
     const projection = makeProjection({
       schedules: new Map([
-        [JOAO, workingWeek(JOAO)],
-        [MARIA, maria],
+        [JOAO, joao],
+        [MARIA, workingWeek(MARIA)],
       ]),
       info: { ...HOURLY_INFO, memberIds: [JOAO, MARIA] },
     });
     const result = await projection.execute(ONE_WEDNESDAY);
 
     const at = (minute: number) => result.days[0]!.starts.find((s) => s.minuteOfDay === minute);
+    // 08:00 — João can carry 240 before noon, Maria 600 before 18:00.
     expect(at(480)).toMatchObject({ maxMinutes: 600, memberIds: [JOAO, MARIA] });
-    // 11:00 — Maria can still fit her 60-minute minimum before noon, João 420.
+    // 11:00 — João has exactly his 60-minute minimum left, Maria 420.
     expect(at(660)).toMatchObject({ maxMinutes: 420, memberIds: [JOAO, MARIA] });
-    // 12:00 — Maria's morning is over, so only João remains and only his
+    // 12:00 — João's morning is over, so only Maria remains and only her
     // length is on offer.
-    expect(at(720)).toMatchObject({ maxMinutes: 360, memberIds: [JOAO] });
+    expect(at(720)).toMatchObject({ maxMinutes: 360, memberIds: [MARIA] });
   });
 
   test("a quote service returns an empty day list, not an error", async () => {
@@ -306,9 +316,56 @@ describe("ListServiceAvailability", () => {
     const result = await projection.execute(ONE_WEDNESDAY);
 
     expect(result.days).toEqual([]);
+    expect(result.bookingMode).toBe("quote");
+    // Null, not "fixed". A quote service has no priced option to read a mode
+    // from, and reporting one would be a value that is simply not true.
+    expect(result.pricingMode).toBeNull();
     // Still a real answer about a real service, not a stub.
     expect(result.serviceId).toBe(SERVICE);
     expect(result.timezone).toBe("Africa/Maputo");
+  });
+
+  test("a priced service with nothing bookable is distinguishable from a quote service", async () => {
+    // The pair is the point. Both answers carry no bookable start, and a
+    // screen has to draw two different things: "Request a quote" for one,
+    // "Nothing free this week" for the other. `bookingMode` is the only field
+    // that separates them, which is why it is on the response rather than
+    // left for a second query back to the catalogue.
+    const closedAllWeek = makeProjection({
+      closures: [{ id: "c-1", fromDate: "2026-08-10", toDate: "2026-08-20", note: null }],
+    });
+    const priced = await closedAllWeek.execute({
+      serviceId: SERVICE,
+      memberId: undefined,
+      from: "2026-08-12",
+      to: "2026-08-18",
+    });
+
+    expect(priced.bookingMode).toBe("priced");
+    expect(priced.pricingMode).toBe("fixed");
+    expect(priced.days.every((d) => d.starts.length === 0)).toBe(true);
+
+    const quoted = await makeProjection({
+      info: { ...baseInfo(), bookingMode: "quote", defaultOption: null },
+    }).execute(ONE_WEDNESDAY);
+
+    // Nothing bookable either way; the two responses differ only in the two
+    // fields this finding added.
+    expect(quoted.days.flatMap((d) => d.starts)).toEqual([]);
+    expect(quoted.bookingMode).not.toBe(priced.bookingMode);
+    expect(quoted.pricingMode).not.toBe(priced.pricingMode);
+  });
+
+  test("a priced service whose default option is unusable answers with no days at all", async () => {
+    // The literal `days: []` collision: this is a *priced* service returning
+    // the same empty array a quote service does. `bookingMode` tells them
+    // apart; without it the two are the same response.
+    const projection = makeProjection({ info: { ...baseInfo(), defaultOption: null } });
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    expect(result.days).toEqual([]);
+    expect(result.bookingMode).toBe("priced");
+    expect(result.pricingMode).toBeNull();
   });
 
   test("a window wider than 62 days is refused", async () => {
@@ -372,6 +429,35 @@ describe("ListServiceAvailability", () => {
     expect(await codeOf(() => projection.execute(ONE_WEDNESDAY))).toBe("SERVICE_NOT_FOUND");
   });
 
+  test("a published service of a pending provider is not found", async () => {
+    // `provider.status` defaults to `pending`, so a workspace that has never
+    // been reviewed holds live service ids the moment it creates one — and it
+    // can hand them out directly without ever appearing in a listing. "Not in
+    // the catalogue" is not the same as "unreachable".
+    const projection = makeProjection({
+      info: { ...baseInfo(), providerStatus: "pending" },
+    });
+    expect(await codeOf(() => projection.execute(ONE_WEDNESDAY))).toBe("SERVICE_NOT_FOUND");
+  });
+
+  test("a published service of a provider suspended after trading is not found", async () => {
+    // The ids of a business that traded were public for as long as it was
+    // active; removing its rows from a listing does not un-distribute them.
+    const projection = makeProjection({
+      info: { ...baseInfo(), providerStatus: "suspended" },
+    });
+    expect(await codeOf(() => projection.execute(ONE_WEDNESDAY))).toBe("SERVICE_NOT_FOUND");
+  });
+
+  test("a published service of a rejected or archived provider is not found", async () => {
+    // The other two `ProviderStatus` values. The rule is "active or nothing",
+    // not a list of blocked statuses that a new one could be added outside of.
+    for (const providerStatus of ["rejected", "archived"]) {
+      const projection = makeProjection({ info: { ...baseInfo(), providerStatus } });
+      expect(await codeOf(() => projection.execute(ONE_WEDNESDAY))).toBe("SERVICE_NOT_FOUND");
+    }
+  });
+
   test("startsAt is the instant matching the provider's timezone", async () => {
     // Maputo, 09:00 local on 2026-08-12 → "2026-08-12T07:00:00.000Z".
     const projection = makeProjection();
@@ -380,6 +466,34 @@ describe("ListServiceAvailability", () => {
     const nine = result.days[0]!.starts.find((s) => s.minuteOfDay === 540);
     expect(nine).toBeDefined();
     expect(nine!.startsAt).toBe("2026-08-12T07:00:00.000Z");
+  });
+
+  test("startsAt follows the day it belongs to, not the start of the window", async () => {
+    // The single-day assertion above cannot tell `date` from `input.from` —
+    // on a one-day window they are the same string. This is the payload's most
+    // load-bearing derived field, and hoisting the conversion out of the loop
+    // is a refactor somebody will reach for; every day has to carry its own.
+    const projection = makeProjection();
+    const result = await projection.execute({
+      serviceId: SERVICE,
+      memberId: undefined,
+      from: "2026-08-12", // Wednesday
+      to: "2026-08-18", // the following Tuesday
+    });
+
+    const nineOn = (index: number) =>
+      result.days[index]!.starts.find((s) => s.minuteOfDay === 540)!.startsAt;
+
+    expect(nineOn(0)).toBe("2026-08-12T07:00:00.000Z");
+    // The last day of the window, four calendar days past the first.
+    expect(result.days.at(-1)!.date).toBe("2026-08-18");
+    expect(nineOn(result.days.length - 1)).toBe("2026-08-18T07:00:00.000Z");
+    // Every start's instant sits on the civil date its own day claims.
+    for (const day of result.days) {
+      for (const start of day.starts) {
+        expect(start.startsAt.startsWith(day.date)).toBe(true);
+      }
+    }
   });
 
   test("the busy port is asked once, not once per day", async () => {
@@ -468,6 +582,7 @@ function baseInfo(): NonNullable<SchedulingInfo> {
     slotIntervalMinutes: 30,
     bookingMode: "priced",
     status: "published",
+    providerStatus: "active",
     memberIds: [JOAO],
     defaultOption: {
       pricingMode: "fixed",

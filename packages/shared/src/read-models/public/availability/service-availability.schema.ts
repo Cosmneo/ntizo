@@ -14,12 +14,22 @@ import { z } from "zod";
  *
  * `pricingMode` is on the response rather than assumed by the caller, because
  * it decides what a start *means*: for a fixed service the length is already
- * known, and for an hourly one the customer still has to choose it.
+ * known, and for an hourly one the customer still has to choose it. It is
+ * **null** for a `quote` service, which has no priced option to read one from
+ * — reporting `"fixed"` there would be a value that is simply not true.
+ *
+ * `bookingMode` is what tells the two empty-day cases apart. An empty `days`
+ * is not unique to a quote service: a priced one is equally empty over a
+ * window that is entirely closed, and will be again once bookings can fill it.
+ * "Request a quote" and "Nothing free this week" are two different screens,
+ * and this is the field that decides which one to draw — without a second
+ * query back to the catalogue.
  */
 export const serviceAvailabilityReadModel = z.object({
   serviceId: z.string(),
   timezone: z.string(),
-  pricingMode: z.enum(["fixed", "hourly"]),
+  bookingMode: z.enum(["priced", "quote"]),
+  pricingMode: z.enum(["fixed", "hourly"]).nullable(),
   days: z.array(
     z.object({
       date: z.string(),

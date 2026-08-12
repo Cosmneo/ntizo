@@ -198,6 +198,7 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
     slotIntervalMinutes: number;
     bookingMode: "priced" | "quote";
     status: string;
+    providerStatus: string;
     memberIds: string[];
     defaultOption: {
       pricingMode: "fixed" | "hourly";
@@ -216,6 +217,9 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
         slotIntervalMinutes: service.slotIntervalMinutes,
         bookingMode: service.bookingMode,
         status: service.status,
+        // One more column on the join this select already makes for the
+        // timezone — not a second round trip.
+        providerStatus: provider.status,
       })
       .from(service)
       .innerJoin(provider, eq(provider.id, service.providerId))
@@ -250,6 +254,7 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
       slotIntervalMinutes: row.slotIntervalMinutes,
       bookingMode: row.bookingMode as "priced" | "quote",
       status: row.status,
+      providerStatus: row.providerStatus,
       memberIds: members.map((m) => m.memberId),
       defaultOption: defaultOption
         ? {

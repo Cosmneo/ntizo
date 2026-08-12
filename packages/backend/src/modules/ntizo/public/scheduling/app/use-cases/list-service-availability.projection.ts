@@ -119,14 +119,16 @@ function offersFor(shape: OfferShape, free: readonly Interval[]): Map<number, nu
  *
  * Two refusals are deliberately *not* what a reader might expect:
  *
- * - An **unpublished** service answers `SERVICE_NOT_FOUND`, the same as one
- *   that does not exist. A separate "not published yet" code would confirm to
- *   an anonymous caller that the id is real, which is exactly what guessing
- *   ids is for.
+ * - An **unpublished service, or one whose provider is not trading**, answers
+ *   `SERVICE_NOT_FOUND`, the same as one that does not exist. A separate "not
+ *   published yet" or "provider suspended" code would confirm to an anonymous
+ *   caller that the id is real, which is exactly what guessing ids is for.
  * - A **quote** service answers with an empty `days` array rather than an
  *   error. It genuinely has no calendar — its price and its length are not
  *   knowable until the provider has seen the job — and asking about it is a
- *   perfectly reasonable thing for a screen to do.
+ *   perfectly reasonable thing for a screen to do. `bookingMode` on the
+ *   response is what lets the screen tell that apart from a priced service
+ *   whose window happens to be entirely closed.
  *
  * Every date in the window comes back either way, including the shut ones: a
  * closed Sunday is something the screen has to draw, and a client left to
@@ -149,12 +151,28 @@ export class ListServiceAvailability {
     if (!info) throw new ServiceNotFoundError(input.serviceId);
     // A draft is not a thing the public may ask about, and telling them apart
     // would tell an anonymous caller that the id exists.
-    if (info.status !== "published") throw new ServiceNotFoundError(input.serviceId);
+    //
+    // Neither is a service of a workspace that is not trading — pending,
+    // rejected, suspended or archived. Checked here rather than trusted from
+    // the repository, for the reason its sibling in `public/catalog` gives:
+    // this is the rule the class exists to enforce, and a fake, a future
+    // repository or a forgotten WHERE clause must not be able to leak a row
+    // past it. "Not discoverable through the catalogue" is not the same as
+    // "unreachable" — `provider.status` defaults to `pending`, so a workspace
+    // that has never been reviewed holds live service ids it can hand out
+    // directly, and a workspace suspended after trading distributed its ids
+    // while it was active.
+    if (info.status !== "published" || info.providerStatus !== "active") {
+      throw new ServiceNotFoundError(input.serviceId);
+    }
 
-    const pricingMode = info.defaultOption?.pricingMode ?? "fixed";
+    // Null rather than a default for a quote service: it has no priced option
+    // to read a mode from, and "fixed" would be a value that is not true.
+    const pricingMode = info.defaultOption?.pricingMode ?? null;
     const empty: ServiceAvailabilityDTO = {
       serviceId: info.serviceId,
       timezone: info.timezone,
+      bookingMode: info.bookingMode,
       pricingMode,
       days: [],
     };
@@ -262,6 +280,12 @@ export class ListServiceAvailability {
       days.push({ date, starts });
     }
 
-    return { serviceId: info.serviceId, timezone: info.timezone, pricingMode, days };
+    return {
+      serviceId: info.serviceId,
+      timezone: info.timezone,
+      bookingMode: info.bookingMode,
+      pricingMode,
+      days,
+    };
   }
 }

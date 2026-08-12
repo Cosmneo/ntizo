@@ -58,6 +58,17 @@ export interface ScheduleRepositoryPort {
     slotIntervalMinutes: number;
     bookingMode: "priced" | "quote";
     status: string;
+    /**
+     * The owning workspace's `ProviderStatus`.
+     *
+     * Carried beside the service's own status because the two refusals are the
+     * same refusal: a service is askable only when it is published *and* its
+     * provider is trading. The column defaults to `pending`, so a workspace
+     * that has never been reviewed holds live service ids from the moment it
+     * creates one — and it can hand those ids out directly, without ever
+     * appearing in a listing.
+     */
+    providerStatus: string;
     memberIds: string[];
     defaultOption: {
       pricingMode: "fixed" | "hourly";
