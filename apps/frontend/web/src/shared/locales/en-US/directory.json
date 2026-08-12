@@ -20,5 +20,18 @@
   "priceUnavailable": "Price unavailable",
   "priceHourlySuffix": "/h",
   "serviceDurationMinutes": "{{count}} min",
-  "serviceMinimumMinutes": "{{count}} min minimum"
+  "serviceMinimumMinutes": "{{count}} min minimum",
+  "close": "Close",
+  "availabilityMemberLabel": "Who with?",
+  "availabilityMemberAnyone": "Anyone available",
+  "availabilityMemberOption": "Professional {{number}}",
+  "availabilityPreviousWeek": "Previous week",
+  "availabilityNextWeek": "Next week",
+  "availabilityDayEmpty": "No times free this day.",
+  "availabilityLengthLabel": "Length",
+  "availabilityQuoteNotice": "This service is priced by quote. Contact the provider to get a price before it can be scheduled.",
+  "availabilityForServiceErrorGeneric": "We couldn't load this service's availability right now.",
+  "availabilityForServiceError": {
+    "SERVICE_NOT_FOUND": "This service isn't available anymore."
+  }
 }

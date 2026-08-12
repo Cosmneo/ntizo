@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@ntizo/frontend-ui";
+import { AvailabilitySheet } from "@/features/directory/availability/ui/availability-sheet";
 import { useProviderServices } from "@/features/directory/services/viewmodel/use-provider-services";
 import { ServiceCard } from "@/features/directory/services/ui/service-card";
+import type { ServiceDTO } from "@/features/directory/services/domain/types";
 
 /**
  * A provider's published services, on their public page.
@@ -24,6 +27,7 @@ export function ProviderServicesSection({
   const { t } = useTranslation("directory");
   const { data, isPending, isError } = useProviderServices(providerId);
   const items = data?.items ?? [];
+  const [selectedService, setSelectedService] = useState<ServiceDTO | null>(null);
 
   return (
     <section className="mt-12">
@@ -49,9 +53,25 @@ export function ProviderServicesSection({
                   service={service}
                   providerImageUrl={providerImageUrl}
                   locale={locale}
+                  onSelect={setSelectedService}
                 />
               ))}
         </ul>
+      )}
+
+      {/* Keyed by id and only ever mounted while a service is selected, so
+          every piece of the sheet's own local state (the selected week, day,
+          member, time…) starts fresh each time — see that component's own
+          doc comment for why this makes a reset effect unnecessary. */}
+      {selectedService && (
+        <AvailabilitySheet
+          key={selectedService.id}
+          service={selectedService}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedService(null);
+          }}
+        />
       )}
     </section>
   );

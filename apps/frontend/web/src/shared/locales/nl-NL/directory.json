@@ -20,5 +20,18 @@
   "priceUnavailable": "Prijs niet beschikbaar",
   "priceHourlySuffix": "/uur",
   "serviceDurationMinutes": "{{count}} min",
-  "serviceMinimumMinutes": "Minimaal {{count}} min"
+  "serviceMinimumMinutes": "Minimaal {{count}} min",
+  "close": "Sluiten",
+  "availabilityMemberLabel": "Met wie?",
+  "availabilityMemberAnyone": "Iedereen die beschikbaar is",
+  "availabilityMemberOption": "Vakspecialist {{number}}",
+  "availabilityPreviousWeek": "Vorige week",
+  "availabilityNextWeek": "Volgende week",
+  "availabilityDayEmpty": "Geen vrije tijden op deze dag.",
+  "availabilityLengthLabel": "Duur",
+  "availabilityQuoteNotice": "Deze dienst wordt op offerte geprijsd. Neem contact op met de aanbieder voor een prijs voordat deze kan worden ingepland.",
+  "availabilityForServiceErrorGeneric": "De beschikbaarheid van deze dienst kon nu niet worden geladen.",
+  "availabilityForServiceError": {
+    "SERVICE_NOT_FOUND": "Deze dienst is niet meer beschikbaar."
+  }
 }

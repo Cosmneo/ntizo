@@ -20,5 +20,18 @@
   "priceUnavailable": "Preis nicht verfügbar",
   "priceHourlySuffix": "/Std.",
   "serviceDurationMinutes": "{{count}} Min.",
-  "serviceMinimumMinutes": "Mindestens {{count}} Min."
+  "serviceMinimumMinutes": "Mindestens {{count}} Min.",
+  "close": "Schließen",
+  "availabilityMemberLabel": "Mit wem?",
+  "availabilityMemberAnyone": "Jede verfügbare Person",
+  "availabilityMemberOption": "Fachkraft {{number}}",
+  "availabilityPreviousWeek": "Vorherige Woche",
+  "availabilityNextWeek": "Nächste Woche",
+  "availabilityDayEmpty": "An diesem Tag sind keine Zeiten frei.",
+  "availabilityLengthLabel": "Dauer",
+  "availabilityQuoteNotice": "Dieser Dienst wird auf Anfrage kalkuliert. Wende dich an den Anbieter, um einen Preis zu bekommen, bevor er gebucht werden kann.",
+  "availabilityForServiceErrorGeneric": "Die Verfügbarkeit dieses Dienstes konnte gerade nicht geladen werden.",
+  "availabilityForServiceError": {
+    "SERVICE_NOT_FOUND": "Dieser Dienst ist nicht mehr verfügbar."
+  }
 }

@@ -31,6 +31,7 @@ export default [
             "src/features/provider/services/domain/**",
             "src/features/provider/availability/domain/**",
             "src/features/directory/services/domain/**",
+            "src/features/directory/availability/domain/**",
             "src/shared/domain/**",
           ],
         },
@@ -41,6 +42,7 @@ export default [
             "src/features/provider/services/data/**",
             "src/features/provider/availability/data/**",
             "src/features/directory/services/data/**",
+            "src/features/directory/availability/data/**",
           ],
         },
         {
@@ -50,6 +52,7 @@ export default [
             "src/features/provider/services/viewmodel/**",
             "src/features/provider/availability/viewmodel/**",
             "src/features/directory/services/viewmodel/**",
+            "src/features/directory/availability/viewmodel/**",
           ],
         },
         {
@@ -59,6 +62,7 @@ export default [
             "src/features/provider/services/ui/**",
             "src/features/provider/availability/ui/**",
             "src/features/directory/services/ui/**",
+            "src/features/directory/availability/ui/**",
             "src/shared/ui/**",
             "src/shared/components/**",
             "src/features/*/components/**",
