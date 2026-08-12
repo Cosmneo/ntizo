@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { fixedStarts, hourlyStarts } from "../domain/offers";
+import { describe, expect, test } from "vitest";
+import { fixedStarts, hourlyStarts } from "../offers";
 
 describe("fixedStarts", () => {
   const day = [{ start: 480, end: 1080 }]; // 08:00-18:00

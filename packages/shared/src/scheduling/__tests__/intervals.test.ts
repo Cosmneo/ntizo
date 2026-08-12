@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { freeIntervals, mergeIntervals, subtractIntervals } from "../domain/intervals";
+import { describe, expect, test } from "vitest";
+import { freeIntervals, mergeIntervals, subtractIntervals } from "../intervals";
 
 describe("mergeIntervals", () => {
   test("joins overlapping stretches into one", () => {

@@ -1,5 +1,14 @@
 import { addDays, daysBetween, localDateTimeToInstant, weekdayOf } from "@ntizo/shared/datetime";
 import type { ServiceAvailabilityDTO } from "@ntizo/shared/read-models";
+import {
+  fixedStarts,
+  freeIntervals,
+  hourlyStarts,
+  type DayException,
+  type FixedShape,
+  type HourlyShape,
+  type Interval,
+} from "@ntizo/shared/scheduling";
 import { ServiceNotFoundError } from "../../../../bounded-contexts/catalog/domain/exceptions";
 import type { BusyIntervalsPort } from "../../../../bounded-contexts/scheduling/app/ports/outbound/busy-intervals.port";
 import type { ScheduleRepositoryPort } from "../../../../bounded-contexts/scheduling/app/ports/outbound/schedule.repository.port";
@@ -8,17 +17,6 @@ import {
   AvailabilityWindowTooWideError,
   ServiceMemberCannotPerformError,
 } from "../../../../bounded-contexts/scheduling/domain/exceptions";
-import {
-  freeIntervals,
-  type DayException,
-  type Interval,
-} from "../../../../bounded-contexts/scheduling/domain/intervals";
-import {
-  fixedStarts,
-  hourlyStarts,
-  type FixedShape,
-  type HourlyShape,
-} from "../../../../bounded-contexts/scheduling/domain/offers";
 
 /**
  * Two months. Long enough for "when can you come next month", short enough

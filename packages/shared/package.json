@@ -36,6 +36,11 @@
       "types": "./src/datetime/index.ts",
       "import": "./src/datetime/index.ts",
       "default": "./src/datetime/index.ts"
+    },
+    "./scheduling": {
+      "types": "./src/scheduling/index.ts",
+      "import": "./src/scheduling/index.ts",
+      "default": "./src/scheduling/index.ts"
     }
   },
   "devDependencies": {
