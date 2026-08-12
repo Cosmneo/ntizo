@@ -656,3 +656,136 @@ spec alone would expect four fields and find two.
 **Trigger:** whichever arrives first — a provider detail view that outgrows
 its list-query data, or the customer-facing screen from entry 30 needing a
 single service by slug.
+
+---
+
+*Entries 32 onwards come from slice 2 (availability). Entry 30 — "no customer
+screen consumes `service.all`" — is **closed**: the public provider page gained
+its services list, and `service.all` gained the `providerId` argument it needed
+to answer "this business's services" rather than the whole platform's.*
+
+## 32. The Members page's row-action menu does not open
+
+Verified during slice 2's end-to-end walkthrough and again during its final
+fix wave: the "…" dropdown on a member's row stays closed. Reproduced on the
+first attempt, via a click by element reference, by raw coordinates, after a
+reload, and by a direct DOM `.click()`. The menu is the only route to
+**Remove**, so removing a member through the interface is currently
+impossible; both verifications had to drive the mutation directly.
+
+This also strands slice 2's own last feature: when a member leaves and their
+services are left with nobody, the Members page now shows a banner naming
+what went dark — correct, translated into eight languages, and unreachable,
+because nobody can get to the action that triggers it.
+
+Pre-existing; it is not caused by slice 2. `people-table.tsx`'s `RowActions`
+is untouched by that branch.
+
+**Trigger:** the next time anyone needs to remove a member — which is now,
+because the banner is finished and waiting behind it.
+
+## 33. The availability engine's exact boundaries are correct and uncovered
+
+Seven tasks each left one boundary case with no test behind it, and the final
+review probed all nineteen empirically: `subtractIntervals`' right edge in
+four configurations, the 1440 accept-and-refuse pair, both defensive copies on
+the aggregate, the exact-fit offer in both pricing modes, `minuteOfDay: 1440`
+on both Lisbon daylight-saving dates, and the gap and ambiguity resolutions.
+**All nineteen behave correctly.** What is missing is anything that would
+notice if they stopped.
+
+The pattern's origin was the plan's own test values: closing at 18:00 with
+45- and 75-minute spans on a 30-minute grid never lands on the boundary the
+guard controls, and 1500 fails a 1440 limit by so much that it never touches
+it.
+
+**Trigger:** the next change to `intervals.ts`, `offers.ts` or `zoned.ts` —
+or, cheaply, an afternoon adding the nineteen cases while the probes are still
+written down in the final review's report.
+
+## 34. Nothing tests two members busy at the same minute
+
+The union logic is covered for "both free", "one free", and "nobody free at
+day granularity", but not for two members whose busy intervals overlap inside
+an otherwise-open day. Harmless today, because `BusyIntervalsPort` returns an
+empty map and no booking exists.
+
+**Trigger:** slice 4, the moment the port returns real bookings. This is the
+first case that will exercise it and the first that can be wrong.
+
+## 35. `resolveOfferShape`'s six guards are unreachable by any test
+
+Making all six throw leaves the suite green. One of them matters more than
+coverage arithmetic suggests: a zero or negative `slotIntervalMinutes` would
+make `fixedStarts` loop forever, and the query is anonymous. The database
+`CHECK` restricts the column to 15, 30 or 60, so the guard is defence in
+depth — but it is defence nothing verifies.
+
+**Trigger:** any change to how the offer shape is derived, or a report of a
+public availability request that never returns.
+
+## 36. The unpublish sweep bypasses the aggregate, so no domain event fires
+
+`unpublishServicesWithoutMembers` is a single `UPDATE`. `Service.unpublish()`
+pushes a `ServiceUnpublished` event; the raw statement does not. No consumer
+exists today — the event type is defined and read by nothing.
+
+**Trigger:** the first projection, notification or audit trail that subscribes
+to `ServiceUnpublished`. It will silently miss every service unpublished by a
+departure, which is the case a human most wants to hear about.
+
+## 37. The new frontend features have no component tests
+
+`members.tsx`'s removal banner, the performers checkbox, `ServiceCard`,
+`ProviderServicesSection` and `AvailabilitySheet`'s rendering all have domain
+functions under test and no test that renders them. Two real defects on this
+branch — every organization service create failing, and the member picker
+vanishing when a person was chosen — were found by a person using the
+application, not by its tests, and both lived in exactly this layer.
+
+**Trigger:** the third defect found this way, or the first time a screen is
+changed by someone who did not write it.
+
+## 38. `days[].starts[].memberIds` is fetched and never read
+
+The public availability response carries, per start, the ids of the members
+free at that moment. The spec justified it as letting the screen offer the
+choice without a second query — but the picker's fix made it re-query with a
+`memberId`, so the second query is exactly what happens. The field is still
+defensible as the seam slice 4 needs, since a booking must name a person.
+
+**Trigger:** slice 4. If booking ends up naming the person some other way,
+delete the field rather than leaving it carried and unread.
+
+## 39. Two checks sit behind the quote early-return
+
+`list-service-availability.projection.ts` returns for a `quote` service before
+the 62-day window bound and before the performer check. So a quote service
+accepts a ten-year range and any `memberId`, including one belonging to
+another workspace, and answers success. Nothing is scanned, so nothing is
+slow and nothing leaks — but "a member who does not perform the service is
+refused rather than answered with an empty week" is not true for quote
+services, and the spec says it without qualification.
+
+**Trigger:** slice 3, which is where quote services acquire behaviour worth
+guarding.
+
+## 40. `bookingMode` is cast to its union with no constraint behind it
+
+`service_option.pricing_mode` is held to `fixed`/`hourly` by a `CHECK`;
+`service.booking_mode` has no equivalent, yet both are cast the same way when
+read. A third booking mode added to the column before the type would take the
+`else` branch silently. Matches the existing `service.mapper.ts` precedent, so
+fixing one means fixing both.
+
+**Trigger:** a third booking mode — which slice 3 may well introduce.
+
+## 41. Hardcoded English strings in the provider shell and Overview page
+
+The "New service" fallback button in `provider-shell.tsx` and several strings
+on the Overview page are not translated, and render in English in every
+locale including `pt-MZ`, the platform default. Pre-existing; unrelated to
+slice 2, found while verifying its eight locales.
+
+**Trigger:** the next locale audit, or the first Portuguese-speaking user who
+mentions it.
