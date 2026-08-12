@@ -139,7 +139,21 @@ export function ServiceEditorPage() {
   // Resets which section is showing when the route names a different
   // service — reopening the editor on another row should not land on
   // whichever section was last open for the previous one.
+  //
+  // The `new` → real-id move is NOT a different service. It is the same one,
+  // just saved: `handleSave` calls `navigate(…, { replace: true })`, which
+  // changes `serviceId` and re-fires this effect. Without the guard below, a
+  // provider who filled in prices and pressed Save was thrown back to the top
+  // of the form with everything saved and nothing said — which reads as the
+  // editor having lost their work.
+  //
+  // A ref of the previous id rather than a flag `handleSave` sets: a flag
+  // something else has to clear is the next version of this bug.
+  const sectionResetForRef = useRef<string | null>(null);
   useEffect(() => {
+    const previous = sectionResetForRef.current;
+    sectionResetForRef.current = serviceId;
+    if (previous === "new") return;
     setCurrentSectionId("basics");
   }, [serviceId]);
 

@@ -117,6 +117,14 @@ function seed(
     provider?: ProviderSummary;
     services?: ProviderService[];
     availability?: AvailabilityConfig;
+    /**
+     * Who is signed in. Defaults to a member of the workspace, which is the
+     * ordinary case — and which means the creator backfill immediately
+     * completes the performers section. A test that wants to observe the
+     * *unfilled* state has to sign in as somebody the workspace does not
+     * contain, or it is measuring the backfill rather than the emptiness.
+     */
+    currentUser?: CurrentUserDTO;
   } = {},
 ) {
   const provider = opts.provider ?? PROVIDER;
@@ -126,7 +134,7 @@ function seed(
     ["provider", "availability", provider.id],
     opts.availability ?? (provider.type === "individual" ? INDIVIDUAL_AVAILABILITY : ORG_AVAILABILITY),
   );
-  qc.setQueryData(["user", "me"], CURRENT_USER);
+  qc.setQueryData(["user", "me"], opts.currentUser ?? CURRENT_USER);
   qc.setQueryData(["provider", "services", "categories", "en-US"], CATEGORIES);
 }
 
@@ -239,14 +247,76 @@ describe("ServiceEditorPage", () => {
 
   it("an organization sees three required sections in the ring", async () => {
     const qc = makeQueryClient();
-    seed(qc);
+    // Signed in as somebody the workspace does not contain, so nothing is
+    // backfilled and the ring's unfilled state is the thing being measured.
+    // With a member signed in, the creator backfill completes the performers
+    // section on mount and the settled answer is "1 of 3" — an earlier
+    // version of this test asserted "0 of 3" and passed only by racing the
+    // seed and backfill effects.
+    seed(qc, { currentUser: { ...CURRENT_USER, id: "u9" } });
 
     renderEditor("/provider/bela-vista/services/new", qc);
 
-    // Nothing filled in yet: zero of three required sections done.
+    const ring = await screen.findByRole("img", { name: /required sections done$/ });
+    // Settle: let the seed and backfill effects run before asserting, so the
+    // assertion describes the steady state rather than whichever render won.
+    await screen.findByRole("button", { name: /the essentials/i });
+    expect(ring).toHaveAccessibleName("0 of 3 required sections done");
+  });
+
+  it("an organization whose creator is a member starts with the performers section already done", async () => {
+    const qc = makeQueryClient();
+    seed(qc); // CURRENT_USER is u1, which is member m1
+
+    renderEditor("/provider/bela-vista/services/new", qc);
+
     expect(
-      await screen.findByRole("img", { name: "0 of 3 required sections done" }),
+      await screen.findByRole("img", { name: "1 of 3 required sections done" }),
     ).toBeInTheDocument();
+  });
+
+  it("saving from a section other than the first leaves you on it", async () => {
+    // The first save replaces `/services/new` with `/services/<real id>`.
+    // That is the same service, not a different one, and resetting the
+    // visible section there threw a provider back to the top of the form
+    // with everything saved and nothing said.
+    const qc = makeQueryClient();
+    seed(qc);
+    const user = userEvent.setup();
+    vi.spyOn(client, "sessionGraphql").mockResolvedValue({
+      serviceCreate: { serviceId: "svc-new" },
+    } as never);
+
+    renderEditor("/provider/bela-vista/services/new", qc);
+
+    await user.type(await screen.findByPlaceholderText("e.g. Haircut"), "Corte");
+    await user.click(screen.getByRole("radio", { name: /haircut/i }));
+    // `handleSave` returns early while `locationType` is unanswered, so
+    // without this the save never runs and the rest of the test measures
+    // nothing.
+    await user.click(screen.getByRole("radio", { name: /remotely/i }));
+    await user.click(screen.getByRole("button", { name: /how it is charged/i }));
+
+    expect(screen.getByRole("button", { name: /how it is charged/i })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create service" }));
+
+    // Precondition, asserted rather than assumed: the save must actually have
+    // moved the route from `new` to the real id, because that move is what
+    // re-fires the reset effect. If this fails, the test below is measuring
+    // nothing — which is exactly how the first version of it passed with the
+    // guard removed.
+    expect(await screen.findByRole("button", { name: "Save changes" })).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("button", { name: /how it is charged/i }),
+    ).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("button", { name: /the essentials/i })).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("switching booking mode to quote replaces the options editor with the quote fields", async () => {
