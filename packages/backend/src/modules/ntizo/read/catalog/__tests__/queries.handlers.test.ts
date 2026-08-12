@@ -141,9 +141,14 @@ const cardinalityRow: ServiceOwnerRow = {
   imageKeys: [],
   sortOrder: 0,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
-  bufferMinutes: 0,
-  slotIntervalMinutes: 30,
-  memberIds: ["m1"],
+  // Deliberately neither each field's default (`0`/`30`) nor equal to one
+  // another, and `memberIds` carries two entries, not one — a projection
+  // that hardcoded the default, swapped the two numbers, or dropped down to
+  // a single member would still pass a fixture built from defaults. See the
+  // assertions below.
+  bufferMinutes: 25,
+  slotIntervalMinutes: 60,
+  memberIds: ["m1", "m2"],
   options: [
     {
       id: "o1",
@@ -232,5 +237,14 @@ describe("ListMyServicesProjection cardinality", () => {
       expect(option.translations.length).toBe(2);
     }
     expect(result[0]!.translations.length).toBe(2);
+    // Finding 2 of the task-13 review: the read-side scope expansion's three
+    // new fields had no distinct-value assertion — a fixture built from
+    // each field's own default (`0`/`30`) passes even if the projection
+    // hardcodes those defaults instead of actually mapping the row. Values
+    // here are neither the defaults nor each other, so a swap, a drop, or a
+    // hardcode all fail this.
+    expect(result[0]!.bufferMinutes).toBe(25);
+    expect(result[0]!.slotIntervalMinutes).toBe(60);
+    expect(result[0]!.memberIds).toEqual(["m1", "m2"]);
   });
 });

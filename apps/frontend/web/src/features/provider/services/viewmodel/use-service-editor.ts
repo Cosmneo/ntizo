@@ -51,6 +51,14 @@ export interface SaveServiceInput extends CreateServiceInput {
    * (`CreateServiceCommand`); a follow-up `members.set` with a stale or
    * empty list would remove them — exactly the mistake the brief warns
    * against. On update, there is nothing this call could legitimately change.
+   *
+   * That "stale or empty list" risk on create is not fully covered by this
+   * flag alone: an organization's `skipMembers` is `false`, and `memberIds`
+   * can still legitimately be `[]` at submit time if `useAvailabilityConfig`
+   * or `useCurrentUser` simply hasn't resolved yet — the checkbox list
+   * renders with nothing pre-ticked, and nothing stops a submit from firing
+   * on a draft in that state. See `saveService`'s create branch for the
+   * second, independent guard this requires.
    */
   skipMembers: boolean;
 }
@@ -97,6 +105,12 @@ export async function saveService(input: SaveServiceInput): Promise<string> {
       name: input.name,
       description: input.description,
     });
+    // Unlike create below, an empty `memberIds` here IS a real instruction —
+    // a draft service with every performer unticked means "nobody performs
+    // this yet", and that has to reach the server so `service.members.set`
+    // can actually clear it. There is no unresolved-query ambiguity on
+    // update: the sheet only reaches this path once the member list has
+    // already rendered checkboxes for someone to untick.
     if (!input.skipMembers) {
       await setServiceMembers({ serviceId: input.serviceId, memberIds: input.memberIds });
     }
@@ -113,7 +127,17 @@ export async function saveService(input: SaveServiceInput): Promise<string> {
     bufferMinutes: input.bufferMinutes,
     slotIntervalMinutes: input.slotIntervalMinutes,
   });
-  if (!input.skipMembers) {
+  // An empty `memberIds` here is not an instruction — nobody has actually
+  // said "nobody performs this yet", because a *create* was still being
+  // typed while the checkbox list was blank. It's what an unresolved
+  // `useAvailabilityConfig`/`useCurrentUser` looks like. The server has
+  // already seeded the creator as this service's first performer
+  // (`CreateServiceCommand`); sending `[]` here would faithfully strip that
+  // seed. So create only ever calls `service.members.set` when there is a
+  // real, non-empty list to send — unlike update below, where an empty list
+  // is exactly what "nobody performs this yet" looks like and must go
+  // through.
+  if (!input.skipMembers && input.memberIds.length > 0) {
     await setServiceMembers({ serviceId, memberIds: input.memberIds });
   }
   return serviceId;
