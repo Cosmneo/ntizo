@@ -31,6 +31,8 @@ export interface ServiceRowSet {
   }[];
   translations: { serviceId: string; locale: string; name: string; description: string | null }[];
   optionTranslations: { optionId: string; locale: string; name: string }[];
+  /** `service_member` rows — who performs this service. */
+  members: { serviceId: string; memberId: string }[];
   quoteForm: {
     serviceId: string;
     responseHours: number;
@@ -75,6 +77,7 @@ export const serviceMapper = {
         name: t.name,
         description: t.description,
       })),
+      memberIds: rows.members.map((m) => m.memberId),
       quoteForm: rows.quoteForm
         ? {
             responseHours: rows.quoteForm.responseHours,
@@ -130,6 +133,7 @@ export const serviceMapper = {
       optionTranslations: json.options.flatMap((o) =>
         o.translations.map((t) => ({ optionId: o.id, locale: t.locale, name: t.name })),
       ),
+      members: json.memberIds.map((memberId) => ({ serviceId: json.id, memberId })),
       quoteForm: json.quoteForm
         ? { serviceId: json.id, ...json.quoteForm }
         : null,

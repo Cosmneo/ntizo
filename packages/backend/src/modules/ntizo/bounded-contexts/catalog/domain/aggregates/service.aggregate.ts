@@ -55,6 +55,8 @@ export interface ServiceProps {
   options: ServiceOptionProps[];
   translations: ServiceTranslationProps[];
   quoteForm: QuoteFormProps | null;
+  /** Provider-member ids of who performs this service. Empty on creation — nobody yet. */
+  memberIds: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +93,7 @@ export class Service {
       imageKeys: [],
       sortOrder: 0,
       options: [],
+      memberIds: [],
       // The name they typed, in the language they typed it. This row is what
       // every other locale falls back to, and it is why the provider never
       // sees a translation form unless they go looking for one.
@@ -113,6 +116,7 @@ export class Service {
   get id() { return this.props.id; }
   get providerId() { return this.props.providerId; }
   get status() { return this.props.status; }
+  get memberIds(): readonly string[] { return this.props.memberIds; }
 
   update(params: {
     categoryId?: string;
@@ -252,6 +256,20 @@ export class Service {
     this.touch();
   }
 
+  /**
+   * Who performs this service, de-duplicated and stored as-is.
+   *
+   * No status guard here — clearing the last performer of a published
+   * service is refused by `SetServiceMembersCommand`, not by this method.
+   * That refusal is a use-case concern (whoever calls `set` can simply not
+   * make that call); this method is the plain setter both that command and
+   * a future one can build on.
+   */
+  setMembers(memberIds: string[]): void {
+    this.props.memberIds = [...new Set(memberIds)];
+    this.touch();
+  }
+
   publish(): void {
     canPublish({
       bookingMode: this.props.bookingMode,
@@ -260,6 +278,7 @@ export class Service {
         (t) => t.locale === this.props.sourceLocale && t.name.trim().length > 0,
       ),
       optionCount: this.props.options.length,
+      memberCount: this.props.memberIds.length,
     });
     this.props.status = "published";
     this.touch();
@@ -302,6 +321,7 @@ export class Service {
       ...this.props,
       options: this.props.options.map((o) => ({ ...o, translations: [...o.translations] })),
       translations: [...this.props.translations],
+      memberIds: [...this.props.memberIds],
     };
   }
 

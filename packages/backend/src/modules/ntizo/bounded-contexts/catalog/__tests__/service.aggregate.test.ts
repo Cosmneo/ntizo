@@ -79,6 +79,9 @@ describe("options", () => {
   it("refuses to leave a published service with none", () => {
     const s = newService();
     s.addOption(fixedOption);
+    // A performer, so `publish()` gets past the member check and this test
+    // still exercises the option check it is named for.
+    s.setMembers(["member-1"]);
     s.publish();
     expect(codeOf(() => s.removeOption("opt-1"))).toBe("OPTION_LAST_ONE");
   });
@@ -181,11 +184,22 @@ describe("reorderOptions", () => {
 
 describe("publishing", () => {
   it("refuses a priced service with no options", () => {
-    expect(codeOf(() => newService().publish())).toBe("SERVICE_NEEDS_OPTION");
+    const s = newService();
+    // A performer, so this exercises the option check rather than the
+    // member check that now runs before it.
+    s.setMembers(["member-1"]);
+    expect(codeOf(() => s.publish())).toBe("SERVICE_NEEDS_OPTION");
+  });
+
+  it("refuses a service with no performer", () => {
+    const s = newService();
+    s.addOption(fixedOption);
+    expect(codeOf(() => s.publish())).toBe("SERVICE_NEEDS_MEMBER");
   });
 
   it("publishes a quote service with none", () => {
     const s = newService({ bookingMode: "quote" });
+    s.setMembers(["member-1"]);
     s.publish();
     expect(s.toJSON().status).toBe("published");
   });
@@ -225,6 +239,25 @@ describe("setQuoteForm", () => {
     const s = newService({ bookingMode: "quote" });
     s.setQuoteForm(form);
     expect(s.toJSON().quoteForm).toEqual(form);
+  });
+});
+
+describe("setMembers", () => {
+  it("starts with nobody performing it", () => {
+    expect(newService().toJSON().memberIds).toEqual([]);
+  });
+
+  it("de-duplicates", () => {
+    const s = newService();
+    s.setMembers(["member-1", "member-1", "member-2"]);
+    expect(s.toJSON().memberIds.slice().sort()).toEqual(["member-1", "member-2"]);
+  });
+
+  it("replaces the previous list rather than adding to it", () => {
+    const s = newService();
+    s.setMembers(["member-1"]);
+    s.setMembers(["member-2"]);
+    expect(s.toJSON().memberIds).toEqual(["member-2"]);
   });
 });
 

@@ -30,6 +30,12 @@ class FakeRepo implements ServiceRepositoryPort {
     const role = this.roles.get(`${providerId}:${userId}`);
     return role === "owner" || role === "admin";
   }
+  async memberBelongsToProvider(): Promise<boolean> {
+    throw new Error("not used by these tests — set members directly on the aggregate");
+  }
+  async unpublishServicesWithoutMembers(): Promise<{ serviceId: string; name: string }[]> {
+    throw new Error("not used by these tests");
+  }
 }
 
 let repo: FakeRepo;
@@ -236,11 +242,20 @@ describe("SetServiceStatusCommand", () => {
       stepMinutes: null,
       name: "Só cabelo",
     });
+    // A performer: `canPublish` now refuses an unpublished service with
+    // nobody to perform it, and every caller of this helper publishes.
+    // Setting it directly on the aggregate rather than through
+    // `SetServiceMembersCommand` keeps this fixture independent of that
+    // command's own tests.
+    repo.stored.get(serviceId)!.setMembers(["member-1"]);
     return serviceId;
   }
 
   it("refuses to publish a priced service with no options", async () => {
     const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    // A performer, so this isolates the option check this test is named
+    // for from the member check `canPublish` now runs first.
+    repo.stored.get(serviceId)!.setMembers(["member-1"]);
     await expect(
       new SetServiceStatusCommand(repo).execute({
         requesterUserId: "user-1",
@@ -248,6 +263,28 @@ describe("SetServiceStatusCommand", () => {
         status: "published",
       }),
     ).rejects.toMatchObject({ code: "SERVICE_NEEDS_OPTION" });
+  });
+
+  it("refuses to publish a service with nobody performing it", async () => {
+    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    await expect(
+      new SetServiceStatusCommand(repo).execute({
+        requesterUserId: "user-1",
+        serviceId,
+        status: "published",
+      }),
+    ).rejects.toMatchObject({ code: "SERVICE_NEEDS_MEMBER" });
   });
 
   it("refuses a stranger trying to change status", async () => {

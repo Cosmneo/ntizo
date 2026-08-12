@@ -158,6 +158,7 @@ describe("canPublish", () => {
           categoryId: null,
           hasSourceName: true,
           optionCount: 1,
+          memberCount: 1,
         }),
       ),
     ).toBe("SERVICE_CATEGORY_REQUIRED");
@@ -171,6 +172,9 @@ describe("canPublish", () => {
           categoryId: "cat",
           hasSourceName: true,
           optionCount: 0,
+          // A real performer, so this exercises the option check rather
+          // than the member check that now runs before it.
+          memberCount: 1,
         }),
       ),
     ).toBe("SERVICE_NEEDS_OPTION");
@@ -184,6 +188,7 @@ describe("canPublish", () => {
           categoryId: "cat",
           hasSourceName: true,
           optionCount: 1,
+          memberCount: 1,
         }),
       ),
     ).toBe("SERVICE_QUOTE_HAS_OPTIONS");
@@ -197,6 +202,7 @@ describe("canPublish", () => {
           categoryId: "cat",
           hasSourceName: false,
           optionCount: 1,
+          memberCount: 1,
         }),
       ),
     ).toBe("SERVICE_NAME_REQUIRED");
@@ -209,6 +215,7 @@ describe("canPublish", () => {
         categoryId: "cat",
         hasSourceName: true,
         optionCount: 1,
+        memberCount: 1,
       }),
     ).not.toThrow();
   });
@@ -220,6 +227,7 @@ describe("canPublish", () => {
         categoryId: "cat",
         hasSourceName: true,
         optionCount: 0,
+        memberCount: 1,
       }),
     ).not.toThrow();
   });

@@ -5,3 +5,4 @@ export type { EmailServicePort, EmailMessage } from "./email-service.port";
 export * from "./inviter-locale.port";
 export * from "./wallet.repository.port";
 export * from "./platform-settings.port";
+export * from "./catalog.repository.port";

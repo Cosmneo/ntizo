@@ -75,6 +75,26 @@ export class ServiceNeedsOptionError extends UnprocessableError {
   }
 }
 
+/**
+ * Nobody performs it.
+ *
+ * Thrown from two places on purpose: `canPublish` refuses to *publish* a
+ * service with no performer, and `SetServiceMembersCommand` separately
+ * refuses to *clear* the last performer of one already published — an edit
+ * the person making it can simply not make. A member leaving the workspace
+ * is the other way a service can end up with nobody, and that path is not
+ * refusable (people leave); it unpublishes instead of throwing this.
+ */
+export class ServiceNeedsMemberError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "A service needs at least one performer before it can be published",
+      code: "SERVICE_NEEDS_MEMBER",
+    });
+    this.name = "ServiceNeedsMemberError";
+  }
+}
+
 export class QuoteServiceHasOptionsError extends ConflictError {
   constructor() {
     super({

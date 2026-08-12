@@ -25,6 +25,7 @@ function built() {
   });
   s.update({ imageKeys: ["service/svc-1/1"] });
   s.setTranslation("en-US", "Haircut", null);
+  s.setMembers(["member-1", "member-2"]);
   return s;
 }
 
@@ -51,6 +52,7 @@ function builtQuote() {
     askLocation: false,
     intro: "Conte-nos o que precisa.",
   });
+  s.setMembers(["member-3"]);
   return s;
 }
 
@@ -79,6 +81,7 @@ function roundTrip(builder: () => Service) {
       })),
       translations: rows.translations,
       optionTranslations: rows.optionTranslations,
+      members: rows.members,
       quoteForm: rows.quoteForm,
     })
     .toJSON();
@@ -112,6 +115,12 @@ describe("serviceMapper", () => {
       stepMinutes: null,
       isDefault: true,
     });
+  });
+
+  it("carries the service's performers", () => {
+    const { members } = serviceMapper.toPersistence(built());
+    expect(members.map((m) => m.memberId).sort()).toEqual(["member-1", "member-2"]);
+    expect(members.every((m) => m.serviceId === "svc-1")).toBe(true);
   });
 
   it("carries both translations of the service and the option's own", () => {

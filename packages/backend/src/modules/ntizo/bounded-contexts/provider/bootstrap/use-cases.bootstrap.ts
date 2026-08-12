@@ -25,6 +25,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     platformSettings,
     unitOfWork,
     outboxPort,
+    catalogRepository,
   } = adapters;
 
   return {
@@ -98,6 +99,7 @@ export function bootstrapUseCases(adapters: ProviderAdapters) {
     removeProviderMember: new RemoveProviderMemberCommand(
       providerRepository,
       providerMemberRepository,
+      catalogRepository,
       unitOfWork,
       outboxPort,
     ),

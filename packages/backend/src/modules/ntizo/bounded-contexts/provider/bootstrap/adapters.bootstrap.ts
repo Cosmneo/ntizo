@@ -8,6 +8,13 @@ import { ProviderEmailServiceAdapter } from "../infrastructure/outbound-adapters
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
 import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
+// The provider bounded context's one door onto the catalog — see
+// `CatalogRepositoryPort`. `DrizzleServiceRepository` already implements
+// `unpublishServicesWithoutMembers`, so it satisfies that port structurally;
+// reusing it here rather than adding a wrapper mirrors how the scheduling
+// bounded context's Drizzle repository already reads the catalog's own
+// tables directly.
+import { DrizzleServiceRepository } from "../../catalog/infrastructure/repositories/drizzle/service.repository";
 
 export function bootstrapAdapters() {
   const providerRepository = new DrizzleProviderRepository();
@@ -19,6 +26,7 @@ export function bootstrapAdapters() {
   const platformSettings = new DrizzlePlatformSettingsAdapter();
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
+  const catalogRepository = new DrizzleServiceRepository();
 
   return {
     providerRepository,
@@ -30,6 +38,7 @@ export function bootstrapAdapters() {
     platformSettings,
     unitOfWork,
     outboxPort,
+    catalogRepository,
   };
 }
 

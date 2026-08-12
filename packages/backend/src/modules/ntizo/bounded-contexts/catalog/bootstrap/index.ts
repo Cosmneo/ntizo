@@ -8,6 +8,7 @@ import { UpdateServiceCommand } from "../app/use-cases/update-service.command";
 import { ManageOptionsCommand } from "../app/use-cases/manage-options.command";
 import { SetServiceStatusCommand } from "../app/use-cases/set-service-status.command";
 import { SetServiceTranslationCommand } from "../app/use-cases/set-service-translation.command";
+import { SetServiceMembersCommand } from "../app/use-cases/set-service-members.command";
 
 export function bootstrapCatalog() {
   const categoryRepository = new DrizzleCategoryRepository();
@@ -23,6 +24,7 @@ export function bootstrapCatalog() {
       manageOptions: new ManageOptionsCommand(serviceRepository),
       setServiceStatus: new SetServiceStatusCommand(serviceRepository),
       setServiceTranslation: new SetServiceTranslationCommand(serviceRepository),
+      setServiceMembers: new SetServiceMembersCommand(serviceRepository),
     },
   };
 }
