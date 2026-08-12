@@ -71,6 +71,114 @@ export function labelToMinutes(label: string): number | null {
 }
 
 /**
+ * The weekday's own short name — "Mon", "seg", "Mo" — from the same source as
+ * {@link weekdayLabel} and for the same reason.
+ */
+export function weekdayShortLabel(locale: string, weekday: number): string {
+  const date = new Date(REFERENCE_SUNDAY_UTC_MS + weekday * MS_PER_DAY);
+  return new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(date);
+}
+
+/**
+ * Several weekdays as one phrase — "Mon, Wed and Fri", "segunda, quarta e
+ * sexta" — with the language's own conjunction and its own comma rules, from
+ * `Intl.ListFormat`.
+ *
+ * The order given is the order printed: callers pass display order (Monday
+ * first) and this does not second-guess them, because "Sunday and Monday" and
+ * "Monday and Sunday" are different sentences and only the caller knows which
+ * week it is describing.
+ */
+export function formatDayList(
+  locale: string,
+  weekdays: readonly number[],
+  width: "short" | "long" = "short",
+): string {
+  const label = width === "long" ? weekdayLabel : weekdayShortLabel;
+  return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(
+    weekdays.map((w) => label(locale, w)),
+  );
+}
+
+/**
+ * A span of minutes as hours in the reader's language — "8 hours", "8,5
+ * horas", "1 hour".
+ *
+ * `Intl.NumberFormat`'s `hour` unit already knows every locale's plural
+ * agreement and its decimal separator, so none of that is spelled out in eight
+ * JSON files where seven copies would sit unread until one of them was wrong.
+ */
+export function formatHours(minutes: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "hour",
+    unitDisplay: "long",
+    maximumFractionDigits: 2,
+  }).format(minutes / 60);
+}
+
+/**
+ * One weekly row's place in the canonical draft order: its day in the
+ * Monday-first display order, then its start.
+ *
+ * The draft is kept sorted rather than sorted at each read, so what a reader
+ * sees, what the cards group, and what `setWeeklyPattern` sends are all one
+ * sequence — a member whose Sunday row was typed first does not get a
+ * different payload from one who typed it last.
+ */
+export function compareRules(a: WeeklyRuleDraft, b: WeeklyRuleDraft): number {
+  const byDay = weekdayDisplayIndex(a.weekday) - weekdayDisplayIndex(b.weekday);
+  return byDay !== 0 ? byDay : a.startMinute - b.startMinute;
+}
+
+/**
+ * The rows that share a pair of times, as one thing a provider can name.
+ *
+ * "Monday to Friday, 09:00 to 17:00" is one decision, and the database stores
+ * it as five rows because a row is per-day. A card per row would ask somebody
+ * to change their mind five times to move their morning, so the screen groups
+ * them back and the drawer edits the group; `rules` is the expansion the wire
+ * still wants.
+ */
+export interface WeekRuleGroup {
+  /** Stable within a draft — the hours *are* the group's identity. */
+  readonly id: string;
+  readonly startMinute: number;
+  readonly endMinute: number;
+  /** Stored weekday numbers (0 = Sunday), in Monday-first display order. */
+  readonly weekdays: readonly number[];
+  /** One row per day, in the same order — what goes back over the wire. */
+  readonly rules: readonly WeeklyRuleDraft[];
+}
+
+export function groupRules(rules: readonly WeeklyRuleDraft[]): WeekRuleGroup[] {
+  const byHours = new Map<string, number[]>();
+  for (const rule of rules) {
+    const id = `${rule.startMinute}-${rule.endMinute}`;
+    const days = byHours.get(id) ?? [];
+    if (!days.includes(rule.weekday)) days.push(rule.weekday);
+    byHours.set(id, days);
+  }
+
+  return [...byHours.entries()]
+    .map(([id, days]) => {
+      const [startMinute, endMinute] = id.split("-").map(Number) as [number, number];
+      const weekdays = [...days].sort((a, b) => weekdayDisplayIndex(a) - weekdayDisplayIndex(b));
+      return {
+        id,
+        startMinute,
+        endMinute,
+        weekdays,
+        // Rebuilt rather than carried through from the input: the group is the
+        // authority on its own hours, so an expansion can never disagree with
+        // the times the card is printing above it.
+        rules: weekdays.map((weekday) => ({ weekday, startMinute, endMinute })),
+      };
+    })
+    .sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute);
+}
+
+/**
  * Whether `candidate` overlaps any existing rule on the same weekday.
  *
  * A usability guard for the form, not an invariant — the engine merges
