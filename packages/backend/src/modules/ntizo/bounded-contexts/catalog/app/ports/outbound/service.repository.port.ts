@@ -14,6 +14,16 @@ export interface ServiceRepositoryPort {
    */
   isProviderMember(providerId: string, userId: string): Promise<boolean>;
   /**
+   * This caller's own `provider_member.id` in this workspace, or null if
+   * they are not a member.
+   *
+   * Distinct from {@link isProviderMember}: that answers "may they act here"
+   * as a boolean, but `service_member.member_id` references
+   * `provider_member.id`, not a user id — `CreateServiceCommand` needs this
+   * to seed a newly-created service's creator as its first performer.
+   */
+  findMemberIdForUser(providerId: string, userId: string): Promise<string | null>;
+  /**
    * Whether this person is this workspace's owner or an admin.
    *
    * A sibling of {@link isProviderMember}, not a parameter on it: describing

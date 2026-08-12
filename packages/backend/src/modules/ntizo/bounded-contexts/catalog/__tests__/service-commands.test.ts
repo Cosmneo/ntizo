@@ -19,12 +19,23 @@ class FakeRepo implements ServiceRepositoryPort {
     ["prov-1:user-2", "staff"],
     ["prov-1:user-3", "admin"],
   ]);
+  // The `provider_member.id` behind each user — what `service_member` rows
+  // actually reference, and what `CreateServiceCommand` now seeds a new
+  // service's `memberIds` with via `findMemberIdForUser`.
+  providerMemberIds = new Map<string, string>([
+    ["prov-1:user-1", "member-1"],
+    ["prov-1:user-2", "member-2"],
+    ["prov-1:user-3", "member-3"],
+  ]);
 
   async findById(id: string) { return this.stored.get(id) ?? null; }
   async save(s: Service) { this.saved.push(s); this.stored.set(s.id, s); }
   async delete(id: string) { this.stored.delete(id); }
   async isProviderMember(providerId: string, userId: string) {
     return this.members.has(`${providerId}:${userId}`);
+  }
+  async findMemberIdForUser(providerId: string, userId: string) {
+    return this.providerMemberIds.get(`${providerId}:${userId}`) ?? null;
   }
   async isProviderOwnerOrAdmin(providerId: string, userId: string) {
     const role = this.roles.get(`${providerId}:${userId}`);
@@ -70,6 +81,38 @@ describe("CreateServiceCommand", () => {
     const json = repo.stored.get(out.serviceId)!.toJSON();
     expect(json.quoteForm?.responseHours).toBe(48);
     expect(json.options).toEqual([]);
+  });
+
+  it("adds the creator as the service's first performer", async () => {
+    // Whoever creates a service is inserted into it — design spec,
+    // "Additions to slice 1". `base.requesterUserId` is user-1, whose
+    // provider-member id in this fixture is "member-1".
+    const out = await new CreateServiceCommand(repo).execute(base);
+    expect(repo.stored.get(out.serviceId)!.toJSON().memberIds).toEqual(["member-1"]);
+  });
+
+  it("is publishable without a separate members.set call", async () => {
+    // The whole point of seeding the creator on creation: a service should
+    // not be born unpublishable for want of a performer nobody was asked to
+    // add.
+    const out = await new CreateServiceCommand(repo).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId: out.serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    await new SetServiceStatusCommand(repo).execute({
+      requesterUserId: "user-1",
+      serviceId: out.serviceId,
+      status: "published",
+    });
+    expect(repo.stored.get(out.serviceId)!.toJSON().status).toBe("published");
   });
 });
 
@@ -278,6 +321,12 @@ describe("SetServiceStatusCommand", () => {
       stepMinutes: null,
       name: "Só cabelo",
     });
+    // `CreateServiceCommand` now seeds the creator as a performer, so a
+    // service can no longer be born with nobody in it — cleared directly on
+    // the aggregate to still exercise this refusal. Mirrors
+    // `SetServiceMembersCommand`'s own "clearing the last performer of a
+    // draft service is allowed" test relying on the same possibility.
+    repo.stored.get(serviceId)!.setMembers([]);
     await expect(
       new SetServiceStatusCommand(repo).execute({
         requesterUserId: "user-1",
