@@ -48,6 +48,18 @@ describe("fixedStarts", () => {
     );
     expect(starts).toEqual([480, 540, 840, 900]);
   });
+
+  test("the last start ending exactly at closing time is offered", () => {
+    // 17:00 + 60 = 18:00, exactly the close.
+    const starts = fixedStarts(day, { durationMinutes: 60, bufferMinutes: 0, gridMinutes: 30 });
+    expect(starts.at(-1)).toBe(1020); // 17:00
+  });
+
+  test("the buffer is included in the span ending exactly at closing", () => {
+    // 17:00 + 45 + 15 = 18:00, exactly the close.
+    const starts = fixedStarts(day, { durationMinutes: 45, bufferMinutes: 15, gridMinutes: 30 });
+    expect(starts.at(-1)).toBe(1020); // 17:00
+  });
 });
 
 describe("hourlyStarts", () => {
@@ -96,5 +108,16 @@ describe("hourlyStarts", () => {
     });
     expect(offers[0]).toEqual({ start: 480, maxMinutes: 540 }); // 10h room less 1h buffer
     expect(offers.at(-1)).toEqual({ start: 840, maxMinutes: 180 }); // 14:00 + 3h + 1h = 18:00
+  });
+
+  test("the last start with minimum ending exactly at sellable end is offered", () => {
+    // 14:00 + 180 min (3h) + 60 min (1h buffer) = 18:00 exactly.
+    const offers = hourlyStarts(day, {
+      minMinutes: 180,
+      stepMinutes: 30,
+      bufferMinutes: 60,
+      gridMinutes: 30,
+    });
+    expect(offers.at(-1)).toEqual({ start: 840, maxMinutes: 180 });
   });
 });
