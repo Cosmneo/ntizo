@@ -171,7 +171,12 @@ export class DrizzleServiceRepository implements ServiceRepositoryPort {
 
     return changed.map((c) => ({
       serviceId: c.id,
-      name: names.find((n) => n.serviceId === c.id && n.locale === c.sourceLocale)?.name ?? "",
+      // The id, not "" — this name reaches a human on the Members page's
+      // unpublish banner, and a bullet with nothing on it reads as a bug,
+      // not as "a service was unpublished". A service missing its
+      // `source_locale` translation is not reachable through the write
+      // path, but the banner has to say something identifying either way.
+      name: names.find((n) => n.serviceId === c.id && n.locale === c.sourceLocale)?.name ?? c.id,
     }));
   }
 }
