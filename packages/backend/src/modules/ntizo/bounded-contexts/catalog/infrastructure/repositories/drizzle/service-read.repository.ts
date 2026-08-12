@@ -153,11 +153,16 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
    * keyed by the ids this page already picked, the same reason
    * `listForProvider` does it: joining a one-to-many here would multiply the
    * very rows `limit`/`offset` just paged.
+   *
+   * `providerId`, when given, scopes the page to one business — the filter a
+   * provider's own public page needs, threaded through exactly like
+   * `categoryCode`.
    */
   async listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]> {
     const db = getDb();
     const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
     if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
+    if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
 
     const rows = await db
       .select({

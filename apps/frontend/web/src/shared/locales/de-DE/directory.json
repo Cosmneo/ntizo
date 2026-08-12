@@ -12,5 +12,13 @@
   "searchLabel": "Leistungen suchen",
   "searchAction": "Suchen",
   "noResultsFor": "Nichts passt zu \"{{query}}\". Versuch ein anderes Wort.",
-  "resultsFor": "{{count}} Treffer für \"{{query}}\""
+  "resultsFor": "{{count}} Treffer für \"{{query}}\"",
+  "servicesTitle": "Leistungen",
+  "servicesEmpty": "Dieser Anbieter hat noch keine Leistungen veröffentlicht.",
+  "servicesError": "Die Leistungen dieses Anbieters konnten gerade nicht geladen werden.",
+  "priceByQuote": "Auf Anfrage",
+  "priceUnavailable": "Preis nicht verfügbar",
+  "priceHourlySuffix": "/Std.",
+  "serviceDurationMinutes": "{{count}} Min.",
+  "serviceMinimumMinutes": "Mindestens {{count}} Min."
 }

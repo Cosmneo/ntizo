@@ -2,6 +2,7 @@ import { and, asc, eq, ilike, or, type SQL } from "drizzle-orm";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
+import { mediaUrl } from "../../../../../shared/infrastructure/media/media-url";
 import type { ProviderPublicRepositoryPort } from "../../../app/ports/outbound/provider-public.repository.port";
 
 /**
@@ -38,14 +39,17 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     city: provider.addressCity,
     district: provider.addressDistrict,
     country: provider.addressCountry,
+    logoKey: provider.logoKey,
   };
 
   private static toDTO(row: {
     id: string; name: string; slug: string; type: string;
     description: string | null; city: string | null;
     district: string | null; country: string | null;
+    logoKey: string | null;
   }): ProviderPublicDTO {
-    return { ...row, type: row.type as ProviderPublicDTO["type"] };
+    const { logoKey, ...rest } = row;
+    return { ...rest, type: row.type as ProviderPublicDTO["type"], logoUrl: mediaUrl(logoKey) };
   }
 
   async listActive(

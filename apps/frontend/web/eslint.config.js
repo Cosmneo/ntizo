@@ -20,15 +20,17 @@ export default [
           type: "domain",
           pattern: [
             "src/features/*/domain/**",
-            // provider/services and provider/availability both nest one
-            // level deeper than the other features (provider/services/domain,
-            // not provider/domain), so the single-segment `*` above never
-            // matches either. Named explicitly rather than lumped into `ui`
-            // the way admin's is below: the whole point of this feature's
-            // layers is that `ui` cannot reach `data` directly, which the
-            // admin blanket rule would silently defeat.
+            // provider/services, provider/availability and directory/services
+            // all nest one level deeper than the other features
+            // (provider/services/domain, not provider/domain), so the
+            // single-segment `*` above never matches any of them. Named
+            // explicitly rather than lumped into `ui` the way admin's is
+            // below: the whole point of this feature's layers is that `ui`
+            // cannot reach `data` directly, which the admin blanket rule
+            // would silently defeat.
             "src/features/provider/services/domain/**",
             "src/features/provider/availability/domain/**",
+            "src/features/directory/services/domain/**",
             "src/shared/domain/**",
           ],
         },
@@ -38,6 +40,7 @@ export default [
             "src/features/*/data/**",
             "src/features/provider/services/data/**",
             "src/features/provider/availability/data/**",
+            "src/features/directory/services/data/**",
           ],
         },
         {
@@ -46,6 +49,7 @@ export default [
             "src/features/*/viewmodel/**",
             "src/features/provider/services/viewmodel/**",
             "src/features/provider/availability/viewmodel/**",
+            "src/features/directory/services/viewmodel/**",
           ],
         },
         {
@@ -54,6 +58,7 @@ export default [
             "src/features/*/ui/**",
             "src/features/provider/services/ui/**",
             "src/features/provider/availability/ui/**",
+            "src/features/directory/services/ui/**",
             "src/shared/ui/**",
             "src/shared/components/**",
             "src/features/*/components/**",

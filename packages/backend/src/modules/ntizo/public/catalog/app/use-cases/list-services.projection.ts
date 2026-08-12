@@ -9,6 +9,8 @@ export const MAX_SERVICE_PAGE = 48;
 export interface ListServicesInput {
   locale: string;
   categoryCode?: string | undefined;
+  /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
+  providerId?: string | undefined;
   limit: number;
   offset: number;
 }
@@ -52,6 +54,7 @@ export class ListServicesProjection {
     // check rather than a second round trip, and the extra row is discarded.
     const rows = await this.repo.listPublished({
       categoryCode: input.categoryCode,
+      providerId: input.providerId,
       limit: limit + 1,
       offset,
     });

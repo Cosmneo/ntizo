@@ -12,5 +12,13 @@
   "searchLabel": "Cerca servizi",
   "searchAction": "Cerca",
   "noResultsFor": "Nessun risultato per \"{{query}}\". Prova un'altra parola.",
-  "resultsFor": "{{count}} risultato/i per \"{{query}}\""
+  "resultsFor": "{{count}} risultato/i per \"{{query}}\"",
+  "servicesTitle": "Servizi",
+  "servicesEmpty": "Questo fornitore non ha ancora pubblicato alcun servizio.",
+  "servicesError": "Non è stato possibile caricare i servizi di questo fornitore in questo momento.",
+  "priceByQuote": "Su preventivo",
+  "priceUnavailable": "Prezzo non disponibile",
+  "priceHourlySuffix": "/h",
+  "serviceDurationMinutes": "{{count}} min",
+  "serviceMinimumMinutes": "Minimo {{count}} min"
 }

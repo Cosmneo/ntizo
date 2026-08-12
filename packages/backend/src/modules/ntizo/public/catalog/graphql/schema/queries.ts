@@ -36,13 +36,17 @@ export const listCategories = defineQuery({
  * page reads this signed out, and it must not depend on a session existing.
  * `categoryCode` is optional so the same query serves both the full browse
  * and a category filtered one, without a second field to keep in sync with
- * this one.
+ * this one. `providerId` is the same idea for a provider's own public page —
+ * added for that page rather than a client paging through every service on
+ * the platform and filtering in the browser, which would page past every
+ * other business to find one's own handful.
  */
 export const listServices = defineQuery({
   input: zodSchema(
     z.object({
       locale: localeSchema.optional(),
       categoryCode: z.string().min(1).max(60).optional(),
+      providerId: z.string().min(1).optional(),
       // Optional, not `.default()`: a zod default does not survive into the
       // GraphQL schema, so the fallback belongs in the handler where it can
       // actually run.

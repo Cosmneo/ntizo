@@ -12,5 +12,13 @@
   "searchLabel": "Diensten zoeken",
   "searchAction": "Zoeken",
   "noResultsFor": "Niets komt overeen met \"{{query}}\". Probeer een ander woord.",
-  "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\""
+  "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\"",
+  "servicesTitle": "Diensten",
+  "servicesEmpty": "Deze aanbieder heeft nog geen diensten gepubliceerd.",
+  "servicesError": "De diensten van deze aanbieder konden nu niet worden geladen.",
+  "priceByQuote": "Op offerte",
+  "priceUnavailable": "Prijs niet beschikbaar",
+  "priceHourlySuffix": "/uur",
+  "serviceDurationMinutes": "{{count}} min",
+  "serviceMinimumMinutes": "Minimaal {{count}} min"
 }

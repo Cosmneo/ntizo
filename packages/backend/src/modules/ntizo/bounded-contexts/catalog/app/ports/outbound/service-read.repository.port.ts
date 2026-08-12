@@ -88,6 +88,8 @@ export interface ServicePublicRow {
 
 export interface ListPublishedServicesFilter {
   categoryCode?: string | undefined;
+  /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
+  providerId?: string | undefined;
   limit: number;
   offset: number;
 }

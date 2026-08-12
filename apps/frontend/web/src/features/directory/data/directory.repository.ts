@@ -6,14 +6,14 @@ import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listin
 const BY_SLUG = `
   query ProviderBySlug($input: ProviderBySlugInput!) {
     providerBySlug(input: $input) {
-      id name slug type description city district country
+      id name slug type description city district country logoUrl
     }
   }`;
 
 const LIST = `
   query ProviderList($input: ProviderListInput!) {
     providerList(input: $input) {
-      id name slug type description city district country
+      id name slug type description city district country logoUrl
     }
   }`;
 

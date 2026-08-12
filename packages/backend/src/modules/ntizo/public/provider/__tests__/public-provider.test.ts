@@ -13,7 +13,7 @@ import { likePattern } from "../infra/repositories/drizzle/provider-public.repos
 
 const dto: ProviderPublicDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization",
-  description: null, city: null, district: null, country: null,
+  description: null, city: null, district: null, country: null, logoUrl: null,
 };
 
 class FakeRepo implements ProviderPublicRepositoryPort {

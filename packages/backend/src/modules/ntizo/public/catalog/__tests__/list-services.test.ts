@@ -18,8 +18,12 @@ const row = (over = {}) => ({
 });
 
 class FakeRepo {
+  lastFilter: unknown;
   constructor(private readonly rows: unknown[]) {}
-  async listPublished() { return this.rows; }
+  async listPublished(filter: unknown) {
+    this.lastFilter = filter;
+    return this.rows;
+  }
 }
 
 describe("ListServicesProjection", () => {
@@ -61,5 +65,19 @@ describe("ListServicesProjection", () => {
       .execute({ locale: "pt-MZ", limit: 2, offset: 0 });
     expect(out.items).toHaveLength(2);
     expect(out.nextOffset).toBe(2);
+  });
+
+  it("forwards providerId to the repository — a provider's own public page filters to it, not the platform browse", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", providerId: "prov-42", limit: 10, offset: 0 });
+    expect(repo.lastFilter).toMatchObject({ providerId: "prov-42" });
+  });
+
+  it("leaves providerId undefined when no provider was asked for", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
+    expect(repo.lastFilter).toMatchObject({ providerId: undefined });
   });
 });

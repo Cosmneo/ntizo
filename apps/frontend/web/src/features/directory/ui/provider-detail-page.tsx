@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useProviderDetail } from "@/features/directory/viewmodel/use-directory";
+import { ProviderServicesSection } from "@/features/directory/services/ui/services-section";
 
 /**
  * A single provider's public page.
@@ -11,8 +12,9 @@ import { useProviderDetail } from "@/features/directory/viewmodel/use-directory"
  * provider is worth very little in a result list.
  */
 export function ProviderDetailPage({ slug }: { slug: string }) {
-  const { t } = useTranslation("directory");
+  const { t, i18n } = useTranslation("directory");
   const provider = useProviderDetail(slug);
+  const locale = i18n.resolvedLanguage ?? i18n.language;
 
   if (!provider) {
     return (
@@ -61,6 +63,12 @@ export function ProviderDetailPage({ slug }: { slug: string }) {
           {t("noDescription")}
         </p>
       )}
+
+      <ProviderServicesSection
+        providerId={provider.id}
+        providerImageUrl={provider.logoUrl}
+        locale={locale}
+      />
     </main>
   );
 }

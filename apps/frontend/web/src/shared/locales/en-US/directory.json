@@ -12,5 +12,13 @@
   "searchLabel": "Search services",
   "searchAction": "Search",
   "noResultsFor": "Nothing matched \"{{query}}\". Try another word.",
-  "resultsFor": "{{count}} result(s) for \"{{query}}\""
+  "resultsFor": "{{count}} result(s) for \"{{query}}\"",
+  "servicesTitle": "Services",
+  "servicesEmpty": "This provider hasn't published any services yet.",
+  "servicesError": "We couldn't load this provider's services right now.",
+  "priceByQuote": "By quote",
+  "priceUnavailable": "Price unavailable",
+  "priceHourlySuffix": "/h",
+  "serviceDurationMinutes": "{{count}} min",
+  "serviceMinimumMinutes": "{{count}} min minimum"
 }
