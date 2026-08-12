@@ -61,6 +61,30 @@ describe("sectionStates", () => {
       .toBe("SERVICE_NAME_REQUIRED");
   });
 
+  // basicsCode's own internal order: category before name, both missing at
+  // once so nothing but that order can decide which code comes back.
+  test("the category is reported before the missing name, when both are missing", () => {
+    const input = { ...COMPLETE, categoryId: null, sourceName: "" };
+    expect(publishBlocker(input)).toBe("SERVICE_CATEGORY_REQUIRED");
+    expect(by(input, "basics").blockingCode).toBe("SERVICE_CATEGORY_REQUIRED");
+  });
+
+  // The server's own comment on `memberCount === 0` in service-rules.ts is
+  // explicit that this one is deliberate: performers before the booking-mode
+  // checks, so fixing the category error doesn't just surface the option
+  // error next. Both fields wrong at once, priced branch.
+  test("the missing performer is reported before the missing option, on a priced organization service", () => {
+    expect(publishBlocker({ ...COMPLETE, memberIds: [], optionCount: 0 }))
+      .toBe("SERVICE_NEEDS_MEMBER");
+  });
+
+  // Same pair, quote branch — the ordering holds regardless of which
+  // booking-mode check would otherwise fire.
+  test("the missing performer is reported before the quote-has-options problem", () => {
+    expect(publishBlocker({ ...COMPLETE, memberIds: [], bookingMode: "quote", optionCount: 2 }))
+      .toBe("SERVICE_NEEDS_MEMBER");
+  });
+
   test("an individual provider has no performers section at all", () => {
     const states = sectionStates({ ...COMPLETE, individualProvider: true, memberIds: [] });
     expect(states.find((s) => s.id === "performers")).toBeUndefined();
@@ -70,9 +94,12 @@ describe("sectionStates", () => {
     expect(publishBlocker({ ...COMPLETE, individualProvider: true, memberIds: [] })).toBeNull();
   });
 
-  test("timing, languages and media are never required", () => {
+  test("timing, languages and media are never required, and read as already complete", () => {
     for (const id of ["timing", "languages", "media"] as const) {
-      expect(by(COMPLETE, id).required).toBe(false);
+      const s = by(COMPLETE, id);
+      expect(s.required).toBe(false);
+      expect(s.complete).toBe(true);
+      expect(s.blockingCode).toBeNull();
     }
   });
 });
