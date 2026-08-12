@@ -113,3 +113,23 @@ export class InvalidPayoutDestinationError extends UnprocessableError {
     this.name = "InvalidPayoutDestinationError";
   }
 }
+
+/**
+ * Refused by `Provider.update` when the caller's timezone is not one
+ * `Intl.DateTimeFormat` recognises.
+ *
+ * Same `code` as the scheduling BC's own `TimezoneInvalidError` — both name
+ * the one thing the availability screen's timezone field can get wrong — but
+ * declared separately here rather than imported across bounded contexts: the
+ * provider BC owns the `provider.timezone` column and the write path that
+ * sets it, and scheduling only ever reads it back.
+ */
+export class TimezoneInvalidError extends UnprocessableError {
+  constructor(public readonly timezone: string) {
+    super({
+      message: `"${timezone}" is not a usable timezone`,
+      code: "TIMEZONE_INVALID",
+    });
+    this.name = "TimezoneInvalidError";
+  }
+}

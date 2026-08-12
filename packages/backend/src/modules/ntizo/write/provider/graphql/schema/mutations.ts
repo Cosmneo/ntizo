@@ -64,6 +64,11 @@ export const updateProvider = defineMutation({
       // block greyed out under "temporarily unavailable". It was not
       // temporary — nothing was going to change it but this line.
       address: addressInput.optional(),
+      // Not validated for real IANA-ness here — `.min(1)` only rejects the
+      // empty string. `Provider.update` is what checks it against
+      // `Intl.DateTimeFormat` and throws `TIMEZONE_INVALID`; the aggregate is
+      // the one place that rule needs to live, not the transport schema.
+      timezone: z.string().min(1).optional(),
     }),
   ),
   output: zodSchema(okResult),

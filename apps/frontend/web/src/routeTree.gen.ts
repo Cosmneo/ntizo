@@ -45,6 +45,7 @@ import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
+import { Route as ProviderSlugAvailabilityRouteImport } from './routes/provider/$slug/availability'
 import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
 import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
 import { Route as ProviderSlugServicesRouteImport } from './routes/provider/$slug/services'
@@ -234,6 +235,12 @@ const AdminProvidersProviderIdRoute =
     path: '/providers/$providerId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const ProviderSlugAvailabilityRoute =
+  ProviderSlugAvailabilityRouteImport.update({
+    id: '/availability',
+    path: '/availability',
+    getParentRoute: () => ProviderSlugRouteRoute,
+  } as any)
 const ProviderSlugMembersRoute = ProviderSlugMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/services': typeof ProviderSlugServicesRoute
@@ -331,6 +339,7 @@ export interface FileRoutesByTo {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/services': typeof ProviderSlugServicesRoute
@@ -375,6 +384,7 @@ export interface FileRoutesById {
   '/_customer/account/security': typeof CustomerAccountSecurityRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/services': typeof ProviderSlugServicesRoute
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/provider/$slug/availability'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
     | '/provider/$slug/services'
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/provider/$slug/availability'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
     | '/provider/$slug/services'
@@ -499,6 +511,7 @@ export interface FileRouteTypes {
     | '/_customer/account/security'
     | '/_public/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/provider/$slug/availability'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
     | '/provider/$slug/services'
@@ -776,6 +789,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProvidersProviderIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/provider/$slug/availability': {
+      id: '/provider/$slug/availability'
+      path: '/availability'
+      fullPath: '/provider/$slug/availability'
+      preLoaderRoute: typeof ProviderSlugAvailabilityRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
     '/provider/$slug/members': {
       id: '/provider/$slug/members'
       path: '/members'
@@ -898,6 +918,7 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface ProviderSlugRouteRouteChildren {
+  ProviderSlugAvailabilityRoute: typeof ProviderSlugAvailabilityRoute
   ProviderSlugMembersRoute: typeof ProviderSlugMembersRoute
   ProviderSlugOverviewRoute: typeof ProviderSlugOverviewRoute
   ProviderSlugServicesRoute: typeof ProviderSlugServicesRoute
@@ -906,6 +927,7 @@ interface ProviderSlugRouteRouteChildren {
 }
 
 const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
+  ProviderSlugAvailabilityRoute: ProviderSlugAvailabilityRoute,
   ProviderSlugMembersRoute: ProviderSlugMembersRoute,
   ProviderSlugOverviewRoute: ProviderSlugOverviewRoute,
   ProviderSlugServicesRoute: ProviderSlugServicesRoute,

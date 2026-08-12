@@ -16,6 +16,12 @@ export interface UpdateProviderInput {
    */
   payoutType?: string | null;
   payoutIdentifier?: string | null;
+  /**
+   * Where this workspace's wall clock runs, an IANA name. Set through the
+   * availability screen; the aggregate refuses anything
+   * `Intl.DateTimeFormat` does not recognise.
+   */
+  timezone?: string;
 }
 
 export interface UpdateProviderOutput {

@@ -55,6 +55,13 @@ export interface UpdateProviderBody {
    */
   payoutType?: string | null;
   payoutIdentifier?: string | null;
+  /**
+   * Where this workspace's wall clock runs, an IANA name. Chosen on the
+   * availability screen (`features/provider/availability`), which reuses
+   * this same `provider.update` mutation rather than adding a second one —
+   * the field belongs to the provider aggregate either way.
+   */
+  timezone?: string;
 }
 
 export interface ProviderDocument {
