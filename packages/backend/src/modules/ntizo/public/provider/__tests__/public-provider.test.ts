@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { providerPublicReadModel } from "@ntizo/shared/read-models";
@@ -9,7 +9,15 @@ import {
   MAX_PUBLIC_PAGE_SIZE,
 } from "../app/use-cases/list-public-providers.projection";
 import { GetPublicProviderProjection } from "../app/use-cases/get-public-provider.projection";
-import { likePattern } from "../infra/repositories/drizzle/provider-public.repository";
+import {
+  DrizzleProviderPublicRepository,
+  likePattern,
+} from "../infra/repositories/drizzle/provider-public.repository";
+import {
+  __resetMediaUrlBaseForTests,
+  configureMediaUrlBase,
+  mediaUrl,
+} from "../../../shared/infrastructure/media/media-url";
 
 const dto: ProviderPublicDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization",
@@ -81,6 +89,84 @@ describe("public provider repository source", () => {
     // deactivated provider defeats what deactivating is for.
     const statusChecks = source.match(/eq\(provider\.status, "active"\)/g) ?? [];
     expect(statusChecks.length).toBe(2);
+  });
+});
+
+/**
+ * `toDTO` is the one line standing between `provider.logoKey` — a private
+ * storage key on a row this repository deliberately selects, precisely so it
+ * can be transformed — and an anonymous caller. Neither test above protects
+ * it: the read-model test only sees a static `logoUrl: null` fixture, and the
+ * "never selects a private column" test can't object to `logoKey`, since
+ * selecting it is intentional here. So this calls the mapping itself, with a
+ * real row, and pins the three things a future edit could silently break.
+ *
+ * `toDTO` is `private static`; TypeScript erases that at runtime, so it is
+ * reached through a narrow type cast rather than by widening its visibility
+ * for a test's convenience.
+ */
+describe("DrizzleProviderPublicRepository.toDTO", () => {
+  type PublicProviderRow = {
+    id: string;
+    name: string;
+    slug: string;
+    type: string;
+    description: string | null;
+    city: string | null;
+    district: string | null;
+    country: string | null;
+    logoKey: string | null;
+  };
+
+  const toDTO = (
+    DrizzleProviderPublicRepository as unknown as {
+      toDTO(row: PublicProviderRow): ProviderPublicDTO;
+    }
+  ).toDTO;
+
+  const row: PublicProviderRow = {
+    id: "p1",
+    name: "Org",
+    slug: "org",
+    type: "organization",
+    description: null,
+    city: null,
+    district: null,
+    country: null,
+    logoKey: null,
+  };
+
+  beforeEach(() => {
+    // Module-level state (`configureMediaUrlBase` is "first call wins"), so
+    // it must be cleared before every test rather than assumed absent.
+    __resetMediaUrlBaseForTests();
+    configureMediaUrlBase("https://media.example.test");
+  });
+
+  afterEach(() => {
+    // Cleared again after, so a later test file sharing this module's
+    // registry doesn't inherit a base this file configured.
+    __resetMediaUrlBaseForTests();
+  });
+
+  it("resolves a present logoKey to the same URL mediaUrl() produces for it", () => {
+    const key = "providers/p1/logo.jpg";
+    const result = toDTO({ ...row, logoKey: key });
+    // Equal to the resolved value itself, not merely non-null: a mapping
+    // that returned the raw key unchanged would also be non-null.
+    expect(result.logoUrl).toBe(mediaUrl(key));
+    expect(result.logoUrl).toBe("https://media.example.test/providers/p1/logo.jpg");
+  });
+
+  it("never carries logoKey, in any form, once mapped", () => {
+    const result = toDTO({ ...row, logoKey: "providers/p1/logo.jpg" }) as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(result, "logoKey")).toBe(false);
+    expect(Object.keys(result)).not.toContain("logoKey");
+  });
+
+  it("maps a null logoKey to a null logoUrl", () => {
+    const result = toDTO({ ...row, logoKey: null });
+    expect(result.logoUrl).toBeNull();
   });
 });
 
