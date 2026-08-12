@@ -23,6 +23,15 @@ describe("labelToMinutes", () => {
     expect(labelToMinutes("09:70")).toBeNull();
     expect(labelToMinutes("")).toBeNull();
   });
+  test("rejects 24:30 — the regex admits it, the clock does not", () => {
+    expect(labelToMinutes("24:30")).toBeNull();
+  });
+  test("rejects 24:01 — one minute past the boundary", () => {
+    expect(labelToMinutes("24:01")).toBeNull();
+  });
+  test("still accepts 24:00 itself", () => {
+    expect(labelToMinutes("24:00")).toBe(1440);
+  });
 });
 
 describe("overlaps", () => {
