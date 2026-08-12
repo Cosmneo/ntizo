@@ -19,6 +19,8 @@ import {
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
 import { createCatalogWriteHandlers } from "@ntizo/backend/modules/ntizo/write/catalog";
 import { bootstrapCatalog } from "@ntizo/backend/modules/ntizo/bounded-contexts/catalog";
+import { createSchedulingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/scheduling";
+import { bootstrapScheduling } from "@ntizo/backend/modules/ntizo/bounded-contexts/scheduling";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
@@ -43,6 +45,7 @@ function getYoga(stage: string) {
     const user = bootstrapUser();
     const catalogRead = bootstrapCatalogRead();
     const catalog = bootstrapCatalog();
+    const scheduling = bootstrapScheduling();
     const walletRead = bootstrapWalletRead();
     const workflows = bootstrapProviderWorkflows({
       userInternal: {
@@ -64,6 +67,7 @@ function getYoga(stage: string) {
         ...createWalletReadHandlers(walletRead.useCases),
         ...createProviderWriteHandlers({ provider, workflows }),
         ...createCatalogWriteHandlers({ catalog }),
+        ...createSchedulingWriteHandlers({ scheduling }),
         ...createUserWriteHandlers({
             updateMyProfile: user.useCases.updateMyProfile,
             addMyAddress: user.useCases.addMyAddress,

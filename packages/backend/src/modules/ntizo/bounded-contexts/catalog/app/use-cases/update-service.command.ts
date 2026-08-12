@@ -8,6 +8,8 @@ export interface UpdateServiceInput {
   categoryId?: string;
   locationType?: string;
   imageKeys?: string[];
+  bufferMinutes?: number;
+  slotIntervalMinutes?: number;
   quoteForm?: QuoteFormProps;
 }
 
@@ -25,6 +27,8 @@ export class UpdateServiceCommand {
       categoryId: input.categoryId,
       locationType: input.locationType,
       imageKeys: input.imageKeys,
+      bufferMinutes: input.bufferMinutes,
+      slotIntervalMinutes: input.slotIntervalMinutes,
     });
     // A separate call, not a field on `update`: the quote form only exists
     // for a quote service, and folding it into `update` would let a caller

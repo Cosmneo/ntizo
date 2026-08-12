@@ -23,15 +23,16 @@ describe("createCatalogWriteHandlers", () => {
           },
           setServiceStatus: noop,
           setServiceTranslation: noop,
+          setServiceMembers: noop,
         },
       },
     } as never);
 
-    // Three category mutations plus eight service ones. Asserting the count
+    // Three category mutations plus nine service ones. Asserting the count
     // rather than "not empty" is what catches a field dropped from the schema:
     // an unhandled field collapses the builder's return type to `never`, but a
     // handled field removed from the schema fails silently.
-    expect(handlers.length).toBe(11);
+    expect(handlers.length).toBe(12);
   });
 });
 
