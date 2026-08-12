@@ -1,0 +1,240 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Loader2 } from "lucide-react";
+import { Button, DatePicker, Input, cn } from "@ntizo/frontend-ui";
+import { labelToMinutes, minutesToLabel } from "../domain/week";
+import {
+  availabilityErrorMessage,
+  type AvailabilityMember,
+  type ExceptionKind,
+} from "../domain/types";
+import { useAddException, useRemoveException } from "../viewmodel/use-availability";
+
+/** `YYYY-MM-DD`, read as a UTC instant so the browser's own timezone never shifts it to the day before or after. */
+function formatDate(iso: string, locale: string): string {
+  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+/**
+ * One member's date exceptions — closed days and days worked on a different
+ * schedule than usual.
+ *
+ * The add form resets whenever the selected member changes, the same rule
+ * the week editor follows: a date half-typed for one person must not end up
+ * filed under whoever the picker lands on next.
+ */
+export function ExceptionsPanel({
+  providerId,
+  member,
+  canEdit,
+}: {
+  providerId: string;
+  member: AvailabilityMember;
+  canEdit: boolean;
+}) {
+  const { t, i18n } = useTranslation("provider");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const addMutation = useAddException(providerId);
+  const removeMutation = useRemoveException(providerId);
+
+  const [onDate, setOnDate] = useState("");
+  const [kind, setKind] = useState<ExceptionKind>("closed");
+  const [start, setStart] = useState("09:00");
+  const [end, setEnd] = useState("17:00");
+  const [note, setNote] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOnDate("");
+    setKind("closed");
+    setStart("09:00");
+    setEnd("17:00");
+    setNote("");
+    setFormError(null);
+    setRemoveError(null);
+  }, [member.memberId]);
+
+  async function submit() {
+    setFormError(null);
+    if (!onDate) {
+      setFormError(t("availabilityExceptionDateRequired"));
+      return;
+    }
+    let startMinute: number | null = null;
+    let endMinute: number | null = null;
+    if (kind === "custom") {
+      startMinute = labelToMinutes(start);
+      endMinute = labelToMinutes(end);
+      if (startMinute === null || endMinute === null) {
+        setFormError(t("availabilityInvalidTime"));
+        return;
+      }
+      if (endMinute <= startMinute) {
+        setFormError(t("availabilityEndBeforeStart"));
+        return;
+      }
+    }
+    try {
+      await addMutation.mutateAsync({
+        memberId: member.memberId,
+        onDate,
+        kind,
+        // Explicit `null` for a closed day — the mutation distinguishes
+        // "no hours" from "leave it alone", and only `null` says the former.
+        startMinute,
+        endMinute,
+        note: note.trim() || null,
+      });
+      setOnDate("");
+      setNote("");
+    } catch (e) {
+      setFormError(availabilityErrorMessage(e, t));
+    }
+  }
+
+  async function remove(exceptionId: string) {
+    setRemoveError(null);
+    try {
+      await removeMutation.mutateAsync({ memberId: member.memberId, exceptionId });
+    } catch (e) {
+      setRemoveError(availabilityErrorMessage(e, t));
+    }
+  }
+
+  const sorted = [...member.exceptions].sort((a, b) => a.onDate.localeCompare(b.onDate));
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-2">
+        {sorted.length === 0 && (
+          <p className="type-body text-[var(--color-muted-foreground)]">
+            {t("availabilityExceptionsEmpty")}
+          </p>
+        )}
+        {sorted.map((exception) => (
+          <div
+            key={exception.id}
+            className="flex items-center justify-between gap-3 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] px-3.5 py-2.5"
+          >
+            <div className="min-w-0">
+              <p className="type-body-medium font-semibold">{formatDate(exception.onDate, locale)}</p>
+              <p className="type-caption text-[var(--color-muted-foreground)]">
+                {exception.kind === "closed"
+                  ? t("availabilityExceptionKindClosed")
+                  : `${minutesToLabel(exception.startMinute ?? 0)}–${minutesToLabel(exception.endMinute ?? 0)}`}
+                {exception.note ? ` · ${exception.note}` : ""}
+              </p>
+            </div>
+            {canEdit && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={removeMutation.isPending}
+                onClick={() => void remove(exception.id)}
+              >
+                {t("availabilityRemove")}
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+      {removeError && <p className="type-body text-[var(--color-destructive)]">{removeError}</p>}
+
+      {canEdit && (
+        <div className="grid gap-3 rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] p-3.5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
+                {t("availabilityExceptionDate")}
+              </span>
+              <DatePicker
+                id="exception-date"
+                value={onDate}
+                onChange={setOnDate}
+                locale={locale}
+                placeholder={t("availabilityExceptionDate")}
+                todayLabel={t("datePickerToday")}
+                clearLabel={t("datePickerClear")}
+                monthLabel={t("datePickerMonth")}
+                yearLabel={t("datePickerYear")}
+                yearSearchPlaceholder={t("datePickerYearSearch")}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
+                {t("availabilityExceptionKind")}
+              </span>
+              <div role="radiogroup" aria-label={t("availabilityExceptionKind")} className="flex gap-2">
+                {(["closed", "custom"] as const).map((option) => {
+                  const selected = kind === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setKind(option)}
+                      className={cn(
+                        "type-body rounded-full border px-4 py-2 text-left transition-colors",
+                        selected
+                          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] font-semibold text-[var(--color-primary)]"
+                          : "border-[var(--color-border)] hover:border-[var(--color-muted-foreground)]",
+                      )}
+                    >
+                      {t(`availabilityExceptionKind${option === "closed" ? "Closed" : "Custom"}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {kind === "custom" && (
+            <div className="grid grid-cols-2 gap-3 sm:w-64">
+              <div className="grid gap-1.5">
+                <span className="type-caption font-semibold text-[var(--color-muted-foreground)]">
+                  {t("availabilityStart")}
+                </span>
+                <Input value={start} onChange={(e) => setStart(e.target.value)} placeholder="09:00" />
+              </div>
+              <div className="grid gap-1.5">
+                <span className="type-caption font-semibold text-[var(--color-muted-foreground)]">
+                  {t("availabilityEnd")}
+                </span>
+                <Input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="17:00" />
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-1.5">
+            <span className="type-caption font-semibold text-[var(--color-muted-foreground)]">
+              {t("availabilityExceptionNote")}
+            </span>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+
+          {formError && <p className="type-caption text-[var(--color-destructive)]">{formError}</p>}
+
+          <Button
+            type="button"
+            size="sm"
+            className="justify-self-start"
+            disabled={addMutation.isPending}
+            onClick={() => void submit()}
+          >
+            {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("availabilityExceptionAdd")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

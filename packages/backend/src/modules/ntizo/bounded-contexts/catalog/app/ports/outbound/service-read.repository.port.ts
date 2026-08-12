@@ -45,6 +45,10 @@ export interface ServiceOwnerRow {
   imageKeys: string[] | null;
   sortOrder: number;
   createdAt: Date;
+  bufferMinutes: number;
+  slotIntervalMinutes: number;
+  /** `provider_member.id`s who perform this service. */
+  memberIds: string[];
   options: ServiceOwnerOptionRow[];
   translations: ServiceOwnerTranslationRow[];
   quoteForm: ServiceOwnerQuoteFormRow | null;
@@ -84,6 +88,8 @@ export interface ServicePublicRow {
 
 export interface ListPublishedServicesFilter {
   categoryCode?: string | undefined;
+  /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
+  providerId?: string | undefined;
   limit: number;
   offset: number;
 }

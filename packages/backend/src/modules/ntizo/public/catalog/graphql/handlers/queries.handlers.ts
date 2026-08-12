@@ -28,6 +28,7 @@ export function createCatalogPublicHandlers(mod: CatalogPublicModule) {
       argsMapper: (args) => ({
         locale: args.input.locale ?? DEFAULT_LOCALE,
         categoryCode: args.input.categoryCode,
+        providerId: args.input.providerId,
         limit: args.input.limit ?? 24,
         offset: args.input.offset ?? 0,
       }),

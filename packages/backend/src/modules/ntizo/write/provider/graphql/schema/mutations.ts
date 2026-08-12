@@ -64,6 +64,11 @@ export const updateProvider = defineMutation({
       // block greyed out under "temporarily unavailable". It was not
       // temporary — nothing was going to change it but this line.
       address: addressInput.optional(),
+      // Not validated for real IANA-ness here — `.min(1)` only rejects the
+      // empty string. `Provider.update` is what checks it against
+      // `Intl.DateTimeFormat` and throws `TIMEZONE_INVALID`; the aggregate is
+      // the one place that rule needs to live, not the transport schema.
+      timezone: z.string().min(1).optional(),
     }),
   ),
   output: zodSchema(okResult),
@@ -128,7 +133,18 @@ export const removeProviderMember = defineMutation({
   input: zodSchema(
     z.object({ providerId: z.string().min(1), userId: z.string().min(1) }),
   ),
-  output: zodSchema(okResult),
+  // Beyond `ok`: the use case may unpublish services left with no performer
+  // by this removal, and the caller — an owner in a browser — has to be told
+  // which ones, not just that the call succeeded. Named back, not counted,
+  // so the owner can act on them instead of hunting through the catalogue.
+  output: zodSchema(
+    z.object({
+      ok: z.literal(true),
+      unpublishedServices: z.array(
+        z.object({ serviceId: z.string().min(1), name: z.string() }),
+      ),
+    }),
+  ),
   docs: { summary: "Remove a member from a provider", tags: ["Provider"] },
 });
 

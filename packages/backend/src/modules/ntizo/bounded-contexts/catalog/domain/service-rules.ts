@@ -3,6 +3,7 @@ import {
   OptionPriceInvalidError,
   ServiceCategoryRequiredError,
   ServiceNameRequiredError,
+  ServiceNeedsMemberError,
   ServiceNeedsOptionError,
   QuoteServiceHasOptionsError,
 } from "./exceptions";
@@ -90,12 +91,18 @@ export interface PublishCheck {
   categoryId: string | null;
   hasSourceName: boolean;
   optionCount: number;
+  memberCount: number;
 }
 
 /** Throws the first thing standing between this service and being published. */
 export function canPublish(service: PublishCheck): void {
   if (!service.categoryId) throw new ServiceCategoryRequiredError();
   if (!service.hasSourceName) throw new ServiceNameRequiredError();
+  // Checked before the booking-mode checks, and after category/name: a
+  // service the form has otherwise finished filling in still cannot go live
+  // with nobody to perform it, and the person fixing the category error
+  // should not then hit the option error only to find a third one waiting.
+  if (service.memberCount === 0) throw new ServiceNeedsMemberError();
   if (service.bookingMode === "priced" && service.optionCount === 0) {
     throw new ServiceNeedsOptionError();
   }

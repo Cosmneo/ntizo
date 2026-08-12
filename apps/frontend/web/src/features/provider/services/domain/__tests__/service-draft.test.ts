@@ -7,10 +7,25 @@ import {
   optionDraftFrom,
   optionErrors,
   parseAmountMinor,
+  parseBufferMinutes,
+  serviceDraftErrors,
   serviceLifecycle,
+  SLOT_INTERVAL_OPTIONS,
   toOptionInput,
+  type ServiceDraft,
 } from "../service-draft";
 import type { ProviderService, ServiceOption } from "../types";
+
+/** A draft with the three required fields already filled in — the base every submittability test in this file starts from. */
+function submittableDraft(overrides: Partial<ServiceDraft> = {}): ServiceDraft {
+  return {
+    ...emptyDraft(),
+    categoryId: "c",
+    name: "Corte",
+    locationType: "at_provider",
+    ...overrides,
+  };
+}
 
 describe("canSubmit", () => {
   it("needs a category, a name and a location", () => {
@@ -18,6 +33,104 @@ describe("canSubmit", () => {
     expect(
       canSubmit({ ...emptyDraft(), categoryId: "c", name: "Corte", locationType: "at_provider" }),
     ).toBe(true);
+  });
+});
+
+describe("emptyDraft", () => {
+  it("a new draft defaults to a 30-minute grid and no buffer", () => {
+    expect(emptyDraft().slotIntervalMinutes).toBe(30);
+    expect(emptyDraft().bufferMinutes).toBe(0);
+  });
+
+  it("a new draft starts with the creating member ticked", () => {
+    // Mirrors what `CreateServiceCommand` does server-side anyway — whoever
+    // creates the service is already its performer the moment it exists, so
+    // the form should not open showing nobody selected.
+    expect(emptyDraft("member-1").memberIds).toEqual(["member-1"]);
+  });
+
+  it("starts with nobody ticked when the creating member isn't known yet", () => {
+    // `ServiceFormSheet` backfills this once `availability.config` resolves;
+    // the draft itself must not invent a member id it was never given.
+    expect(emptyDraft().memberIds).toEqual([]);
+  });
+});
+
+describe("SLOT_INTERVAL_OPTIONS", () => {
+  it("offers exactly 15, 30 and 60 — the DB's own check constraint mirrored client-side", () => {
+    // The grid is a select drawn from this list, not a free-typed field —
+    // this is the one place a stray value (a mistyped 45, say) would ever
+    // enter it, and `service.update`'s own zod union would refuse it anyway.
+    expect(SLOT_INTERVAL_OPTIONS).toEqual([15, 30, 60]);
+  });
+});
+
+describe("parseBufferMinutes", () => {
+  it("an empty buffer input reads as 0, not NaN", () => {
+    expect(parseBufferMinutes("")).toBe(0);
+    expect(parseBufferMinutes("   ")).toBe(0);
+  });
+
+  it("reads a typed number back as that number", () => {
+    expect(parseBufferMinutes("45")).toBe(45);
+    // Not clamped here — a value over 480 has to survive into the draft so
+    // `serviceDraftErrors` has something to refuse; see that describe block.
+    expect(parseBufferMinutes("500")).toBe(500);
+  });
+
+  it("text that isn't a plain integer reads as 0, not NaN", () => {
+    expect(parseBufferMinutes("abc")).toBe(0);
+    expect(parseBufferMinutes("12,5")).toBe(0);
+  });
+});
+
+describe("serviceDraftErrors", () => {
+  it("a buffer over 480 is refused with a field message", () => {
+    const draft = submittableDraft({ bufferMinutes: 500 });
+    expect(serviceDraftErrors(draft)).toHaveProperty("bufferMinutes");
+    expect(canSubmit(draft)).toBe(false);
+  });
+
+  it("accepts a buffer anywhere in 0 to 480, inclusive", () => {
+    expect(serviceDraftErrors(submittableDraft({ bufferMinutes: 0 }))).not.toHaveProperty("bufferMinutes");
+    expect(serviceDraftErrors(submittableDraft({ bufferMinutes: 480 }))).not.toHaveProperty("bufferMinutes");
+  });
+
+  it("a negative buffer is refused too", () => {
+    expect(serviceDraftErrors(submittableDraft({ bufferMinutes: -1 }))).toHaveProperty("bufferMinutes");
+  });
+
+  it("a service for an individual provider needs no explicit performer", () => {
+    const draft = submittableDraft({ memberIds: [] });
+    // Published or not — an individual provider has one member and nothing
+    // to choose between, so the performer check never engages for them.
+    expect(
+      serviceDraftErrors(draft, { individualProvider: true, published: true }),
+    ).not.toHaveProperty("memberIds");
+    expect(canSubmit(draft, { individualProvider: true, published: true })).toBe(true);
+  });
+
+  it("a draft (unpublished) organization service needs no performer either", () => {
+    const draft = submittableDraft({ memberIds: [] });
+    expect(
+      serviceDraftErrors(draft, { individualProvider: false, published: false }),
+    ).not.toHaveProperty("memberIds");
+  });
+
+  it("a published service cannot be saved with nobody performing it", () => {
+    // The form refuses before the request, and the server refuses too — this
+    // asserts the client half.
+    const draft = submittableDraft({ memberIds: [] });
+    const ctx = { individualProvider: false, published: true };
+    expect(serviceDraftErrors(draft, ctx)).toHaveProperty("memberIds");
+    expect(canSubmit(draft, ctx)).toBe(false);
+  });
+
+  it("a published organization service with at least one performer is fine", () => {
+    const draft = submittableDraft({ memberIds: ["member-1"] });
+    const ctx = { individualProvider: false, published: true };
+    expect(serviceDraftErrors(draft, ctx)).not.toHaveProperty("memberIds");
+    expect(canSubmit(draft, ctx)).toBe(true);
   });
 });
 
@@ -129,6 +242,9 @@ describe("draftFrom", () => {
       { locale: "en-US", name: "Haircut", description: "A simple cut." },
     ],
     options: [],
+    bufferMinutes: 10,
+    slotIntervalMinutes: 15,
+    memberIds: ["member-1", "member-2"],
   };
 
   it("seeds the draft from the source locale's own translation, not the reader's", () => {
@@ -141,6 +257,9 @@ describe("draftFrom", () => {
       description: "Um corte simples.",
       locationType: "at_provider",
       bookingMode: "priced",
+      bufferMinutes: 10,
+      slotIntervalMinutes: 15,
+      memberIds: ["member-1", "member-2"],
     });
   });
 

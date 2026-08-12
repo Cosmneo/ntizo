@@ -12,5 +12,28 @@
   "searchLabel": "Diensten zoeken",
   "searchAction": "Zoeken",
   "noResultsFor": "Niets komt overeen met \"{{query}}\". Probeer een ander woord.",
-  "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\""
+  "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\"",
+  "servicesTitle": "Diensten",
+  "servicesEmpty": "Deze aanbieder heeft nog geen diensten gepubliceerd.",
+  "servicesError": "De diensten van deze aanbieder konden nu niet worden geladen.",
+  "priceByQuote": "Op offerte",
+  "priceUnavailable": "Prijs niet beschikbaar",
+  "priceHourlySuffix": "/uur",
+  "serviceDurationMinutes": "{{count}} min",
+  "serviceMinimumMinutes": "Minimaal {{count}} min",
+  "close": "Sluiten",
+  "availabilityMemberLabel": "Met wie?",
+  "availabilityMemberAnyone": "Iedereen die beschikbaar is",
+  "availabilityMemberOption": "Vakspecialist {{number}}",
+  "availabilityPreviousWeek": "Vorige week",
+  "availabilityNextWeek": "Volgende week",
+  "availabilityDayEmpty": "Geen vrije tijden op deze dag.",
+  "availabilityLengthLabel": "Duur",
+  "availabilityQuoteNotice": "Deze dienst wordt op offerte geprijsd. Neem contact op met de aanbieder voor een prijs voordat deze kan worden ingepland.",
+  "availabilityForServiceErrorGeneric": "De beschikbaarheid van deze dienst kon nu niet worden geladen.",
+  "availabilityForServiceError": {
+    "SERVICE_NOT_FOUND": "Deze dienst is niet meer beschikbaar.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "Deze periode is te lang. Probeer een kortere periode.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Deze persoon biedt deze dienst niet meer aan."
+  }
 }

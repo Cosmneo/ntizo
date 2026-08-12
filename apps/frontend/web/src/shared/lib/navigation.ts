@@ -1,4 +1,4 @@
-import { Briefcase, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
+import { Briefcase, CalendarClock, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface NavItem {
@@ -23,6 +23,11 @@ export const providerNavGroups: readonly NavGroup[] = [
     // Above overview: what a provider sells is the thing this zone exists
     // to manage, and a dashboard of numbers about it is secondary.
     { titleKey: "nav.services", url: "/provider/$slug/services", icon: Briefcase },
+    // Beside services rather than under management: setting when you work
+    // is as much a part of the job as what you sell, and every member —
+    // owner, admin or staff — has their own week to set here, not just
+    // whoever administers the workspace.
+    { titleKey: "nav.availability", url: "/provider/$slug/availability", icon: CalendarClock },
     { titleKey: "nav.overview", url: "/provider/$slug/overview", icon: LayoutDashboard },
   ] },
   { labelKey: "nav.management", items: [

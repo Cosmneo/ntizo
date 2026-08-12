@@ -34,6 +34,12 @@ export const serviceOwnerReadModel = z.object({
   status: z.string(),
   imageUrls: z.array(z.string()),
   sortOrder: z.number().int(),
+  /** Dead time after an appointment: cleanup, or the journey to the next address. */
+  bufferMinutes: z.number().int(),
+  /** The grid offered start times land on. Always 15, 30 or 60 — the DB's own check constraint. */
+  slotIntervalMinutes: z.number().int(),
+  /** `provider_member.id`s. Empty is a real state for a draft service; `canPublish` refuses it for a published one. */
+  memberIds: z.array(z.string()),
   options: z.array(serviceOptionOwnerReadModel),
   translations: z.array(
     z.object({

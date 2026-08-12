@@ -12,6 +12,12 @@ function built() {
     bookingMode: "priced",
     name: "Corte de cabelo",
     description: "Barbearia",
+    // Neither the aggregate defaults (0 / 30) nor each other: a mapper that
+    // hardcoded either value, or that swapped which DB column feeds which
+    // prop, would produce a mismatch here that a default-valued fixture
+    // could never expose.
+    bufferMinutes: 15,
+    slotIntervalMinutes: 60,
   });
   s.addOption({
     id: "opt-1",
@@ -25,6 +31,7 @@ function built() {
   });
   s.update({ imageKeys: ["service/svc-1/1"] });
   s.setTranslation("en-US", "Haircut", null);
+  s.setMembers(["member-1", "member-2"]);
   return s;
 }
 
@@ -41,6 +48,10 @@ function builtQuote() {
     bookingMode: "quote",
     name: "Consultoria",
     description: "Consultoria personalizada",
+    // A different pair again from `built()`'s, so the two fixtures cannot
+    // both be satisfied by one wrong constant in the mapper.
+    bufferMinutes: 45,
+    slotIntervalMinutes: 15,
   });
   s.update({ imageKeys: ["service/svc-2/1"] });
   s.setTranslation("en-US", "Consulting", "Personalised consulting");
@@ -51,6 +62,7 @@ function builtQuote() {
     askLocation: false,
     intro: "Conte-nos o que precisa.",
   });
+  s.setMembers(["member-3"]);
   return s;
 }
 
@@ -79,6 +91,7 @@ function roundTrip(builder: () => Service) {
       })),
       translations: rows.translations,
       optionTranslations: rows.optionTranslations,
+      members: rows.members,
       quoteForm: rows.quoteForm,
     })
     .toJSON();
@@ -112,6 +125,12 @@ describe("serviceMapper", () => {
       stepMinutes: null,
       isDefault: true,
     });
+  });
+
+  it("carries the service's performers", () => {
+    const { members } = serviceMapper.toPersistence(built());
+    expect(members.map((m) => m.memberId).sort()).toEqual(["member-1", "member-2"]);
+    expect(members.every((m) => m.serviceId === "svc-1")).toBe(true);
   });
 
   it("carries both translations of the service and the option's own", () => {

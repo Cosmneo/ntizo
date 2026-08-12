@@ -31,6 +31,7 @@ export const providerMapper = {
       photoKeys: row.photoKeys ?? undefined,
       payoutType: row.payoutType,
       payoutIdentifier: row.payoutIdentifier,
+      timezone: row.timezone,
       address: hasAddress
         ? Address.create({
             street: row.addressStreet ?? undefined,
@@ -71,6 +72,7 @@ export const providerMapper = {
       // success either way.
       payoutType: json.payoutType,
       payoutIdentifier: json.payoutIdentifier,
+      timezone: json.timezone,
       addressStreet: json.address?.street ?? null,
       addressCity: json.address?.city ?? null,
       addressDistrict: json.address?.district ?? null,

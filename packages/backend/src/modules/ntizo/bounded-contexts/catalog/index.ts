@@ -7,6 +7,7 @@ export { UpdateServiceCommand } from "./app/use-cases/update-service.command";
 export { ManageOptionsCommand } from "./app/use-cases/manage-options.command";
 export { SetServiceStatusCommand } from "./app/use-cases/set-service-status.command";
 export { SetServiceTranslationCommand } from "./app/use-cases/set-service-translation.command";
+export { SetServiceMembersCommand } from "./app/use-cases/set-service-members.command";
 export {
   CategoryCodeTakenError,
   CategoryNameRequiredError,

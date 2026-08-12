@@ -12,5 +12,28 @@
   "searchLabel": "Pesquisar serviços",
   "searchAction": "Pesquisar",
   "noResultsFor": "Nada corresponde a \"{{query}}\". Tente outra palavra.",
-  "resultsFor": "{{count}} resultado(s) para \"{{query}}\""
+  "resultsFor": "{{count}} resultado(s) para \"{{query}}\"",
+  "servicesTitle": "Serviços",
+  "servicesEmpty": "Este prestador ainda não publicou nenhum serviço.",
+  "servicesError": "Não foi possível carregar os serviços deste prestador agora.",
+  "priceByQuote": "Sob orçamento",
+  "priceUnavailable": "Preço indisponível",
+  "priceHourlySuffix": "/h",
+  "serviceDurationMinutes": "{{count}} min",
+  "serviceMinimumMinutes": "Mínimo de {{count}} min",
+  "close": "Fechar",
+  "availabilityMemberLabel": "Com quem?",
+  "availabilityMemberAnyone": "Qualquer pessoa disponível",
+  "availabilityMemberOption": "Profissional {{number}}",
+  "availabilityPreviousWeek": "Semana anterior",
+  "availabilityNextWeek": "Próxima semana",
+  "availabilityDayEmpty": "Sem horários livres neste dia.",
+  "availabilityLengthLabel": "Duração",
+  "availabilityQuoteNotice": "Este serviço é cotado sob orçamento. Contacte o prestador para obter um preço antes de poder ser agendado.",
+  "availabilityForServiceErrorGeneric": "Não foi possível carregar a disponibilidade deste serviço agora.",
+  "availabilityForServiceError": {
+    "SERVICE_NOT_FOUND": "Este serviço já não está disponível.",
+    "AVAILABILITY_WINDOW_TOO_WIDE": "Esse intervalo de datas é demasiado longo. Tente um mais curto.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Essa pessoa já não presta este serviço."
+  }
 }

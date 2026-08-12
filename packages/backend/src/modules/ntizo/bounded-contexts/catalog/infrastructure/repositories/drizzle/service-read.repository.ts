@@ -3,6 +3,7 @@ import { getDb } from "../../../../../../better-auth/infrastructure/client/drizz
 import {
   category,
   service,
+  serviceMember,
   serviceOption,
   serviceOptionTranslation,
   serviceQuoteForm,
@@ -50,6 +51,8 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         imageKeys: service.imageKeys,
         sortOrder: service.sortOrder,
         createdAt: service.createdAt,
+        bufferMinutes: service.bufferMinutes,
+        slotIntervalMinutes: service.slotIntervalMinutes,
       })
       .from(service)
       .innerJoin(category, eq(category.id, service.categoryId))
@@ -72,6 +75,14 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .select()
       .from(serviceQuoteForm)
       .where(inArray(serviceQuoteForm.serviceId, serviceIds));
+    // Who performs each service — the same table `service.repository.ts`
+    // (write side) reads to hydrate the aggregate, queried here separately
+    // for the same reason as `options`/`translations` above: a join would
+    // multiply a service row per performer.
+    const members = await db
+      .select()
+      .from(serviceMember)
+      .where(inArray(serviceMember.serviceId, serviceIds));
 
     const optionIds = options.map((o) => o.id);
     const optionTranslations = optionIds.length
@@ -83,6 +94,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
 
     return rows.map((r) => ({
       ...r,
+      memberIds: members.filter((m) => m.serviceId === r.id).map((m) => m.memberId),
       options: options
         .filter((o) => o.serviceId === r.id)
         .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -141,11 +153,16 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
    * keyed by the ids this page already picked, the same reason
    * `listForProvider` does it: joining a one-to-many here would multiply the
    * very rows `limit`/`offset` just paged.
+   *
+   * `providerId`, when given, scopes the page to one business — the filter a
+   * provider's own public page needs, threaded through exactly like
+   * `categoryCode`.
    */
   async listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]> {
     const db = getDb();
     const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
     if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
+    if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
 
     const rows = await db
       .select({

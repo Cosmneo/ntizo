@@ -17,6 +17,11 @@ import { z } from "zod";
  *
  * Adding a field here publishes it to everyone, forever, including anything
  * that has already crawled the page. Treat additions as one-way.
+ *
+ * `logoUrl` is such an addition: a service card with no photo of its own
+ * falls back to it, so a card never has to render with nothing to show at
+ * all. Resolved from `provider.logoKey` the same way `ServiceDTO.imageUrls`
+ * is — a stored key survives the bucket moving; a stored URL would not.
  */
 export const providerPublicReadModel = z.object({
   id: z.string().min(1),
@@ -27,6 +32,7 @@ export const providerPublicReadModel = z.object({
   city: z.string().nullable(),
   district: z.string().nullable(),
   country: z.string().nullable(),
+  logoUrl: z.string().nullable(),
 });
 
 export type ProviderPublicDTO = z.infer<typeof providerPublicReadModel>;

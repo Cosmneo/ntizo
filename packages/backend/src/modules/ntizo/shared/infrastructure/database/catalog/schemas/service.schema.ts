@@ -53,6 +53,11 @@ export const service = catalogSchema.table(
 
     sortOrder: integer("sort_order").notNull().default(0),
 
+    /** Dead time after an appointment: cleanup, or the journey to the next address. */
+    bufferMinutes: integer("buffer_minutes").notNull().default(0),
+    /** The grid offered start times land on, anchored to local midnight. */
+    slotIntervalMinutes: integer("slot_interval_minutes").notNull().default(30),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -64,6 +69,8 @@ export const service = catalogSchema.table(
     index("service_provider_order_idx").on(t.providerId, t.sortOrder),
     // The customer's browse: published services in a category.
     index("service_status_category_idx").on(t.status, t.categoryId),
+    check("service_buffer_range", sql`${t.bufferMinutes} BETWEEN 0 AND 480`),
+    check("service_slot_interval", sql`${t.slotIntervalMinutes} IN (15, 30, 60)`),
   ],
 );
 

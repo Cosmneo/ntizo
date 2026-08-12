@@ -9,6 +9,7 @@ import { Address } from "../../value-objects/address.vo";
 import {
   ProviderStatus as SharedProviderStatus,
   canTransition,
+  isValidTimeZone,
   PaymentDirection,
   isPaymentMethodType,
   supportsDirection,
@@ -16,6 +17,7 @@ import {
 import {
   InvalidPayoutDestinationError,
   InvalidProviderStatusTransitionError,
+  TimezoneInvalidError,
 } from "../../exceptions";
 import {
   IndividualProviderCannotHaveMembersError,
@@ -62,9 +64,21 @@ export interface ProviderProps {
   /** R2 keys of the portfolio, in the order they should be shown. */
   photoKeys?: string[];
   address?: Address;
+  /**
+   * Where this workspace's wall clock runs, an IANA name.
+   *
+   * Chosen explicitly on the availability screen — never derived from the
+   * address country, since a country can span several zones — and always
+   * present: the column defaults to `"Africa/Maputo"` and `create()` mirrors
+   * that so a freshly built aggregate matches a freshly inserted row.
+   */
+  timezone: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** The DB column's own default, mirrored here so `create()` without an explicit choice matches a fresh row. */
+const DEFAULT_TIMEZONE = "Africa/Maputo";
 
 export class Provider {
   private readonly _events: BaseDomainEvent[] = [];
@@ -87,6 +101,8 @@ export class Provider {
     address?: Address;
     /** From the platform default. Required, so it cannot be forgotten. */
     commissionBps: number;
+    /** Defaults to the DB column's own default when omitted. */
+    timezone?: string;
   }): Provider {
     const now = new Date();
     const provider = new Provider({
@@ -96,6 +112,7 @@ export class Provider {
       name: params.name,
       slug: params.slug,
       commissionBps: params.commissionBps,
+      timezone: params.timezone ?? DEFAULT_TIMEZONE,
       // An application, not a live business.
       //
       // Registering creates a workspace the owner can start filling in; it does
@@ -146,6 +163,9 @@ export class Provider {
   }
   get address() {
     return this.props.address;
+  }
+  get timezone() {
+    return this.props.timezone;
   }
   get createdAt() {
     return this.props.createdAt;
@@ -243,6 +263,8 @@ export class Provider {
     /** `null` clears it; `undefined` leaves it alone. */
     logoKey?: string | null;
     photoKeys?: string[];
+    /** Chosen explicitly on the availability screen. Refused if not a real IANA zone. */
+    timezone?: string;
   }): void {
     if (params.name !== undefined) this.props.name = params.name;
     if (params.description !== undefined)
@@ -252,6 +274,17 @@ export class Provider {
     // Treating both as "no change" would make the remove button do nothing.
     if (params.logoKey !== undefined) this.props.logoKey = params.logoKey ?? undefined;
     if (params.photoKeys !== undefined) this.props.photoKeys = params.photoKeys;
+    if (params.timezone !== undefined) {
+      // Checked here, not merely by the GraphQL schema's `.min(1)`: a
+      // non-empty string that is not a real IANA zone (`"Nowhere"`,
+      // `"UTC+2"`) would otherwise reach `provider.timezone` and break every
+      // slot the scheduling engine derives from it, silently, at read time
+      // rather than at the moment someone typed it.
+      if (!isValidTimeZone(params.timezone)) {
+        throw new TimezoneInvalidError(params.timezone);
+      }
+      this.props.timezone = params.timezone;
+    }
     this.props.updatedAt = new Date();
     this._events.push(new ProviderUpdated({ providerId: this.props.id }));
   }

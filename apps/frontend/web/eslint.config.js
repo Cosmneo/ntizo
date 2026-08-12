@@ -20,26 +20,39 @@ export default [
           type: "domain",
           pattern: [
             "src/features/*/domain/**",
-            // provider/services nests one level deeper than the other
-            // features (provider/services/domain, not provider/domain), so
-            // the single-segment `*` above never matches it. Named
+            // provider/services, provider/availability and directory/services
+            // all nest one level deeper than the other features
+            // (provider/services/domain, not provider/domain), so the
+            // single-segment `*` above never matches any of them. Named
             // explicitly rather than lumped into `ui` the way admin's is
             // below: the whole point of this feature's layers is that `ui`
             // cannot reach `data` directly, which the admin blanket rule
             // would silently defeat.
             "src/features/provider/services/domain/**",
+            "src/features/provider/availability/domain/**",
+            "src/features/directory/services/domain/**",
+            "src/features/directory/availability/domain/**",
             "src/shared/domain/**",
           ],
         },
         {
           type: "data",
-          pattern: ["src/features/*/data/**", "src/features/provider/services/data/**"],
+          pattern: [
+            "src/features/*/data/**",
+            "src/features/provider/services/data/**",
+            "src/features/provider/availability/data/**",
+            "src/features/directory/services/data/**",
+            "src/features/directory/availability/data/**",
+          ],
         },
         {
           type: "viewmodel",
           pattern: [
             "src/features/*/viewmodel/**",
             "src/features/provider/services/viewmodel/**",
+            "src/features/provider/availability/viewmodel/**",
+            "src/features/directory/services/viewmodel/**",
+            "src/features/directory/availability/viewmodel/**",
           ],
         },
         {
@@ -47,6 +60,9 @@ export default [
           pattern: [
             "src/features/*/ui/**",
             "src/features/provider/services/ui/**",
+            "src/features/provider/availability/ui/**",
+            "src/features/directory/services/ui/**",
+            "src/features/directory/availability/ui/**",
             "src/shared/ui/**",
             "src/shared/components/**",
             "src/features/*/components/**",

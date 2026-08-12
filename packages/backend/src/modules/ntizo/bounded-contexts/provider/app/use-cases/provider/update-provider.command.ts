@@ -49,6 +49,7 @@ export class UpdateProviderCommand implements UpdateProviderPort {
       address: input.address ? Address.create(input.address) : undefined,
       logoKey: input.logoKey,
       photoKeys: input.photoKeys,
+      timezone: input.timezone,
     });
 
     // Its own method rather than another field on `update()`: it is the one

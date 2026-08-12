@@ -82,5 +82,8 @@ export function createCatalogWriteHandlers(mod: CatalogWriteModule) {
     .handle("service.translation.set", async (args, ctx) =>
       uc.setServiceTranslation.execute({ requesterUserId: requireUser(ctx), ...args.input }),
     )
+    .handle("service.members.set", async (args, ctx) =>
+      uc.setServiceMembers.execute({ requesterUserId: requireUser(ctx), ...args.input }),
+    )
     .build();
 }

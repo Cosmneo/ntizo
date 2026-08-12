@@ -4,6 +4,7 @@ import {
   providerDetailReadModel,
 } from "../system/provider";
 import { currentUserReadModel } from "../system/user";
+import { availabilityConfigReadModel } from "../system/availability";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -57,5 +58,54 @@ describe("currentUserReadModel", () => {
     // "never answered"; "undisclosed" is an answer, and is not this.
     expect(parsed.dateOfBirth).toBeNull();
     expect(parsed.gender).toBeNull();
+  });
+});
+
+describe("availabilityConfigReadModel", () => {
+  const fullConfig = {
+    providerId: "p1",
+    timezone: "Africa/Maputo",
+    members: [
+      {
+        memberId: "m1",
+        userId: "u1",
+        name: "A B",
+        role: "owner",
+        weekly: [{ id: "w1", weekday: 1, startMinute: 480, endMinute: 1020 }],
+        exceptions: [
+          {
+            id: "e1",
+            onDate: "2026-08-20",
+            kind: "closed",
+            startMinute: null,
+            endMinute: null,
+            note: "Public holiday",
+          },
+        ],
+      },
+    ],
+    closures: [{ id: "c1", fromDate: "2026-12-24", toDate: "2026-12-26", note: "Christmas" }],
+  };
+
+  it("accepts a full configuration", () => {
+    expect(() => availabilityConfigReadModel.parse(fullConfig)).not.toThrow();
+  });
+
+  it("rejects an unknown exception kind", () => {
+    expect(() =>
+      availabilityConfigReadModel.parse({
+        ...fullConfig,
+        members: [{ ...fullConfig.members[0], exceptions: [{ ...fullConfig.members[0]!.exceptions[0], kind: "maybe" }] }],
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a member with an empty week", () => {
+    expect(() =>
+      availabilityConfigReadModel.parse({
+        ...fullConfig,
+        members: [{ ...fullConfig.members[0], weekly: [] }],
+      }),
+    ).not.toThrow();
   });
 });

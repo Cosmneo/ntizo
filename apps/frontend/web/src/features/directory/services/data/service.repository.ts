@@ -1,0 +1,56 @@
+import { queryOptions } from "@tanstack/react-query";
+import type { ServicePageDTO } from "@ntizo/shared/read-models";
+import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
+
+const ALL = `
+  query ServiceAll($input: ServiceAllInput!) {
+    serviceAll(input: $input) {
+      items {
+        id providerId providerName categoryCode name description
+        locationType bookingMode imageUrls isFallback
+        defaultOption { amountMinor currency durationMinutes minMinutes stepMinutes pricingMode }
+      }
+      nextOffset
+    }
+  }`;
+
+/**
+ * How many of a provider's own services the public page asks for at once.
+ *
+ * There is no "load more" on this section yet — a business with more
+ * services than this fits on one screen is not the launch case this page is
+ * built for, and paging it is a separate piece of work, not a silent gap in
+ * this one.
+ */
+export const PROVIDER_SERVICES_PAGE_SIZE = 24;
+
+/**
+ * Query definitions for a provider's public services.
+ *
+ * `providerId` filters `service.all` to one business rather than fetching
+ * every published service on the platform and filtering in the browser —
+ * that would page through the whole catalogue to show one business's
+ * handful. See `packages/backend/.../public/catalog/graphql/schema/queries.ts`
+ * for the argument this repository relies on.
+ *
+ * No `credentials` here, same as `directoryQueries`: this is the anonymous
+ * `/public/graphql` endpoint, and the query key is not scoped to a session —
+ * a provider's published services are identical for every visitor.
+ */
+export const providerServicesQueries = {
+  byProvider: (providerId: string, locale: string) =>
+    queryOptions({
+      queryKey: ["public", "provider-services", providerId, locale] as const,
+      queryFn: async (): Promise<ServicePageDTO> => {
+        const d = await publicGraphql<{ serviceAll: ServicePageDTO }>(ALL, {
+          input: {
+            providerId,
+            locale,
+            limit: PROVIDER_SERVICES_PAGE_SIZE,
+            offset: 0,
+          },
+        });
+        return d.serviceAll;
+      },
+    }),
+};

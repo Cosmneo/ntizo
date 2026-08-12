@@ -135,11 +135,15 @@ export function createProviderWriteHandlers(mod: ProviderWriteModule) {
       return { ok: true as const };
     })
     .handle("provider.members.remove", async (args, ctx) => {
-      await uc.removeProviderMember.execute(
+      const result = await uc.removeProviderMember.execute(
         toExecutionContext(asNtizoGraphqlContext(ctx)),
         args.input,
       );
-      return { ok: true as const };
+      // Carries `unpublishedServices` through — the use case already
+      // computes it (see `RemoveProviderMemberOutput`); this handler used to
+      // discard it here, so the domain rule fired but the owner was never
+      // told which service went dark.
+      return { ok: true as const, unpublishedServices: result.unpublishedServices };
     })
     .handle("provider.members.updateRole", async (args, ctx) => {
       await uc.updateProviderMemberRole.execute(
