@@ -121,3 +121,30 @@ describe("hourlyStarts", () => {
     expect(offers.at(-1)).toEqual({ start: 840, maxMinutes: 180 });
   });
 });
+
+describe("a grid of zero", () => {
+  const day = [{ start: 540, end: 1080 }]; // 09:00–18:00
+
+  test("fixedStarts offers nothing rather than dividing by zero", () => {
+    // Zero is a real answer — "I am open, there are no slots to pick" —
+    // not a broken 30. It must be refused by decision, not by NaN
+    // happening to fail a comparison.
+    expect(fixedStarts(day, { durationMinutes: 30, bufferMinutes: 0, gridMinutes: 0 })).toEqual([]);
+  });
+
+  test("hourlyStarts offers nothing either", () => {
+    expect(
+      hourlyStarts(day, { minMinutes: 60, stepMinutes: 30, bufferMinutes: 0, gridMinutes: 0 }),
+    ).toEqual([]);
+  });
+
+  test("a negative grid is refused the same way", () => {
+    expect(fixedStarts(day, { durationMinutes: 30, bufferMinutes: 0, gridMinutes: -30 })).toEqual([]);
+  });
+
+  test("a real grid is untouched", () => {
+    expect(fixedStarts(day, { durationMinutes: 30, bufferMinutes: 0, gridMinutes: 60 })).toEqual([
+      540, 600, 660, 720, 780, 840, 900, 960, 1020,
+    ]);
+  });
+});
