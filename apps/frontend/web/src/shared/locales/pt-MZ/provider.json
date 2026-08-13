@@ -470,5 +470,8 @@
     "member-closed": "Folga",
     "no-rule": "Sem horário"
   },
-  "availabilityPreviewScopeTeam": "Equipa toda"
+  "availabilityPreviewScopeTeam": "Equipa toda",
+  "availabilityPreviewCount": "{{slots}} slots · {{seats}} lugares",
+  "availabilityPreviewFor": "Prever para",
+  "availabilityPreviewNoService": "Publique um serviço para pré-visualizar os seus slots."
 }

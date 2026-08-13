@@ -470,5 +470,8 @@
     "member-closed": "Vrije dag",
     "no-rule": "Geen uren ingesteld"
   },
-  "availabilityPreviewScopeTeam": "Hele team"
+  "availabilityPreviewScopeTeam": "Hele team",
+  "availabilityPreviewCount": "{{slots}} slots · {{seats}} places",
+  "availabilityPreviewFor": "Preview for",
+  "availabilityPreviewNoService": "Publish a service to preview its slots."
 }

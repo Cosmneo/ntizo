@@ -470,5 +470,8 @@
     "member-closed": "Day off",
     "no-rule": "No hours set"
   },
-  "availabilityPreviewScopeTeam": "Whole team"
+  "availabilityPreviewScopeTeam": "Whole team",
+  "availabilityPreviewCount": "{{slots}} slots · {{seats}} places",
+  "availabilityPreviewFor": "Preview for",
+  "availabilityPreviewNoService": "Publish a service to preview its slots."
 }

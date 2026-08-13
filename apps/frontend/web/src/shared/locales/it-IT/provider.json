@@ -470,5 +470,8 @@
     "member-closed": "Giorno libero",
     "no-rule": "Nessun orario"
   },
-  "availabilityPreviewScopeTeam": "Tutto il team"
+  "availabilityPreviewScopeTeam": "Tutto il team",
+  "availabilityPreviewCount": "{{slots}} slots · {{seats}} places",
+  "availabilityPreviewFor": "Preview for",
+  "availabilityPreviewNoService": "Publish a service to preview its slots."
 }

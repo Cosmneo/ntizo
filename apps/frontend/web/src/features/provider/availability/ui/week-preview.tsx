@@ -27,6 +27,13 @@ import type { PreviewDay } from "../domain/preview";
  * Displayed Monday-first while every stored `weekday` stays 0 = Sunday —
  * `WEEKDAY_ORDER` is the only place the two orders meet, and it is a display
  * concern alone.
+ *
+ * `slotsByDate`, when given, adds one more layer: a tick for every start the
+ * engine actually offers inside a working block, drawn from `previewSlots` —
+ * the same function that answers a customer. The block above already says
+ * *when the day is open*; this says *which moments inside it a booking can
+ * begin*, which is a materially different question the moment a rule's grid
+ * stops being 1:1 with its window.
  */
 
 /** Height of one hour row. Rows are hourly, so the window is snapped to hours. */
@@ -39,10 +46,17 @@ const STRIPES =
 export function WeekPreview({
   days,
   locale,
+  slotsByDate,
 }: {
   /** Seven days, in stored order — this component reorders them for display. */
   days: readonly PreviewDay[];
   locale: string;
+  /**
+   * Start minutes per date, from `previewSlots`. Omitted (or a date with no
+   * entry) draws the working-hours block alone — no service selected is not
+   * an error state, it is simply nothing more to add.
+   */
+  slotsByDate?: Readonly<Record<string, readonly number[]>>;
 }) {
   const { t } = useTranslation("provider");
   const byWeekday = new Map(days.map((d) => [d.weekday, d]));
@@ -140,6 +154,24 @@ export function WeekPreview({
                     {minutesToLabel(iv.start)}–{minutesToLabel(iv.end)}
                   </span>
                 </div>
+              ))}
+
+              {/* One tick per bookable start, layered over the working block
+                  above. Ticks rather than duration-tall rectangles: a start's
+                  own length is an hourly offer's choice, not a single number
+                  `previewSlots` has to report, and a tick says "you can begin
+                  here" without pretending to know how long the booking runs.
+                  `aria-hidden`: the count above already states the total in
+                  words, and a screen reader stepping through fifteen unlabeled
+                  ticks would be noise, not information. */}
+              {(slotsByDate?.[d.date] ?? []).map((start) => (
+                <div
+                  key={start}
+                  aria-hidden="true"
+                  data-testid="slot-mark"
+                  className="absolute right-[3px] left-[3px] h-[3px] rounded-full bg-[var(--color-primary)]"
+                  style={{ top: `${topOf(start)}rem` }}
+                />
               ))}
 
               {/* The stripes say "nothing set here" to anyone who can see

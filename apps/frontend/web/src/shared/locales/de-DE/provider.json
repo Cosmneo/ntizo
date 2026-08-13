@@ -470,5 +470,8 @@
     "member-closed": "Freier Tag",
     "no-rule": "Keine Zeiten"
   },
-  "availabilityPreviewScopeTeam": "Ganzes Team"
+  "availabilityPreviewScopeTeam": "Ganzes Team",
+  "availabilityPreviewCount": "{{slots}} slots · {{seats}} places",
+  "availabilityPreviewFor": "Preview for",
+  "availabilityPreviewNoService": "Publish a service to preview its slots."
 }
