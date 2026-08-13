@@ -46,6 +46,11 @@
   "sortLabel": "Sort",
   "sortDefault": "Suggested",
   "sortNewest": "Newest",
+  "searchPlaceholder": "Diensten zoeken…",
+  "searchSubmit": "Zoeken",
+  "searchClear": "Zoekopdracht wissen",
+  "servicesNoMatch": "Niets komt overeen met je zoekopdracht.",
+  "servicesNoMatchHint": "Probeer andere woorden of verwijder filters.",
   "servicesFound": "{{count}} service found",
   "servicesFound_other": "{{count}} services found",
   "filterWhereOption": {

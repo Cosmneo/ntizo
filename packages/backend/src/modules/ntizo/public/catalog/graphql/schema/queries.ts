@@ -48,6 +48,12 @@ export const listServices = defineQuery({
       categoryCode: z.string().min(1).max(60).optional(),
       providerId: z.string().min(1).optional(),
       locationType: serviceLocationTypeSchema.optional(),
+      /**
+       * Free text. Bounded at 100 characters because a search box is a search
+       * box — a longer string is not a customer typing, and every character
+       * is one more the database scans with no index to help it.
+       */
+      q: z.string().min(1).max(100).optional(),
       sort: z.enum(["default", "newest"]).optional(),
       // Optional, not `.default()`: a zod default does not survive into the
       // GraphQL schema, so the fallback belongs in the handler where it can

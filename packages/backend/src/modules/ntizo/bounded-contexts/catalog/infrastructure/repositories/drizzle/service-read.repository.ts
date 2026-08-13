@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   category,
@@ -162,6 +162,41 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
     if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
     if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
+    if (filter.q) {
+      const pattern = `%${escapeLike(filter.q)}%`;
+      // An EXISTS rather than a join, for the same reason the translations are
+      // fetched separately below: `service_translation` is one-to-many, and
+      // joining it would multiply the very rows `limit`/`offset` then page.
+      // EXISTS asks whether any translation matches without producing one.
+      //
+      // Every language, not the reader's: somebody browsing in Portuguese can
+      // still type an English word. The card shows whatever their own locale
+      // resolves to, which may not be the text that matched — a trade this
+      // makes deliberately, because not finding the service is worse.
+      const matchesText = or(
+        // The provider's name too. The card already shows it, so a service
+        // returned for its provider's sake carries its own explanation;
+        // matching on something invisible would read as a bug.
+        ilike(provider.name, pattern),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(serviceTranslation)
+            .where(
+              and(
+                eq(serviceTranslation.serviceId, service.id),
+                or(
+                  ilike(serviceTranslation.name, pattern),
+                  ilike(serviceTranslation.description, pattern),
+                ),
+              ),
+            ),
+        ),
+      );
+      // `or` is typed as possibly undefined because it tolerates undefined
+      // arguments; neither of these two is one.
+      if (matchesText) conditions.push(matchesText);
+    }
 
     const rows = await db
       .select({
@@ -232,4 +267,21 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       };
     });
   }
+}
+
+/**
+ * A search term as literal text inside a `%…%` pattern.
+ *
+ * `%` and `_` are ILIKE's wildcards — "anything" and "any one character" — so
+ * a customer typing `100%` would otherwise match every published service on
+ * the platform, and `m_nicure` would find "Manicure". Neither is an injection
+ * (Drizzle binds the pattern as a parameter); both are simply the wrong
+ * results, which is harder to notice.
+ *
+ * The backslash goes first, or escaping `%` would then escape the backslash
+ * this function just added. No `ESCAPE` clause is needed: backslash is
+ * Postgres's default for LIKE and ILIKE.
+ */
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }

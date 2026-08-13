@@ -16,6 +16,8 @@ import { browseServicesQueries } from "@/features/directory/services/data/servic
 export interface BrowseNarrowing {
   category?: string | undefined;
   locationType?: string | undefined;
+  /** Free text, already trimmed by the route's `validateSearch`. */
+  q?: string | undefined;
   sort?: BrowseSort | undefined;
   offset: number;
 }
@@ -28,6 +30,7 @@ export function useBrowseServices(narrowing: BrowseNarrowing): ServicePageDTO {
       locale,
       categoryCode: narrowing.category,
       locationType: narrowing.locationType,
+      q: narrowing.q,
       sort: narrowing.sort,
       offset: narrowing.offset,
     }),
@@ -55,6 +58,7 @@ export function prefetchBrowseServices(
       locale,
       categoryCode: narrowing.category,
       locationType: narrowing.locationType,
+      q: narrowing.q,
       sort: narrowing.sort,
       offset: narrowing.offset,
     }),

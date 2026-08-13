@@ -46,6 +46,11 @@
   "sortLabel": "Sort",
   "sortDefault": "Suggested",
   "sortNewest": "Newest",
+  "searchPlaceholder": "Search services…",
+  "searchSubmit": "Search",
+  "searchClear": "Clear search",
+  "servicesNoMatch": "Nothing matches what you are looking for.",
+  "servicesNoMatchHint": "Try different words, or remove some filters.",
   "servicesFound": "{{count}} service found",
   "servicesFound_other": "{{count}} services found",
   "filterWhereOption": {

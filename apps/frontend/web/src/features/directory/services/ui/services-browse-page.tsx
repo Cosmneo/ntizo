@@ -13,6 +13,10 @@ import { BrowseServiceCard } from "@/features/directory/services/ui/browse-servi
 import { CategoryBand } from "@/features/directory/services/ui/category-band";
 import { BrowseFilters } from "@/features/directory/services/ui/browse-filters";
 import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services/domain/types";
+import {
+  browseSearch,
+  type BrowseSearch,
+} from "@/features/directory/services/domain/browse-search";
 
 /**
  * Every published service on the platform.
@@ -35,27 +39,25 @@ export function ServicesBrowsePage() {
   const locale = i18n.resolvedLanguage ?? i18n.language;
   // `strict: false` so this component stays usable outside its own route and
   // testable without one; the route validates before it reaches here.
-  const {
+  // Everything the URL says, kept as one object: every control on this page
+  // is a link that changes one part of it and keeps the rest, and passing the
+  // whole thing around is what stops each of them dropping the parts it does
+  // not itself know about. See `browseSearch`.
+  const current = useSearch({ strict: false }) as BrowseSearch;
+  const { category, q, sort, offset = 0 } = current;
+  const page = useBrowseServices({
     category,
-    locationType,
+    locationType: current.locationType,
+    q,
     sort,
-    offset = 0,
-  } = useSearch({ strict: false }) as {
-    category?: string;
-    locationType?: string;
-    sort?: BrowseSort;
-    offset?: number;
-  };
-  const page = useBrowseServices({ category, locationType, sort, offset });
+    offset,
+  });
   // A plain query, unlike the services: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
   const categories = useCategoryPreview(CATEGORY_BAND_LIMIT).data?.items ?? [];
 
-  /** Everything currently narrowing the list, for building a link that changes one thing. */
-  const narrowing = {
-    ...(category ? { category } : {}),
-    ...(locationType ? { locationType } : {}),
-  };
+  /** Whether the reader narrowed the list at all — which is what "nothing here" means. */
+  const isNarrowed = Boolean(category ?? current.locationType ?? q);
 
   return (
     <>
@@ -63,14 +65,14 @@ export function ServicesBrowsePage() {
 
       <CategoryBand
         categories={categories}
-        active={category}
+        current={current}
         allLabel={t("servicesAllCategories")}
         label={t("servicesFilterByCategory")}
       />
 
       <main className="page-shell py-8">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:items-start">
-          <BrowseFilters category={category} locationType={locationType} />
+          <BrowseFilters current={current} />
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -85,9 +87,9 @@ export function ServicesBrowsePage() {
                   className="h-4 w-4 text-[var(--color-muted-foreground)]"
                   aria-hidden="true"
                 />
-                <SortLink narrowing={narrowing} active={!sort} label={t("sortDefault")} />
+                <SortLink current={current} active={!sort} label={t("sortDefault")} />
                 <SortLink
-                  narrowing={narrowing}
+                  current={current}
                   value="newest"
                   active={sort === "newest"}
                   label={t("sortNewest")}
@@ -96,7 +98,20 @@ export function ServicesBrowsePage() {
             </div>
 
             {page.items.length === 0 ? (
-              <p className="mt-10 text-[var(--color-muted-foreground)]">{t("servicesEmpty")}</p>
+              // Two different sentences, because they are two different
+              // situations. An empty platform is "nothing published yet"; an
+              // empty search is "nothing matches", and telling a reader who
+              // searched that the platform is empty is simply false.
+              <div className="mt-10 grid gap-1">
+                <p className="text-[var(--color-muted-foreground)]">
+                  {isNarrowed ? t("servicesNoMatch") : t("servicesEmpty")}
+                </p>
+                {isNarrowed ? (
+                  <p className="type-caption text-[var(--color-muted-foreground)]">
+                    {t("servicesNoMatchHint")}
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <>
                 <ul className="mt-5 grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
@@ -111,7 +126,7 @@ export function ServicesBrowsePage() {
                 <nav className="mt-10 flex items-center justify-between gap-3">
                   {offset > 0 ? (
                     <PageLink
-                      narrowing={{ ...narrowing, ...(sort ? { sort } : {}) }}
+                      current={current}
                       offset={offset - BROWSE_PAGE_SIZE}
                       label={t("servicesPrevious")}
                     />
@@ -120,7 +135,7 @@ export function ServicesBrowsePage() {
                   )}
                   {page.nextOffset !== null ? (
                     <PageLink
-                      narrowing={{ ...narrowing, ...(sort ? { sort } : {}) }}
+                      current={current}
                       offset={page.nextOffset}
                       label={t("servicesNext")}
                     />
@@ -145,14 +160,14 @@ export function ServicesBrowsePage() {
  */
 const CATEGORY_BAND_LIMIT = 24;
 
-/** Changing the order keeps every filter and resets the page. */
+/** Changing the order keeps every filter and the search, and resets the page. */
 function SortLink({
-  narrowing,
+  current,
   value,
   active,
   label,
 }: {
-  narrowing: Record<string, string>;
+  current: BrowseSearch;
   value?: BrowseSort;
   active: boolean;
   label: string;
@@ -160,7 +175,7 @@ function SortLink({
   return (
     <Link
       to="/services"
-      search={{ ...narrowing, ...(value ? { sort: value } : {}) }}
+      search={browseSearch(current, { sort: value })}
       className={cn(
         "type-caption rounded-full px-2.5 py-1 transition-colors",
         active
@@ -173,20 +188,23 @@ function SortLink({
   );
 }
 
-/** Paging keeps every filter and the order — only the offset moves. */
+/** Paging keeps every filter, the search and the order — only the offset moves. */
 function PageLink({
-  narrowing,
+  current,
   offset,
   label,
 }: {
-  narrowing: Record<string, string>;
+  current: BrowseSearch;
   offset: number;
   label: string;
 }) {
   return (
     <Link
       to="/services"
-      search={{ ...narrowing, ...(offset > 0 ? { offset } : {}) }}
+      // The one place `offset` is passed on purpose, which is how
+      // `browseSearch` tells paging apart from every other change — those
+      // reset to the first page.
+      search={browseSearch(current, { offset })}
       className="type-body font-semibold text-[var(--color-primary)] hover:underline"
     >
       {label}

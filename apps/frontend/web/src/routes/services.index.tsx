@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ServicesBrowsePage } from "@/features/directory/services/ui/services-browse-page";
 import { prefetchBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
+import { MAX_SEARCH_LENGTH } from "@/features/directory/services/domain/types";
 
 /**
  * Every published service on the platform, at /services.
@@ -24,9 +25,21 @@ export const Route = createFileRoute("/services/")({
    */
   validateSearch: (
     search: Record<string, unknown>,
-  ): { category?: string; locationType?: string; sort?: "newest"; offset?: number } => {
+  ): {
+    category?: string;
+    locationType?: string;
+    q?: string;
+    sort?: "newest";
+    offset?: number;
+  } => {
     const category =
       typeof search["category"] === "string" ? search["category"].trim() : "";
+    // Trimmed and capped to the 100 the GraphQL schema accepts. A longer
+    // string would fail validation at the server and blank the page, and the
+    // person who pasted it has no way to see why — better to search the
+    // first hundred characters of what they pasted.
+    const q =
+      typeof search["q"] === "string" ? search["q"].trim().slice(0, MAX_SEARCH_LENGTH) : "";
     // Validated against the closed set the database's CHECK enforces, not
     // passed through: an unknown value would reach the server as a filter
     // matching nothing, and the page would go blank with no way to tell why.
@@ -43,6 +56,7 @@ export const Route = createFileRoute("/services/")({
     return {
       ...(category ? { category } : {}),
       ...(locationType ? { locationType } : {}),
+      ...(q ? { q } : {}),
       ...(sort ? { sort } : {}),
       ...(offset ? { offset } : {}),
     };
@@ -50,6 +64,7 @@ export const Route = createFileRoute("/services/")({
   loaderDeps: ({ search }) => ({
     category: search.category,
     locationType: search.locationType,
+    q: search.q,
     sort: search.sort,
     offset: search.offset ?? 0,
   }),

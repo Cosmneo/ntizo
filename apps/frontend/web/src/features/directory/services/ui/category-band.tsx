@@ -1,6 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Compass, Tag, icons } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
+import {
+  browseSearch,
+  type BrowseSearch,
+} from "@/features/directory/services/domain/browse-search";
 
 /**
  * The categories, as a band across the top of the browse.
@@ -14,19 +18,26 @@ import { cn } from "@ntizo/frontend-ui";
  * name for exactly this: "the places too small to carry the image". The
  * landing page uses `imageUrl` instead, and should — a tile has room for a
  * photograph and this does not.
+ *
+ * Changing category keeps the search and the filters rather than clearing
+ * them. Treating the band as an entirely fresh start reads well in the
+ * abstract and badly in the hand: somebody who typed a word and then narrowed
+ * to a category means both, and silently discarding the harder-won of the two
+ * looks like the search broke.
  */
 export function CategoryBand({
   categories,
-  active,
+  current,
   allLabel,
   label,
 }: {
   categories: readonly { id: string; code: string; name: string; icon: string | null }[];
-  /** The selected category's code, or undefined for "all". */
-  active: string | undefined;
+  /** Everything the URL currently says — the band changes one part of it. */
+  current: BrowseSearch;
   allLabel: string;
   label: string;
 }) {
+  const active = current.category;
   return (
     <nav
       aria-label={label}
@@ -36,9 +47,21 @@ export function CategoryBand({
           grows taller pushes the results down by a different amount on every
           screen width, and the categories past the fold are the rarer ones. */}
       <div className="page-shell flex justify-start gap-1 overflow-x-auto py-2 lg:justify-center">
-        <BandItem to={undefined} label={allLabel} icon={null} active={!active} />
+        <BandItem
+          search={browseSearch(current, { category: undefined })}
+          isAll
+          label={allLabel}
+          icon={null}
+          active={!active}
+        />
         {categories.map((c) => (
-          <BandItem key={c.id} to={c.code} label={c.name} icon={c.icon} active={active === c.code} />
+          <BandItem
+            key={c.id}
+            search={browseSearch(current, { category: c.code })}
+            label={c.name}
+            icon={c.icon}
+            active={active === c.code}
+          />
         ))}
       </div>
     </nav>
@@ -46,24 +69,25 @@ export function CategoryBand({
 }
 
 function BandItem({
-  to,
+  search,
+  isAll = false,
   label,
   icon,
   active,
 }: {
-  to: string | undefined;
+  /** Already built by `browseSearch`, which omits the category rather than emptying it. */
+  search: BrowseSearch;
+  isAll?: boolean;
   label: string;
   icon: string | null;
   active: boolean;
 }) {
-  const Icon = iconComponent(icon, to === undefined);
+  const Icon = iconComponent(icon, isAll);
 
   return (
     <Link
       to="/services"
-      // The absence of the param, not a magic value — so `/services` and
-      // `/services?category=` never become two spellings of one page.
-      search={to ? { category: to } : {}}
+      search={search}
       className={cn(
         "grid shrink-0 justify-items-center gap-1 rounded-[var(--radius-card-sm)] px-3.5 py-2 transition-colors",
         active

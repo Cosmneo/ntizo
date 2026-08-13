@@ -26,6 +26,16 @@ export type ServicePublicOptionDTO = NonNullable<ServiceDTO["defaultOption"]>;
 export const BROWSE_PAGE_SIZE = 24;
 
 /**
+ * The longest search term the browse will send.
+ *
+ * The same 100 the GraphQL schema accepts. Enforced here as well so a pasted
+ * essay is truncated into a search rather than rejected by the server — a
+ * validation error blanks the page, and whoever pasted it has no way to see
+ * why.
+ */
+export const MAX_SEARCH_LENGTH = 100;
+
+/**
  * How the browse orders its results.
  *
  * `default` is the provider's own arrangement — their answer to "what do I

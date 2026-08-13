@@ -2,6 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { MapPin } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
+import {
+  browseSearch,
+  type BrowseSearch,
+} from "@/features/directory/services/domain/browse-search";
+import { SearchBox } from "@/features/directory/services/ui/search-box";
 
 /**
  * The four places a service can happen.
@@ -14,29 +19,31 @@ import { cn } from "@ntizo/frontend-ui";
 const LOCATION_TYPES = ["remote", "at_provider", "at_customer", "flexible"] as const;
 
 /**
- * The browse's sidebar.
+ * The browse's sidebar: the search box, then the filters.
  *
- * Links, not form controls: a filtered list is a URL somebody can send, and
- * the back button should undo a filter. That also keeps the whole sidebar
+ * The search sits above the filters, and both sit in the same column, because
+ * they do the same kind of work — narrowing a set the category band has
+ * already chosen. Search first because it is the one a reader arrives knowing
+ * they want.
+ *
+ * The filters are links, not form controls: a filtered list is a URL somebody
+ * can send, and the back button should undo a filter. That also keeps them
  * usable before any JavaScript has run, which matters on a page built to be
- * crawled.
+ * crawled. Each link is built by `browseSearch` so it carries the search term
+ * and the sort rather than quietly dropping whatever it does not know about.
  *
- * Only the filters this data can actually answer. Price is absent on purpose
+ * Only the filters this data can honestly answer. Price is absent on purpose
  * — the card shows the provider's chosen default option, not the cheapest, so
  * "under 500" would hide services that have a 300 option. The filter and the
  * "from" label are one decision, and it has not been made.
  */
-export function BrowseFilters({
-  category,
-  locationType,
-}: {
-  category: string | undefined;
-  locationType: string | undefined;
-}) {
+export function BrowseFilters({ current }: { current: BrowseSearch }) {
   const { t } = useTranslation("directory");
 
   return (
     <aside className="grid content-start gap-5 lg:sticky lg:top-4">
+      <SearchBox current={current} />
+
       <h2 className="type-body-medium font-semibold">{t("filtersTitle")}</h2>
 
       <section className="grid gap-2.5">
@@ -46,7 +53,7 @@ export function BrowseFilters({
         </h3>
         <div className="flex flex-wrap gap-2">
           {LOCATION_TYPES.map((value) => {
-            const active = locationType === value;
+            const active = current.locationType === value;
             return (
               <Link
                 key={value}
@@ -54,10 +61,7 @@ export function BrowseFilters({
                 // Clicking the active one clears it: a filter you set by
                 // clicking should come off the same way, without hunting for
                 // a separate "clear" the sidebar would otherwise need.
-                search={{
-                  ...(category ? { category } : {}),
-                  ...(active ? {} : { locationType: value }),
-                }}
+                search={browseSearch(current, { locationType: active ? undefined : value })}
                 className={cn(
                   "type-caption rounded-full border px-3 py-1.5 transition-colors",
                   active

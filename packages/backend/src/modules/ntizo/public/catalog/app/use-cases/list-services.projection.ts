@@ -17,6 +17,12 @@ export interface ListServicesInput {
    * house" and "somewhere I go" are different needs inside one trade.
    */
   locationType?: string | undefined;
+  /**
+   * Free text typed by the customer, matched against the service's name and
+   * description in every language and against its provider's name. Trimmed
+   * here; blank means no search.
+   */
+  q?: string | undefined;
   /** `default` is the provider's own order; `newest` is most recently added first. */
   sort?: "default" | "newest" | undefined;
   limit: number;
@@ -57,6 +63,12 @@ export class ListServicesProjection {
   async execute(input: ListServicesInput): Promise<ListServicesOutput> {
     const limit = Math.min(Math.max(input.limit, 1), MAX_SERVICE_PAGE);
     const offset = Math.max(input.offset, 0);
+    // Trimmed here rather than in the repository, and blank normalised to "no
+    // search at all". A phone keyboard leaves a trailing space after an
+    // autocompleted word, and `%  corte %` matches nothing; a string of
+    // spaces is truthy, and would narrow the browse to names containing a
+    // space.
+    const q = input.q?.trim();
 
     // One more than asked for: whether another page exists is then a length
     // check rather than a second round trip, and the extra row is discarded.
@@ -64,6 +76,7 @@ export class ListServicesProjection {
       categoryCode: input.categoryCode,
       providerId: input.providerId,
       locationType: input.locationType,
+      q: q ? q : undefined,
       sort: input.sort,
       limit: limit + 1,
       offset,

@@ -91,6 +91,12 @@ export interface ListPublishedServicesFilter {
   providerId?: string | undefined;
   /** A `ServiceLocationType`. Absent means every kind. */
   locationType?: string | undefined;
+  /**
+   * Free text, already trimmed, matched against the service's name and
+   * description in every language and against its provider's name. Absent
+   * means no text search — an empty or blank string never reaches here.
+   */
+  q?: string | undefined;
   sort?: "default" | "newest" | undefined;
   limit: number;
   offset: number;

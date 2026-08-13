@@ -135,6 +135,44 @@ describe("browse filters", () => {
     expect((repo.lastFilter as { sort?: string }).sort).toBe("newest");
   });
 
+  it("passes the search term through to the repository", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      q: "corte",
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { q?: string }).q).toBe("corte");
+  });
+
+  it("trims the search term before the repository sees it", async () => {
+    // A phone keyboard adds a trailing space after an autocompleted word, and
+    // `%  corte %` matches nothing at all.
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      q: "  corte  ",
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { q?: string }).q).toBe("corte");
+  });
+
+  it("treats a blank search as no search at all", async () => {
+    // Not `""`: the repository builds its `where` from truthiness, so an
+    // empty string is already harmless — but a string of spaces is truthy,
+    // and would filter the browse down to services with a space in the name.
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      q: "   ",
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { q?: string }).q).toBeUndefined();
+  });
+
   it("asks for no location type when none was given", async () => {
     // `undefined`, not an empty string: the repository builds a `where` from
     // truthiness, and `""` would filter for services whose location type is
@@ -171,6 +209,7 @@ describe("mapListServicesInput", () => {
         categoryCode: "hair",
         providerId: "prov-1",
         locationType: "remote",
+        q: "corte",
         sort: "newest",
         limit: 12,
         offset: 24,
@@ -180,6 +219,7 @@ describe("mapListServicesInput", () => {
       categoryCode: "hair",
       providerId: "prov-1",
       locationType: "remote",
+      q: "corte",
       sort: "newest",
       limit: 12,
       offset: 24,
@@ -195,6 +235,7 @@ describe("mapListServicesInput", () => {
       categoryCode: undefined,
       providerId: undefined,
       locationType: undefined,
+      q: undefined,
       sort: undefined,
       limit: 24,
       offset: 0,

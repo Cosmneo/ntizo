@@ -3,13 +3,29 @@ import type { ServicePageDTO } from "@ntizo/shared/read-models";
 import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
 import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services/domain/types";
 
+/**
+ * The fields both service listings ask for.
+ *
+ * Its own exported constant so a test can assert the selection set contains
+ * what the cards read. Nothing else can: every card test builds a complete
+ * fixture, and every repository test replaces the transport with a double
+ * that answers whatever it is asked, so a field left out of this string is
+ * invisible to the whole suite. The server does not object either — an
+ * unrequested field is absent, not an error, and `undefined` renders as
+ * nothing.
+ *
+ * `providerSlug` was missing here for exactly one release. Every card in the
+ * browse linked to `/providers/undefined` while the suite stayed green.
+ */
+export const SERVICE_FIELDS = `
+  id providerId providerSlug providerName categoryCode name description
+  locationType bookingMode imageUrls isFallback
+  defaultOption { amountMinor currency durationMinutes minMinutes stepMinutes pricingMode }`;
+
 const ALL = `
   query ServiceAll($input: ServiceAllInput!) {
     serviceAll(input: $input) {
-      items {
-        id providerId providerName categoryCode name description
-        locationType bookingMode imageUrls isFallback
-        defaultOption { amountMinor currency durationMinutes minMinutes stepMinutes pricingMode }
+      items {${SERVICE_FIELDS}
       }
       nextOffset
     }
@@ -51,6 +67,7 @@ export const browseServicesQueries = {
     locale: string;
     categoryCode?: string | undefined;
     locationType?: string | undefined;
+    q?: string | undefined;
     sort?: BrowseSort | undefined;
     offset: number;
   }) =>
@@ -64,6 +81,7 @@ export const browseServicesQueries = {
         input.locale,
         input.categoryCode ?? null,
         input.locationType ?? null,
+        input.q ?? null,
         input.sort ?? null,
         input.offset,
       ] as const,
@@ -73,6 +91,7 @@ export const browseServicesQueries = {
             locale: input.locale,
             ...(input.categoryCode ? { categoryCode: input.categoryCode } : {}),
             ...(input.locationType ? { locationType: input.locationType } : {}),
+            ...(input.q ? { q: input.q } : {}),
             ...(input.sort ? { sort: input.sort } : {}),
             limit: BROWSE_PAGE_SIZE,
             offset: input.offset,
