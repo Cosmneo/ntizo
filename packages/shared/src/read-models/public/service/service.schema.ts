@@ -100,3 +100,72 @@ export const servicePageReadModel = z.object({
 });
 
 export type ServicePageDTO = z.infer<typeof servicePageReadModel>;
+
+/**
+ * One package a customer can choose, on the service's own page.
+ *
+ * Distinct from `servicePublicOptionReadModel`, which is the single option a
+ * *card* shows: this one carries an id (the chooser needs something to select)
+ * and a name (a list of three prices with no labels is not a choice).
+ */
+export const serviceDetailOptionReadModel = z.object({
+  id: z.string().min(1),
+  /** Already resolved into the reader's language. */
+  name: z.string(),
+  amountMinor: z.number().int(),
+  currency: z.string(),
+  durationMinutes: z.number().int().nullable(),
+  minMinutes: z.number().int().nullable(),
+  stepMinutes: z.number().int().nullable(),
+  pricingMode: z.string(),
+  isDefault: z.boolean(),
+});
+
+/**
+ * Somebody who performs this service.
+ *
+ * First name and photograph, never a surname: enough for a customer to know
+ * who is coming, and the narrowest disclosure that achieves it. These are
+ * employees, not account holders — publishing them is a one-way decision taken
+ * on 2026-08-13, reversing the earlier choice `member-picker.tsx` documents.
+ */
+export const servicePerformerReadModel = z.object({
+  /** A `provider_member.id` — the same id `availability.forService` speaks. */
+  id: z.string().min(1),
+  firstName: z.string(),
+  avatarUrl: z.string().nullable(),
+});
+
+/**
+ * One service, in full, for its own page.
+ *
+ * A separate model from `serviceReadModel` rather than more fields on it: the
+ * browse asks for twenty-four services at a time and wants one price each.
+ * Sending every option of every card to save a schema would make the list page
+ * pay for the detail page's data.
+ */
+export const serviceDetailReadModel = z.object({
+  id: z.string().min(1),
+  providerId: z.string(),
+  providerName: z.string(),
+  providerSlug: z.string(),
+  providerType: z.enum(["individual", "organization"]),
+  providerLogoUrl: z.string().nullable(),
+  providerCity: z.string().nullable(),
+  providerDistrict: z.string().nullable(),
+  categoryCode: z.string(),
+  categoryName: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  locationType: z.string(),
+  bookingMode: z.string(),
+  imageUrls: z.array(z.string()),
+  /** Every active option, cheapest first. Empty for a `quote` service. */
+  options: z.array(serviceDetailOptionReadModel),
+  performers: z.array(servicePerformerReadModel),
+  isFallback: z.boolean(),
+});
+
+export type ServiceDetailOptionDTO = z.infer<typeof serviceDetailOptionReadModel>;
+export type ServicePerformerDTO = z.infer<typeof servicePerformerReadModel>;
+export type ServiceDetailDTO = z.infer<typeof serviceDetailReadModel>;
