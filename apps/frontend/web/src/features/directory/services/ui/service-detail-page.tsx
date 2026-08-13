@@ -12,6 +12,8 @@ import { ServiceProviderCard } from "@/features/directory/services/ui/service-pr
 import { ServicePerformers } from "@/features/directory/services/ui/service-performers";
 import { PackageChooser } from "@/features/directory/services/ui/package-chooser";
 import { ServiceQuoteNotice } from "@/features/directory/services/ui/service-quote-notice";
+import { ServicePackagesUnavailable } from "@/features/directory/services/ui/service-packages-unavailable";
+import { serviceDetailPanel } from "@/features/directory/services/domain/service-card";
 import {
   ServiceFacts,
   ServiceRating,
@@ -115,7 +117,14 @@ export function ServiceDetailPage({ id }: { id: string }) {
       <main className="page-shell py-8">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
           <div className="min-w-0">
-            <ServiceGallery images={service.imageUrls} alt={service.name} />
+            {/* Keyed by id for the same reason `PackageChooser` and
+                `AvailabilitySheet` below are: the route reuses this page's
+                component instance across services, so without a key a
+                gallery's `active` thumbnail index would survive a navigation
+                to a different service and could point past the end of its
+                image list, or worse, silently land on the wrong photo of one
+                that has enough images not to notice. */}
+            <ServiceGallery key={service.id} images={service.imageUrls} alt={service.name} />
             <h1 className="type-h1 mt-6">{service.name}</h1>
             {/* Invented — see service-detail-placeholders.tsx. */}
             <ServiceRating />
@@ -132,24 +141,43 @@ export function ServiceDetailPage({ id }: { id: string }) {
             <ServiceReviews />
           </div>
           <div className="grid gap-4 lg:sticky lg:top-4">
-            {service.options.length === 0 ? (
-              // A quote service has nothing to check a calendar against yet —
-              // no price is fixed until the provider has seen the job, so
-              // there is no slot to offer a time for. `ServiceQuoteNotice`
-              // already carries the one sentence that explains this
-              // (`availabilityQuoteNotice`, the same key `AvailabilitySheet`
-              // itself falls back to for the identical fact); a "see
-              // availability" button that opened the sheet only to repeat
-              // that sentence would say the same thing to the reader twice.
-              <ServiceQuoteNotice />
-            ) : (
-              <>
-                <PackageChooser key={service.id} options={service.options} locale={locale} />
-                <Button type="button" className="w-full" onClick={() => setAvailabilityOpen(true)}>
-                  {t("availabilityCheckAction")}
-                </Button>
-              </>
-            )}
+            {(() => {
+              // `serviceDetailPanel` (`domain/service-card.ts`) is the one
+              // place this three-way split is decided, keyed off
+              // `bookingMode` first and never off `options.length` alone —
+              // read its doc comment for why a `priced` service can still
+              // reach this page with an empty `options` array, and why that
+              // is not the same fact as a `quote` service.
+              const panel = serviceDetailPanel(service);
+              if (panel.kind === "quote") {
+                // A quote service has nothing to check a calendar against yet
+                // — no price is fixed until the provider has seen the job, so
+                // there is no slot to offer a time for. `ServiceQuoteNotice`
+                // already carries the one sentence that explains this
+                // (`availabilityQuoteNotice`, the same key `AvailabilitySheet`
+                // itself falls back to for the identical fact); a "see
+                // availability" button that opened the sheet only to repeat
+                // that sentence would say the same thing to the reader twice.
+                return <ServiceQuoteNotice />;
+              }
+              if (panel.kind === "unavailable") {
+                // A `priced` service with no active packages — see
+                // `ServicePackagesUnavailable`'s own doc comment for why this
+                // is not `ServiceQuoteNotice` and offers no "see availability"
+                // button either: with no active option there is no default
+                // duration to check a calendar slot against, and nothing here
+                // invents one.
+                return <ServicePackagesUnavailable />;
+              }
+              return (
+                <>
+                  <PackageChooser key={service.id} options={service.options} locale={locale} />
+                  <Button type="button" className="w-full" onClick={() => setAvailabilityOpen(true)}>
+                    {t("availabilityCheckAction")}
+                  </Button>
+                </>
+              );
+            })()}
             <ServiceProviderCard service={service} />
           </div>
         </div>

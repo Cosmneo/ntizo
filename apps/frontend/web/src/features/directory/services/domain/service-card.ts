@@ -1,3 +1,4 @@
+import type { ServiceDetailDTO } from "@ntizo/shared/read-models";
 import type { ServiceDTO, ServicePublicOptionDTO } from "./types";
 
 /**
@@ -90,6 +91,40 @@ export function optionDurationMinutes(
   return option.pricingMode === "hourly"
     ? option.minMinutes
     : option.durationMinutes;
+}
+
+/**
+ * What the service page's right column shows in place of `PackageChooser`.
+ *
+ * Keyed off `bookingMode` first, never off `options.length` — the same rule
+ * `servicePriceCell` states above and for the same reason. `service-detail-page.tsx`
+ * used to branch on `service.options.length === 0` directly, which reads a
+ * `priced` service with no *active* options as a `quote` one. That state is
+ * reachable, not theoretical: `canPublish` refuses to publish a `priced`
+ * service with zero options, but it runs once, at publish time, and is never
+ * re-run afterwards. Deactivating a service's last option later — a normal
+ * provider action — leaves a published, `priced` service behind, and
+ * `getPublishedById` filters `options` to active ones only, so this page then
+ * sees exactly what a `quote` service looks like on the wire: an empty array.
+ *
+ * `unavailable` is `servicePriceCell`'s own name for this same situation on a
+ * browse card (a `priced` service with no `defaultOption`), reused rather than
+ * inventing a fourth word for one fact. It is deliberately not `quote`: a
+ * `quote` service has never had a price, and telling a `priced` one's customer
+ * to "contact the provider to get a price" would be wrong advice, not merely
+ * mislabelled — the price already exists, only its packages are (probably
+ * temporarily) gone. `ServicePackagesUnavailable` is the page's answer for it,
+ * and it is not `ServiceQuoteNotice` reused.
+ */
+export type ServiceDetailPanel =
+  | { kind: "quote" }
+  | { kind: "unavailable" }
+  | { kind: "packages" };
+
+export function serviceDetailPanel(service: ServiceDetailDTO): ServiceDetailPanel {
+  if (service.bookingMode === "quote") return { kind: "quote" };
+  if (service.options.length === 0) return { kind: "unavailable" };
+  return { kind: "packages" };
 }
 
 /**

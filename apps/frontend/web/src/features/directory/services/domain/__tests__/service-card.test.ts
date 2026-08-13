@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { ServiceDetailDTO, ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
 import {
   formatOptionAmount,
   optionDurationMinutes,
   servicePriceCell,
   serviceCardImage,
+  serviceDetailPanel,
 } from "../service-card";
 import type { ServiceDTO, ServicePublicOptionDTO } from "../types";
 
@@ -192,5 +194,82 @@ describe("servicePriceCell with several options", () => {
       service({ defaultOption: option(), fromAmountMinor: null, optionCount: 3 }),
     );
     expect(cell.kind).toBe("priced");
+  });
+});
+
+function detailOption(over: Partial<ServiceDetailOptionDTO> = {}): ServiceDetailOptionDTO {
+  return {
+    id: "opt-1",
+    name: "Cerimónia",
+    amountMinor: 35000,
+    currency: "MZN",
+    durationMinutes: 60,
+    minMinutes: null,
+    stepMinutes: null,
+    pricingMode: "fixed",
+    isDefault: true,
+    ...over,
+  };
+}
+
+function detailService(over: Partial<ServiceDetailDTO> = {}): ServiceDetailDTO {
+  return {
+    id: "svc-1",
+    providerId: "prov-1",
+    providerName: "Barbearia Central",
+    providerSlug: "barbearia",
+    providerType: "organization",
+    providerLogoUrl: null,
+    providerCity: "Maputo",
+    providerDistrict: null,
+    categoryCode: "hair",
+    categoryName: "Cabeleireiro",
+    name: "Corte de cabelo",
+    description: null,
+    locationType: "at_provider",
+    bookingMode: "priced",
+    imageUrls: [],
+    options: [detailOption()],
+    performers: [],
+    isFallback: false,
+    ...over,
+  };
+}
+
+/**
+ * `service-detail-page.tsx`'s three-way split for its right column.
+ *
+ * The middle case is the one the whole-branch review found and per-task
+ * review could not: `service-detail-page.tsx` used to branch on
+ * `options.length === 0` directly, which reads a `priced` service that has
+ * lost its last *active* option — a state `canPublish` cannot prevent after
+ * publish time, since it only ever runs once, at publish — as a `quote`
+ * service. It never had a price to begin with in that misreading, which is
+ * false: the price exists, only the packages are gone.
+ */
+describe("serviceDetailPanel", () => {
+  it("shows the package chooser for a priced service with active options", () => {
+    expect(serviceDetailPanel(detailService())).toEqual({ kind: "packages" });
+  });
+
+  it("shows the quote notice for a quote service", () => {
+    expect(
+      serviceDetailPanel(detailService({ bookingMode: "quote", options: [] })),
+    ).toEqual({ kind: "quote" });
+  });
+
+  it("a priced service with no active options is read as unavailable, never as a quote service", () => {
+    // The exact defect this fix wave closes.
+    const panel = serviceDetailPanel(detailService({ bookingMode: "priced", options: [] }));
+    expect(panel).toEqual({ kind: "unavailable" });
+    expect(panel).not.toEqual({ kind: "quote" });
+  });
+
+  it("stays a quote even with options somehow attached", () => {
+    // Mirrors `servicePriceCell`'s own guard: `quote` short-circuits before
+    // `options` is even inspected.
+    expect(
+      serviceDetailPanel(detailService({ bookingMode: "quote", options: [detailOption()] })),
+    ).toEqual({ kind: "quote" });
   });
 });
