@@ -13,6 +13,7 @@ import { StepBasics } from "./steps/step-basics";
 import { StepBooking } from "./steps/step-booking";
 import { StepPerformers } from "./steps/step-performers";
 import { StepPricing } from "./steps/step-pricing";
+import { StepImages } from "./steps/step-images";
 import { StepLanguages } from "./steps/step-languages";
 import { StepReview } from "./steps/step-review";
 
@@ -85,6 +86,15 @@ export function ServiceWizardPage() {
             providerId={provider.id}
             serviceId={vm.serviceId}
             options={vm.current?.options ?? []}
+          />
+        );
+      case "images":
+        return (
+          <StepImages
+            providerId={provider.id}
+            imageKeys={vm.draft.imageKeys}
+            imageUrls={vm.current?.imageUrls ?? []}
+            onChange={(next) => vm.setDraft((d) => ({ ...d, imageKeys: next }))}
           />
         );
       case "languages":

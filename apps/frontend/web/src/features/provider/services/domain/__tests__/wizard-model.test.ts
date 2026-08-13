@@ -20,15 +20,30 @@ const ORGANIZATION_PRICED: ShapeInput = {
 };
 
 describe("stepsFor", () => {
-  test("an organization selling a priced service walks six steps", () => {
+  test("an organization selling a priced service walks seven steps", () => {
     expect(stepsFor(ORGANIZATION_PRICED)).toEqual([
       "basics",
       "booking",
       "performers",
       "pricing",
+      "images",
       "languages",
       "review",
     ]);
+  });
+
+  test("images are asked of every service, priced or quoted", () => {
+    // A quote service has no options, but it still has photographs — the two
+    // are unrelated questions and only one of them is about money.
+    for (const bookingMode of ["priced", "quote"] as const) {
+      expect(stepsFor({ individualProvider: false, bookingMode })).toContain("images");
+    }
+  });
+
+  test("images come after the step that creates the service", () => {
+    // `service.create` carries no image keys; only `service.update` does.
+    const steps = stepsFor(ORGANIZATION_PRICED);
+    expect(steps.indexOf("images")).toBeGreaterThan(steps.indexOf(CREATES_SERVICE));
   });
 
   test("an individual provider is never asked who performs the service", () => {
@@ -49,6 +64,7 @@ describe("stepsFor", () => {
     expect(stepsFor({ individualProvider: true, bookingMode: "quote" })).toEqual([
       "basics",
       "booking",
+      "images",
       "languages",
       "review",
     ]);
@@ -71,7 +87,7 @@ describe("stepsFor", () => {
   test("the steps that need a saved service still come after it", () => {
     const steps = stepsFor(ORGANIZATION_PRICED);
     const created = steps.indexOf(CREATES_SERVICE);
-    for (const needsId of ["pricing", "languages"] as const) {
+    for (const needsId of ["pricing", "images", "languages"] as const) {
       expect(steps.indexOf(needsId)).toBeGreaterThan(created);
     }
   });
@@ -88,6 +104,7 @@ describe("nextStep / previousStep", () => {
   test("walks forward through the shape it is given", () => {
     expect(nextStep("basics", steps)).toBe("booking");
     expect(nextStep("performers", steps)).toBe("pricing");
+    expect(nextStep("pricing", steps)).toBe("images");
   });
 
   test("skips a step the shape omitted rather than landing on it", () => {
@@ -107,6 +124,7 @@ describe("nextStep / previousStep", () => {
 
   test("walks backward through the shape it is given", () => {
     expect(previousStep("pricing", steps)).toBe("performers");
+    expect(previousStep("images", steps)).toBe("pricing");
   });
 });
 
@@ -140,12 +158,12 @@ describe("stepProgress", () => {
     // An individual provider quoting sees four steps; telling them they are
     // on "3 of 6" would count two screens they will never be shown.
     const individual = stepsFor({ individualProvider: true, bookingMode: "quote" });
-    expect(stepProgress("languages", individual)).toEqual({ current: 3, total: 4 });
+    expect(stepProgress("languages", individual)).toEqual({ current: 4, total: 5 });
   });
 
   test("is one-based at the first step", () => {
     const steps = stepsFor(ORGANIZATION_PRICED);
-    expect(stepProgress("basics", steps)).toEqual({ current: 1, total: 6 });
+    expect(stepProgress("basics", steps)).toEqual({ current: 1, total: 7 });
   });
 });
 
@@ -180,7 +198,7 @@ describe("stepBlocks", () => {
     // Booking mode always carries a real value; performers may legitimately
     // be empty on a draft; pricing, languages and review write through their
     // own mutations rather than the draft.
-    for (const step of ["booking", "performers", "pricing", "languages", "review"] as const) {
+    for (const step of ["booking", "performers", "pricing", "images", "languages", "review"] as const) {
       expect(stepBlocks(step, { ...answered(), categoryId: "" })).toBe(false);
     }
   });
@@ -189,7 +207,15 @@ describe("stepBlocks", () => {
 describe("the step union", () => {
   test("every step the type allows appears in the widest shape", () => {
     // Guards against adding a `ServiceStep` the wizard can never route to.
-    const all: ServiceStep[] = ["basics", "booking", "performers", "pricing", "languages", "review"];
+    const all: ServiceStep[] = [
+      "basics",
+      "booking",
+      "performers",
+      "pricing",
+      "images",
+      "languages",
+      "review",
+    ];
     expect(stepsFor(ORGANIZATION_PRICED)).toEqual(all);
   });
 });

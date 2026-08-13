@@ -213,6 +213,50 @@ class FixedServiceReadRepository implements ServiceReadRepositoryPort {
   }
 }
 
+/**
+ * The keys, not only the composed URLs.
+ *
+ * A provider's own screen has to *edit* this list — reorder it, drop one — and
+ * `service.update` writes `imageKeys`. Sending back only URLs left the client
+ * unable to say which key it was removing, and unable to say anything at all
+ * about a key whose URL could not be composed, since `imageUrls` filters those
+ * out.
+ */
+describe("ListMyServicesProjection images", () => {
+  class WithImages implements ServiceReadRepositoryPort {
+    constructor(private readonly keys: string[]) {}
+    async listForProvider(): Promise<ServiceOwnerRow[]> {
+      return [{ ...cardinalityRow, imageKeys: this.keys }];
+    }
+    async isProviderMember(): Promise<boolean> {
+      return true;
+    }
+    async listPublished(): Promise<never[]> {
+      return [];
+    }
+  }
+
+  const project = async (keys: string[]) =>
+    (await new ListMyServicesProjection(new WithImages(keys)).execute({ providerId: "p1" }))[0]!;
+
+  it("carries every key, in the stored order", async () => {
+    const service = await project(["provider/p1/service/1", "provider/p1/service/2"]);
+    expect(service.imageKeys).toEqual(["provider/p1/service/1", "provider/p1/service/2"]);
+  });
+
+  it("keeps a key whose URL cannot be composed", async () => {
+    // `imageUrls` drops those. `imageKeys` must not, or an image the provider
+    // uploaded becomes invisible and unremovable at the same time.
+    const service = await project(["provider/p1/service/1", "provider/p1/service/2"]);
+    expect(service.imageKeys).toHaveLength(2);
+  });
+
+  it("no images is an empty array, never undefined", async () => {
+    const service = await project([]);
+    expect(service.imageKeys).toEqual([]);
+  });
+});
+
 describe("ListMyServicesProjection cardinality", () => {
   it("keeps one service carrying three options, not three services or duplicated options", async () => {
     const projection = new ListMyServicesProjection(new FixedServiceReadRepository());

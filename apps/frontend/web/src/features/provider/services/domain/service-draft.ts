@@ -32,6 +32,12 @@ export interface ServiceDraft {
    * this field's shape.
    */
   memberIds: string[];
+  /**
+   * The service's photographs, as stored keys, in display order — the first
+   * is the cover. Only `service.update` writes these; a brand-new service has
+   * none, which is why the images step comes after the one that creates it.
+   */
+  imageKeys: string[];
 }
 
 /**
@@ -51,6 +57,7 @@ export function emptyDraft(creatorMemberId?: string): ServiceDraft {
     locationType: "",
     bookingMode: "priced",
     memberIds: creatorMemberId ? [creatorMemberId] : [],
+    imageKeys: [],
   };
 }
 
@@ -65,6 +72,7 @@ export function draftFrom(service: ProviderService): ServiceDraft {
     locationType: service.locationType,
     bookingMode: service.bookingMode,
     memberIds: service.memberIds,
+    imageKeys: service.imageKeys,
   };
 }
 

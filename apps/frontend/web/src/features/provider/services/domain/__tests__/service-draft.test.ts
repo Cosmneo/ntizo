@@ -187,6 +187,7 @@ describe("draftFrom", () => {
     bookingMode: "priced",
     status: "draft",
     imageUrls: [],
+  imageKeys: [],
     translations: [
       { locale: "pt-MZ", name: "Corte de cabelo", description: "Um corte simples." },
       { locale: "en-US", name: "Haircut", description: "A simple cut." },
@@ -208,6 +209,7 @@ describe("draftFrom", () => {
       locationType: "at_provider",
       bookingMode: "priced",
       memberIds: ["member-1", "member-2"],
+      imageKeys: [],
     });
   });
 

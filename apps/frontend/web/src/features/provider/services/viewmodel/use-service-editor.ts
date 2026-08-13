@@ -41,6 +41,12 @@ function servicesKey(providerId: string) {
 export interface SaveServiceInput extends CreateServiceInput {
   /** Present on an existing service — absent is what tells this to create instead. */
   serviceId?: string;
+  /**
+   * The photographs, as stored keys in display order. Update-only:
+   * `service.create` carries no image field, which is why the wizard asks for
+   * them after the step that creates the service.
+   */
+  imageKeys?: string[];
   /** Who performs it, as the form's checkboxes currently read. Ignored when `skipMembers` is set. */
   memberIds: string[];
   /**
@@ -108,6 +114,9 @@ export async function saveService(input: SaveServiceInput): Promise<string> {
         serviceId: input.serviceId,
         categoryId: input.categoryId,
         locationType: input.locationType,
+        // Sent whenever the caller supplied a list, including an empty one —
+        // "no photographs" is an instruction and omitting the field is not.
+        ...(input.imageKeys ? { imageKeys: input.imageKeys } : {}),
       }),
       setServiceTranslation({
         serviceId: input.serviceId,

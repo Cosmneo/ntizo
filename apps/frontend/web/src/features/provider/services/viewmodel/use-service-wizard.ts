@@ -43,7 +43,7 @@ import type { ProviderService } from "../domain/types";
  * translation boxes each own their own mutation and have already written by
  * the time Continue is pressed.
  */
-const SAVES_ON_ADVANCE: ReadonlySet<ServiceStep> = new Set(["basics", "performers"]);
+const SAVES_ON_ADVANCE: ReadonlySet<ServiceStep> = new Set(["basics", "performers", "images"]);
 
 /**
  * The service wizard's state, and the one place that decides when to talk to
@@ -214,6 +214,7 @@ export function useServiceWizard() {
         name: draft.name.trim(),
         description: draft.description.trim() || null,
         memberIds: draft.memberIds,
+        imageKeys: draft.imageKeys,
         skipMembers: individualProvider,
       });
       if (!lifecycle.isSaved) {

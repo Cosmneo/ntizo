@@ -44,6 +44,8 @@ export interface ProviderService {
   bookingMode: ServiceBookingMode;
   status: ServiceStatus;
   imageUrls: string[];
+  /** The stored keys. `imageUrls` is for showing; these are what a save writes back. */
+  imageKeys: string[];
   translations: ServiceTranslation[];
   options: ServiceOption[];
   /** `provider_member.id`s who perform this service. Empty for a draft nobody has been assigned to yet. */

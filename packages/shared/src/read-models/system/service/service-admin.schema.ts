@@ -33,6 +33,15 @@ export const serviceOwnerReadModel = z.object({
   bookingMode: z.string(),
   status: z.string(),
   imageUrls: z.array(z.string()),
+  /**
+   * The stored R2 keys, unfiltered.
+   *
+   * `imageUrls` is for showing and drops any key whose URL cannot be composed;
+   * these are for *editing*, and `service.update` writes them back. A client
+   * given only URLs cannot say which key it is removing, and cannot see a key
+   * at all when no base is configured.
+   */
+  imageKeys: z.array(z.string()),
   sortOrder: z.number().int(),
   /** `provider_member.id`s. Empty is a real state for a draft service; `canPublish` refuses it for a published one. */
   memberIds: z.array(z.string()),

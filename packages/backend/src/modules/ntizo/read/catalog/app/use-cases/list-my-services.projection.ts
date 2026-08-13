@@ -37,6 +37,10 @@ export class ListMyServicesProjection {
       imageUrls: (r.imageKeys ?? [])
         .map((k) => mediaUrl(k))
         .filter((u): u is string => u !== null),
+      // Unfiltered, unlike the URLs above: this list is what the owner's
+      // screen edits and sends back, so a key it cannot currently show is
+      // still a key it must not silently drop.
+      imageKeys: r.imageKeys ?? [],
       sortOrder: r.sortOrder,
       memberIds: r.memberIds,
       options: r.options.map((o) => ({

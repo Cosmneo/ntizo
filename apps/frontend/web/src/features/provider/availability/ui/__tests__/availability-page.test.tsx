@@ -102,6 +102,7 @@ function service(
     bookingMode: "priced",
     status: "published",
     imageUrls: [],
+  imageKeys: [],
     translations: [{ locale: "en-US", name: `Service ${id}`, description: null }],
     options: [
       {

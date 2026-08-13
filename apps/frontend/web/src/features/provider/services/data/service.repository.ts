@@ -6,7 +6,7 @@ import type { ProviderService } from "../domain/types";
 const MINE = `
   query ServiceMine($input: ServiceMineInput!) {
     serviceMine(input: $input) {
-      id categoryId categoryCode sourceLocale locationType bookingMode status imageUrls
+      id categoryId categoryCode sourceLocale locationType bookingMode status imageUrls imageKeys
       memberIds
       translations { locale name description }
       options {
@@ -95,6 +95,7 @@ export async function createService(input: CreateServiceInput): Promise<{ servic
 }
 
 export interface UpdateServiceInput {
+  imageKeys?: string[];
   serviceId: string;
   categoryId: string;
   locationType: ServiceLocationType;

@@ -17,6 +17,7 @@ export type ServiceStep =
   | "booking"
   | "performers"
   | "pricing"
+  | "images"
   | "languages"
   | "review";
 
@@ -59,7 +60,11 @@ export function stepsFor(input: ShapeInput): readonly ServiceStep[] {
 
   if (input.bookingMode === "priced") steps.push("pricing");
 
-  steps.push("languages", "review");
+  // Unconditional: a quote service has no options but still has photographs.
+  // The two are unrelated questions and only one of them is about money.
+  // After `CREATES_SERVICE` because `service.create` carries no image keys —
+  // only `service.update` does.
+  steps.push("images", "languages", "review");
 
   return steps;
 }

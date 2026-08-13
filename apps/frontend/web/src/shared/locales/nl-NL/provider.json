@@ -254,7 +254,8 @@
     "performers": "Who does it",
     "pricing": "Prices",
     "languages": "Languages",
-    "review": "Check and publish"
+    "review": "Check and publish",
+    "images": "Photos"
   },
   "serviceStepTitle": {
     "basics": "What service are you offering?",
@@ -262,7 +263,8 @@
     "performers": "Who performs it?",
     "pricing": "What does it cost?",
     "languages": "What languages is it offered in?",
-    "review": "Ready to publish?"
+    "review": "Ready to publish?",
+    "images": "What does it look like?"
   },
   "serviceStepDescription": {
     "basics": "The name customers see, the category they find it under, and where it happens.",
@@ -270,8 +272,17 @@
     "performers": "Everyone you tick here can be booked for this service.",
     "pricing": "Add one option for every version of this service you sell.",
     "languages": "Optional. Anything you leave blank falls back to the original language.",
-    "review": "One last look before this goes on the marketplace."
+    "review": "One last look before this goes on the marketplace.",
+    "images": "Optional. The first photo is the one customers see first."
   },
+  "serviceImagesAdd": "Add photos",
+  "serviceImagesEmpty": "No photos yet. The first one is the cover.",
+  "serviceImagesCover": "Cover",
+  "serviceImagesRemove": "Remove photo {{n}}",
+  "serviceImagesMoveEarlier": "Move photo {{n}} earlier",
+  "serviceImagesMoveLater": "Move photo {{n}} later",
+  "serviceImagesUnavailable": "Uploaded — no preview here",
+  "serviceImagesUploading": "Uploading…",
   "serviceStepIncomplete": "Answer everything above before continuing.",
   "serviceStepStatus": {
     "done": "Done",

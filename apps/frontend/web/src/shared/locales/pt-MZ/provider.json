@@ -254,7 +254,8 @@
     "performers": "Quem o faz",
     "pricing": "Preços",
     "languages": "Idiomas",
-    "review": "Rever e publicar"
+    "review": "Rever e publicar",
+    "images": "Fotos"
   },
   "serviceStepTitle": {
     "basics": "Que serviço está a oferecer?",
@@ -262,7 +263,8 @@
     "performers": "Quem o realiza?",
     "pricing": "Quanto custa?",
     "languages": "Em que idiomas é oferecido?",
-    "review": "Pronto para publicar?"
+    "review": "Pronto para publicar?",
+    "images": "Com que se parece?"
   },
   "serviceStepDescription": {
     "basics": "O nome que os clientes veem, a categoria onde o encontram e onde acontece.",
@@ -270,8 +272,17 @@
     "performers": "Todos os que assinalar aqui podem ser reservados para este serviço.",
     "pricing": "Adicione uma opção por cada versão deste serviço que vende.",
     "languages": "Opcional. O que deixar em branco recorre ao idioma original.",
-    "review": "Uma última vista de olhos antes de isto ir para o mercado."
+    "review": "Uma última vista de olhos antes de isto ir para o mercado.",
+    "images": "Opcional. A primeira foto é a que os clientes veem primeiro."
   },
+  "serviceImagesAdd": "Adicionar fotos",
+  "serviceImagesEmpty": "Ainda sem fotos. A primeira é a capa.",
+  "serviceImagesCover": "Capa",
+  "serviceImagesRemove": "Remover foto {{n}}",
+  "serviceImagesMoveEarlier": "Mover foto {{n}} para trás",
+  "serviceImagesMoveLater": "Mover foto {{n}} para a frente",
+  "serviceImagesUnavailable": "Carregada — sem pré-visualização aqui",
+  "serviceImagesUploading": "A carregar…",
   "serviceStepIncomplete": "Responda a tudo acima antes de continuar.",
   "serviceStepStatus": {
     "done": "Concluído",

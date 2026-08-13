@@ -92,6 +92,7 @@ const SAVED_SERVICE: ProviderService = {
   bookingMode: "priced",
   status: "draft",
   imageUrls: [],
+  imageKeys: [],
   translations: [{ locale: "en-US", name: "Haircut", description: null }],
   options: [],
   memberIds: ["m1"],
@@ -201,7 +202,7 @@ describe("ServiceWizardPage", () => {
 
     // Five, not six: an individual provider skips performers. Telling them
     // "1 of 6" would count a screen they will never be shown.
-    expect(await screen.findByText("Step 1/5")).toBeInTheDocument();
+    expect(await screen.findByText("Step 1/6")).toBeInTheDocument();
   });
 
   it("an unsaved service cannot jump forward past the step that creates it", async () => {

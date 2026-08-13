@@ -7,7 +7,12 @@ export interface UploadedImage {
   url: string | null;
 }
 
-export type MediaKind = "logo" | "photo";
+/**
+ * `service` sits beside the provider's own two because the upload route's
+ * guard is the same question — is this caller a member of this provider — and
+ * a service belongs to exactly one. Only the key path differs.
+ */
+export type MediaKind = "logo" | "photo" | "service";
 
 /**
  * Thrown with the server's own error code so the caller can say something

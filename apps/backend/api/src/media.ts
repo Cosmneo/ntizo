@@ -130,8 +130,12 @@ export function mountMedia(app: Hono<{ Bindings: AppBindings }>) {
     const bucket = c.env.MEDIA_BUCKET;
     if (!bucket) return c.json({ error: "MEDIA_STORAGE_UNCONFIGURED" }, 503);
 
+    // `service` sits beside the provider's own two rather than getting a route
+    // of its own: the guard is the same question — is this caller a member of
+    // this provider — and a service belongs to exactly one. The key path keeps
+    // them apart, so a listing image is never mistaken for a logo.
     const kind = c.req.param("kind");
-    if (kind !== "logo" && kind !== "photo") {
+    if (kind !== "logo" && kind !== "photo" && kind !== "service") {
       return c.json({ error: "UNKNOWN_MEDIA_KIND" }, 400);
     }
 
