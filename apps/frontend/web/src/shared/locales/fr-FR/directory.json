@@ -102,5 +102,6 @@
   "packageTotal": "Total",
   "packageBook": "Réserver",
   "packageBookingsClosed": "Les réservations ne sont pas encore ouvertes sur Ntizo.",
-  "packageContactProvider": "Contacter le prestataire"
+  "packageContactProvider": "Contacter le prestataire",
+  "packageContactClosed": "La messagerie n'est pas encore ouverte sur Ntizo."
 }

@@ -8,6 +8,7 @@ import { ServiceGallery } from "@/features/directory/services/ui/service-gallery
 import { ServiceProviderCard } from "@/features/directory/services/ui/service-provider-card";
 import { ServicePerformers } from "@/features/directory/services/ui/service-performers";
 import { PackageChooser } from "@/features/directory/services/ui/package-chooser";
+import { ServiceQuoteNotice } from "@/features/directory/services/ui/service-quote-notice";
 
 /**
  * One service, in full.
@@ -62,7 +63,11 @@ export function ServiceDetailPage({ id }: { id: string }) {
             <ServicePerformers performers={service.performers} />
           </div>
           <div className="grid gap-4 lg:sticky lg:top-4">
-            <PackageChooser key={service.id} options={service.options} locale={locale} />
+            {service.options.length === 0 ? (
+              <ServiceQuoteNotice />
+            ) : (
+              <PackageChooser key={service.id} options={service.options} locale={locale} />
+            )}
             <ServiceProviderCard service={service} />
           </div>
         </div>
