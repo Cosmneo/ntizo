@@ -1,37 +1,33 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@ntizo/frontend-ui";
 import { compareRules, groupRules, type WeekRuleGroup } from "../domain/week";
-import { availabilityErrorMessage, type WeeklyRuleDraft } from "../domain/types";
-import { useSetWeeklyPattern } from "../viewmodel/use-availability";
+import type { WeeklyRuleDraft } from "../domain/types";
 import { RuleCard } from "./rule-card";
 import { RuleDrawer } from "./rule-drawer";
 
 /**
  * One member's working week as a short list of rules, each openable in a
- * drawer, with one save for the lot.
+ * drawer.
  *
- * The draft itself lives one level up, in the page, because the week drawn on
- * the right is the same data: a rule added here has to change that picture
+ * The draft itself lives one level up, in the page, because the week drawn
+ * beside it is the same data: a rule added here has to change that picture
  * before anything is sent anywhere, and state a sibling needs cannot live in
- * this component. What stays here is the editing — which group is open, and
- * the single call that writes the whole week.
+ * this component. What stays here is the editing — which group is open.
  *
- * `setWeeklyPattern` replaces a member's entire week in one call, so there is
- * no per-row mutation to make and no id to keep: the draft is the request
- * body, and Save is the only moment anything leaves the browser.
+ * Saving left too. It used to be a button sitting under these cards
+ * permanently, which asserted there was always pending work; the page now
+ * raises a bar when, and only when, the draft actually differs from what was
+ * fetched. `setWeeklyPattern` still replaces a member's entire week in one
+ * call, so the draft is the request body and there is no per-row mutation.
  */
 export function WeekRules({
-  providerId,
-  memberId,
   canEdit,
   locale,
   rules,
   onChange,
 }: {
-  providerId: string;
-  memberId: string;
   /**
    * Whether the signed-in caller may change *this* member's week — read from
    * the live role and the live selection every render, never from whatever
@@ -43,9 +39,7 @@ export function WeekRules({
   onChange: (rules: WeeklyRuleDraft[]) => void;
 }) {
   const { t } = useTranslation("provider");
-  const mutation = useSetWeeklyPattern(providerId);
   const [editing, setEditing] = useState<{ group: WeekRuleGroup | null } | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const groups = groupRules(rules);
   /** Everything outside the group being edited — it is replaced, so it cannot clash with itself. */
@@ -53,17 +47,6 @@ export function WeekRules({
 
   function commit(next: WeeklyRuleDraft[]) {
     onChange([...next].sort(compareRules));
-    mutation.reset();
-    setSaveError(null);
-  }
-
-  async function save() {
-    setSaveError(null);
-    try {
-      await mutation.mutateAsync({ memberId, rules: [...rules] });
-    } catch (e) {
-      setSaveError(availabilityErrorMessage(e, t));
-    }
   }
 
   return (
@@ -84,23 +67,13 @@ export function WeekRules({
       ))}
 
       {canEdit && (
-        <div className="flex flex-wrap items-center gap-3">
+        <div>
           <Button type="button" variant="outline" size="sm" onClick={() => setEditing({ group: null })}>
             <Plus className="h-4 w-4" />
             {t("availabilityRuleAdd")}
           </Button>
-          <Button type="button" size="sm" disabled={mutation.isPending} onClick={() => void save()}>
-            {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("availabilitySave")}
-          </Button>
-          {mutation.isSuccess && !saveError && (
-            <span className="type-caption text-[var(--color-muted-foreground)]">
-              {t("availabilitySaved")}
-            </span>
-          )}
         </div>
       )}
-      {saveError && <p className="type-body text-[var(--color-destructive)]">{saveError}</p>}
 
       {/* Mounted only while open, and keyed on the group — that is what seeds
           the drawer's fields, instead of an effect that could fire again while

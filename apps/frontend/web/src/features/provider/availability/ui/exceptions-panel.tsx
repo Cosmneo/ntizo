@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button, DatePicker, Input, cn } from "@ntizo/frontend-ui";
 import { labelToMinutes, minutesToLabel } from "../domain/week";
 import {
@@ -48,10 +48,15 @@ export function ExceptionsPanel({
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("17:00");
   const [note, setNote] = useState("");
+  // The form is closed until asked for. It used to sit permanently open — a
+  // grey box of five fields for something a provider does twice a year — which
+  // is most of the visual weight this panel carried.
+  const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAdding(false);
     setOnDate("");
     setKind("closed");
     setStart("09:00");
@@ -94,6 +99,9 @@ export function ExceptionsPanel({
       });
       setOnDate("");
       setNote("");
+      // Closed again once it has landed: the list below is the confirmation,
+      // and a form still open reads as a second one waiting to be filled.
+      setAdding(false);
     } catch (e) {
       setFormError(availabilityErrorMessage(e, t));
     }
@@ -148,9 +156,18 @@ export function ExceptionsPanel({
       </div>
       {removeError && <p className="type-body text-[var(--color-destructive)]">{removeError}</p>}
 
-      {canEdit && (
+      {canEdit && !adding && (
+        <div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+            <Plus className="h-4 w-4" />
+            {t("availabilityExceptionAdd")}
+          </Button>
+        </div>
+      )}
+
+      {canEdit && adding && (
         <div className="grid gap-3 rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] p-3.5">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 @sm:grid-cols-2">
             <div className="grid gap-1.5">
               <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
                 {t("availabilityExceptionDate")}
@@ -198,7 +215,7 @@ export function ExceptionsPanel({
           </div>
 
           {kind === "custom" && (
-            <div className="grid grid-cols-2 gap-3 sm:w-64">
+            <div className="grid grid-cols-2 gap-3 @sm:w-64">
               <div className="grid gap-1.5">
                 <span className="type-caption font-semibold text-[var(--color-muted-foreground)]">
                   {t("availabilityStart")}
@@ -223,16 +240,35 @@ export function ExceptionsPanel({
 
           {formError && <p className="type-caption text-[var(--color-destructive)]">{formError}</p>}
 
-          <Button
-            type="button"
-            size="sm"
-            className="justify-self-start"
-            disabled={addMutation.isPending}
-            onClick={() => void submit()}
-          >
-            {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("availabilityExceptionAdd")}
-          </Button>
+          {/* One row, not two grid cells. A `Button` left to be a grid item
+              stretches to the track's full width and centres its own label,
+              which is why the cancel sat adrift under a left-aligned submit. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={addMutation.isPending}
+              onClick={() => void submit()}
+            >
+              {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t("availabilityExceptionAdd")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              // Tighter than a button's own padding: this is the way out of a
+              // form, not a second thing to do in it, and the room it gives
+              // back is what keeps the pair on one line in a 300px pane.
+              className="px-2"
+              onClick={() => {
+                setAdding(false);
+                setFormError(null);
+              }}
+            >
+              {t("availabilityRuleCancel")}
+            </Button>
+          </div>
         </div>
       )}
     </div>

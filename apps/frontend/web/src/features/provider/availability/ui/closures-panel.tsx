@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button, DatePicker, Input } from "@ntizo/frontend-ui";
 import { availabilityErrorMessage, type HouseClosure } from "../domain/types";
 import { useAddClosure, useRemoveClosure } from "../viewmodel/use-availability";
@@ -34,6 +34,10 @@ export function ClosuresPanel({ providerId, closures }: { providerId: string; cl
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [note, setNote] = useState("");
+  // Closed until asked for. A workspace closes for the holidays perhaps twice
+  // a year; a form held permanently open for it was most of this panel's
+  // visual weight.
+  const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
@@ -52,6 +56,9 @@ export function ClosuresPanel({ providerId, closures }: { providerId: string; cl
       setFromDate("");
       setToDate("");
       setNote("");
+      // Closed again once it has landed: the list above is the confirmation,
+      // and a form still open reads as a second one waiting to be filled.
+      setAdding(false);
     } catch (e) {
       setFormError(availabilityErrorMessage(e, t));
     }
@@ -101,8 +108,18 @@ export function ClosuresPanel({ providerId, closures }: { providerId: string; cl
       </div>
       {removeError && <p className="type-body text-[var(--color-destructive)]">{removeError}</p>}
 
+      {!adding && (
+        <div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+            <Plus className="h-4 w-4" />
+            {t("availabilityClosureAdd")}
+          </Button>
+        </div>
+      )}
+
+      {adding && (
       <div className="grid gap-3 rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] p-3.5">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @sm:grid-cols-2">
           <div className="grid gap-1.5">
             <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
               {t("availabilityClosureFrom")}
@@ -149,17 +166,36 @@ export function ClosuresPanel({ providerId, closures }: { providerId: string; cl
 
         {formError && <p className="type-caption text-[var(--color-destructive)]">{formError}</p>}
 
-        <Button
-          type="button"
-          size="sm"
-          className="justify-self-start"
-          disabled={addMutation.isPending}
-          onClick={() => void submit()}
-        >
-          {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {t("availabilityClosureAdd")}
-        </Button>
+        {/* One row, not two grid cells — see the same pairing in
+            `exceptions-panel.tsx`. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            disabled={addMutation.isPending}
+            onClick={() => void submit()}
+          >
+            {addMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("availabilityClosureAdd")}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            // Tighter than a button's own padding: this is the way out of a
+            // form, not a second thing to do in it, and the room it gives back
+            // is what keeps the pair on one line in a 300px pane.
+            className="px-2"
+            onClick={() => {
+              setAdding(false);
+              setFormError(null);
+            }}
+          >
+            {t("availabilityRuleCancel")}
+          </Button>
+        </div>
       </div>
+      )}
     </div>
   );
 }

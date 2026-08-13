@@ -28,7 +28,7 @@ import {
  * language. Each box's own error lands right there, under the box it belongs
  * to, rather than in one shared banner at the top of the sheet.
  */
-export function LanguagesSection({
+export function StepLanguages({
   service,
   providerId,
 }: {

@@ -1,22 +1,24 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
-import { ChoiceChips, Input, type SelectOption } from "@ntizo/frontend-ui";
+import { ChoiceChips, Input, Select, type SelectOption } from "@ntizo/frontend-ui";
+import { Field } from "@/shared/components/wizard/wizard-chrome";
 import { IN_PERSON_LOCATION_TYPES, type ServiceDraft } from "../../domain/service-draft";
 import type { ServiceLocationType } from "../../domain/types";
 
 /**
- * Section 1: name, category and where it happens.
+ * Step 1: name, category and where it happens.
  *
- * Category and the two-step location question moved from `Select`/a bespoke
- * pill button to `ChoiceChips` here — the set is small and each member has a
- * name worth reading, exactly the case the design calls out for chips over a
- * dropdown. What did not move: the location question is still asked in two
- * steps, and "unanswered" is still tracked apart from `locationType`, because
- * both are the empty string. That distinction lives one level up, in
- * `service-editor-page.tsx`'s `locationChoice` state — this component only
- * renders whichever step is currently relevant.
+ * The two-step location question survives the move from the section editor
+ * unchanged: it is still asked in two parts, and "unanswered" is still
+ * tracked apart from `locationType`, because both are the empty string. That
+ * distinction lives in the viewmodel's `locationChoice`; this component only
+ * renders whichever part is currently relevant.
+ *
+ * The label wrapper is now the wizard's shared `Field` rather than the
+ * editor's own uppercase-caption one — the point of the rebuild is that a
+ * service screen and an onboarding screen look like the same product.
  */
-export function BasicsSection({
+export function StepBasics({
   draft,
   setDraft,
   categories,
@@ -32,30 +34,54 @@ export function BasicsSection({
   const { t } = useTranslation("provider");
 
   return (
-    <div className="grid gap-6">
-      <Field label={t("serviceName")}>
+    <div className="grid gap-5">
+      <Field label={t("serviceName")} htmlFor="service-name">
         <Input
           id="service-name"
           value={draft.name}
+          autoFocus
           onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
           placeholder={t("serviceNamePlaceholder")}
         />
       </Field>
 
-      {categories.loading ? (
-        <p className="type-body text-[var(--color-muted-foreground)]">
-          {t("serviceCategoryLoading")}
-        </p>
-      ) : (
-        <ChoiceChips
-          name="service-category"
-          legend={t("serviceCategory")}
-          showLegend
-          options={categories.options}
-          value={draft.categoryId || null}
-          onChange={(v) => setDraft((d) => ({ ...d, categoryId: v }))}
+      <Field label={t("serviceDescription")} hint={t("serviceDescriptionHint")}>
+        <textarea
+          rows={3}
+          value={draft.description}
+          onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+          className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
         />
-      )}
+      </Field>
+
+      {/* A dropdown, not chips. Category is a marketplace-wide taxonomy —
+          dozens of rows the provider is hunting a specific term in, not a set
+          small enough to scan. Chips put every one of them on screen and
+          pushed the two location questions below the fold.
+
+          `searchable` is forced rather than left to `Select`'s own
+          length threshold, which only trips above six options: the box would
+          then appear or vanish depending on how many categories the platform
+          happened to carry that week. */}
+      <Field label={t("serviceCategory")} htmlFor="service-category">
+        {categories.loading ? (
+          <p className="type-body text-[var(--color-muted-foreground)]">
+            {t("serviceCategoryLoading")}
+          </p>
+        ) : (
+          <Select
+            id="service-category"
+            name="service-category"
+            value={draft.categoryId}
+            onChange={(v) => setDraft((d) => ({ ...d, categoryId: v }))}
+            options={categories.options}
+            searchable
+            placeholder={t("serviceCategoryPlaceholder")}
+            searchPlaceholder={t("serviceCategorySearchPlaceholder")}
+            noResultsText={t("serviceCategoryNoResults")}
+          />
+        )}
+      </Field>
 
       {/* Asked in two steps and stored as one value: "in person" is the
           umbrella over three of the four `locationType`s, not a peer of them,
@@ -87,27 +113,13 @@ export function BasicsSection({
           legend={t("serviceWhereQuestion")}
           showLegend
           value={draft.locationType || null}
-          onChange={(v) =>
-            setDraft((d) => ({ ...d, locationType: v as ServiceLocationType }))
-          }
+          onChange={(v) => setDraft((d) => ({ ...d, locationType: v as ServiceLocationType }))}
           options={IN_PERSON_LOCATION_TYPES.map((v) => ({
             value: v,
             label: t(`serviceLocationType.${v}`),
           }))}
         />
       )}
-    </div>
-  );
-}
-
-/** The same small label-above-field wrapper every section in this editor uses. */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-        {label}
-      </span>
-      {children}
     </div>
   );
 }

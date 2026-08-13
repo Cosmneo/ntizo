@@ -1,25 +1,31 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
-import { Checkbox } from "@ntizo/frontend-ui";
+import { Check } from "lucide-react";
+import { cn } from "@ntizo/frontend-ui";
+import { Field } from "@/shared/components/wizard/wizard-chrome";
 import type { AvailabilityMember } from "@/features/provider/availability/domain/types";
 import type { ServiceDraft } from "../../domain/service-draft";
 
 /**
- * Section 3: who performs this service.
+ * Step 3: who performs this service.
  *
- * Absent from the rail entirely for an individual provider — that decision
- * lives in `../../domain/completeness.ts`'s `sectionStates` (it omits the
- * `performers` entry outright rather than including a permanently-complete
- * one) and in `service-editor-page.tsx` (which never selects this section
- * for one). This component itself assumes it is only ever rendered for an
- * organization and does not re-check.
+ * Cards, not a checkbox list. A row of small boxes beside names reads as a
+ * settings form — a list of things being configured — where this is one of
+ * the wizard's questions and deserves the same weight as the others it sits
+ * between. The onboarding wizard makes the same trade on its provider-type
+ * screen, and for the same reason: an answer that changes what the service is
+ * should be read rather than ticked in passing.
  *
- * The checkbox list, not `ChoiceChipsMulti`: the design's chip list
- * (category, location, booking mode, slot interval, languages, provider
- * type, weekdays) does not include performers, so this stays the plain
- * checkbox list `service-form.tsx` already used.
+ * Still `role="checkbox"` on each card, not a plain button. The control is a
+ * set of independent yes/no answers, which is what a checkbox is; only its
+ * appearance changed, and a screen reader should hear no difference.
+ *
+ * Absent from the wizard entirely for an individual provider — that decision
+ * lives in `../../domain/wizard-model.ts`'s `stepsFor`, which omits the step
+ * rather than showing a permanently-answered one. This component assumes it
+ * is only ever rendered for an organization and does not re-check.
  */
-export function PerformersSection({
+export function StepPerformers({
   draft,
   setDraft,
   members,
@@ -34,60 +40,73 @@ export function PerformersSection({
 }) {
   const { t } = useTranslation("provider");
 
+  function toggle(memberId: string, next: boolean) {
+    onErrorClear();
+    setDraft((d) => ({
+      ...d,
+      memberIds: next
+        ? [...d.memberIds, memberId]
+        : d.memberIds.filter((id) => id !== memberId),
+    }));
+  }
+
   return (
     <Field
       label={t("serviceMembersQuestion")}
-      hint={error ? undefined : t("serviceMembersHint")}
-      error={error}
+      {...(error ? { error } : { hint: t("serviceMembersHint") })}
     >
-      <div className="grid gap-2">
-        {members.map((member) => (
-          <label key={member.memberId} className="flex items-center gap-2.5">
-            <Checkbox
-              checked={draft.memberIds.includes(member.memberId)}
-              onChange={(e) => {
-                onErrorClear();
-                setDraft((d) => ({
-                  ...d,
-                  memberIds: e.target.checked
-                    ? [...d.memberIds, member.memberId]
-                    : d.memberIds.filter((id) => id !== member.memberId),
-                }));
-              }}
-            />
-            <span className="type-body">{member.name ?? member.userId}</span>
-          </label>
-        ))}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {members.map((member) => {
+          const selected = draft.memberIds.includes(member.memberId);
+          const name = member.name ?? member.userId;
+          return (
+            <button
+              key={member.memberId}
+              type="button"
+              role="checkbox"
+              aria-checked={selected}
+              // The person is what this answers for; their role is supporting
+              // detail on the card, not part of what the control is called.
+              aria-label={name}
+              onClick={() => toggle(member.memberId, !selected)}
+              className={cn(
+                "flex items-center gap-3 rounded-[var(--radius-card)] border p-4 text-left transition-colors",
+                selected
+                  ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
+                  : "border-[var(--color-border)] hover:border-[var(--color-muted-foreground)]",
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "grid h-9 w-9 shrink-0 place-items-center rounded-full text-[13px] font-bold",
+                  selected
+                    ? "bg-[var(--color-primary)] text-white"
+                    : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]",
+                )}
+              >
+                {selected ? <Check className="h-4 w-4" /> : initials(name)}
+              </span>
+              <span className="min-w-0">
+                <span className="type-body-medium block truncate font-semibold">{name}</span>
+                <span className="type-caption block truncate text-[var(--color-muted-foreground)]">
+                  {t(`peopleRoles.${member.role}`, { defaultValue: member.role })}
+                </span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </Field>
   );
 }
 
-/** The same small label-above-field wrapper every section in this editor uses. */
-function Field({
-  label,
-  hint,
-  error,
-  children,
-}: {
-  label: string;
-  hint?: string | undefined;
-  error?: string | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <span className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-        {label}
-      </span>
-      {children}
-      {error ? (
-        <span className="type-caption text-[var(--color-destructive)]">{error}</span>
-      ) : (
-        hint && (
-          <span className="type-caption text-[var(--color-muted-foreground)]">{hint}</span>
-        )
-      )}
-    </div>
-  );
+/** Up to two initials, so a card has something of its own before it is chosen. */
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }

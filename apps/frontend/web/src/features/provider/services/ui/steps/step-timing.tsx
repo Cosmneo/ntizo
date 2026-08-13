@@ -10,7 +10,8 @@ import {
 } from "../../domain/service-draft";
 
 /**
- * Section 4: how the service sits in a day.
+ * Step 4: how the service sits in a day — and the last screen before the
+ * service is created.
  *
  * Two fields the availability engine reads and nothing else does: the dead
  * time that follows an appointment, and the grid its start times land on.
@@ -21,7 +22,7 @@ import {
  * used: three values, each with a name worth reading, which is exactly the
  * case chips exist for.
  */
-export function TimingSection({
+export function StepTiming({
   draft,
   setDraft,
   fieldErrors,

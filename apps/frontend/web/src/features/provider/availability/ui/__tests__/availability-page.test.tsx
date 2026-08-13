@@ -133,16 +133,16 @@ describe("AvailabilityPage", () => {
     // The preview's own columns run Monday to Sunday…
     await waitFor(() => expect(preview()).toBeInTheDocument());
     const headers = within(preview()).getAllByText(
-      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/,
+      /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/,
     );
     expect(headers.map((h) => h.textContent)).toEqual([
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun",
     ]);
 
     // …and so does the card that groups the two rows.
@@ -151,6 +151,18 @@ describe("AvailabilityPage", () => {
     expect(chips.map((c) => c.textContent)).toEqual(["Mon", "Sun"]);
 
     // What goes over the wire is the storage numbering, untouched: Sunday is 0.
+    //
+    // The week has to actually differ from the fetched one before there is
+    // anything to save — the save bar only exists when there are unsaved
+    // changes, so a save of untouched data is no longer reachable, which is
+    // the pointless round trip that was the point of removing it. Both rows
+    // share one card, so editing its end time keeps the weekdays this test is
+    // about exactly as they were.
+    await user.click(screen.getByRole("button", { name: "Edit 09:00 – 17:00" }));
+    await user.clear(screen.getByLabelText("End"));
+    await user.type(screen.getByLabelText("End"), "18:00");
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
     await user.click(screen.getByRole("button", { name: "Save week" }));
     await waitFor(() => expect(spy).toHaveBeenCalled());
     const variables = spy.mock.calls[0]?.[1] as { input: { rules: { weekday: number }[] } };
