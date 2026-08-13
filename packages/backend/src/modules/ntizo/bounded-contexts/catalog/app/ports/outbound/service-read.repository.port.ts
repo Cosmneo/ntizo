@@ -189,11 +189,18 @@ export interface ServiceReadRepositoryPort {
    */
   listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]>;
   /**
-   * One published service in full, or null.
+   * One service by id, in full — whatever its own status and whatever its
+   * provider's, because this method does not look at either. It answers only
+   * "does a service with this id exist", never "may an anonymous reader see
+   * it". Null means exactly one thing: no such id.
    *
-   * Null covers missing, unpublished and inactive-provider alike. The caller
-   * cannot tell which, and that is the point: distinguishing them would let an
-   * anonymous reader probe ids for services their owner has not published.
+   * The published-AND-active gate lives one layer up, in
+   * `GetServiceProjection` (`public/catalog/app/use-cases/get-service.projection.ts`),
+   * not here — the same split `listPublished` above draws between handing
+   * over material and deciding what "visible" means with it. Keeping the gate
+   * out of this query means a fake, a future repository, or a forgotten WHERE
+   * clause cannot leak an unpublished row past it; there is no filter here to
+   * forget.
    */
   getPublishedById(id: string): Promise<ServiceDetailRow | null>;
 }
