@@ -9,7 +9,8 @@
     "you": "Usted",
     "myAccount": "Mi cuenta",
     "providers": "Proveedores",
-    "categories": "Categorías"
+    "categories": "Categorías",
+    "activity": "Actividad"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",
@@ -20,7 +21,7 @@
   "providersCommission": "Comisión",
   "providersApplied": "Solicitud",
   "providersAllStatuses": "Todos los estados",
-  "providersEmpty": "Aún no hay proveedores.",
+  "providersEmpty": "Los negocios que completen el registro se pondrán en cola aquí para su revisión.",
   "providersNoMatches": "Ningún proveedor coincide.",
   "providersError": "No se pudo cargar la lista de proveedores.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Espacios",
   "usersJoined": "Registro",
   "usersAllRoles": "Todos los roles",
-  "usersEmpty": "Todavía no hay usuarios.",
+  "usersEmpty": "Todas las personas que se registran en Ntizo aparecen en esta lista.",
   "usersNoMatches": "Ningún usuario coincide con eso.",
   "usersError": "No se pudo cargar la lista de usuarios.",
   "usersFilterTitle": "Filtrar usuarios",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Categoría",
   "categoriesStatus": "Visibilidad",
   "categoriesActions": "Acciones",
-  "categoriesEmpty": "Todavía no hay categorías.",
+  "categoriesEmpty": "Añade una categoría para que los proveedores tengan dónde listar sus servicios.",
   "categoriesNoMatches": "Ninguna categoría coincide con eso.",
   "categoriesError": "No se pudieron cargar las categorías.",
   "categoryNew": "Nueva categoría",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movements",
   "providerDetailMovementsHint": "Everything in and out of this wallet.",
-  "close": "Cerrar"
+  "close": "Cerrar",
+  "providersEmptyTitle": "Aún sin proveedores",
+  "providersNoMatchesTitle": "Sin coincidencias",
+  "usersEmptyTitle": "Aún sin usuarios",
+  "usersNoMatchesTitle": "Sin coincidencias",
+  "categoriesEmptyTitle": "Aún sin categorías",
+  "categoriesNoMatchesTitle": "Sin coincidencias",
+  "activityTitle": "Registro de auditoría",
+  "activityHint": "Lo que los administradores han hecho en la plataforma.",
+  "activityEmptyTitle": "Aún no hay nada registrado",
+  "activityEmpty": "Las aprobaciones, suspensiones y ediciones del catálogo se registrarán aquí."
 }

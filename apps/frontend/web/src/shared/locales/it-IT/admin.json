@@ -9,7 +9,8 @@
     "you": "Tu",
     "myAccount": "Il mio account",
     "providers": "Operatori",
-    "categories": "Categorie"
+    "categories": "Categorie",
+    "activity": "Attività"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -20,7 +21,7 @@
   "providersCommission": "Commissione",
   "providersApplied": "Candidatura",
   "providersAllStatuses": "Tutti gli stati",
-  "providersEmpty": "Ancora nessun operatore.",
+  "providersEmpty": "Le attività che completano la registrazione si mettono in coda qui per la revisione.",
   "providersNoMatches": "Nessun operatore corrisponde.",
   "providersError": "Impossibile caricare l’elenco degli operatori.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Spazi",
   "usersJoined": "Iscrizione",
   "usersAllRoles": "Tutti i ruoli",
-  "usersEmpty": "Non ci sono ancora utenti.",
+  "usersEmpty": "Tutte le persone che si registrano su Ntizo compaiono in questo elenco.",
   "usersNoMatches": "Nessun utente corrisponde.",
   "usersError": "Impossibile caricare l'elenco degli utenti.",
   "usersFilterTitle": "Filtra utenti",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Categoria",
   "categoriesStatus": "Visibilità",
   "categoriesActions": "Azioni",
-  "categoriesEmpty": "Non ci sono ancora categorie.",
+  "categoriesEmpty": "Aggiungi una categoria, così gli operatori hanno dove elencare i loro servizi.",
   "categoriesNoMatches": "Nessuna categoria corrisponde.",
   "categoriesError": "Impossibile caricare le categorie.",
   "categoryNew": "Nuova categoria",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movements",
   "providerDetailMovementsHint": "Everything in and out of this wallet.",
-  "close": "Chiudi"
+  "close": "Chiudi",
+  "providersEmptyTitle": "Ancora nessun operatore",
+  "providersNoMatchesTitle": "Nessun risultato",
+  "usersEmptyTitle": "Ancora nessun utente",
+  "usersNoMatchesTitle": "Nessun risultato",
+  "categoriesEmptyTitle": "Ancora nessuna categoria",
+  "categoriesNoMatchesTitle": "Nessun risultato",
+  "activityTitle": "Registro di controllo",
+  "activityHint": "Che cosa hanno fatto gli amministratori sulla piattaforma.",
+  "activityEmptyTitle": "Ancora nulla registrato",
+  "activityEmpty": "Approvazioni, sospensioni e modifiche al catalogo verranno registrate qui."
 }

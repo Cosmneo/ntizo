@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
+import { Search, Store } from "lucide-react";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
+import { EmptyCard } from "@/shared/components/empty-card";
 import { ServiceSearch } from "@/shared/components/service-search";
 import { SiteHeader } from "@/shared/components/site-header";
 
@@ -33,10 +35,23 @@ export function DirectoryPage() {
         {providers.length === 0 ? (
           // Two different empty states. "Nothing matched X" tells the user to
           // try another word; the generic one would leave them thinking the
-          // whole directory is empty.
-          <p className="mt-10 text-[var(--color-muted-foreground)]">
-            {q ? t("noResultsFor", { query: q }) : t("empty")}
-          </p>
+          // whole directory is empty — so only the generic one carries the
+          // brand mark, because only it is describing an actually empty list.
+          q ? (
+            <EmptyCard
+              className="mt-6"
+              icon={Search}
+              title={t("noResultsTitle")}
+              body={t("noResultsFor", { query: q })}
+            />
+          ) : (
+            <EmptyCard
+              className="mt-6"
+              badge={Store}
+              title={t("emptyTitle")}
+              body={t("empty")}
+            />
+          )
         ) : (
           <>
             {q ? (

@@ -31,5 +31,6 @@
   "mainNavigation": "Navigation principale",
   "navExplore": "Explorer",
   "navProfile": "Profil",
-  "createProvider": "Créer un nouveau prestataire"
+  "createProvider": "Créer un nouveau prestataire",
+  "activity": "Activité"
 }

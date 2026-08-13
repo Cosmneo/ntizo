@@ -31,5 +31,6 @@
   "mainNavigation": "Hauptnavigation",
   "navExplore": "Entdecken",
   "navProfile": "Profil",
-  "createProvider": "Neuen Anbieter anlegen"
+  "createProvider": "Neuen Anbieter anlegen",
+  "activity": "Aktivität"
 }

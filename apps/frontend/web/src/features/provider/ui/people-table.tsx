@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, UserRound } from "lucide-react";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import {
@@ -99,7 +99,10 @@ export function PeopleTable({
         },
       ]}
       emptyText={t("peopleEmpty")}
+        emptyTitle={t("peopleEmptyTitle")}
+        emptyBadge={UserRound}
       noMatchesText={t("peopleNoMatches")}
+        noMatchesTitle={t("peopleNoMatchesTitle")}
       filtered={total > 0 && rows.length !== total}
       rows={rows.map((row) => ({
         key: row.key,

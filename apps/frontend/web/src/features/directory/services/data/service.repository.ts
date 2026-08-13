@@ -18,8 +18,8 @@ import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services
  * browse linked to `/providers/undefined` while the suite stayed green.
  */
 export const SERVICE_FIELDS = `
-  id providerId providerSlug providerName categoryCode name description
-  locationType bookingMode imageUrls isFallback
+  id providerId providerSlug providerName providerType categoryCode categoryName name description
+  locationType bookingMode imageUrls isFallback fromAmountMinor optionCount
   defaultOption { amountMinor currency durationMinutes minMinutes stepMinutes pricingMode }`;
 
 const ALL = `
@@ -67,6 +67,11 @@ export const browseServicesQueries = {
     locale: string;
     categoryCode?: string | undefined;
     locationType?: string | undefined;
+    paymentMode?: string | undefined;
+    providerType?: string | undefined;
+    language?: string | undefined;
+    minPriceMinor?: number | undefined;
+    maxPriceMinor?: number | undefined;
     q?: string | undefined;
     sort?: BrowseSort | undefined;
     offset: number;
@@ -81,6 +86,11 @@ export const browseServicesQueries = {
         input.locale,
         input.categoryCode ?? null,
         input.locationType ?? null,
+        input.paymentMode ?? null,
+        input.providerType ?? null,
+        input.language ?? null,
+        input.minPriceMinor ?? null,
+        input.maxPriceMinor ?? null,
         input.q ?? null,
         input.sort ?? null,
         input.offset,
@@ -91,6 +101,13 @@ export const browseServicesQueries = {
             locale: input.locale,
             ...(input.categoryCode ? { categoryCode: input.categoryCode } : {}),
             ...(input.locationType ? { locationType: input.locationType } : {}),
+            ...(input.paymentMode ? { paymentMode: input.paymentMode } : {}),
+            ...(input.providerType ? { providerType: input.providerType } : {}),
+            ...(input.language ? { language: input.language } : {}),
+            // `!== undefined`, not truthiness: a lower bound of 0 is a bound
+            // somebody set, and `if (min)` would silently drop "from free".
+            ...(input.minPriceMinor !== undefined ? { minPriceMinor: input.minPriceMinor } : {}),
+            ...(input.maxPriceMinor !== undefined ? { maxPriceMinor: input.maxPriceMinor } : {}),
             ...(input.q ? { q: input.q } : {}),
             ...(input.sort ? { sort: input.sort } : {}),
             limit: BROWSE_PAGE_SIZE,

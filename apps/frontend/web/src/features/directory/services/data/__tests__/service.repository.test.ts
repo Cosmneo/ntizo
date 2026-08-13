@@ -32,6 +32,11 @@ const READ_BY_THE_CARDS = [
   "imageUrls",
   "defaultOption",
   "bookingMode",
+  // The two chips under the price. Both resolved server-side — `categoryName`
+  // because a card must not print a raw `hair`, and `locationType` because the
+  // client turns it into a translated phrase.
+  "categoryName",
+  "locationType",
 ];
 
 describe("the browse and provider-page service query", () => {

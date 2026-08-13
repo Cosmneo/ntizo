@@ -8,13 +8,17 @@ const row = (over = {}) => ({
   providerName: "Barbearia",
   providerSlug: "barbearia",
   providerStatus: "active",
+  providerType: "individual",
   categoryCode: "hair",
+  categoryTranslations: [{ locale: "pt-MZ", name: "Cabeleireiro", description: null }],
   status: "published",
   sourceLocale: "pt-MZ",
   locationType: "at_provider",
   bookingMode: "priced",
   imageKeys: [],
   defaultOption: { amountMinor: 30000, currency: "MZN", durationMinutes: 30, pricingMode: "fixed" },
+  fromAmountMinor: 30000,
+  optionCount: 1,
   translations: [{ locale: "pt-MZ", name: "Corte de cabelo", description: null }],
   ...over,
 });
@@ -184,6 +188,146 @@ describe("browse filters", () => {
       offset: 0,
     });
     expect((repo.lastFilter as { locationType?: string }).locationType).toBeUndefined();
+  });
+
+  it("hands the payment mode and the provider type to the repository", async () => {
+    // The same trap `locationType` fell into: the projection carrying a filter
+    // it was never given is indistinguishable from a filter that works.
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      paymentMode: "hourly",
+      providerType: "organization",
+      limit: 10,
+      offset: 0,
+    });
+    const filter = repo.lastFilter as {
+      paymentMode?: string;
+      providerType?: string;
+    };
+    expect(filter.paymentMode).toBe("hourly");
+    expect(filter.providerType).toBe("organization");
+  });
+
+  it("hands the language and the price bounds to the repository", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      language: "en-US",
+      minPriceMinor: 10000,
+      maxPriceMinor: 50000,
+      limit: 10,
+      offset: 0,
+    });
+    const filter = repo.lastFilter as {
+      language?: string;
+      minPriceMinor?: number;
+      maxPriceMinor?: number;
+    };
+    expect(filter.language).toBe("en-US");
+    expect(filter.minPriceMinor).toBe(10000);
+    expect(filter.maxPriceMinor).toBe(50000);
+  });
+
+  it("passes a zero lower bound through rather than dropping it", async () => {
+    // `0` is falsy. A filter built with `if (min)` would silently discard
+    // "from free", which is a bound somebody can legitimately set.
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      minPriceMinor: 0,
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { minPriceMinor?: number }).minPriceMinor).toBe(0);
+  });
+
+  it("asks for neither when neither was given", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      limit: 10,
+      offset: 0,
+    });
+    const filter = repo.lastFilter as {
+      paymentMode?: string;
+      providerType?: string;
+    };
+    expect(filter.paymentMode).toBeUndefined();
+    expect(filter.providerType).toBeUndefined();
+  });
+});
+
+describe("ListServicesProjection category name", () => {
+  it("resolves the category into the reader's locale", async () => {
+    const rows = [row({ categoryTranslations: [
+      { locale: "pt-MZ", name: "Cabeleireiro", description: null },
+      { locale: "en-US", name: "Hairdressing", description: null },
+    ] })];
+    const out = await new ListServicesProjection(new FakeRepo(rows) as never)
+      .execute({ locale: "en-US", limit: 10, offset: 0 });
+    expect(out.items[0]!.categoryName).toBe("Hairdressing");
+  });
+
+  it("falls back to the platform default, not to the provider's language", async () => {
+    // A category is platform data with no author, so `sourceLocale` — which is
+    // the service's, not the category's — must not reach this resolution. A
+    // service written in English does not make its category English.
+    const rows = [row({
+      sourceLocale: "en-US",
+      translations: [{ locale: "en-US", name: "Haircut", description: null }],
+      categoryTranslations: [
+        { locale: "pt-MZ", name: "Cabeleireiro", description: null },
+      ],
+    })];
+    const out = await new ListServicesProjection(new FakeRepo(rows) as never)
+      .execute({ locale: "it-IT", limit: 10, offset: 0 });
+    // Two fallback rules on one row, and they land in different languages:
+    // the service follows its author to English, the category follows the
+    // platform to Portuguese.
+    expect(out.items[0]!.name).toBe("Haircut");
+    expect(out.items[0]!.categoryName).toBe("Cabeleireiro");
+  });
+
+  it("shows the code rather than dropping a service with an untranslated category", async () => {
+    // The service is still bookable. Losing it from the browse because an
+    // administrator has not named its category yet would be a far worse
+    // failure than a card reading "hair".
+    const rows = [row({ categoryTranslations: [] })];
+    const out = await new ListServicesProjection(new FakeRepo(rows) as never)
+      .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
+    expect(out.items).toHaveLength(1);
+    expect(out.items[0]!.categoryName).toBe("hair");
+  });
+
+  it("carries the cheapest price and the option count onto the card", async () => {
+    // The card leads with the cheapest, not the default: a provider leading
+    // with their 800 package must not make their 300 one invisible to somebody
+    // who asked for something under 500.
+    const rows = [row({
+      defaultOption: { amountMinor: 80000, currency: "MZN", durationMinutes: 60, pricingMode: "fixed" },
+      fromAmountMinor: 30000,
+      optionCount: 3,
+    })];
+    const out = await new ListServicesProjection(new FakeRepo(rows) as never)
+      .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
+    expect(out.items[0]!.fromAmountMinor).toBe(30000);
+    expect(out.items[0]!.optionCount).toBe(3);
+  });
+
+  it("carries a quote service through with no price at all", async () => {
+    const rows = [row({ bookingMode: "quote", defaultOption: null, fromAmountMinor: null, optionCount: 0 })];
+    const out = await new ListServicesProjection(new FakeRepo(rows) as never)
+      .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
+    expect(out.items[0]!.fromAmountMinor).toBeNull();
+    expect(out.items[0]!.optionCount).toBe(0);
+  });
+
+  it("carries the provider type onto the card", async () => {
+    const rows = [row({ providerType: "organization" })];
+    const out = await new ListServicesProjection(new FakeRepo(rows) as never)
+      .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
+    expect(out.items[0]!.providerType).toBe("organization");
   });
 });
 

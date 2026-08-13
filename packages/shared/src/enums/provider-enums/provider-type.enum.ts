@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * What kind of provider a workspace is.
  *
@@ -18,6 +20,16 @@ export enum ProviderType {
 }
 
 export const PROVIDER_TYPES = Object.values(ProviderType);
+
+/**
+ * The same two values as a zod enum, for GraphQL arguments.
+ *
+ * Written out rather than derived with `z.nativeEnum(ProviderType)`: the
+ * schema generator reads a literal tuple to build the GraphQL type, and a
+ * native enum reaches it as an opaque object. The tuple is checked against
+ * `PROVIDER_TYPES` by the test beside this file, so the two cannot drift.
+ */
+export const providerTypeSchema = z.enum(["individual", "organization"]);
 
 /** True for the type whose bookings can overlap, because more than one person works. */
 export function supportsConcurrentBookings(type: ProviderType): boolean {

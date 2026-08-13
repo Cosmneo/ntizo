@@ -9,7 +9,8 @@
     "you": "Você",
     "myAccount": "A minha conta",
     "providers": "Prestadores",
-    "categories": "Categorias"
+    "categories": "Categorias",
+    "activity": "Actividade"
   },
   "providersTitle": "Prestadores",
   "providersSubtitle": "Todos os negócios da plataforma.",
@@ -20,7 +21,7 @@
   "providersCommission": "Comissão",
   "providersApplied": "Candidatura",
   "providersAllStatuses": "Todos os estados",
-  "providersEmpty": "Ainda não há prestadores.",
+  "providersEmpty": "As empresas que concluírem o registo ficarão aqui em fila para revisão.",
   "providersNoMatches": "Nenhum prestador corresponde a isso.",
   "providersError": "Não foi possível carregar a lista de prestadores.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Espaços",
   "usersJoined": "Registo",
   "usersAllRoles": "Todos os papéis",
-  "usersEmpty": "Ainda não há utilizadores.",
+  "usersEmpty": "Todas as pessoas que se registam no Ntizo aparecem nesta lista.",
   "usersNoMatches": "Nenhum utilizador corresponde a isso.",
   "usersError": "Não foi possível carregar a lista de utilizadores.",
   "usersFilterTitle": "Filtrar utilizadores",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Categoria",
   "categoriesStatus": "Visibilidade",
   "categoriesActions": "Acções",
-  "categoriesEmpty": "Ainda não há categorias.",
+  "categoriesEmpty": "Adicione uma categoria para que os prestadores tenham onde listar os seus serviços.",
   "categoriesNoMatches": "Nenhuma categoria corresponde a isso.",
   "categoriesError": "Não foi possível carregar as categorias.",
   "categoryNew": "Nova categoria",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movimentos",
   "providerDetailMovementsHint": "Tudo o que entrou e saiu desta carteira.",
-  "close": "Fechar"
+  "close": "Fechar",
+  "providersEmptyTitle": "Ainda sem prestadores",
+  "providersNoMatchesTitle": "Sem correspondências",
+  "usersEmptyTitle": "Ainda sem utilizadores",
+  "usersNoMatchesTitle": "Sem correspondências",
+  "categoriesEmptyTitle": "Ainda sem categorias",
+  "categoriesNoMatchesTitle": "Sem correspondências",
+  "activityTitle": "Registo de auditoria",
+  "activityHint": "O que os administradores fizeram na plataforma.",
+  "activityEmptyTitle": "Ainda nada registado",
+  "activityEmpty": "Aprovações, suspensões e edições do catálogo serão registadas aqui."
 }

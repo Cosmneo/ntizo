@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { LayoutGrid, MoreHorizontal, Plus } from "lucide-react";
 import {
   Badge,
   Button,
@@ -126,7 +126,10 @@ export function ServicesPage() {
           },
         ]}
         emptyText={t("servicesEmpty")}
+        emptyTitle={t("servicesEmptyTitle")}
+        emptyBadge={LayoutGrid}
         noMatchesText={t("servicesNoMatches")}
+        noMatchesTitle={t("servicesNoMatchesTitle")}
         filtered={search.trim() !== ""}
         // No `reorder`: there is no mutation to set the display order of a
         // provider's own service list (unlike its options, which have

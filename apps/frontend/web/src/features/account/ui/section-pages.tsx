@@ -8,7 +8,7 @@ import {
   isMeteredChannel,
 } from "@ntizo/shared";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
-import { EmptyState } from "@/features/account/ui/empty-state";
+import { EmptyCard } from "@/shared/components/empty-card";
 import {
   AppearancePreference,
   LanguagePreference,
@@ -42,8 +42,9 @@ export function PaymentMethodsPage() {
         title={t("navPaymentMethods")}
         blurb={t("paymentsBlurb")}
       />
-      <EmptyState
-        icon={<CreditCard className="h-6 w-6" />}
+      <EmptyCard
+        framed
+        badge={CreditCard}
         title={t("paymentsEmptyTitle")}
         body={t("paymentsEmptyBody")}
       />

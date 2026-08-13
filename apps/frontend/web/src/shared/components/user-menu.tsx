@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  Activity,
   CalendarDays,
   Heart,
   LayoutGrid,
@@ -122,6 +123,12 @@ export function UserMenu() {
         <DropdownMenuItem onSelect={() => navigate({ to: "/favourites" })}>
           <Heart className="h-4 w-4" />
           {t("favourites")}
+        </DropdownMenuItem>
+        {/* Last of the four: the other three are places you go to do
+            something, and this is the record of having done it. */}
+        <DropdownMenuItem onSelect={() => navigate({ to: "/activity" })}>
+          <Activity className="h-4 w-4" />
+          {t("activity")}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

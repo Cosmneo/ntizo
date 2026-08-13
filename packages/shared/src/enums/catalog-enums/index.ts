@@ -30,3 +30,20 @@ export type ServiceBookingMode = (typeof SERVICE_BOOKING_MODES)[number];
 export const SERVICE_PRICING_MODES = ["fixed", "hourly"] as const;
 export const servicePricingModeSchema = z.enum(SERVICE_PRICING_MODES);
 export type ServicePricingMode = (typeof SERVICE_PRICING_MODES)[number];
+
+/**
+ * How a customer pays, as the browse asks the question.
+ *
+ * Not a column, and deliberately not one: it flattens `bookingMode` and the
+ * default option's `pricingMode` into the three answers a customer actually
+ * distinguishes between. "Is this a fixed price, a rate per hour, or do I have
+ * to ask?" is one question to them and two fields to the schema, and a filter
+ * offering `priced` and `quote` would make them work that out themselves.
+ *
+ * `quote` is `bookingMode`; `fixed` and `hourly` are the pricing mode of the
+ * option a `priced` service leads with — the same option the card prices, so
+ * the filter and the number beside it can never disagree.
+ */
+export const SERVICE_PAYMENT_MODES = ["fixed", "hourly", "quote"] as const;
+export const servicePaymentModeSchema = z.enum(SERVICE_PAYMENT_MODES);
+export type ServicePaymentMode = (typeof SERVICE_PAYMENT_MODES)[number];

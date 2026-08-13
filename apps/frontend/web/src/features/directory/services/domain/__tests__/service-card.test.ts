@@ -24,14 +24,18 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
     id: "svc-1",
     providerId: "prov-1",
     providerName: "Barbearia Central",
-  providerSlug: "barbearia",
+    providerSlug: "barbearia",
+    providerType: "organization",
     categoryCode: "hair",
+    categoryName: "Cabeleireiro",
     name: "Corte de cabelo",
     description: null,
     locationType: "at_provider",
     bookingMode: "priced",
     imageUrls: [],
     defaultOption: option(),
+    fromAmountMinor: 30000,
+    optionCount: 1,
     isFallback: false,
     ...over,
   };
@@ -138,5 +142,55 @@ describe("serviceCardImage", () => {
     const svc = service({ imageUrls: [] });
 
     expect(serviceCardImage(svc, null)).toBeNull();
+  });
+});
+
+/**
+ * What the card leads with when a service has more than one package.
+ *
+ * The reason this exists at all: the browse used to print the provider's
+ * *default* option, so a service whose packages ran 350 / 500 / 850 with the
+ * middle one marked default advertised 500 — and the price filter, matching on
+ * the cheapest, would hand that service back to somebody who asked for "under
+ * 400". The number on the card and the number the filter matches have to be
+ * the same one.
+ */
+describe("servicePriceCell with several options", () => {
+  it("leads with the cheapest, not the default", () => {
+    const cell = servicePriceCell(
+      service({
+        defaultOption: option({ amountMinor: 50000 }),
+        fromAmountMinor: 35000,
+        optionCount: 3,
+      }),
+    );
+    expect(cell).toEqual({ kind: "from", amountMinor: 35000, currency: "MZN" });
+  });
+
+  it("says nothing about 'from' when there is only one option", () => {
+    // "from 500 MZN" when 500 is the only price it can ever be invites the
+    // reader to hunt for a cheaper one that does not exist.
+    const cell = servicePriceCell(
+      service({ defaultOption: option({ amountMinor: 50000 }), fromAmountMinor: 50000, optionCount: 1 }),
+    );
+    expect(cell.kind).toBe("priced");
+  });
+
+  it("stays a quote even with options somehow attached", () => {
+    // `quote` short-circuits before anything priced is inspected: the price is
+    // not knowable until the provider has seen the job, whatever rows exist.
+    const cell = servicePriceCell(
+      service({ bookingMode: "quote", fromAmountMinor: 35000, optionCount: 4 }),
+    );
+    expect(cell.kind).toBe("quote");
+  });
+
+  it("falls back to the default option when the cheapest is missing", () => {
+    // A count above one with no minimum is data that cannot be true; showing
+    // the default is better than showing "from undefined".
+    const cell = servicePriceCell(
+      service({ defaultOption: option(), fromAmountMinor: null, optionCount: 3 }),
+    );
+    expect(cell.kind).toBe("priced");
   });
 });

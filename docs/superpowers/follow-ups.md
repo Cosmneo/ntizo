@@ -789,3 +789,47 @@ slice 2, found while verifying its eight locales.
 
 **Trigger:** the next locale audit, or the first Portuguese-speaking user who
 mentions it.
+
+## 42. The services browse search is accent-blind and unindexed
+
+`ILIKE '%term%'` against `service_translation` matches case but not accents,
+so `salao` does not find `Salão` — the common spelling on a phone keyboard,
+in the platform's own language. It also cannot use an index, so every search
+is a sequential scan of every published translation.
+
+Both have one fix, and it is already in this repository: a stored
+accent-folded column, written on save, the way `ntizo_reference.city` keeps
+`search_name`. `foldForSearch` is exported and tested in
+`public/city/infra/repositories/drizzle/city-public.repository.ts:20`; the
+schema comment there explains the index argument in full. No `unaccent`
+extension is involved — an earlier note in this session claimed the extension
+was the only route, and that was wrong.
+
+Scope: a `search_name` column on `service_translation`, folded on write in
+the translation command, and `listPublished` matching against it instead.
+
+**Trigger:** the first Portuguese search that comes back empty for an accent
+— or the catalogue passing a few thousand published translations, whichever
+lands first. Deferred deliberately: the browse's filters were judged more
+valuable than the browse's spelling.
+
+## 43. The service detail page renders invented ratings and reviews
+
+`/services/$id` ships its rating, its review list, its service radius and its
+cancellation policy from `service-detail-placeholders.ts`. There is no Review
+context to read them from, and — decided deliberately on 2026-08-13 — no flag
+separating them from the real sections around them.
+
+On a page that also names a real provider, a real business and a real price,
+"4.3 · 130 avaliações" is a claim about that provider that nobody made. The
+review bodies carry invented author names beside it.
+
+Two ways out, and the cheap one is enough on its own: delete the placeholder
+module and the four sections that read it, or gate it behind an environment
+variable that is off in production. The second was offered and declined at the
+time; the first costs nothing once the sections have served their purpose of
+showing what the page will look like.
+
+**Trigger:** before the first real provider is onboarded, or before any deploy
+that a customer can reach — whichever comes first. This is not a tidy-up; it is
+a false statement about a named business on a public page.

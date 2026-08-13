@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { Shapes } from "lucide-react";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
+import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import { useAllCategories } from "@/features/landing/viewmodel/use-categories";
@@ -114,9 +116,12 @@ export function CategoriesPage() {
         </ul>
 
         {!isLoading && items.length === 0 && !error && (
-          <p className="mt-10 text-[var(--color-muted-foreground)]">
-            {t("categoriesEmpty")}
-          </p>
+          <EmptyCard
+            className="mt-6"
+            badge={Shapes}
+            title={t("categoriesEmptyTitle")}
+            body={t("categoriesEmpty")}
+          />
         )}
 
         {/* The sentinel and a real button. Scrolling alone is not a control:

@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { localeSchema, serviceLocationTypeSchema } from "@ntizo/shared";
+import {
+  localeSchema,
+  providerTypeSchema,
+  serviceLocationTypeSchema,
+  servicePaymentModeSchema,
+} from "@ntizo/shared";
 import { categoryPageReadModel, servicePageReadModel } from "@ntizo/shared/read-models";
 
 /**
@@ -48,6 +53,14 @@ export const listServices = defineQuery({
       categoryCode: z.string().min(1).max(60).optional(),
       providerId: z.string().min(1).optional(),
       locationType: serviceLocationTypeSchema.optional(),
+      paymentMode: servicePaymentModeSchema.optional(),
+      providerType: providerTypeSchema.optional(),
+      language: localeSchema.optional(),
+      // Minor units, and bounded: a price filter is a pair of numbers a person
+      // typed, not an arbitrary bigint. The cap is far above any real service
+      // and exists so a pasted value cannot become a scan of the whole table.
+      minPriceMinor: z.number().int().min(0).max(1_000_000_000).optional(),
+      maxPriceMinor: z.number().int().min(0).max(1_000_000_000).optional(),
       /**
        * Free text. Bounded at 100 characters because a search box is a search
        * box — a longer string is not a customer typing, and every character

@@ -138,5 +138,10 @@
     "dark": "Donker",
     "system": "Systeem"
   },
-  "addrPostalCode": "Postal code"
+  "addrPostalCode": "Postal code",
+  "activityTitle": "Activiteit",
+  "activityListTitle": "Recente activiteit",
+  "activityHint": "Wat je op Ntizo hebt gedaan.",
+  "activityEmptyTitle": "Nog geen activiteit",
+  "activityEmptyBody": "Je boekingen, berichten en betalingen verschijnen hier zodra ze plaatsvinden."
 }

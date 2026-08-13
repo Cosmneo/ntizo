@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Users } from "lucide-react";
 import { Avatar, AvatarFallback, Badge } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { initialsFrom } from "@/shared/lib/initials";
@@ -86,7 +87,10 @@ export function AdminUsersPage() {
           },
         ]}
         emptyText={t("usersEmpty")}
+        emptyTitle={t("usersEmptyTitle")}
+        emptyBadge={Users}
         noMatchesText={t("usersNoMatches")}
+        noMatchesTitle={t("usersNoMatchesTitle")}
         filtered={search.trim() !== "" || role !== ""}
         rows={rows.map((user) => ({
           key: user.id,

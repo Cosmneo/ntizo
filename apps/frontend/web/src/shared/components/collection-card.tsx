@@ -1,7 +1,9 @@
 import { useState } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { GripVertical, Search, SlidersHorizontal } from "lucide-react";
 import { Button, Input, Skeleton, cn } from "@ntizo/frontend-ui";
+import { EmptyCard } from "./empty-card";
 
 /**
  * The card every list in the app sits in.
@@ -79,7 +81,11 @@ export function CollectionCard({
   columns,
   rows,
   emptyText,
+  emptyTitle,
+  emptyBadge,
+  emptyAction,
   noMatchesText,
+  noMatchesTitle,
   filtered,
   skeletonPlaceholders = 5,
   reorder,
@@ -98,9 +104,24 @@ export function CollectionCard({
   /** The first is the primary column; the rest are cells, in order. */
   columns: readonly CollectionColumn[];
   rows: readonly CollectionRow[];
+  /**
+   * What to say when the list is empty.
+   *
+   * Reads as the card's body when `emptyTitle` is given and as its title when
+   * it is not, so a caller that has only ever passed one sentence keeps
+   * working and says the same thing it always did.
+   */
   emptyText: string;
+  /** The headline over `emptyText`. */
+  emptyTitle?: string;
+  /** The glyph badged onto the brand mark — what this list would hold. */
+  emptyBadge?: ComponentType<{ className?: string }>;
+  /** The way out of the empty state, when the reader has one. */
+  emptyAction?: ReactNode;
   /** Shown when filters hid everything — a different situation from empty. */
   noMatchesText: string;
+  /** The headline over `noMatchesText`. Same fallback as `emptyTitle`. */
+  noMatchesTitle?: string;
   /**
    * Whether anything is currently filtering the list.
    *
@@ -141,7 +162,25 @@ export function CollectionCard({
   // The first column is the primary block, rendered from `row.primary`; the
   // rest become cells on desktop and label/value pairs on mobile.
   const restColumns = columns.slice(1);
-  const emptyMessage = filtered ? noMatchesText : emptyText;
+  // Built once and rendered into whichever of the two layouts is on screen.
+  // They are the same card — writing it in both branches is how the table and
+  // the phone drift apart.
+  const emptyCard = filtered ? (
+    // A search glyph, not the brand: the rows are there, the filter is hiding
+    // them, and the mark would announce an empty account instead.
+    <EmptyCard
+      icon={Search}
+      title={noMatchesTitle ?? noMatchesText}
+      body={noMatchesTitle ? noMatchesText : undefined}
+    />
+  ) : (
+    <EmptyCard
+      badge={emptyBadge}
+      title={emptyTitle ?? emptyText}
+      body={emptyTitle ? emptyText : undefined}
+      action={emptyAction}
+    />
+  );
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const canDrag = Boolean(reorder && !reorder.disabledReason);
 
@@ -229,11 +268,8 @@ export function CollectionCard({
               />
             ) : isEmpty ? (
               <tr>
-                <td
-                  colSpan={columns.length + (reorder ? 1 : 0)}
-                  className="type-body px-5 py-14 text-center text-[var(--color-muted-foreground)]"
-                >
-                  {emptyMessage}
+                <td colSpan={columns.length + (reorder ? 1 : 0)} className="p-0">
+                  {emptyCard}
                 </td>
               </tr>
             ) : (
@@ -308,9 +344,7 @@ export function CollectionCard({
             hasActions={columns.some((c) => c.key === "actions")}
           />
         ) : isEmpty ? (
-          <p className="type-body px-4 py-12 text-center text-[var(--color-muted-foreground)]">
-            {emptyMessage}
-          </p>
+          emptyCard
         ) : (
           <ul className="grid list-none gap-3 p-4">
             {rows.map((row) => (

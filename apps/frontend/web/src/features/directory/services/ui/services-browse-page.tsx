@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, LayoutGrid, SearchX } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
+import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
@@ -11,7 +12,10 @@ import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories"
 import { useBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
 import { BrowseServiceCard } from "@/features/directory/services/ui/browse-service-card";
 import { CategoryBand } from "@/features/directory/services/ui/category-band";
-import { BrowseFilters } from "@/features/directory/services/ui/browse-filters";
+import {
+  BrowseFilters,
+  MobileFilterBar,
+} from "@/features/directory/services/ui/browse-filters";
 import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services/domain/types";
 import {
   browseSearch,
@@ -48,6 +52,11 @@ export function ServicesBrowsePage() {
   const page = useBrowseServices({
     category,
     locationType: current.locationType,
+    paymentMode: current.paymentMode,
+    providerType: current.providerType,
+    language: current.language,
+    minPrice: current.minPrice,
+    maxPrice: current.maxPrice,
     q,
     sort,
     offset,
@@ -56,8 +65,28 @@ export function ServicesBrowsePage() {
   // crawler came for, so it may arrive a beat later.
   const categories = useCategoryPreview(CATEGORY_BAND_LIMIT).data?.items ?? [];
 
-  /** Whether the reader narrowed the list at all — which is what "nothing here" means. */
-  const isNarrowed = Boolean(category ?? current.locationType ?? q);
+  /**
+   * Whether the reader narrowed the list at all — which is what "nothing here"
+   * means.
+   *
+   * Every filter has to appear here. One left out makes an empty result say
+   * "the platform has published nothing" to somebody who simply asked for
+   * hourly work from organizations, which is false and reads as a broken
+   * catalogue rather than as a filter worth loosening.
+   */
+  const isNarrowed =
+    Boolean(
+      category ??
+        current.locationType ??
+        current.paymentMode ??
+        current.providerType ??
+        current.language ??
+        q,
+    ) ||
+    // Checked separately: a minimum of 0 is a narrowing the reader set, and
+    // `??` would step over it as though they had set nothing.
+    current.minPrice != null ||
+    current.maxPrice != null;
 
   return (
     <>
@@ -101,20 +130,29 @@ export function ServicesBrowsePage() {
               // Two different sentences, because they are two different
               // situations. An empty platform is "nothing published yet"; an
               // empty search is "nothing matches", and telling a reader who
-              // searched that the platform is empty is simply false.
-              <div className="mt-10 grid gap-1">
-                <p className="text-[var(--color-muted-foreground)]">
-                  {isNarrowed ? t("servicesNoMatch") : t("servicesEmpty")}
-                </p>
-                {isNarrowed ? (
-                  <p className="type-caption text-[var(--color-muted-foreground)]">
-                    {t("servicesNoMatchHint")}
-                  </p>
-                ) : null}
-              </div>
+              // searched that the platform is empty is simply false. Only the
+              // first is an empty list, so only the first carries the mark.
+              isNarrowed ? (
+                <EmptyCard
+                  className="mt-6"
+                  icon={SearchX}
+                  title={t("servicesNoMatch")}
+                  body={t("servicesNoMatchHint")}
+                />
+              ) : (
+                <EmptyCard
+                  className="mt-6"
+                  badge={LayoutGrid}
+                  title={t("servicesEmptyTitle")}
+                  body={t("servicesEmpty")}
+                />
+              )
             ) : (
               <>
-                <ul className="mt-5 grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
+                {/* A fourth column past 1536px. Three left roughly a third of a wide
+                    desktop empty beside a sidebar that had already stopped
+                    growing, and a browse is a grid — the room should go to cards. */}
+                <ul className="mt-5 grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {page.items.map((service) => (
                     <BrowseServiceCard key={service.id} service={service} locale={locale} />
                   ))}
@@ -148,6 +186,8 @@ export function ServicesBrowsePage() {
           </div>
         </div>
       </main>
+
+      <MobileFilterBar current={current} />
     </>
   );
 }

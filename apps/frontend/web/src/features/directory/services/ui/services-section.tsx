@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { LayoutGrid } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
+import { EmptyCard } from "@/shared/components/empty-card";
 import { AvailabilitySheet } from "@/features/directory/availability/ui/availability-sheet";
 import { useProviderServices } from "@/features/directory/services/viewmodel/use-provider-services";
 import { ServiceCard } from "@/features/directory/services/ui/service-card";
@@ -38,9 +40,12 @@ export function ProviderServicesSection({
           {t("servicesError")}
         </p>
       ) : !isPending && items.length === 0 ? (
-        <p className="mt-3 text-[var(--color-muted-foreground)]">
-          {t("servicesEmpty")}
-        </p>
+        <EmptyCard
+          compact
+          badge={LayoutGrid}
+          title={t("providerServicesEmptyTitle")}
+          body={t("providerServicesEmpty")}
+        />
       ) : (
         <ul className="mt-6 grid list-none gap-4 p-0 sm:grid-cols-2">
           {isPending

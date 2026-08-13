@@ -9,7 +9,8 @@
     "you": "Jij",
     "myAccount": "Mijn account",
     "providers": "Aanbieders",
-    "categories": "Categorieën"
+    "categories": "Categorieën",
+    "activity": "Activiteit"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -20,7 +21,7 @@
   "providersCommission": "Commissie",
   "providersApplied": "Aanvraag",
   "providersAllStatuses": "Alle statussen",
-  "providersEmpty": "Nog geen aanbieders.",
+  "providersEmpty": "Bedrijven die hun aanmelding afronden, komen hier in de wachtrij voor beoordeling.",
   "providersNoMatches": "Geen aanbieder komt overeen.",
   "providersError": "De aanbiederslijst kon niet worden geladen.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Werkruimtes",
   "usersJoined": "Aangemeld",
   "usersAllRoles": "Alle rollen",
-  "usersEmpty": "Nog geen gebruikers.",
+  "usersEmpty": "Iedereen die zich op Ntizo registreert, verschijnt in deze lijst.",
   "usersNoMatches": "Geen gebruikers komen overeen.",
   "usersError": "Kan de gebruikerslijst niet laden.",
   "usersFilterTitle": "Gebruikers filteren",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Categorie",
   "categoriesStatus": "Zichtbaarheid",
   "categoriesActions": "Acties",
-  "categoriesEmpty": "Nog geen categorieën.",
+  "categoriesEmpty": "Voeg een categorie toe zodat aanbieders hun diensten ergens kunnen plaatsen.",
   "categoriesNoMatches": "Geen categorieën komen overeen.",
   "categoriesError": "Kan de categorieën niet laden.",
   "categoryNew": "Nieuwe categorie",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movements",
   "providerDetailMovementsHint": "Everything in and out of this wallet.",
-  "close": "Sluiten"
+  "close": "Sluiten",
+  "providersEmptyTitle": "Nog geen aanbieders",
+  "providersNoMatchesTitle": "Geen resultaten",
+  "usersEmptyTitle": "Nog geen gebruikers",
+  "usersNoMatchesTitle": "Geen resultaten",
+  "categoriesEmptyTitle": "Nog geen categorieën",
+  "categoriesNoMatchesTitle": "Geen resultaten",
+  "activityTitle": "Auditlogboek",
+  "activityHint": "Wat beheerders op het platform hebben gedaan.",
+  "activityEmptyTitle": "Nog niets vastgelegd",
+  "activityEmpty": "Goedkeuringen, schorsingen en catalogusbewerkingen worden hier vastgelegd."
 }

@@ -4,6 +4,11 @@ import type { BrowseSort } from "@/features/directory/services/domain/types";
 export interface BrowseSearch {
   category?: string | undefined;
   locationType?: string | undefined;
+  paymentMode?: string | undefined;
+  providerType?: string | undefined;
+  language?: string | undefined;
+  minPrice?: number | undefined;
+  maxPrice?: number | undefined;
   q?: string | undefined;
   sort?: BrowseSort | undefined;
   offset?: number | undefined;
@@ -36,6 +41,13 @@ export function browseSearch(current: BrowseSearch, change: BrowseSearch): Brows
   return {
     ...(next.category ? { category: next.category } : {}),
     ...(next.locationType ? { locationType: next.locationType } : {}),
+    ...(next.paymentMode ? { paymentMode: next.paymentMode } : {}),
+    ...(next.providerType ? { providerType: next.providerType } : {}),
+    ...(next.language ? { language: next.language } : {}),
+    // `!= null` rather than truthy: a minimum of 0 is a bound the reader set,
+    // and dropping it would quietly widen their search back out.
+    ...(next.minPrice != null ? { minPrice: next.minPrice } : {}),
+    ...(next.maxPrice != null ? { maxPrice: next.maxPrice } : {}),
     ...(next.q ? { q: next.q } : {}),
     ...(next.sort ? { sort: next.sort } : {}),
     ...(offset ? { offset } : {}),

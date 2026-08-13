@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowDown, ArrowUp, MoreHorizontal, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, MoreHorizontal, Plus, Shapes } from "lucide-react";
 import {
   Badge,
   Button,
@@ -125,7 +125,10 @@ export function AdminCategoriesPage() {
           },
         ]}
         emptyText={t("categoriesEmpty")}
+        emptyTitle={t("categoriesEmptyTitle")}
+        emptyBadge={Shapes}
         noMatchesText={t("categoriesNoMatches")}
+        noMatchesTitle={t("categoriesNoMatchesTitle")}
         filtered={searching}
         reorder={{
           handleLabel: t("categoryReorder"),

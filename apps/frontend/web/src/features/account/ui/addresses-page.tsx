@@ -18,7 +18,7 @@ import {
   useMyAddresses,
 } from "@/features/account/viewmodel/use-addresses";
 import { useCities } from "@/features/account/viewmodel/use-cities";
-import { EmptyState } from "@/features/account/ui/empty-state";
+import { EmptyCard } from "@/shared/components/empty-card";
 
 /**
  * Bridges the city field to the gazetteer.
@@ -414,8 +414,9 @@ export function AddressesPage() {
       ) : null}
 
       {isPending ? null : addresses.length === 0 && editing === null ? (
-        <EmptyState
-          icon={<MapPin className="h-6 w-6" />}
+        <EmptyCard
+          framed
+          badge={MapPin}
           title={t("addressesEmptyTitle")}
           body={t("addressesEmptyBody")}
         />

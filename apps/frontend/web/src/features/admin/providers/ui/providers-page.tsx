@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { Store } from "lucide-react";
 import { Avatar, AvatarFallback, Badge } from "@ntizo/frontend-ui";
 import { ProviderStatus } from "@ntizo/shared";
 import { CollectionCard } from "@/shared/components/collection-card";
@@ -94,7 +95,10 @@ export function AdminProvidersPage() {
           },
         ]}
         emptyText={t("providersEmpty")}
+        emptyTitle={t("providersEmptyTitle")}
+        emptyBadge={Store}
         noMatchesText={t("providersNoMatches")}
+        noMatchesTitle={t("providersNoMatchesTitle")}
         filtered={search.trim() !== "" || status !== ""}
         rows={rows.map((provider) => ({
           key: provider.id,

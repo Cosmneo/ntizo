@@ -62,4 +62,37 @@ describe("browseSearch", () => {
     const current = { category: "hair", locationType: "remote", q: "corte" } as const;
     expect(browseSearch(current, {})).toEqual(current);
   });
+
+  it("carries the payment mode and provider type past a change to something else", () => {
+    // The reason this function exists. Each control builds the whole search
+    // object, so one that does not know about a filter drops it — the sort
+    // link would silently clear "per hour" the moment somebody used it.
+    const current = {
+      category: "hair",
+      paymentMode: "hourly",
+      providerType: "organization",
+    } as const;
+    expect(browseSearch(current, { sort: "newest" })).toEqual({
+      category: "hair",
+      paymentMode: "hourly",
+      providerType: "organization",
+      sort: "newest",
+    });
+  });
+
+  it("clears the payment mode when it is set back to undefined", () => {
+    // How the sidebar's chips come off: clicking the active one clears it.
+    expect(
+      browseSearch(
+        { category: "hair", paymentMode: "quote" },
+        { paymentMode: undefined },
+      ),
+    ).toEqual({ category: "hair" });
+  });
+
+  it("returns to the first page when a new filter narrows the list", () => {
+    expect(
+      browseSearch({ offset: 48 }, { providerType: "individual" }),
+    ).toEqual({ providerType: "individual" });
+  });
 });

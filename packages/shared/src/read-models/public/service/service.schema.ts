@@ -40,13 +40,47 @@ export const serviceReadModel = z.object({
    * Publishing this exposes nothing new: the slug is already that page's URL.
    */
   providerSlug: z.string(),
+  /**
+   * Whether the business is a person or an establishment.
+   *
+   * Already public on `providerPublicReadModel`, so publishing it here is not
+   * a new disclosure — it is the same fact reaching the card that names the
+   * business, instead of the card having to fetch each provider to learn it.
+   */
+  providerType: z.enum(["individual", "organization"]),
   categoryCode: z.string(),
+  /**
+   * The category's name in the reader's language.
+   *
+   * Resolved on the server for the same reason `name` is: a code is not
+   * something to put on a card, and resolving it in the client would mean
+   * every client loading every category to translate one word — or, worse,
+   * translating only the categories that happened to be on screen and
+   * showing a raw code for the rest.
+   */
+  categoryName: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   locationType: z.string(),
   bookingMode: z.string(),
   imageUrls: z.array(z.string()),
   defaultOption: servicePublicOptionReadModel.nullable(),
+  /**
+   * The cheapest active option's amount, in minor units.
+   *
+   * What the card leads with, and what the price filter matches — one number
+   * for both, so a service can never be hidden by a bound it visibly satisfies.
+   * Null on a `quote` service, which has nothing priced to be cheapest.
+   */
+  fromAmountMinor: z.number().int().nullable(),
+  /**
+   * How many active options the service carries.
+   *
+   * The card says "from" only above one. With a single option there is nothing
+   * to be *from* — "from 500 MZN" when 500 is the only price it can ever be
+   * invites the reader to expect a cheaper one that does not exist.
+   */
+  optionCount: z.number().int(),
   /** True when `name`/`description` came from the fallback locale, not the one asked for. */
   isFallback: z.boolean(),
 });

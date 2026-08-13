@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import {
+  formatAmount,
   formatOptionAmount,
   optionDurationMinutes,
   serviceCardImage,
@@ -73,6 +74,17 @@ export function ServicePrice({
 
   if (cell.kind === "quote") return <>{t("priceByQuote")}</>;
   if (cell.kind === "unavailable") return <>{t("priceUnavailable")}</>;
+  // No duration and no "per hour" beside it: this amount is the cheapest
+  // option's, and nothing else about that option reached this card.
+  if (cell.kind === "from") {
+    return (
+      <>
+        {t("priceFrom", {
+          amount: formatAmount(cell.amountMinor, cell.currency, locale),
+        })}
+      </>
+    );
+  }
 
   const { option } = cell;
   const amount = formatOptionAmount(option, locale);

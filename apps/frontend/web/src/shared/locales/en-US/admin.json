@@ -9,7 +9,8 @@
     "you": "You",
     "myAccount": "My account",
     "providers": "Providers",
-    "categories": "Categories"
+    "categories": "Categories",
+    "activity": "Activity"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",
@@ -20,7 +21,7 @@
   "providersCommission": "Commission",
   "providersApplied": "Applied",
   "providersAllStatuses": "All statuses",
-  "providersEmpty": "No providers yet.",
+  "providersEmpty": "Businesses that finish signing up will queue here for review.",
   "providersNoMatches": "No provider matches that.",
   "providersError": "The provider list could not be loaded.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Workspaces",
   "usersJoined": "Joined",
   "usersAllRoles": "All roles",
-  "usersEmpty": "No users yet.",
+  "usersEmpty": "Everyone who registers on Ntizo shows up in this list.",
   "usersNoMatches": "No users match that.",
   "usersError": "Couldn't load the user list.",
   "usersFilterTitle": "Filter users",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Category",
   "categoriesStatus": "Visibility",
   "categoriesActions": "Actions",
-  "categoriesEmpty": "No categories yet.",
+  "categoriesEmpty": "Add a category so providers have somewhere to list their services.",
   "categoriesNoMatches": "No categories match that.",
   "categoriesError": "Couldn't load the categories.",
   "categoryNew": "New category",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movements",
   "providerDetailMovementsHint": "Everything in and out of this wallet.",
-  "close": "Close"
+  "close": "Close",
+  "providersEmptyTitle": "No providers yet",
+  "providersNoMatchesTitle": "No matches",
+  "usersEmptyTitle": "No users yet",
+  "usersNoMatchesTitle": "No matches",
+  "categoriesEmptyTitle": "No categories yet",
+  "categoriesNoMatchesTitle": "No matches",
+  "activityTitle": "Audit trail",
+  "activityHint": "What administrators have done on the platform.",
+  "activityEmptyTitle": "Nothing recorded yet",
+  "activityEmpty": "Approvals, suspensions and catalogue edits will be recorded here."
 }

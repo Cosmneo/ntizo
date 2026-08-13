@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowDownLeft, ArrowUpRight, Wallet as WalletIcon } from "lucide-react";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
 import type { WalletEntryDTO } from "@ntizo/shared/read-models";
+import { EmptyCard } from "@/shared/components/empty-card";
 import { useWallet } from "../viewmodel/use-wallet";
 import {
   formatMoney,
@@ -102,12 +103,12 @@ export function WalletPanel({
           // Said plainly rather than dressed up. Nothing writes ledger entries
           // yet — payments are not built — and an empty state that implied the
           // provider had simply earned nothing would be a different claim.
-          <div className="grid place-items-center gap-2 px-5 py-12 text-center">
-            <WalletIcon className="h-6 w-6 text-[var(--color-muted-foreground)]" />
-            <p className="type-body text-[var(--color-muted-foreground)]">
-              {t("walletEmpty")}
-            </p>
-          </div>
+          <EmptyCard
+            badge={WalletIcon}
+            title={t("walletEmptyTitle")}
+            body={t("walletEmpty")}
+            compact={compact}
+          />
         ) : (
           <ul className="grid list-none gap-0 p-0">
             {entries.map((entry) => (

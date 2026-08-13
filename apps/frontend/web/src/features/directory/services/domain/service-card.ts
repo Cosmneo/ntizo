@@ -15,13 +15,32 @@ import type { ServiceDTO, ServicePublicOptionDTO } from "./types";
 export type ServicePriceCell =
   | { kind: "quote" }
   | { kind: "priced"; option: ServicePublicOptionDTO }
+  /**
+   * More than one option, so the card leads with the cheapest and says so.
+   *
+   * A separate kind rather than a flag on `priced`, because what can be shown
+   * is genuinely different: the amount is the *cheapest* option's, and this
+   * card knows nothing else about that option — not its duration, not whether
+   * it is hourly. Printing the default option's "· 30 min" beside another
+   * option's price would be two facts about two different things read as one.
+   */
+  | { kind: "from"; amountMinor: number; currency: string }
   | { kind: "unavailable" };
 
 export function servicePriceCell(service: ServiceDTO): ServicePriceCell {
   if (service.bookingMode === "quote") return { kind: "quote" };
-  return service.defaultOption
-    ? { kind: "priced", option: service.defaultOption }
-    : { kind: "unavailable" };
+  if (!service.defaultOption) return { kind: "unavailable" };
+  // The cheapest is only worth saying when it is not the only one. With a
+  // single option "from 500" invites the reader to look for a cheaper price
+  // that cannot exist.
+  if (service.optionCount > 1 && service.fromAmountMinor !== null) {
+    return {
+      kind: "from",
+      amountMinor: service.fromAmountMinor,
+      currency: service.defaultOption.currency,
+    };
+  }
+  return { kind: "priced", option: service.defaultOption };
 }
 
 /**
@@ -37,10 +56,24 @@ export function formatOptionAmount(
   option: ServicePublicOptionDTO,
   locale: string,
 ): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: option.currency,
-  }).format(option.amountMinor / 100);
+  return formatAmount(option.amountMinor, option.currency, locale);
+}
+
+/**
+ * Any amount in minor units, in the reader's locale.
+ *
+ * Split out of `formatOptionAmount` when the card began showing a price that
+ * belongs to no option it holds — the cheapest one, which arrives as a bare
+ * number beside the default option it is not.
+ */
+export function formatAmount(
+  amountMinor: number,
+  currency: string,
+  locale: string,
+): string {
+  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(
+    amountMinor / 100,
+  );
 }
 
 /**

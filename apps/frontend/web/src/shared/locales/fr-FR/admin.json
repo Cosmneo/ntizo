@@ -9,7 +9,8 @@
     "you": "Vous",
     "myAccount": "Mon compte",
     "providers": "Prestataires",
-    "categories": "Catégories"
+    "categories": "Catégories",
+    "activity": "Activité"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",
@@ -20,7 +21,7 @@
   "providersCommission": "Commission",
   "providersApplied": "Candidature",
   "providersAllStatuses": "Tous les statuts",
-  "providersEmpty": "Aucun prestataire pour l’instant.",
+  "providersEmpty": "Les entreprises ayant terminé leur inscription arrivent ici pour être examinées.",
   "providersNoMatches": "Aucun prestataire ne correspond.",
   "providersError": "La liste des prestataires n’a pas pu être chargée.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Espaces",
   "usersJoined": "Inscription",
   "usersAllRoles": "Tous les rôles",
-  "usersEmpty": "Aucun utilisateur pour l'instant.",
+  "usersEmpty": "Toute personne qui s’inscrit sur Ntizo apparaît dans cette liste.",
   "usersNoMatches": "Aucun utilisateur ne correspond.",
   "usersError": "Impossible de charger la liste des utilisateurs.",
   "usersFilterTitle": "Filtrer les utilisateurs",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Catégorie",
   "categoriesStatus": "Visibilité",
   "categoriesActions": "Actions",
-  "categoriesEmpty": "Aucune catégorie pour l'instant.",
+  "categoriesEmpty": "Ajoutez une catégorie pour que les prestataires puissent y classer leurs services.",
   "categoriesNoMatches": "Aucune catégorie ne correspond.",
   "categoriesError": "Impossible de charger les catégories.",
   "categoryNew": "Nouvelle catégorie",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movements",
   "providerDetailMovementsHint": "Everything in and out of this wallet.",
-  "close": "Fermer"
+  "close": "Fermer",
+  "providersEmptyTitle": "Aucun prestataire pour l’instant",
+  "providersNoMatchesTitle": "Aucun résultat",
+  "usersEmptyTitle": "Aucun utilisateur pour l’instant",
+  "usersNoMatchesTitle": "Aucun résultat",
+  "categoriesEmptyTitle": "Aucune catégorie pour l’instant",
+  "categoriesNoMatchesTitle": "Aucun résultat",
+  "activityTitle": "Journal d’audit",
+  "activityHint": "Ce que les administrateurs ont fait sur la plateforme.",
+  "activityEmptyTitle": "Rien d’enregistré pour l’instant",
+  "activityEmpty": "Les validations, les suspensions et les modifications du catalogue seront consignées ici."
 }

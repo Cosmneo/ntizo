@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
+import { Activity, Briefcase, CalendarClock, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface NavItem {
@@ -29,6 +29,10 @@ export const providerNavGroups: readonly NavGroup[] = [
     // whoever administers the workspace.
     { titleKey: "nav.availability", url: "/provider/$slug/availability", icon: CalendarClock },
     { titleKey: "nav.overview", url: "/provider/$slug/overview", icon: LayoutDashboard },
+    // Under the overview rather than above it: the dashboard answers "how is
+    // the workspace doing", and this answers "what changed since I last
+    // looked" — the second question, and the one asked less often.
+    { titleKey: "nav.activity", url: "/provider/$slug/activity", icon: Activity },
   ] },
   { labelKey: "nav.management", items: [
     { titleKey: "nav.members", url: "/provider/$slug/members", icon: Users },

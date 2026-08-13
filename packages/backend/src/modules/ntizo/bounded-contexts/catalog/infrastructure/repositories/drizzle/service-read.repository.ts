@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, gte, ilike, inArray, lte, min, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   category,
+  categoryTranslation,
   service,
   serviceMember,
   serviceOption,
@@ -162,6 +163,64 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
     if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
     if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
+    if (filter.providerType) conditions.push(eq(provider.type, filter.providerType));
+    if (filter.paymentMode === "quote") {
+      conditions.push(eq(service.bookingMode, "quote"));
+    } else if (filter.paymentMode === "fixed" || filter.paymentMode === "hourly") {
+      // Two conditions, not one. `bookingMode` alone would let a `quote`
+      // service through if it somehow carried an option, and the option alone
+      // would match a service whose default was archived out from under it.
+      conditions.push(eq(service.bookingMode, "priced"));
+      conditions.push(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(serviceOption)
+            .where(
+              and(
+                eq(serviceOption.serviceId, service.id),
+                eq(serviceOption.isDefault, true),
+                eq(serviceOption.pricingMode, filter.paymentMode),
+              ),
+            ),
+        ),
+      );
+    }
+    if (filter.language) {
+      // EXISTS with a non-blank name, not just a row: a translation record can
+      // exist with an empty name while the provider is midway through filling
+      // it in, and offering that service under "readable in French" is the one
+      // thing this filter promises not to do.
+      conditions.push(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(serviceTranslation)
+            .where(
+              and(
+                eq(serviceTranslation.serviceId, service.id),
+                eq(serviceTranslation.locale, filter.language),
+                sql`length(trim(${serviceTranslation.name})) > 0`,
+              ),
+            ),
+        ),
+      );
+    }
+    if (filter.minPriceMinor !== undefined || filter.maxPriceMinor !== undefined) {
+      // Against the cheapest active option, which is the number the card
+      // prints as "from". A quote service has no options and so matches no
+      // price bound at all — which is correct: it has no price to compare.
+      const bounds = [eq(serviceOption.serviceId, service.id), eq(serviceOption.isActive, true)];
+      if (filter.minPriceMinor !== undefined) {
+        bounds.push(gte(serviceOption.amountMinor, filter.minPriceMinor));
+      }
+      if (filter.maxPriceMinor !== undefined) {
+        bounds.push(lte(serviceOption.amountMinor, filter.maxPriceMinor));
+      }
+      conditions.push(
+        exists(db.select({ one: sql`1` }).from(serviceOption).where(and(...bounds))),
+      );
+    }
     if (filter.q) {
       const pattern = `%${escapeLike(filter.q)}%`;
       // An EXISTS rather than a join, for the same reason the translations are
@@ -205,6 +264,8 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         providerName: provider.name,
         providerSlug: provider.slug,
         providerStatus: provider.status,
+        providerType: provider.type,
+        categoryId: category.id,
         categoryCode: category.code,
         status: service.status,
         sourceLocale: service.sourceLocale,
@@ -237,6 +298,33 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .from(serviceTranslation)
       .where(inArray(serviceTranslation.serviceId, serviceIds));
 
+    // Fetched by id rather than joined, for the reason the class comment
+    // gives: `category_translation` is one-to-many, and joining it would
+    // multiply every service row by the number of languages its category is
+    // written in. Deduplicated first — twelve services across three
+    // categories asks for three, not twelve.
+    const categoryIds = [...new Set(rows.map((r) => r.categoryId))];
+    const categoryTranslations = await db
+      .select()
+      .from(categoryTranslation)
+      .where(inArray(categoryTranslation.categoryId, categoryIds));
+
+    // The cheapest active option and how many there are, in one grouped pass
+    // rather than by pulling every option back and reducing in JS. What the
+    // card needs is two numbers per service, not the options themselves — the
+    // options belong to the service's own page.
+    const priceAgg = await db
+      .select({
+        serviceId: serviceOption.serviceId,
+        fromAmountMinor: min(serviceOption.amountMinor),
+        optionCount: count(),
+      })
+      .from(serviceOption)
+      .where(
+        and(inArray(serviceOption.serviceId, serviceIds), eq(serviceOption.isActive, true)),
+      )
+      .groupBy(serviceOption.serviceId);
+
     // At most one per service — the partial unique index on `is_default`
     // guarantees it — so this is a lookup by `serviceId`, not another
     // one-to-many relation to reconcile.
@@ -249,8 +337,23 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
 
     return rows.map((r) => {
       const opt = defaults.find((o) => o.serviceId === r.id);
+      // `categoryId` was selected only to key this lookup; it is not part of
+      // the row the port promises, so it is dropped rather than spread.
+      const { categoryId, ...rest } = r;
+      const agg = priceAgg.find((a) => a.serviceId === r.id);
       return {
-        ...r,
+        ...rest,
+        // `min()` comes back as a string from Postgres for a bigint column, and
+        // as null when the group is empty. Neither is a number, and a string
+        // would compare and format wrongly all the way to the card.
+        fromAmountMinor:
+          agg?.fromAmountMinor === null || agg?.fromAmountMinor === undefined
+            ? null
+            : Number(agg.fromAmountMinor),
+        optionCount: agg?.optionCount ?? 0,
+        categoryTranslations: categoryTranslations
+          .filter((t) => t.categoryId === categoryId)
+          .map((t) => ({ locale: t.locale, name: t.name, description: null })),
         defaultOption: opt
           ? {
               amountMinor: opt.amountMinor,

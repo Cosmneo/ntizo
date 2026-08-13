@@ -138,5 +138,10 @@
     "dark": "Oscuro",
     "system": "Sistema"
   },
-  "addrPostalCode": "Postal code"
+  "addrPostalCode": "Postal code",
+  "activityTitle": "Actividad",
+  "activityListTitle": "Actividad reciente",
+  "activityHint": "Lo que has hecho en Ntizo.",
+  "activityEmptyTitle": "Aún sin actividad",
+  "activityEmptyBody": "Tus reservas, mensajes y pagos se listarán aquí a medida que ocurran."
 }

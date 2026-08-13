@@ -74,7 +74,11 @@ export interface ServicePublicRow {
   providerSlug: string;
   /** The provider's live status, joined rather than copied — see `listPublished`. */
   providerStatus: string;
+  /** `individual` or `organization`, off the same joined row as the status. */
+  providerType: string;
   categoryCode: string;
+  /** Every language the category has a name in; the projection picks one. */
+  categoryTranslations: ServicePublicTranslationRow[];
   status: string;
   sourceLocale: string;
   locationType: string;
@@ -82,6 +86,10 @@ export interface ServicePublicRow {
   imageKeys: string[] | null;
   /** Null for a `quote` service, which carries no options at all. */
   defaultOption: ServicePublicOptionRow | null;
+  /** The cheapest active option's amount, or null when there are none. */
+  fromAmountMinor: number | null;
+  /** How many active options the service carries. Decides "from" vs a flat price. */
+  optionCount: number;
   translations: ServicePublicTranslationRow[];
 }
 
@@ -91,6 +99,38 @@ export interface ListPublishedServicesFilter {
   providerId?: string | undefined;
   /** A `ServiceLocationType`. Absent means every kind. */
   locationType?: string | undefined;
+  /**
+   * A `ServicePaymentMode` — `fixed`, `hourly` or `quote`. Absent means every
+   * kind.
+   *
+   * `quote` reads `service.bookingMode`. The other two are a property of the
+   * service's default option, not of the service, so they are matched with an
+   * EXISTS against `service_option` rather than a column — joining it would
+   * multiply the rows `limit`/`offset` then page, the same trap the text
+   * search avoids the same way.
+   */
+  paymentMode?: string | undefined;
+  /** `individual` or `organization`. Absent means both. */
+  providerType?: string | undefined;
+  /**
+   * A locale the service is *written in* — matched against
+   * `service_translation`, not against anything the provider speaks.
+   *
+   * The distinction matters and the label on the filter has to carry it: a
+   * listing translated into French says the listing is readable in French, and
+   * nothing whatever about whether the person turning up speaks it.
+   */
+  language?: string | undefined;
+  /**
+   * Bounds on the *cheapest* active option, in minor units. Inclusive.
+   *
+   * The cheapest rather than the default, so the filter and the "from" price
+   * the card prints are the same number. Filtering on the default would hide a
+   * service whose 300 option is exactly what the reader asked for, because its
+   * provider chose to lead with the 800 one.
+   */
+  minPriceMinor?: number | undefined;
+  maxPriceMinor?: number | undefined;
   /**
    * Free text, already trimmed, matched against the service's name and
    * description in every language and against its provider's name. Absent

@@ -18,6 +18,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
 import { Route as CustomerAccountRouteRouteImport } from './routes/_customer/account/route'
+import { Route as CustomerActivityRouteImport } from './routes/_customer/activity'
 import { Route as CustomerBookingsRouteImport } from './routes/_customer/bookings'
 import { Route as CustomerFavouritesRouteImport } from './routes/_customer/favourites'
 import { Route as CustomerMessagesRouteImport } from './routes/_customer/messages'
@@ -26,6 +27,7 @@ import { Route as PublicResetPasswordRouteImport } from './routes/_public/reset-
 import { Route as PublicSignInRouteImport } from './routes/_public/sign-in'
 import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminActivityRouteImport } from './routes/admin/activity'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
@@ -46,6 +48,7 @@ import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
+import { Route as ProviderSlugActivityRouteImport } from './routes/provider/$slug/activity'
 import { Route as ProviderSlugAvailabilityRouteImport } from './routes/provider/$slug/availability'
 import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
 import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
@@ -97,6 +100,11 @@ const CustomerAccountRouteRoute = CustomerAccountRouteRouteImport.update({
   path: '/account',
   getParentRoute: () => CustomerRouteRoute,
 } as any)
+const CustomerActivityRoute = CustomerActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
 const CustomerBookingsRoute = CustomerBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
@@ -135,6 +143,11 @@ const PublicSignUpRoute = PublicSignUpRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
@@ -242,6 +255,11 @@ const AdminProvidersProviderIdRoute =
     path: '/providers/$providerId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const ProviderSlugActivityRoute = ProviderSlugActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
 const ProviderSlugAvailabilityRoute =
   ProviderSlugAvailabilityRouteImport.update({
     id: '/availability',
@@ -290,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/verify-phone': typeof VerifyPhoneRoute
   '/account': typeof CustomerAccountRouteRouteWithChildren
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
+  '/activity': typeof CustomerActivityRoute
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
@@ -297,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
@@ -315,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
@@ -331,6 +352,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
+  '/activity': typeof CustomerActivityRoute
   '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
@@ -338,6 +360,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof PublicResetPasswordRoute
   '/sign-in': typeof PublicSignInRoute
   '/sign-up': typeof PublicSignUpRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
@@ -356,6 +379,7 @@ export interface FileRoutesByTo {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
@@ -378,6 +402,7 @@ export interface FileRoutesById {
   '/verify-phone': typeof VerifyPhoneRoute
   '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
+  '/_customer/activity': typeof CustomerActivityRoute
   '/_customer/bookings': typeof CustomerBookingsRoute
   '/_customer/favourites': typeof CustomerFavouritesRoute
   '/_customer/messages': typeof CustomerMessagesRoute
@@ -385,6 +410,7 @@ export interface FileRoutesById {
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/sign-in': typeof PublicSignInRoute
   '/_public/sign-up': typeof PublicSignUpRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
@@ -403,6 +429,7 @@ export interface FileRoutesById {
   '/_customer/account/security': typeof CustomerAccountSecurityRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
@@ -424,6 +451,7 @@ export interface FileRouteTypes {
     | '/verify-phone'
     | '/account'
     | '/provider/$slug'
+    | '/activity'
     | '/bookings'
     | '/favourites'
     | '/messages'
@@ -431,6 +459,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/admin/activity'
     | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
@@ -449,6 +478,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
@@ -465,6 +495,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/verify-phone'
     | '/provider/$slug'
+    | '/activity'
     | '/bookings'
     | '/favourites'
     | '/messages'
@@ -472,6 +503,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
+    | '/admin/activity'
     | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
@@ -490,6 +522,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
@@ -511,6 +544,7 @@ export interface FileRouteTypes {
     | '/verify-phone'
     | '/_customer/account'
     | '/provider/$slug'
+    | '/_customer/activity'
     | '/_customer/bookings'
     | '/_customer/favourites'
     | '/_customer/messages'
@@ -518,6 +552,7 @@ export interface FileRouteTypes {
     | '/_public/reset-password'
     | '/_public/sign-in'
     | '/_public/sign-up'
+    | '/admin/activity'
     | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
@@ -536,6 +571,7 @@ export interface FileRouteTypes {
     | '/_customer/account/security'
     | '/_public/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
     | '/provider/$slug/overview'
@@ -627,6 +663,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomerAccountRouteRouteImport
       parentRoute: typeof CustomerRouteRoute
     }
+    '/_customer/activity': {
+      id: '/_customer/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof CustomerActivityRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
     '/_customer/bookings': {
       id: '/_customer/bookings'
       path: '/bookings'
@@ -681,6 +724,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/categories': {
@@ -823,6 +873,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProvidersProviderIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/provider/$slug/activity': {
+      id: '/provider/$slug/activity'
+      path: '/activity'
+      fullPath: '/provider/$slug/activity'
+      preLoaderRoute: typeof ProviderSlugActivityRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
     '/provider/$slug/availability': {
       id: '/provider/$slug/availability'
       path: '/availability'
@@ -900,6 +957,7 @@ const CustomerAccountRouteRouteWithChildren =
 
 interface CustomerRouteRouteChildren {
   CustomerAccountRouteRoute: typeof CustomerAccountRouteRouteWithChildren
+  CustomerActivityRoute: typeof CustomerActivityRoute
   CustomerBookingsRoute: typeof CustomerBookingsRoute
   CustomerFavouritesRoute: typeof CustomerFavouritesRoute
   CustomerMessagesRoute: typeof CustomerMessagesRoute
@@ -907,6 +965,7 @@ interface CustomerRouteRouteChildren {
 
 const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
   CustomerAccountRouteRoute: CustomerAccountRouteRouteWithChildren,
+  CustomerActivityRoute: CustomerActivityRoute,
   CustomerBookingsRoute: CustomerBookingsRoute,
   CustomerFavouritesRoute: CustomerFavouritesRoute,
   CustomerMessagesRoute: CustomerMessagesRoute,
@@ -937,6 +996,7 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
 )
 
 interface AdminRouteRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -946,6 +1006,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -959,6 +1020,7 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface ProviderSlugRouteRouteChildren {
+  ProviderSlugActivityRoute: typeof ProviderSlugActivityRoute
   ProviderSlugAvailabilityRoute: typeof ProviderSlugAvailabilityRoute
   ProviderSlugMembersRoute: typeof ProviderSlugMembersRoute
   ProviderSlugOverviewRoute: typeof ProviderSlugOverviewRoute
@@ -969,6 +1031,7 @@ interface ProviderSlugRouteRouteChildren {
 }
 
 const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
+  ProviderSlugActivityRoute: ProviderSlugActivityRoute,
   ProviderSlugAvailabilityRoute: ProviderSlugAvailabilityRoute,
   ProviderSlugMembersRoute: ProviderSlugMembersRoute,
   ProviderSlugOverviewRoute: ProviderSlugOverviewRoute,

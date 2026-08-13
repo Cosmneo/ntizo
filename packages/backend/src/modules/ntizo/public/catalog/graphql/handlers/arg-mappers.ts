@@ -24,6 +24,11 @@ export function mapListServicesInput(input: {
   categoryCode?: string | undefined;
   providerId?: string | undefined;
   locationType?: string | undefined;
+  paymentMode?: string | undefined;
+  providerType?: string | undefined;
+  language?: string | undefined;
+  minPriceMinor?: number | undefined;
+  maxPriceMinor?: number | undefined;
   q?: string | undefined;
   sort?: "default" | "newest" | undefined;
   limit?: number | undefined;
@@ -34,6 +39,11 @@ export function mapListServicesInput(input: {
     categoryCode: input.categoryCode,
     providerId: input.providerId,
     locationType: input.locationType,
+    paymentMode: input.paymentMode,
+    providerType: input.providerType,
+    language: input.language,
+    minPriceMinor: input.minPriceMinor,
+    maxPriceMinor: input.maxPriceMinor,
     q: input.q,
     sort: input.sort,
     limit: input.limit ?? DEFAULT_SERVICE_LIMIT,

@@ -16,10 +16,37 @@ import { browseServicesQueries } from "@/features/directory/services/data/servic
 export interface BrowseNarrowing {
   category?: string | undefined;
   locationType?: string | undefined;
+  /** `fixed`, `hourly` or `quote` — see `SERVICE_PAYMENT_MODES`. */
+  paymentMode?: string | undefined;
+  /** `individual` or `organization`. */
+  providerType?: string | undefined;
+  /** A locale the listing is written in — not a language anybody speaks. */
+  language?: string | undefined;
+  /**
+   * Inclusive bounds on the cheapest option, in *whole* units of currency.
+   *
+   * Whole units because that is what the URL carries and what the reader
+   * typed. `toMinor` below is the single place they become the minor units the
+   * API speaks — doing it at both call sites is how the server-rendered first
+   * page and the client's refetch end up asking two different questions.
+   */
+  minPrice?: number | undefined;
+  maxPrice?: number | undefined;
   /** Free text, already trimmed by the route's `validateSearch`. */
   q?: string | undefined;
   sort?: BrowseSort | undefined;
   offset: number;
+}
+
+/**
+ * Whole units of currency to minor units, preserving "not set".
+ *
+ * `undefined` in, `undefined` out — a bound nobody set must not become 0,
+ * which is a bound meaning "free and up" and would quietly exclude nothing
+ * while still counting as a narrowing.
+ */
+function toMinor(amount: number | undefined): number | undefined {
+  return amount === undefined ? undefined : Math.round(amount * 100);
 }
 
 export function useBrowseServices(narrowing: BrowseNarrowing): ServicePageDTO {
@@ -30,6 +57,11 @@ export function useBrowseServices(narrowing: BrowseNarrowing): ServicePageDTO {
       locale,
       categoryCode: narrowing.category,
       locationType: narrowing.locationType,
+      paymentMode: narrowing.paymentMode,
+      providerType: narrowing.providerType,
+      language: narrowing.language,
+      minPriceMinor: toMinor(narrowing.minPrice),
+      maxPriceMinor: toMinor(narrowing.maxPrice),
       q: narrowing.q,
       sort: narrowing.sort,
       offset: narrowing.offset,
@@ -58,6 +90,11 @@ export function prefetchBrowseServices(
       locale,
       categoryCode: narrowing.category,
       locationType: narrowing.locationType,
+      paymentMode: narrowing.paymentMode,
+      providerType: narrowing.providerType,
+      language: narrowing.language,
+      minPriceMinor: toMinor(narrowing.minPrice),
+      maxPriceMinor: toMinor(narrowing.maxPrice),
       q: narrowing.q,
       sort: narrowing.sort,
       offset: narrowing.offset,

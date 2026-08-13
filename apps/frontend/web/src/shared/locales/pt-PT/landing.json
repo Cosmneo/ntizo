@@ -77,7 +77,8 @@
   "zeroFeeTitle": "de comissão para quem trabalha.",
   "zeroFeeBody": "A taxa de 10% é do cliente e vem por cima do seu preço. O que combina com o cliente é exactamente o que recebe.",
   "zeroFeeCta": "Criar conta de prestador",
-  "categoriesEmpty": "Ainda não há categorias.",
+  "categoriesEmpty": "As categorias de serviços aparecerão aqui assim que forem publicadas.",
   "categoriesError": "Não foi possível carregar as categorias.",
-  "categoriesLoadMore": "Carregar mais"
+  "categoriesLoadMore": "Carregar mais",
+  "categoriesEmptyTitle": "Ainda sem categorias"
 }

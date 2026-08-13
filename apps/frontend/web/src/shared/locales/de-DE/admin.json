@@ -9,7 +9,8 @@
     "you": "Sie",
     "myAccount": "Mein Konto",
     "providers": "Anbieter",
-    "categories": "Kategorien"
+    "categories": "Kategorien",
+    "activity": "Aktivität"
   },
   "providersTitle": "Anbieter",
   "providersSubtitle": "Alle Betriebe der Plattform.",
@@ -20,7 +21,7 @@
   "providersCommission": "Provision",
   "providersApplied": "Antrag",
   "providersAllStatuses": "Alle Status",
-  "providersEmpty": "Noch keine Anbieter.",
+  "providersEmpty": "Betriebe, die ihre Registrierung abschließen, warten hier auf die Prüfung.",
   "providersNoMatches": "Kein Anbieter passt dazu.",
   "providersError": "Die Anbieterliste konnte nicht geladen werden.",
   "providerStatus": {
@@ -41,7 +42,7 @@
   "usersWorkspaces": "Arbeitsbereiche",
   "usersJoined": "Beitritt",
   "usersAllRoles": "Alle Rollen",
-  "usersEmpty": "Noch keine Benutzer.",
+  "usersEmpty": "Alle, die sich bei Ntizo registrieren, erscheinen in dieser Liste.",
   "usersNoMatches": "Keine Benutzer stimmen damit überein.",
   "usersError": "Die Benutzerliste konnte nicht geladen werden.",
   "usersFilterTitle": "Benutzer filtern",
@@ -64,7 +65,7 @@
   "categoriesCategory": "Kategorie",
   "categoriesStatus": "Sichtbarkeit",
   "categoriesActions": "Aktionen",
-  "categoriesEmpty": "Noch keine Kategorien.",
+  "categoriesEmpty": "Legen Sie eine Kategorie an, damit Anbieter ihre Leistungen einordnen können.",
   "categoriesNoMatches": "Keine Kategorien stimmen damit überein.",
   "categoriesError": "Die Kategorien konnten nicht geladen werden.",
   "categoryNew": "Neue Kategorie",
@@ -196,5 +197,15 @@
   },
   "providerDetailMovements": "Movements",
   "providerDetailMovementsHint": "Everything in and out of this wallet.",
-  "close": "Schließen"
+  "close": "Schließen",
+  "providersEmptyTitle": "Noch keine Anbieter",
+  "providersNoMatchesTitle": "Keine Treffer",
+  "usersEmptyTitle": "Noch keine Nutzer",
+  "usersNoMatchesTitle": "Keine Treffer",
+  "categoriesEmptyTitle": "Noch keine Kategorien",
+  "categoriesNoMatchesTitle": "Keine Treffer",
+  "activityTitle": "Prüfprotokoll",
+  "activityHint": "Was Administratoren auf der Plattform getan haben.",
+  "activityEmptyTitle": "Noch nichts protokolliert",
+  "activityEmpty": "Freigaben, Sperrungen und Katalogänderungen werden hier protokolliert."
 }

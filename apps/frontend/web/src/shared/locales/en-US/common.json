@@ -31,5 +31,6 @@
   "mainNavigation": "Main navigation",
   "navExplore": "Explore",
   "navProfile": "Profile",
-  "createProvider": "Create new provider"
+  "createProvider": "Create new provider",
+  "activity": "Activity"
 }

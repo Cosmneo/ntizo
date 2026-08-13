@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { ImageIcon } from "lucide-react";
 import {
   serviceCardImage,
@@ -31,6 +32,7 @@ export function BrowseServiceCard({
   service: ServiceDTO;
   locale: string;
 }) {
+  const { t } = useTranslation("directory");
   const image = serviceCardImage(service, null);
   const cell = servicePriceCell(service);
 
@@ -63,6 +65,24 @@ export function BrowseServiceCard({
           <h3 className="type-body-medium font-semibold break-words">{service.name}</h3>
           <p className="type-caption text-[var(--color-muted-foreground)]">
             <ServicePrice cell={cell} locale={locale} />
+          </p>
+
+          {/* What kind of work it is and where it happens — the two things a
+              grid of cards could not say before, and the two a reader uses to
+              skip a card without opening it. The category leads: "canalização"
+              rules a card out faster than "em sua casa" does. */}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span className="type-caption rounded-full bg-[var(--color-muted)] px-2 py-0.5 text-[var(--color-muted-foreground)]">
+              {service.categoryName}
+            </span>
+            <span className="type-caption text-[var(--color-muted-foreground)]">
+              {t(`filterWhereOption.${service.locationType}`, {
+                // A location type the client does not know is a value added to
+                // the database after this build shipped. Showing the raw code
+                // is worse than showing nothing at all on a public card.
+                defaultValue: "",
+              })}
+            </span>
           </p>
         </div>
       </Link>

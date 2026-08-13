@@ -18,6 +18,19 @@ export interface ListServicesInput {
    */
   locationType?: string | undefined;
   /**
+   * How the customer pays: `fixed`, `hourly` or `quote`. The axis neither a
+   * category nor a location can answer — "I want a price now" and "come and
+   * tell me what it costs" are different errands inside one trade.
+   */
+  paymentMode?: string | undefined;
+  /** `individual` or `organization`. Absent means both. */
+  providerType?: string | undefined;
+  /** A locale the listing is written in — not a language anyone speaks. */
+  language?: string | undefined;
+  /** Inclusive bounds on the cheapest active option, in minor units. */
+  minPriceMinor?: number | undefined;
+  maxPriceMinor?: number | undefined;
+  /**
    * Free text typed by the customer, matched against the service's name and
    * description in every language and against its provider's name. Trimmed
    * here; blank means no search.
@@ -76,6 +89,11 @@ export class ListServicesProjection {
       categoryCode: input.categoryCode,
       providerId: input.providerId,
       locationType: input.locationType,
+      paymentMode: input.paymentMode,
+      providerType: input.providerType,
+      language: input.language,
+      minPriceMinor: input.minPriceMinor,
+      maxPriceMinor: input.maxPriceMinor,
       q: q ? q : undefined,
       sort: input.sort,
       limit: limit + 1,
@@ -93,12 +111,25 @@ export class ListServicesProjection {
       const t = resolveTranslation(r.translations, input.locale, r.sourceLocale);
       if (!t) continue;
 
+      // Two arguments, not three: a category is platform data with no author,
+      // so it falls back to the platform's default language — where a service
+      // falls back to whichever language its own provider wrote it in. The
+      // code is the last resort rather than a reason to drop the service:
+      // a card with a raw `plumbing` on it is worse than the alternative only
+      // until you consider the alternative, which is the service vanishing
+      // from the browse because somebody forgot to translate its category.
+      const c = resolveTranslation(r.categoryTranslations, input.locale);
+
       items.push({
         id: r.id,
         providerId: r.providerId,
         providerName: r.providerName,
         providerSlug: r.providerSlug,
+        // Constrained to the two values by the column's own CHECK; narrowed
+        // the same way `DrizzleProviderPublicRepository` narrows it.
+        providerType: r.providerType as ServiceDTO["providerType"],
         categoryCode: r.categoryCode,
+        categoryName: c?.name ?? r.categoryCode,
         name: t.name,
         description: t.description,
         locationType: r.locationType,
@@ -110,6 +141,8 @@ export class ListServicesProjection {
           .map((k) => mediaUrl(k))
           .filter((u): u is string => u !== null),
         defaultOption: r.defaultOption,
+        fromAmountMinor: r.fromAmountMinor,
+        optionCount: r.optionCount,
         isFallback: t.isFallback,
       });
     }

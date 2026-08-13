@@ -92,6 +92,49 @@ describe("CollectionCard", () => {
     expect(screen.getAllByText("Nothing matches.").length).toBeGreaterThan(0);
   });
 
+  it("uses emptyText as the title when no title is given", () => {
+    // Every caller passed one sentence before the card grew a headline, and a
+    // caller that still does must keep saying that sentence rather than nothing.
+    renderCard({ rows: [], shown: 0, total: 0, filtered: false });
+    for (const node of screen.getAllByText("Nobody here yet.")) {
+      expect(node.tagName).toBe("H2");
+    }
+  });
+
+  it("puts emptyText under the title once there is one", () => {
+    renderCard({
+      rows: [],
+      shown: 0,
+      total: 0,
+      filtered: false,
+      emptyTitle: "Nobody here yet",
+    });
+    expect(screen.getAllByText("Nobody here yet")[0]!.tagName).toBe("H2");
+    expect(screen.getAllByText("Nobody here yet.")[0]!.tagName).toBe("P");
+  });
+
+  it("keeps the brand mark off a list that a filter emptied", () => {
+    // Nothing is missing — the filter is hiding it — so the mark would be
+    // claiming the list is empty when it is not.
+    const { container } = renderCard({
+      rows: [],
+      shown: 0,
+      total: 0,
+      filtered: true,
+    });
+    expect(container.querySelector("linearGradient")).toBeNull();
+  });
+
+  it("draws the brand mark on a list that is genuinely empty", () => {
+    const { container } = renderCard({
+      rows: [],
+      shown: 0,
+      total: 0,
+      filtered: false,
+    });
+    expect(container.querySelector("linearGradient")).toBeTruthy();
+  });
+
   it("renders an em dash for a cell the row did not supply", () => {
     renderCard({
       rows: [{ key: "r1", primary: <span>X</span>, cells: { role: "Admin" } }],
