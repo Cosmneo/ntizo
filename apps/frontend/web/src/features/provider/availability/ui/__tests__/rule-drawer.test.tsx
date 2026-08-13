@@ -81,7 +81,16 @@ describe("RuleDrawer", () => {
     await user.click(d.day("Tuesday"));
     await user.click(d.done);
 
-    expect(d.onSubmit).toHaveBeenCalledWith([{ weekday: 2, startMinute: 540, endMinute: 1020 }]);
+    expect(d.onSubmit).toHaveBeenCalledWith([
+      {
+        weekday: 2,
+        startMinute: 540,
+        endMinute: 1020,
+        bufferMinutes: null,
+        slotIntervalMinutes: null,
+        capacity: null,
+      },
+    ]);
   });
 
   it("a rule with no day chosen is refused rather than saved empty", async () => {
@@ -137,8 +146,22 @@ describe("RuleDrawer", () => {
 
     await user.click(d.done);
     expect(d.onSubmit).toHaveBeenCalledWith([
-      { weekday: 1, startMinute: 480, endMinute: 720 },
-      { weekday: 0, startMinute: 480, endMinute: 720 },
+      {
+        weekday: 1,
+        startMinute: 480,
+        endMinute: 720,
+        bufferMinutes: null,
+        slotIntervalMinutes: null,
+        capacity: null,
+      },
+      {
+        weekday: 0,
+        startMinute: 480,
+        endMinute: 720,
+        bufferMinutes: null,
+        slotIntervalMinutes: null,
+        capacity: null,
+      },
     ]);
   });
 
@@ -153,5 +176,58 @@ describe("RuleDrawer", () => {
 
     expect(d.onSubmit).not.toHaveBeenCalled();
     expect(d.start).toHaveAccessibleDescription("Enter a valid time, in the format 09:00.");
+  });
+
+  it("offers the three shape fields, each stating its default", async () => {
+    renderDrawer();
+
+    expect(screen.getByLabelText("Buffer time")).toHaveAttribute("placeholder", "Use default: 0 min");
+    // Not `getByLabelText` — a `<fieldset>`/`<legend>` pair is not a labellable
+    // element by the HTML spec `ChoiceChips` builds on, so its accessible name
+    // is only reachable through the `radiogroup` role, exactly how
+    // `choice-chips.test.tsx` in the shared package itself asserts it.
+    expect(screen.getByRole("radiogroup", { name: "Time grid" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Capacity")).toHaveAttribute(
+      "placeholder",
+      "Use default: 1 booking",
+    );
+  });
+
+  it("leaves an untouched field null rather than writing the default into it", async () => {
+    const user = userEvent.setup();
+    // "I did not say" and "I said 30" must stay different, or the day the
+    // default changes every untouched rule silently keeps the old one.
+    const d = renderDrawer();
+    await user.click(d.day("Monday"));
+    await user.click(d.done);
+
+    expect(d.onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ bufferMinutes: null, slotIntervalMinutes: null, capacity: null }),
+    ]);
+  });
+
+  it("offers 'no slots' as a grid choice", async () => {
+    const user = userEvent.setup();
+    const d = renderDrawer();
+
+    await user.click(d.day("Monday"));
+    await user.click(screen.getByRole("radio", { name: "No slots" }));
+    await user.click(d.done);
+
+    expect(d.onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ slotIntervalMinutes: 0 }),
+    ]);
+  });
+
+  it("refuses a capacity below one", async () => {
+    const user = userEvent.setup();
+    const d = renderDrawer();
+
+    await user.click(d.day("Monday"));
+    await user.type(screen.getByLabelText("Capacity"), "0");
+    await user.click(d.done);
+
+    expect(d.onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText("At least one booking must fit.")).toBeInTheDocument();
   });
 });

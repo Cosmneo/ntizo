@@ -12,6 +12,12 @@ const CONFIG = `
         userId
         name
         role
+        # Not bufferMinutes/slotIntervalMinutes/capacity — the read model
+        # behind this query does not expose them yet, so a rule opened for
+        # editing cannot show what was saved for its own shape. The drawer's
+        # three new fields therefore always start blank ("use the default")
+        # rather than echoing a previous choice; wiring the read side
+        # through is separate work, not this screen's.
         weekly { id weekday startMinute endMinute }
         exceptions { id onDate kind startMinute endMinute note }
       }
@@ -49,6 +55,14 @@ export interface SetWeeklyPatternInput {
   rules: WeeklyRuleDraft[];
 }
 
+/**
+ * `input` is sent to the wire exactly as built — no field list here to keep
+ * in sync. `rules` carries `bufferMinutes`/`slotIntervalMinutes`/`capacity`
+ * whenever `WeeklyRuleDraft` sets them, `null` and all, because
+ * `AvailabilitySetWeeklyPatternInput`'s own rule type already accepts them as
+ * optional and nullable (see `weeklyRuleInput` in the backend's mutation
+ * schema) — this file has nothing to add to make that flow through.
+ */
 export async function setWeeklyPattern(input: SetWeeklyPatternInput): Promise<void> {
   await sessionGraphql(SET_WEEKLY_PATTERN, { input });
 }

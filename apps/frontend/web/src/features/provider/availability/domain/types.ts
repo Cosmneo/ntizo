@@ -17,18 +17,37 @@ export type ExceptionKind = AvailabilityException["kind"];
 export type HouseClosure = AvailabilityConfigDTO["closures"][number];
 
 /**
- * A weekly rule as the form edits it — weekday, start and end minute, and
- * nothing else.
+ * A weekly rule as the form edits it — weekday, start and end minute, plus
+ * the rule's own optional shape.
  *
  * Deliberately id-less: `availability.setWeeklyPattern` replaces a member's
  * entire week in one call rather than adding or removing rows by id, so a
  * draft row never needs a server identity to be savable, and `overlaps()`
  * below works the same on a row that has been saved and one that has not.
+ *
+ * The three shape fields are optional as well as nullable, mirroring the
+ * mutation's own `nullish()` inputs: a caller that never mentions them (every
+ * row `groupRules` rebuilds, the cards, the week preview) and one that sets
+ * them to `null` are saying the same thing, "use the default". The rule
+ * drawer is the one place that must tell the two apart from an *unset*
+ * value — a provider who never opened a field — so it always writes the key
+ * explicitly, `null` and not merely absent, on every row it hands back.
  */
 export interface WeeklyRuleDraft {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  /**
+   * `null` means "use the default", never "use zero". A provider who never
+   * opened the buffer field must keep saying that forever, even after the
+   * platform's own default changes, which is only possible if "I did not
+   * say" and "I said the number the default happens to be today" are kept
+   * as different values all the way to the database.
+   */
+  bufferMinutes?: number | null;
+  /** `0` is a real, distinct value here — it means the window offers no slots at all, not "use the default". */
+  slotIntervalMinutes?: number | null;
+  capacity?: number | null;
 }
 
 /** True for the one-member case: an individual provider, not an organization with staff. */
