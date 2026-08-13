@@ -252,7 +252,6 @@
     "basics": "The essentials",
     "booking": "How it is charged",
     "performers": "Who does it",
-    "timing": "Timing",
     "pricing": "Prices",
     "languages": "Languages",
     "review": "Check and publish"
@@ -261,7 +260,6 @@
     "basics": "What service are you offering?",
     "booking": "How is it charged?",
     "performers": "Who performs it?",
-    "timing": "How does it sit in a day?",
     "pricing": "What does it cost?",
     "languages": "What languages is it offered in?",
     "review": "Ready to publish?"
@@ -270,7 +268,6 @@
     "basics": "The name customers see, the category they find it under, and where it happens.",
     "booking": "A set price they book straight away, or a quote you send after seeing the request.",
     "performers": "Everyone you tick here can be booked for this service.",
-    "timing": "Dead time after an appointment, and the grid start times land on.",
     "pricing": "Add one option for every version of this service you sell.",
     "languages": "Optional. Anything you leave blank falls back to the original language.",
     "review": "One last look before this goes on the marketplace."
@@ -306,11 +303,6 @@
   },
   "serviceMembersQuestion": "Chi si occupa di questo servizio?",
   "serviceMembersHint": "Scegli chi nel team può essere prenotato per questo servizio.",
-  "serviceBuffer": "Tempo cuscinetto",
-  "serviceBufferHint": "Copre la pulizia o il tragitto fino all'indirizzo successivo.",
-  "serviceBufferError": "Deve essere un numero tra 0 e 480 minuti.",
-  "serviceSlotInterval": "Griglia oraria",
-  "serviceSlotIntervalHint": "Ogni quanto iniziano gli orari disponibili.",
   "serviceSlotInterval15": "15 minuti",
   "serviceSlotInterval30": "30 minuti",
   "serviceSlotInterval60": "60 minuti",

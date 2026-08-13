@@ -7,12 +7,6 @@ import {
 } from "@ntizo/shared";
 import type { ProviderService, ServiceOption } from "./types";
 
-/** What `service.update`/`service.create` accept for the grid — the DB's own check constraint mirrored client-side. */
-export type SlotIntervalMinutes = 15 | 30 | 60;
-
-/** The three grids, in the order the select offers them. */
-export const SLOT_INTERVAL_OPTIONS: readonly SlotIntervalMinutes[] = [15, 30, 60];
-
 /**
  * The form's own copy of a service, before it exists on the server.
  *
@@ -30,16 +24,6 @@ export interface ServiceDraft {
   description: string;
   locationType: ServiceLocationType | "";
   bookingMode: ServiceBookingMode;
-  /**
-   * Dead time after an appointment, in minutes — cleanup, or the journey to
-   * the next address. A plain number, not a string like `OptionDraft`'s
-   * amount fields: unlike a currency amount, `0` is itself the correct
-   * default (no buffer), not a placeholder for "not yet typed", so there is
-   * no separate empty state to preserve between the draft and the input.
-   */
-  bufferMinutes: number;
-  /** The grid offered start times land on, anchored to local midnight. */
-  slotIntervalMinutes: SlotIntervalMinutes;
   /**
    * Who performs this service — `provider_member.id`s. Empty is a real,
    * submittable state for a draft or for an individual provider (one member,
@@ -66,8 +50,6 @@ export function emptyDraft(creatorMemberId?: string): ServiceDraft {
     description: "",
     locationType: "",
     bookingMode: "priced",
-    bufferMinutes: 0,
-    slotIntervalMinutes: 30,
     memberIds: creatorMemberId ? [creatorMemberId] : [],
   };
 }
@@ -82,34 +64,12 @@ export function draftFrom(service: ProviderService): ServiceDraft {
     description: source?.description ?? "",
     locationType: service.locationType,
     bookingMode: service.bookingMode,
-    bufferMinutes: service.bufferMinutes,
-    slotIntervalMinutes: service.slotIntervalMinutes,
     memberIds: service.memberIds,
   };
 }
 
-/**
- * The buffer input's raw text, parsed to a whole number of minutes.
- *
- * An empty field reads as `0` — the same "no buffer" the draft already
- * starts with — never `NaN`. A bare `Number(...)`/`parseInt(...)` on an
- * empty string, or on anything that isn't a plain integer, produces `NaN`,
- * which is falsy in every range check that matters (`NaN > 480` is `false`
- * too, so an invalid value could slip past validation silently) and renders
- * back into the input as the literal text "NaN" the moment it round-trips.
- * Deliberately not clamped to [0, 480] here — a typed `500` has to survive
- * into the draft as `500` so `serviceDraftErrors` has something to refuse;
- * clamping here would make that refusal unreachable.
- */
-export function parseBufferMinutes(raw: string): number {
-  const trimmed = raw.trim();
-  if (trimmed === "") return 0;
-  const n = Number(trimmed);
-  return Number.isInteger(n) ? n : 0;
-}
-
 /** Which of the draft's fields would be refused, and why. Empty means ready to submit. */
-export type ServiceFieldErrors = Partial<Record<"bufferMinutes" | "memberIds", string>>;
+export type ServiceFieldErrors = Partial<Record<"memberIds", string>>;
 
 /**
  * Context `canSubmit`/`serviceDraftErrors` need beyond the draft itself —
@@ -138,11 +98,10 @@ const DEFAULT_CONTEXT: ServiceDraftContext = { individualProvider: true, publish
  * have nobody yet).
  */
 export function serviceDraftErrors(
-  draft: Pick<ServiceDraft, "bufferMinutes" | "memberIds">,
+  draft: Pick<ServiceDraft, "memberIds">,
   ctx: ServiceDraftContext = DEFAULT_CONTEXT,
 ): ServiceFieldErrors {
   const errors: ServiceFieldErrors = {};
-  if (draft.bufferMinutes < 0 || draft.bufferMinutes > 480) errors.bufferMinutes = "range";
   if (!ctx.individualProvider && ctx.published && draft.memberIds.length === 0) {
     errors.memberIds = "SERVICE_NEEDS_MEMBER";
   }

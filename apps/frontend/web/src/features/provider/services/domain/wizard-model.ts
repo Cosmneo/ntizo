@@ -1,5 +1,5 @@
 import type { ServiceBookingMode } from "@ntizo/shared";
-import { serviceDraftErrors, type ServiceDraft } from "./service-draft";
+import type { ServiceDraft } from "./service-draft";
 
 /**
  * The service wizard's steps, flat — one per screen, the shape the step rail
@@ -16,7 +16,6 @@ export type ServiceStep =
   | "basics"
   | "booking"
   | "performers"
-  | "timing"
   | "pricing"
   | "languages"
   | "review";
@@ -33,16 +32,15 @@ export const FIRST_STEP: ServiceStep = "basics";
 /**
  * The step that creates the service.
  *
- * Late, and not by choice: `service.create` wants the category, name,
- * location, booking mode, performers *and* the timing grid in one call, so
- * the wizard cannot write a row until the step that collects the last of
- * them is done. Only options and translations come after — they are separate
- * mutations addressed by the id this step produces.
+ * `booking`, because it is the last step that exists in *every* shape before
+ * `pricing` — `performers` is dropped for an individual provider, so it cannot
+ * be relied on. It moved here from `timing` when the buffer and the grid left
+ * the service for the availability rule that owns them.
  *
  * The same trade the onboarding wizard makes at `CREATES_PROVIDER`: creating
  * earlier would leave a half-built row behind every abandoned attempt.
  */
-export const CREATES_SERVICE: ServiceStep = "timing";
+export const CREATES_SERVICE: ServiceStep = "booking";
 
 /**
  * The steps this service is asked, in order.
@@ -58,8 +56,6 @@ export function stepsFor(input: ShapeInput): readonly ServiceStep[] {
   const steps: ServiceStep[] = ["basics", "booking"];
 
   if (!input.individualProvider) steps.push("performers");
-
-  steps.push("timing");
 
   if (input.bookingMode === "priced") steps.push("pricing");
 
@@ -113,11 +109,10 @@ export function isReachable(
  * Whether this step's own answers are not yet fit to move on from.
  *
  * Per step, deliberately, and not "is the whole draft valid": Continue on
- * screen one must not report a fault on screen four. A provider who has typed
- * a name and picked a category should not be held there by a buffer they have
- * not been asked for yet.
+ * screen one must not report a fault on a later screen, whatever the shape
+ * happens to be asking there.
  *
- * Only two steps have anything to refuse. `booking` always carries a real
+ * Only `basics` has anything to refuse. `booking` always carries a real
  * mode; `performers` may legitimately be empty on a draft (only a *published*
  * organization service needs one, which `serviceDraftErrors` checks with its
  * own context and `publishBlocker` reports on the review screen); `pricing`,
@@ -131,11 +126,6 @@ export function stepBlocks(step: ServiceStep, draft: ServiceDraft): boolean {
       draft.name.trim().length === 0 ||
       draft.locationType === ""
     );
-  }
-  if (step === "timing") {
-    // The same [0, 480] the server accepts, asked through the one function
-    // that owns that range rather than repeating the bounds here.
-    return serviceDraftErrors(draft).bufferMinutes !== undefined;
   }
   return false;
 }

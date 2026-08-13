@@ -252,7 +252,6 @@
     "basics": "O essencial",
     "booking": "Como é cobrado",
     "performers": "Quem o faz",
-    "timing": "Tempos",
     "pricing": "Preços",
     "languages": "Idiomas",
     "review": "Rever e publicar"
@@ -261,7 +260,6 @@
     "basics": "Que serviço está a oferecer?",
     "booking": "Como é cobrado?",
     "performers": "Quem o realiza?",
-    "timing": "Como se encaixa no dia?",
     "pricing": "Quanto custa?",
     "languages": "Em que idiomas é oferecido?",
     "review": "Pronto para publicar?"
@@ -270,7 +268,6 @@
     "basics": "O nome que os clientes veem, a categoria onde o encontram e onde acontece.",
     "booking": "Um preço fixo que reservam de imediato, ou um orçamento que envia depois de ver o pedido.",
     "performers": "Todos os que assinalar aqui podem ser reservados para este serviço.",
-    "timing": "O tempo morto depois de um serviço, e a grelha onde as horas de início assentam.",
     "pricing": "Adicione uma opção por cada versão deste serviço que vende.",
     "languages": "Opcional. O que deixar em branco recorre ao idioma original.",
     "review": "Uma última vista de olhos antes de isto ir para o mercado."
@@ -306,11 +303,6 @@
   },
   "serviceMembersQuestion": "Quem faz este serviço?",
   "serviceMembersHint": "Escolha quem da equipa pode ser chamado para este serviço.",
-  "serviceBuffer": "Tempo de intervalo",
-  "serviceBufferHint": "Cobre a limpeza ou a viagem até ao endereço seguinte.",
-  "serviceBufferError": "Tem de ser um número entre 0 e 480 minutos.",
-  "serviceSlotInterval": "Grelha de horários",
-  "serviceSlotIntervalHint": "De quanto em quanto tempo os horários disponíveis começam.",
   "serviceSlotInterval15": "15 minutos",
   "serviceSlotInterval30": "30 minutos",
   "serviceSlotInterval60": "60 minutos",

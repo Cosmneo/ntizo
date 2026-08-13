@@ -20,12 +20,11 @@ const ORGANIZATION_PRICED: ShapeInput = {
 };
 
 describe("stepsFor", () => {
-  test("an organization selling a priced service walks all seven steps", () => {
+  test("an organization selling a priced service walks six steps", () => {
     expect(stepsFor(ORGANIZATION_PRICED)).toEqual([
       "basics",
       "booking",
       "performers",
-      "timing",
       "pricing",
       "languages",
       "review",
@@ -50,15 +49,18 @@ describe("stepsFor", () => {
     expect(stepsFor({ individualProvider: true, bookingMode: "quote" })).toEqual([
       "basics",
       "booking",
-      "timing",
       "languages",
       "review",
     ]);
   });
 
-  test("the step that creates the service is always present", () => {
-    // Everything after it needs an id to exist. A shape that dropped it would
-    // strand the wizard with no way to save.
+  test("the service is created on the way out of the booking step", () => {
+    // It has to be the last step that always exists before `pricing`, and
+    // `performers` does not exist for an individual provider.
+    expect(CREATES_SERVICE).toBe("booking");
+  });
+
+  test("the step that creates the service is present in every shape", () => {
     for (const individualProvider of [true, false]) {
       for (const bookingMode of ["priced", "quote"] as const) {
         expect(stepsFor({ individualProvider, bookingMode })).toContain(CREATES_SERVICE);
@@ -66,13 +68,11 @@ describe("stepsFor", () => {
     }
   });
 
-  test("the steps that need a saved service all come after the one that creates it", () => {
-    // `pricing` writes options and `languages` writes translations; both are
-    // mutations addressed by service id.
+  test("the steps that need a saved service still come after it", () => {
     const steps = stepsFor(ORGANIZATION_PRICED);
-    const createIndex = steps.indexOf(CREATES_SERVICE);
+    const created = steps.indexOf(CREATES_SERVICE);
     for (const needsId of ["pricing", "languages"] as const) {
-      expect(steps.indexOf(needsId)).toBeGreaterThan(createIndex);
+      expect(steps.indexOf(needsId)).toBeGreaterThan(created);
     }
   });
 
@@ -87,14 +87,14 @@ describe("nextStep / previousStep", () => {
 
   test("walks forward through the shape it is given", () => {
     expect(nextStep("basics", steps)).toBe("booking");
-    expect(nextStep("timing", steps)).toBe("pricing");
+    expect(nextStep("performers", steps)).toBe("pricing");
   });
 
   test("skips a step the shape omitted rather than landing on it", () => {
     // `booking` is followed by `performers` for an organization, but an
-    // individual provider has no such step — the next one is `timing`.
+    // individual provider has no such step — the next one is `pricing`.
     const individual = stepsFor({ individualProvider: true, bookingMode: "priced" });
-    expect(nextStep("booking", individual)).toBe("timing");
+    expect(nextStep("booking", individual)).toBe("pricing");
   });
 
   test("review is terminal", () => {
@@ -106,7 +106,7 @@ describe("nextStep / previousStep", () => {
   });
 
   test("walks backward through the shape it is given", () => {
-    expect(previousStep("pricing", steps)).toBe("timing");
+    expect(previousStep("pricing", steps)).toBe("performers");
   });
 });
 
@@ -115,12 +115,12 @@ describe("isReachable", () => {
 
   test("an unsaved service may only go back", () => {
     // Forward would skip the step that creates it.
-    expect(isReachable("basics", "timing", { saved: false }, steps)).toBe(true);
-    expect(isReachable("pricing", "timing", { saved: false }, steps)).toBe(false);
+    expect(isReachable("basics", "performers", { saved: false }, steps)).toBe(true);
+    expect(isReachable("pricing", "performers", { saved: false }, steps)).toBe(false);
   });
 
   test("the step someone is on is always reachable", () => {
-    expect(isReachable("timing", "timing", { saved: false }, steps)).toBe(true);
+    expect(isReachable("performers", "performers", { saved: false }, steps)).toBe(true);
   });
 
   test("a saved service may jump to any step", () => {
@@ -137,15 +137,15 @@ describe("isReachable", () => {
 
 describe("stepProgress", () => {
   test("counts against the shape's own length, not the widest one", () => {
-    // An individual provider quoting sees five steps; telling them they are on
-    // "3 of 7" would count two screens they will never be shown.
+    // An individual provider quoting sees four steps; telling them they are
+    // on "3 of 6" would count two screens they will never be shown.
     const individual = stepsFor({ individualProvider: true, bookingMode: "quote" });
-    expect(stepProgress("timing", individual)).toEqual({ current: 3, total: 5 });
+    expect(stepProgress("languages", individual)).toEqual({ current: 3, total: 4 });
   });
 
   test("is one-based at the first step", () => {
     const steps = stepsFor(ORGANIZATION_PRICED);
-    expect(stepProgress("basics", steps)).toEqual({ current: 1, total: 7 });
+    expect(stepProgress("basics", steps)).toEqual({ current: 1, total: 6 });
   });
 });
 
@@ -176,44 +176,20 @@ describe("stepBlocks", () => {
     expect(stepBlocks("basics", answered())).toBe(false);
   });
 
-  test("timing refuses a buffer outside the range the server accepts", () => {
-    expect(stepBlocks("timing", { ...answered(), bufferMinutes: 500 })).toBe(true);
-    expect(stepBlocks("timing", { ...answered(), bufferMinutes: -1 })).toBe(true);
-  });
-
-  test("timing accepts a buffer inside it, zero included", () => {
-    expect(stepBlocks("timing", { ...answered(), bufferMinutes: 0 })).toBe(false);
-    expect(stepBlocks("timing", { ...answered(), bufferMinutes: 480 })).toBe(false);
-  });
-
-  test("a step with nothing to refuse never blocks", () => {
+  test("no other step has anything to refuse", () => {
     // Booking mode always carries a real value; performers may legitimately
     // be empty on a draft; pricing, languages and review write through their
     // own mutations rather than the draft.
     for (const step of ["booking", "performers", "pricing", "languages", "review"] as const) {
-      expect(stepBlocks(step, { ...answered(), categoryId: "", bufferMinutes: 900 })).toBe(false);
+      expect(stepBlocks(step, { ...answered(), categoryId: "" })).toBe(false);
     }
-  });
-
-  test("the essentials do not block on another step's problem", () => {
-    // A bad buffer is `timing`'s refusal to make, not step 1's — otherwise
-    // Continue on screen one reports a fault on screen four.
-    expect(stepBlocks("basics", { ...answered(), bufferMinutes: 900 })).toBe(false);
   });
 });
 
 describe("the step union", () => {
   test("every step the type allows appears in the widest shape", () => {
     // Guards against adding a `ServiceStep` the wizard can never route to.
-    const all: ServiceStep[] = [
-      "basics",
-      "booking",
-      "performers",
-      "timing",
-      "pricing",
-      "languages",
-      "review",
-    ];
+    const all: ServiceStep[] = ["basics", "booking", "performers", "pricing", "languages", "review"];
     expect(stepsFor(ORGANIZATION_PRICED)).toEqual(all);
   });
 });
