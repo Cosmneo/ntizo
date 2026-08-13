@@ -111,10 +111,10 @@
   "reviewsTitle": "Bewertungen",
   "reviewsStarsLabel": "{{count}} von 5 Sternen",
   "reviewsReplyLabel": "Antwort des Anbieters",
-  "factsDurationLabel": "Dauer",
   "factsAreaLabel": "Einsatzgebiet",
   "factsCancellationLabel": "Stornierungsbedingungen",
-  "factsDurationValue": "{{min}}–{{max}} Std.",
   "factsAreaValue": "{{city}} + {{radius}} km",
-  "factsCancellationValue": "Kostenlos bis {{hours}} Std. vorher"
+  "factsCancellationValue": "Kostenlos bis {{hours}} Std. vorher",
+  "packageDuration": "Dauer",
+  "packagesUnavailableNotice": "Für diesen Dienst ist derzeit kein buchbares Paket verfügbar. Bitte schauen Sie bald wieder vorbei."
 }

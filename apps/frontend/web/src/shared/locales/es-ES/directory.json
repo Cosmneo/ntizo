@@ -111,10 +111,10 @@
   "reviewsTitle": "Valoraciones",
   "reviewsStarsLabel": "{{count}} de 5 estrellas",
   "reviewsReplyLabel": "Respuesta del proveedor",
-  "factsDurationLabel": "Duración",
   "factsAreaLabel": "Zona de servicio",
   "factsCancellationLabel": "Política de cancelación",
-  "factsDurationValue": "{{min}}–{{max}} horas",
   "factsAreaValue": "{{city}} + {{radius}} km",
-  "factsCancellationValue": "Gratis hasta {{hours}}h antes"
+  "factsCancellationValue": "Gratis hasta {{hours}}h antes",
+  "packageDuration": "Duración",
+  "packagesUnavailableNotice": "Actualmente este servicio no tiene ningún paquete disponible para reservar. Vuelve a comprobarlo pronto."
 }

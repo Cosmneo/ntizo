@@ -111,10 +111,10 @@
   "reviewsTitle": "Reviews",
   "reviewsStarsLabel": "{{count}} out of 5 stars",
   "reviewsReplyLabel": "Provider's reply",
-  "factsDurationLabel": "Duration",
   "factsAreaLabel": "Service area",
   "factsCancellationLabel": "Cancellation policy",
-  "factsDurationValue": "{{min}}–{{max}} hours",
   "factsAreaValue": "{{city}} + {{radius}} km",
-  "factsCancellationValue": "Free up to {{hours}}h before"
+  "factsCancellationValue": "Free up to {{hours}}h before",
+  "packageDuration": "Duration",
+  "packagesUnavailableNotice": "This service doesn't currently have a bookable package. Please check back soon."
 }

@@ -111,10 +111,10 @@
   "reviewsTitle": "Beoordelingen",
   "reviewsStarsLabel": "{{count}} van de 5 sterren",
   "reviewsReplyLabel": "Reactie van de aanbieder",
-  "factsDurationLabel": "Duur",
   "factsAreaLabel": "Werkgebied",
   "factsCancellationLabel": "Annuleringsbeleid",
-  "factsDurationValue": "{{min}}–{{max}} uur",
   "factsAreaValue": "{{city}} + {{radius}} km",
-  "factsCancellationValue": "Gratis tot {{hours}} uur van tevoren"
+  "factsCancellationValue": "Gratis tot {{hours}} uur van tevoren",
+  "packageDuration": "Duur",
+  "packagesUnavailableNotice": "Deze dienst heeft momenteel geen boekbaar pakket. Kom binnenkort terug."
 }

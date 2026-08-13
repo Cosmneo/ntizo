@@ -111,10 +111,10 @@
   "reviewsTitle": "Avis",
   "reviewsStarsLabel": "{{count}} sur 5 étoiles",
   "reviewsReplyLabel": "Réponse du prestataire",
-  "factsDurationLabel": "Durée",
   "factsAreaLabel": "Zone d'intervention",
   "factsCancellationLabel": "Politique d'annulation",
-  "factsDurationValue": "{{min}}–{{max}} heures",
   "factsAreaValue": "{{city}} + {{radius}} km",
-  "factsCancellationValue": "Gratuit jusqu'à {{hours}}h avant"
+  "factsCancellationValue": "Gratuit jusqu'à {{hours}}h avant",
+  "packageDuration": "Durée",
+  "packagesUnavailableNotice": "Ce service n'a actuellement aucun forfait réservable. Revenez bientôt."
 }

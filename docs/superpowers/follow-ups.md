@@ -816,7 +816,11 @@ valuable than the browse's spelling.
 ## 43. The service detail page renders invented ratings and reviews
 
 `/services/$id` ships its rating, its review list, its service radius and its
-cancellation policy from `service-detail-placeholders.ts`. There is no Review
+cancellation policy from `service-detail-placeholders.tsx`. It is not the only
+place: `features/landing/domain/mock-content.ts` already carried the identical
+seed — 4.3, 130 reviews, the same invented reviewer names — before that page
+existed. Both go, or neither does; an entry naming one of two places gets
+half-actioned. There is no Review
 context to read them from, and — decided deliberately on 2026-08-13 — no flag
 separating them from the real sections around them.
 
@@ -829,6 +833,30 @@ module and the four sections that read it, or gate it behind an environment
 variable that is off in production. The second was offered and declined at the
 time; the first costs nothing once the sections have served their purpose of
 showing what the page will look like.
+
+Precisely what "delete the placeholder module" is: `service-detail-placeholders.tsx`'s
+own header says *three* call sites, and this entry says *four* sections — both
+are correct, and they answer different questions. `ServiceRating`,
+`ServiceFacts` and `ServiceReviews` are the three components
+`service-detail-page.tsx` mounts; `ServiceFacts` alone renders two of the four
+fabricated facts (service radius, cancellation policy), alongside the rating
+and the review list each of the other two components renders. Whoever actions
+this needs the four, because that is the unit a reader can see and believe,
+not the three components that happen to produce them. (Duration was briefly a
+fifth fabricated fact inside `ServiceFacts` — "4–12 horas" beside a real price
+— and is not part of this entry's scope any more: it was replaced with real
+data, `optionDurationMinutes`, rendered by `PackageChooser` instead, in the
+same pass that corrected this count.)
+
+Deleting the module also orphans locale keys nothing else reads: `ratingCount`
+(and its plural sibling `ratingCount_other`), `ratingAriaLabel`,
+`reviewsTitle`, `reviewsStarsLabel`, `reviewsReplyLabel`, `factsAreaLabel`,
+`factsAreaValue`, `factsCancellationLabel`, `factsCancellationValue` — 9 keys,
+10 JSON lines per locale file once `ratingCount`'s plural sibling is counted.
+Repeated in all eight locale files (`src/shared/locales/*/directory.json`),
+that is 80 lines the parity test (`i18n-parity.test.ts`) will never flag,
+because it checks that every locale carries the same keys, not that a key is
+still read by anything.
 
 **Trigger:** before the first real provider is onboarded, or before any deploy
 that a customer can reach — whichever comes first. This is not a tidy-up; it is
