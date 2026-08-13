@@ -16,16 +16,24 @@ import { AvailabilitySheet } from "@/features/directory/availability/ui/availabi
 import type { ServiceDTO } from "@/features/directory/services/domain/types";
 
 /**
- * `AvailabilitySheet` (and the calendar components it composes) was built for
- * `services-section.tsx`, which hands it the browse card's own `ServiceDTO` —
- * `defaultOption`, `fromAmountMinor`, `optionCount`. This page fetches the
- * fuller `ServiceDetailDTO` instead, whose `options` is the complete,
- * cheapest-first list rather than one server-resolved default. Same
- * underlying facts, a different shape for a different question ("what can a
- * card show" versus "what can a chooser offer"), so this adapts one to the
- * other here rather than widening `AvailabilitySheet`'s own prop — the design
- * spec keeps that component, `DateStrip`, `TimeGrid` and `MemberPicker`
- * unchanged apart from the picker's own labels.
+ * Bridges this page's `ServiceDetailDTO` to the `ServiceDTO` shape
+ * `AvailabilitySheet` actually reads.
+ *
+ * The two are the same service described for two different questions.
+ * `ServiceDTO` is `services-section.tsx`'s browse-card model: one price to
+ * show, already resolved server-side to `defaultOption` /`fromAmountMinor` /
+ * `optionCount`. `ServiceDetailDTO` is this page's own, fuller model: the
+ * complete, cheapest-first `options` list a chooser can offer, not one
+ * card's single price. Nothing here is invented — `defaultOption` is derived
+ * by the same "marked default, else first" rule `PackageChooser` already
+ * applies to the same list, and `fromAmountMinor`/`optionCount` read off the
+ * list `AvailabilitySheet` never sees in full.
+ *
+ * Kept as a local, unexported function in the one page that needs it rather
+ * than moved into `domain/`, since nothing else in this feature converts
+ * between these two shapes yet — see the Task 10 report for why that
+ * placement is a call worth a reviewer's second look rather than a settled
+ * one.
  */
 function toAvailabilityService(service: ServiceDetailDTO): ServiceDTO {
   const cheapest = service.options[0] ?? null;
@@ -144,6 +152,7 @@ export function ServiceDetailPage({ id }: { id: string }) {
           <AvailabilitySheet
             key={service.id}
             service={toAvailabilityService(service)}
+            performers={service.performers}
             open
             onOpenChange={(open) => {
               if (!open) setAvailabilityOpen(false);

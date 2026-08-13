@@ -39,10 +39,20 @@ export function AvailabilitySheet({
   service,
   open,
   onOpenChange,
+  performers,
 }: {
   service: ServiceDTO;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * First names to label the member picker's roster with, keyed by matching
+   * id. Optional: `services-section.tsx` mounts this same sheet on a
+   * provider's public page with no performer data in hand, and must keep
+   * showing `MemberPicker`'s own numbered fallback exactly as it does today —
+   * see that component's doc comment for why the fallback is not merely a
+   * loading state but a real, permanent answer for an id it cannot name.
+   */
+  performers?: readonly { id: string; firstName: string }[];
 }) {
   const { t, i18n } = useTranslation("directory");
   const locale = i18n.resolvedLanguage ?? i18n.language;
@@ -137,7 +147,12 @@ export function AvailabilitySheet({
           onPreviousWeek={() => goToWeek(addDays(anchorDate, -7))}
           onNextWeek={() => goToWeek(addDays(anchorDate, 7))}
         />
-        <MemberPicker memberIds={memberIds} selectedMemberId={selectedMemberId} onChange={selectMember} />
+        <MemberPicker
+          memberIds={memberIds}
+          selectedMemberId={selectedMemberId}
+          onChange={selectMember}
+          performers={performers}
+        />
         <TimeGrid
           starts={day?.starts ?? []}
           pricingMode={data.pricingMode}
