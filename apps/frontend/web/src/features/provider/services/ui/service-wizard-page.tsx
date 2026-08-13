@@ -33,7 +33,8 @@ import { StepReview } from "./steps/step-review";
  * and the viewmodel.
  */
 export function ServiceWizardPage() {
-  const { t } = useTranslation("provider");
+  const { t, i18n } = useTranslation("provider");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
   const vm = useServiceWizard();
 
   if (!vm.provider) return null;
@@ -102,6 +103,13 @@ export function ServiceWizardPage() {
         return (
           <StepReview
             service={vm.current}
+            categoryLabel={
+              vm.categories.options.find((o) => o.value === vm.draft.categoryId)?.label ?? ""
+            }
+            memberNames={vm.members
+              .filter((m) => vm.draft.memberIds.includes(m.memberId))
+              .map((m) => m.name ?? m.userId)}
+            locale={locale}
             blocker={vm.blocker}
             blockerStep={vm.blockerStep}
             onSeek={vm.seek}
