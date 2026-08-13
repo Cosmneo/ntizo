@@ -52,10 +52,6 @@ export interface ServiceProps {
   status: "draft" | "published" | "archived";
   imageKeys: string[];
   sortOrder: number;
-  /** Dead time after an appointment: cleanup, or the journey to the next address. */
-  bufferMinutes: number;
-  /** The grid offered start times land on, anchored to local midnight. */
-  slotIntervalMinutes: number;
   options: ServiceOptionProps[];
   translations: ServiceTranslationProps[];
   quoteForm: QuoteFormProps | null;
@@ -83,8 +79,6 @@ export class Service {
     bookingMode: "priced" | "quote";
     name: string;
     description?: string | null;
-    bufferMinutes?: number;
-    slotIntervalMinutes?: number;
   }): Service {
     const now = new Date();
     const service = new Service({
@@ -98,12 +92,6 @@ export class Service {
       status: "draft",
       imageKeys: [],
       sortOrder: 0,
-      // Same defaults as the `service` table's own columns, restated here
-      // rather than left to the database: an aggregate created and read back
-      // without a round trip (every test in this file) must see the same
-      // values the row would eventually carry.
-      bufferMinutes: params.bufferMinutes ?? 0,
-      slotIntervalMinutes: params.slotIntervalMinutes ?? 30,
       options: [],
       memberIds: [],
       // The name they typed, in the language they typed it. This row is what
@@ -135,17 +123,11 @@ export class Service {
     locationType?: string;
     imageKeys?: string[];
     sortOrder?: number;
-    bufferMinutes?: number;
-    slotIntervalMinutes?: number;
   }): void {
     if (params.categoryId !== undefined) this.props.categoryId = params.categoryId;
     if (params.locationType !== undefined) this.props.locationType = params.locationType;
     if (params.imageKeys !== undefined) this.props.imageKeys = params.imageKeys;
     if (params.sortOrder !== undefined) this.props.sortOrder = params.sortOrder;
-    if (params.bufferMinutes !== undefined) this.props.bufferMinutes = params.bufferMinutes;
-    if (params.slotIntervalMinutes !== undefined) {
-      this.props.slotIntervalMinutes = params.slotIntervalMinutes;
-    }
     this.touch();
   }
 

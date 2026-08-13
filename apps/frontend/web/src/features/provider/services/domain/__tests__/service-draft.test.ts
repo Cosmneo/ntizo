@@ -192,17 +192,14 @@ describe("draftFrom", () => {
       { locale: "en-US", name: "Haircut", description: "A simple cut." },
     ],
     options: [],
-    bufferMinutes: 10,
-    slotIntervalMinutes: 15,
     memberIds: ["member-1", "member-2"],
   };
 
   it("seeds the draft from the source locale's own translation, not the reader's", () => {
     // Editing happens in the language the service was written in, regardless
-    // of which language the provider's own console happens to be in.
-    // `bufferMinutes`/`slotIntervalMinutes` still travel on `ProviderService`
-    // (the server keeps them until Task 10) but are not read into the draft —
-    // the rule that owns the buffer and the grid now lives on availability.
+    // of which language the provider's own console happens to be in. The
+    // buffer and the grid live on the availability rule, not on
+    // `ProviderService` at all — Task 10 dropped them from the service.
     expect(draftFrom(service)).toEqual({
       categoryId: "cat-1",
       sourceLocale: "pt-MZ",

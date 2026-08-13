@@ -94,8 +94,6 @@ const SAVED_SERVICE: ProviderService = {
   imageUrls: [],
   translations: [{ locale: "en-US", name: "Haircut", description: null }],
   options: [],
-  bufferMinutes: 0,
-  slotIntervalMinutes: 30,
   memberIds: ["m1"],
 };
 

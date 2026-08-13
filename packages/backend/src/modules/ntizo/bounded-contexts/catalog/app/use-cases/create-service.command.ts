@@ -12,8 +12,6 @@ export interface CreateServiceInput {
   bookingMode: "priced" | "quote";
   name: string;
   description?: string | null;
-  bufferMinutes?: number;
-  slotIntervalMinutes?: number;
 }
 
 export class CreateServiceCommand {
@@ -57,8 +55,6 @@ export class CreateServiceCommand {
       bookingMode: input.bookingMode,
       name: input.name.trim(),
       description: input.description?.trim() || null,
-      bufferMinutes: input.bufferMinutes,
-      slotIntervalMinutes: input.slotIntervalMinutes,
     });
     service.setMembers([creatorMemberId]);
 

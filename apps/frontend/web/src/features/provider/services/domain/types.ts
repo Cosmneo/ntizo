@@ -46,10 +46,6 @@ export interface ProviderService {
   imageUrls: string[];
   translations: ServiceTranslation[];
   options: ServiceOption[];
-  /** Dead time after an appointment: cleanup, or the journey to the next address. */
-  bufferMinutes: number;
-  /** The grid offered start times land on. Always 15, 30 or 60 — the DB's own check constraint. */
-  slotIntervalMinutes: 15 | 30 | 60;
   /** `provider_member.id`s who perform this service. Empty for a draft nobody has been assigned to yet. */
   memberIds: string[];
 }

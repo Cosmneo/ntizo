@@ -11,8 +11,6 @@ export interface ServiceRowSet {
     status: string;
     imageKeys: string[] | null;
     sortOrder: number;
-    bufferMinutes: number;
-    slotIntervalMinutes: number;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -57,8 +55,6 @@ export const serviceMapper = {
       status: rows.service.status as ServiceProps["status"],
       imageKeys: rows.service.imageKeys ?? [],
       sortOrder: rows.service.sortOrder,
-      bufferMinutes: rows.service.bufferMinutes,
-      slotIntervalMinutes: rows.service.slotIntervalMinutes,
       options: [...rows.options]
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((o) => ({
@@ -110,8 +106,6 @@ export const serviceMapper = {
         status: json.status,
         imageKeys: json.imageKeys,
         sortOrder: json.sortOrder,
-        bufferMinutes: json.bufferMinutes,
-        slotIntervalMinutes: json.slotIntervalMinutes,
         createdAt: json.createdAt,
         updatedAt: json.updatedAt,
       },

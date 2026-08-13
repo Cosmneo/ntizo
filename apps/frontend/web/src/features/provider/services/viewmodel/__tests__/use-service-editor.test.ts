@@ -30,8 +30,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 10,
-      slotIntervalMinutes: 15,
       memberIds: ["m1", "m2"],
       skipMembers: false,
     });
@@ -42,13 +40,11 @@ describe("saveService", () => {
     expect(Object.keys(createVariables.input).sort()).toEqual(
       [
         "bookingMode",
-        "bufferMinutes",
         "categoryId",
         "description",
         "locationType",
         "name",
         "providerId",
-        "slotIntervalMinutes",
         "sourceLocale",
       ].sort(),
     );
@@ -71,8 +67,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 0,
-      slotIntervalMinutes: 30,
       memberIds: ["m1", "m2"],
       skipMembers: false,
     });
@@ -95,8 +89,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 0,
-      slotIntervalMinutes: 30,
       memberIds: [],
       skipMembers: true,
     });
@@ -123,8 +115,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: "Um corte",
-      bufferMinutes: 5,
-      slotIntervalMinutes: 60,
       memberIds: ["m1"],
       skipMembers: false,
     });
@@ -136,8 +126,6 @@ describe("saveService", () => {
       serviceId: "svc-1",
       categoryId: "c1",
       locationType: "at_provider",
-      bufferMinutes: 5,
-      slotIntervalMinutes: 60,
     });
     const translationVariables = spy.mock.calls[1]![1] as { input: Record<string, unknown> };
     expect(translationVariables.input).toEqual({
@@ -165,8 +153,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 0,
-      slotIntervalMinutes: 30,
       memberIds: [],
       skipMembers: true,
     });
@@ -202,8 +188,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 0,
-      slotIntervalMinutes: 30,
       // The race: an organization (`skipMembers: false`), but
       // `useAvailabilityConfig`/`useCurrentUser` hadn't resolved by submit
       // time, so nothing got pre-ticked and nothing was checked by hand.
@@ -231,8 +215,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 0,
-      slotIntervalMinutes: 30,
       // The mirror of the case above: the queries had settled by submit
       // time, so the creator is pre-ticked.
       memberIds: ["creator-1"],
@@ -261,8 +243,6 @@ describe("saveService", () => {
       bookingMode: "priced",
       name: "Corte",
       description: null,
-      bufferMinutes: 0,
-      slotIntervalMinutes: 30,
       memberIds: [],
       skipMembers: false,
     });

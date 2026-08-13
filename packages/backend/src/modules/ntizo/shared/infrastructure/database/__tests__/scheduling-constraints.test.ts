@@ -128,13 +128,6 @@ async function insertClosure(overrides: { fromDate: string; toDate: string }) {
   });
 }
 
-async function updateServiceSlotInterval(slotIntervalMinutes: number) {
-  return await db
-    .update(service)
-    .set({ slotIntervalMinutes })
-    .where(eq(service.id, serviceId));
-}
-
 describe("scheduling CHECK constraints", () => {
   // Each case inserts a row the CHECK must refuse. The assertion is that the
   // insert throws — if the constraint is missing, the insert succeeds and the
@@ -173,10 +166,6 @@ describe("scheduling CHECK constraints", () => {
     await expect(
       insertClosure({ fromDate: "2026-12-26", toDate: "2026-12-24" }),
     ).rejects.toThrow();
-  });
-
-  test("refuses a slot interval that is not 15, 30 or 60", async () => {
-    await expect(updateServiceSlotInterval(20)).rejects.toThrow();
   });
 
   test("accepts a rule ending exactly at midnight", async () => {
