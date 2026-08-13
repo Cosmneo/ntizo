@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ProviderPublicDTO } from "@ntizo/shared";
+import type { ProviderPageDTO } from "@ntizo/shared/read-models";
 import { directoryQueries } from "@/features/directory/data/directory.repository";
 
 /**
@@ -10,7 +11,15 @@ import { directoryQueries } from "@/features/directory/data/directory.repository
  * boundaries lint rejects it, and it caught this exact import when the page was
  * first written. The indirection is not decoration: it is the one legal route.
  */
-export function useDirectory(search = ""): ProviderPublicDTO[] {
+/**
+ * The page of providers, not only its rows.
+ *
+ * Returns `total` alongside `items` because the two answer different
+ * questions: `items.length` is how many fit on this page, `total` is how many
+ * matched. The results line wants the second, and said the first until
+ * `providerList` began reporting both.
+ */
+export function useDirectory(search = ""): ProviderPageDTO {
   const { data } = useSuspenseQuery(directoryQueries.list(0, search));
   return data;
 }

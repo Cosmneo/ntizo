@@ -19,7 +19,10 @@ export function DirectoryPage() {
   // `strict: false` so this component stays usable outside its own route (and
   // testable without one); the route validates `q` before it ever gets here.
   const { q = "" } = useSearch({ strict: false }) as { q?: string };
-  const providers = useDirectory(q);
+  // `items` are the rows this page shows; `total` is how many matched. The
+  // results line states the second — with a page size of 20, counting the rows
+  // told somebody with 40 matches that they had 20.
+  const { items: providers, total } = useDirectory(q);
 
   return (
     <>
@@ -56,7 +59,7 @@ export function DirectoryPage() {
           <>
             {q ? (
               <p className="mt-8 text-sm text-[var(--color-muted-foreground)]">
-                {t("resultsFor", { count: providers.length, query: q })}
+                {t("resultsFor", { count: total, query: q })}
               </p>
             ) : null}
             <ul className="mt-6 grid gap-4 sm:grid-cols-2">

@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { ProviderPublicDTO } from "@ntizo/shared";
+import type { ProviderPageDTO } from "@ntizo/shared/read-models";
 import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
 import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listing";
 
@@ -13,7 +14,10 @@ const BY_SLUG = `
 const LIST = `
   query ProviderList($input: ProviderListInput!) {
     providerList(input: $input) {
-      id name slug type description city district country logoUrl
+      items {
+        id name slug type description city district country logoUrl
+      }
+      total
     }
   }`;
 
@@ -32,8 +36,12 @@ export const directoryQueries = {
   list: (offset = 0, search = "") =>
     queryOptions({
       queryKey: ["public", "providers", offset, search] as const,
-      queryFn: async (): Promise<ProviderPublicDTO[]> => {
-        const d = await publicGraphql<{ providerList: ProviderPublicDTO[] }>(LIST, {
+      // The whole page, not just its rows. `total` is how many providers match
+      // before the page size cuts in, and the results line is meant to state
+      // that number — counting the array instead makes 40 matches read as 20,
+      // which is the page size talking rather than the search.
+      queryFn: async (): Promise<ProviderPageDTO> => {
+        const d = await publicGraphql<{ providerList: ProviderPageDTO }>(LIST, {
           input: {
             limit: DIRECTORY_PAGE_SIZE,
             offset,
