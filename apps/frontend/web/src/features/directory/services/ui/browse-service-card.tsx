@@ -14,9 +14,10 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  * A sibling of `ServiceCard` rather than a prop on it, because the two answer
  * different questions. That one lives on a provider's own page, where the
  * business is already known and the card's job is to open its times. This one
- * is met cold: it has to say *whose* service it is, and it leads to the
- * provider's page rather than straight into a booking, because that page is
- * where the availability flow already lives.
+ * is met cold: it has to say *whose* service it is, and it leads straight to
+ * that service's own page — `/services/$id` — rather than to the provider's.
+ * A reader who clicked "Corte (A, com equipa)" wanted that service, not a
+ * chance to hunt for it again among everything else the barbershop offers.
  *
  * A `Link`, not a button. This is navigation, and a browse grid full of
  * buttons cannot be opened in a new tab, middle-clicked or crawled.
@@ -39,8 +40,8 @@ export function BrowseServiceCard({
   return (
     <li className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
       <Link
-        to="/providers/$slug"
-        params={{ slug: service.providerSlug }}
+        to="/services/$id"
+        params={{ id: service.id }}
         className="block transition-colors hover:bg-[var(--color-muted)]"
       >
         <div className="grid aspect-[4/3] w-full place-items-center overflow-hidden bg-[var(--color-muted)]">
