@@ -12,6 +12,11 @@ import { ServiceProviderCard } from "@/features/directory/services/ui/service-pr
 import { ServicePerformers } from "@/features/directory/services/ui/service-performers";
 import { PackageChooser } from "@/features/directory/services/ui/package-chooser";
 import { ServiceQuoteNotice } from "@/features/directory/services/ui/service-quote-notice";
+import {
+  ServiceFacts,
+  ServiceRating,
+  ServiceReviews,
+} from "@/features/directory/services/ui/service-detail-placeholders";
 import { AvailabilitySheet } from "@/features/directory/availability/ui/availability-sheet";
 import type { ServiceDTO } from "@/features/directory/services/domain/types";
 
@@ -112,13 +117,19 @@ export function ServiceDetailPage({ id }: { id: string }) {
           <div className="min-w-0">
             <ServiceGallery images={service.imageUrls} alt={service.name} />
             <h1 className="type-h1 mt-6">{service.name}</h1>
+            {/* Invented — see service-detail-placeholders.tsx. */}
+            <ServiceRating />
             <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
               {[service.categoryName, service.providerCity].filter(Boolean).join(" · ")}
             </p>
             {service.description && (
               <p className="type-body mt-6 whitespace-pre-line">{service.description}</p>
             )}
+            {/* Invented — see service-detail-placeholders.tsx. */}
+            <ServiceFacts />
             <ServicePerformers performers={service.performers} />
+            {/* Invented — see service-detail-placeholders.tsx. */}
+            <ServiceReviews />
           </div>
           <div className="grid gap-4 lg:sticky lg:top-4">
             {service.options.length === 0 ? (

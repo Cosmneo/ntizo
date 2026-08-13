@@ -104,5 +104,17 @@
   "packageBookingsClosed": "Buchungen sind auf Ntizo noch nicht möglich.",
   "packageContactProvider": "Anbieter kontaktieren",
   "packageContactClosed": "Nachrichten sind auf Ntizo noch nicht möglich.",
-  "availabilityCheckAction": "Verfügbarkeit ansehen"
+  "availabilityCheckAction": "Verfügbarkeit ansehen",
+  "ratingCount": "{{count}} Bewertung",
+  "ratingCount_other": "{{count}} Bewertungen",
+  "ratingAriaLabel": "{{rating}} von 5, {{count}} Bewertungen",
+  "reviewsTitle": "Bewertungen",
+  "reviewsStarsLabel": "{{count}} von 5 Sternen",
+  "reviewsReplyLabel": "Antwort des Anbieters",
+  "factsDurationLabel": "Dauer",
+  "factsAreaLabel": "Einsatzgebiet",
+  "factsCancellationLabel": "Stornierungsbedingungen",
+  "factsDurationValue": "{{min}}–{{max}} Std.",
+  "factsAreaValue": "{{city}} + {{radius}} km",
+  "factsCancellationValue": "Kostenlos bis {{hours}} Std. vorher"
 }

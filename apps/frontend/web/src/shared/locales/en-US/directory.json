@@ -104,5 +104,17 @@
   "packageBookingsClosed": "Bookings aren't open on Ntizo yet.",
   "packageContactProvider": "Contact provider",
   "packageContactClosed": "Messaging isn't open on Ntizo yet.",
-  "availabilityCheckAction": "See availability"
+  "availabilityCheckAction": "See availability",
+  "ratingCount": "{{count}} review",
+  "ratingCount_other": "{{count}} reviews",
+  "ratingAriaLabel": "{{rating}} out of 5, {{count}} reviews",
+  "reviewsTitle": "Reviews",
+  "reviewsStarsLabel": "{{count}} out of 5 stars",
+  "reviewsReplyLabel": "Provider's reply",
+  "factsDurationLabel": "Duration",
+  "factsAreaLabel": "Service area",
+  "factsCancellationLabel": "Cancellation policy",
+  "factsDurationValue": "{{min}}–{{max}} hours",
+  "factsAreaValue": "{{city}} + {{radius}} km",
+  "factsCancellationValue": "Free up to {{hours}}h before"
 }

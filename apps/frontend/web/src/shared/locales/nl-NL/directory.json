@@ -104,5 +104,17 @@
   "packageBookingsClosed": "Boekingen zijn nog niet mogelijk op Ntizo.",
   "packageContactProvider": "Aanbieder contacteren",
   "packageContactClosed": "Berichten versturen is nog niet mogelijk op Ntizo.",
-  "availabilityCheckAction": "Beschikbaarheid bekijken"
+  "availabilityCheckAction": "Beschikbaarheid bekijken",
+  "ratingCount": "{{count}} beoordeling",
+  "ratingCount_other": "{{count}} beoordelingen",
+  "ratingAriaLabel": "{{rating}} van de 5, {{count}} beoordelingen",
+  "reviewsTitle": "Beoordelingen",
+  "reviewsStarsLabel": "{{count}} van de 5 sterren",
+  "reviewsReplyLabel": "Reactie van de aanbieder",
+  "factsDurationLabel": "Duur",
+  "factsAreaLabel": "Werkgebied",
+  "factsCancellationLabel": "Annuleringsbeleid",
+  "factsDurationValue": "{{min}}–{{max}} uur",
+  "factsAreaValue": "{{city}} + {{radius}} km",
+  "factsCancellationValue": "Gratis tot {{hours}} uur van tevoren"
 }

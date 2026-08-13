@@ -104,5 +104,17 @@
   "packageBookingsClosed": "Les réservations ne sont pas encore ouvertes sur Ntizo.",
   "packageContactProvider": "Contacter le prestataire",
   "packageContactClosed": "La messagerie n'est pas encore ouverte sur Ntizo.",
-  "availabilityCheckAction": "Voir les disponibilités"
+  "availabilityCheckAction": "Voir les disponibilités",
+  "ratingCount": "{{count}} avis",
+  "ratingCount_other": "{{count}} avis",
+  "ratingAriaLabel": "{{rating}} sur 5, {{count}} avis",
+  "reviewsTitle": "Avis",
+  "reviewsStarsLabel": "{{count}} sur 5 étoiles",
+  "reviewsReplyLabel": "Réponse du prestataire",
+  "factsDurationLabel": "Durée",
+  "factsAreaLabel": "Zone d'intervention",
+  "factsCancellationLabel": "Politique d'annulation",
+  "factsDurationValue": "{{min}}–{{max}} heures",
+  "factsAreaValue": "{{city}} + {{radius}} km",
+  "factsCancellationValue": "Gratuit jusqu'à {{hours}}h avant"
 }
