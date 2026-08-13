@@ -3,7 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { providerPublicReadModel } from "@ntizo/shared/read-models";
 import type { ProviderPublicDTO } from "@ntizo/shared";
-import type { ProviderPublicRepositoryPort } from "../app/ports/outbound/provider-public.repository.port";
+import type {
+  ListActiveFilters,
+  ProviderPage,
+  ProviderPublicRepositoryPort,
+} from "../app/ports/outbound/provider-public.repository.port";
 import {
   ListPublicProvidersProjection,
   MAX_PUBLIC_PAGE_SIZE,
@@ -22,22 +26,25 @@ import {
 const dto: ProviderPublicDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization",
   description: null, city: null, district: null, country: null, logoUrl: null,
+  verified: false, ratingAverage: null, reviewCount: 0,
+  categories: [], serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
 };
 
 class FakeRepo implements ProviderPublicRepositoryPort {
   public readonly calls: string[] = [];
   constructor(private readonly result: ProviderPublicDTO | null = dto) {}
-  async listActive(
-    limit: number,
-    offset: number,
-    search?: string,
-  ): Promise<ProviderPublicDTO[]> {
-    this.calls.push(`listActive:${limit}:${offset}:${search ?? "-"}`);
-    return this.result ? [this.result] : [];
+  async listActive(filters: ListActiveFilters): Promise<ProviderPage> {
+    this.calls.push(`listActive:${filters.limit}:${filters.offset}:${filters.search ?? "-"}`);
+    const items = this.result ? [this.result] : [];
+    return { items, total: items.length };
   }
   async findActiveBySlug(slug: string): Promise<ProviderPublicDTO | null> {
     this.calls.push(`findActiveBySlug:${slug}`);
     return this.result;
+  }
+  async listCityFacets(): Promise<{ city: string; count: number }[]> {
+    this.calls.push("listCityFacets");
+    return [];
   }
 }
 
@@ -85,10 +92,11 @@ describe("public provider repository source", () => {
   });
 
   it("scopes every query to active providers", () => {
-    // Two queries, two status checks. A public endpoint that returns a
+    // Every query that reaches the provider table checks it: the page, the
+    // slug lookup and the city facets. A public endpoint that returns a
     // deactivated provider defeats what deactivating is for.
     const statusChecks = source.match(/eq\(provider\.status, "active"\)/g) ?? [];
-    expect(statusChecks.length).toBe(2);
+    expect(statusChecks.length).toBe(3);
   });
 });
 
@@ -116,13 +124,21 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     district: string | null;
     country: string | null;
     logoKey: string | null;
+    ratingAverage: string | null;
+    reviewCount: number;
+    serviceCount: number;
+    fromAmountMinor: number | null;
+    fromCurrency: string | null;
+    verified: boolean;
   };
 
-  const toDTO = (
+  const raw = (
     DrizzleProviderPublicRepository as unknown as {
-      toDTO(row: PublicProviderRow): ProviderPublicDTO;
+      toDTO(row: PublicProviderRow, categories: { code: string; name: string }[]): ProviderPublicDTO;
     }
   ).toDTO;
+  /** The categories argument is not what these tests are about — always empty. */
+  const toDTO = (row: PublicProviderRow) => raw(row, []);
 
   const row: PublicProviderRow = {
     id: "p1",
@@ -134,6 +150,12 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     district: null,
     country: null,
     logoKey: null,
+    ratingAverage: null,
+    reviewCount: 0,
+    serviceCount: 0,
+    fromAmountMinor: null,
+    fromCurrency: null,
+    verified: false,
   };
 
   beforeEach(() => {
