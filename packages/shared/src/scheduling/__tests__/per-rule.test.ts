@@ -9,7 +9,7 @@ const rule = (startMinute: number, endMinute: number, over: Partial<DayRule> = {
   ...over,
 });
 const fixed30: Offer = { kind: "fixed", durationMinutes: 30 };
-const base = { houseClosed: false, exceptions: [], offer: fixed30 };
+const base = { houseClosed: false, exceptions: [], offer: fixed30, busy: [] };
 
 describe("startsForDay", () => {
   test("one plain rule is the engine's own answer", () => {
@@ -106,7 +106,7 @@ describe("startsForDay", () => {
   });
 
   describe("hourly offer", () => {
-    const hourlyBase = { houseClosed: false, exceptions: [] };
+    const hourlyBase = { houseClosed: false, exceptions: [], busy: [] };
 
     test("an hourly rule honours its own grid, not the fixed default", () => {
       // 09:00–11:00 on a 45-minute grid: 09:00, 09:45, 10:30 all leave room
@@ -130,6 +130,86 @@ describe("startsForDay", () => {
         rules: [rule(540, 660)],
       });
       expect(starts.get(540)!.maxMinutes).toBe(120);
+    });
+
+    test("an hourly start's occupied span is its minimum length plus buffer, not its full ceiling", () => {
+      // 09:00–11:00, 15-minute buffer, 30-minute minimum, 30-minute step:
+      // 09:00 could sell up to 90 minutes (its maxMinutes), but what it
+      // actually holds once booked at the minimum is only 30 + 15 = 45
+      // minutes, 09:00–09:45 — the same "smallest sellable block" notion
+      // `hourlyStarts` itself uses. A booking at 10:00–10:15 sits inside the
+      // room a longer booking could have used, but outside that 45-minute
+      // span, so 09:00 stays offered.
+      const starts = startsForDay({
+        ...hourlyBase,
+        offer: { kind: "hourly", minMinutes: 30, stepMinutes: 30 },
+        rules: [rule(540, 660, { bufferMinutes: 15 })],
+        busy: [{ start: 600, end: 615 }],
+      });
+      expect(starts.has(540)).toBe(true);
+    });
+  });
+
+  describe("capacity against bookings", () => {
+    test("capacity one behaves exactly as subtracting busy did", () => {
+      // The migration's safety net: today's engine removes a start whose span
+      // overlaps a booking, and so must this.
+      const starts = startsForDay({
+        ...base,
+        rules: [rule(540, 660)],
+        busy: [{ start: 570, end: 600 }], // 09:30–10:00 booked
+      });
+      expect([...starts.keys()]).toEqual([540, 600, 630]);
+    });
+
+    test("a start with room left is still offered, and says how much", () => {
+      const starts = startsForDay({
+        ...base,
+        rules: [rule(540, 600, { capacity: 3 })],
+        busy: [{ start: 540, end: 570 }], // one of three chairs taken
+      });
+      expect(starts.get(540)!.seatsLeft).toBe(2);
+    });
+
+    test("a full start disappears", () => {
+      const starts = startsForDay({
+        ...base,
+        rules: [rule(540, 600, { capacity: 2 })],
+        busy: [
+          { start: 540, end: 570 },
+          { start: 540, end: 570 },
+        ],
+      });
+      expect(starts.has(540)).toBe(false);
+    });
+
+    test("the buffer is occupied but not sold, so a booking inside it collides", () => {
+      // A 09:00 start of a 30-minute service with a 15-minute buffer occupies
+      // 540–585 (09:00–09:45). A booking at 570–585 (09:30–09:45) lands inside
+      // that span — in the buffer, not in the appointment — and still takes the
+      // seat, because the buffer is time nobody else can have.
+      const starts = startsForDay({
+        ...base,
+        rules: [rule(540, 720, { bufferMinutes: 15 })],
+        busy: [{ start: 570, end: 585 }],
+      });
+      expect(starts.has(540)).toBe(false);
+    });
+
+    test("a booking starting exactly where the buffer ends does not collide", () => {
+      // 585 is the first minute the span no longer covers. Half-open on
+      // purpose: `b.start < to && from < b.end`.
+      const starts = startsForDay({
+        ...base,
+        rules: [rule(540, 720, { bufferMinutes: 15 })],
+        busy: [{ start: 585, end: 600 }],
+      });
+      expect(starts.has(540)).toBe(true);
+    });
+
+    test("no bookings leaves every start at full capacity", () => {
+      const starts = startsForDay({ ...base, rules: [rule(540, 600, { capacity: 4 })], busy: [] });
+      expect(starts.get(540)!.seatsLeft).toBe(4);
     });
   });
 });

@@ -28,16 +28,13 @@ export interface StartsInput {
   readonly exceptions: readonly DayException[];
   readonly rules: readonly DayRule[];
   readonly offer: Offer;
+  /** What is already booked. Counted against capacity, never subtracted from the window. */
+  readonly busy: readonly Interval[];
 }
 
 /** A start's capacity and, for an hourly offer, the longest length it can carry. */
 export interface StartCapacity {
-  /**
-   * Capacity, not occupancy: this slice of the feature has no bookings to
-   * weigh against it yet, so a rule's raw capacity is returned here as-is.
-   * Turning it into seats actually left is Task 4's job, once there is
-   * something to subtract.
-   */
+  /** A rule's capacity minus how many bookings already overlap this start's occupied span. */
   readonly seatsLeft: number;
   /**
    * Null for a fixed offer — one knowable length, nothing left to report —
@@ -71,6 +68,31 @@ function offersFrom(
 }
 
 /**
+ * The span a booking at this start occupies — buffer included, since that
+ * time is held even though it is not sold. A fixed offer's span is its one
+ * knowable length; an hourly offer has no single length, so its span is the
+ * smallest block `hourlyStarts` would ever sell, matching that function's own
+ * notion of the minimum room a start needs.
+ */
+function occupiedSpan(offer: Offer, bufferMinutes: number): number {
+  const length = offer.kind === "fixed" ? offer.durationMinutes : offer.minMinutes;
+  return length + bufferMinutes;
+}
+
+/**
+ * How many bookings overlap `[from, to)`.
+ *
+ * Half-open on purpose: a booking that starts exactly where the span ends
+ * (`b.start === to`) has not touched a single minute of it, so `<` rather
+ * than `<=` here — the same boundary rule `to` itself already relies on.
+ */
+function overlapCount(busy: readonly Interval[], from: number, to: number): number {
+  let n = 0;
+  for (const b of busy) if (b.start < to && from < b.end) n += 1;
+  return n;
+}
+
+/**
  * Every start one member offers on one date, and how many bookings each holds.
  *
  * Generated **per rule**, which is the whole point. `freeIntervals` merges
@@ -89,9 +111,14 @@ function offersFrom(
  * entry. It keeps its job — the house-closure/closed/custom precedence chain
  * is still its and only its — and it is simply asked a narrower question.
  *
- * `busy` is deliberately **not** passed: with capacity above 1 a booked start
- * is still offered, so occupancy is counted by the caller against the capacity
- * returned here rather than subtracted from the free time.
+ * `busy` is deliberately **not** passed to `freeIntervals`: with capacity
+ * above 1 a booked start is still offered to the next customer, which the
+ * old subtract-from-the-window approach could never express — a subtraction
+ * has no notion of "still has room". So instead, once a start's span is
+ * known, `busy` is *counted* against that rule's capacity rather than
+ * removed from the free time. At capacity 1 the count and the old
+ * subtraction land on the same starts, which is what makes this change
+ * invisible to every provider who never opens the field.
  */
 export function startsForDay(input: StartsInput): Map<number, StartCapacity> {
   const out = new Map<number, StartCapacity>();
@@ -109,13 +136,22 @@ export function startsForDay(input: StartsInput): Map<number, StartCapacity> {
       busy: [],
     });
 
+    const span = occupiedSpan(input.offer, shape.bufferMinutes);
+
     for (const { start, maxMinutes } of offersFrom(input.offer, free, shape)) {
-      // A start offered by two rules is offered by both, so it takes the
-      // larger capacity rather than whichever rule was read last — and with
-      // it, that rule's own length ceiling, so the two never mix.
+      const taken = overlapCount(input.busy, start, start + span);
+      const seatsLeft = shape.capacity - taken;
+      // A start with no seats left is not offered at all — the same result
+      // subtracting `busy` from the window used to give, arrived at by
+      // counting instead.
+      if (seatsLeft <= 0) continue;
+
+      // A start offered by two rules is offered by both, so it takes
+      // whichever rule leaves more room — and with it, that rule's own
+      // length ceiling, so the two never mix.
       const existing = out.get(start);
-      if (existing === undefined || shape.capacity > existing.seatsLeft) {
-        out.set(start, { seatsLeft: shape.capacity, maxMinutes });
+      if (existing === undefined || seatsLeft > existing.seatsLeft) {
+        out.set(start, { seatsLeft, maxMinutes });
       }
     }
   }
