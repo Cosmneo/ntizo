@@ -15,6 +15,8 @@ import { initialsFrom } from "@/shared/lib/initials";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useServices } from "../viewmodel/use-services";
+import { useSetServiceStatus } from "../viewmodel/use-service-editor";
+import { publishBlocker } from "../domain/completeness";
 import {
   formatOptionPrice,
   ownerName,
@@ -166,6 +168,10 @@ export function ServicesPage() {
             },
             actions: (
               <RowActions
+                service={service}
+                providerId={activeProvider.id}
+                canPublish={activeProvider.role === "owner" || activeProvider.role === "admin"}
+                individualProvider={activeProvider.type === "individual"}
                 onEdit={() =>
                   void navigate({
                     to: "/provider/$slug/services/$serviceId",
@@ -229,8 +235,35 @@ function ServiceCell({
  * options), so unlike the admin category list's menu this one has nothing
  * to reorder.
  */
-function RowActions({ onEdit }: { onEdit: () => void }) {
+function RowActions({
+  service,
+  providerId,
+  canPublish,
+  individualProvider,
+  onEdit,
+}: {
+  service: ProviderService;
+  providerId: string;
+  canPublish: boolean;
+  individualProvider: boolean;
+  onEdit: () => void;
+}) {
   const { t } = useTranslation("provider");
+  const setStatus = useSetServiceStatus(providerId);
+
+  // The same rule the review step applies, asked here so the menu never
+  // offers a Publish the server would refuse. `publishBlocker` mirrors
+  // `canPublish` on the server, in the server's own order.
+  const blocker = publishBlocker({
+    categoryId: service.categoryId || null,
+    sourceName:
+      service.translations.find((tr) => tr.locale === service.sourceLocale)?.name?.trim() ?? "",
+    bookingMode: service.bookingMode,
+    optionCount: service.options.length,
+    memberIds: service.memberIds,
+    individualProvider,
+  });
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
@@ -244,6 +277,34 @@ function RowActions({ onEdit }: { onEdit: () => void }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={onEdit}>{t("serviceEdit")}</DropdownMenuItem>
+
+        {/* The status changes, so a provider taking a service off the
+            marketplace for a week does not have to walk six wizard steps to
+            do it. Only what is actually available from here: a draft that
+            still has a blocker offers no Publish at all rather than one that
+            fails, because a menu item that errors on click teaches people to
+            distrust the menu. */}
+        {canPublish && service.status === "draft" && blocker === null && (
+          <DropdownMenuItem
+            onSelect={() => void setStatus.mutateAsync({ serviceId: service.id, status: "published" })}
+          >
+            {t("servicePublish")}
+          </DropdownMenuItem>
+        )}
+        {canPublish && service.status === "published" && (
+          <DropdownMenuItem
+            onSelect={() => void setStatus.mutateAsync({ serviceId: service.id, status: "draft" })}
+          >
+            {t("serviceUnpublish")}
+          </DropdownMenuItem>
+        )}
+        {canPublish && service.status !== "archived" && (
+          <DropdownMenuItem
+            onSelect={() => void setStatus.mutateAsync({ serviceId: service.id, status: "archived" })}
+          >
+            {t("serviceArchive")}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
