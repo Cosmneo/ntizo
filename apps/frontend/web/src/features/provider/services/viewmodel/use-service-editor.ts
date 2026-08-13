@@ -92,26 +92,33 @@ export interface SaveServiceInput extends CreateServiceInput {
  */
 export async function saveService(input: SaveServiceInput): Promise<string> {
   if (input.serviceId) {
-    await updateService({
-      serviceId: input.serviceId,
-      categoryId: input.categoryId,
-      locationType: input.locationType,
-    });
-    await setServiceTranslation({
-      serviceId: input.serviceId,
-      locale: input.sourceLocale,
-      name: input.name,
-      description: input.description,
-    });
+    // In parallel, not one after another. These are three writes to three
+    // different tables with no ordering between them, and the wizard blocks
+    // its own step change on this call — in sequence they were three round
+    // trips a provider waited through on every Continue.
+    //
     // Unlike create below, an empty `memberIds` here IS a real instruction —
     // a draft service with every performer unticked means "nobody performs
     // this yet", and that has to reach the server so `service.members.set`
     // can actually clear it. There is no unresolved-query ambiguity on
-    // update: the sheet only reaches this path once the member list has
-    // already rendered checkboxes for someone to untick.
-    if (!input.skipMembers) {
-      await setServiceMembers({ serviceId: input.serviceId, memberIds: input.memberIds });
-    }
+    // update: this path is only reached once the member list has already
+    // rendered checkboxes for someone to untick.
+    await Promise.all([
+      updateService({
+        serviceId: input.serviceId,
+        categoryId: input.categoryId,
+        locationType: input.locationType,
+      }),
+      setServiceTranslation({
+        serviceId: input.serviceId,
+        locale: input.sourceLocale,
+        name: input.name,
+        description: input.description,
+      }),
+      ...(input.skipMembers
+        ? []
+        : [setServiceMembers({ serviceId: input.serviceId, memberIds: input.memberIds })]),
+    ]);
     return input.serviceId;
   }
   const { serviceId } = await createService({
@@ -143,7 +150,13 @@ export function useSaveService(providerId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: saveService,
-    onSuccess: () => qc.invalidateQueries({ queryKey: servicesKey(providerId) }),
+    // `void`, not `return`: returning the promise makes react-query await the
+    // refetch before `mutateAsync` resolves, and the wizard blocks its step
+    // change on that. The save is done when the server says so; the list
+    // catching up is not something a provider should wait for.
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: servicesKey(providerId) });
+    },
   });
 }
 
