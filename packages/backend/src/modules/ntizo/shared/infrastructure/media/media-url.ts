@@ -13,25 +13,48 @@
  */
 let base: string | null = null;
 
-export function configureMediaUrlBase(value: string | undefined): void {
-  // First call wins. The binding is identical request to request, and a later
-  // undefined must not erase a base that is already known.
+/**
+ * Where this API serves the bucket itself, when nothing else does.
+ *
+ * `/api/media/*` streams objects straight out of R2 — the route exists and is
+ * already used. Kept apart from `base` rather than folded into it so the two
+ * can be learned independently: a deployment has a public base and an origin,
+ * a local run has only an origin, and neither should overwrite the other.
+ */
+let ownOrigin: string | null = null;
+
+export function configureMediaUrlBase(
+  value: string | undefined,
+  /** This API's own `/api/media` prefix, used when no public base is set. */
+  fallback?: string | undefined,
+): void {
+  // First call wins for each, independently. The bindings are identical
+  // request to request, and a later undefined must not erase what is known.
   if (base === null && value) base = value;
+  if (ownOrigin === null && fallback) ownOrigin = fallback;
 }
 
 /**
  * The public URL for a key, or null when there is nowhere to serve it from.
  *
- * Null rather than a guessed URL: locally there is no public base, and a
- * plausible-looking link that 404s is worse than an absent one — the caller
- * can render a placeholder for null and cannot detect a bad URL at all.
+ * The public base first, then this API's own `/api/media` route. Returning
+ * null for want of a public base is what made a local run look like it had
+ * lost the images: the read projections drop keys whose URL is null, so a
+ * provider with three photographs saw an empty list and nothing to say why.
+ * The API can serve them; it may as well say so.
+ *
+ * Still null when neither is known — a URL cannot be invented from nothing,
+ * and a plausible link that 404s is worse than an absent one.
  */
 export function mediaUrl(key: string | null | undefined): string | null {
-  if (!key || !base) return null;
-  return `${base}/${key}`;
+  if (!key) return null;
+  const prefix = base ?? ownOrigin;
+  if (!prefix) return null;
+  return `${prefix}/${key}`;
 }
 
 /** Test seam. */
 export function __resetMediaUrlBaseForTests(): void {
   base = null;
+  ownOrigin = null;
 }

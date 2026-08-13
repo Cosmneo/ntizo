@@ -17,8 +17,17 @@ app.use("*", configMiddleware);
 
 // `MEDIA_PUBLIC_URL_BASE` is a per-request binding, and the read tier composes
 // image URLs from it. Captured here because a repository cannot reach `c.env`.
+//
+// The second argument is this API's own `/api/media` prefix, used when no
+// public base is configured — which is every local run. Without it `mediaUrl`
+// returned null, and the read projections drop keys whose URL is null, so a
+// provider's uploaded images simply vanished from their own screen. This
+// route already streams the bucket; only its address was missing.
 app.use("*", async (c, next) => {
-  configureMediaUrlBase(c.env.MEDIA_PUBLIC_URL_BASE);
+  configureMediaUrlBase(
+    c.env.MEDIA_PUBLIC_URL_BASE,
+    `${new URL(c.req.url).origin}/api/media`,
+  );
   await next();
 });
 app.use("/api/*", authCors);
