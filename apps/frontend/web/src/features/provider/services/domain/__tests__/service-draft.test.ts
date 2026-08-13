@@ -7,10 +7,8 @@ import {
   optionDraftFrom,
   optionErrors,
   parseAmountMinor,
-  parseBufferMinutes,
   serviceDraftErrors,
   serviceLifecycle,
-  SLOT_INTERVAL_OPTIONS,
   toOptionInput,
   type ServiceDraft,
 } from "../service-draft";
@@ -37,11 +35,6 @@ describe("canSubmit", () => {
 });
 
 describe("emptyDraft", () => {
-  it("a new draft defaults to a 30-minute grid and no buffer", () => {
-    expect(emptyDraft().slotIntervalMinutes).toBe(30);
-    expect(emptyDraft().bufferMinutes).toBe(0);
-  });
-
   it("a new draft starts with the creating member ticked", () => {
     // Mirrors what `CreateServiceCommand` does server-side anyway — whoever
     // creates the service is already its performer the moment it exists, so
@@ -56,50 +49,7 @@ describe("emptyDraft", () => {
   });
 });
 
-describe("SLOT_INTERVAL_OPTIONS", () => {
-  it("offers exactly 15, 30 and 60 — the DB's own check constraint mirrored client-side", () => {
-    // The grid is a select drawn from this list, not a free-typed field —
-    // this is the one place a stray value (a mistyped 45, say) would ever
-    // enter it, and `service.update`'s own zod union would refuse it anyway.
-    expect(SLOT_INTERVAL_OPTIONS).toEqual([15, 30, 60]);
-  });
-});
-
-describe("parseBufferMinutes", () => {
-  it("an empty buffer input reads as 0, not NaN", () => {
-    expect(parseBufferMinutes("")).toBe(0);
-    expect(parseBufferMinutes("   ")).toBe(0);
-  });
-
-  it("reads a typed number back as that number", () => {
-    expect(parseBufferMinutes("45")).toBe(45);
-    // Not clamped here — a value over 480 has to survive into the draft so
-    // `serviceDraftErrors` has something to refuse; see that describe block.
-    expect(parseBufferMinutes("500")).toBe(500);
-  });
-
-  it("text that isn't a plain integer reads as 0, not NaN", () => {
-    expect(parseBufferMinutes("abc")).toBe(0);
-    expect(parseBufferMinutes("12,5")).toBe(0);
-  });
-});
-
 describe("serviceDraftErrors", () => {
-  it("a buffer over 480 is refused with a field message", () => {
-    const draft = submittableDraft({ bufferMinutes: 500 });
-    expect(serviceDraftErrors(draft)).toHaveProperty("bufferMinutes");
-    expect(canSubmit(draft)).toBe(false);
-  });
-
-  it("accepts a buffer anywhere in 0 to 480, inclusive", () => {
-    expect(serviceDraftErrors(submittableDraft({ bufferMinutes: 0 }))).not.toHaveProperty("bufferMinutes");
-    expect(serviceDraftErrors(submittableDraft({ bufferMinutes: 480 }))).not.toHaveProperty("bufferMinutes");
-  });
-
-  it("a negative buffer is refused too", () => {
-    expect(serviceDraftErrors(submittableDraft({ bufferMinutes: -1 }))).toHaveProperty("bufferMinutes");
-  });
-
   it("a service for an individual provider needs no explicit performer", () => {
     const draft = submittableDraft({ memberIds: [] });
     // Published or not — an individual provider has one member and nothing
@@ -242,14 +192,14 @@ describe("draftFrom", () => {
       { locale: "en-US", name: "Haircut", description: "A simple cut." },
     ],
     options: [],
-    bufferMinutes: 10,
-    slotIntervalMinutes: 15,
     memberIds: ["member-1", "member-2"],
   };
 
   it("seeds the draft from the source locale's own translation, not the reader's", () => {
     // Editing happens in the language the service was written in, regardless
-    // of which language the provider's own console happens to be in.
+    // of which language the provider's own console happens to be in. The
+    // buffer and the grid live on the availability rule, not on
+    // `ProviderService` at all — Task 10 dropped them from the service.
     expect(draftFrom(service)).toEqual({
       categoryId: "cat-1",
       sourceLocale: "pt-MZ",
@@ -257,8 +207,6 @@ describe("draftFrom", () => {
       description: "Um corte simples.",
       locationType: "at_provider",
       bookingMode: "priced",
-      bufferMinutes: 10,
-      slotIntervalMinutes: 15,
       memberIds: ["member-1", "member-2"],
     });
   });

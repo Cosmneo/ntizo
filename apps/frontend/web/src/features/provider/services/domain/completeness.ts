@@ -11,7 +11,7 @@
  * it.
  */
 
-export type SectionId = "basics" | "pricing" | "performers" | "timing" | "languages";
+export type SectionId = "basics" | "pricing" | "performers" | "languages";
 
 export interface CompletenessInput {
   categoryId: string | null;
@@ -102,10 +102,7 @@ export function sectionStates(input: CompletenessInput): SectionState[] {
     });
   }
 
-  states.push(
-    { id: "timing", required: false, complete: true, blockingCode: null },
-    { id: "languages", required: false, complete: true, blockingCode: null },
-  );
+  states.push({ id: "languages", required: false, complete: true, blockingCode: null });
 
   return states;
 }
@@ -133,7 +130,7 @@ export function publishBlocker(input: CompletenessInput): SectionState["blocking
 /**
  * How many of the sections that must be complete before publish, are.
  *
- * Optional sections (timing, languages) never enter either number —
+ * Optional sections (languages) never enter either number —
  * they are furniture the rail shows, not progress the provider is being
  * asked to finish before Publish stops being disabled.
  */

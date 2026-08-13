@@ -31,6 +31,22 @@ export const memberAvailability = schedulingSchema.table(
     weekday: smallint("weekday").notNull(),
     startMinute: integer("start_minute").notNull(),
     endMinute: integer("end_minute").notNull(),
+    /**
+     * The three that shape the slots this window produces. All nullable, and
+     * that is the design: `NULL` means "use the default", which is what the
+     * `Use default: …` placeholder on the rule drawer says out loud.
+     *
+     * `slotIntervalMinutes` has three states, not two. `NULL` is "nothing
+     * said". `0` is **"said: no slots"** — the window is simply open, for a
+     * provider who takes people as they arrive. `15`/`30`/`60` is a grid.
+     * Spelled as a value rather than a separate `slotted` boolean because a
+     * boolean plus a number can contradict each other, and
+     * `slotted = false, interval = 30` would still be storable.
+     */
+    bufferMinutes: integer("buffer_minutes"),
+    slotIntervalMinutes: integer("slot_interval_minutes"),
+    /** How many bookings one slot holds. Null → 1: one barber cuts one head. */
+    capacity: integer("capacity"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -41,6 +57,15 @@ export const memberAvailability = schedulingSchema.table(
       "member_availability_minutes",
       sql`${t.startMinute} >= 0 AND ${t.endMinute} <= 1440 AND ${t.endMinute} > ${t.startMinute}`,
     ),
+    check(
+      "member_availability_buffer_range",
+      sql`${t.bufferMinutes} IS NULL OR ${t.bufferMinutes} BETWEEN 0 AND 480`,
+    ),
+    check(
+      "member_availability_slot_interval",
+      sql`${t.slotIntervalMinutes} IS NULL OR ${t.slotIntervalMinutes} IN (0, 15, 30, 60)`,
+    ),
+    check("member_availability_capacity", sql`${t.capacity} IS NULL OR ${t.capacity} >= 1`),
   ],
 );
 

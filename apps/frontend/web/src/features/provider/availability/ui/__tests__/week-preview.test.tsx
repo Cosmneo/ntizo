@@ -127,4 +127,22 @@ describe("WeekPreview", () => {
     expect(screen.getByText("Working")).toBeInTheDocument();
     expect(screen.getByText("Closed", { selector: "span" })).toBeInTheDocument();
   });
+
+  it("draws a tick for every previewed start, only on the days that have them", () => {
+    render(
+      <WeekPreview
+        days={FULL_WEEK}
+        locale={LOCALE}
+        slotsByDate={{ "2026-08-10": [540, 645, 750] }}
+      />,
+    );
+
+    expect(screen.getAllByTestId("slot-mark")).toHaveLength(3);
+  });
+
+  it("draws nothing extra when no service is selected", () => {
+    renderPreview();
+
+    expect(screen.queryByTestId("slot-mark")).not.toBeInTheDocument();
+  });
 });

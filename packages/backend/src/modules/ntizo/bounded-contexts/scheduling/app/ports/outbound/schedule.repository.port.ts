@@ -50,13 +50,19 @@ export interface ScheduleRepositoryPort {
     userId: string,
     targetMemberId: string,
   ): Promise<boolean>;
-  /** The timezone and slot inputs the engine needs, in one round trip. */
+  /**
+   * The timezone and offer inputs the engine needs, in one round trip.
+   *
+   * Carries no buffer or grid of its own: those moved to the availability
+   * rule, which is a property of *when the member works*, not of *which
+   * service is being asked about*. What is left here is the one thing that is
+   * still the service's to say — how long (or how flexibly) the default
+   * option takes.
+   */
   findServiceSchedulingInfo(serviceId: string): Promise<{
     serviceId: string;
     providerId: string;
     timezone: string;
-    bufferMinutes: number;
-    slotIntervalMinutes: number;
     bookingMode: "priced" | "quote";
     status: string;
     /**

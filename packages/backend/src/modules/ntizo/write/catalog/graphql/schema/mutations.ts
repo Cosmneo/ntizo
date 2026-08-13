@@ -98,11 +98,6 @@ export const createService = defineMutation({
       bookingMode: serviceBookingModeSchema,
       name: z.string().trim().min(1).max(160),
       description: z.string().trim().max(2000).nullable().optional(),
-      // `.default()` does not survive into the GraphQL schema, so absent
-      // means "let the use case fall back to the column default (0 / 30)",
-      // not "send zero" — the fallback lives in the command, not here.
-      bufferMinutes: z.number().int().min(0).max(480).optional(),
-      slotIntervalMinutes: z.union([z.literal(15), z.literal(30), z.literal(60)]).optional(),
     }),
   ),
   output: zodSchema(z.object({ serviceId: z.string().min(1) })),
@@ -116,8 +111,6 @@ export const updateService = defineMutation({
       categoryId: z.string().min(1).optional(),
       locationType: serviceLocationTypeSchema.optional(),
       imageKeys: z.array(z.string().max(300)).optional(),
-      bufferMinutes: z.number().int().min(0).max(480).optional(),
-      slotIntervalMinutes: z.union([z.literal(15), z.literal(30), z.literal(60)]).optional(),
       quoteForm: z
         .object({
           responseHours: z.number().int().min(1).max(720),

@@ -51,8 +51,6 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         imageKeys: service.imageKeys,
         sortOrder: service.sortOrder,
         createdAt: service.createdAt,
-        bufferMinutes: service.bufferMinutes,
-        slotIntervalMinutes: service.slotIntervalMinutes,
       })
       .from(service)
       .innerJoin(category, eq(category.id, service.categoryId))

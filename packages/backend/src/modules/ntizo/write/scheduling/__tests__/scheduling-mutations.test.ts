@@ -103,6 +103,64 @@ describe("createSchedulingWriteHandlers", () => {
     expect(result).toEqual({ ok: true });
   });
 
+  test("a weekly rule may carry its own shape", async () => {
+    const result = await call("availability.setWeeklyPattern", {
+      providerId: "p1",
+      memberId: "m1",
+      rules: [
+        {
+          weekday: 1,
+          startMinute: 540,
+          endMinute: 1080,
+          bufferMinutes: 15,
+          slotIntervalMinutes: 60,
+          capacity: 3,
+        },
+      ],
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("a weekly rule without a shape is still accepted", async () => {
+    // The shape is optional in every sense: absent means "use the default",
+    // and every rule written before this feature existed is exactly that.
+    const result = await call("availability.setWeeklyPattern", {
+      providerId: "p1",
+      memberId: "m1",
+      rules: [{ weekday: 1, startMinute: 540, endMinute: 1080 }],
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("a grid of zero is accepted — it means no slots", async () => {
+    const result = await call("availability.setWeeklyPattern", {
+      providerId: "p1",
+      memberId: "m1",
+      rules: [{ weekday: 1, startMinute: 540, endMinute: 1080, slotIntervalMinutes: 0 }],
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  test("a grid the engine has no meaning for is refused", async () => {
+    await expect(
+      call("availability.setWeeklyPattern", {
+        providerId: "p1",
+        memberId: "m1",
+        rules: [{ weekday: 1, startMinute: 540, endMinute: 1080, slotIntervalMinutes: 45 }],
+      }),
+    ).rejects.toThrow();
+  });
+
+  test("a capacity of zero is refused — nobody can be booked into it", async () => {
+    await expect(
+      call("availability.setWeeklyPattern", {
+        providerId: "p1",
+        memberId: "m1",
+        rules: [{ weekday: 1, startMinute: 540, endMinute: 1080, capacity: 0 }],
+      }),
+    ).rejects.toThrow();
+  });
+
   test("addException rejects a date that is not YYYY-MM-DD", async () => {
     expect(
       await codeOf(() =>

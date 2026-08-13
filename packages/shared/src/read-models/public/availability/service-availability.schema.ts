@@ -53,6 +53,14 @@ export const serviceAvailabilityReadModel = z.object({
           startsAt: z.string(),
           /** Only for hourly services; null for fixed. */
           maxMinutes: z.number().nullable(),
+          /**
+           * How many bookings this start still holds, summed across every member
+           * free at it. Seats add across members rather than take the larger of
+           * them: two barbers free at 09:00 is two haircuts, not one — the same
+           * moment is two independent openings, not one opening two people
+           * happen to share.
+           */
+          seatsLeft: z.number(),
           /** Who is free at this moment. Never empty — a start with nobody is not returned. */
           memberIds: z.array(z.string()),
         }),

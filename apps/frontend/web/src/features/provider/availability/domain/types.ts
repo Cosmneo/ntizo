@@ -17,18 +17,40 @@ export type ExceptionKind = AvailabilityException["kind"];
 export type HouseClosure = AvailabilityConfigDTO["closures"][number];
 
 /**
- * A weekly rule as the form edits it — weekday, start and end minute, and
- * nothing else.
+ * A weekly rule as the form edits it — weekday, start and end minute, plus
+ * the rule's own shape.
  *
  * Deliberately id-less: `availability.setWeeklyPattern` replaces a member's
  * entire week in one call rather than adding or removing rows by id, so a
  * draft row never needs a server identity to be savable, and `overlaps()`
  * below works the same on a row that has been saved and one that has not.
+ *
+ * All six fields are required, the three shape ones nullable rather than
+ * optional. `setWeeklyPattern` replaces a member's *entire* week in one call,
+ * so every producer of a draft row — `toDraft` seeding from the fetched
+ * config, `groupRules` rebuilding rows for the wire, the rule drawer itself —
+ * must carry a rule's own shape all the way through, or a save that only
+ * touched one rule's hours would silently resubmit every *other* rule with
+ * its shape missing, which the server reads as "use the default" and
+ * overwrites. Optional (`?:`) would let a producer forget the field and
+ * typecheck anyway; required-and-nullable makes forgetting one a compile
+ * error instead of a data-loss bug found in production.
  */
 export interface WeeklyRuleDraft {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  /**
+   * `null` means "use the default", never "use zero". A provider who never
+   * opened the buffer field must keep saying that forever, even after the
+   * platform's own default changes, which is only possible if "I did not
+   * say" and "I said the number the default happens to be today" are kept
+   * as different values all the way to the database.
+   */
+  bufferMinutes: number | null;
+  /** `0` is a real, distinct value here — it means the window offers no slots at all, not "use the default". */
+  slotIntervalMinutes: number | null;
+  capacity: number | null;
 }
 
 /** True for the one-member case: an individual provider, not an organization with staff. */

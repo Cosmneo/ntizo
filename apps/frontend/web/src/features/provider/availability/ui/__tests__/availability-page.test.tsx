@@ -12,6 +12,7 @@ import {
 import * as client from "@/shared/lib/graphql/session-graphql";
 import type { ProviderSummary } from "@/features/provider/domain/types";
 import type { CurrentUserDTO } from "@/features/user/domain/current-user";
+import type { ProviderService } from "@/features/provider/services/domain/types";
 import { AvailabilityPage } from "../availability-page";
 import type { AvailabilityConfig } from "../../domain/types";
 
@@ -63,17 +64,76 @@ function config(weekly: AvailabilityConfig["members"][number]["weekly"] = []): A
   };
 }
 
-function rule(weekday: number, startMinute: number, endMinute: number) {
-  return { id: `r${weekday}`, weekday, startMinute, endMinute };
+/** A fetched weekly row — shape defaulted to "use the default" (`null`) unless a test needs otherwise. */
+function rule(
+  weekday: number,
+  startMinute: number,
+  endMinute: number,
+  shape: { bufferMinutes?: number | null; slotIntervalMinutes?: number | null; capacity?: number | null } = {},
+) {
+  return {
+    id: `r${weekday}`,
+    weekday,
+    startMinute,
+    endMinute,
+    bufferMinutes: shape.bufferMinutes ?? null,
+    slotIntervalMinutes: shape.slotIntervalMinutes ?? null,
+    capacity: shape.capacity ?? null,
+  };
 }
 
-function renderPage(availability: AvailabilityConfig) {
+/**
+ * A minimal published service, fixed or hourly. Only the fields the slot
+ * preview actually reads are varied by the caller — the rest are filler a
+ * real service always carries.
+ */
+function service(
+  id: string,
+  option:
+    | { pricingMode: "fixed"; durationMinutes: number }
+    | { pricingMode: "hourly"; minMinutes: number; stepMinutes: number },
+): ProviderService {
+  return {
+    id,
+    categoryId: "cat1",
+    categoryCode: "cat1",
+    sourceLocale: "en-US",
+    locationType: "at_provider",
+    bookingMode: "priced",
+    status: "published",
+    imageUrls: [],
+    translations: [{ locale: "en-US", name: `Service ${id}`, description: null }],
+    options: [
+      {
+        id: `${id}-o1`,
+        pricingMode: option.pricingMode,
+        amountMinor: 10000,
+        currency: "MZN",
+        durationMinutes: option.pricingMode === "fixed" ? option.durationMinutes : null,
+        minMinutes: option.pricingMode === "hourly" ? option.minMinutes : null,
+        stepMinutes: option.pricingMode === "hourly" ? option.stepMinutes : null,
+        isDefault: true,
+        isActive: true,
+        sortOrder: 0,
+        translations: [{ locale: "en-US", name: "Standard" }],
+      },
+    ],
+    memberIds: ["m1"],
+  };
+}
+
+function renderPage(availability: AvailabilityConfig, services: ProviderService[] = []) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   qc.setQueryData(["providers", "mine"], [PROVIDER]);
   qc.setQueryData(["provider", "availability", PROVIDER.id], availability);
   qc.setQueryData(["user", "me"], CURRENT_USER);
+  // Seeded even when a test has none: an unseeded query would fire a real
+  // `sessionGraphql` call the moment the preview's picker mounts, which is
+  // exactly the stray network call every other query on this screen is
+  // seeded to avoid.
+  qc.setQueryData(["provider", "services", PROVIDER.id], services);
 
   const rootRoute = createRootRoute();
   const slugRoute = createRoute({ getParentRoute: () => rootRoute, path: "/provider/$slug" });
@@ -188,6 +248,56 @@ describe("AvailabilityPage", () => {
     expect(variables.input.rules.map((r) => r.weekday)).toEqual([1, 3]);
   });
 
+  // The regression this task exists for. `setWeeklyPattern` replaces a
+  // member's whole week in one call, so every rule the provider does *not*
+  // touch this session still travels with the save — and has to travel with
+  // the shape it was actually given, not the shape a form field defaults to
+  // when nobody seeded it. Before this fix, `toDraft` and `groupRules` both
+  // dropped buffer/grid/capacity on the floor, so this test would have shown
+  // Monday's drawer opening blank and Wednesday's saved capacity coming back
+  // `null`.
+  it("editing an unrelated rule resubmits every rule's own saved shape, not nulls", async () => {
+    const user = userEvent.setup();
+    const spy = vi.spyOn(client, "sessionGraphql").mockResolvedValue({} as never);
+    renderPage(
+      config([
+        // Monday 09:00–17:00, capped at 3 bookings.
+        rule(1, 540, 1020, { capacity: 3 }),
+        // Wednesday 08:00–12:00, deliberately offering no slots.
+        rule(3, 480, 720, { slotIntervalMinutes: 0 }),
+      ]),
+    );
+    await waitFor(() => expect(preview()).toBeInTheDocument());
+
+    // Opening Monday's own card shows what was actually saved…
+    await user.click(screen.getByRole("button", { name: "Edit 09:00 – 17:00" }));
+    expect(screen.getByLabelText("Capacity")).toHaveValue("3");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    // …and so does Wednesday's, on its own field.
+    await user.click(screen.getByRole("button", { name: "Edit 08:00 – 12:00" }));
+    expect(screen.getByRole("radio", { name: "No slots" })).toBeChecked();
+
+    // Change only Wednesday's end time — its grid choice is left alone, not retyped.
+    await user.clear(screen.getByLabelText("End"));
+    await user.type(screen.getByLabelText("End"), "13:00");
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    await user.click(screen.getByRole("button", { name: "Save week" }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+
+    const variables = spy.mock.calls[0]?.[1] as {
+      input: {
+        rules: { weekday: number; capacity: number | null; slotIntervalMinutes: number | null }[];
+      };
+    };
+    const byWeekday = new Map(variables.input.rules.map((r) => [r.weekday, r]));
+    // Monday was never opened this save — its capacity must still be 3, not null.
+    expect(byWeekday.get(1)?.capacity).toBe(3);
+    // Wednesday's hours changed, but its "no slots" choice survives the edit.
+    expect(byWeekday.get(3)?.slotIntervalMinutes).toBe(0);
+  });
+
   it("an individual provider is offered neither the person picker nor the team toggle", async () => {
     renderPage(config());
 
@@ -206,5 +316,58 @@ describe("AvailabilityPage", () => {
     await user.click(screen.getByRole("button", { name: "Remove 09:00 – 17:00" }));
 
     expect(within(preview()).queryByText("09:00–17:00")).not.toBeInTheDocument();
+  });
+
+  it("with no published service, says so and draws no slot marks", async () => {
+    renderPage(config([rule(1, 540, 1020)]));
+
+    await waitFor(() => expect(preview()).toBeInTheDocument());
+    expect(screen.getByText("Publish a service to preview its slots.")).toBeInTheDocument();
+    expect(within(preview()).queryByTestId("slot-mark")).not.toBeInTheDocument();
+  });
+
+  it("defaults to the first published service and previews what its default option produces", async () => {
+    renderPage(config([rule(1, 540, 1020)]), [
+      service("s1", { pricingMode: "fixed", durationMinutes: 60 }),
+    ]);
+
+    await waitFor(() => expect(preview()).toBeInTheDocument());
+    // 09:00–17:00, a 60-minute option, no buffer, the default 30-minute grid:
+    // a pick every 30 minutes through the last one that still fits — 15 of
+    // them, confirmed against `startsForDay` directly before being written
+    // down here, not derived from the UI under test.
+    expect(screen.getByText("15 slots · 15 places")).toBeInTheDocument();
+    expect(within(preview()).getAllByTestId("slot-mark")).toHaveLength(15);
+  });
+
+  it("previews an hourly service from its minimum and step, not a guessed fixed length", async () => {
+    renderPage(config([rule(1, 540, 1020)]), [
+      service("s1", { pricingMode: "hourly", minMinutes: 60, stepMinutes: 30 }),
+    ]);
+
+    await waitFor(() => expect(preview()).toBeInTheDocument());
+    // Same window, a 60-minute minimum with no buffer: the occupied span an
+    // hourly start needs is its minimum, so this lands on the same 15 starts
+    // as the fixed 60-minute case above — confirmed independently rather than
+    // assumed from that coincidence.
+    expect(screen.getByText("15 slots · 15 places")).toBeInTheDocument();
+    expect(within(preview()).getAllByTestId("slot-mark")).toHaveLength(15);
+  });
+
+  it("switching the picker previews the newly chosen service", async () => {
+    const user = userEvent.setup();
+    renderPage(config([rule(1, 540, 1020)]), [
+      service("s1", { pricingMode: "fixed", durationMinutes: 60 }),
+      service("s2", { pricingMode: "fixed", durationMinutes: 480 }),
+    ]);
+
+    await waitFor(() => expect(preview()).toBeInTheDocument());
+    expect(screen.getByText("15 slots · 15 places")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Preview for"));
+    await user.click(screen.getByRole("option", { name: "Service s2" }));
+
+    // An 8-hour, 480-minute option in an 8-hour window fits exactly once.
+    expect(screen.getByText("1 slots · 1 places")).toBeInTheDocument();
   });
 });

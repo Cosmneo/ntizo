@@ -94,8 +94,6 @@ const SAVED_SERVICE: ProviderService = {
   imageUrls: [],
   translations: [{ locale: "en-US", name: "Haircut", description: null }],
   options: [],
-  bufferMinutes: 0,
-  slotIntervalMinutes: 30,
   memberIds: ["m1"],
 };
 
@@ -165,7 +163,7 @@ describe("ServiceWizardPage", () => {
     expect(railRow(/The essentials/)).toHaveAttribute("aria-current", "step");
   });
 
-  it("an organization walks all seven steps", async () => {
+  it("an organization walks all six steps", async () => {
     const qc = makeQueryClient();
     seed(qc);
 
@@ -176,13 +174,13 @@ describe("ServiceWizardPage", () => {
       /The essentials/,
       /How it is charged/,
       /Who does it/,
-      /Timing/,
       /Prices/,
       /Languages/,
       /Check and publish/,
     ]) {
       expect(railRow(label)).toBeInTheDocument();
     }
+    expect(screen.queryByRole("button", { name: /Timing/ })).not.toBeInTheDocument();
   });
 
   it("an individual provider is never shown the performers step", async () => {
@@ -201,9 +199,9 @@ describe("ServiceWizardPage", () => {
 
     renderWizard("/provider/bela-vista/services/new", qc);
 
-    // Six, not seven: an individual provider skips performers. Telling them
-    // "1 of 7" would count a screen they will never be shown.
-    expect(await screen.findByText("Step 1/6")).toBeInTheDocument();
+    // Five, not six: an individual provider skips performers. Telling them
+    // "1 of 6" would count a screen they will never be shown.
+    expect(await screen.findByText("Step 1/5")).toBeInTheDocument();
   });
 
   it("an unsaved service cannot jump forward past the step that creates it", async () => {
@@ -251,9 +249,9 @@ describe("ServiceWizardPage", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("walking the essentials, booking and performers writes nothing to the server", async () => {
-    // The service is created on the way out of `timing`, not field by field.
-    // Creating earlier leaves a half-built row behind every abandoned attempt.
+  it("walking the essentials writes nothing to the server", async () => {
+    // The service is created on the way out of `booking`, not before it —
+    // creating earlier leaves a half-built row behind every abandoned attempt.
     const qc = makeQueryClient();
     seed(qc);
     const user = userEvent.setup();
@@ -263,18 +261,12 @@ describe("ServiceWizardPage", () => {
 
     await answerEssentials(user);
     await user.click(screen.getByRole("button", { name: "Continue" })); // → booking
-    expect(await screen.findByRole("heading", { name: "How is it charged?" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Continue" })); // → performers
-    expect(await screen.findByRole("heading", { name: "Who performs it?" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Continue" })); // → timing
 
-    expect(
-      await screen.findByRole("heading", { name: "How does it sit in a day?" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "How is it charged?" })).toBeInTheDocument();
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("advancing off the timing step creates the service and moves on", async () => {
+  it("advancing off the booking step creates the service and moves on", async () => {
     const qc = makeQueryClient();
     seed(qc);
     const user = userEvent.setup();
@@ -286,28 +278,30 @@ describe("ServiceWizardPage", () => {
 
     await answerEssentials(user);
     await user.click(screen.getByRole("button", { name: "Continue" })); // → booking
-    await user.click(await screen.findByRole("button", { name: "Continue" })); // → performers
-    await user.click(await screen.findByRole("button", { name: "Continue" })); // → timing
-    await screen.findByRole("heading", { name: "How does it sit in a day?" });
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(await screen.findByRole("button", { name: "Continue" })); // creates, → performers
 
     expect(spy).toHaveBeenCalled();
     // Landed on the next step rather than being thrown back to step one by the
     // route's `new` → real-id swap.
-    expect(await screen.findByRole("heading", { name: "What does it cost?" })).toBeInTheDocument();
-    expect(railRow(/Prices/)).toHaveAttribute("aria-current", "step");
+    expect(await screen.findByRole("heading", { name: "Who performs it?" })).toBeInTheDocument();
+    expect(railRow(/Who does it/)).toHaveAttribute("aria-current", "step");
   });
 
   it("an organization whose creator is a member starts with them already performing it", async () => {
     const qc = makeQueryClient();
     seed(qc); // CURRENT_USER is u1, which is member m1
     const user = userEvent.setup();
+    // Advancing off `booking` now creates the service, so this needs a real
+    // response to move past it.
+    vi.spyOn(client, "sessionGraphql").mockResolvedValue({
+      serviceCreate: { serviceId: "svc-new" },
+    } as never);
 
     renderWizard("/provider/bela-vista/services/new", qc);
 
     await answerEssentials(user);
     await user.click(screen.getByRole("button", { name: "Continue" })); // → booking
-    await user.click(await screen.findByRole("button", { name: "Continue" })); // → performers
+    await user.click(await screen.findByRole("button", { name: "Continue" })); // creates, → performers
 
     await screen.findByRole("heading", { name: "Who performs it?" });
     // Ana is member m1, backfilled by the effect that waits on the

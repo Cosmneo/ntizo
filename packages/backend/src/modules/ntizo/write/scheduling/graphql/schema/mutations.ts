@@ -10,6 +10,18 @@ const weeklyRuleInput = z.object({
   weekday: z.number().int().min(0).max(6),
   startMinute: z.number().int().min(0).max(1439),
   endMinute: z.number().int().min(1).max(1440),
+  // The rule's own shape. Every one optional and nullable, and both spellings
+  // mean the same thing — "use the default" — because a client that omits a
+  // field and one that sends `null` are saying the same thing and should not
+  // have to know which this endpoint prefers.
+  bufferMinutes: z.number().int().min(0).max(480).nullish(),
+  // `0` is a real value here: it means the window offers no slots at all.
+  // `45` is not — the engine only knows how to grid at 15/30/60, so a value
+  // outside that set is refused rather than silently rounded to one.
+  slotIntervalMinutes: z
+    .union([z.literal(0), z.literal(15), z.literal(30), z.literal(60)])
+    .nullish(),
+  capacity: z.number().int().min(1).nullish(),
 });
 
 export const setWeeklyPattern = defineMutation({

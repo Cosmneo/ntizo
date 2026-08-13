@@ -32,6 +32,10 @@ function firstMark(minute: number, gridMinutes: number): number {
  * cleanup included, before closing.
  */
 export function fixedStarts(free: readonly Interval[], shape: FixedShape): number[] {
+  // A grid of zero is "no slots" — a real answer a provider gives, not a
+  // broken 30. Refused here rather than left to `firstMark`'s division,
+  // which returns Infinity or NaN and exits the loop by accident.
+  if (shape.gridMinutes <= 0) return [];
   const span = shape.durationMinutes + shape.bufferMinutes;
   const out: number[] = [];
   for (const iv of free) {
@@ -51,6 +55,7 @@ export function fixedStarts(free: readonly Interval[], shape: FixedShape): numbe
  * can only choose 180, 210, … 570 would offer a length nobody can book.
  */
 export function hourlyStarts(free: readonly Interval[], shape: HourlyShape): HourlyOffer[] {
+  if (shape.gridMinutes <= 0) return [];
   const out: HourlyOffer[] = [];
   for (const iv of free) {
     const lastSellable = iv.end - shape.bufferMinutes;

@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, ChoiceChipsMulti, Input, Sheet, SheetContent } from "@ntizo/frontend-ui";
+import { Button, ChoiceChips, ChoiceChipsMulti, Input, Sheet, SheetContent } from "@ntizo/frontend-ui";
+import { Field } from "@/shared/components/wizard/wizard-chrome";
 import {
   WEEKDAY_ORDER,
   formatDayList,
@@ -60,7 +61,32 @@ export function RuleDrawer({
   const [days, setDays] = useState<string[]>(() => (initial?.weekdays ?? []).map(String));
   const [start, setStart] = useState(() => minutesToLabel(initial?.startMinute ?? 9 * 60));
   const [end, setEnd] = useState(() => minutesToLabel(initial?.endMinute ?? 17 * 60));
-  const [error, setError] = useState<{ field: "days" | "times"; message: string } | null>(null);
+  // Raw text, not the parsed number: an empty box and a box holding "0" are
+  // different things to a reader, and collapsing them into one numeric state
+  // the moment a key is pressed would lose that difference before it could
+  // ever reach the "empty means null" parse below.
+  //
+  // Seeded from `initial`, not always blank: editing an existing group must
+  // open on the shape it was actually saved with — `null` renders as an
+  // empty box (the placeholder already names the default), a real number
+  // renders as itself, `0` included, so a saved "no buffer" and an untouched
+  // field never look alike.
+  const [buffer, setBuffer] = useState(() =>
+    initial?.bufferMinutes != null ? String(initial.bufferMinutes) : "",
+  );
+  // "" is itself a real choice on this control — "use the default" — not an
+  // unset placeholder the way it is for `buffer`/`capacity`; see the options
+  // list below. A saved `0` still seeds `"0"`, which is the "No slots" chip,
+  // never the "use the default" one.
+  const [grid, setGrid] = useState(() =>
+    initial?.slotIntervalMinutes != null ? String(initial.slotIntervalMinutes) : "",
+  );
+  const [capacity, setCapacity] = useState(() =>
+    initial?.capacity != null ? String(initial.capacity) : "",
+  );
+  const [error, setError] = useState<
+    { field: "days" | "times" | "buffer" | "capacity"; message: string } | null
+  >(null);
 
   const startMinute = labelToMinutes(start);
   const endMinute = labelToMinutes(end);
@@ -68,8 +94,22 @@ export function RuleDrawer({
     .map(Number)
     .sort((a, b) => weekdayDisplayIndex(a) - weekdayDisplayIndex(b));
 
+  // Untouched → `null`, the same instruction as "use the default" — and
+  // never the default's own number, or a rule nobody ever set a buffer on
+  // would stop following the default the moment somebody changed it.
+  const bufferMinutes = buffer.trim() === "" ? null : Number(buffer);
+  const slotIntervalMinutes = grid === "" ? null : Number(grid);
+  const capacityValue = capacity.trim() === "" ? null : Number(capacity);
+
   function rulesFrom(s: number, e: number): WeeklyRuleDraft[] {
-    return weekdays.map((weekday) => ({ weekday, startMinute: s, endMinute: e }));
+    return weekdays.map((weekday) => ({
+      weekday,
+      startMinute: s,
+      endMinute: e,
+      bufferMinutes,
+      slotIntervalMinutes,
+      capacity: capacityValue,
+    }));
   }
 
   function submit() {
@@ -93,12 +133,29 @@ export function RuleDrawer({
       setError({ field: "times", message: t("availabilityOverlap") });
       return;
     }
+    // Same reasoning as the capacity guard below: `Number("15 min")` is `NaN`,
+    // and `JSON.stringify(NaN)` is `null` — indistinguishable from an
+    // untouched box on the wire, so this would silently save "use the
+    // default" instead of refusing the input.
+    if (bufferMinutes !== null && (!Number.isFinite(bufferMinutes) || bufferMinutes < 0)) {
+      setError({ field: "buffer", message: t("availabilityRuleBufferInvalid") });
+      return;
+    }
+    // `Number.isFinite` rather than a bare range check — a non-numeric box
+    // parses to `NaN`, and `NaN < 1` is `false`, which would let garbage text
+    // through as a silent "use the default" instead of being refused.
+    if (capacityValue !== null && (!Number.isFinite(capacityValue) || capacityValue < 1)) {
+      setError({ field: "capacity", message: t("availabilityRuleCapacityInvalid") });
+      return;
+    }
     setError(null);
     onSubmit(rulesFrom(startMinute, endMinute));
     onOpenChange(false);
   }
 
   const timeError = error?.field === "times" ? error.message : null;
+  const bufferError = error?.field === "buffer" ? error.message : undefined;
+  const capacityError = error?.field === "capacity" ? error.message : undefined;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -156,6 +213,60 @@ export function RuleDrawer({
               </p>
             )}
           </div>
+
+          {/* This rule's own shape. No checkbox beside any of them: "leave it
+              alone" and "type the number the default happens to be" are the
+              same intent, and a second control to say so is a second thing
+              to get wrong. An empty box is the whole answer — it maps to
+              `null` on submit, not to whatever the default is today. */}
+          <Field label={t("availabilityRuleBuffer")} htmlFor="rule-buffer" error={bufferError}>
+            <Input
+              id="rule-buffer"
+              inputMode="numeric"
+              value={buffer}
+              onChange={(e) => {
+                setBuffer(e.target.value);
+                setError(null);
+              }}
+              placeholder={t("availabilityRuleBufferDefault")}
+            />
+          </Field>
+
+          <ChoiceChips
+            name="rule-grid"
+            legend={t("availabilityRuleGrid")}
+            showLegend
+            value={grid}
+            onChange={(v) => {
+              setGrid(v);
+              setError(null);
+            }}
+            options={[
+              // "" and "0" read close on the page and mean opposite things:
+              // one leaves the rule out of the decision entirely, the other
+              // decides it — no slots, ever. Keeping them as separate options
+              // rather than one "0 / default" choice is what keeps that
+              // distinction reachable at all.
+              { value: "", label: t("availabilityRuleGridDefault") },
+              { value: "0", label: t("availabilityRuleGridNone") },
+              { value: "15", label: t("serviceSlotInterval15") },
+              { value: "30", label: t("serviceSlotInterval30") },
+              { value: "60", label: t("serviceSlotInterval60") },
+            ]}
+          />
+
+          <Field label={t("availabilityRuleCapacity")} htmlFor="rule-capacity" error={capacityError}>
+            <Input
+              id="rule-capacity"
+              inputMode="numeric"
+              value={capacity}
+              onChange={(e) => {
+                setCapacity(e.target.value);
+                setError(null);
+              }}
+              placeholder={t("availabilityRuleCapacityDefault")}
+            />
+          </Field>
 
           <p className="type-body rounded-[var(--radius-card-sm)] bg-[var(--color-muted)] p-3">
             {previewSentence()}

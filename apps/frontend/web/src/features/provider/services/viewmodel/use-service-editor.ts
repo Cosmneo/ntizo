@@ -64,13 +64,13 @@ export interface SaveServiceInput extends CreateServiceInput {
 }
 
 /**
- * Creates a service, or saves an existing one's category/location/buffer/grid
- * and its source-language name/description — and, for an organization,
- * who performs it.
+ * Creates a service, or saves an existing one's category/location and its
+ * source-language name/description — and, for an organization, who
+ * performs it.
  *
- * Three calls on the update path (`service.update` for the category,
- * location, buffer and grid; `service.translation.set` for the name and
- * description; `service.members.set` for the performer list) because the
+ * Three calls on the update path (`service.update` for the category and
+ * location; `service.translation.set` for the name and description;
+ * `service.members.set` for the performer list) because the
  * server keeps every one of them separate: `service.update` has no name
  * field at all, since a service's copy is a translation like any other, and
  * membership has its own refusal (`SERVICE_NEEDS_MEMBER`) that only makes
@@ -96,8 +96,6 @@ export async function saveService(input: SaveServiceInput): Promise<string> {
       serviceId: input.serviceId,
       categoryId: input.categoryId,
       locationType: input.locationType,
-      bufferMinutes: input.bufferMinutes,
-      slotIntervalMinutes: input.slotIntervalMinutes,
     });
     await setServiceTranslation({
       serviceId: input.serviceId,
@@ -124,8 +122,6 @@ export async function saveService(input: SaveServiceInput): Promise<string> {
     bookingMode: input.bookingMode,
     name: input.name,
     description: input.description,
-    bufferMinutes: input.bufferMinutes,
-    slotIntervalMinutes: input.slotIntervalMinutes,
   });
   // An empty `memberIds` here is not an instruction — nobody has actually
   // said "nobody performs this yet", because a *create* was still being

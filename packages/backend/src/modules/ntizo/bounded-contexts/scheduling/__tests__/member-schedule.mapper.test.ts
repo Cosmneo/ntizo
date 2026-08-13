@@ -8,9 +8,43 @@ describe("member schedule mapper", () => {
       providerId: "11111111-1111-1111-1111-111111111111",
       memberId: "22222222-2222-2222-2222-222222222222",
       weekly: [
-        { id: "aaaaaaaa-0000-0000-0000-000000000001", weekday: 1, startMinute: 480, endMinute: 720 },
-        { id: "aaaaaaaa-0000-0000-0000-000000000002", weekday: 1, startMinute: 840, endMinute: 1080 },
-        { id: "aaaaaaaa-0000-0000-0000-000000000003", weekday: 6, startMinute: 540, endMinute: 1440 },
+        // One rule with every nullable field set, one with all three null,
+        // written explicitly rather than left absent: once a rule has been
+        // through the database `undefined` and `null` are the same `NULL`
+        // column, so the row coming back always carries the field — an
+        // originally-absent key would make this assertion fail for a reason
+        // that has nothing to do with the mapper.
+        {
+          id: "aaaaaaaa-0000-0000-0000-000000000001",
+          weekday: 1,
+          startMinute: 480,
+          endMinute: 720,
+          bufferMinutes: 15,
+          slotIntervalMinutes: 60,
+          capacity: 3,
+        },
+        {
+          id: "aaaaaaaa-0000-0000-0000-000000000002",
+          weekday: 1,
+          startMinute: 840,
+          endMinute: 1080,
+          bufferMinutes: null,
+          slotIntervalMinutes: null,
+          capacity: null,
+        },
+        // `slotIntervalMinutes: 0` is "no slots", a real answer distinct
+        // from `null`'s "use the default" — the exact pair a stray `||` in
+        // `toRows` would collapse into each other. `0 ?? null` must still
+        // round-trip as `0`, not fall through to `null`.
+        {
+          id: "aaaaaaaa-0000-0000-0000-000000000003",
+          weekday: 6,
+          startMinute: 540,
+          endMinute: 1440,
+          bufferMinutes: null,
+          slotIntervalMinutes: 0,
+          capacity: null,
+        },
       ],
       exceptions: [
         { id: "bbbbbbbb-0000-0000-0000-000000000001", onDate: "2026-08-20", kind: "closed", startMinute: null, endMinute: null, note: "doctor" },

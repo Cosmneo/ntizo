@@ -13,6 +13,12 @@ export interface MemberAvailabilityInsertRow {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  // Always `number | null` here, never `undefined` — this is the persistence
+  // boundary, so the "absent means null" normalisation has already happened
+  // by the time a row reaches this shape. See `toRows` below.
+  bufferMinutes: number | null;
+  slotIntervalMinutes: number | null;
+  capacity: number | null;
 }
 
 /** Same reasoning as {@link MemberAvailabilityInsertRow}, for `date_exception`. */
@@ -37,6 +43,12 @@ export interface MemberAvailabilityReadRow {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  // Read back alongside the rest of the row, not defaulted here: `null` still
+  // means "use the default" all the way up to the engine, which is the one
+  // place that actually knows what the default is.
+  bufferMinutes: number | null;
+  slotIntervalMinutes: number | null;
+  capacity: number | null;
 }
 
 export interface DateExceptionReadRow {
@@ -65,6 +77,13 @@ export function toRows(schedule: MemberSchedule): ScheduleRowSet {
       weekday: rule.weekday,
       startMinute: rule.startMinute,
       endMinute: rule.endMinute,
+      // `undefined` (never set) and `null` (set to "use the default") both
+      // mean the same thing to the column: `NULL`. Normalised once, here, at
+      // the boundary that actually writes the row — not in the aggregate or
+      // the command, which would each have to make the same call.
+      bufferMinutes: rule.bufferMinutes ?? null,
+      slotIntervalMinutes: rule.slotIntervalMinutes ?? null,
+      capacity: rule.capacity ?? null,
     })),
     exceptions: json.exceptions.map((exception) => ({
       id: exception.id,
@@ -94,6 +113,9 @@ export function toDomain(
       weekday: row.weekday,
       startMinute: row.startMinute,
       endMinute: row.endMinute,
+      bufferMinutes: row.bufferMinutes,
+      slotIntervalMinutes: row.slotIntervalMinutes,
+      capacity: row.capacity,
     })),
     exceptions: exceptionRows.map((row) => ({
       id: row.id,

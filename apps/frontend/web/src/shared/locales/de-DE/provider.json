@@ -252,7 +252,6 @@
     "basics": "The essentials",
     "booking": "How it is charged",
     "performers": "Who does it",
-    "timing": "Timing",
     "pricing": "Prices",
     "languages": "Languages",
     "review": "Check and publish"
@@ -261,7 +260,6 @@
     "basics": "What service are you offering?",
     "booking": "How is it charged?",
     "performers": "Who performs it?",
-    "timing": "How does it sit in a day?",
     "pricing": "What does it cost?",
     "languages": "What languages is it offered in?",
     "review": "Ready to publish?"
@@ -270,7 +268,6 @@
     "basics": "The name customers see, the category they find it under, and where it happens.",
     "booking": "A set price they book straight away, or a quote you send after seeing the request.",
     "performers": "Everyone you tick here can be booked for this service.",
-    "timing": "Dead time after an appointment, and the grid start times land on.",
     "pricing": "Add one option for every version of this service you sell.",
     "languages": "Optional. Anything you leave blank falls back to the original language.",
     "review": "One last look before this goes on the marketplace."
@@ -306,11 +303,6 @@
   },
   "serviceMembersQuestion": "Wer erledigt das?",
   "serviceMembersHint": "Wählen Sie, wer im Team für diese Leistung gebucht werden kann.",
-  "serviceBuffer": "Pufferzeit",
-  "serviceBufferHint": "Deckt die Reinigung oder den Weg zur nächsten Adresse ab.",
-  "serviceBufferError": "Muss eine Zahl zwischen 0 und 480 Minuten sein.",
-  "serviceSlotInterval": "Zeitraster",
-  "serviceSlotIntervalHint": "Wie oft die verfügbaren Startzeiten beginnen.",
   "serviceSlotInterval15": "15 Minuten",
   "serviceSlotInterval30": "30 Minuten",
   "serviceSlotInterval60": "60 Minuten",
@@ -413,6 +405,15 @@
   "availabilityRuleEditTitle": "Zeiten bearbeiten",
   "availabilityRuleDone": "Fertig",
   "availabilityRuleCancel": "Abbrechen",
+  "availabilityRuleBuffer": "Buffer time",
+  "availabilityRuleBufferDefault": "Use default: 0 min",
+  "availabilityRuleBufferInvalid": "Enter a number of minutes, or leave it blank for the default.",
+  "availabilityRuleGrid": "Time grid",
+  "availabilityRuleGridDefault": "Use default: 30 min",
+  "availabilityRuleGridNone": "No slots",
+  "availabilityRuleCapacity": "Capacity",
+  "availabilityRuleCapacityDefault": "Use default: 1 booking",
+  "availabilityRuleCapacityInvalid": "At least one booking must fit.",
   "availabilityOverlap": "Diese Zeit überschneidet sich mit einer bereits festgelegten Zeit an diesem Tag.",
   "availabilityInvalidTime": "Geben Sie eine gültige Uhrzeit im Format 09:00 ein.",
   "availabilityLegendWorking": "Working",
@@ -470,5 +471,8 @@
     "member-closed": "Freier Tag",
     "no-rule": "Keine Zeiten"
   },
-  "availabilityPreviewScopeTeam": "Ganzes Team"
+  "availabilityPreviewScopeTeam": "Ganzes Team",
+  "availabilityPreviewCount": "{{slots}} slots · {{seats}} places",
+  "availabilityPreviewFor": "Preview for",
+  "availabilityPreviewNoService": "Publish a service to preview its slots."
 }

@@ -7,7 +7,7 @@ const MINE = `
   query ServiceMine($input: ServiceMineInput!) {
     serviceMine(input: $input) {
       id categoryId categoryCode sourceLocale locationType bookingMode status imageUrls
-      bufferMinutes slotIntervalMinutes memberIds
+      memberIds
       translations { locale name description }
       options {
         id pricingMode amountMinor currency durationMinutes minMinutes stepMinutes
@@ -87,8 +87,6 @@ export interface CreateServiceInput {
   bookingMode: ServiceBookingMode;
   name: string;
   description: string | null;
-  bufferMinutes?: number;
-  slotIntervalMinutes?: 15 | 30 | 60;
 }
 
 export async function createService(input: CreateServiceInput): Promise<{ serviceId: string }> {
@@ -100,8 +98,6 @@ export interface UpdateServiceInput {
   serviceId: string;
   categoryId: string;
   locationType: ServiceLocationType;
-  bufferMinutes?: number;
-  slotIntervalMinutes?: 15 | 30 | 60;
 }
 
 export async function updateService(input: UpdateServiceInput): Promise<void> {

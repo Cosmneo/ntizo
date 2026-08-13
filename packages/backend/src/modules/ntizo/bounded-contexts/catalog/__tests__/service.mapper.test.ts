@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import { Service } from "../domain/aggregates/service.aggregate";
 import { serviceMapper } from "../infrastructure/repositories/drizzle/service.mapper";
+import { service } from "../../../shared/infrastructure/database/catalog/schemas/service.schema";
 
 function built() {
   const s = Service.create({
@@ -12,12 +14,6 @@ function built() {
     bookingMode: "priced",
     name: "Corte de cabelo",
     description: "Barbearia",
-    // Neither the aggregate defaults (0 / 30) nor each other: a mapper that
-    // hardcoded either value, or that swapped which DB column feeds which
-    // prop, would produce a mismatch here that a default-valued fixture
-    // could never expose.
-    bufferMinutes: 15,
-    slotIntervalMinutes: 60,
   });
   s.addOption({
     id: "opt-1",
@@ -48,10 +44,6 @@ function builtQuote() {
     bookingMode: "quote",
     name: "Consultoria",
     description: "Consultoria personalizada",
-    // A different pair again from `built()`'s, so the two fixtures cannot
-    // both be satisfied by one wrong constant in the mapper.
-    bufferMinutes: 45,
-    slotIntervalMinutes: 15,
   });
   s.update({ imageKeys: ["service/svc-2/1"] });
   s.setTranslation("en-US", "Consulting", "Personalised consulting");
@@ -169,5 +161,20 @@ describe("serviceMapper", () => {
     // non-default value in every one of its five fields.
     const { before, after } = roundTrip(builtQuote);
     expect(after).toEqual(before);
+  });
+
+  it("no longer carries a buffer or a grid", () => {
+    const { columns } = getTableConfig(service);
+    const names = columns.map((c) => c.name);
+    // They belong to the availability rule now: a provider's day is cut up by
+    // how they work, not by which of their services is being looked at.
+    expect(names).not.toContain("buffer_minutes");
+    expect(names).not.toContain("slot_interval_minutes");
+  });
+
+  it("the mapper round-trips without them", () => {
+    const row = serviceMapper.toPersistence(built()).service;
+    expect(row).not.toHaveProperty("bufferMinutes");
+    expect(row).not.toHaveProperty("slotIntervalMinutes");
   });
 });

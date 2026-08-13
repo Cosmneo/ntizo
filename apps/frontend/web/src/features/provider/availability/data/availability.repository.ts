@@ -12,7 +12,14 @@ const CONFIG = `
         userId
         name
         role
-        weekly { id weekday startMinute endMinute }
+        # bufferMinutes/slotIntervalMinutes/capacity travel with every rule,
+        # not just id/weekday/startMinute/endMinute — the rule drawer needs
+        # them to open on what was actually saved rather than on "use the
+        # default", and setWeeklyPattern replaces a member's whole week in
+        # one call, so a save that only touched one rule's hours must still
+        # resubmit every other rule's own shape unchanged. Dropping any of
+        # the three here would make that silent data loss again.
+        weekly { id weekday startMinute endMinute bufferMinutes slotIntervalMinutes capacity }
         exceptions { id onDate kind startMinute endMinute note }
       }
       closures { id fromDate toDate note }
@@ -49,6 +56,14 @@ export interface SetWeeklyPatternInput {
   rules: WeeklyRuleDraft[];
 }
 
+/**
+ * `input` is sent to the wire exactly as built — no field list here to keep
+ * in sync. `rules` carries `bufferMinutes`/`slotIntervalMinutes`/`capacity`
+ * whenever `WeeklyRuleDraft` sets them, `null` and all, because
+ * `AvailabilitySetWeeklyPatternInput`'s own rule type already accepts them as
+ * optional and nullable (see `weeklyRuleInput` in the backend's mutation
+ * schema) — this file has nothing to add to make that flow through.
+ */
 export async function setWeeklyPattern(input: SetWeeklyPatternInput): Promise<void> {
   await sessionGraphql(SET_WEEKLY_PATTERN, { input });
 }

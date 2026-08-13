@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { addDays, weekdayOf } from "@ntizo/shared/datetime";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { Button, Input } from "@ntizo/frontend-ui";
+import { Button, Input, Select } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import type { ProviderSummary } from "@/features/provider/domain/types";
+import { useServices } from "@/features/provider/services/viewmodel/use-services";
+import { defaultOption, ownerName } from "@/features/provider/services/domain/types";
 import {
   availabilityErrorMessage,
   canEditMember,
@@ -18,6 +20,7 @@ import {
 } from "../domain/types";
 import { WEEKDAY_ORDER, compareRules, formatDayList, formatHours } from "../domain/week";
 import { weekTotals } from "../domain/grid";
+import { offerFromOption, previewSlots } from "../domain/slot-preview";
 import {
   useAvailabilityConfig,
   useSetProviderTimezone,
@@ -186,6 +189,35 @@ function AvailabilityBoard({
     previewDays.some((d) => d.weekday === w && d.intervals.length > 0),
   );
 
+  /**
+   * What the *selected member's* rules would actually sell, for one service.
+   *
+   * Duration lives on the service option, not on a rule, so a preview needs a
+   * service to be exact — there is no default length to fall back to that
+   * would not draw slots the provider does not sell. Scoped to a real member:
+   * the team view is a union of different people's windows with no single
+   * capacity to report a seat count for, which is a booking-flow question
+   * (concurrent staff) this task deliberately leaves alone.
+   */
+  const servicesQuery = useServices(provider.id);
+  const publishedServices = (servicesQuery.data ?? []).filter((s) => s.status === "published");
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const activeService =
+    publishedServices.find((s) => s.id === selectedServiceId) ?? publishedServices[0] ?? null;
+  const activeOption = activeService ? defaultOption(activeService) : null;
+  const offer = activeOption ? offerFromOption(activeOption) : null;
+
+  const slotPreview =
+    selectedMember && offer
+      ? previewSlots({
+          dates,
+          rules: draft,
+          exceptions: selectedMember.exceptions,
+          closures: config.closures,
+          offer,
+        })
+      : null;
+
   // Only a member's own week is a draft; the team view is read-only, and
   // exceptions and closures write immediately through their own mutations.
   const dirty =
@@ -286,7 +318,45 @@ function AvailabilityBoard({
         {/* The week comes first in the DOM below `lg`: on a phone the answer
             matters more than the controls that produced it. */}
         <div className="order-first border-b border-[var(--color-border)] p-5 lg:order-last lg:border-b-0">
-          <WeekPreview days={previewDays} locale={locale} />
+          {/* Read-only for the team view, for the same reason the count itself
+              is: there is one member's rules under this control, not several. */}
+          {selectedMember && (
+            <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
+              {publishedServices.length > 0 ? (
+                <>
+                  <label
+                    htmlFor="availability-preview-service"
+                    className="type-caption text-[var(--color-muted-foreground)]"
+                  >
+                    {t("availabilityPreviewFor")}
+                  </label>
+                  <Select
+                    id="availability-preview-service"
+                    value={activeService?.id ?? ""}
+                    onChange={setSelectedServiceId}
+                    options={publishedServices.map((s) => ({
+                      value: s.id,
+                      label: ownerName(s, locale),
+                    }))}
+                    triggerClassName="type-caption inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-3"
+                  />
+                  {slotPreview && (
+                    <p className="type-caption text-[var(--color-muted-foreground)]">
+                      {t("availabilityPreviewCount", {
+                        slots: slotPreview.totalSlots,
+                        seats: slotPreview.totalSeats,
+                      })}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="type-caption text-[var(--color-muted-foreground)]">
+                  {t("availabilityPreviewNoService")}
+                </p>
+              )}
+            </div>
+          )}
+          <WeekPreview days={previewDays} locale={locale} slotsByDate={slotPreview?.byDate} />
         </div>
 
         {/* `@container`, so the forms inside measure themselves against this
@@ -379,10 +449,27 @@ function AvailabilityBoard({
   );
 }
 
-/** The fetched week as the form edits it: id-less rows, in canonical order. */
+/**
+ * The fetched week as the form edits it: id-less rows, in canonical order —
+ * and carrying each rule's own buffer, grid and capacity, not just its hours.
+ *
+ * `setWeeklyPattern` replaces a member's whole week in one call. Dropping the
+ * shape fields here would mean every rule the provider did *not* touch this
+ * session still gets resubmitted — as `{weekday, startMinute, endMinute}`
+ * alone once `save()` sends `draft` back — and the server reads a shape-less
+ * row as "use the default", silently erasing whatever that rule's buffer,
+ * grid or capacity used to be.
+ */
 function toDraft(weekly: AvailabilityMember["weekly"]): WeeklyRuleDraft[] {
   return weekly
-    .map(({ weekday, startMinute, endMinute }) => ({ weekday, startMinute, endMinute }))
+    .map(({ weekday, startMinute, endMinute, bufferMinutes, slotIntervalMinutes, capacity }) => ({
+      weekday,
+      startMinute,
+      endMinute,
+      bufferMinutes,
+      slotIntervalMinutes,
+      capacity,
+    }))
     .sort(compareRules);
 }
 
@@ -392,6 +479,11 @@ function toDraft(weekly: AvailabilityMember["weekly"]): WeeklyRuleDraft[] {
  * Field by field rather than by `JSON.stringify`: key order is not part of
  * what makes two weeks equal, and a serialiser that happened to emit a
  * different order would report a clean week as unsaved.
+ *
+ * Compares the shape fields too, not just hours — editing only a rule's
+ * capacity through the drawer, with its days and times untouched, is still a
+ * real change, and the save bar above the week has no other signal to raise
+ * on.
  */
 function sameRules(a: readonly WeeklyRuleDraft[], b: readonly WeeklyRuleDraft[]): boolean {
   if (a.length !== b.length) return false;
@@ -399,7 +491,10 @@ function sameRules(a: readonly WeeklyRuleDraft[], b: readonly WeeklyRuleDraft[])
     (rule, i) =>
       rule.weekday === b[i]!.weekday &&
       rule.startMinute === b[i]!.startMinute &&
-      rule.endMinute === b[i]!.endMinute,
+      rule.endMinute === b[i]!.endMinute &&
+      rule.bufferMinutes === b[i]!.bufferMinutes &&
+      rule.slotIntervalMinutes === b[i]!.slotIntervalMinutes &&
+      rule.capacity === b[i]!.capacity,
   );
 }
 

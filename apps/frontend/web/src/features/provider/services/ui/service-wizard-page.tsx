@@ -12,7 +12,6 @@ import type { ServiceStep } from "../domain/wizard-model";
 import { StepBasics } from "./steps/step-basics";
 import { StepBooking } from "./steps/step-booking";
 import { StepPerformers } from "./steps/step-performers";
-import { StepTiming } from "./steps/step-timing";
 import { StepPricing } from "./steps/step-pricing";
 import { StepLanguages } from "./steps/step-languages";
 import { StepReview } from "./steps/step-review";
@@ -77,10 +76,6 @@ export function ServiceWizardPage() {
             {...(memberError ? { error: memberError } : {})}
             onErrorClear={vm.clearMemberError}
           />
-        );
-      case "timing":
-        return (
-          <StepTiming draft={vm.draft} setDraft={vm.setDraft} fieldErrors={vm.fieldErrors} />
         );
       case "pricing":
         return (
@@ -159,9 +154,9 @@ export function ServiceWizardPage() {
 
       {renderStep()}
 
-      {/* Only the essentials need this. `timing` — the one other step that can
-          refuse — already renders its own message under the buffer field, and
-          a second copy here would report one fault twice. */}
+      {/* Only the essentials have anything `stepBlocks` can refuse — every
+          other step either always carries a value or writes through its own
+          mutation, so this is the one place that message is ever shown. */}
       {vm.showStepError && vm.step === "basics" ? (
         <p className="type-caption mt-4 text-[var(--color-destructive)]">
           {t("serviceStepIncomplete")}
