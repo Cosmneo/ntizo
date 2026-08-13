@@ -10,6 +10,7 @@ import { invitePublicSchema } from "./invite/graphql/schema/queries";
 import { cityPublicSchema } from "./city/graphql/schema/queries";
 import { catalogPublicSchema } from "./catalog/graphql/schema/queries";
 import { schedulingPublicSchema } from "./scheduling/graphql/schema/queries";
+import { reviewPublicSchema } from "./review/graphql/schema/queries";
 
 /**
  * The PUBLIC (anonymous-tier) schema barrel.
@@ -58,6 +59,7 @@ export const publicSchema = mergeGraphQLSchemas(
   invitePublicSchema,
   catalogPublicSchema,
   schedulingPublicSchema,
+  reviewPublicSchema,
 );
 
 export type PublicSchema = typeof publicSchema;
