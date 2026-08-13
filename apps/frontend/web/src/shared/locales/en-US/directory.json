@@ -38,5 +38,7 @@
   },
   "servicesSubtitle": "Everything the platform's providers offer.",
   "servicesPrevious": "← Previous",
-  "servicesNext": "Next →"
+  "servicesNext": "Next →",
+  "servicesFilterByCategory": "Filter by category",
+  "servicesAllCategories": "All"
 }

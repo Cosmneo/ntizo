@@ -38,5 +38,7 @@
   },
   "servicesSubtitle": "Tudo o que os prestadores da plataforma oferecem.",
   "servicesPrevious": "← Anteriores",
-  "servicesNext": "Seguintes →"
+  "servicesNext": "Seguintes →",
+  "servicesFilterByCategory": "Filtrar por categoria",
+  "servicesAllCategories": "Todas"
 }
