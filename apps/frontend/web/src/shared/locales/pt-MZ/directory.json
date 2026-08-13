@@ -95,5 +95,12 @@
   "serviceNotFoundBody": "Este serviço pode ter sido removido, ou o link está errado.",
   "serviceNotFoundAction": "Ver serviços",
   "viewProviderProfile": "Ver perfil do prestador",
-  "performersTitle": "Quem presta este serviço"
+  "performersTitle": "Quem presta este serviço",
+  "packagesTitle": "Pacotes",
+  "packagePrice": "Preço",
+  "packageCommission": "Comissão Ntizo ({{rate}})",
+  "packageTotal": "Total",
+  "packageBook": "Reservar",
+  "packageBookingsClosed": "As reservas ainda não estão abertas na Ntizo.",
+  "packageContactProvider": "Falar com o prestador"
 }

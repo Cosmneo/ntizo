@@ -95,5 +95,12 @@
   "serviceNotFoundBody": "Deze dienst is mogelijk verwijderd, of de link klopt niet.",
   "serviceNotFoundAction": "Bekijk diensten",
   "viewProviderProfile": "Aanbiedersprofiel bekijken",
-  "performersTitle": "Wie deze dienst uitvoert"
+  "performersTitle": "Wie deze dienst uitvoert",
+  "packagesTitle": "Pakketten",
+  "packagePrice": "Prijs",
+  "packageCommission": "Ntizo-commissie ({{rate}})",
+  "packageTotal": "Totaal",
+  "packageBook": "Boeken",
+  "packageBookingsClosed": "Boekingen zijn nog niet mogelijk op Ntizo.",
+  "packageContactProvider": "Aanbieder contacteren"
 }

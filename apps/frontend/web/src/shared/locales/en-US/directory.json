@@ -95,5 +95,12 @@
   "serviceNotFoundBody": "This service may have been removed, or the link is wrong.",
   "serviceNotFoundAction": "Browse services",
   "viewProviderProfile": "View provider profile",
-  "performersTitle": "Who performs this service"
+  "performersTitle": "Who performs this service",
+  "packagesTitle": "Packages",
+  "packagePrice": "Price",
+  "packageCommission": "Ntizo commission ({{rate}})",
+  "packageTotal": "Total",
+  "packageBook": "Book",
+  "packageBookingsClosed": "Bookings aren't open on Ntizo yet.",
+  "packageContactProvider": "Contact provider"
 }

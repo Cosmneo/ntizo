@@ -7,6 +7,7 @@ import { useServiceDetail } from "@/features/directory/services/viewmodel/use-se
 import { ServiceGallery } from "@/features/directory/services/ui/service-gallery";
 import { ServiceProviderCard } from "@/features/directory/services/ui/service-provider-card";
 import { ServicePerformers } from "@/features/directory/services/ui/service-performers";
+import { PackageChooser } from "@/features/directory/services/ui/package-chooser";
 
 /**
  * One service, in full.
@@ -16,8 +17,9 @@ import { ServicePerformers } from "@/features/directory/services/ui/service-perf
  * came to act on, so it is the one that stays in view as the left one scrolls.
  */
 export function ServiceDetailPage({ id }: { id: string }) {
-  const { t } = useTranslation("directory");
+  const { t, i18n } = useTranslation("directory");
   const service = useServiceDetail(id);
+  const locale = i18n.resolvedLanguage ?? i18n.language;
 
   if (!service) {
     return (
@@ -59,7 +61,8 @@ export function ServiceDetailPage({ id }: { id: string }) {
             )}
             <ServicePerformers performers={service.performers} />
           </div>
-          <div className="lg:sticky lg:top-4">
+          <div className="grid gap-4 lg:sticky lg:top-4">
+            <PackageChooser key={service.id} options={service.options} locale={locale} />
             <ServiceProviderCard service={service} />
           </div>
         </div>
