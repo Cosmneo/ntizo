@@ -90,5 +90,8 @@
     "de-DE": "Deutsch",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
-  }
+  },
+  "serviceNotFoundTitle": "Leistung nicht gefunden",
+  "serviceNotFoundBody": "Diese Leistung wurde möglicherweise entfernt, oder der Link ist falsch.",
+  "serviceNotFoundAction": "Leistungen ansehen"
 }

@@ -90,5 +90,8 @@
     "de-DE": "Deutsch",
     "it-IT": "Italiano",
     "nl-NL": "Nederlands"
-  }
+  },
+  "serviceNotFoundTitle": "Serviço não encontrado",
+  "serviceNotFoundBody": "Este serviço pode ter sido removido, ou o link está errado.",
+  "serviceNotFoundAction": "Ver serviços"
 }
