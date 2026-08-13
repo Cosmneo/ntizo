@@ -196,8 +196,6 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
     serviceId: string;
     providerId: string;
     timezone: string;
-    bufferMinutes: number;
-    slotIntervalMinutes: number;
     bookingMode: "priced" | "quote";
     status: string;
     providerStatus: string;
@@ -215,8 +213,6 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
         serviceId: service.id,
         providerId: service.providerId,
         timezone: provider.timezone,
-        bufferMinutes: service.bufferMinutes,
-        slotIntervalMinutes: service.slotIntervalMinutes,
         bookingMode: service.bookingMode,
         status: service.status,
         // One more column on the join this select already makes for the
@@ -252,8 +248,6 @@ export class DrizzleScheduleRepository implements ScheduleRepositoryPort {
       serviceId: row.serviceId,
       providerId: row.providerId,
       timezone: row.timezone,
-      bufferMinutes: row.bufferMinutes,
-      slotIntervalMinutes: row.slotIntervalMinutes,
       bookingMode: row.bookingMode as "priced" | "quote",
       status: row.status,
       providerStatus: row.providerStatus,

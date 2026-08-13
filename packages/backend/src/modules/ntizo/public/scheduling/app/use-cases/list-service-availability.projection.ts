@@ -1,13 +1,11 @@
 import { addDays, daysBetween, localDateTimeToInstant, weekdayOf } from "@ntizo/shared/datetime";
 import type { ServiceAvailabilityDTO } from "@ntizo/shared/read-models";
 import {
-  fixedStarts,
-  freeIntervals,
-  hourlyStarts,
+  startsForDay,
   type DayException,
-  type FixedShape,
-  type HourlyShape,
+  type DayRule,
   type Interval,
+  type Offer,
 } from "@ntizo/shared/scheduling";
 import { ServiceNotFoundError } from "../../../../bounded-contexts/catalog/domain/exceptions";
 import type { BusyIntervalsPort } from "../../../../bounded-contexts/scheduling/app/ports/outbound/busy-intervals.port";
@@ -53,7 +51,7 @@ function toDayExceptions(entries: readonly DateExceptionEntry[]): DayException[]
 /** One performer's whole window, indexed so the day loop is pure lookups. */
 interface MemberCalendar {
   readonly memberId: string;
-  readonly weeklyByWeekday: ReadonlyMap<number, Interval[]>;
+  readonly weeklyByWeekday: ReadonlyMap<number, DayRule[]>;
   readonly exceptionsByDate: ReadonlyMap<string, DayException[]>;
   readonly busyByDate: ReadonlyMap<string, Interval[]>;
 }
@@ -61,51 +59,34 @@ interface MemberCalendar {
 /**
  * What the default option makes bookable, or null when it makes nothing.
  *
- * Null covers a quote service (no option at all) and the shapes the database's
- * own CHECK constraints already forbid — a fixed option with no duration, an
- * hourly one with no step, a non-positive grid. They are unreachable through
- * the write path, but this read is anonymous and a zero grid would spin
- * `fixedStarts` forever rather than answer wrongly. A calendar with nothing on
- * it is the honest answer to "when can this be had" for a service that cannot
- * be booked by the clock.
+ * Reduced to the one thing the *service* still says: how long it takes, or
+ * how flexibly. The buffer, the grid and the capacity moved to the
+ * availability rule, because a provider's day is cut up by how they work
+ * rather than by which of their services is being looked at —
+ * `startsForDay` reads those off each rule itself.
+ *
+ * Null covers a quote service (no option at all) and the shapes the
+ * database's own CHECK constraints already forbid — a fixed option with no
+ * duration, an hourly one with no minimum or step. They are unreachable
+ * through the write path, but this read is anonymous, and a calendar with
+ * nothing on it is the honest answer to "when can this be had" for a shape
+ * nothing wrote.
  */
-type OfferShape =
-  | { readonly kind: "fixed"; readonly shape: FixedShape }
-  | { readonly kind: "hourly"; readonly shape: HourlyShape };
-
-function resolveOfferShape(info: SchedulingInfo): OfferShape | null {
+function resolveOffer(info: SchedulingInfo): Offer | null {
   const option = info.defaultOption;
   if (!option) return null;
-
-  const gridMinutes = info.slotIntervalMinutes;
-  const bufferMinutes = info.bufferMinutes;
-  if (!Number.isInteger(gridMinutes) || gridMinutes <= 0) return null;
-  if (!Number.isInteger(bufferMinutes) || bufferMinutes < 0) return null;
 
   if (option.pricingMode === "fixed") {
     const durationMinutes = option.durationMinutes;
     if (durationMinutes === null || durationMinutes <= 0) return null;
-    return { kind: "fixed", shape: { durationMinutes, bufferMinutes, gridMinutes } };
+    return { kind: "fixed", durationMinutes };
   }
 
   const minMinutes = option.minMinutes;
   const stepMinutes = option.stepMinutes;
   if (minMinutes === null || minMinutes <= 0) return null;
   if (stepMinutes === null || stepMinutes <= 0) return null;
-  return { kind: "hourly", shape: { minMinutes, stepMinutes, bufferMinutes, gridMinutes } };
-}
-
-/** Every offer one member has on one day, as `{ minute → longest length }`. */
-function offersFor(shape: OfferShape, free: readonly Interval[]): Map<number, number | null> {
-  const out = new Map<number, number | null>();
-  if (shape.kind === "fixed") {
-    // A fixed service has one knowable length, so there is nothing left to
-    // choose and nothing to report per start.
-    for (const minute of fixedStarts(free, shape.shape)) out.set(minute, null);
-    return out;
-  }
-  for (const offer of hourlyStarts(free, shape.shape)) out.set(offer.start, offer.maxMinutes);
-  return out;
+  return { kind: "hourly", minMinutes, stepMinutes };
 }
 
 /**
@@ -195,8 +176,8 @@ export class ListServiceAvailability {
     // roster regardless of this filter.
     const queriedMemberIds = input.memberId !== undefined ? [input.memberId] : info.memberIds;
 
-    const shape = resolveOfferShape(info);
-    if (!shape) return empty;
+    const offer = resolveOffer(info);
+    if (!offer) return empty;
 
     // ---- Loaded once, before the day loop. ----
     const [scheduleList, closures, busyByMember] = await Promise.all([
@@ -208,10 +189,19 @@ export class ListServiceAvailability {
     const calendars: MemberCalendar[] = scheduleList.map((schedule, index) => {
       const memberId = queriedMemberIds[index]!;
 
-      const weeklyByWeekday = new Map<number, Interval[]>();
+      const weeklyByWeekday = new Map<number, DayRule[]>();
       for (const rule of schedule.weekly) {
         const day = weeklyByWeekday.get(rule.weekday) ?? [];
-        day.push({ start: rule.startMinute, end: rule.endMinute });
+        day.push({
+          startMinute: rule.startMinute,
+          endMinute: rule.endMinute,
+          // `?? null`, not left `undefined`: a rule set through the API and
+          // one read back from the database must resolve to the same
+          // default, and `resolveRuleShape` only checks for `null`.
+          bufferMinutes: rule.bufferMinutes ?? null,
+          slotIntervalMinutes: rule.slotIntervalMinutes ?? null,
+          capacity: rule.capacity ?? null,
+        });
         weeklyByWeekday.set(rule.weekday, day);
       }
 
@@ -247,24 +237,39 @@ export class ListServiceAvailability {
       const houseClosed = isHouseClosed(date);
       const weekday = weekdayOf(date);
 
-      // minute → who is free then, and the longest length any of them can carry.
-      const byMinute = new Map<number, { memberIds: string[]; maxMinutes: number | null }>();
+      // minute → who is free then, how many seats they leave between them,
+      // and the longest length any of them can carry.
+      const byMinute = new Map<
+        number,
+        { memberIds: string[]; seatsLeft: number; maxMinutes: number | null }
+      >();
 
       for (const calendar of calendars) {
-        const free = freeIntervals({
+        // Generated per rule inside `startsForDay` itself — see that
+        // function's own doc comment for why a merge-then-generate shape
+        // cannot honour two different grids on the same day. `busy` goes in
+        // here too, uncut: it is counted against each rule's capacity rather
+        // than subtracted from the window, which is what lets a start with
+        // room left still be offered after its first booking.
+        const starts = startsForDay({
           houseClosed,
           exceptions: calendar.exceptionsByDate.get(date) ?? [],
-          weekly: calendar.weeklyByWeekday.get(weekday) ?? [],
+          rules: calendar.weeklyByWeekday.get(weekday) ?? [],
           busy: calendar.busyByDate.get(date) ?? [],
+          offer,
         });
 
-        for (const [minute, maxMinutes] of offersFor(shape, free)) {
+        for (const [minute, { seatsLeft, maxMinutes }] of starts) {
           const existing = byMinute.get(minute);
           if (!existing) {
-            byMinute.set(minute, { memberIds: [calendar.memberId], maxMinutes });
+            byMinute.set(minute, { memberIds: [calendar.memberId], seatsLeft, maxMinutes });
             continue;
           }
           existing.memberIds.push(calendar.memberId);
+          // Seats add across members, never take the larger: two barbers
+          // free at 09:00 is two haircuts, not one — each member's seats are
+          // an independent opening, not a shared one.
+          existing.seatsLeft += seatsLeft;
           // The longest, not the last: a start offering 60 minutes because the
           // person with the shortest afternoon happened to be read last would
           // hide an hour somebody else could genuinely work.
@@ -282,6 +287,7 @@ export class ListServiceAvailability {
           minuteOfDay,
           startsAt: localDateTimeToInstant(info.timezone, date, minuteOfDay).toISOString(),
           maxMinutes: entry.maxMinutes,
+          seatsLeft: entry.seatsLeft,
           memberIds: entry.memberIds,
         }));
 

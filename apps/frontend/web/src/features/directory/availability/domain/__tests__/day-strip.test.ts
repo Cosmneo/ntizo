@@ -40,7 +40,13 @@ describe("isPast", () => {
 
 /** A minimal `Start`, with only the field `groupByHour` actually reads set explicitly. */
 function start(minuteOfDay: number): Start {
-  return { minuteOfDay, startsAt: `2026-08-12T${String(minuteOfDay).padStart(4, "0")}`, maxMinutes: null, memberIds: ["m1"] };
+  return {
+    minuteOfDay,
+    startsAt: `2026-08-12T${String(minuteOfDay).padStart(4, "0")}`,
+    maxMinutes: null,
+    seatsLeft: 1,
+    memberIds: ["m1"],
+  };
 }
 
 describe("groupByHour", () => {

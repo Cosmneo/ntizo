@@ -9,11 +9,25 @@ const JOAO = "22222222-2222-2222-2222-222222222222";
 const MARIA = "33333333-3333-3333-3333-333333333333";
 const SERVICE = "44444444-4444-4444-4444-444444444444";
 
-/** Monday to Friday, 08:00-18:00. 2026-08-12 is a Wednesday. */
-function workingWeek(memberId: string) {
+/**
+ * Monday to Friday, 08:00-18:00. 2026-08-12 is a Wednesday.
+ *
+ * `ruleShape` is merged into every day of the week, not just one — the only
+ * caller that needs it (the buffer test) wants a shape that holds for the
+ * whole working week, not a single weekday carved out specially.
+ */
+function workingWeek(
+  memberId: string,
+  ruleShape: { bufferMinutes?: number | null; slotIntervalMinutes?: number | null; capacity?: number | null } = {},
+) {
   const s = MemberSchedule.create(PROVIDER, memberId);
   s.setWeeklyPattern(
-    [1, 2, 3, 4, 5].map((weekday) => ({ weekday, startMinute: 480, endMinute: 1080 })),
+    [1, 2, 3, 4, 5].map((weekday) => ({
+      weekday,
+      startMinute: 480,
+      endMinute: 1080,
+      ...ruleShape,
+    })),
   );
   return s;
 }
@@ -35,8 +49,6 @@ function fakeRepo(
           serviceId: SERVICE,
           providerId: PROVIDER,
           timezone: "Africa/Maputo",
-          bufferMinutes: 0,
-          slotIntervalMinutes: 30,
           bookingMode: "priced" as const,
           status: "published",
           providerStatus: "active",
@@ -132,8 +144,6 @@ const HOURLY_INFO: NonNullable<SchedulingInfo> = {
   serviceId: SERVICE,
   providerId: PROVIDER,
   timezone: "Africa/Maputo",
-  bufferMinutes: 0,
-  slotIntervalMinutes: 30,
   bookingMode: "priced",
   status: "published",
   providerStatus: "active",
@@ -592,13 +602,91 @@ describe("ListServiceAvailability", () => {
     expect(result.days[3]!.starts.length).toBeGreaterThan(0); // Monday
   });
 
-  test("the service's buffer keeps the last appointment inside the working day", async () => {
+  test("a rule's own buffer keeps the last appointment inside the working day", async () => {
     // 45 minutes of work plus 30 of cleanup must both finish by 18:00, so the
-    // last start moves back from 17:00 to 16:30.
-    const projection = makeProjection({ info: { ...baseInfo(), bufferMinutes: 30 } });
+    // last start moves back from 17:00 to 16:30. The buffer lives on the
+    // rule now, not the service — `baseInfo()` supplies none, and this is
+    // the calendar's own shape carrying it instead.
+    const projection = makeProjection({
+      schedules: new Map([[JOAO, workingWeek(JOAO, { bufferMinutes: 30 })]]),
+    });
     const result = await projection.execute(ONE_WEDNESDAY);
 
     expect(result.days[0]!.starts.at(-1)!.minuteOfDay).toBe(990);
+  });
+
+  test("two rules on one day keep their own grids end to end", async () => {
+    // The projection-level twin of `startsForDay`'s own "two rules on one
+    // day keep their own grids" test: proof the rules reach the engine
+    // unmerged all the way through a real query, not just inside the engine
+    // itself.
+    const twoGrids = MemberSchedule.create(PROVIDER, JOAO);
+    twoGrids.setWeeklyPattern([
+      { weekday: 3, startMinute: 540, endMinute: 660, slotIntervalMinutes: 30 }, // 09:00-11:00 every 30
+      { weekday: 3, startMinute: 660, endMinute: 780, slotIntervalMinutes: 60 }, // 11:00-13:00 every 60
+    ]);
+    const projection = makeProjection({
+      schedules: new Map([[JOAO, twoGrids]]),
+      info: {
+        ...baseInfo(),
+        defaultOption: { pricingMode: "fixed", durationMinutes: 30, minMinutes: null, stepMinutes: null },
+      },
+    });
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    const minutes = result.days[0]!.starts.map((s) => s.minuteOfDay);
+    expect(minutes).toEqual([540, 570, 600, 630, 660, 720]);
+  });
+
+  test("a rule with no grid offers no starts", async () => {
+    // `slotIntervalMinutes: 0` is "open, nothing to pick" — a real answer a
+    // provider gives, distinct from having set nothing at all.
+    const openRule = MemberSchedule.create(PROVIDER, JOAO);
+    openRule.setWeeklyPattern([
+      { weekday: 3, startMinute: 540, endMinute: 1080, slotIntervalMinutes: 0 },
+    ]);
+    const projection = makeProjection({ schedules: new Map([[JOAO, openRule]]) });
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    expect(result.days[0]!.starts).toEqual([]);
+  });
+
+  test("every start says how many seats are left", async () => {
+    const twoGrids = MemberSchedule.create(PROVIDER, JOAO);
+    twoGrids.setWeeklyPattern([
+      { weekday: 3, startMinute: 540, endMinute: 660, slotIntervalMinutes: 30 },
+      { weekday: 3, startMinute: 660, endMinute: 780, slotIntervalMinutes: 60 },
+    ]);
+    const projection = makeProjection({
+      schedules: new Map([[JOAO, twoGrids]]),
+      info: {
+        ...baseInfo(),
+        defaultOption: { pricingMode: "fixed", durationMinutes: 30, minMinutes: null, stepMinutes: null },
+      },
+    });
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    // Nobody else free at this start and capacity defaults to one, so one
+    // seat is exactly what is left.
+    expect(result.days[0]!.starts[0]!.seatsLeft).toBe(1);
+  });
+
+  test("a rule with three nulls answers exactly as before", async () => {
+    // The migration's safety net, at the level a customer actually sees: a
+    // rule that says nothing must resolve to the same numbers the engine
+    // used before this plan started (buffer 0, grid 30, capacity 1).
+    const untouched = MemberSchedule.create(PROVIDER, JOAO);
+    untouched.setWeeklyPattern([{ weekday: 3, startMinute: 540, endMinute: 660 }]);
+    const projection = makeProjection({
+      schedules: new Map([[JOAO, untouched]]),
+      info: {
+        ...baseInfo(),
+        defaultOption: { pricingMode: "fixed", durationMinutes: 30, minMinutes: null, stepMinutes: null },
+      },
+    });
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    expect(result.days[0]!.starts.map((s) => s.minuteOfDay)).toEqual([540, 570, 600, 630]);
   });
 });
 
@@ -608,8 +696,6 @@ function baseInfo(): NonNullable<SchedulingInfo> {
     serviceId: SERVICE,
     providerId: PROVIDER,
     timezone: "Africa/Maputo",
-    bufferMinutes: 0,
-    slotIntervalMinutes: 30,
     bookingMode: "priced",
     status: "published",
     providerStatus: "active",
