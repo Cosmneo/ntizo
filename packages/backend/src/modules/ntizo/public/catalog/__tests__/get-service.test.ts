@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { GetServiceProjection } from "../app/use-cases/get-service.projection";
+import { mapGetServiceInput } from "../graphql/handlers/arg-mappers";
 
 const row = (over = {}) => ({
   id: "svc-1",
@@ -91,5 +92,23 @@ describe("GetServiceProjection", () => {
       .execute({ id: "svc-1", locale: "pt-MZ" });
     expect(out?.options).toEqual([]);
     expect(out?.bookingMode).toBe("quote");
+  });
+});
+
+describe("mapGetServiceInput", () => {
+  it("passes the id and the locale through", () => {
+    expect(mapGetServiceInput({ id: "svc-1", locale: "en-US" })).toEqual({
+      id: "svc-1",
+      locale: "en-US",
+    });
+  });
+
+  it("falls back to the platform's language when none was asked for", () => {
+    // A zod `.default()` does not survive into the generated GraphQL schema,
+    // so the fallback has to run here or not at all.
+    expect(mapGetServiceInput({ id: "svc-1" })).toEqual({
+      id: "svc-1",
+      locale: "pt-MZ",
+    });
   });
 });

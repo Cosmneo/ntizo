@@ -7,7 +7,11 @@ import {
   serviceLocationTypeSchema,
   servicePaymentModeSchema,
 } from "@ntizo/shared";
-import { categoryPageReadModel, servicePageReadModel } from "@ntizo/shared/read-models";
+import {
+  categoryPageReadModel,
+  serviceDetailReadModel,
+  servicePageReadModel,
+} from "@ntizo/shared/read-models";
 
 /**
  * The active categories, resolved into one language.
@@ -80,6 +84,27 @@ export const listServices = defineQuery({
 });
 
 /**
+ * One published service, in full — the service's own page.
+ *
+ * Public for the same reason `listServices` is: this page is server-rendered
+ * for crawlers and read by people who have not signed in.
+ *
+ * Nullable output rather than an error for a missing service, so the three
+ * ways a service can be unreachable — gone, unpublished, provider suspended —
+ * are one answer.
+ */
+export const getService = defineQuery({
+  input: zodSchema(
+    z.object({
+      id: z.string().min(1),
+      locale: localeSchema.optional(),
+    }),
+  ),
+  output: zodSchema(serviceDetailReadModel.nullable()),
+  docs: { summary: "One published service in one language", tags: ["Catalog"] },
+});
+
+/**
  * No context schema, like the other public slices.
  *
  * Declaring the private one made every field on this mount demand a session,
@@ -90,5 +115,5 @@ export const listServices = defineQuery({
  */
 export const catalogPublicSchema = defineGraphQLSchema({
   category: { all: listCategories },
-  service: { all: listServices },
+  service: { all: listServices, byId: getService },
 });

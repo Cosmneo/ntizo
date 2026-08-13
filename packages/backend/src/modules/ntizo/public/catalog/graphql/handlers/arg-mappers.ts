@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE } from "@ntizo/shared";
 import type { ListServicesInput } from "../../app/use-cases/list-services.projection";
+import type { GetServiceInput } from "../../app/use-cases/get-service.projection";
 
 /** How many services a request without a `limit` asks for. */
 const DEFAULT_SERVICE_LIMIT = 24;
@@ -49,4 +50,18 @@ export function mapListServicesInput(input: {
     limit: input.limit ?? DEFAULT_SERVICE_LIMIT,
     offset: input.offset ?? 0,
   };
+}
+
+/**
+ * The GraphQL arguments of `service.byId`, as the projection wants them.
+ *
+ * A named, tested function for the same reason `mapListServicesInput` is: a
+ * field added to the schema and forgotten here validates fine and is then
+ * silently dropped.
+ */
+export function mapGetServiceInput(input: {
+  id: string;
+  locale?: string | undefined;
+}): GetServiceInput {
+  return { id: input.id, locale: input.locale ?? DEFAULT_LOCALE };
 }
