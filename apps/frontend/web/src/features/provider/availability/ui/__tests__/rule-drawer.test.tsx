@@ -14,7 +14,14 @@ import type { WeeklyRuleDraft } from "../../domain/types";
  * animated.
  */
 
-const MONDAY_MORNING: WeeklyRuleDraft = { weekday: 1, startMinute: 480, endMinute: 720 };
+const MONDAY_MORNING: WeeklyRuleDraft = {
+  weekday: 1,
+  startMinute: 480,
+  endMinute: 720,
+  bufferMinutes: null,
+  slotIntervalMinutes: null,
+  capacity: null,
+};
 
 function renderDrawer(overrides: Partial<Parameters<typeof RuleDrawer>[0]> = {}) {
   const onSubmit = vi.fn();
@@ -131,8 +138,21 @@ describe("RuleDrawer", () => {
         id: "480-720",
         startMinute: 480,
         endMinute: 720,
+        bufferMinutes: null,
+        slotIntervalMinutes: null,
+        capacity: null,
         weekdays: [1, 0],
-        rules: [MONDAY_MORNING, { weekday: 0, startMinute: 480, endMinute: 720 }],
+        rules: [
+          MONDAY_MORNING,
+          {
+            weekday: 0,
+            startMinute: 480,
+            endMinute: 720,
+            bufferMinutes: null,
+            slotIntervalMinutes: null,
+            capacity: null,
+          },
+        ],
       },
       // The group under edit is never its own overlap — it is being replaced.
       others: [],

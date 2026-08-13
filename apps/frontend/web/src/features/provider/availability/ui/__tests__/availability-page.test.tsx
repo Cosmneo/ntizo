@@ -63,8 +63,22 @@ function config(weekly: AvailabilityConfig["members"][number]["weekly"] = []): A
   };
 }
 
-function rule(weekday: number, startMinute: number, endMinute: number) {
-  return { id: `r${weekday}`, weekday, startMinute, endMinute };
+/** A fetched weekly row — shape defaulted to "use the default" (`null`) unless a test needs otherwise. */
+function rule(
+  weekday: number,
+  startMinute: number,
+  endMinute: number,
+  shape: { bufferMinutes?: number | null; slotIntervalMinutes?: number | null; capacity?: number | null } = {},
+) {
+  return {
+    id: `r${weekday}`,
+    weekday,
+    startMinute,
+    endMinute,
+    bufferMinutes: shape.bufferMinutes ?? null,
+    slotIntervalMinutes: shape.slotIntervalMinutes ?? null,
+    capacity: shape.capacity ?? null,
+  };
 }
 
 function renderPage(availability: AvailabilityConfig) {
@@ -186,6 +200,56 @@ describe("AvailabilityPage", () => {
     const variables = spy.mock.calls[0]?.[1] as { input: { rules: { weekday: number }[] } };
     // Typing order is not week order — what leaves the browser is the week.
     expect(variables.input.rules.map((r) => r.weekday)).toEqual([1, 3]);
+  });
+
+  // The regression this task exists for. `setWeeklyPattern` replaces a
+  // member's whole week in one call, so every rule the provider does *not*
+  // touch this session still travels with the save — and has to travel with
+  // the shape it was actually given, not the shape a form field defaults to
+  // when nobody seeded it. Before this fix, `toDraft` and `groupRules` both
+  // dropped buffer/grid/capacity on the floor, so this test would have shown
+  // Monday's drawer opening blank and Wednesday's saved capacity coming back
+  // `null`.
+  it("editing an unrelated rule resubmits every rule's own saved shape, not nulls", async () => {
+    const user = userEvent.setup();
+    const spy = vi.spyOn(client, "sessionGraphql").mockResolvedValue({} as never);
+    renderPage(
+      config([
+        // Monday 09:00–17:00, capped at 3 bookings.
+        rule(1, 540, 1020, { capacity: 3 }),
+        // Wednesday 08:00–12:00, deliberately offering no slots.
+        rule(3, 480, 720, { slotIntervalMinutes: 0 }),
+      ]),
+    );
+    await waitFor(() => expect(preview()).toBeInTheDocument());
+
+    // Opening Monday's own card shows what was actually saved…
+    await user.click(screen.getByRole("button", { name: "Edit 09:00 – 17:00" }));
+    expect(screen.getByLabelText("Capacity")).toHaveValue("3");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    // …and so does Wednesday's, on its own field.
+    await user.click(screen.getByRole("button", { name: "Edit 08:00 – 12:00" }));
+    expect(screen.getByRole("radio", { name: "No slots" })).toBeChecked();
+
+    // Change only Wednesday's end time — its grid choice is left alone, not retyped.
+    await user.clear(screen.getByLabelText("End"));
+    await user.type(screen.getByLabelText("End"), "13:00");
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    await user.click(screen.getByRole("button", { name: "Save week" }));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+
+    const variables = spy.mock.calls[0]?.[1] as {
+      input: {
+        rules: { weekday: number; capacity: number | null; slotIntervalMinutes: number | null }[];
+      };
+    };
+    const byWeekday = new Map(variables.input.rules.map((r) => [r.weekday, r]));
+    // Monday was never opened this save — its capacity must still be 3, not null.
+    expect(byWeekday.get(1)?.capacity).toBe(3);
+    // Wednesday's hours changed, but its "no slots" choice survives the edit.
+    expect(byWeekday.get(3)?.slotIntervalMinutes).toBe(0);
   });
 
   it("an individual provider is offered neither the person picker nor the team toggle", async () => {

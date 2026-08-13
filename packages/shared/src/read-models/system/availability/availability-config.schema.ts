@@ -24,6 +24,16 @@ export const availabilityConfigReadModel = z.object({
           weekday: z.number(),
           startMinute: z.number(),
           endMinute: z.number(),
+          // The rule's own shape — buffer, grid and capacity. Always present
+          // and always `null`, never absent, once a rule has round-tripped
+          // through persistence: `null` still means "use the default" up
+          // here, the same as it does on the write side
+          // (`weeklyRuleInput` in the mutation schema), so a client that
+          // reads a rule back and resubmits it unchanged cannot turn a
+          // deliberate `null` into an omitted key or vice versa.
+          bufferMinutes: z.number().nullable(),
+          slotIntervalMinutes: z.number().nullable(),
+          capacity: z.number().nullable(),
         }),
       ),
       exceptions: z.array(

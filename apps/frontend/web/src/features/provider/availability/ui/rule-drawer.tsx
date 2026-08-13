@@ -65,12 +65,25 @@ export function RuleDrawer({
   // different things to a reader, and collapsing them into one numeric state
   // the moment a key is pressed would lose that difference before it could
   // ever reach the "empty means null" parse below.
-  const [buffer, setBuffer] = useState("");
+  //
+  // Seeded from `initial`, not always blank: editing an existing group must
+  // open on the shape it was actually saved with — `null` renders as an
+  // empty box (the placeholder already names the default), a real number
+  // renders as itself, `0` included, so a saved "no buffer" and an untouched
+  // field never look alike.
+  const [buffer, setBuffer] = useState(() =>
+    initial?.bufferMinutes != null ? String(initial.bufferMinutes) : "",
+  );
   // "" is itself a real choice on this control — "use the default" — not an
   // unset placeholder the way it is for `buffer`/`capacity`; see the options
-  // list below.
-  const [grid, setGrid] = useState("");
-  const [capacity, setCapacity] = useState("");
+  // list below. A saved `0` still seeds `"0"`, which is the "No slots" chip,
+  // never the "use the default" one.
+  const [grid, setGrid] = useState(() =>
+    initial?.slotIntervalMinutes != null ? String(initial.slotIntervalMinutes) : "",
+  );
+  const [capacity, setCapacity] = useState(() =>
+    initial?.capacity != null ? String(initial.capacity) : "",
+  );
   const [error, setError] = useState<{ field: "days" | "times" | "capacity"; message: string } | null>(
     null,
   );

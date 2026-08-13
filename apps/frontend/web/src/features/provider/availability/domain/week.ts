@@ -132,47 +132,81 @@ export function compareRules(a: WeeklyRuleDraft, b: WeeklyRuleDraft): number {
 }
 
 /**
- * The rows that share a pair of times, as one thing a provider can name.
+ * The rows that share a pair of times *and the same shape*, as one thing a
+ * provider can name.
  *
  * "Monday to Friday, 09:00 to 17:00" is one decision, and the database stores
  * it as five rows because a row is per-day. A card per row would ask somebody
  * to change their mind five times to move their morning, so the screen groups
  * them back and the drawer edits the group; `rules` is the expansion the wire
  * still wants.
+ *
+ * Grouping decision, spelled out because it is easy to get backwards: the
+ * group's identity is the hours *and* `bufferMinutes`/`slotIntervalMinutes`/
+ * `capacity` together, not the hours alone. Two rows that read the same
+ * 09:00–17:00 but disagree on capacity — Wednesday capped at one booking,
+ * every other day left at the default — become two separate cards rather
+ * than one. Grouping by hours alone would have merged them into a single
+ * card with a single drawer, and the drawer can only hand back *one* shape
+ * for every day it edits — saving that card would have silently overwritten
+ * Wednesday's real capacity with whatever the drawer's field said (typically
+ * blank, since the drawer has no way to show "3 on one day, default on the
+ * rest"). Splitting the card is the safer surprise: it costs a provider an
+ * extra card to look at, where the alternative cost them data they never
+ * knew was at risk.
  */
 export interface WeekRuleGroup {
-  /** Stable within a draft — the hours *are* the group's identity. */
+  /** Stable within a draft — hours and shape together are the group's identity. */
   readonly id: string;
   readonly startMinute: number;
   readonly endMinute: number;
+  /** This group's own shape — shared by construction across every rule folded into it. See the grouping decision above. */
+  readonly bufferMinutes: number | null;
+  readonly slotIntervalMinutes: number | null;
+  readonly capacity: number | null;
   /** Stored weekday numbers (0 = Sunday), in Monday-first display order. */
   readonly weekdays: readonly number[];
   /** One row per day, in the same order — what goes back over the wire. */
   readonly rules: readonly WeeklyRuleDraft[];
 }
 
+/** A row's group identity: hours and shape, both — see {@link WeekRuleGroup}'s grouping decision. */
+function groupKey(rule: WeeklyRuleDraft): string {
+  return `${rule.startMinute}-${rule.endMinute}-${rule.bufferMinutes}-${rule.slotIntervalMinutes}-${rule.capacity}`;
+}
+
 export function groupRules(rules: readonly WeeklyRuleDraft[]): WeekRuleGroup[] {
-  const byHours = new Map<string, number[]>();
+  const byKey = new Map<string, { shape: WeeklyRuleDraft; days: number[] }>();
   for (const rule of rules) {
-    const id = `${rule.startMinute}-${rule.endMinute}`;
-    const days = byHours.get(id) ?? [];
-    if (!days.includes(rule.weekday)) days.push(rule.weekday);
-    byHours.set(id, days);
+    const key = groupKey(rule);
+    const entry = byKey.get(key) ?? { shape: rule, days: [] };
+    if (!entry.days.includes(rule.weekday)) entry.days.push(rule.weekday);
+    byKey.set(key, entry);
   }
 
-  return [...byHours.entries()]
-    .map(([id, days]) => {
-      const [startMinute, endMinute] = id.split("-").map(Number) as [number, number];
+  return [...byKey.entries()]
+    .map(([id, { shape, days }]) => {
+      const { startMinute, endMinute, bufferMinutes, slotIntervalMinutes, capacity } = shape;
       const weekdays = [...days].sort((a, b) => weekdayDisplayIndex(a) - weekdayDisplayIndex(b));
       return {
         id,
         startMinute,
         endMinute,
+        bufferMinutes,
+        slotIntervalMinutes,
+        capacity,
         weekdays,
         // Rebuilt rather than carried through from the input: the group is the
-        // authority on its own hours, so an expansion can never disagree with
-        // the times the card is printing above it.
-        rules: weekdays.map((weekday) => ({ weekday, startMinute, endMinute })),
+        // authority on its own hours and shape, so an expansion can never
+        // disagree with what the card and the drawer are showing above it.
+        rules: weekdays.map((weekday) => ({
+          weekday,
+          startMinute,
+          endMinute,
+          bufferMinutes,
+          slotIntervalMinutes,
+          capacity,
+        })),
       };
     })
     .sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute);

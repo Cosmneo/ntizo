@@ -12,13 +12,14 @@ const CONFIG = `
         userId
         name
         role
-        # Not bufferMinutes/slotIntervalMinutes/capacity — the read model
-        # behind this query does not expose them yet, so a rule opened for
-        # editing cannot show what was saved for its own shape. The drawer's
-        # three new fields therefore always start blank ("use the default")
-        # rather than echoing a previous choice; wiring the read side
-        # through is separate work, not this screen's.
-        weekly { id weekday startMinute endMinute }
+        # bufferMinutes/slotIntervalMinutes/capacity travel with every rule,
+        # not just id/weekday/startMinute/endMinute — the rule drawer needs
+        # them to open on what was actually saved rather than on "use the
+        # default", and setWeeklyPattern replaces a member's whole week in
+        # one call, so a save that only touched one rule's hours must still
+        # resubmit every other rule's own shape unchanged. Dropping any of
+        # the three here would make that silent data loss again.
+        weekly { id weekday startMinute endMinute bufferMinutes slotIntervalMinutes capacity }
         exceptions { id onDate kind startMinute endMinute note }
       }
       closures { id fromDate toDate note }

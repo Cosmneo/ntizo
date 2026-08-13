@@ -71,7 +71,17 @@ describe("availabilityConfigReadModel", () => {
         userId: "u1",
         name: "A B",
         role: "owner",
-        weekly: [{ id: "w1", weekday: 1, startMinute: 480, endMinute: 1020 }],
+        weekly: [
+          {
+            id: "w1",
+            weekday: 1,
+            startMinute: 480,
+            endMinute: 1020,
+            bufferMinutes: 10,
+            slotIntervalMinutes: 30,
+            capacity: 2,
+          },
+        ],
         exceptions: [
           {
             id: "e1",
@@ -107,5 +117,49 @@ describe("availabilityConfigReadModel", () => {
         members: [{ ...fullConfig.members[0], weekly: [] }],
       }),
     ).not.toThrow();
+  });
+
+  // `null` on a weekly rule's own shape means "use the default", the same as
+  // it does on the write side's `weeklyRuleInput` — this read model has to
+  // accept it explicitly, not just accept the field being present at all.
+  it("accepts a rule whose own shape is null, meaning it follows the default", () => {
+    expect(() =>
+      availabilityConfigReadModel.parse({
+        ...fullConfig,
+        members: [
+          {
+            ...fullConfig.members[0],
+            weekly: [
+              {
+                id: "w1",
+                weekday: 1,
+                startMinute: 480,
+                endMinute: 1020,
+                bufferMinutes: null,
+                slotIntervalMinutes: null,
+                capacity: null,
+              },
+            ],
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  // Required, not optional — every producer of this read model must say
+  // explicitly whether a rule follows the default or not, so a rule can
+  // never round-trip through this schema and quietly lose its own shape.
+  it("refuses a rule missing its own shape fields entirely", () => {
+    expect(() =>
+      availabilityConfigReadModel.parse({
+        ...fullConfig,
+        members: [
+          {
+            ...fullConfig.members[0],
+            weekly: [{ id: "w1", weekday: 1, startMinute: 480, endMinute: 1020 }],
+          },
+        ],
+      }),
+    ).toThrow();
   });
 });

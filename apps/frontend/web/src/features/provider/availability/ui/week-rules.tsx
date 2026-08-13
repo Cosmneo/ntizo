@@ -94,9 +94,16 @@ export function WeekRules({
 }
 
 /**
- * The draft minus one group. Matched on the hours rather than on object
- * identity: `groupRules` rebuilds its rows, so the group a card hands back is
- * never the same object as the one in the draft.
+ * The draft minus one group. Matched on the group's identity — hours *and*
+ * shape — rather than on object identity: `groupRules` rebuilds its rows, so
+ * the group a card hands back is never the same object as the one in the
+ * draft.
+ *
+ * Hours alone would be wrong now that `groupRules` can split one pair of
+ * hours into two cards with different buffer/grid/capacity (see its own
+ * grouping-decision comment): filtering only on `startMinute`/`endMinute`
+ * would strip out *both* cards' rows the moment either one was edited,
+ * silently deleting whichever card was not being replaced.
  */
 function withoutGroup(
   rules: readonly WeeklyRuleDraft[],
@@ -104,6 +111,13 @@ function withoutGroup(
 ): WeeklyRuleDraft[] {
   if (!group) return [...rules];
   return rules.filter(
-    (r) => !(r.startMinute === group.startMinute && r.endMinute === group.endMinute),
+    (r) =>
+      !(
+        r.startMinute === group.startMinute &&
+        r.endMinute === group.endMinute &&
+        r.bufferMinutes === group.bufferMinutes &&
+        r.slotIntervalMinutes === group.slotIntervalMinutes &&
+        r.capacity === group.capacity
+      ),
   );
 }

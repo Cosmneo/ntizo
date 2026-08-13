@@ -44,7 +44,24 @@ export class ReadAvailabilityConfigQuery {
           userId: m.userId,
           name: m.name,
           role: m.role,
-          weekly: json.weekly,
+          // Mapped explicitly rather than passed through as `json.weekly`:
+          // the aggregate's own `WeeklyRule` leaves buffer/grid/capacity
+          // optional (`?? undefined` is a legitimate in-memory state for a
+          // freshly-created rule that never set them), but this read model
+          // declares them required-and-nullable. `?? null` is the same
+          // absent-means-null normalisation `toRows` already applies at the
+          // write boundary — done again here, at the read boundary, so a
+          // caller of this query never has to tell "never set" apart from
+          // "set to the default" itself.
+          weekly: json.weekly.map((rule) => ({
+            id: rule.id,
+            weekday: rule.weekday,
+            startMinute: rule.startMinute,
+            endMinute: rule.endMinute,
+            bufferMinutes: rule.bufferMinutes ?? null,
+            slotIntervalMinutes: rule.slotIntervalMinutes ?? null,
+            capacity: rule.capacity ?? null,
+          })),
           exceptions: json.exceptions,
         };
       }),

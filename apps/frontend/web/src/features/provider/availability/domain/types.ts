@@ -18,20 +18,23 @@ export type HouseClosure = AvailabilityConfigDTO["closures"][number];
 
 /**
  * A weekly rule as the form edits it — weekday, start and end minute, plus
- * the rule's own optional shape.
+ * the rule's own shape.
  *
  * Deliberately id-less: `availability.setWeeklyPattern` replaces a member's
  * entire week in one call rather than adding or removing rows by id, so a
  * draft row never needs a server identity to be savable, and `overlaps()`
  * below works the same on a row that has been saved and one that has not.
  *
- * The three shape fields are optional as well as nullable, mirroring the
- * mutation's own `nullish()` inputs: a caller that never mentions them (every
- * row `groupRules` rebuilds, the cards, the week preview) and one that sets
- * them to `null` are saying the same thing, "use the default". The rule
- * drawer is the one place that must tell the two apart from an *unset*
- * value — a provider who never opened a field — so it always writes the key
- * explicitly, `null` and not merely absent, on every row it hands back.
+ * All six fields are required, the three shape ones nullable rather than
+ * optional. `setWeeklyPattern` replaces a member's *entire* week in one call,
+ * so every producer of a draft row — `toDraft` seeding from the fetched
+ * config, `groupRules` rebuilding rows for the wire, the rule drawer itself —
+ * must carry a rule's own shape all the way through, or a save that only
+ * touched one rule's hours would silently resubmit every *other* rule with
+ * its shape missing, which the server reads as "use the default" and
+ * overwrites. Optional (`?:`) would let a producer forget the field and
+ * typecheck anyway; required-and-nullable makes forgetting one a compile
+ * error instead of a data-loss bug found in production.
  */
 export interface WeeklyRuleDraft {
   weekday: number;
@@ -44,10 +47,10 @@ export interface WeeklyRuleDraft {
    * say" and "I said the number the default happens to be today" are kept
    * as different values all the way to the database.
    */
-  bufferMinutes?: number | null;
+  bufferMinutes: number | null;
   /** `0` is a real, distinct value here — it means the window offers no slots at all, not "use the default". */
-  slotIntervalMinutes?: number | null;
-  capacity?: number | null;
+  slotIntervalMinutes: number | null;
+  capacity: number | null;
 }
 
 /** True for the one-member case: an individual provider, not an organization with staff. */

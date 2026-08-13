@@ -14,6 +14,11 @@ import type { WeeklyRuleDraft } from "../../domain/types";
 
 const LOCALE = "en-US";
 
+/** A full `WeeklyRuleDraft` for a card test — shape is never what these tests are about. */
+function rule(weekday: number, startMinute: number, endMinute: number): WeeklyRuleDraft {
+  return { weekday, startMinute, endMinute, bufferMinutes: null, slotIntervalMinutes: null, capacity: null };
+}
+
 function renderCard(rules: WeeklyRuleDraft[], overrides: Partial<Parameters<typeof RuleCard>[0]> = {}) {
   const group = groupRules(rules)[0]!;
   const onEdit = vi.fn();
@@ -33,10 +38,7 @@ function renderCard(rules: WeeklyRuleDraft[], overrides: Partial<Parameters<type
 
 describe("RuleCard", () => {
   it("a rule card names its days and its hours", () => {
-    const { card } = renderCard([
-      { weekday: 1, startMinute: 540, endMinute: 1020 },
-      { weekday: 3, startMinute: 540, endMinute: 1020 },
-    ]);
+    const { card } = renderCard([rule(1, 540, 1020), rule(3, 540, 1020)]);
 
     expect(within(card).getByText("Mon")).toBeInTheDocument();
     expect(within(card).getByText("Wed")).toBeInTheDocument();
@@ -47,9 +49,7 @@ describe("RuleCard", () => {
   });
 
   it("a rule card for every weekday says so rather than listing seven", () => {
-    const { card } = renderCard(
-      WEEKDAY_ORDER.map((weekday) => ({ weekday, startMinute: 540, endMinute: 1020 })),
-    );
+    const { card } = renderCard(WEEKDAY_ORDER.map((weekday) => rule(weekday, 540, 1020)));
 
     expect(within(card).getByText("Every day")).toBeInTheDocument();
     // The negative half is the point: "Every day" printed *above* seven chips
@@ -61,11 +61,7 @@ describe("RuleCard", () => {
 
   it("six days is still six chips — the summary is for seven only", () => {
     const { card } = renderCard(
-      WEEKDAY_ORDER.filter((w) => w !== 0).map((weekday) => ({
-        weekday,
-        startMinute: 540,
-        endMinute: 1020,
-      })),
+      WEEKDAY_ORDER.filter((w) => w !== 0).map((weekday) => rule(weekday, 540, 1020)),
     );
 
     expect(within(card).queryByText("Every day")).not.toBeInTheDocument();
@@ -74,7 +70,7 @@ describe("RuleCard", () => {
 
   it("the edit and remove controls name the hours they act on", async () => {
     const user = userEvent.setup();
-    const { onEdit, onRemove } = renderCard([{ weekday: 1, startMinute: 540, endMinute: 1020 }]);
+    const { onEdit, onRemove } = renderCard([rule(1, 540, 1020)]);
 
     // Groups are keyed by their hours, so naming the hours makes each card's
     // pair of controls distinguishable from every other card's on the screen.
@@ -86,7 +82,7 @@ describe("RuleCard", () => {
   });
 
   it("a reader who may not edit gets neither control", () => {
-    const { card } = renderCard([{ weekday: 1, startMinute: 540, endMinute: 1020 }], {
+    const { card } = renderCard([rule(1, 540, 1020)], {
       canEdit: false,
     });
 

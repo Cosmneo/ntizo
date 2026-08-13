@@ -379,10 +379,27 @@ function AvailabilityBoard({
   );
 }
 
-/** The fetched week as the form edits it: id-less rows, in canonical order. */
+/**
+ * The fetched week as the form edits it: id-less rows, in canonical order —
+ * and carrying each rule's own buffer, grid and capacity, not just its hours.
+ *
+ * `setWeeklyPattern` replaces a member's whole week in one call. Dropping the
+ * shape fields here would mean every rule the provider did *not* touch this
+ * session still gets resubmitted — as `{weekday, startMinute, endMinute}`
+ * alone once `save()` sends `draft` back — and the server reads a shape-less
+ * row as "use the default", silently erasing whatever that rule's buffer,
+ * grid or capacity used to be.
+ */
 function toDraft(weekly: AvailabilityMember["weekly"]): WeeklyRuleDraft[] {
   return weekly
-    .map(({ weekday, startMinute, endMinute }) => ({ weekday, startMinute, endMinute }))
+    .map(({ weekday, startMinute, endMinute, bufferMinutes, slotIntervalMinutes, capacity }) => ({
+      weekday,
+      startMinute,
+      endMinute,
+      bufferMinutes,
+      slotIntervalMinutes,
+      capacity,
+    }))
     .sort(compareRules);
 }
 
@@ -392,6 +409,11 @@ function toDraft(weekly: AvailabilityMember["weekly"]): WeeklyRuleDraft[] {
  * Field by field rather than by `JSON.stringify`: key order is not part of
  * what makes two weeks equal, and a serialiser that happened to emit a
  * different order would report a clean week as unsaved.
+ *
+ * Compares the shape fields too, not just hours — editing only a rule's
+ * capacity through the drawer, with its days and times untouched, is still a
+ * real change, and the save bar above the week has no other signal to raise
+ * on.
  */
 function sameRules(a: readonly WeeklyRuleDraft[], b: readonly WeeklyRuleDraft[]): boolean {
   if (a.length !== b.length) return false;
@@ -399,7 +421,10 @@ function sameRules(a: readonly WeeklyRuleDraft[], b: readonly WeeklyRuleDraft[])
     (rule, i) =>
       rule.weekday === b[i]!.weekday &&
       rule.startMinute === b[i]!.startMinute &&
-      rule.endMinute === b[i]!.endMinute,
+      rule.endMinute === b[i]!.endMinute &&
+      rule.bufferMinutes === b[i]!.bufferMinutes &&
+      rule.slotIntervalMinutes === b[i]!.slotIntervalMinutes &&
+      rule.capacity === b[i]!.capacity,
   );
 }
 

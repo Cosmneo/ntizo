@@ -8,6 +8,24 @@ import {
   overlaps,
   weekdayShortLabel,
 } from "../week";
+import type { WeeklyRuleDraft } from "../types";
+
+/** A full `WeeklyRuleDraft`, shape defaulted to "untouched" unless a test needs otherwise. */
+function rule(
+  weekday: number,
+  startMinute: number,
+  endMinute: number,
+  shape: Partial<Pick<WeeklyRuleDraft, "bufferMinutes" | "slotIntervalMinutes" | "capacity">> = {},
+): WeeklyRuleDraft {
+  return {
+    weekday,
+    startMinute,
+    endMinute,
+    bufferMinutes: shape.bufferMinutes ?? null,
+    slotIntervalMinutes: shape.slotIntervalMinutes ?? null,
+    capacity: shape.capacity ?? null,
+  };
+}
 
 describe("minutesToLabel", () => {
   test("pads to two digits", () => {
@@ -43,23 +61,23 @@ describe("labelToMinutes", () => {
 });
 
 describe("overlaps", () => {
-  const monday = { weekday: 1, startMinute: 480, endMinute: 720 };
+  const monday = rule(1, 480, 720);
   test("a row inside another overlaps", () => {
-    expect(overlaps([monday], { weekday: 1, startMinute: 540, endMinute: 600 })).toBe(true);
+    expect(overlaps([monday], rule(1, 540, 600))).toBe(true);
   });
   test("a row straddling the end overlaps", () => {
-    expect(overlaps([monday], { weekday: 1, startMinute: 660, endMinute: 840 })).toBe(true);
+    expect(overlaps([monday], rule(1, 660, 840))).toBe(true);
   });
   test("a row starting exactly where the other ends does not overlap", () => {
-    expect(overlaps([monday], { weekday: 1, startMinute: 720, endMinute: 840 })).toBe(false);
+    expect(overlaps([monday], rule(1, 720, 840))).toBe(false);
   });
   test("the same hours on a different weekday do not overlap", () => {
-    expect(overlaps([monday], { weekday: 2, startMinute: 540, endMinute: 600 })).toBe(false);
+    expect(overlaps([monday], rule(2, 540, 600))).toBe(false);
   });
 });
 
 describe("groupRules", () => {
-  const nineToFive = (weekday: number) => ({ weekday, startMinute: 540, endMinute: 1020 });
+  const nineToFive = (weekday: number) => rule(weekday, 540, 1020);
 
   test("rows sharing the same hours become one group", () => {
     const groups = groupRules([nineToFive(1), nineToFive(3), nineToFive(5)]);
@@ -68,7 +86,7 @@ describe("groupRules", () => {
   });
 
   test("rows with different hours stay apart", () => {
-    const groups = groupRules([nineToFive(1), { weekday: 1, startMinute: 1080, endMinute: 1200 }]);
+    const groups = groupRules([nineToFive(1), rule(1, 1080, 1200)]);
     expect(groups).toHaveLength(2);
   });
 
@@ -78,14 +96,14 @@ describe("groupRules", () => {
   });
 
   test("groups come out in clock order, earliest start first", () => {
-    const evening = { weekday: 1, startMinute: 1080, endMinute: 1200 };
-    const morning = { weekday: 2, startMinute: 480, endMinute: 600 };
+    const evening = rule(1, 1080, 1200);
+    const morning = rule(2, 480, 600);
     expect(groupRules([evening, morning]).map((g) => g.startMinute)).toEqual([480, 1080]);
   });
 
   test("two groups that start together are ordered by their end", () => {
-    const short = { weekday: 1, startMinute: 540, endMinute: 600 };
-    const long = { weekday: 2, startMinute: 540, endMinute: 1020 };
+    const short = rule(1, 540, 600);
+    const long = rule(2, 540, 1020);
     expect(groupRules([long, short]).map((g) => g.endMinute)).toEqual([600, 1020]);
   });
 
@@ -95,10 +113,33 @@ describe("groupRules", () => {
   });
 
   test("distinct hours get distinct ids, so a card list can key on them", () => {
-    const ids = groupRules([nineToFive(1), { weekday: 1, startMinute: 540, endMinute: 600 }]).map(
-      (g) => g.id,
-    );
+    const ids = groupRules([nineToFive(1), rule(1, 540, 600)]).map((g) => g.id);
     expect(new Set(ids).size).toBe(2);
+  });
+
+  // The grouping decision this task added: hours alone are not a group's
+  // identity, its shape is part of it too. Without this, a Wednesday capped
+  // at one booking and every other day left at the default would have
+  // collapsed into a single card — and saving that card would have
+  // overwritten Wednesday's real capacity with whatever the drawer showed
+  // for the group as a whole, which is exactly the silent-data-loss bug this
+  // task exists to close.
+  test("rows sharing hours but not shape stay apart, so neither's capacity can be silently overwritten", () => {
+    const capped = rule(1, 540, 1020, { capacity: 1 });
+    const uncapped = rule(3, 540, 1020);
+    const groups = groupRules([capped, uncapped]);
+    expect(groups).toHaveLength(2);
+    // Insertion order survives: `sort`'s comparator ties on identical hours,
+    // and `Array.prototype.sort` is stable, so `capped`'s group (seen first)
+    // stays first.
+    expect(groups.map((g) => g.capacity)).toEqual([1, null]);
+  });
+
+  test("a group carries its own shape onto every rule it expands back into", () => {
+    const [group] = groupRules([rule(1, 540, 1020, { bufferMinutes: 15, capacity: 3 })]);
+    expect(group?.bufferMinutes).toBe(15);
+    expect(group?.capacity).toBe(3);
+    expect(group?.rules).toEqual([rule(1, 540, 1020, { bufferMinutes: 15, capacity: 3 })]);
   });
 });
 
