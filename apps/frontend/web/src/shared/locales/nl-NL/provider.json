@@ -407,6 +407,7 @@
   "availabilityRuleCancel": "Annuleren",
   "availabilityRuleBuffer": "Buffer time",
   "availabilityRuleBufferDefault": "Use default: 0 min",
+  "availabilityRuleBufferInvalid": "Enter a number of minutes, or leave it blank for the default.",
   "availabilityRuleGrid": "Time grid",
   "availabilityRuleGridDefault": "Use default: 30 min",
   "availabilityRuleGridNone": "No slots",

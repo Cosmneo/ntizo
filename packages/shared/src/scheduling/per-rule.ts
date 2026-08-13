@@ -80,6 +80,54 @@ function occupiedSpan(offer: Offer, bufferMinutes: number): number {
 }
 
 /**
+ * An hourly start's length ceiling, capped at the point where overlapping
+ * bookings would first reach the rule's capacity.
+ *
+ * `hourlyStarts` only knows the free interval — and per the module comment
+ * above, that free interval is computed with `busy: []`, so its ceiling is
+ * blind to real bookings sitting inside the window. `overlapCount` in the
+ * main loop below only protects the *minimum* span (`occupiedSpan`), which
+ * is enough to decide whether a start is offered at all, but says nothing
+ * about how long a booking placed there may run. Without this, a start next
+ * to an existing booking would still advertise a length long enough to run
+ * straight through it — nothing downstream checks for that collision.
+ *
+ * At capacity 1 the cap is simply the earliest busy interval at or after
+ * `start` — the same point the old subtract-from-the-window engine stopped
+ * at. Above capacity 1, a booking already overlapping the minimum span still
+ * uses up one seat, so this sorts every relevant booking's own start (pinned
+ * up to `start` if it began earlier, since it is already in view from there)
+ * and takes the `capacity`-th one directly — the minute at which as many
+ * bookings are in view as there is room for, with no separate case needed
+ * for "already overlapping" versus "starts later".
+ *
+ * Returns null when fewer than `capacity` bookings ever overlap from
+ * `start` onward — nothing to cap beyond what the free interval already
+ * bounds.
+ */
+function bookingCeiling(
+  busy: readonly Interval[],
+  start: number,
+  capacity: number,
+  offer: { readonly minMinutes: number; readonly stepMinutes: number },
+  bufferMinutes: number,
+): number | null {
+  const boundaries = busy
+    .filter((b) => b.end > start)
+    .map((b) => Math.max(b.start, start))
+    .sort((a, b) => a - b);
+  const bound = boundaries[capacity - 1];
+  if (bound === undefined) return null;
+
+  // Rounded down to the step ladder for the same reason `hourlyStarts`
+  // rounds its own ceiling down: advertising a length nobody can pick is
+  // the bug that function's own comment describes.
+  const room = bound - bufferMinutes - start;
+  const steps = Math.floor((room - offer.minMinutes) / offer.stepMinutes);
+  return offer.minMinutes + steps * offer.stepMinutes;
+}
+
+/**
  * How many bookings overlap `[from, to)`.
  *
  * Half-open on purpose: a booking that starts exactly where the span ends
@@ -146,12 +194,22 @@ export function startsForDay(input: StartsInput): Map<number, StartCapacity> {
       // counting instead.
       if (seatsLeft <= 0) continue;
 
+      // The free interval's ceiling has no notion of a booking sitting
+      // inside it — see `bookingCeiling`'s own comment — so an hourly
+      // offer's maximum is capped again here, against the bookings
+      // `freeIntervals` above was never shown.
+      const cap =
+        input.offer.kind === "hourly"
+          ? bookingCeiling(input.busy, start, shape.capacity, input.offer, shape.bufferMinutes)
+          : null;
+      const cappedMax = cap === null || maxMinutes === null ? maxMinutes : Math.min(maxMinutes, cap);
+
       // A start offered by two rules is offered by both, so it takes
       // whichever rule leaves more room — and with it, that rule's own
       // length ceiling, so the two never mix.
       const existing = out.get(start);
       if (existing === undefined || seatsLeft > existing.seatsLeft) {
-        out.set(start, { seatsLeft, maxMinutes });
+        out.set(start, { seatsLeft, maxMinutes: cappedMax });
       }
     }
   }

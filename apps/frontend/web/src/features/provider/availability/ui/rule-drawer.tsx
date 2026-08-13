@@ -84,9 +84,9 @@ export function RuleDrawer({
   const [capacity, setCapacity] = useState(() =>
     initial?.capacity != null ? String(initial.capacity) : "",
   );
-  const [error, setError] = useState<{ field: "days" | "times" | "capacity"; message: string } | null>(
-    null,
-  );
+  const [error, setError] = useState<
+    { field: "days" | "times" | "buffer" | "capacity"; message: string } | null
+  >(null);
 
   const startMinute = labelToMinutes(start);
   const endMinute = labelToMinutes(end);
@@ -133,6 +133,14 @@ export function RuleDrawer({
       setError({ field: "times", message: t("availabilityOverlap") });
       return;
     }
+    // Same reasoning as the capacity guard below: `Number("15 min")` is `NaN`,
+    // and `JSON.stringify(NaN)` is `null` — indistinguishable from an
+    // untouched box on the wire, so this would silently save "use the
+    // default" instead of refusing the input.
+    if (bufferMinutes !== null && (!Number.isFinite(bufferMinutes) || bufferMinutes < 0)) {
+      setError({ field: "buffer", message: t("availabilityRuleBufferInvalid") });
+      return;
+    }
     // `Number.isFinite` rather than a bare range check — a non-numeric box
     // parses to `NaN`, and `NaN < 1` is `false`, which would let garbage text
     // through as a silent "use the default" instead of being refused.
@@ -146,6 +154,7 @@ export function RuleDrawer({
   }
 
   const timeError = error?.field === "times" ? error.message : null;
+  const bufferError = error?.field === "buffer" ? error.message : undefined;
   const capacityError = error?.field === "capacity" ? error.message : undefined;
 
   return (
@@ -210,7 +219,7 @@ export function RuleDrawer({
               same intent, and a second control to say so is a second thing
               to get wrong. An empty box is the whole answer — it maps to
               `null` on submit, not to whatever the default is today. */}
-          <Field label={t("availabilityRuleBuffer")} htmlFor="rule-buffer">
+          <Field label={t("availabilityRuleBuffer")} htmlFor="rule-buffer" error={bufferError}>
             <Input
               id="rule-buffer"
               inputMode="numeric"

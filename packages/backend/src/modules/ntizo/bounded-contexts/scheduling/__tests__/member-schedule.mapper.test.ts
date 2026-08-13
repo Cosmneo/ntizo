@@ -32,13 +32,17 @@ describe("member schedule mapper", () => {
           slotIntervalMinutes: null,
           capacity: null,
         },
+        // `slotIntervalMinutes: 0` is "no slots", a real answer distinct
+        // from `null`'s "use the default" — the exact pair a stray `||` in
+        // `toRows` would collapse into each other. `0 ?? null` must still
+        // round-trip as `0`, not fall through to `null`.
         {
           id: "aaaaaaaa-0000-0000-0000-000000000003",
           weekday: 6,
           startMinute: 540,
           endMinute: 1440,
           bufferMinutes: null,
-          slotIntervalMinutes: null,
+          slotIntervalMinutes: 0,
           capacity: null,
         },
       ],

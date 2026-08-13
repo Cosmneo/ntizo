@@ -148,6 +148,54 @@ describe("startsForDay", () => {
       });
       expect(starts.has(540)).toBe(true);
     });
+
+    describe("maxMinutes capped by bookings", () => {
+      test("a booking mid-window caps the ceiling, not just the minimum span", () => {
+        // 09:00–18:00, 60-minute minimum, 60-minute step, no buffer, one
+        // booking 11:00–12:00. `busy` is invisible to `freeIntervals` now
+        // (see the module comment), so the free-interval ceiling alone
+        // would say 09:00 has all nine hours to sell — long enough to run
+        // straight through the 11:00 booking. The pre-branch engine capped
+        // this start at two hours, 09:00–11:00; this must too.
+        const starts = startsForDay({
+          ...hourlyBase,
+          offer: { kind: "hourly", minMinutes: 60, stepMinutes: 60 },
+          rules: [rule(540, 1080, { slotIntervalMinutes: 60 })],
+          busy: [{ start: 660, end: 720 }],
+        });
+        expect(starts.get(540)!.maxMinutes).toBe(120);
+      });
+
+      test("with capacity above one, a single overlapping booking does not cap it", () => {
+        // Two chairs, one booking in view: there is still room for a second
+        // booking of any length the window allows, so the ceiling is
+        // whatever the free interval gives — the cap only bites once as
+        // many bookings overlap as there is capacity.
+        const starts = startsForDay({
+          ...hourlyBase,
+          offer: { kind: "hourly", minMinutes: 60, stepMinutes: 60 },
+          rules: [rule(540, 780, { slotIntervalMinutes: 60, capacity: 2 })],
+          busy: [{ start: 600, end: 630 }],
+        });
+        expect(starts.get(540)!.maxMinutes).toBe(240);
+      });
+
+      test("with capacity above one, the cap lands at the capacity-th booking", () => {
+        // Same window, same one chair's worth of headroom, but now a second
+        // booking overlaps too: the second chair is now spoken for from
+        // 11:40 onward, so nothing sold at 09:00 may run past it.
+        const starts = startsForDay({
+          ...hourlyBase,
+          offer: { kind: "hourly", minMinutes: 60, stepMinutes: 60 },
+          rules: [rule(540, 780, { slotIntervalMinutes: 60, capacity: 2 })],
+          busy: [
+            { start: 600, end: 630 },
+            { start: 700, end: 730 },
+          ],
+        });
+        expect(starts.get(540)!.maxMinutes).toBe(120);
+      });
+    });
   });
 
   describe("capacity against bookings", () => {

@@ -407,6 +407,7 @@
   "availabilityRuleCancel": "Cancelar",
   "availabilityRuleBuffer": "Tempo de intervalo",
   "availabilityRuleBufferDefault": "Usar omissão: 0 min",
+  "availabilityRuleBufferInvalid": "Indique um número de minutos, ou deixe em branco para usar a omissão.",
   "availabilityRuleGrid": "Grelha de horários",
   "availabilityRuleGridDefault": "Usar omissão: 30 min",
   "availabilityRuleGridNone": "Sem slots",
