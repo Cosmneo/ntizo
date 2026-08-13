@@ -8,7 +8,17 @@ export class SetWeeklyPatternCommand {
     requesterUserId: string;
     providerId: string;
     memberId: string;
-    rules: { weekday: number; startMinute: number; endMinute: number }[];
+    rules: {
+      weekday: number;
+      startMinute: number;
+      endMinute: number;
+      // Absent and `null` both mean "use the default" — carried through
+      // unchanged from the GraphQL input, not collapsed here, because the
+      // aggregate and the repository both need to make the same choice.
+      bufferMinutes?: number | null;
+      slotIntervalMinutes?: number | null;
+      capacity?: number | null;
+    }[];
   }): Promise<{ ok: true }> {
     // `memberBelongsToProvider` first, `isSelfOrProviderOwnerOrAdmin` second —
     // never the other way round. The guard reads the *caller's* provider_member

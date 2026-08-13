@@ -9,6 +9,14 @@ export interface WeeklyRuleInput {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  // The rule's own shape — buffer, grid and capacity. All three optional and
+  // nullable, and "absent" and "null" carry the same meaning ("use the
+  // default") all the way to the column: nothing in this aggregate collapses
+  // one into the other, so nothing here has to know which spelling a caller
+  // used.
+  bufferMinutes?: number | null;
+  slotIntervalMinutes?: number | null;
+  capacity?: number | null;
 }
 export interface WeeklyRule extends WeeklyRuleInput {
   id: string;
