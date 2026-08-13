@@ -103,5 +103,6 @@
   "packageBook": "Prenota",
   "packageBookingsClosed": "Le prenotazioni non sono ancora aperte su Ntizo.",
   "packageContactProvider": "Contatta il fornitore",
-  "packageContactClosed": "La messaggistica non è ancora disponibile su Ntizo."
+  "packageContactClosed": "La messaggistica non è ancora disponibile su Ntizo.",
+  "availabilityCheckAction": "Vedi disponibilità"
 }

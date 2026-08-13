@@ -103,5 +103,6 @@
   "packageBook": "Boeken",
   "packageBookingsClosed": "Boekingen zijn nog niet mogelijk op Ntizo.",
   "packageContactProvider": "Aanbieder contacteren",
-  "packageContactClosed": "Berichten versturen is nog niet mogelijk op Ntizo."
+  "packageContactClosed": "Berichten versturen is nog niet mogelijk op Ntizo.",
+  "availabilityCheckAction": "Beschikbaarheid bekijken"
 }
