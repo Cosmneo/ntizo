@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   category,
@@ -161,6 +161,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
     if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
     if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
+    if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
 
     const rows = await db
       .select({
@@ -180,7 +181,15 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .innerJoin(category, eq(category.id, service.categoryId))
       .innerJoin(provider, eq(provider.id, service.providerId))
       .where(and(...conditions))
-      .orderBy(asc(service.sortOrder), asc(service.createdAt))
+      // `newest` ignores `sortOrder` rather than ordering within it: the
+      // provider's own arrangement is an answer to "what do I want shown
+      // first", and a reader who asked for the newest is asking a different
+      // question that their arrangement should not override.
+      .orderBy(
+        ...(filter.sort === "newest"
+          ? [desc(service.createdAt)]
+          : [asc(service.sortOrder), asc(service.createdAt)]),
+      )
       .limit(filter.limit)
       .offset(filter.offset);
 

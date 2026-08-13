@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { ListServicesProjection } from "../app/use-cases/list-services.projection";
+import { mapListServicesInput } from "../graphql/handlers/arg-mappers";
 
 const row = (over = {}) => ({
   id: "svc-1",
@@ -96,5 +97,107 @@ describe("provider slug", () => {
     const out = await new ListServicesProjection(new FakeRepo([row()]) as never)
       .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
     expect(out.items[0]!.providerSlug).toBe("barbearia");
+  });
+});
+
+/**
+ * The filters a services marketplace actually needs.
+ *
+ * Where a service happens is the question that separates "someone who comes to
+ * my house" from "somewhere I go" from "over the internet" — the distinctive
+ * axis of this business, and the one a category alone cannot answer.
+ *
+ * Asserted on the filter the projection hands the repository rather than on
+ * the rows it gets back: a fake that ignored the filter and returned
+ * everything would make a "filters correctly" test pass while the database
+ * did nothing.
+ */
+describe("browse filters", () => {
+  it("passes the location type through to the repository", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      locationType: "remote",
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { locationType?: string }).locationType).toBe("remote");
+  });
+
+  it("passes the sort through to the repository", async () => {
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      sort: "newest",
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { sort?: string }).sort).toBe("newest");
+  });
+
+  it("asks for no location type when none was given", async () => {
+    // `undefined`, not an empty string: the repository builds a `where` from
+    // truthiness, and `""` would filter for services whose location type is
+    // the empty string — of which there are none, so the page would go blank.
+    const repo = new FakeRepo([row()]);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      limit: 10,
+      offset: 0,
+    });
+    expect((repo.lastFilter as { locationType?: string }).locationType).toBeUndefined();
+  });
+});
+
+/**
+ * Every argument the query accepts has to survive the hop into the use case.
+ *
+ * The mapper names its fields one by one, so a field added to the GraphQL
+ * schema and not to the mapper is accepted by validation and then silently
+ * dropped — the query succeeds, the filter does nothing, and the page looks
+ * like it has no matching data rather than like it is broken. That is exactly
+ * how `locationType` and `sort` shipped doing nothing: the projection passed
+ * them on faithfully and was never handed them.
+ *
+ * Asserted as a whole object rather than field by field, so the next field
+ * added to the schema and forgotten here fails this test rather than joining
+ * them.
+ */
+describe("mapListServicesInput", () => {
+  it("carries every argument through", () => {
+    expect(
+      mapListServicesInput({
+        locale: "en-US",
+        categoryCode: "hair",
+        providerId: "prov-1",
+        locationType: "remote",
+        sort: "newest",
+        limit: 12,
+        offset: 24,
+      }),
+    ).toEqual({
+      locale: "en-US",
+      categoryCode: "hair",
+      providerId: "prov-1",
+      locationType: "remote",
+      sort: "newest",
+      limit: 12,
+      offset: 24,
+    });
+  });
+
+  it("fills in the defaults the schema deliberately leaves out", () => {
+    // `.optional()` rather than `.default()` in the schema, because a zod
+    // default does not survive into the GraphQL schema — so the fallback has
+    // to run here, and this is what proves it does.
+    expect(mapListServicesInput({})).toEqual({
+      locale: "pt-MZ",
+      categoryCode: undefined,
+      providerId: undefined,
+      locationType: undefined,
+      sort: undefined,
+      limit: 24,
+      offset: 0,
+    });
   });
 });

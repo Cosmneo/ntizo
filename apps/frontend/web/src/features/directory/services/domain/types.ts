@@ -24,3 +24,13 @@ export type ServicePublicOptionDTO = NonNullable<ServiceDTO["defaultOption"]>;
  * constant in another package is a page size nobody can reason about.
  */
 export const BROWSE_PAGE_SIZE = 24;
+
+/**
+ * How the browse orders its results.
+ *
+ * `default` is the provider's own arrangement — their answer to "what do I
+ * want shown first". `newest` ignores it rather than ordering within it: a
+ * reader who asked for the newest is asking a different question, and one
+ * provider's arrangement should not outrank another's recency.
+ */
+export type BrowseSort = "newest";

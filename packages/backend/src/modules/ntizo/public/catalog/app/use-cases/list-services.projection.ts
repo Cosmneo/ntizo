@@ -11,6 +11,14 @@ export interface ListServicesInput {
   categoryCode?: string | undefined;
   /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
   providerId?: string | undefined;
+  /**
+   * Where the service happens: `remote`, `at_provider`, `at_customer`,
+   * `flexible`. The axis a category cannot answer — "someone who comes to my
+   * house" and "somewhere I go" are different needs inside one trade.
+   */
+  locationType?: string | undefined;
+  /** `default` is the provider's own order; `newest` is most recently added first. */
+  sort?: "default" | "newest" | undefined;
   limit: number;
   offset: number;
 }
@@ -55,6 +63,8 @@ export class ListServicesProjection {
     const rows = await this.repo.listPublished({
       categoryCode: input.categoryCode,
       providerId: input.providerId,
+      locationType: input.locationType,
+      sort: input.sort,
       limit: limit + 1,
       offset,
     });

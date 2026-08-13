@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { localeSchema } from "@ntizo/shared";
+import { localeSchema, serviceLocationTypeSchema } from "@ntizo/shared";
 import { categoryPageReadModel, servicePageReadModel } from "@ntizo/shared/read-models";
 
 /**
@@ -47,6 +47,8 @@ export const listServices = defineQuery({
       locale: localeSchema.optional(),
       categoryCode: z.string().min(1).max(60).optional(),
       providerId: z.string().min(1).optional(),
+      locationType: serviceLocationTypeSchema.optional(),
+      sort: z.enum(["default", "newest"]).optional(),
       // Optional, not `.default()`: a zod default does not survive into the
       // GraphQL schema, so the fallback belongs in the handler where it can
       // actually run.

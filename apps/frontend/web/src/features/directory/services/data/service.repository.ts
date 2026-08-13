@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { ServicePageDTO } from "@ntizo/shared/read-models";
 import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
-import { BROWSE_PAGE_SIZE } from "@/features/directory/services/domain/types";
+import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services/domain/types";
 
 const ALL = `
   query ServiceAll($input: ServiceAllInput!) {
@@ -47,16 +47,35 @@ export const PROVIDER_SERVICES_PAGE_SIZE = 24;
  * first one's items under the second one's heading.
  */
 export const browseServicesQueries = {
-  page: (locale: string, categoryCode: string | undefined, offset: number) =>
+  page: (input: {
+    locale: string;
+    categoryCode?: string | undefined;
+    locationType?: string | undefined;
+    sort?: BrowseSort | undefined;
+    offset: number;
+  }) =>
     queryOptions({
-      queryKey: ["public", "browse-services", locale, categoryCode ?? null, offset] as const,
+      // Every narrowing is part of the key. Two filters are two result sets,
+      // and sharing a key would serve the first one's items under the
+      // second one's heading.
+      queryKey: [
+        "public",
+        "browse-services",
+        input.locale,
+        input.categoryCode ?? null,
+        input.locationType ?? null,
+        input.sort ?? null,
+        input.offset,
+      ] as const,
       queryFn: async (): Promise<ServicePageDTO> => {
         const d = await publicGraphql<{ serviceAll: ServicePageDTO }>(ALL, {
           input: {
-            locale,
-            ...(categoryCode ? { categoryCode } : {}),
+            locale: input.locale,
+            ...(input.categoryCode ? { categoryCode: input.categoryCode } : {}),
+            ...(input.locationType ? { locationType: input.locationType } : {}),
+            ...(input.sort ? { sort: input.sort } : {}),
             limit: BROWSE_PAGE_SIZE,
-            offset,
+            offset: input.offset,
           },
         });
         return d.serviceAll;

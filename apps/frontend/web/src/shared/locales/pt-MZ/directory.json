@@ -40,5 +40,18 @@
   "servicesPrevious": "← Anteriores",
   "servicesNext": "Seguintes →",
   "servicesFilterByCategory": "Filtrar por categoria",
-  "servicesAllCategories": "Todas"
+  "servicesAllCategories": "Todas",
+  "filtersTitle": "Filtros",
+  "filterWhere": "Onde acontece",
+  "sortLabel": "Ordenar",
+  "sortDefault": "Sugeridos",
+  "sortNewest": "Mais recentes",
+  "servicesFound": "{{count}} serviço encontrado",
+  "servicesFound_other": "{{count}} serviços encontrados",
+  "filterWhereOption": {
+    "remote": "À distância",
+    "at_provider": "No espaço dele",
+    "at_customer": "Em sua casa",
+    "flexible": "Depende"
+  }
 }

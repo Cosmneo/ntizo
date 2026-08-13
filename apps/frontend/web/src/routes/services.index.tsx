@@ -24,23 +24,35 @@ export const Route = createFileRoute("/services/")({
    */
   validateSearch: (
     search: Record<string, unknown>,
-  ): { category?: string; offset?: number } => {
+  ): { category?: string; locationType?: string; sort?: "newest"; offset?: number } => {
     const category =
       typeof search["category"] === "string" ? search["category"].trim() : "";
+    // Validated against the closed set the database's CHECK enforces, not
+    // passed through: an unknown value would reach the server as a filter
+    // matching nothing, and the page would go blank with no way to tell why.
+    const raw2 = search["locationType"];
+    const locationType =
+      raw2 === "remote" || raw2 === "at_provider" || raw2 === "at_customer" || raw2 === "flexible"
+        ? raw2
+        : undefined;
+    const sort = search["sort"] === "newest" ? ("newest" as const) : undefined;
     const raw = Number(search["offset"]);
     // A negative or non-numeric offset is dropped rather than clamped to 0 and
     // written back — the URL a person typed is not this route's to rewrite.
     const offset = Number.isInteger(raw) && raw > 0 ? raw : 0;
     return {
       ...(category ? { category } : {}),
+      ...(locationType ? { locationType } : {}),
+      ...(sort ? { sort } : {}),
       ...(offset ? { offset } : {}),
     };
   },
   loaderDeps: ({ search }) => ({
     category: search.category,
+    locationType: search.locationType,
+    sort: search.sort,
     offset: search.offset ?? 0,
   }),
-  loader: ({ context, deps }) =>
-    prefetchBrowseServices(context.queryClient, deps.category, deps.offset),
+  loader: ({ context, deps }) => prefetchBrowseServices(context.queryClient, deps),
   component: ServicesBrowsePage,
 });

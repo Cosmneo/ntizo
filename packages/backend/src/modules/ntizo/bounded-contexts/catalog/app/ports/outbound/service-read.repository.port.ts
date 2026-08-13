@@ -89,6 +89,9 @@ export interface ListPublishedServicesFilter {
   categoryCode?: string | undefined;
   /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
   providerId?: string | undefined;
+  /** A `ServiceLocationType`. Absent means every kind. */
+  locationType?: string | undefined;
+  sort?: "default" | "newest" | undefined;
   limit: number;
   offset: number;
 }

@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import i18n from "@/shared/lib/i18n";
-import type { ServicePageDTO } from "@/features/directory/services/domain/types";
+import type { BrowseSort, ServicePageDTO } from "@/features/directory/services/domain/types";
 import { browseServicesQueries } from "@/features/directory/services/data/service.repository";
 
 /**
@@ -13,13 +13,25 @@ import { browseServicesQueries } from "@/features/directory/services/data/servic
  * plain `useQuery` renders its loading state on the server and ships a page
  * with nothing in it — the one outcome a page built to rank must not have.
  */
-export function useBrowseServices(
-  categoryCode: string | undefined,
-  offset: number,
-): ServicePageDTO {
+export interface BrowseNarrowing {
+  category?: string | undefined;
+  locationType?: string | undefined;
+  sort?: BrowseSort | undefined;
+  offset: number;
+}
+
+export function useBrowseServices(narrowing: BrowseNarrowing): ServicePageDTO {
   const { i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language;
-  const { data } = useSuspenseQuery(browseServicesQueries.page(locale, categoryCode, offset));
+  const { data } = useSuspenseQuery(
+    browseServicesQueries.page({
+      locale,
+      categoryCode: narrowing.category,
+      locationType: narrowing.locationType,
+      sort: narrowing.sort,
+      offset: narrowing.offset,
+    }),
+  );
   return data;
 }
 
@@ -35,11 +47,16 @@ export function useBrowseServices(
  */
 export function prefetchBrowseServices(
   queryClient: QueryClient,
-  categoryCode: string | undefined,
-  offset: number,
+  narrowing: BrowseNarrowing,
 ): Promise<void> {
   const locale = i18n.resolvedLanguage ?? i18n.language;
   return queryClient.ensureQueryData(
-    browseServicesQueries.page(locale, categoryCode, offset),
+    browseServicesQueries.page({
+      locale,
+      categoryCode: narrowing.category,
+      locationType: narrowing.locationType,
+      sort: narrowing.sort,
+      offset: narrowing.offset,
+    }),
   ) as unknown as Promise<void>;
 }

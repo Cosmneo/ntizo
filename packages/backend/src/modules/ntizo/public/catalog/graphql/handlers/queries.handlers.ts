@@ -1,5 +1,6 @@
 import { graphqlRoutes } from "@cosmneo/onion-lasagna/graphql/server";
 import { DEFAULT_LOCALE } from "@ntizo/shared";
+import { mapListServicesInput } from "./arg-mappers";
 import { catalogPublicSchema } from "../schema/queries";
 import type { ListCategoriesProjection } from "../../app/use-cases/list-categories.projection";
 import type { ListServicesProjection } from "../../app/use-cases/list-services.projection";
@@ -25,13 +26,7 @@ export function createCatalogPublicHandlers(mod: CatalogPublicModule) {
       responseMapper: (output) => output,
     })
     .handleWithUseCase("service.all", {
-      argsMapper: (args) => ({
-        locale: args.input.locale ?? DEFAULT_LOCALE,
-        categoryCode: args.input.categoryCode,
-        providerId: args.input.providerId,
-        limit: args.input.limit ?? 24,
-        offset: args.input.offset ?? 0,
-      }),
+      argsMapper: (args) => mapListServicesInput(args.input),
       useCase: mod.listServices,
       responseMapper: (output) => output,
     })
