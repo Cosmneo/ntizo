@@ -14,7 +14,7 @@
   "noResultsFor": "Nothing matched \"{{query}}\". Try another word.",
   "resultsFor": "{{count}} result(s) for \"{{query}}\"",
   "servicesTitle": "Services",
-  "servicesEmpty": "This provider hasn't published any services yet.",
+  "servicesEmpty": "No services published yet.",
   "servicesError": "We couldn't load this provider's services right now.",
   "priceByQuote": "By quote",
   "priceUnavailable": "Price unavailable",
@@ -35,5 +35,8 @@
     "SERVICE_NOT_FOUND": "This service isn't available anymore.",
     "AVAILABILITY_WINDOW_TOO_WIDE": "That date range is too wide. Try a shorter one.",
     "SERVICE_MEMBER_CANNOT_PERFORM": "That person no longer offers this service."
-  }
+  },
+  "servicesSubtitle": "Everything the platform's providers offer.",
+  "servicesPrevious": "← Previous",
+  "servicesNext": "Next →"
 }

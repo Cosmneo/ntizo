@@ -74,6 +74,7 @@ export class ListServicesProjection {
         id: r.id,
         providerId: r.providerId,
         providerName: r.providerName,
+        providerSlug: r.providerSlug,
         categoryCode: r.categoryCode,
         name: t.name,
         description: t.description,

@@ -14,7 +14,7 @@
   "noResultsFor": "Nada corresponde a \"{{query}}\". Tente outra palavra.",
   "resultsFor": "{{count}} resultado(s) para \"{{query}}\"",
   "servicesTitle": "Serviços",
-  "servicesEmpty": "Este prestador ainda não publicou nenhum serviço.",
+  "servicesEmpty": "Ainda sem serviços publicados.",
   "servicesError": "Não foi possível carregar os serviços deste prestador agora.",
   "priceByQuote": "Sob orçamento",
   "priceUnavailable": "Preço indisponível",
@@ -35,5 +35,8 @@
     "SERVICE_NOT_FOUND": "Este serviço já não está disponível.",
     "AVAILABILITY_WINDOW_TOO_WIDE": "Esse intervalo de datas é demasiado longo. Tente um mais curto.",
     "SERVICE_MEMBER_CANNOT_PERFORM": "Essa pessoa já não presta este serviço."
-  }
+  },
+  "servicesSubtitle": "Tudo o que os prestadores da plataforma oferecem.",
+  "servicesPrevious": "← Anteriores",
+  "servicesNext": "Seguintes →"
 }

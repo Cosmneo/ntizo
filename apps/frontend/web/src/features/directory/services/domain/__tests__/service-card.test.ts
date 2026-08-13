@@ -24,6 +24,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
     id: "svc-1",
     providerId: "prov-1",
     providerName: "Barbearia Central",
+  providerSlug: "barbearia",
     categoryCode: "hair",
     name: "Corte de cabelo",
     description: null,

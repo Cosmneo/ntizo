@@ -35,6 +35,7 @@ import { Route as ProviderSlugRouteRouteImport } from './routes/provider/$slug/r
 import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
 import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
+import { Route as ServicesIndexRouteImport } from './routes/services.index'
 import { Route as CustomerAccountIndexRouteImport } from './routes/_customer/account/index'
 import { Route as CustomerAccountAddressesRouteImport } from './routes/_customer/account/addresses'
 import { Route as CustomerAccountLegalRouteImport } from './routes/_customer/account/legal'
@@ -181,6 +182,11 @@ const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
   path: '/providers/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServicesIndexRoute = ServicesIndexRouteImport.update({
+  id: '/services/',
+  path: '/services/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomerAccountIndexRoute = CustomerAccountIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -300,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/categories/': typeof CategoriesIndexRoute
   '/provider/': typeof ProviderIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/services/': typeof ServicesIndexRoute
   '/account/addresses': typeof CustomerAccountAddressesRoute
   '/account/legal': typeof CustomerAccountLegalRoute
   '/account/notifications': typeof CustomerAccountNotificationsRoute
@@ -340,6 +347,7 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesIndexRoute
   '/provider': typeof ProviderIndexRoute
   '/providers': typeof ProvidersIndexRoute
+  '/services': typeof ServicesIndexRoute
   '/account/addresses': typeof CustomerAccountAddressesRoute
   '/account/legal': typeof CustomerAccountLegalRoute
   '/account/notifications': typeof CustomerAccountNotificationsRoute
@@ -386,6 +394,7 @@ export interface FileRoutesById {
   '/categories/': typeof CategoriesIndexRoute
   '/provider/': typeof ProviderIndexRoute
   '/providers/': typeof ProvidersIndexRoute
+  '/services/': typeof ServicesIndexRoute
   '/_customer/account/addresses': typeof CustomerAccountAddressesRoute
   '/_customer/account/legal': typeof CustomerAccountLegalRoute
   '/_customer/account/notifications': typeof CustomerAccountNotificationsRoute
@@ -431,6 +440,7 @@ export interface FileRouteTypes {
     | '/categories/'
     | '/provider/'
     | '/providers/'
+    | '/services/'
     | '/account/addresses'
     | '/account/legal'
     | '/account/notifications'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/provider'
     | '/providers'
+    | '/services'
     | '/account/addresses'
     | '/account/legal'
     | '/account/notifications'
@@ -516,6 +527,7 @@ export interface FileRouteTypes {
     | '/categories/'
     | '/provider/'
     | '/providers/'
+    | '/services/'
     | '/_customer/account/addresses'
     | '/_customer/account/legal'
     | '/_customer/account/notifications'
@@ -547,6 +559,7 @@ export interface RootRouteChildren {
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   CategoriesIndexRoute: typeof CategoriesIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
+  ServicesIndexRoute: typeof ServicesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -731,6 +744,13 @@ declare module '@tanstack/react-router' {
       path: '/providers/$slug'
       fullPath: '/providers/$slug'
       preLoaderRoute: typeof ProvidersSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services/': {
+      id: '/services/'
+      path: '/services'
+      fullPath: '/services/'
+      preLoaderRoute: typeof ServicesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_customer/account/': {
@@ -989,6 +1009,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProvidersSlugRoute: ProvidersSlugRoute,
   CategoriesIndexRoute: CategoriesIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
+  ServicesIndexRoute: ServicesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

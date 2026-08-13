@@ -13,8 +13,8 @@
   "searchAction": "Suchen",
   "noResultsFor": "Nichts passt zu \"{{query}}\". Versuch ein anderes Wort.",
   "resultsFor": "{{count}} Treffer für \"{{query}}\"",
-  "servicesTitle": "Leistungen",
-  "servicesEmpty": "Dieser Anbieter hat noch keine Leistungen veröffentlicht.",
+  "servicesTitle": "Services",
+  "servicesEmpty": "No services published yet.",
   "servicesError": "Die Leistungen dieses Anbieters konnten gerade nicht geladen werden.",
   "priceByQuote": "Auf Anfrage",
   "priceUnavailable": "Preis nicht verfügbar",
@@ -35,5 +35,8 @@
     "SERVICE_NOT_FOUND": "Diese Leistung ist nicht mehr verfügbar.",
     "AVAILABILITY_WINDOW_TOO_WIDE": "Dieser Zeitraum ist zu groß. Versuch einen kürzeren.",
     "SERVICE_MEMBER_CANNOT_PERFORM": "Diese Person bietet diese Leistung nicht mehr an."
-  }
+  },
+  "servicesSubtitle": "Everything the platform's providers offer.",
+  "servicesPrevious": "← Previous",
+  "servicesNext": "Next →"
 }

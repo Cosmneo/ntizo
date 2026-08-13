@@ -167,6 +167,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         id: service.id,
         providerId: service.providerId,
         providerName: provider.name,
+        providerSlug: provider.slug,
         providerStatus: provider.status,
         categoryCode: category.code,
         status: service.status,

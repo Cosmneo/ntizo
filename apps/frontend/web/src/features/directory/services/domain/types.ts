@@ -11,3 +11,16 @@ export type { ServiceDTO, ServicePageDTO };
  * the shape once instead of every function re-deriving it from `ServiceDTO`.
  */
 export type ServicePublicOptionDTO = NonNullable<ServiceDTO["defaultOption"]>;
+
+/**
+ * How many services the platform-wide browse asks for at a time.
+ *
+ * In `domain/` rather than beside the query it parameterises, because the
+ * paging links need it too — how far "previous" steps back is the same number
+ * — and `ui/` may not reach `data/`.
+ *
+ * Below the server's own cap of 48 so the number lives here rather than being
+ * silently clamped there: a page size that changes when somebody edits a
+ * constant in another package is a page size nobody can reason about.
+ */
+export const BROWSE_PAGE_SIZE = 24;

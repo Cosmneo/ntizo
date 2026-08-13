@@ -71,6 +71,7 @@ export interface ServicePublicRow {
   id: string;
   providerId: string;
   providerName: string;
+  providerSlug: string;
   /** The provider's live status, joined rather than copied — see `listPublished`. */
   providerStatus: string;
   categoryCode: string;

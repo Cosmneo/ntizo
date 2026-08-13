@@ -1,4 +1,4 @@
-import { Compass, LayoutGrid, Users } from "lucide-react";
+import { Briefcase, Compass, LayoutGrid, Users } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface PublicNavItem {
@@ -29,5 +29,9 @@ export interface PublicNavItem {
 export const PUBLIC_NAV: readonly PublicNavItem[] = [
   { key: "landing:nav.explore", to: "/", icon: Compass },
   { key: "landing:nav.categories", to: "/categories", icon: LayoutGrid },
+  // Services before providers: a customer arrives wanting a haircut, not
+  // wanting a particular barber. The provider list answers the second
+  // question and is the rarer one.
+  { key: "landing:nav.services", to: "/services", icon: Briefcase },
   { key: "landing:nav.providers", to: "/providers", icon: Users },
 ] as const;

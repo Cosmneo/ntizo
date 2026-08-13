@@ -13,8 +13,8 @@
   "searchAction": "Zoeken",
   "noResultsFor": "Niets komt overeen met \"{{query}}\". Probeer een ander woord.",
   "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\"",
-  "servicesTitle": "Diensten",
-  "servicesEmpty": "Deze aanbieder heeft nog geen diensten gepubliceerd.",
+  "servicesTitle": "Services",
+  "servicesEmpty": "No services published yet.",
   "servicesError": "De diensten van deze aanbieder konden nu niet worden geladen.",
   "priceByQuote": "Op offerte",
   "priceUnavailable": "Prijs niet beschikbaar",
@@ -35,5 +35,8 @@
     "SERVICE_NOT_FOUND": "Deze dienst is niet meer beschikbaar.",
     "AVAILABILITY_WINDOW_TOO_WIDE": "Deze periode is te lang. Probeer een kortere periode.",
     "SERVICE_MEMBER_CANNOT_PERFORM": "Deze persoon biedt deze dienst niet meer aan."
-  }
+  },
+  "servicesSubtitle": "Everything the platform's providers offer.",
+  "servicesPrevious": "← Previous",
+  "servicesNext": "Next →"
 }

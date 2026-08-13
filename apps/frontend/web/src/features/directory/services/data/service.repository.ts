@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { ServicePageDTO } from "@ntizo/shared/read-models";
 import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
+import { BROWSE_PAGE_SIZE } from "@/features/directory/services/domain/types";
 
 const ALL = `
   query ServiceAll($input: ServiceAllInput!) {
@@ -37,6 +38,32 @@ export const PROVIDER_SERVICES_PAGE_SIZE = 24;
  * `/public/graphql` endpoint, and the query key is not scoped to a session —
  * a provider's published services are identical for every visitor.
  */
+/**
+ * Every published service, for the platform-wide browse.
+ *
+ * The same `service.all` the provider page uses, without `providerId`. The
+ * category is part of the query key rather than only its variables: two
+ * categories are two different result sets and sharing a key would serve the
+ * first one's items under the second one's heading.
+ */
+export const browseServicesQueries = {
+  page: (locale: string, categoryCode: string | undefined, offset: number) =>
+    queryOptions({
+      queryKey: ["public", "browse-services", locale, categoryCode ?? null, offset] as const,
+      queryFn: async (): Promise<ServicePageDTO> => {
+        const d = await publicGraphql<{ serviceAll: ServicePageDTO }>(ALL, {
+          input: {
+            locale,
+            ...(categoryCode ? { categoryCode } : {}),
+            limit: BROWSE_PAGE_SIZE,
+            offset,
+          },
+        });
+        return d.serviceAll;
+      },
+    }),
+};
+
 export const providerServicesQueries = {
   byProvider: (providerId: string, locale: string) =>
     queryOptions({

@@ -32,6 +32,14 @@ export const serviceReadModel = z.object({
   id: z.string().min(1),
   providerId: z.string(),
   providerName: z.string(),
+  /**
+   * How the provider's public page is addressed.
+   *
+   * A browse card names a business and has to be able to reach it, and that
+   * page is `/providers/$slug` — an id alone would leave the card a dead end.
+   * Publishing this exposes nothing new: the slug is already that page's URL.
+   */
+  providerSlug: z.string(),
   categoryCode: z.string(),
   name: z.string(),
   description: z.string().nullable(),

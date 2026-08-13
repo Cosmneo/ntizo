@@ -5,6 +5,7 @@ const row = (over = {}) => ({
   id: "svc-1",
   providerId: "prov-1",
   providerName: "Barbearia",
+  providerSlug: "barbearia",
   providerStatus: "active",
   categoryCode: "hair",
   status: "published",
@@ -79,5 +80,21 @@ describe("ListServicesProjection", () => {
     await new ListServicesProjection(repo as never)
       .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
     expect(repo.lastFilter).toMatchObject({ providerId: undefined });
+  });
+});
+
+/**
+ * The slug, not only the id.
+ *
+ * A browse card has to link somewhere, and the provider page is addressed by
+ * slug (`/providers/$slug`). With only `providerId` a card could name a
+ * business it had no way to reach. Publishing the slug exposes nothing new —
+ * it is already in that page's own URL.
+ */
+describe("provider slug", () => {
+  it("reaches the DTO so a card can link to the provider", async () => {
+    const out = await new ListServicesProjection(new FakeRepo([row()]) as never)
+      .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
+    expect(out.items[0]!.providerSlug).toBe("barbearia");
   });
 });

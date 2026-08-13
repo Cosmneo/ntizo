@@ -22,7 +22,7 @@ export function SiteHeader({
   current = "explore",
 }: {
   overlay?: boolean;
-  current?: "explore" | "categories" | "providers";
+  current?: "explore" | "categories" | "services" | "providers";
 }) {
   const { t } = useTranslation("landing");
 
