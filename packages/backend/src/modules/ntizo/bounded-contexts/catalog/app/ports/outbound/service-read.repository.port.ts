@@ -93,6 +93,29 @@ export interface ServicePublicRow {
   translations: ServicePublicTranslationRow[];
 }
 
+export interface ServiceDetailOptionRow {
+  id: string;
+  amountMinor: number;
+  currency: string;
+  durationMinutes: number | null;
+  minMinutes: number | null;
+  stepMinutes: number | null;
+  pricingMode: string;
+  isDefault: boolean;
+  sortOrder: number;
+  translations: { locale: string; name: string }[];
+}
+
+export interface ServiceDetailRow extends ServicePublicRow {
+  providerLogoKey: string | null;
+  providerCity: string | null;
+  providerDistrict: string | null;
+  /** Active options only, cheapest first. */
+  options: ServiceDetailOptionRow[];
+  /** `provider_member.id`s who perform this service. */
+  memberIds: string[];
+}
+
 export interface ListPublishedServicesFilter {
   categoryCode?: string | undefined;
   /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
@@ -165,6 +188,14 @@ export interface ServiceReadRepositoryPort {
    * this method's job is only to hand over the material to decide it with.
    */
   listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]>;
+  /**
+   * One published service in full, or null.
+   *
+   * Null covers missing, unpublished and inactive-provider alike. The caller
+   * cannot tell which, and that is the point: distinguishing them would let an
+   * anonymous reader probe ids for services their owner has not published.
+   */
+  getPublishedById(id: string): Promise<ServiceDetailRow | null>;
 }
 
 export type { ServiceOwnerDTO };

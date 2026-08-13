@@ -51,6 +51,13 @@ class FakeServiceReadRepository implements ServiceReadRepositoryPort {
     this.calls.push("listPublished");
     return [];
   }
+
+  // These tests exercise the list queries, not the detail one; a double that
+  // returned a fabricated service would make them assert against data no
+  // repository produces.
+  async getPublishedById(): Promise<null> {
+    return null;
+  }
 }
 
 function makeModule(repo: FakeServiceReadRepository) {
@@ -211,6 +218,12 @@ class FixedServiceReadRepository implements ServiceReadRepositoryPort {
   async listPublished(): Promise<never[]> {
     return [];
   }
+  // This suite exercises the list queries, not the detail one; a double that
+  // returned a fabricated service would make them assert against data no
+  // repository produces.
+  async getPublishedById(): Promise<null> {
+    return null;
+  }
 }
 
 /**
@@ -233,6 +246,12 @@ describe("ListMyServicesProjection images", () => {
     }
     async listPublished(): Promise<never[]> {
       return [];
+    }
+    // This describe block exercises the list query's image handling, not the
+    // detail one; a double that returned a fabricated service would make it
+    // assert against data no repository produces.
+    async getPublishedById(): Promise<null> {
+      return null;
     }
   }
 

@@ -13,6 +13,7 @@ import {
 import { provider, providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
 import type {
   ListPublishedServicesFilter,
+  ServiceDetailRow,
   ServiceOwnerRow,
   ServicePublicRow,
   ServiceReadRepositoryPort,
@@ -369,6 +370,106 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
           .map((t) => ({ locale: t.locale, name: t.name, description: t.description })),
       };
     });
+  }
+
+  async getPublishedById(id: string): Promise<ServiceDetailRow | null> {
+    const db = getDb();
+    const [row] = await db
+      .select({
+        id: service.id,
+        providerId: service.providerId,
+        providerName: provider.name,
+        providerSlug: provider.slug,
+        providerStatus: provider.status,
+        providerType: provider.type,
+        providerLogoKey: provider.logoKey,
+        providerCity: provider.addressCity,
+        providerDistrict: provider.addressDistrict,
+        categoryId: category.id,
+        categoryCode: category.code,
+        status: service.status,
+        sourceLocale: service.sourceLocale,
+        locationType: service.locationType,
+        bookingMode: service.bookingMode,
+        imageKeys: service.imageKeys,
+      })
+      .from(service)
+      .innerJoin(category, eq(category.id, service.categoryId))
+      .innerJoin(provider, eq(provider.id, service.providerId))
+      .where(eq(service.id, id))
+      .limit(1);
+
+    if (!row) return null;
+
+    const [translations, categoryTranslations, options, members] = await Promise.all([
+      db.select().from(serviceTranslation).where(eq(serviceTranslation.serviceId, id)),
+      db.select().from(categoryTranslation).where(eq(categoryTranslation.categoryId, row.categoryId)),
+      db
+        .select()
+        .from(serviceOption)
+        .where(and(eq(serviceOption.serviceId, id), eq(serviceOption.isActive, true)))
+        .orderBy(asc(serviceOption.amountMinor)),
+      db.select().from(serviceMember).where(eq(serviceMember.serviceId, id)),
+    ]);
+
+    const optionIds = options.map((o) => o.id);
+    const optionTranslations = optionIds.length
+      ? await db
+          .select()
+          .from(serviceOptionTranslation)
+          .where(inArray(serviceOptionTranslation.optionId, optionIds))
+      : [];
+
+    const { categoryId, ...rest } = row;
+    return {
+      ...rest,
+      // The page's own chooser lists cheapest first, which is also the order
+      // the "from" price on the browse card is taken from. One order, so the
+      // number a reader arrived expecting is the first one they see here.
+      options: options.map((o) => ({
+        id: o.id,
+        amountMinor: o.amountMinor,
+        currency: o.currency,
+        durationMinutes: o.durationMinutes,
+        minMinutes: o.minMinutes,
+        stepMinutes: o.stepMinutes,
+        pricingMode: o.pricingMode,
+        isDefault: o.isDefault,
+        sortOrder: o.sortOrder,
+        translations: optionTranslations
+          .filter((t) => t.optionId === o.id)
+          .map((t) => ({ locale: t.locale, name: t.name })),
+      })),
+      memberIds: members.map((m) => m.memberId),
+      categoryTranslations: categoryTranslations.map((t) => ({
+        locale: t.locale,
+        name: t.name,
+        description: null,
+      })),
+      translations: translations.map((t) => ({
+        locale: t.locale,
+        name: t.name,
+        description: t.description,
+      })),
+      // The card's own fields, unused by the detail page but part of the row
+      // it extends. `defaultOption` is the one marked default; the aggregate
+      // pair are derived from the options already fetched.
+      defaultOption: (() => {
+        const d = options.find((o) => o.isDefault);
+        return d
+          ? {
+              amountMinor: d.amountMinor,
+              currency: d.currency,
+              durationMinutes: d.durationMinutes,
+              minMinutes: d.minMinutes,
+              stepMinutes: d.stepMinutes,
+              pricingMode: d.pricingMode,
+            }
+          : null;
+      })(),
+      fromAmountMinor: options.length ? (options[0]?.amountMinor ?? null) : null,
+      optionCount: options.length,
+    };
   }
 }
 
