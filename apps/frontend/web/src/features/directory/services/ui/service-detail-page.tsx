@@ -4,6 +4,9 @@ import { SiteHeader } from "@/shared/components/site-header";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { PackageX } from "lucide-react";
 import { useServiceDetail } from "@/features/directory/services/viewmodel/use-service-detail";
+import { ServiceGallery } from "@/features/directory/services/ui/service-gallery";
+import { ServiceProviderCard } from "@/features/directory/services/ui/service-provider-card";
+import { ServicePerformers } from "@/features/directory/services/ui/service-performers";
 
 /**
  * One service, in full.
@@ -46,12 +49,19 @@ export function ServiceDetailPage({ id }: { id: string }) {
       <main className="page-shell py-8">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
           <div className="min-w-0">
-            <h1 className="type-h1">{service.name}</h1>
+            <ServiceGallery images={service.imageUrls} alt={service.name} />
+            <h1 className="type-h1 mt-6">{service.name}</h1>
             <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
               {[service.categoryName, service.providerCity].filter(Boolean).join(" · ")}
             </p>
+            {service.description && (
+              <p className="type-body mt-6 whitespace-pre-line">{service.description}</p>
+            )}
+            <ServicePerformers performers={service.performers} />
           </div>
-          <div className="lg:sticky lg:top-4" />
+          <div className="lg:sticky lg:top-4">
+            <ServiceProviderCard service={service} />
+          </div>
         </div>
       </main>
     </>

@@ -93,5 +93,7 @@
   },
   "serviceNotFoundTitle": "Service introuvable",
   "serviceNotFoundBody": "Ce service a peut-être été supprimé, ou le lien est incorrect.",
-  "serviceNotFoundAction": "Voir les services"
+  "serviceNotFoundAction": "Voir les services",
+  "viewProviderProfile": "Voir le profil du prestataire",
+  "performersTitle": "Qui propose ce service"
 }

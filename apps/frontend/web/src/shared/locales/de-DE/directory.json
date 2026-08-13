@@ -93,5 +93,7 @@
   },
   "serviceNotFoundTitle": "Leistung nicht gefunden",
   "serviceNotFoundBody": "Diese Leistung wurde möglicherweise entfernt, oder der Link ist falsch.",
-  "serviceNotFoundAction": "Leistungen ansehen"
+  "serviceNotFoundAction": "Leistungen ansehen",
+  "viewProviderProfile": "Anbieterprofil ansehen",
+  "performersTitle": "Wer diese Leistung erbringt"
 }
