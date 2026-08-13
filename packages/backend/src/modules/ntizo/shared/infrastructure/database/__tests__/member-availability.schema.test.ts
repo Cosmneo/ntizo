@@ -32,11 +32,16 @@ describe("member_availability shape columns", () => {
   test("the grid check admits zero — 'open, no slots'", () => {
     const grid = checks.find((c) => c.name === "member_availability_slot_interval");
     expect(grid).toBeDefined();
-    expect(dialect.sqlToQuery(grid!.value).sql).toContain("0");
+    // `toContain("0")` alone is vacuous: "IN (15, 30, 60)" — the constraint
+    // *without* the zero state — also contains "0", borrowed from 30 and 60.
+    // The literal list is the only text that cannot pass without 0 actually
+    // being an admitted value.
+    expect(dialect.sqlToQuery(grid!.value).sql).toContain("(0, 15, 30, 60)");
   });
 
   test("capacity refuses zero and below", () => {
     const cap = checks.find((c) => c.name === "member_availability_capacity");
     expect(cap).toBeDefined();
+    expect(dialect.sqlToQuery(cap!.value).sql).toContain(">= 1");
   });
 });
