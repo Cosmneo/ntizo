@@ -80,6 +80,27 @@ export function weekdayShortLabel(locale: string, weekday: number): string {
 }
 
 /**
+ * The weekday as a single character — "M", "S", "L" — for a control with one
+ * cell per day and no room for a word.
+ *
+ * `short` cannot do this job. It is "Mon" in `en-US` and "Mo" in `de-DE`, but
+ * CLDR gives `pt-PT` and `pt-MZ` the *full* word for their abbreviated form —
+ * `short` for Monday there is literally "segunda" — so a seven-cell dial in the
+ * platform's own launch language truncated every cell to "segund". `narrow` is
+ * one grapheme in every locale, which is the only form a fixed seven-cell strip
+ * can promise to fit.
+ *
+ * Ambiguous by construction: `en-US` narrow is S M T W T F S, with Saturday and
+ * Sunday sharing a letter. That is why every caller must also carry the full
+ * name — as a `title` on the cell, and as the day list in the control's own
+ * accessible name — rather than leaving the letter to speak for itself.
+ */
+export function weekdayNarrowLabel(locale: string, weekday: number): string {
+  const date = new Date(REFERENCE_SUNDAY_UTC_MS + weekday * MS_PER_DAY);
+  return new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" }).format(date);
+}
+
+/**
  * Several weekdays as one phrase — "Mon, Wed and Fri", "segunda, quarta e
  * sexta" — with the language's own conjunction and its own comma rules, from
  * `Intl.ListFormat`.
@@ -129,6 +150,26 @@ export function formatHours(minutes: number, locale: string): string {
 export function compareRules(a: WeeklyRuleDraft, b: WeeklyRuleDraft): number {
   const byDay = weekdayDisplayIndex(a.weekday) - weekdayDisplayIndex(b.weekday);
   return byDay !== 0 ? byDay : a.startMinute - b.startMinute;
+}
+
+/**
+ * What the weekly pattern itself adds up to, before any date on the calendar
+ * touches it.
+ *
+ * The number beside it — `weekTotals(previewDays).totalMinutes` — is what a
+ * *particular* week produces once closures and exceptions have had their say.
+ * Showing only that one leaves the provider to work out for themselves why this
+ * week reads 38 hours when they set 44; the difference between the two is the
+ * sentence the old screen could not say at all.
+ *
+ * One row per weekday means the sum is already exactly one week. It is not a
+ * count of anything on a calendar, so a rule on a weekday that this particular
+ * week's closure blackens still counts here — that is the point.
+ */
+export function patternMinutes(
+  rules: readonly Pick<WeeklyRuleDraft, "startMinute" | "endMinute">[],
+): number {
+  return rules.reduce((sum, rule) => sum + (rule.endMinute - rule.startMinute), 0);
 }
 
 /**

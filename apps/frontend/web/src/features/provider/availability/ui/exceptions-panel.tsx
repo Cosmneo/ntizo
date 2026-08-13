@@ -10,16 +10,7 @@ import {
 } from "../domain/types";
 import { useAddException, useRemoveException } from "../viewmodel/use-availability";
 
-/** `YYYY-MM-DD`, read as a UTC instant so the browser's own timezone never shifts it to the day before or after. */
-function formatDate(iso: string, locale: string): string {
-  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
-  return new Intl.DateTimeFormat(locale, {
-    timeZone: "UTC",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(Date.UTC(y, m - 1, d)));
-}
+import { DateBadge, EmptyState } from "./entry";
 
 /**
  * One member's date exceptions — closed days and days worked on a different
@@ -121,38 +112,46 @@ export function ExceptionsPanel({
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
-        {sorted.length === 0 && (
-          <p className="type-body text-[var(--color-muted-foreground)]">
-            {t("availabilityExceptionsEmpty")}
-          </p>
-        )}
-        {sorted.map((exception) => (
-          <div
-            key={exception.id}
-            className="flex items-center justify-between gap-3 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] px-3.5 py-2.5"
-          >
-            <div className="min-w-0">
-              <p className="type-body-medium font-semibold">{formatDate(exception.onDate, locale)}</p>
-              <p className="type-caption text-[var(--color-muted-foreground)]">
-                {exception.kind === "closed"
-                  ? t("availabilityExceptionKindClosed")
-                  : `${minutesToLabel(exception.startMinute ?? 0)}–${minutesToLabel(exception.endMinute ?? 0)}`}
-                {exception.note ? ` · ${exception.note}` : ""}
-              </p>
+        {sorted.length === 0 && <EmptyState>{t("availabilityExceptionsEmpty")}</EmptyState>}
+        {sorted.map((exception) => {
+          const hours =
+            exception.kind === "closed"
+              ? t("availabilityExceptionKindClosed")
+              : `${minutesToLabel(exception.startMinute ?? 0)}–${minutesToLabel(exception.endMinute ?? 0)}`;
+          return (
+            <div
+              key={exception.id}
+              className="flex items-center gap-2.5 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] py-2 pr-2 pl-2.5"
+            >
+              <DateBadge
+                iso={exception.onDate}
+                locale={locale}
+                tone={exception.kind === "closed" ? "danger" : "warning"}
+              />
+              <div className="grid min-w-0 flex-1">
+                {/* The note leads when there is one — "Staff training" is what
+                    somebody scans for, and the hours repeat what the badge and
+                    the week beside it already said. */}
+                <p className="type-body-medium truncate font-medium">{exception.note || hours}</p>
+                <p className="type-caption truncate tabular-nums text-[var(--color-muted-foreground)]">
+                  {exception.note ? hours : t(`availabilityExceptionKind${exception.kind === "closed" ? "Closed" : "Custom"}`)}
+                </p>
+              </div>
+              {canEdit && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0 px-2"
+                  disabled={removeMutation.isPending}
+                  onClick={() => void remove(exception.id)}
+                >
+                  {t("availabilityRemove")}
+                </Button>
+              )}
             </div>
-            {canEdit && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={removeMutation.isPending}
-                onClick={() => void remove(exception.id)}
-              >
-                {t("availabilityRemove")}
-              </Button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
       {removeError && <p className="type-body text-[var(--color-destructive)]">{removeError}</p>}
 

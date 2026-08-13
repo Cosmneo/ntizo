@@ -40,32 +40,44 @@ describe("RuleCard", () => {
   it("a rule card names its days and its hours", () => {
     const { card } = renderCard([rule(1, 540, 1020), rule(3, 540, 1020)]);
 
-    expect(within(card).getByText("Mon")).toBeInTheDocument();
-    expect(within(card).getByText("Wed")).toBeInTheDocument();
+    // The dial's letters are ambiguous — `en-US` narrow has two S and two T —
+    // so the day names live where they cannot be misread: the group's own
+    // accessible name, and a `title` per cell.
+    expect(card).toHaveAccessibleName("Monday and Wednesday, 09:00 – 17:00");
+    expect(within(card).getByTitle("Monday")).toHaveTextContent("M");
+    expect(within(card).getByTitle("Wednesday")).toHaveTextContent("W");
     expect(within(card).getByText("09:00 – 17:00")).toBeInTheDocument();
     // …and what those two days add up to, which is the thing the card exists
     // to say that a bare list of rows does not.
     expect(within(card).getByText("16 hours a week.")).toBeInTheDocument();
   });
 
-  it("a rule card for every weekday says so rather than listing seven", () => {
+  /**
+   * The dial is always seven cells, so a full week is not a list that grew —
+   * it is the same control with nothing unlit. The sentence a screen reader
+   * gets is where "Every day" still belongs: seven weekday names read out in
+   * sequence is the list nobody wants, in the one place a reader cannot skim
+   * past it.
+   */
+  it("a full week is spoken as 'Every day', not as seven names", () => {
     const { card } = renderCard(WEEKDAY_ORDER.map((weekday) => rule(weekday, 540, 1020)));
 
-    expect(within(card).getByText("Every day")).toBeInTheDocument();
-    // The negative half is the point: "Every day" printed *above* seven chips
-    // would satisfy the line above while being exactly the screen this test
-    // exists to refuse.
-    expect(within(card).queryByText("Mon")).not.toBeInTheDocument();
-    expect(within(card).queryByText("Sun")).not.toBeInTheDocument();
+    expect(card).toHaveAccessibleName("Every day, 09:00 – 17:00");
+    // The negative half is the point: the accessible name must not fall back
+    // to reciting the week.
+    expect(card).not.toHaveAccessibleName(/Monday/);
   });
 
-  it("six days is still six chips — the summary is for seven only", () => {
+  it("the dial shows the days a rule misses, not only the ones it covers", () => {
     const { card } = renderCard(
       WEEKDAY_ORDER.filter((w) => w !== 0).map((weekday) => rule(weekday, 540, 1020)),
     );
 
-    expect(within(card).queryByText("Every day")).not.toBeInTheDocument();
-    expect(within(card).getByText("Mon")).toBeInTheDocument();
+    // Sunday is off, and the cell for it is still drawn — a provider hunting
+    // for the gap in their week can only see it if the gap is on screen.
+    expect(card).toHaveAccessibleName(/Monday.*Saturday, 09:00 – 17:00/);
+    expect(card).not.toHaveAccessibleName(/Sunday/);
+    expect(within(card).getByTitle("Sunday")).toBeInTheDocument();
   });
 
   it("the edit and remove controls name the hours they act on", async () => {

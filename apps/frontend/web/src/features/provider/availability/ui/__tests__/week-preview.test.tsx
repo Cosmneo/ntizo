@@ -50,14 +50,17 @@ describe("WeekPreview", () => {
   it("draws only the hours in play, with an hour of air on each side", () => {
     renderPreview();
 
-    // 09:00–17:00 worked → the window is 08:00–18:00. Rows are labelled by
-    // the hour they start, as a calendar's are, so 08:00 is the first and
-    // 17:00 the last — the row that covers the closing hour of air.
+    // 09:00–17:00 worked → the window is 08:00–18:00. Labels sit on the hour
+    // lines themselves, closing one included: without the last one the grid
+    // runs a full row past its final label with nothing saying where it stops.
     // 08:00 is a gutter label and no block starts there, so it is unique.
     expect(screen.getByText("08:00")).toBeInTheDocument();
-    // The old fixed window's extremes are gone, top and bottom.
+    expect(screen.getByText("18:00")).toBeInTheDocument();
+    // The old fixed window's extremes are gone, top and bottom. 19:00 is the
+    // assertion that matters: it is the first hour *past* the window, so its
+    // absence is what says the grid stops where the hours do.
     expect(screen.queryByText("06:00")).not.toBeInTheDocument();
-    expect(screen.queryByText("18:00")).not.toBeInTheDocument();
+    expect(screen.queryByText("19:00")).not.toBeInTheDocument();
     expect(screen.queryByText("23:00")).not.toBeInTheDocument();
   });
 
@@ -133,6 +136,7 @@ describe("WeekPreview", () => {
       <WeekPreview
         days={FULL_WEEK}
         locale={LOCALE}
+        density="slots"
         slotsByDate={{ "2026-08-10": [540, 645, 750] }}
       />,
     );
@@ -140,9 +144,49 @@ describe("WeekPreview", () => {
     expect(screen.getAllByTestId("slot-mark")).toHaveLength(3);
   });
 
+  /**
+   * The barcode this redesign exists to remove. Ninety starts across a working
+   * week used to be ninety bars drawn unconditionally, and at that count the
+   * hours underneath stopped being readable at all. They are opt-in now, so the
+   * default drawing answers "when do I work" and the ladder is one click away
+   * for "and where does each booking start".
+   */
+  it("keeps the slot ladder out of the default drawing", () => {
+    render(
+      <WeekPreview
+        days={FULL_WEEK}
+        locale={LOCALE}
+        slotsByDate={{ "2026-08-10": [540, 645, 750] }}
+      />,
+    );
+
+    expect(screen.queryByTestId("slot-mark")).not.toBeInTheDocument();
+  });
+
   it("draws nothing extra when no service is selected", () => {
     renderPreview();
 
     expect(screen.queryByTestId("slot-mark")).not.toBeInTheDocument();
+  });
+
+  it("marks the current time, on today's column only", () => {
+    render(
+      <WeekPreview
+        days={FULL_WEEK}
+        locale={LOCALE}
+        // Wednesday 12 Aug, 13:30 — inside the 08:00–18:00 window.
+        now={{ date: "2026-08-12", minute: 810 }}
+      />,
+    );
+
+    expect(screen.getAllByTestId("now-line")).toHaveLength(1);
+  });
+
+  it("leaves the marker off a week that is not the current one", () => {
+    render(
+      <WeekPreview days={FULL_WEEK} locale={LOCALE} now={{ date: "2026-09-02", minute: 810 }} />,
+    );
+
+    expect(screen.queryByTestId("now-line")).not.toBeInTheDocument();
   });
 });

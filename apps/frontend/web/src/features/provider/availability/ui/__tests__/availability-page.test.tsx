@@ -179,8 +179,10 @@ describe("AvailabilityPage", () => {
     await user.click(screen.getByRole("checkbox", { name: "Monday" }));
     await user.click(screen.getByRole("button", { name: "Done" }));
 
-    // The card is on the left…
-    expect(screen.getByText("09:00 – 17:00")).toBeInTheDocument();
+    // The card is on the left… scoped to it, because the block drawn in the
+    // week now prints its span the same way, which is the point of the next
+    // assertion rather than a collision to design around.
+    expect(within(screen.getByRole("group")).getByText("09:00 – 17:00")).toBeInTheDocument();
     // …and the week on the right already agrees, with nothing sent anywhere.
     expect(within(preview()).getByText("09:00–17:00")).toBeInTheDocument();
     expect(spy).not.toHaveBeenCalled();
@@ -206,10 +208,10 @@ describe("AvailabilityPage", () => {
       "Sun",
     ]);
 
-    // …and so does the card that groups the two rows.
-    const card = screen.getByRole("group");
-    const chips = within(card).getAllByText(/^(Mon|Sun)$/);
-    expect(chips.map((c) => c.textContent)).toEqual(["Mon", "Sun"]);
+    // …and so does the card that groups the two rows: Monday leads, Sunday
+    // closes, which is display order and not the 0-for-Sunday storage order
+    // asserted a few lines below.
+    expect(screen.getByRole("group")).toHaveAccessibleName("Monday and Sunday, 09:00 – 17:00");
 
     // What goes over the wire is the storage numbering, untouched: Sunday is 0.
     //
@@ -303,8 +305,10 @@ describe("AvailabilityPage", () => {
     renderPage(config());
 
     await waitFor(() => expect(preview()).toBeInTheDocument());
-    expect(screen.queryByRole("radiogroup", { name: "Show" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Person")).not.toBeInTheDocument();
+    // One member means there is nobody to pick between, and the word "team"
+    // has no reason to reach a solo provider's screen at all.
+    expect(screen.queryByRole("radiogroup", { name: "Whose week" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Whole team")).not.toBeInTheDocument();
   });
 
   it("removing a card empties the week it drew", async () => {
@@ -328,6 +332,7 @@ describe("AvailabilityPage", () => {
   });
 
   it("defaults to the first published service and previews what its default option produces", async () => {
+    const user = userEvent.setup();
     renderPage(config([rule(1, 540, 1020)]), [
       service("s1", { pricingMode: "fixed", durationMinutes: 60 }),
     ]);
@@ -338,10 +343,15 @@ describe("AvailabilityPage", () => {
     // them, confirmed against `startsForDay` directly before being written
     // down here, not derived from the UI under test.
     expect(screen.getByText("15 slots · 15 places")).toBeInTheDocument();
+    // The count is stated whatever the drawing shows; the ladder itself is
+    // opt-in, since ninety bars over a working week is what made the old grid
+    // unreadable.
+    await user.click(screen.getByRole("radio", { name: "Slots" }));
     expect(within(preview()).getAllByTestId("slot-mark")).toHaveLength(15);
   });
 
   it("previews an hourly service from its minimum and step, not a guessed fixed length", async () => {
+    const user = userEvent.setup();
     renderPage(config([rule(1, 540, 1020)]), [
       service("s1", { pricingMode: "hourly", minMinutes: 60, stepMinutes: 30 }),
     ]);
@@ -352,6 +362,7 @@ describe("AvailabilityPage", () => {
     // as the fixed 60-minute case above — confirmed independently rather than
     // assumed from that coincidence.
     expect(screen.getByText("15 slots · 15 places")).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "Slots" }));
     expect(within(preview()).getAllByTestId("slot-mark")).toHaveLength(15);
   });
 

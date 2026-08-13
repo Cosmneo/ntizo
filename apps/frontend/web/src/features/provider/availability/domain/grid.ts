@@ -71,6 +71,23 @@ export interface WeekTotals {
  * a number under it, and a missing key renders blank, which reads as "not
  * calculated" rather than "none".
  */
+/**
+ * The busiest day of the week, or `null` for a week with no hours at all.
+ *
+ * Ties go to the earlier day, because the days arrive in week order and a
+ * strict `>` never displaces an equal — "Monday" and "Thursday" are equally
+ * true answers, and the first one keeps the number stable while somebody edits
+ * a rule that happens to match it.
+ */
+export function busiestDay(days: readonly PreviewDay[]): { day: PreviewDay; minutes: number } | null {
+  let best: { day: PreviewDay; minutes: number } | null = null;
+  for (const day of days) {
+    const minutes = day.intervals.reduce((sum, iv) => sum + (iv.end - iv.start), 0);
+    if (minutes > 0 && (best === null || minutes > best.minutes)) best = { day, minutes };
+  }
+  return best;
+}
+
 export function weekTotals(days: readonly PreviewDay[]): WeekTotals {
   const byDate: Record<string, number> = {};
   let totalMinutes = 0;

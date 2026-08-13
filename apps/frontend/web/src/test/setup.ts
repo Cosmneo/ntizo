@@ -27,3 +27,26 @@ import "@/shared/lib/i18n";
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
 }
+
+/**
+ * jsdom implements no media queries either, so `window.matchMedia` is undefined
+ * and any component that asks whether it is on a phone throws on mount.
+ *
+ * Stubbed as "no query matches", which resolves `useIsMobile()` to `false` — the
+ * wide layout. That is the right default for a suite with no viewport: a test
+ * that means to assert the phone layout has to say so, by replacing this stub
+ * with one that matches, rather than inheriting a breakpoint it never chose.
+ */
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+}
