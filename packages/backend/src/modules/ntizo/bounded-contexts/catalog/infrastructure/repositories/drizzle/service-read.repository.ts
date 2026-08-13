@@ -20,6 +20,18 @@ import type {
 } from "../../../app/ports/outbound/service-read.repository.port";
 
 /**
+ * What `service.id` looks like in this table.
+ *
+ * Checked here, in the adapter, rather than on the GraphQL input: the
+ * database is what defines the id's shape, and to a table keyed by uuid a
+ * malformed id already means "no such row" — the same null a well-formed but
+ * absent id gets. The alternative is letting Postgres reject the value with a
+ * syntax error, which turns a mistyped URL or a crawler probing `/services/x`
+ * into a 500 on a page meant to answer "not found".
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
  * A provider's own services, every option and every translation.
  *
  * Options, translations and option translations are fetched in three further
@@ -373,6 +385,8 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
   }
 
   async getPublishedById(id: string): Promise<ServiceDetailRow | null> {
+    if (!UUID.test(id)) return null;
+
     const db = getDb();
     const [row] = await db
       .select({

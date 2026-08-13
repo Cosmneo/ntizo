@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { GetServiceProjection } from "../app/use-cases/get-service.projection";
 import { mapGetServiceInput } from "../graphql/handlers/arg-mappers";
+import { DrizzleServiceReadRepository } from "../../../bounded-contexts/catalog/infrastructure/repositories/drizzle/service-read.repository";
 
 const row = (over = {}) => ({
   id: "svc-1",
@@ -110,5 +111,17 @@ describe("mapGetServiceInput", () => {
       id: "svc-1",
       locale: "pt-MZ",
     });
+  });
+});
+
+describe("DrizzleServiceReadRepository.getPublishedById", () => {
+  // Not exercised by the `GetServiceProjection` tests above: those use a
+  // `FakeRepo`, so the guard living in the Drizzle adapter is only reachable
+  // through the real class. Genuinely no database involved — the guard
+  // returns before the function's first `getDb()` call, so this exercises
+  // the actual early return rather than a stub standing in for one.
+  it("returns null for an id that is not a well-formed UUID, without reaching Postgres", async () => {
+    const repo = new DrizzleServiceReadRepository();
+    expect(await repo.getPublishedById("nonexistent-id")).toBeNull();
   });
 });
