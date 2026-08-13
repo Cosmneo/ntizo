@@ -13,10 +13,17 @@
  *
  * Delete this file and its three call sites before the first real provider is
  * onboarded. `docs/superpowers/follow-ups.md` entry 43 carries the trigger.
+ *
+ * Duration used to be a fourth invented fact in `ServiceFacts` below
+ * ("4–12 horas" beside a 60-minute haircut's real price) and no longer is: it
+ * is real data (`domain/service-card.ts`'s `optionDurationMinutes`), rendered
+ * by `PackageChooser` next to whichever package the customer has selected.
+ * `ServiceFacts` keeps only the two facts that genuinely have no data behind
+ * them — service area and cancellation policy.
  */
 
 import { useTranslation } from "react-i18next";
-import { Clock, MapPin, ShieldCheck, Star } from "lucide-react";
+import { MapPin, ShieldCheck, Star } from "lucide-react";
 import { Avatar, AvatarFallback, cn } from "@ntizo/frontend-ui";
 import { initialsFrom } from "@/shared/lib/initials";
 
@@ -30,7 +37,7 @@ import { initialsFrom } from "@/shared/lib/initials";
 // at all.
 //
 // The line between what lives here and what lives in `directory.json`: labels
-// and sentence scaffolding ("Reviews", "Duration", "{{count}} out of 5
+// and sentence scaffolding ("Reviews", "Service area", "{{count}} out of 5
 // stars") are UI chrome and are genuinely translated in all eight locales,
 // same as every other string in this feature. The content a fabricated
 // person supposedly wrote — names, review bodies, the provider's reply — is
@@ -78,8 +85,6 @@ const REVIEWS: readonly InventedReview[] = [
 ];
 
 const FACTS = {
-  durationMinHours: 4,
-  durationMaxHours: 12,
   areaCity: "Maputo",
   areaRadiusKm: 15,
   cancellationHours: 24,
@@ -190,19 +195,11 @@ export function ServiceReviews() {
   );
 }
 
-/** Duration, service area and cancellation policy — a footer row under the description. */
+/** Service area and cancellation policy — a footer row under the description. */
 export function ServiceFacts() {
   const { t } = useTranslation("directory");
 
   const facts = [
-    {
-      icon: Clock,
-      label: t("factsDurationLabel"),
-      value: t("factsDurationValue", {
-        min: FACTS.durationMinHours,
-        max: FACTS.durationMaxHours,
-      }),
-    },
     {
       icon: MapPin,
       label: t("factsAreaLabel"),
@@ -216,7 +213,7 @@ export function ServiceFacts() {
   ];
 
   return (
-    <dl className="mt-6 grid gap-3 border-t border-[var(--color-border)] pt-4 sm:grid-cols-3">
+    <dl className="mt-6 grid gap-3 border-t border-[var(--color-border)] pt-4 sm:grid-cols-2">
       {facts.map(({ icon: Icon, label, value }) => (
         <div key={label} className="flex items-start gap-2">
           <Icon

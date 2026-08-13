@@ -42,4 +42,32 @@ describe("PackageChooser", () => {
     const { container } = render(<PackageChooser locale="pt-MZ" options={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("shows the selected fixed package's real duration, not an invented range", () => {
+    render(<PackageChooser locale="pt-MZ" options={[
+      opt({ durationMinutes: 60, isDefault: true }),
+    ]} />);
+    expect(screen.getByText("60 min")).toBeInTheDocument();
+  });
+
+  it("shows an hourly package's minimum instead of a duration", () => {
+    render(<PackageChooser locale="pt-MZ" options={[
+      opt({ pricingMode: "hourly", durationMinutes: null, minMinutes: 120, isDefault: true }),
+    ]} />);
+    expect(screen.getByText("120 min minimum")).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ min$/)).not.toBeInTheDocument();
+  });
+
+  it("switches the shown duration when another package is chosen", async () => {
+    // Duration belongs to whichever package is selected, the same way the
+    // total does.
+    render(<PackageChooser locale="pt-MZ" options={[
+      opt({ durationMinutes: 60, isDefault: true }),
+      opt({ id: "o2", name: "Dia completo", amountMinor: 85000, durationMinutes: 480 }),
+    ]} />);
+    expect(screen.getByText("60 min")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: /Dia completo/ }));
+    expect(screen.getByText("480 min")).toBeInTheDocument();
+    expect(screen.queryByText("60 min")).not.toBeInTheDocument();
+  });
 });

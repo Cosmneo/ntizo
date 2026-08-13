@@ -102,7 +102,6 @@ export interface ServiceDetailOptionRow {
   stepMinutes: number | null;
   pricingMode: string;
   isDefault: boolean;
-  sortOrder: number;
   translations: { locale: string; name: string }[];
 }
 

@@ -6,7 +6,10 @@ import {
   bookingTotal,
   NTIZO_COMMISSION_RATE,
 } from "@/features/directory/services/domain/booking-total";
-import { formatAmount } from "@/features/directory/services/domain/service-card";
+import {
+  formatAmount,
+  optionDurationMinutes,
+} from "@/features/directory/services/domain/service-card";
 
 /**
  * What a customer picks, and what it will cost them.
@@ -33,12 +36,9 @@ import { formatAmount } from "@/features/directory/services/domain/service-card"
 export function PackageChooser({
   options,
   locale,
-  onSelect,
 }: {
   options: readonly ServiceDetailOptionDTO[];
   locale: string;
-  /** Told about the reader's choice, including the initial default — nothing in this feature consumes it yet, but a future booking flow needs to know which package was picked. */
-  onSelect?: (option: ServiceDetailOptionDTO) => void;
 }) {
   const { t } = useTranslation("directory");
   const defaultOption = options.find((o) => o.isDefault) ?? options[0];
@@ -51,10 +51,16 @@ export function PackageChooser({
   const rate = new Intl.NumberFormat(locale, { style: "percent" }).format(
     NTIZO_COMMISSION_RATE,
   );
+  // `optionDurationMinutes` handles the fixed-vs-hourly split: a fixed
+  // package's own length, or an hourly one's minimum booking — never both,
+  // and never `null` for a valid option (`assertOptionShape` guarantees one
+  // or the other on the way in). Belongs to whichever package is currently
+  // selected, the same way the totals below do.
+  const selectedMinutes = optionDurationMinutes(selected);
+  const selectedIsHourly = selected.pricingMode === "hourly";
 
   function selectOption(option: ServiceDetailOptionDTO) {
     setSelectedId(option.id);
-    onSelect?.(option);
   }
 
   return (
@@ -89,6 +95,18 @@ export function PackageChooser({
       </div>
 
       <dl className="mt-4 grid gap-1.5 border-t border-[var(--color-border)] pt-4">
+        {selectedMinutes !== null && (
+          <div className="flex items-center justify-between">
+            <dt className="type-body text-[var(--color-muted-foreground)]">
+              {t("packageDuration")}
+            </dt>
+            <dd>
+              {selectedIsHourly
+                ? t("serviceMinimumMinutes", { count: selectedMinutes })
+                : t("serviceDurationMinutes", { count: selectedMinutes })}
+            </dd>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <dt className="type-body text-[var(--color-muted-foreground)]">
             {t("packagePrice")}

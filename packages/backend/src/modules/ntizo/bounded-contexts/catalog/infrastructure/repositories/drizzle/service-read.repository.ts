@@ -449,7 +449,6 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         stepMinutes: o.stepMinutes,
         pricingMode: o.pricingMode,
         isDefault: o.isDefault,
-        sortOrder: o.sortOrder,
         translations: optionTranslations
           .filter((t) => t.optionId === o.id)
           .map((t) => ({ locale: t.locale, name: t.name })),
