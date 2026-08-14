@@ -14,11 +14,13 @@ import { PackageChooser } from "@/features/directory/services/ui/package-chooser
 import { ServiceQuoteNotice } from "@/features/directory/services/ui/service-quote-notice";
 import { ServicePackagesUnavailable } from "@/features/directory/services/ui/service-packages-unavailable";
 import { serviceDetailPanel } from "@/features/directory/services/domain/service-card";
-import {
-  ServiceFacts,
-  ServiceRating,
-  ServiceReviews,
-} from "@/features/directory/services/ui/service-detail-placeholders";
+// The real ones, from the provider directory. Reused rather than reimplemented
+// here: reviews belong to a business, not to one of its services, so there is
+// one component and one query for them and this page is a second reader of
+// both. See `ServiceReviewsSection` below for what that costs in wording.
+import { ProviderReviews } from "@/features/directory/ui/provider-reviews";
+import { RatingStars } from "@/features/directory/ui/rating-stars";
+import { useProviderReviews } from "@/features/directory/viewmodel/use-directory";
 import { AvailabilitySheet } from "@/features/directory/availability/ui/availability-sheet";
 import type { ServiceDTO } from "@/features/directory/services/domain/types";
 
@@ -124,21 +126,26 @@ export function ServiceDetailPage({ id }: { id: string }) {
                 to a different service and could point past the end of its
                 image list, or worse, silently land on the wrong photo of one
                 that has enough images not to notice. */}
+            <Breadcrumb service={service} />
             <ServiceGallery key={service.id} images={service.imageUrls} alt={service.name} />
             <h1 className="type-h1 mt-6">{service.name}</h1>
-            {/* Invented — see service-detail-placeholders.tsx. */}
-            <ServiceRating />
+            <ServiceHeaderRating service={service} />
             <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
-              {[service.categoryName, service.providerCity].filter(Boolean).join(" · ")}
+              {[
+                [service.providerCity, service.providerDistrict].filter(Boolean).join(", "),
+                t(`filterWhereOption.${service.locationType}`),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
             {service.description && (
-              <p className="type-body mt-6 whitespace-pre-line">{service.description}</p>
+              <section className="mt-6 rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
+                <h2 className="type-h3 font-semibold">{t("detailDescriptionHeading")}</h2>
+                <p className="type-body mt-2 whitespace-pre-line">{service.description}</p>
+              </section>
             )}
-            {/* Invented — see service-detail-placeholders.tsx. */}
-            <ServiceFacts />
             <ServicePerformers performers={service.performers} />
-            {/* Invented — see service-detail-placeholders.tsx. */}
-            <ServiceReviews />
+            <ServiceReviewsSection service={service} />
           </div>
           <div className="grid gap-4 lg:sticky lg:top-4">
             {(() => {
@@ -200,5 +207,107 @@ export function ServiceDetailPage({ id }: { id: string }) {
         )}
       </main>
     </>
+  );
+}
+
+/**
+ * Where this service sits: home, its category, itself.
+ *
+ * The category link is a real filter on the browse rather than decoration, so
+ * a reader who decided this particular photographer is not for them lands on
+ * the others rather than back at everything. It also gives a crawler the one
+ * thing a detail page otherwise lacks — a path back up.
+ *
+ * The last crumb is text, not a link to the page you are already on.
+ */
+function Breadcrumb({ service }: { service: ServiceDetailDTO }) {
+  const { t } = useTranslation("directory");
+
+  return (
+    <nav aria-label={t("breadcrumbHome")} className="type-caption mb-4">
+      <ol className="flex list-none flex-wrap items-center gap-1.5 p-0 text-[var(--color-muted-foreground)]">
+        <li>
+          <Link to="/" className="hover:text-[var(--color-foreground)] hover:underline">
+            {t("breadcrumbHome")}
+          </Link>
+        </li>
+        <li aria-hidden="true">/</li>
+        <li>
+          <Link
+            to="/services"
+            search={{ category: service.categoryCode }}
+            className="hover:text-[var(--color-foreground)] hover:underline"
+          >
+            {service.categoryName}
+          </Link>
+        </li>
+        <li aria-hidden="true">/</li>
+        <li className="text-[var(--color-foreground)]">{service.name}</li>
+      </ol>
+    </nav>
+  );
+}
+
+/**
+ * The score under the title, and a way down to the words behind it.
+ *
+ * Renders nothing at all until somebody has reviewed. The alternative — an
+ * empty set of stars, or "0.0" — is a claim, and the worst one available: a
+ * business nobody has rated yet would be shown as the worst on the platform.
+ * The same reason `average` arrives null rather than zero all the way from the
+ * database.
+ *
+ * The count is an anchor to the reviews further down, which is the whole
+ * reason a marketplace puts the number up here: it is a promise that the
+ * evidence exists, and a promise you cannot follow is just a number.
+ */
+function ServiceHeaderRating({ service }: { service: ServiceDetailDTO }) {
+  const data = useProviderReviews(service.providerId);
+  if (!data || data.summary.count === 0) return null;
+
+  return (
+    <a href="#service-reviews" className="mt-2 inline-flex hover:underline">
+      <RatingStars average={data.summary.average} count={data.summary.count} />
+    </a>
+  );
+}
+
+/**
+ * What customers said — about the business, which is not quite what this page
+ * is about.
+ *
+ * Ntizo's reviews are one per person per business, enforced by a unique
+ * constraint; there is no such thing as a review of one service. Printing
+ * "Reviews (130)" under a service's title would therefore claim something
+ * nobody said, so the heading the shared component renders is preceded by a
+ * line saying whose verdicts these are. The alternative — showing nothing
+ * until per-service reviews exist — throws away the only evidence this page
+ * has.
+ *
+ * The line goes ABOVE that heading, not under the last review. A qualifier
+ * printed after the thing it qualifies is read by whoever was already
+ * convinced; the reader who scans "Reviews (6)" under a service title and
+ * moves on is exactly the one it is for.
+ *
+ * `ProviderReviews` itself renders nothing when there are none, and this
+ * repeats its guard so the sentence never appears alone — a note explaining
+ * absent reviews is worse than silence.
+ */
+function ServiceReviewsSection({ service }: { service: ServiceDetailDTO }) {
+  const { t } = useTranslation("directory");
+  const data = useProviderReviews(service.providerId);
+  if (!data || data.summary.count === 0) return null;
+
+  return (
+    <div id="service-reviews" className="scroll-mt-4">
+      <p className="type-caption mt-12 text-[var(--color-muted-foreground)]">
+        {t("reviewsAboutProvider")}
+      </p>
+      {/* Its own `mt-12` is cancelled so the note reads as this section's
+          subtitle rather than as a stray line above a new section. */}
+      <div className="[&>section]:mt-1">
+        <ProviderReviews providerId={service.providerId} />
+      </div>
+    </div>
   );
 }
