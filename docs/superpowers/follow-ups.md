@@ -861,3 +861,32 @@ still read by anything.
 **Trigger:** before the first real provider is onboarded, or before any deploy
 that a customer can reach — whichever comes first. This is not a tidy-up; it is
 a false statement about a named business on a public page.
+
+## 44. An open availability window renders as "no times free"
+
+`member_availability.slot_interval_minutes` has three documented states: null
+is "use the default", a number is a grid, and `0` means the window is simply
+open — for a provider who takes people as they arrive rather than at :00 and
+:30. The engine honours it: a `0` window produces no discrete starts, which is
+correct, because there are none to produce.
+
+Nothing downstream knows that. `availabilityForService` returns a day with an
+empty `starts` array, and `time-grid.tsx:65` renders every empty array as
+`availabilityDayEmpty` — "no times free this day". So a business that is open
+from eight to five, every weekday, reads to a customer as fully booked. The two
+cases are opposite and the wire cannot tell them apart.
+
+Two things are needed and the second is cheap only after the first: the
+availability read model has to say that a day is open-without-slots rather than
+merely empty, and the grid needs something to draw for it — a stated range and
+a way to ask, not a grid of buttons.
+
+Found while seeding demo availability: `cozinha-da-vovo` was deliberately given
+`0` to exercise the branch, and its two services became indistinguishable from
+broken ones. The seed was reverted to a 30-minute grid rather than shipping a
+demo provider that looks faulty; that revert is why no seeded provider
+currently exercises this path at all.
+
+**Trigger:** the first provider who says they do not work by appointment — a
+caterer, a mechanic taking walk-ins, anyone with a counter. Until then this is
+a branch of the engine no screen can display.
