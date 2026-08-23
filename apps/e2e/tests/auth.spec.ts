@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createVerifiedUser, verifyUserByEmail } from "../fixtures/auth";
+import { createProvider } from "../fixtures/provider";
 import { fillSignInForm, signOutViaSidebar } from "../fixtures/ui";
 
 test("sign up, verify, sign in, and land on the right zone", async ({ page }) => {
@@ -46,28 +47,21 @@ test("sign up, verify, sign in, and land on the right zone", async ({ page }) =>
 });
 
 test("signing in as a different user shows that user's session, not the previous one's", async ({
-  browser,
   page,
 }) => {
   const admin = await createVerifiedUser("admin", { firstName: "Ada", lastName: "Admin" });
   const providerOwner = await createVerifiedUser(undefined, { firstName: "Pia", lastName: "Provider" });
 
   // Give providerOwner a provider *before* the leak-sensitive part of this
-  // test, in a throwaway context/page so this setup can't itself be the
-  // thing papering over a real regression.
-  {
-    const setupPage = await browser.newPage();
-    await setupPage.goto("/sign-in");
-    await fillSignInForm(setupPage, providerOwner);
-    await setupPage.waitForURL("http://localhost:3000/"); // plain customer, no provider yet
-    await setupPage.goto("/provider");
-    await setupPage.waitForURL(/\/provider\/no-provider/);
-    await setupPage.getByRole("button", { name: /create manually/i }).click();
-    await setupPage.getByLabel("Name", { exact: true }).fill("Pia's Services");
-    await setupPage.getByRole("button", { name: /^create$/i }).click();
-    await setupPage.waitForURL(/\/provider\/overview/);
-    await setupPage.close();
-  }
+  // test. This test is about session isolation, not about the wizard, so the
+  // provider is seeded directly rather than driven through the UI — that
+  // also keeps this spec decoupled from provider.spec.ts, which owns
+  // exercising the create flow itself.
+  await createProvider({
+    name: "Pia's Services",
+    slug: `pias-services-${crypto.randomUUID()}`,
+    ownerUserId: providerOwner.id,
+  });
 
   // Everything from here on reuses ONE page/context with no hard
   // navigation, so the SPA's in-memory QueryClient singleton — where the

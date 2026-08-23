@@ -8,11 +8,14 @@ test("a customer does not see the Provider or Admin zone links", async ({ page }
   await fillSignInForm(page, customer);
   await page.waitForURL("http://localhost:3000/");
 
-  // Any authenticated user may reach /provider/no-provider — becoming a
-  // provider is opt-in, not gated — so it is a real, always-reachable page to
-  // read the switcher off for a plain customer.
-  await page.goto("/provider");
-  await page.waitForURL(/\/provider\/no-provider/);
+  // /account, not /provider: a plain customer visiting /provider is now
+  // redirected to /onboarding, which deliberately renders no navigation
+  // chrome at all — the assertions below would pass there for the wrong
+  // reason (no header, not "no zones"). /account renders CustomerShell's
+  // SiteHeader, is authenticated, and any customer can always reach it, so
+  // it is a real, always-reachable page to read the switcher off.
+  await page.goto("/account");
+  await page.waitForURL(/\/account/);
 
   // No switcher at all, not a switcher with one entry. A customer who owns no
   // provider has nowhere to switch to, and a lone "Customer" pill would imply
