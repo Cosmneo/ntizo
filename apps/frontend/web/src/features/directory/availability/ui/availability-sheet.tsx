@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { addDays, localDateAt } from "@ntizo/shared/datetime";
-import { Sheet, SheetContent, Skeleton } from "@ntizo/frontend-ui";
+import { Dialog, DialogContent, Skeleton } from "@ntizo/frontend-ui";
 import { weekOf } from "@/features/directory/availability/domain/day-strip";
 import { distinctMemberIds, panelMode } from "@/features/directory/availability/domain/types";
 import type { Start } from "@/features/directory/availability/domain/types";
@@ -170,12 +170,22 @@ export function AvailabilitySheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full max-w-lg flex-col">
-        <div className="flex items-start justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4">
-          <div>
-            <h2 className="text-lg font-semibold">{service.name}</h2>
-            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+    /*
+     * A dialog in the middle, not a panel down the side.
+     *
+     * Choosing a time is one short errand with a beginning and an end, and the
+     * page behind it is not part of it — a side panel keeps that page half
+     * visible and half usable, which is the shape for something you consult
+     * while reading rather than something you finish. `max-h-[88svh]` with the
+     * body scrolling inside keeps the title and the date row in place while a
+     * long list of times moves under them.
+     */
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[88svh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] p-0">
+        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
+          <div className="min-w-0">
+            <h2 className="type-h3 font-semibold">{service.name}</h2>
+            <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
               <ServicePrice cell={servicePriceCell(service)} locale={locale} />
             </p>
           </div>
@@ -183,14 +193,16 @@ export function AvailabilitySheet({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label={t("close")}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">{body}</div>
-      </SheetContent>
-    </Sheet>
+        <div className="flex-1 overflow-y-auto border-t border-[var(--color-border)] p-5">
+          {body}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -31,13 +31,17 @@ export function ServiceCard({
   const image = serviceCardImage(service, providerImageUrl);
 
   return (
-    <li className="overflow-hidden rounded-lg border border-[var(--color-border)]">
+    // 3:2 rather than 4:3, and the same lift the browse cards have. The taller
+    // crop cost about a third of the card's height for a picture that is
+    // illustration — what a reader is choosing between is the name and the
+    // price, and those were being pushed down the page by the photograph.
+    <li className="group overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] shadow-[0_1px_2px_rgba(19,23,27,0.05)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))] hover:shadow-[0_1px_3px_rgba(19,23,27,0.06),0_10px_26px_-14px_rgba(19,23,27,0.18)]">
       <button
         type="button"
         onClick={() => onSelect(service)}
-        className="block w-full text-left transition-colors hover:bg-[var(--color-muted)]"
+        className="block w-full text-left"
       >
-        <div className="aspect-[4/3] w-full overflow-hidden bg-[var(--color-muted)]">
+        <div className="aspect-[3/2] w-full overflow-hidden bg-[var(--color-muted)]">
           {image ? (
             <img
               src={image}
@@ -47,9 +51,9 @@ export function ServiceCard({
             />
           ) : null}
         </div>
-        <div className="p-4">
-          <h3 className="font-semibold">{service.name}</h3>
-          <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+        <div className="p-3.5">
+          <h3 className="type-body-medium font-semibold">{service.name}</h3>
+          <p className="type-caption mt-1.5 text-[var(--color-muted-foreground)]">
             <ServicePrice cell={cell} locale={locale} />
           </p>
         </div>

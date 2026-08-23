@@ -69,7 +69,24 @@ export function DateStrip({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5">
+      {/* A calendar row, not seven bordered boxes. The weekday letters are the
+          column heading a calendar always has, so they sit above the row once
+          rather than inside every cell, and the day itself is a circle — the
+          shape a chosen date has in every calendar anyone has used. Boxed and
+          filled edge to edge, the selected day read as a pressed button in a
+          toolbar rather than as today's date on a calendar. */}
+      <div aria-hidden="true" className="grid grid-cols-7 gap-1">
+        {week.map((dateIso) => (
+          <span
+            key={dateIso}
+            className="type-caption text-center text-[var(--color-muted-foreground)]"
+          >
+            {formatDate(dateIso, locale, { weekday: "narrow" })}
+          </span>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
         {week.map((dateIso) => {
           const past = isPast(dateIso, todayIso);
           const selected = dateIso === selectedDate;
@@ -79,21 +96,24 @@ export function DateStrip({
               type="button"
               disabled={past}
               aria-pressed={selected}
+              // The weekday is `aria-hidden` above, so the button has to name
+              // its own date in full — "14" alone is not a date to anyone who
+              // cannot see the column it is under.
+              aria-label={formatDate(dateIso, locale, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
               onClick={() => onSelectDate(dateIso)}
               className={cn(
-                "grid gap-0.5 rounded-[var(--radius-card-sm)] border py-2 text-center transition-colors disabled:pointer-events-none",
-                past && "text-[var(--color-muted-foreground)] line-through opacity-50",
+                "mx-auto grid h-10 w-10 place-items-center rounded-full text-sm font-semibold transition-colors disabled:pointer-events-none",
+                past && "text-[var(--color-muted-foreground)] line-through opacity-45",
                 selected
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
-                  : "border-[var(--color-border)] hover:border-[var(--color-muted-foreground)]",
+                  ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+                  : "hover:bg-[var(--color-muted)]",
               )}
             >
-              <span className="text-[11px] uppercase">
-                {formatDate(dateIso, locale, { weekday: "short" })}
-              </span>
-              <span className="text-sm font-semibold">
-                {formatDate(dateIso, locale, { day: "numeric" })}
-              </span>
+              <span aria-hidden="true">{formatDate(dateIso, locale, { day: "numeric" })}</span>
             </button>
           );
         })}

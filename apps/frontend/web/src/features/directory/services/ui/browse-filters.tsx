@@ -17,6 +17,7 @@ import {
 } from "@/features/directory/services/domain/browse-search";
 import { PriceRangeFilter } from "@/features/directory/services/ui/price-range-filter";
 import { SearchBox } from "@/features/directory/services/ui/search-box";
+import { FilterPanelCard, FilterSection } from "@/shared/components/filter-panel";
 
 /**
  * The four places a service can happen.
@@ -78,7 +79,7 @@ const LANGUAGES = LOCALES;
  */
 export function BrowseFilters({ current }: { current: BrowseSearch }) {
   return (
-    <aside className="hidden content-start gap-5 lg:sticky lg:top-4 lg:grid">
+    <aside className="hidden content-start gap-3 lg:sticky lg:top-4 lg:grid">
       <FilterPanel current={current} />
     </aside>
   );
@@ -92,8 +93,7 @@ function FilterPanel({ current }: { current: BrowseSearch }) {
     <>
       <SearchBox current={current} />
 
-      <h2 className="type-body-medium font-semibold">{t("filtersTitle")}</h2>
-
+      <FilterPanelCard title={t("filtersTitle")}>
       <FilterGroup
         icon={MapPin}
         label={t("filterWhere")}
@@ -131,13 +131,10 @@ function FilterPanel({ current }: { current: BrowseSearch }) {
         toSearch={(v) => browseSearch(current, { language: v })}
       />
 
-      <section className="grid gap-2.5">
-        <h3 className="type-caption inline-flex items-center gap-1.5 font-semibold text-[var(--color-muted-foreground)]">
-          <Tag className="h-3.5 w-3.5" aria-hidden={true} />
-          {t("filterPrice")}
-        </h3>
+      <FilterSection icon={Tag} label={t("filterPrice")}>
         <PriceRangeFilter current={current} />
-      </section>
+      </FilterSection>
+      </FilterPanelCard>
     </>
   );
 }
@@ -210,7 +207,10 @@ export function MobileFilterBar({ current }: { current: BrowseSearch }) {
           {/* Closes on any choice: every control in here navigates, and a
               sheet left open over the results it just changed hides the
               answer to the question the reader asked. */}
-          <div className="mt-4 grid gap-5" onClick={() => setOpen(false)}>
+          {/* The panel's own heading is dropped here — the sheet's title
+              already says "Filters", and two of them one above the other read
+              as a mistake rather than as structure. */}
+          <div className="mt-4 grid gap-5 [&_h2]:hidden" onClick={() => setOpen(false)}>
             <FilterPanel current={current} />
           </div>
         </SheetContent>
@@ -247,16 +247,7 @@ function FilterGroup({
   toSearch: (value: string | undefined) => BrowseSearch;
 }) {
   return (
-    <section className="grid gap-2.5">
-      <h3 className="type-caption inline-flex items-center gap-1.5 font-semibold text-[var(--color-muted-foreground)]">
-        <Icon className="h-3.5 w-3.5" aria-hidden={true} />
-        {label}
-      </h3>
-      {hint && (
-        <p className="type-caption -mt-1 text-[var(--color-muted-foreground)]">
-          {hint}
-        </p>
-      )}
+    <FilterSection icon={Icon} label={label} {...(hint ? { hint } : {})}>
       <div className="flex flex-wrap gap-2">
         {options.map((value) => {
           const active = selected === value;
@@ -273,7 +264,9 @@ function FilterGroup({
                 "type-caption rounded-full border px-3 py-1.5 transition-colors",
                 active
                   ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] font-semibold text-[var(--color-primary)]"
-                  : "border-[var(--color-border)] hover:border-[var(--color-muted-foreground)]",
+                  // A surface of its own: unfilled, a chip on the panel's tint
+                  // is an outline drawn on colour rather than a control.
+                  : "border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-muted-foreground)]",
               )}
             >
               {optionLabel(value)}
@@ -281,6 +274,6 @@ function FilterGroup({
           );
         })}
       </div>
-    </section>
+    </FilterSection>
   );
 }

@@ -152,7 +152,12 @@ export function ServicesBrowsePage() {
                 {/* A fourth column past 1536px. Three left roughly a third of a wide
                     desktop empty beside a sidebar that had already stopped
                     growing, and a browse is a grid — the room should go to cards. */}
-                <ul className="mt-5 grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {/* `items-start`: a stretched card puts its empty space inside
+                    itself, under the last line of text, and a service with no
+                    price or no category showed a band of white where the next
+                    card in the row had content. Sized to what it has to say,
+                    the space falls between the cards instead. */}
+                <ul className="mt-5 grid list-none items-start gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {page.items.map((service) => (
                     <BrowseServiceCard key={service.id} service={service} locale={locale} />
                   ))}

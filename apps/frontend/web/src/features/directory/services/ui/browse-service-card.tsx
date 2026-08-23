@@ -38,11 +38,13 @@ export function BrowseServiceCard({
   const cell = servicePriceCell(service);
 
   return (
-    <li className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
+    // White on the page's tinted ground, with the lift on hover that says the
+    // whole card is one thing to click.
+    <li className="group overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] shadow-[0_1px_2px_rgba(19,23,27,0.05)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border))] hover:shadow-[0_1px_3px_rgba(19,23,27,0.06),0_10px_26px_-14px_rgba(19,23,27,0.18)]">
       <Link
         to="/services/$id"
         params={{ id: service.id }}
-        className="block transition-colors hover:bg-[var(--color-muted)]"
+        className="block"
       >
         <div className="grid aspect-[4/3] w-full place-items-center overflow-hidden bg-[var(--color-muted)]">
           {image ? (

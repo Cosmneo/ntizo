@@ -1,8 +1,12 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ProviderPublicDTO } from "@ntizo/shared";
-import type { ProviderPageDTO } from "@ntizo/shared/read-models";
-import { directoryQueries } from "@/features/directory/data/directory.repository";
+import type { ProviderPageDTO, ProviderReviewsPublicDTO } from "@ntizo/shared/read-models";
+import {
+  directoryQueries,
+  type CityFacet,
+} from "@/features/directory/data/directory.repository";
+import type { DirectorySearch } from "@/features/directory/domain/directory-search";
 
 /**
  * The only path from `ui/` and `routes/` to the directory's `data/` layer.
@@ -11,17 +15,31 @@ import { directoryQueries } from "@/features/directory/data/directory.repository
  * boundaries lint rejects it, and it caught this exact import when the page was
  * first written. The indirection is not decoration: it is the one legal route.
  */
+
 /**
  * The page of providers, not only its rows.
  *
- * Returns `total` alongside `items` because the two answer different
- * questions: `items.length` is how many fit on this page, `total` is how many
- * matched. The results line wants the second, and said the first until
- * `providerList` began reporting both.
+ * Returns `total` alongside `items` because the two answer different questions:
+ * `items.length` is how many fit on this page, `total` is how many matched. The
+ * results line wants the second, and said the first until `providerList` began
+ * reporting both.
  */
-export function useDirectory(search = ""): ProviderPageDTO {
-  const { data } = useSuspenseQuery(directoryQueries.list(0, search));
+export function useDirectory(search: DirectorySearch, locale: string): ProviderPageDTO {
+  const { data } = useSuspenseQuery(directoryQueries.list(search, locale));
   return data;
+}
+
+/**
+ * The cities the filter offers.
+ *
+ * `useQuery`, not `useSuspenseQuery`: this one is a control, not content. A
+ * crawler does not need the filter's options in the HTML, and suspending the
+ * whole page on them would hold the listings — the thing the page exists to
+ * show — behind a second round trip.
+ */
+export function useProviderCities(): CityFacet[] {
+  const { data } = useQuery(directoryQueries.cities());
+  return data ?? [];
 }
 
 /**
@@ -31,19 +49,34 @@ export function useDirectory(search = ""): ProviderPageDTO {
  */
 export function prefetchDirectory(
   queryClient: QueryClient,
-  search = "",
+  search: DirectorySearch,
+  locale: string,
 ): Promise<unknown> {
-  return queryClient.ensureQueryData(directoryQueries.list(0, search));
+  return queryClient.ensureQueryData(directoryQueries.list(search, locale));
 }
 
-export function useProviderDetail(slug: string): ProviderPublicDTO | null {
-  const { data } = useSuspenseQuery(directoryQueries.bySlug(slug));
+/**
+ * A business's reviews.
+ *
+ * `useQuery`, not `useSuspenseQuery`: the provider's name, description and
+ * services are what a crawler indexes and what a reader came for, and holding
+ * all of it behind a second round trip to fetch verdicts would make the page
+ * slower for everyone to render the part nobody scrolled to yet.
+ */
+export function useProviderReviews(providerId: string): ProviderReviewsPublicDTO | undefined {
+  const { data } = useQuery(directoryQueries.reviews(providerId));
+  return data;
+}
+
+export function useProviderDetail(slug: string, locale: string): ProviderPublicDTO | null {
+  const { data } = useSuspenseQuery(directoryQueries.bySlug(slug, locale));
   return data;
 }
 
 export function prefetchProviderDetail(
   queryClient: QueryClient,
   slug: string,
+  locale: string,
 ): Promise<ProviderPublicDTO | null> {
-  return queryClient.ensureQueryData(directoryQueries.bySlug(slug));
+  return queryClient.ensureQueryData(directoryQueries.bySlug(slug, locale));
 }

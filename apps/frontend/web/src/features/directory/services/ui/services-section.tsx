@@ -33,7 +33,7 @@ export function ProviderServicesSection({
 
   return (
     <section className="mt-12">
-      <h2 className="text-xl font-semibold">{t("servicesTitle")}</h2>
+      <h2 className="type-h2">{t("servicesTitle")}</h2>
 
       {isError ? (
         <p className="mt-3 text-[var(--color-destructive)]">
@@ -47,9 +47,14 @@ export function ProviderServicesSection({
           body={t("providerServicesEmpty")}
         />
       ) : (
-        <ul className="mt-6 grid list-none gap-4 p-0 sm:grid-cols-2">
+        // Four across on a wide screen, not two. Two columns of a 4:3 image on
+        // a 1320px page is a 600px card with a 450px photograph of one haircut
+        // — the provider's whole catalogue pushed below the fold by its own
+        // illustrations. The same grid the services browse uses, so a card
+        // means the same size on both pages.
+        <ul className="mt-6 grid list-none items-start gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {isPending
-            ? Array.from({ length: 3 }, (_, i) => (
+            ? Array.from({ length: 4 }, (_, i) => (
                 <ServiceCardSkeleton key={i} />
               ))
             : items.map((service) => (
@@ -84,11 +89,11 @@ export function ProviderServicesSection({
 
 function ServiceCardSkeleton() {
   return (
-    <li className="overflow-hidden rounded-lg border border-[var(--color-border)]">
-      <Skeleton className="aspect-[4/3] w-full rounded-none" />
-      <div className="p-4">
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="mt-2 h-4 w-1/2" />
+    <li className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
+      <Skeleton className="aspect-[3/2] w-full rounded-none" />
+      <div className="p-3.5">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="mt-2 h-3 w-1/2" />
       </div>
     </li>
   );
