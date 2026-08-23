@@ -48,10 +48,16 @@ export function NotificationCell({
           <span
             className={cn("type-body-medium block", !notification.read && "font-semibold")}
           >
-            {/* The payload is passed as interpolation values: a type whose
-                sentence needs a name finds it there, and one that does not
-                simply ignores the extras. */}
-            {t(`type.${key}`, notification.payload as Record<string, string>)}
+            {/* The payload is passed as interpolation values via `replace`,
+                not spread into i18next's own options object: `count`,
+                `context`, `lng`, `ns` and `defaultValue` are reserved there,
+                and the read model calls this payload "deliberately
+                unconstrained" — a future handler adding, say, a
+                `defaultValue` key would otherwise silently replace the
+                rendered sentence instead of being read as a value. A type
+                whose sentence needs a name finds it under `replace`; one
+                that does not simply ignores the extras. */}
+            {t(`type.${key}`, { replace: notification.payload })}
           </span>
           <time
             dateTime={notification.createdAt}

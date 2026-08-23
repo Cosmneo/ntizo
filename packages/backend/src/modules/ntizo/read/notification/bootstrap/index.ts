@@ -7,11 +7,14 @@ import {
 } from "../app/use-cases/list-notifications.projection";
 
 /**
- * The read tier bootstraps its own repository rather than sharing the write
- * tier's. That is the rule this architecture is built on: the read side is
- * fully independent, with its own adapters, so the two can diverge without
- * either noticing. They happen to be the same class today; that is a
- * coincidence, not a contract.
+ * The read tier imports the write tier's repository rather than owning a
+ * duplicate — a deliberate ruling, not a coincidence. Precedent in this
+ * codebase is mixed (`read/provider` keeps its own `infra/repositories`,
+ * `read/catalog` imports from `bounded-contexts/catalog/infrastructure`), and
+ * this followed catalog: the inbox read model is the same rows in the same
+ * shape as the write side's, and a second class running identical SQL is two
+ * places to fix one bug. "Fully independent" is what the read side is free to
+ * become if its shape ever diverges, not an obligation to duplicate it today.
  */
 export function bootstrapNotificationRead() {
   const repo = new DrizzleNotificationRepository();

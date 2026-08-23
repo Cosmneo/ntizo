@@ -134,6 +134,13 @@
       "when": 1787489542723,
       "tag": "0018_public_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787506925534,
+      "tag": "0019_chilly_overlord",
+      "breakpoints": true
     }
   ]
 }

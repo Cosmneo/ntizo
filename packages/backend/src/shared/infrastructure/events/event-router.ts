@@ -89,7 +89,9 @@ export class EventRouter {
  * Module scope rather than request scope: handlers are wired once at bootstrap
  * and are stateless, and rebuilding the registry per request would mean every
  * producer needing a handle on it. Registration is idempotent in practice
- * because `bootstrap.ts` runs once per isolate.
+ * because `apps/backend/api/src/api.ts` — not `bootstrap.ts`, which registers
+ * unrelated email/SMS adapters — calls `register*NotificationHandlers` once,
+ * at module scope, and a module runs once per isolate.
  */
 let router: EventRouter | undefined;
 

@@ -43,9 +43,15 @@ export const notification = notificationSchema.table(
   },
   (t) => [
     // Both inboxes are read as "this addressee's rows, newest first", which is
-    // this pair of indexes. Partial, because half the rows have a null in each.
-    index("notification_user_idx").on(t.userId, t.createdAt.desc()),
-    index("notification_provider_idx").on(t.providerId, t.createdAt.desc()),
+    // this pair of indexes. Partial, because half the rows have a null in
+    // each — `notification_one_addressee` guarantees it — and a btree entry
+    // for a row this index's own query can never match is pure bloat.
+    index("notification_user_idx")
+      .on(t.userId, t.createdAt.desc())
+      .where(sql`${t.userId} IS NOT NULL`),
+    index("notification_provider_idx")
+      .on(t.providerId, t.createdAt.desc())
+      .where(sql`${t.providerId} IS NOT NULL`),
     check("notification_audience_known", sql`${t.audience} IN ('user', 'provider')`),
     check(
       "notification_one_addressee",

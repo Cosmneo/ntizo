@@ -61,6 +61,15 @@ test("marking it read clears the badge", async ({ page }) => {
   // Matching on this row's own accessible name sidesteps the ambiguity
   // instead of guessing an index into a list shared with unrelated UI.
   const row = page.getByRole("button", { name: /welcome to ntizo/i });
+
+  // Asserted present before the click, not just absent after: a negative
+  // assertion with nothing to negate is true from first render, and would
+  // keep passing forever — proving nothing — if the unread styling ever
+  // moved to a different class or a `data-read` attribute. `useMarkRead`
+  // does no optimistic update, so this row is the only end-to-end proof the
+  // server state actually changed.
+  await expect(row).toHaveClass(/border-\[var\(--color-primary\)\]/);
+
   await row.click();
 
   // The dot is gone from the row, which is the assertion that survives a
