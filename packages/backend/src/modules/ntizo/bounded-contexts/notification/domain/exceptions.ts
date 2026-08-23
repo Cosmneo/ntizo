@@ -13,3 +13,26 @@ export class UnknownNotificationTypeError extends Error {
     this.name = "UnknownNotificationTypeError";
   }
 }
+
+/**
+ * Nothing was marked.
+ *
+ * Raised for both a missing id and an item the caller is not entitled to,
+ * deliberately identically: telling the two apart lets somebody probing ids
+ * learn which notifications exist. The same rule the review commands follow.
+ */
+export class NotificationNotFoundError extends Error {
+  readonly code = "NOTIFICATION_NOT_FOUND";
+  constructor() {
+    super("No such notification, or it is not yours to mark");
+    this.name = "NotificationNotFoundError";
+  }
+}
+
+export class NotProviderMemberError extends Error {
+  readonly code = "NOT_PROVIDER_MEMBER";
+  constructor(readonly providerId: string) {
+    super("You do not belong to this workspace");
+    this.name = "NotProviderMemberError";
+  }
+}
