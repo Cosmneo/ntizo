@@ -768,6 +768,25 @@ Expected: clean. No commit — this task lands with Task 4.
 
 Against the real dev database, like Task 1 and for the same reason: the read-state join is SQL, and a `LEFT JOIN` that silently drops unread rows is invisible to any mock.
 
+**This test needs a step Task 1's did not.** The repository resolves its handle
+through `getDb()` → `getActiveDb()` → AsyncLocalStorage, which `configMiddleware`
+binds per request — and a test has no request, so every call throws
+`[infra-store] not initialized`. Seeding through your own raw client is not
+enough; the client has to be bound into the context the code under test reads
+from. Wrap each test body in `__runWithTransactionContextForTests(db, ...)` from
+`shared/infrastructure/database/tx-context`, and build `db` as
+`drizzle(sql, { schema: authSchema })` — the bare `drizzle(sql)` does not satisfy
+the `DrizzleDb` type the helper expects.
+
+The precedent is `catalog-unpublish-sweep.test.ts`, which solves exactly this and
+explains it in its header. `scheduling-constraints.test.ts` never hits it, because
+it inserts through its own handle and never calls a `getDb()`-based repository —
+which is why modelling this test's shape on that file was not enough.
+
+The helper binds the context but opens **no transaction**, so writes commit for
+real: `afterAll` must delete children before parents. Leave a comment above the
+wrapper saying why it is there, or somebody removes it later as ceremony.
+
 ```ts
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
