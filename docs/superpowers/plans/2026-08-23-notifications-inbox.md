@@ -408,7 +408,7 @@ Drizzle — a CHECK nobody exercises is a CHECK that might not be there."
   - `Notification.forProvider({ type, providerId, payload }): Notification`
   - getters `id`, `type`, `audience`, `userId`, `providerId`, `payload`
   - `type NotificationAudience = "user" | "provider"`
-  - `UnknownNotificationTypeError`, `EmptyPayloadKeyError`
+  - `UnknownNotificationTypeError`
 
 - [ ] **Step 1: Write the failing test**
 
