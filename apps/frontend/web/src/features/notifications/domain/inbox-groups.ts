@@ -47,7 +47,23 @@ export function groupByDay(items: NotificationDTO[], todayIso: string): InboxGro
     .map((key) => ({ key, items: buckets[key] }));
 }
 
-/** Whole days since the epoch, in UTC — the unit the comparison above is in. */
+/**
+ * A whole calendar day, in the reader's own local timezone — the unit the
+ * comparison above is in.
+ *
+ * Not `getTime() / 86_400_000`: that counts whole days since the epoch in
+ * UTC, which is a different calendar from the one a person in Maputo (UTC+2)
+ * is reading this in. 23:50 local is 21:50Z — still "today" in UTC terms —
+ * and 00:10 the next morning local is 22:10Z the *same* UTC day, so a UTC
+ * comparison renders both under Today instead of splitting them at local
+ * midnight the way the heading promises. `getFullYear`/`getMonth`/`getDate`
+ * read the *local* calendar date (the host's timezone, via the JS runtime,
+ * not a value pinned to any one market) off the instant, and `Date.UTC` on
+ * those three fields is just an arbitrary, DST-proof way to turn "a calendar
+ * date" into one comparable number — the UTC in that call names an
+ * implementation detail of the arithmetic, not the timezone being measured.
+ */
 function dayNumber(iso: string): number {
-  return Math.floor(new Date(iso).getTime() / 86_400_000);
+  const d = new Date(iso);
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000;
 }
