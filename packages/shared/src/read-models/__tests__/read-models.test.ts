@@ -5,6 +5,7 @@ import {
 } from "../system/provider";
 import { currentUserReadModel } from "../system/user";
 import { availabilityConfigReadModel } from "../system/availability";
+import { inboxPageReadModel, notificationReadModel } from "../system/notification";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -161,5 +162,36 @@ describe("availabilityConfigReadModel", () => {
         ],
       }),
     ).toThrow();
+  });
+});
+
+describe("notificationReadModel", () => {
+  it("accepts a row as the projection returns it", () => {
+    const parsed = notificationReadModel.parse({
+      id: "n1",
+      type: "PROVIDER_VERIFIED",
+      payload: { providerName: "Salão X" },
+      createdAt: "2026-08-23T10:00:00.000Z",
+      read: false,
+    });
+    expect(parsed.read).toBe(false);
+  });
+
+  it("keeps an arbitrary payload rather than pinning one shape", () => {
+    const parsed = notificationReadModel.parse({
+      id: "n1",
+      type: "WELCOME",
+      payload: { anything: 1, nested: { ok: true } },
+      createdAt: "2026-08-23T10:00:00.000Z",
+      read: true,
+    });
+    expect(parsed.payload["nested"]).toEqual({ ok: true });
+  });
+});
+
+describe("inboxPageReadModel", () => {
+  it("carries total alongside items", () => {
+    const parsed = inboxPageReadModel.parse({ items: [], total: 12 });
+    expect(parsed.total).toBe(12);
   });
 });
