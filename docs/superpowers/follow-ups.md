@@ -167,13 +167,67 @@ those two rows can tie on `created_at`. A relay doing `ORDER BY created_at`
 would then hand them over backwards. Add a sequence column with the relay; do
 not discover this in production.
 
-**Trigger:** the first feature that needs to react to something happening
-elsewhere — a notification, an email on booking, a projection. Also sooner if
-table growth becomes visible.
+**The trigger below has fired.** The notifications inbox (2026-08-23, branch
+`feat/notifications`) is that first feature. It did not build the relay: it
+added an in-process `EventRouter` that `OutboxAdapter.publish` fans out to
+*after* the producing transaction commits. The row is still written, still
+durable, still nobody's input. `EventRouter`'s own comment says why that was
+the reversible choice — a deployed Worker cannot reach Postgres at all yet, and
+`wrangler.jsonc` declares neither a queue nor a cron, so a relay could not have
+run if it had been written.
+
+**What that costs is the reason this entry now matters more, not less: nothing
+marks a row as dispatched.** Every row the in-process router has already
+delivered still reads `status: "pending"`, indistinguishable from one nobody
+has ever seen. A relay that starts from the table as it stands would replay all
+of them and deliver **every notification ever raised a second time** — every
+WELCOME, every PROVIDER_VERIFIED, into inboxes people have already read and
+dismissed. An inbox row about something that did not just happen cannot be
+recalled.
+
+So this is a hard requirement on whoever writes the relay, not a nicety: it is
+not enough to drain `pending`. Before the first replay it must either
+
+- advance `status` when the in-process dispatch succeeds — which makes the
+  router and the relay two paths through one state machine, and forces a
+  decision about what "succeeded" means when one of several handlers failed
+  and the others did not; or
+- reconcile against `ntizo_notification.notification` before replaying — the
+  consumer's own table is the only existing record of what was actually
+  delivered.
+
+Doing neither is not a degraded relay. It is a mass double-delivery on the day
+it ships, to every user at once.
+
+**Trigger:** the relay is now the work itself rather than something waiting to
+be triggered. Whoever picks it up inherits the paragraph above and the
+missing-sequence-column problem above it. Sooner if table growth becomes
+visible.
 
 ---
 
-## 9. `runAfterCommit` is built but unused
+## ~~9. `runAfterCommit` is built but unused~~ — RESOLVED 2026-08-23
+
+`OutboxAdapter.publish` calls it. All 14 use cases that publish domain events
+— 13 in the Provider context, one in User — now queue an in-process fan-out
+through `runAfterCommit`, so handlers run only once the producing transaction
+has committed and never on a write that rolled back. Pinned by tests that watch
+the dispatch *not* happen while the transaction is still open, and not happen
+at all when the transaction does not commit.
+
+Not the caller this entry predicted. `invite-provider-member` still sends its
+email after `atomicExecute` returns rather than through `runAfterCommit`, and
+reports a send failure instead of throwing, so the stale-unused-invite failure
+mode is exactly as described below. What arrived instead was a consumer with a
+stronger reason to wait for the commit: an unsent email can be re-sent, but an
+inbox row about something that did not happen cannot be recalled.
+
+The original analysis is kept below because it still names the caller this
+mechanism was built for, and that conversion has not been done.
+
+---
+
+## 9. (original) `runAfterCommit` is built but unused
 
 `tx-context.ts` provides it; nothing calls it. Its natural first user is
 `invite-provider-member`, which saves the invite **transactionally** (Phase 3A
@@ -188,15 +242,25 @@ contradicted entry 11 below.
 
 ---
 
-## 10. `upgrade-profile-to-provider` emits no event
+## 10. `upgrade-profile-to-provider` emits no event — half done
 
-The eleventh dispatch site was left unwired: there is no
-`ProfileUpgradedToProvider` event class, and the `User` aggregate has no
-event-recording machinery at all. That is domain modelling, not adapter work,
-which is why Phase 3A did not force it.
+The machinery half is done. The `User` aggregate now has `_events`,
+`recordEvent` and `pullEvents`, copied from `Provider`, plus a `UserRegistered`
+event that `User.create` records and `CreateUserOnSignUpInternalCommand`
+publishes inside its existing transaction (2026-08-23, branch
+`feat/notifications`). `rehydrate` deliberately records nothing, and a test
+pins that: loading a user from the database is not a registration.
 
-**Trigger:** whenever the User BC needs to publish anything. It will need the
-machinery either way.
+**What is left is the half this entry is named after.** There is still no
+`ProfileUpgradedToProvider` event class and the eleventh dispatch site is still
+unwired. It was left out deliberately rather than forgotten — nothing listens
+for it, and an event with no listener is how dead surface starts (entry 29).
+
+**Trigger:** the first consumer that needs to know somebody became a provider —
+a "your workspace is ready" notification aimed at the *person* rather than the
+workspace, an onboarding email, a projection over provider counts. The
+machinery is no longer the obstacle; what remains is one event class and one
+`recordEvent` call.
 
 ---
 

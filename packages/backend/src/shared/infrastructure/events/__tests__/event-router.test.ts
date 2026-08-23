@@ -52,3 +52,16 @@ describe("EventRouter", () => {
     await expect(router.dispatch([evt("provider.created") as never])).resolves.toBeUndefined();
   });
 });
+
+describe("handlerCount", () => {
+  it("counts nothing for an event nobody registered for", () => {
+    expect(router.handlerCount("provider.created")).toBe(0);
+  });
+
+  it("counts every handler registered for one event name", () => {
+    router.on("provider.created", async () => {});
+    router.on("provider.created", async () => {});
+    expect(router.handlerCount("provider.created")).toBe(2);
+    expect(router.handlerCount("user.registered")).toBe(0);
+  });
+});

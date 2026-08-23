@@ -33,6 +33,19 @@ export class EventRouter {
     else this.handlers.set(eventName, [handler]);
   }
 
+  /**
+   * How many handlers are registered for an event name.
+   *
+   * Exists for one test, and that test is the point: deleting the
+   * `register*NotificationHandlers` calls from `api.ts` breaks nothing a
+   * compiler or a unit test can see — every publisher keeps working, every
+   * suite stays green, and the only symptom is an inbox that is silently
+   * always empty. A comment cannot fail; this can.
+   */
+  handlerCount(eventName: string): number {
+    return this.handlers.get(eventName)?.length ?? 0;
+  }
+
   async dispatch(events: BaseDomainEvent[]): Promise<void> {
     for (const event of events) {
       const handlers = this.handlers.get(event.eventName);

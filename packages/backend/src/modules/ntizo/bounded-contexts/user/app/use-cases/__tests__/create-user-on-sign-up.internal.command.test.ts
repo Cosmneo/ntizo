@@ -191,23 +191,33 @@ describe("CreateUserOnSignUpInternalCommand — events", () => {
     expect(outbox.published[0]!.aggregateId).toBe("u1");
   });
 
-  it("carries null rather than the empty string better-auth defaults a missing name to", async () => {
-    const store = createStore();
-    const outbox = new SpyOutbox();
+  // `""` is the literal value better-auth's `defaultValue: ""` produces for a
+  // signup that sent no first name, so it is the case this normalisation
+  // exists for. `"   "` is the stronger input — it survives a plain
+  // falsy check — and is why the normalisation trims. Both are asserted
+  // because passing one does not imply passing the other.
+  for (const [label, firstName] of [
+    ["the empty string better-auth defaults a missing name to", ""],
+    ["a name that is only whitespace", "   "],
+  ] as const) {
+    it(`carries null rather than ${label}`, async () => {
+      const store = createStore();
+      const outbox = new SpyOutbox();
 
-    await build(store, outbox).execute({
-      userId: "u1",
-      email: "ana@ntizo.test",
-      firstName: "   ",
-      lastName: "",
+      await build(store, outbox).execute({
+        userId: "u1",
+        email: "ana@ntizo.test",
+        firstName,
+        lastName: "",
+      });
+
+      // "Welcome, !" is what an empty string renders as. Null says "no name
+      // known" and lets the template choose a greeting that works without one.
+      expect(
+        (outbox.published[0]!.payload as { firstName: string | null }).firstName,
+      ).toBeNull();
     });
-
-    // "Welcome, !" is what an empty string renders as. Null says "no name
-    // known" and lets the template choose a greeting that works without one.
-    expect(
-      (outbox.published[0]!.payload as { firstName: string | null }).firstName,
-    ).toBeNull();
-  });
+  }
 
   it("publishes nothing on a retry, because the command already returned early", async () => {
     const store = createStore();
