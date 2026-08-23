@@ -970,9 +970,12 @@ This is not a notification-only quirk. `z.literal(true)` is this repo's
 standing idiom for "a mutation that only needs to say it worked" — 18
 occurrences across six bounded contexts' write-side mutation schemas
 (`catalog`, `notification`, `provider`, `review`, `scheduling`, `user`), all
-under `packages/backend/src/modules/ntizo/write/*/graphql/schema/mutations.ts`.
-Every one of them has the same property: `.ok === true` is silently `false`,
-because `.ok` is never a boolean to begin with.
+under `packages/backend/src/modules/ntizo/write/*/graphql/schema/mutations.ts`,
+tests excluded. Per context: catalog 9, scheduling 3, notification 2,
+provider 2, review 1, user 1 — 18 total. Catalog alone is half of it, worth
+knowing before starting. Every one of them has the same property:
+`.ok === true` is silently `false`, because `.ok` is never a boolean to
+begin with.
 
 Nothing is broken today. Every current caller treats a mutation's outcome as
 "did the promise resolve" (success) vs. `onError` (failure) and never reads
