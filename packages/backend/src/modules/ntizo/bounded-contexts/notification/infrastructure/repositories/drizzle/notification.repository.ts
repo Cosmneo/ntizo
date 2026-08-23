@@ -1,10 +1,9 @@
-import { and, count, desc, eq, isNull, sql as raw } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   notification,
   notificationRead,
 } from "../../../../../shared/infrastructure/database/notification/schemas";
-import type { NotificationType } from "@ntizo/shared";
 import { Notification } from "../../../domain/aggregates/notification.aggregate";
 import type {
   InboxPage,
@@ -74,7 +73,13 @@ export class DrizzleNotificationRepository implements NotificationRepositoryPort
         ),
       )
       .where(scope)
-      .orderBy(desc(notification.createdAt))
+      // By time, then by id. `created_at` defaults to `now()`, which
+      // Postgres resolves to `transaction_timestamp()` — identical for
+      // every row a single transaction writes, so several notifications
+      // raised together from one workflow can share a timestamp. Without
+      // a tiebreak that makes the sort total, LIMIT/OFFSET paging over a
+      // non-unique key can repeat or skip rows across pages.
+      .orderBy(desc(notification.createdAt), desc(notification.id))
       .limit(limit)
       .offset(offset);
 
@@ -136,7 +141,7 @@ export class DrizzleNotificationRepository implements NotificationRepositoryPort
    * repository should let a caller measure.
    */
   async markRead(notificationId: string, readerUserId: string): Promise<boolean> {
-    const result = await getDb().execute(raw`
+    const result = await getDb().execute(sql`
       INSERT INTO ntizo_notification.notification_read (notification_id, user_id)
       SELECT n.id, ${readerUserId}
       FROM ntizo_notification.notification n
@@ -169,7 +174,7 @@ export class DrizzleNotificationRepository implements NotificationRepositoryPort
   }
 
   async markAllReadForUser(userId: string): Promise<number> {
-    const result = await getDb().execute(raw`
+    const result = await getDb().execute(sql`
       INSERT INTO ntizo_notification.notification_read (notification_id, user_id)
       SELECT n.id, ${userId}
       FROM ntizo_notification.notification n
@@ -185,7 +190,7 @@ export class DrizzleNotificationRepository implements NotificationRepositoryPort
    * have done, and the reason it is a separate table.
    */
   async markAllReadForProvider(providerId: string, readerUserId: string): Promise<number> {
-    const result = await getDb().execute(raw`
+    const result = await getDb().execute(sql`
       INSERT INTO ntizo_notification.notification_read (notification_id, user_id)
       SELECT n.id, ${readerUserId}
       FROM ntizo_notification.notification n
