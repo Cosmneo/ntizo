@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Bell, Plus, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { Plus, Search } from "lucide-react";
 import {
   Separator,
   SidebarInset,
@@ -8,6 +10,9 @@ import {
 } from "@ntizo/frontend-ui";
 import { AppSidebar } from "@/shared/components/app-sidebar/app-sidebar";
 import { HeaderActions } from "@/shared/components/header-actions";
+import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { useUnreadCount } from "@/features/notifications/viewmodel/use-unread-count";
+import { NotificationBell } from "@/features/notifications/ui/notification-bell";
 import {
   PageHeaderContext,
   type PageHeaderState,
@@ -15,6 +20,8 @@ import {
 import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
 
 export function ProviderShell({ children }: { children: ReactNode }) {
+  const { t } = useTranslation("common");
+  const { t: tNotifications } = useTranslation("notifications");
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
   const [action, setAction] = useState<ReactNode>(null);
 
@@ -32,6 +39,17 @@ export function ProviderShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyThemePreference(readThemePreference());
   }, []);
+
+  // The same mechanism `SidebarNav` already uses to know which workspace is
+  // active — not a second one. `/provider`'s route guard requires a session
+  // before this shell ever mounts, so `useUnreadCount` firing unconditionally
+  // here (unlike the customer header's bell — see `NotificationBellLink`)
+  // never queries for an anonymous visitor; while `activeProvider` is still
+  // resolving, `providerId` is `""` and `useUnreadCount`'s own `enabled`
+  // guard (`providerId.length > 0`) keeps it from firing early instead.
+  const { activeProvider } = useActiveProvider();
+  const providerId = activeProvider?.id ?? "";
+  const unreadCount = useUnreadCount({ kind: "provider", providerId });
 
   return (
     <PageHeaderContext.Provider value={headerCtx}>
@@ -79,14 +97,29 @@ export function ProviderShell({ children }: { children: ReactNode }) {
                   ⌘K
                 </kbd>
               </div>
-              <button
-                type="button"
-                aria-label="Notifications"
+              {/* The workspace's own inbox, not the personal one —
+                  `HeaderActions` above has `showAccount={false}`, which hides
+                  its bell along with the avatar, so this is the only bell a
+                  provider-zone screen renders. It used to be a hardcoded
+                  button with a permanently-lit dot; now the dot is
+                  `NotificationBell`'s real badge, sourced from the same
+                  `useUnreadCount` this file already reads above, and the
+                  control actually goes to the workspace's inbox. The 36px
+                  square it sits in — border, radius, hover state — is
+                  untouched: only what was inside it, and what it does, has
+                  changed. */}
+              <Link
+                to="/provider/$slug/notifications"
+                params={{ slug: activeProvider?.slug ?? "" }}
+                aria-label={
+                  unreadCount > 0
+                    ? tNotifications("unreadBadge", { count: unreadCount })
+                    : t("notifications")
+                }
                 className="relative hidden h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent sm:inline-flex"
               >
-                <Bell className="h-4 w-4" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-              </button>
+                <NotificationBell scope={{ kind: "provider", providerId }} />
+              </Link>
               {action ?? (
                 <button
                   type="button"

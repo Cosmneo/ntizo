@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { useUnreadCount } from "@/features/notifications/viewmodel/use-unread-count";
 import { NotificationBell } from "@/features/notifications/ui/notification-bell";
 import { LanguageSwitcher } from "@/shared/components/language-switcher";
 import { UserMenu } from "@/shared/components/user-menu";
@@ -36,6 +37,48 @@ interface HeaderActionsProps {
 }
 
 /**
+ * The bell link, and the count needed to announce it correctly.
+ *
+ * Its own component rather than a hook called at the top of `HeaderActions`:
+ * this only ever mounts once `showAccount && user` are both true, in the
+ * branch below. `useUnreadCount` has no auth gate of its own — it is
+ * `enabled` whenever `scope.kind === "mine"`, which is always — so calling it
+ * unconditionally from `HeaderActions` itself would fire the unread-count
+ * query for every anonymous visitor too: the landing page, sign-in, sign-up.
+ * Mounting it only inside the signed-in branch is what keeps that from
+ * happening, the same way `NotificationBell`'s own internal call already did
+ * before this component existed.
+ *
+ * The badge's own `aria-label` (the full "N unread notifications" sentence)
+ * loses to this element's `aria-label` for the *link's* accessible name — an
+ * element's own `aria-label` wins over its descendants' for that element,
+ * per how accessible names are computed. So the count has to be composed
+ * into this label directly; a screen-reader user tabbing to the bell would
+ * otherwise hear "Notifications, link" and never the number.
+ */
+function NotificationBellLink({ onDark }: { onDark: boolean }) {
+  const { t } = useTranslation("common");
+  const { t: tNotifications } = useTranslation("notifications");
+  const count = useUnreadCount({ kind: "mine" });
+
+  return (
+    <Link
+      to="/account/notifications"
+      aria-label={
+        count > 0 ? tNotifications("unreadBadge", { count }) : t("notifications")
+      }
+      className={
+        onDark
+          ? "rounded-full p-2 text-white/90 hover:bg-white/15"
+          : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+      }
+    >
+      <NotificationBell scope={{ kind: "mine" }} />
+    </Link>
+  );
+}
+
+/**
  * The right-hand side of the top bar, in every zone.
  *
  * It carried a Cliente|Prestador segmented switch until every zone had its own
@@ -56,7 +99,6 @@ export function HeaderActions({
   showAccount = true,
   onDark = false,
 }: HeaderActionsProps) {
-  const { t } = useTranslation("common");
   const { data: user } = useCurrentUser();
 
   return (
@@ -66,17 +108,7 @@ export function HeaderActions({
       />
       {!showAccount ? null : user ? (
         <>
-          <Link
-            to="/account/notifications"
-            aria-label={t("notifications")}
-            className={
-              onDark
-                ? "rounded-full p-2 text-white/90 hover:bg-white/15"
-                : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-            }
-          >
-            <NotificationBell scope={{ kind: "mine" }} />
-          </Link>
+          <NotificationBellLink onDark={onDark} />
           <UserMenu />
         </>
       ) : (

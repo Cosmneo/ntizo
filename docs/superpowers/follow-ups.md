@@ -992,7 +992,34 @@ on a mutation's *return value* rather than on whether it threw. Until then
 this is a landmine nobody has stepped on, because nobody has needed to read
 `.ok`.
 
-## 46. The provider shell's own topbar bell is still inert
+## ~~46. The provider shell's own topbar bell is still inert~~ — RESOLVED 2026-08-23
+
+Review caught what this entry's own reasoning missed: `provider-shell.tsx:70`
+renders `<HeaderActions showAccount={false} />`, and `showAccount={false}`
+hides `HeaderActions`' bell along with its avatar — the same file's own
+comment says so. So this was never a *second* bell sitting beside a working
+one; in the provider zone it was the *only* one. The distinction mattered
+because it changed what the inert dot meant: before this task, nothing about
+notifications worked anywhere, so an unlit-in-spirit bell read as unbuilt.
+After the rest of task 13 shipped — the customer bell, the provider sidebar
+entry — the same permanently-lit dot on the only bell a provider-zone screen
+has started claiming "you have something new" to every user, every time,
+falsely.
+
+Fixed: `ProviderShell` now calls `useActiveProvider()` (the same mechanism
+`SidebarNav` already used to know the active workspace — not a second one)
+and `useUnreadCount({ kind: "provider", providerId })`, and renders
+`NotificationBell` inside a `Link` to `/provider/$slug/notifications`, in
+place of the hardcoded `<Bell/>` + static dot. The 36px bordered-square shape
+of the button itself is unchanged, as instructed — only its contents and its
+`href` are real now. The original analysis is kept below because the
+"differently-styled control" reasoning is still correct about *why* task 13
+didn't fold this in on the first pass — it just turned out not to be the
+whole story.
+
+---
+
+## 46. (original) The provider shell's own topbar bell is still inert
 
 `ProviderShell`'s header (`shared/components/provider-shell.tsx`) carries its
 own notification button, separate from `HeaderActions`' bell — `showAccount=
