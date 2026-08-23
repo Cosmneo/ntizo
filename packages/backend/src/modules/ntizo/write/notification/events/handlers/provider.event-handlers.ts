@@ -1,11 +1,13 @@
 import { NotificationType } from "@ntizo/shared";
 import type { EventRouter } from "../../../../../../shared/infrastructure/events/event-router";
+import type { ProviderNameReaderPort } from "../../../../bounded-contexts/notification/app/ports/outbound/provider-name-reader.port";
 import type { UserByEmailReaderPort } from "../../../../bounded-contexts/notification/app/ports/outbound/user-by-email-reader.port";
 import type { RaiseNotificationInternalCommand } from "../../../../bounded-contexts/notification/app/use-cases/raise-notification.internal.command";
 
 export interface ProviderNotificationDeps {
   readonly raiseNotification: RaiseNotificationInternalCommand;
   readonly userByEmailReader: UserByEmailReaderPort;
+  readonly providerNameReader: ProviderNameReaderPort;
 }
 
 /**
@@ -15,16 +17,25 @@ export interface ProviderNotificationDeps {
  * Provider context publishes and does not know who listens, which is the whole
  * reason this is a router and not a call.
  *
- * **Every payload is a snapshot** — but `provider.created`'s snapshot is
- * deliberately thin. `ProviderCreated` carries no business name to begin
- * with, and it does not need one: every row raised here with
- * `audience: "provider"` lands in that one workspace's inbox, so the reader
- * is already inside the business being welcomed and does not need it named
- * back at them. (A *personal* inbox would be different — one person can own
- * or work at several providers, so a row there would need to say which one.
- * That case does not exist yet.) What the row does snapshot is the provider
- * `type`, in case the template ever wants to greet an individual and an
- * organization differently.
+ * **Every payload is a snapshot, and never a bare foreign key** —
+ * `notification.schema.ts` states the rule, and the two handlers below that
+ * name a provider follow it two different ways. `provider.created`'s
+ * snapshot is deliberately thin: `ProviderCreated` carries no business name
+ * to begin with, and it does not need one, because every row raised here
+ * with `audience: "provider"` lands in that one workspace's inbox — the
+ * reader is already inside the business being welcomed. What it does
+ * snapshot is the provider `type`, in case the template ever wants to greet
+ * an individual and an organization differently.
+ *
+ * `provider.invite.sent` is the opposite case: it addresses a *personal*
+ * inbox, one person can belong to several workspaces, and `audience: "user"`
+ * means `notification.provider_id` stays NULL — no FK, no cascade, nothing
+ * that would clean the row up or keep it resolvable once the workspace it
+ * mentions is gone. So that row snapshots the provider's *name*, not just
+ * its id, via `ProviderNameReaderPort` — the same consumer-side-lookup shape
+ * `userByEmailReader` already uses below, for the same reason: the Provider
+ * context has no other use for the field, so the lookup lives here instead
+ * of asking that context to carry it.
  *
  * Three of Provider's eleven events produce a notification. The other eight —
  * `updated`, `deactivated`, `member.added`, `member.removed`,
@@ -94,11 +105,27 @@ export function registerProviderNotificationHandlers(
     // delivery can exist without an inbox item.
     if (!invitedUserId) return;
 
+    // Unlike `provider.created`'s row, this one lands in a *personal* inbox —
+    // one person can belong to several workspaces — so it must say which
+    // business the invitation is for, and it must say it as a snapshot, not
+    // as `providerId` alone: `notification.provider_id` stays NULL on a
+    // `audience: "user"` row (see `notification.schema.ts`'s addressee
+    // CHECKs), so the cascade that deletes a workspace's own inbox on
+    // deletion never reaches this one, and a bare id would go unresolvable
+    // the moment the workspace it names is gone.
+    const providerName = await deps.providerNameReader.findNameById(payload.providerId);
+
+    // A miss here is not the same case as a miss above: the invitee is real
+    // and the invitation is still worth delivering even if the workspace it
+    // names cannot be resolved right now (a race with the provider being
+    // deleted, or read-replica lag) — the row just reads as unnamed rather
+    // than being suppressed. `providerId` is kept alongside it in case a
+    // future template wants to link back to the workspace.
     await deps.raiseNotification.execute({
       type: NotificationType.TeamInvitation,
       audience: "user",
       userId: invitedUserId,
-      payload: { providerId: payload.providerId, role: payload.role },
+      payload: { providerId: payload.providerId, providerName, role: payload.role },
     });
   });
 }

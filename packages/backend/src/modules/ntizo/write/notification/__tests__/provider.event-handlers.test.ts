@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { NotificationType } from "@ntizo/shared";
 import { EventRouter } from "../../../../../shared/infrastructure/events/event-router";
 import type { RaiseNotificationInput } from "../../../bounded-contexts/notification/app/use-cases/raise-notification.internal.command";
+import type { ProviderNameReaderPort } from "../../../bounded-contexts/notification/app/ports/outbound/provider-name-reader.port";
 import type { UserByEmailReaderPort } from "../../../bounded-contexts/notification/app/ports/outbound/user-by-email-reader.port";
 import {
   ProviderCreated,
@@ -28,17 +29,31 @@ class StubUserByEmailReader implements UserByEmailReaderPort {
   }
 }
 
+// Same shape, for the other cross-BC lookup this handler file owns: a map of
+// provider id to name, with a miss answered as null rather than a throw —
+// exactly how `DrizzleProviderNameReader` answers a provider that no longer
+// exists.
+class StubProviderNameReader implements ProviderNameReaderPort {
+  constructor(private readonly namesById: Record<string, string> = {}) {}
+  async findNameById(providerId: string): Promise<string | null> {
+    return this.namesById[providerId] ?? null;
+  }
+}
+
 let router: EventRouter;
 let raise: SpyRaise;
 let userByEmailReader: StubUserByEmailReader;
+let providerNameReader: StubProviderNameReader;
 
 beforeEach(() => {
   router = new EventRouter();
   raise = new SpyRaise();
   userByEmailReader = new StubUserByEmailReader({ "colega@ntizo.test": "u9" });
+  providerNameReader = new StubProviderNameReader({ p1: "Salão X" });
   registerProviderNotificationHandlers(router, {
     raiseNotification: raise as never,
     userByEmailReader,
+    providerNameReader,
   });
 });
 
@@ -127,6 +142,46 @@ describe("provider.invite.sent", () => {
       type: NotificationType.TeamInvitation,
       audience: "user",
       userId: "u9",
+    });
+  });
+
+  it("snapshots the workspace's name, because a personal inbox cannot assume the reader knows which one", async () => {
+    await router.dispatch([
+      new ProviderInviteSent({
+        providerId: "p1",
+        inviteId: "inv1",
+        email: "colega@ntizo.test",
+        role: "staff",
+      }),
+    ]);
+    expect(raise.calls[0]!.payload).toEqual({
+      providerId: "p1",
+      providerName: "Salão X",
+      role: "staff",
+    });
+  });
+
+  it("still delivers the invitation, nameless, when the workspace cannot be resolved", async () => {
+    // A miss here is not the same case as the invitee-has-no-account miss
+    // below: the invitee is real, so the row is still worth raising — it
+    // just cannot say which workspace it is about.
+    await router.dispatch([
+      new ProviderInviteSent({
+        providerId: "p-gone",
+        inviteId: "inv3",
+        email: "colega@ntizo.test",
+        role: "staff",
+      }),
+    ]);
+    expect(raise.calls[0]).toMatchObject({
+      type: NotificationType.TeamInvitation,
+      audience: "user",
+      userId: "u9",
+    });
+    expect(raise.calls[0]!.payload).toEqual({
+      providerId: "p-gone",
+      providerName: null,
+      role: "staff",
     });
   });
 

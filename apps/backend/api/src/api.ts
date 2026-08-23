@@ -73,6 +73,9 @@ registerProviderNotificationHandlers(eventRouter, {
   // `provider.invite.sent` identifies them by an email address that may
   // belong to nobody yet.
   userByEmailReader: notificationBootstrap.adapters.userByEmailReader,
+  // Same handler snapshots the workspace's name, because that row lands in
+  // a personal inbox rather than the workspace's own.
+  providerNameReader: notificationBootstrap.adapters.providerNameReader,
 });
 registerUserNotificationHandlers(eventRouter, {
   raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,
