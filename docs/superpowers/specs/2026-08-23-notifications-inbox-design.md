@@ -108,7 +108,7 @@ notification                         -- an item in somebody's inbox
   id           uuid        pk
   type         text        not null  -- NotificationType
   audience     text        not null  -- 'user' | 'provider'
-  user_id      uuid        null      -- set iff audience = 'user'
+  user_id      text        null      -- set iff audience = 'user'
   provider_id  uuid        null      -- set iff audience = 'provider'
   payload      jsonb       not null
   created_at   timestamptz not null
@@ -116,7 +116,7 @@ notification                         -- an item in somebody's inbox
 
 notification_read                    -- who has read what
   notification_id uuid        not null
-  user_id         uuid        not null
+  user_id         text        not null
   read_at         timestamptz not null
   PRIMARY KEY (notification_id, user_id)
 
@@ -181,7 +181,13 @@ an extra hop.
 `ntizo_provider.provider_member.user_id` references `ntizo_user.user.id` today,
 so the same holds: `notification.user_id` and `notification_read.user_id`
 reference `ntizo_user.user`, and `notification.provider_id` references
-`ntizo_provider.provider`. `notification_read.notification_id` cascades on
+`ntizo_provider.provider`.
+
+**A user id is `text`, not `uuid`.** better-auth issues its own string ids and
+`ntizo_user.user.id` is a `text` column; `review.author_user_id` already
+references it as `text`. Every user-bearing column here follows that. Provider
+ids are genuinely `uuid` and stay so — the two are not interchangeable, and a
+`uuid` column pointing at a better-auth id fails on the first insert. `notification_read.notification_id` cascades on
 delete. `notification_delivery.notification_id` does **not** — a delivery is an
 audit record of something that actually left the building, and it must outlive
 the inbox item it was about.
