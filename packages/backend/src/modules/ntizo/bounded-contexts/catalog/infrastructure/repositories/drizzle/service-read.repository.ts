@@ -434,7 +434,12 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
           .where(inArray(serviceOptionTranslation.optionId, optionIds))
       : [];
 
-    const { categoryId, ...rest } = row;
+    // Dropped from `rest` on purpose: the read model carries the category's
+    // resolved name, not its id. The underscore is the signal base.js defines
+    // for "destructured deliberately, and deliberately not used" — the same
+    // rule the sibling at line 355 does not need, because that one goes on to
+    // match translations against it.
+    const { categoryId: _categoryId, ...rest } = row;
     return {
       ...rest,
       // The page's own chooser lists cheapest first, which is also the order
