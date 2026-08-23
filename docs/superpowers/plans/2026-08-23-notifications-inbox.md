@@ -2655,10 +2655,10 @@ export interface ProviderNotificationDeps {
  * has been verified" still says X after X is renamed. Reading it back at render
  * time would tie every inbox row to the lifetime of the business it mentions.
  *
- * Three of Provider's ten events produce a notification. The other seven —
+ * Three of Provider's eleven events produce a notification. The other eight —
  * `updated`, `deactivated`, `member.added`, `member.removed`,
- * `invite.accepted`, `invite.declined`, `invite.revoked` — are silent on
- * purpose: they are bookkeeping, and an inbox that narrates every state change
+ * `member.role-updated`, `invite.accepted`, `invite.declined`,
+ * `invite.revoked` — are silent on purpose: they are bookkeeping, and an inbox that narrates every state change
  * is one people learn to ignore. Add one when somebody asks for it, not
  * because the event exists.
  */
