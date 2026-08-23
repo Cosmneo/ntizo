@@ -90,7 +90,11 @@ describe("provider.status.decided", () => {
         decidedByUserId: "admin1",
       }),
     ]);
-    expect(raise.calls[0]!.type).toBe(NotificationType.ProviderDocumentsRequired);
+    expect(raise.calls[0]).toMatchObject({
+      type: NotificationType.ProviderDocumentsRequired,
+      audience: "provider",
+      providerId: "p1",
+    });
   });
 
   it("says nothing about a decision that is neither", async () => {

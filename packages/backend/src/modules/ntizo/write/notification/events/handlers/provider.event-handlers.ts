@@ -26,11 +26,13 @@ export interface ProviderNotificationDeps {
  * `type`, in case the template ever wants to greet an individual and an
  * organization differently.
  *
- * Three of Provider's ten events produce a notification. The other seven —
+ * Three of Provider's eleven events produce a notification. The other eight —
  * `updated`, `deactivated`, `member.added`, `member.removed`,
- * `invite.accepted`, `invite.declined`, `invite.revoked` — are silent on
- * purpose: they are bookkeeping, and an inbox that narrates every state change
- * is one people learn to ignore. Add one when somebody asks for it, not
+ * `member.role-updated`, `invite.accepted`, `invite.declined`,
+ * `invite.revoked` — are silent on purpose: they are bookkeeping, and an
+ * inbox that narrates every state change is one people learn to ignore.
+ * `member.role-updated` in particular is a role change between colleagues,
+ * not news for anybody's inbox. Add one when somebody asks for it, not
  * because the event exists.
  */
 export function registerProviderNotificationHandlers(
