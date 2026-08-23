@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Bell, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import {
   Separator,
   SidebarInset,
@@ -8,6 +8,8 @@ import {
 } from "@ntizo/frontend-ui";
 import { AppSidebar } from "@/shared/components/app-sidebar/app-sidebar";
 import { HeaderActions } from "@/shared/components/header-actions";
+import { NotificationBellLink } from "@/shared/components/notification-bell-link";
+import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import {
   PageHeaderContext,
   type PageHeaderState,
@@ -32,6 +34,17 @@ export function ProviderShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyThemePreference(readThemePreference());
   }, []);
+
+  // The same mechanism `SidebarNav` already uses to know which workspace is
+  // active — not a second one. `/provider`'s route guard requires a session
+  // before this shell ever mounts, so `NotificationBellLink`'s own
+  // `useUnreadCount` firing unconditionally (unlike the customer header's
+  // bell, which only mounts once signed in) never queries for an anonymous
+  // visitor; while `activeProvider` is still resolving, `providerId` is `""`
+  // and `useUnreadCount`'s own `enabled` guard (`providerId.length > 0`)
+  // keeps it from firing early instead.
+  const { activeProvider } = useActiveProvider();
+  const providerId = activeProvider?.id ?? "";
 
   return (
     <PageHeaderContext.Provider value={headerCtx}>
@@ -79,14 +92,21 @@ export function ProviderShell({ children }: { children: ReactNode }) {
                   ⌘K
                 </kbd>
               </div>
-              <button
-                type="button"
-                aria-label="Notifications"
+              {/* The workspace's own inbox, not the personal one —
+                  `HeaderActions` above has `showAccount={false}`, which hides
+                  its bell along with the avatar, so this is the only bell a
+                  provider-zone screen renders. It used to be a hardcoded
+                  button with a permanently-lit dot; now it is the same
+                  `NotificationBellLink` the customer header uses, wired to
+                  the workspace's own inbox. The 36px square it sits in —
+                  border, radius, hover state — is untouched: only what was
+                  inside it, and what it does, has changed. */}
+              <NotificationBellLink
+                scope={{ kind: "provider", providerId }}
+                to="/provider/$slug/notifications"
+                params={{ slug: activeProvider?.slug ?? "" }}
                 className="relative hidden h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent sm:inline-flex"
-              >
-                <Bell className="h-4 w-4" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-              </button>
+              />
               {action ?? (
                 <button
                   type="button"

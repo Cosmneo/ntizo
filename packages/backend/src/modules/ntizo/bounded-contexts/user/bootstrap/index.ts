@@ -13,11 +13,14 @@ import {
 } from "../app/use-cases/manage-my-addresses.command";
 import { DrizzleAddressRepository } from "../infrastructure/repositories/drizzle-address.repository";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
+import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
+import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
 
 export function bootstrapUser() {
   const userRepository = new DrizzleUserRepository();
   const profileRepository = new DrizzleProfileRepository();
   const unitOfWork = new DrizzleUnitOfWork();
+  const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
 
   const upgradeProfileToProvider = new UpgradeProfileToProviderInternalCommand(
     userRepository,
@@ -29,6 +32,7 @@ export function bootstrapUser() {
     userRepository,
     profileRepository,
     unitOfWork,
+    outboxPort,
   );
 
   const updateMyProfile = new UpdateMyProfileCommand(profileRepository, unitOfWork);
@@ -39,7 +43,13 @@ export function bootstrapUser() {
   const deleteMyAddress = new DeleteMyAddressCommand(addressRepository, unitOfWork);
 
   return {
-    adapters: { userRepository, profileRepository, addressRepository, unitOfWork },
+    adapters: {
+      userRepository,
+      profileRepository,
+      addressRepository,
+      unitOfWork,
+      outboxPort,
+    },
     useCases: {
       updateMyProfile,
       addMyAddress,

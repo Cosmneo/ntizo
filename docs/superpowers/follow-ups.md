@@ -167,13 +167,67 @@ those two rows can tie on `created_at`. A relay doing `ORDER BY created_at`
 would then hand them over backwards. Add a sequence column with the relay; do
 not discover this in production.
 
-**Trigger:** the first feature that needs to react to something happening
-elsewhere — a notification, an email on booking, a projection. Also sooner if
-table growth becomes visible.
+**The trigger below has fired.** The notifications inbox (2026-08-23, branch
+`feat/notifications`) is that first feature. It did not build the relay: it
+added an in-process `EventRouter` that `OutboxAdapter.publish` fans out to
+*after* the producing transaction commits. The row is still written, still
+durable, still nobody's input. `EventRouter`'s own comment says why that was
+the reversible choice — a deployed Worker cannot reach Postgres at all yet, and
+`wrangler.jsonc` declares neither a queue nor a cron, so a relay could not have
+run if it had been written.
+
+**What that costs is the reason this entry now matters more, not less: nothing
+marks a row as dispatched.** Every row the in-process router has already
+delivered still reads `status: "pending"`, indistinguishable from one nobody
+has ever seen. A relay that starts from the table as it stands would replay all
+of them and deliver **every notification ever raised a second time** — every
+WELCOME, every PROVIDER_VERIFIED, into inboxes people have already read and
+dismissed. An inbox row about something that did not just happen cannot be
+recalled.
+
+So this is a hard requirement on whoever writes the relay, not a nicety: it is
+not enough to drain `pending`. Before the first replay it must either
+
+- advance `status` when the in-process dispatch succeeds — which makes the
+  router and the relay two paths through one state machine, and forces a
+  decision about what "succeeded" means when one of several handlers failed
+  and the others did not; or
+- reconcile against `ntizo_notification.notification` before replaying — the
+  consumer's own table is the only existing record of what was actually
+  delivered.
+
+Doing neither is not a degraded relay. It is a mass double-delivery on the day
+it ships, to every user at once.
+
+**Trigger:** the relay is now the work itself rather than something waiting to
+be triggered. Whoever picks it up inherits the paragraph above and the
+missing-sequence-column problem above it. Sooner if table growth becomes
+visible.
 
 ---
 
-## 9. `runAfterCommit` is built but unused
+## ~~9. `runAfterCommit` is built but unused~~ — RESOLVED 2026-08-23
+
+`OutboxAdapter.publish` calls it. All 14 use cases that publish domain events
+— 13 in the Provider context, one in User — now queue an in-process fan-out
+through `runAfterCommit`, so handlers run only once the producing transaction
+has committed and never on a write that rolled back. Pinned by tests that watch
+the dispatch *not* happen while the transaction is still open, and not happen
+at all when the transaction does not commit.
+
+Not the caller this entry predicted. `invite-provider-member` still sends its
+email after `atomicExecute` returns rather than through `runAfterCommit`, and
+reports a send failure instead of throwing, so the stale-unused-invite failure
+mode is exactly as described below. What arrived instead was a consumer with a
+stronger reason to wait for the commit: an unsent email can be re-sent, but an
+inbox row about something that did not happen cannot be recalled.
+
+The original analysis is kept below because it still names the caller this
+mechanism was built for, and that conversion has not been done.
+
+---
+
+## 9. (original) `runAfterCommit` is built but unused
 
 `tx-context.ts` provides it; nothing calls it. Its natural first user is
 `invite-provider-member`, which saves the invite **transactionally** (Phase 3A
@@ -188,15 +242,25 @@ contradicted entry 11 below.
 
 ---
 
-## 10. `upgrade-profile-to-provider` emits no event
+## 10. `upgrade-profile-to-provider` emits no event — half done
 
-The eleventh dispatch site was left unwired: there is no
-`ProfileUpgradedToProvider` event class, and the `User` aggregate has no
-event-recording machinery at all. That is domain modelling, not adapter work,
-which is why Phase 3A did not force it.
+The machinery half is done. The `User` aggregate now has `_events`,
+`recordEvent` and `pullEvents`, copied from `Provider`, plus a `UserRegistered`
+event that `User.create` records and `CreateUserOnSignUpInternalCommand`
+publishes inside its existing transaction (2026-08-23, branch
+`feat/notifications`). `rehydrate` deliberately records nothing, and a test
+pins that: loading a user from the database is not a registration.
 
-**Trigger:** whenever the User BC needs to publish anything. It will need the
-machinery either way.
+**What is left is the half this entry is named after.** There is still no
+`ProfileUpgradedToProvider` event class and the eleventh dispatch site is still
+unwired. It was left out deliberately rather than forgotten — nothing listens
+for it, and an event with no listener is how dead surface starts (entry 29).
+
+**Trigger:** the first consumer that needs to know somebody became a provider —
+a "your workspace is ready" notification aimed at the *person* rather than the
+workspace, an onboarding email, a projection over provider counts. The
+machinery is no longer the obstacle; what remains is one event class and one
+`recordEvent` call.
 
 ---
 
@@ -890,3 +954,200 @@ currently exercises this path at all.
 **Trigger:** the first provider who says they do not work by appointment — a
 caterer, a mechanic taking walk-ins, anyone with a counter. Until then this is
 a branch of the engine no screen can display.
+
+## 45. Every `z.literal(true)` mutation output serialises as a String, not a boolean
+
+The GraphQL schema builder (`@cosmneo/onion-lasagna/graphql/field`) maps any
+zod schema whose JSON Schema carries an `enum`/`const` — which is what
+`z.literal(true)` produces — to the GraphQL `String` scalar, not `Boolean`.
+So a mutation declared `output: zodSchema(z.object({ ok: z.literal(true) }))`
+resolves over the wire as `{ "ok": "true" }`, the string, not `{ "ok": true }`.
+Verified on the wire for the notification BC's `markRead` /
+`markProviderRead` mutations (task 12): the response was literally
+`{"ok":"true"}`.
+
+This is not a notification-only quirk. `z.literal(true)` is this repo's
+standing idiom for "a mutation that only needs to say it worked" — 18
+occurrences across six bounded contexts' write-side mutation schemas
+(`catalog`, `notification`, `provider`, `review`, `scheduling`, `user`), all
+under `packages/backend/src/modules/ntizo/write/*/graphql/schema/mutations.ts`,
+tests excluded. Per context: catalog 9, scheduling 3, notification 2,
+provider 2, review 1, user 1 — 18 total. Catalog alone is half of it, worth
+knowing before starting. Every one of them has the same property:
+`.ok === true` is silently `false`, because `.ok` is never a boolean to
+begin with.
+
+Nothing is broken today. Every current caller treats a mutation's outcome as
+"did the promise resolve" (success) vs. `onError` (failure) and never reads
+`.ok` itself — task 12's `useMarkRead` is one instance of that shape.
+Three ways out were considered and none were taken: changing the two
+notification mutations' output to `z.boolean()` would make them the
+exception among 16 siblings a future maintainer has to remember; dropping the
+field changes a public contract for no behavioral gain; fixing the idiom
+repo-wide is the right shape but touches five bounded contexts this task has
+no business in.
+
+**Trigger:** the first caller — frontend or otherwise — that needs to branch
+on a mutation's *return value* rather than on whether it threw. Until then
+this is a landmine nobody has stepped on, because nobody has needed to read
+`.ok`.
+
+## ~~46. The provider shell's own topbar bell is still inert~~ — RESOLVED 2026-08-23
+
+Review caught what this entry's own reasoning missed: `provider-shell.tsx:70`
+renders `<HeaderActions showAccount={false} />`, and `showAccount={false}`
+hides `HeaderActions`' bell along with its avatar — the same file's own
+comment says so. So this was never a *second* bell sitting beside a working
+one; in the provider zone it was the *only* one. The distinction mattered
+because it changed what the inert dot meant: before this task, nothing about
+notifications worked anywhere, so an unlit-in-spirit bell read as unbuilt.
+After the rest of task 13 shipped — the customer bell, the provider sidebar
+entry — the same permanently-lit dot on the only bell a provider-zone screen
+has started claiming "you have something new" to every user, every time,
+falsely.
+
+Fixed: `ProviderShell` now calls `useActiveProvider()` (the same mechanism
+`SidebarNav` already used to know the active workspace — not a second one)
+and `useUnreadCount({ kind: "provider", providerId })`, and renders
+`NotificationBell` inside a `Link` to `/provider/$slug/notifications`, in
+place of the hardcoded `<Bell/>` + static dot. The 36px bordered-square shape
+of the button itself is unchanged, as instructed — only its contents and its
+`href` are real now. The original analysis is kept below because the
+"differently-styled control" reasoning is still correct about *why* task 13
+didn't fold this in on the first pass — it just turned out not to be the
+whole story.
+
+---
+
+## 46. (original) The provider shell's own topbar bell is still inert
+
+`ProviderShell`'s header (`shared/components/provider-shell.tsx`) carries its
+own notification button, separate from `HeaderActions`' bell — `showAccount=
+{false}` turns `HeaderActions`' copy off for this zone, so this hardcoded
+button is what a provider-zone user actually sees. Task 13 wired the real
+bell into `HeaderActions` (the customer and admin zones) and gave the
+provider sidebar a working Notifications entry beside Wallet
+(`shared/lib/navigation.ts`), but left this second, independent button
+alone: it still renders a permanently lit dot
+(`<span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full
+bg-primary" />`, unconditional markup, not sourced from `useUnreadCount`)
+and opens nothing on click.
+
+Left alone deliberately, not missed: Task 13's brief scoped the bell change
+to `header-actions.tsx` by name, and folding a second, differently-styled
+control into `NotificationBell` (a 36px bordered square button versus the
+20px bare icon `HeaderActions` wraps) is a design decision about that
+button's shape, not the one-line swap the brief asked for.
+
+**Trigger:** the first person who notices a provider-zone screen always shows
+an unread dot regardless of `useUnreadCount`, or the first task that touches
+`ProviderShell`'s header for another reason and can fold this in along the
+way.
+
+---
+
+## 47. The inbox has no way to see past its first 20 rows
+
+`NotificationsPage` (`features/notifications/ui/notifications-page.tsx`) calls
+`useInbox(scope)` with no offset, and `INBOX_PAGE_SIZE` (20) is never varied.
+A workspace or a person with 25 notifications sees the newest 20 and nothing
+past them — no "load more", no page 2, no way to reach row 21.
+
+The plumbing for real paging already exists end to end and is simply unused:
+`notificationQueries.mine`/`forProvider` take an `offset` parameter,
+`useInbox(scope, offset = 0)` threads it through, and the backend's
+`page()` helper (read tier) clamps and defaults `limit`/`offset` on both
+queries. Wiring a "load more" control is a small, mechanical change to
+`notifications-page.tsx` — call `useInbox` with a piece of state instead of
+the default, add a button that increments it — not a redesign.
+
+Fixed here, deliberately short of that: when `page.total > page.items.length`,
+the page now says how many of how many are shown
+(`t("showingCount", { shown, total })`), rather than staying silent about
+truncation or growing a control that does nothing. Same ruling
+`provider-reviews.tsx:118-123` already made for the reviews list, for the
+same stated reason — "a control that lies is worse than a sentence that does
+not." That precedent is why this entry exists rather than a load-more button:
+building the control was in scope for this fix and was deliberately not
+done, so the next person who wants one is not starting from a blank page.
+
+**Trigger:** the first provider or customer whose inbox actually holds more
+than 20 rows and needs the 21st — at that point the sentence stops being
+enough and the offset control described above is the next step.
+
+---
+
+## 48. `TeamInvitation` snapshots the workspace's name, and nothing renders it
+
+The team-invitation notification carries `providerName` in its payload as of
+the notifications-inbox branch (2026-08-23). The reason it is there is
+recorded in entry 24's sibling reasoning: a **personal** inbox row can name
+several different workspaces, so unlike a workspace row it has to say which
+one — and it is the one row with no cascade behind it, because `audience:
+"user"` leaves the `provider_id` column NULL. Snapshotting the name is what
+keeps the row readable after the business is renamed or deleted.
+
+The screen does not use it. No `type.*` string in any of the eight locale
+catalogues interpolates anything — `{{count}}` in `unreadBadge` is the only
+placeholder in the namespace — so the invitation currently reads as a
+generic sentence with the workspace's name sitting unused in the row beside
+it.
+
+This is the same shape as `WELCOME`'s `firstName`, captured on the same
+branch and equally unrendered, and it is deliberate in both cases: the
+backend snapshot and the copy are separable, and the snapshot has to exist
+*first* or the copy has nothing true to say later.
+
+**Trigger:** whoever writes the invitation copy — most likely alongside
+Phase 2's email templates, since the same fact ("Ana invited you to Salão X")
+is wanted in both places. Changing `type.teamInvitation` to interpolate
+`{{providerName}}` is the whole change; the data is already in every row
+written since this branch. Rows written *before* it have no name and will
+render the placeholder — decide then whether that is worth a backfill or a
+fallback, because there are none in production today and the cheapest answer
+is likely neither.
+
+---
+
+## 49. Residual minors from the notifications-inbox branch
+
+Fourteen tasks, thirty commits, and a whole-branch review left a tail of small
+findings that were triaged as genuinely deferrable. They are collected here
+rather than lost with the execution ledger, which is scratch and goes away.
+None is a correctness bug; each is the kind of thing that costs an hour when
+somebody trips on it and nothing until then.
+
+**In the notification repository** (`bounded-contexts/notification/infrastructure/
+repositories/drizzle/notification.repository.ts`): `markRead`'s fallback returns
+`true` for a member who was removed after reading — the leak is bounded to rows
+they already saw while entitled. A malformed uuid throws rather than returning
+`false`; `z.string().min(1)` is the convention at 25 call sites across six
+contexts, so making notification the exception would be worse than the
+inconsistency. `save()` silently ignores `entity.id`. `scope: ReturnType<typeof
+eq>` should be drizzle's `SQL`. Its tests share mutated state and depend on file
+order.
+
+**In the event router** (`shared/infrastructure/events/`): multi-event ordering
+is guaranteed by `for...of` + `await` but no test pins it. A handler that starts
+work without awaiting it can still surface a late unhandled rejection — a
+structural limit of any awaiting wrapper, not a bug.
+
+**In the write tier**: `notification.markRead` and `notification.markProviderRead`
+are byte-identical handlers, justified by an audit trail the system does not
+actually keep — nothing records which field was invoked. `requireUser` is copied
+into the read and write handler files with different refusal messages.
+
+**In the frontend**: `NotificationBellLink` types `to` as `string`, so the two
+call-site route paths are no longer checked against the generated route tree the
+way inline `<Link to="...">` literals were; TanStack's `ValidateLinkOptions`
+would restore it. `notifications-page-truncated.test.tsx` asserts English copy
+literally.
+
+**Shape inconsistency worth one look if this area is touched again:** the two
+list projections are separate classes while the two count projections are two
+methods on one class, and `notification-read.schema.ts` re-declares
+`pgSchema("ntizo_notification")` instead of importing the one declared beside it.
+
+**Trigger:** the next substantive change inside `bounded-contexts/notification`
+or `features/notifications` — read this list first and fix whatever sits in the
+file you are already opening. Not worth a dedicated pass.

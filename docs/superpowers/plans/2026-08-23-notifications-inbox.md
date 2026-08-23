@@ -408,7 +408,7 @@ Drizzle — a CHECK nobody exercises is a CHECK that might not be there."
   - `Notification.forProvider({ type, providerId, payload }): Notification`
   - getters `id`, `type`, `audience`, `userId`, `providerId`, `payload`
   - `type NotificationAudience = "user" | "provider"`
-  - `UnknownNotificationTypeError`, `EmptyPayloadKeyError`
+  - `UnknownNotificationTypeError`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -767,6 +767,25 @@ Expected: clean. No commit — this task lands with Task 4.
 - [ ] **Step 1: Write the failing test**
 
 Against the real dev database, like Task 1 and for the same reason: the read-state join is SQL, and a `LEFT JOIN` that silently drops unread rows is invisible to any mock.
+
+**This test needs a step Task 1's did not.** The repository resolves its handle
+through `getDb()` → `getActiveDb()` → AsyncLocalStorage, which `configMiddleware`
+binds per request — and a test has no request, so every call throws
+`[infra-store] not initialized`. Seeding through your own raw client is not
+enough; the client has to be bound into the context the code under test reads
+from. Wrap each test body in `__runWithTransactionContextForTests(db, ...)` from
+`shared/infrastructure/database/tx-context`, and build `db` as
+`drizzle(sql, { schema: authSchema })` — the bare `drizzle(sql)` does not satisfy
+the `DrizzleDb` type the helper expects.
+
+The precedent is `catalog-unpublish-sweep.test.ts`, which solves exactly this and
+explains it in its header. `scheduling-constraints.test.ts` never hits it, because
+it inserts through its own handle and never calls a `getDb()`-based repository —
+which is why modelling this test's shape on that file was not enough.
+
+The helper binds the context but opens **no transaction**, so writes commit for
+real: `afterAll` must delete children before parents. Leave a comment above the
+wrapper saying why it is there, or somebody removes it later as ceremony.
 
 ```ts
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -2245,7 +2264,6 @@ so, not because the server needs telling."
   - `type DomainEventHandler = (event: BaseDomainEvent) => Promise<void>`
   - `class EventRouter { on(eventName: string, handler: DomainEventHandler): void; dispatch(events: BaseDomainEvent[]): Promise<void> }`
   - `getEventRouter(): EventRouter` — the process-wide instance
-  - `dispatchAfterCommit(events: BaseDomainEvent[]): Promise<void>`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2637,10 +2655,10 @@ export interface ProviderNotificationDeps {
  * has been verified" still says X after X is renamed. Reading it back at render
  * time would tie every inbox row to the lifetime of the business it mentions.
  *
- * Three of Provider's ten events produce a notification. The other seven —
+ * Three of Provider's eleven events produce a notification. The other eight —
  * `updated`, `deactivated`, `member.added`, `member.removed`,
- * `invite.accepted`, `invite.declined`, `invite.revoked` — are silent on
- * purpose: they are bookkeeping, and an inbox that narrates every state change
+ * `member.role-updated`, `invite.accepted`, `invite.declined`,
+ * `invite.revoked` — are silent on purpose: they are bookkeeping, and an inbox that narrates every state change
  * is one people learn to ignore. Add one when somebody asks for it, not
  * because the event exists.
  */

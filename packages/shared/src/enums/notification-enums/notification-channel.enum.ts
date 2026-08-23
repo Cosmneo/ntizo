@@ -18,10 +18,18 @@ export enum NotificationChannel {
  * `InApp` is missing on purpose. It costs nothing, it is where the bell in the
  * header reads from, and a user who silences it has no record of what
  * happened — they would find an empty list and conclude nothing did.
+ *
+ * `Sms` is missing because delivery was decided to be email-only, and there
+ * is no SMS adapter anywhere in this repository — only
+ * `ConsoleSmsServiceAdapter` — so no notification has ever left a machine by
+ * SMS. A switch for a channel that cannot send is a promise the settings
+ * page has no way to keep. The enum value and `isMeteredChannel` both stay:
+ * phone verification still needs the concept (payment here is M-Pesa and
+ * e-Mola, which are the phone), and the metered rule is right again the day
+ * SMS delivery exists.
  */
 export const OPTIONAL_NOTIFICATION_CHANNELS = [
   NotificationChannel.Email,
-  NotificationChannel.Sms,
   NotificationChannel.Push,
 ] as const;
 

@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { Bell } from "lucide-react";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { NotificationBellLink } from "@/shared/components/notification-bell-link";
 import { LanguageSwitcher } from "@/shared/components/language-switcher";
 import { UserMenu } from "@/shared/components/user-menu";
 
@@ -34,6 +33,16 @@ interface HeaderActionsProps {
   onDark?: boolean;
 }
 
+/** The customer header's own styling for the shared bell link — a bare icon,
+ * not the provider shell's bordered square. `NotificationBellLink` fetches
+ * the count and composes the accessible name; this only supplies the look
+ * and the route. */
+function headerBellClassName(onDark: boolean): string {
+  return onDark
+    ? "rounded-full p-2 text-white/90 hover:bg-white/15"
+    : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]";
+}
+
 /**
  * The right-hand side of the top bar, in every zone.
  *
@@ -55,7 +64,6 @@ export function HeaderActions({
   showAccount = true,
   onDark = false,
 }: HeaderActionsProps) {
-  const { t } = useTranslation("common");
   const { data: user } = useCurrentUser();
 
   return (
@@ -65,19 +73,11 @@ export function HeaderActions({
       />
       {!showAccount ? null : user ? (
         <>
-          {/* Inert until notifications exist. Kept because the header's
-              shape was designed around it; it opens nothing today. */}
-          <button
-            type="button"
-            aria-label={t("notifications")}
-            className={
-              onDark
-                ? "rounded-full p-2 text-white/90 hover:bg-white/15"
-                : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-            }
-          >
-            <Bell className="h-5 w-5" />
-          </button>
+          <NotificationBellLink
+            scope={{ kind: "mine" }}
+            to="/account/notifications"
+            className={headerBellClassName(onDark)}
+          />
           <UserMenu />
         </>
       ) : (

@@ -116,8 +116,18 @@ export class RegisterUserAsProviderWorkflow
 
     await runSaga(ctx, steps);
 
-    // TODO(ntizo): emit a ProviderRegistered cross-BC event via outbox so
-    // downstream consumers (notifications, analytics) can react.
+    // No dedicated saga-completion event needed here: the `createProvider`
+    // step above already publishes `provider.created` in the same
+    // transaction (`Provider.create` records it, `CreateProviderInternalCommand`
+    // publishes it via the outbox), and the Notification context already
+    // reacts to it — see
+    // `write/notification/events/handlers/provider.event-handlers.ts`,
+    // `provider.created` -> `ProviderWorkspaceWelcome`. This TODO used to ask
+    // for a new event so notifications could react; that need is met. A
+    // future consumer (analytics, say) that needs to react specifically to
+    // "a user completed the become-a-provider journey" — as opposed to "a
+    // provider row was created", which can happen other ways — is the only
+    // remaining reason to add one.
 
     return { providerId: ctx.providerId! };
   }

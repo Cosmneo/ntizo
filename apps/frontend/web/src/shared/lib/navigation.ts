@@ -1,4 +1,4 @@
-import { Activity, Briefcase, CalendarClock, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
+import { Activity, Bell, Briefcase, CalendarClock, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface NavItem {
@@ -40,6 +40,10 @@ export const providerNavGroups: readonly NavGroup[] = [
     // workspace's administrators look after, not something anybody does a
     // job in.
     { titleKey: "nav.wallet", url: "/provider/$slug/wallet", icon: Wallet },
+    // Beside wallet, not work: what happened to the workspace — a document
+    // rejected, the business verified — is something its administrators
+    // watch for, not a task anyone does.
+    { titleKey: "nav.notifications", url: "/provider/$slug/notifications", icon: Bell },
   ] },
   { labelKey: "nav.organization", items: [
     { titleKey: "nav.settings", url: "/provider/$slug/settings", icon: Settings },
