@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, isNotNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
@@ -128,6 +128,7 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     district: provider.addressDistrict,
     country: provider.addressCountry,
     logoKey: provider.logoKey,
+    photoKeys: provider.photoKeys,
   };
 
   /**
@@ -158,17 +159,21 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       id: string; name: string; slug: string; type: string;
       description: string | null; city: string | null;
       district: string | null; country: string | null; logoKey: string | null;
+      photoKeys: string[] | null;
       ratingAverage: string | null; reviewCount: number | null; serviceCount: number | null;
       fromAmountMinor: number | null; fromCurrency: string | null;
       verifiedProviderId: string | null;
     },
     categories: { code: string; name: string }[],
   ): ProviderPublicDTO {
-    const { logoKey, ratingAverage, verifiedProviderId, ...rest } = row;
+    const { logoKey, photoKeys, ratingAverage, verifiedProviderId, ...rest } = row;
     return {
       ...rest,
       type: row.type as ProviderPublicDTO["type"],
       logoUrl: mediaUrl(logoKey),
+      // A key with nowhere to be served from resolves to null, and a null in a
+      // list of image URLs is a broken tile — dropped rather than rendered.
+      photoUrls: (photoKeys ?? []).map(mediaUrl).filter((url): url is string => url !== null),
       // Rounded to one decimal at the edge, because that is the only precision
       // anything displays — shipping 4.833333 invites two clients to round it
       // differently and show different scores for the same business.

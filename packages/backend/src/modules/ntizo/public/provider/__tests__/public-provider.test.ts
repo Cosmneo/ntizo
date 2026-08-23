@@ -26,7 +26,7 @@ import {
 const dto: ProviderPublicDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization",
   description: null, city: null, district: null, country: null, logoUrl: null,
-  verified: false, ratingAverage: null, reviewCount: 0,
+  photoUrls: [], verified: false, ratingAverage: null, reviewCount: 0,
   categories: [], serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
 };
 
@@ -124,6 +124,7 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     district: string | null;
     country: string | null;
     logoKey: string | null;
+    photoKeys: string[] | null;
     ratingAverage: string | null;
     reviewCount: number;
     serviceCount: number;
@@ -150,6 +151,7 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     district: null,
     country: null,
     logoKey: null,
+    photoKeys: null,
     ratingAverage: null,
     reviewCount: 0,
     serviceCount: 0,

@@ -35,6 +35,17 @@ export const providerPublicReadModel = z.object({
   logoUrl: z.string().nullable(),
 
   /**
+   * The business's own photographs of its work, in the order it arranged them.
+   *
+   * A one-way publication like `logoUrl`, and the same reasoning applies: these
+   * are pictures the provider chose to show customers, resolved from stored
+   * keys so the bucket can move without rewriting a row. Empty for a business
+   * that has uploaded none — which is most of them, and the page must read as
+   * finished without it rather than leaving a gap where a gallery would go.
+   */
+  photoUrls: z.array(z.string()),
+
+  /**
    * Whether the platform has accepted at least one of this business's
    * documents.
    *
