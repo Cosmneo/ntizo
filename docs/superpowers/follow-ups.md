@@ -1106,3 +1106,48 @@ written since this branch. Rows written *before* it have no name and will
 render the placeholder — decide then whether that is worth a backfill or a
 fallback, because there are none in production today and the cheapest answer
 is likely neither.
+
+---
+
+## 49. Residual minors from the notifications-inbox branch
+
+Fourteen tasks, thirty commits, and a whole-branch review left a tail of small
+findings that were triaged as genuinely deferrable. They are collected here
+rather than lost with the execution ledger, which is scratch and goes away.
+None is a correctness bug; each is the kind of thing that costs an hour when
+somebody trips on it and nothing until then.
+
+**In the notification repository** (`bounded-contexts/notification/infrastructure/
+repositories/drizzle/notification.repository.ts`): `markRead`'s fallback returns
+`true` for a member who was removed after reading — the leak is bounded to rows
+they already saw while entitled. A malformed uuid throws rather than returning
+`false`; `z.string().min(1)` is the convention at 25 call sites across six
+contexts, so making notification the exception would be worse than the
+inconsistency. `save()` silently ignores `entity.id`. `scope: ReturnType<typeof
+eq>` should be drizzle's `SQL`. Its tests share mutated state and depend on file
+order.
+
+**In the event router** (`shared/infrastructure/events/`): multi-event ordering
+is guaranteed by `for...of` + `await` but no test pins it. A handler that starts
+work without awaiting it can still surface a late unhandled rejection — a
+structural limit of any awaiting wrapper, not a bug.
+
+**In the write tier**: `notification.markRead` and `notification.markProviderRead`
+are byte-identical handlers, justified by an audit trail the system does not
+actually keep — nothing records which field was invoked. `requireUser` is copied
+into the read and write handler files with different refusal messages.
+
+**In the frontend**: `NotificationBellLink` types `to` as `string`, so the two
+call-site route paths are no longer checked against the generated route tree the
+way inline `<Link to="...">` literals were; TanStack's `ValidateLinkOptions`
+would restore it. `notifications-page-truncated.test.tsx` asserts English copy
+literally.
+
+**Shape inconsistency worth one look if this area is touched again:** the two
+list projections are separate classes while the two count projections are two
+methods on one class, and `notification-read.schema.ts` re-declares
+`pgSchema("ntizo_notification")` instead of importing the one declared beside it.
+
+**Trigger:** the next substantive change inside `bounded-contexts/notification`
+or `features/notifications` — read this list first and fix whatever sits in the
+file you are already opening. Not worth a dedicated pass.
