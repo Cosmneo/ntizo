@@ -1,5 +1,6 @@
 import { DrizzleNotificationRepository } from "../infrastructure/repositories/drizzle/notification.repository";
 import { DrizzleProviderMemberReader } from "../infrastructure/outbound-adapters/cross-bc/provider-member-reader.adapter";
+import { DrizzleUserByEmailReader } from "../infrastructure/outbound-adapters/cross-bc/user-by-email-reader.adapter";
 import { RaiseNotificationInternalCommand } from "../app/use-cases/raise-notification.internal.command";
 import {
   MarkAllNotificationsReadCommand,
@@ -9,9 +10,10 @@ import {
 export function bootstrapNotification() {
   const notificationRepository = new DrizzleNotificationRepository();
   const memberReader = new DrizzleProviderMemberReader();
+  const userByEmailReader = new DrizzleUserByEmailReader();
 
   return {
-    adapters: { notificationRepository, memberReader },
+    adapters: { notificationRepository, memberReader, userByEmailReader },
     useCases: {
       markNotificationRead: new MarkNotificationReadCommand(notificationRepository),
       markAllNotificationsRead: new MarkAllNotificationsReadCommand(
