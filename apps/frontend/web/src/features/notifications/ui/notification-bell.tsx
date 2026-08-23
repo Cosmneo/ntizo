@@ -1,8 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Bell } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
-import { useUnreadCount } from "@/features/notifications/viewmodel/use-unread-count";
-import type { InboxScope } from "@/features/notifications/viewmodel/use-inbox";
 
 /** Above this the badge stops counting and just says "a lot". */
 const BADGE_CAP = 99;
@@ -11,22 +9,27 @@ const BADGE_CAP = 99;
  * The bell icon and its unread badge — undressed of the button or link around
  * it. The customer header and the provider topbar each style that control
  * differently (a bare icon versus a bordered square), so only the part both
- * share lives here; the caller supplies the click target and its own
- * accessible name for what activating it does.
+ * share lives here; the caller supplies the click target, its own accessible
+ * name for what activating it does, and now the count itself.
+ *
+ * `count` is a prop rather than a `useUnreadCount(scope)` call in here: every
+ * caller already needs the same number to compose its own `aria-label` (the
+ * link wrapping this bell has to say "N unread notifications", not just
+ * "Notifications, link" — see `NotificationBellLink`), so fetching it twice
+ * per bell was pure duplication, not two different numbers.
  *
  * The badge's accessible name is the full sentence (`t("unreadBadge", …)`),
  * not the bare digit it displays: a screen reader hears "5 unread
  * notifications", not "5".
  */
 export function NotificationBell({
-  scope,
+  count,
   className,
 }: {
-  scope: InboxScope;
+  count: number;
   className?: string;
 }) {
   const { t } = useTranslation("notifications");
-  const count = useUnreadCount(scope);
 
   return (
     <span className={cn("relative inline-flex", className)}>

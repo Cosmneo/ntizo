@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
 import {
   Separator,
@@ -10,9 +8,8 @@ import {
 } from "@ntizo/frontend-ui";
 import { AppSidebar } from "@/shared/components/app-sidebar/app-sidebar";
 import { HeaderActions } from "@/shared/components/header-actions";
+import { NotificationBellLink } from "@/shared/components/notification-bell-link";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
-import { useUnreadCount } from "@/features/notifications/viewmodel/use-unread-count";
-import { NotificationBell } from "@/features/notifications/ui/notification-bell";
 import {
   PageHeaderContext,
   type PageHeaderState,
@@ -20,8 +17,6 @@ import {
 import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
 
 export function ProviderShell({ children }: { children: ReactNode }) {
-  const { t } = useTranslation("common");
-  const { t: tNotifications } = useTranslation("notifications");
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
   const [action, setAction] = useState<ReactNode>(null);
 
@@ -42,14 +37,14 @@ export function ProviderShell({ children }: { children: ReactNode }) {
 
   // The same mechanism `SidebarNav` already uses to know which workspace is
   // active — not a second one. `/provider`'s route guard requires a session
-  // before this shell ever mounts, so `useUnreadCount` firing unconditionally
-  // here (unlike the customer header's bell — see `NotificationBellLink`)
-  // never queries for an anonymous visitor; while `activeProvider` is still
-  // resolving, `providerId` is `""` and `useUnreadCount`'s own `enabled`
-  // guard (`providerId.length > 0`) keeps it from firing early instead.
+  // before this shell ever mounts, so `NotificationBellLink`'s own
+  // `useUnreadCount` firing unconditionally (unlike the customer header's
+  // bell, which only mounts once signed in) never queries for an anonymous
+  // visitor; while `activeProvider` is still resolving, `providerId` is `""`
+  // and `useUnreadCount`'s own `enabled` guard (`providerId.length > 0`)
+  // keeps it from firing early instead.
   const { activeProvider } = useActiveProvider();
   const providerId = activeProvider?.id ?? "";
-  const unreadCount = useUnreadCount({ kind: "provider", providerId });
 
   return (
     <PageHeaderContext.Provider value={headerCtx}>
@@ -101,25 +96,17 @@ export function ProviderShell({ children }: { children: ReactNode }) {
                   `HeaderActions` above has `showAccount={false}`, which hides
                   its bell along with the avatar, so this is the only bell a
                   provider-zone screen renders. It used to be a hardcoded
-                  button with a permanently-lit dot; now the dot is
-                  `NotificationBell`'s real badge, sourced from the same
-                  `useUnreadCount` this file already reads above, and the
-                  control actually goes to the workspace's inbox. The 36px
-                  square it sits in — border, radius, hover state — is
-                  untouched: only what was inside it, and what it does, has
-                  changed. */}
-              <Link
+                  button with a permanently-lit dot; now it is the same
+                  `NotificationBellLink` the customer header uses, wired to
+                  the workspace's own inbox. The 36px square it sits in —
+                  border, radius, hover state — is untouched: only what was
+                  inside it, and what it does, has changed. */}
+              <NotificationBellLink
+                scope={{ kind: "provider", providerId }}
                 to="/provider/$slug/notifications"
                 params={{ slug: activeProvider?.slug ?? "" }}
-                aria-label={
-                  unreadCount > 0
-                    ? tNotifications("unreadBadge", { count: unreadCount })
-                    : t("notifications")
-                }
                 className="relative hidden h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent sm:inline-flex"
-              >
-                <NotificationBell scope={{ kind: "provider", providerId }} />
-              </Link>
+              />
               {action ?? (
                 <button
                   type="button"
