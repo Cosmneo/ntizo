@@ -90,10 +90,11 @@ test("signing in as a different user shows that user's session, not the previous
   ).toBeVisible();
   await expect(page.getByText(admin.name)).toHaveCount(0);
 
-  // This user owns a provider, so the pill has somewhere to switch to and
-  // renders both segments. Admin is not one of them for anybody.
-  const providerZoneNav = page.getByRole("navigation", { name: "Switch view" });
-  await expect(providerZoneNav.getByRole("link", { name: "Provider" })).toBeVisible();
-  await expect(providerZoneNav.getByRole("link", { name: "Customer" })).toBeVisible();
-  await expect(providerZoneNav.getByRole("link", { name: "Admin" })).toHaveCount(0);
+  // The zone-switcher assertions that used to close this test are gone with
+  // the component they read: `ac746e4` ("registering as a provider is an
+  // application, not a launch") deleted the "Switch view" pill outright, and
+  // switching workspace moved into the sidebar's own user menu. Nothing here
+  // is lost — the two assertions above ARE the session-isolation proof this
+  // test is named for: the signed-in owner's name is on the page and the
+  // previous user's is not. The pill was scenery around them.
 });
