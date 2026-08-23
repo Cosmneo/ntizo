@@ -34,4 +34,11 @@ describe("NotificationsPage", () => {
     render(<NotificationsPage scope={{ kind: "mine" }} />);
     expect(screen.getByRole("heading", { name: /today/i })).toBeInTheDocument();
   });
+
+  it("says nothing about how many are shown when every item already is", () => {
+    // total (1) equals items.length (1) here — a caption in that case would
+    // be a sentence with nothing to say.
+    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    expect(screen.queryByText(/showing/i)).not.toBeInTheDocument();
+  });
 });

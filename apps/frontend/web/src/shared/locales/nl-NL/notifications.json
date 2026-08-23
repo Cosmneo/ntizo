@@ -10,6 +10,7 @@
   "unreadBadge": "{{count}} ongelezen melding",
   "unreadBadge_other": "{{count}} ongelezen meldingen",
   "loadError": "Je meldingen konden niet worden geladen.",
+  "showingCount": "{{shown}} van {{total}} getoond.",
   "type": {
     "welcome": "Welkom bij Ntizo",
     "providerWorkspaceWelcome": "Je werkruimte is klaar",

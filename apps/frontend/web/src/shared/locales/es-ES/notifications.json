@@ -10,6 +10,7 @@
   "unreadBadge": "{{count}} notificación sin leer",
   "unreadBadge_other": "{{count}} notificaciones sin leer",
   "loadError": "No se pudieron cargar tus notificaciones.",
+  "showingCount": "Mostrando {{shown}} de {{total}}.",
   "type": {
     "welcome": "Bienvenido a Ntizo",
     "providerWorkspaceWelcome": "Tu espacio de trabajo está listo",

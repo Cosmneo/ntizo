@@ -1043,3 +1043,34 @@ button's shape, not the one-line swap the brief asked for.
 an unread dot regardless of `useUnreadCount`, or the first task that touches
 `ProviderShell`'s header for another reason and can fold this in along the
 way.
+
+---
+
+## 47. The inbox has no way to see past its first 20 rows
+
+`NotificationsPage` (`features/notifications/ui/notifications-page.tsx`) calls
+`useInbox(scope)` with no offset, and `INBOX_PAGE_SIZE` (20) is never varied.
+A workspace or a person with 25 notifications sees the newest 20 and nothing
+past them — no "load more", no page 2, no way to reach row 21.
+
+The plumbing for real paging already exists end to end and is simply unused:
+`notificationQueries.mine`/`forProvider` take an `offset` parameter,
+`useInbox(scope, offset = 0)` threads it through, and the backend's
+`page()` helper (read tier) clamps and defaults `limit`/`offset` on both
+queries. Wiring a "load more" control is a small, mechanical change to
+`notifications-page.tsx` — call `useInbox` with a piece of state instead of
+the default, add a button that increments it — not a redesign.
+
+Fixed here, deliberately short of that: when `page.total > page.items.length`,
+the page now says how many of how many are shown
+(`t("showingCount", { shown, total })`), rather than staying silent about
+truncation or growing a control that does nothing. Same ruling
+`provider-reviews.tsx:118-123` already made for the reviews list, for the
+same stated reason — "a control that lies is worse than a sentence that does
+not." That precedent is why this entry exists rather than a load-more button:
+building the control was in scope for this fix and was deliberately not
+done, so the next person who wants one is not starting from a blank page.
+
+**Trigger:** the first provider or customer whose inbox actually holds more
+than 20 rows and needs the 21st — at that point the sentence stops being
+enough and the offset control described above is the next step.

@@ -57,11 +57,23 @@ export function NotificationsPage({ scope }: { scope: InboxScope }) {
       ) : isPending ? null : page.total === 0 ? (
         <EmptyCard framed badge={Bell} title={t("emptyTitle")} body={t("emptyBody")} />
       ) : (
-        <InboxList
-          items={page.items}
-          todayIso={new Date().toISOString()}
-          onMarkRead={markOne}
-        />
+        <>
+          <InboxList
+            items={page.items}
+            todayIso={new Date().toISOString()}
+            onMarkRead={markOne}
+          />
+          {/* Said plainly rather than with a "load more" that does nothing:
+              paging this list needs an offset control this page does not
+              carry yet, and a control that lies is worse than a sentence
+              that does not. Same ruling `provider-reviews.tsx` already made
+              for the same reason. */}
+          {page.total > page.items.length && (
+            <p className="type-caption text-[var(--color-muted-foreground)]">
+              {t("showingCount", { shown: page.items.length, total: page.total })}
+            </p>
+          )}
+        </>
       )}
     </div>
   );
