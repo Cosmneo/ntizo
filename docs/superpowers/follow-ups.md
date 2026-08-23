@@ -1074,3 +1074,35 @@ done, so the next person who wants one is not starting from a blank page.
 **Trigger:** the first provider or customer whose inbox actually holds more
 than 20 rows and needs the 21st — at that point the sentence stops being
 enough and the offset control described above is the next step.
+
+---
+
+## 48. `TeamInvitation` snapshots the workspace's name, and nothing renders it
+
+The team-invitation notification carries `providerName` in its payload as of
+the notifications-inbox branch (2026-08-23). The reason it is there is
+recorded in entry 24's sibling reasoning: a **personal** inbox row can name
+several different workspaces, so unlike a workspace row it has to say which
+one — and it is the one row with no cascade behind it, because `audience:
+"user"` leaves the `provider_id` column NULL. Snapshotting the name is what
+keeps the row readable after the business is renamed or deleted.
+
+The screen does not use it. No `type.*` string in any of the eight locale
+catalogues interpolates anything — `{{count}}` in `unreadBadge` is the only
+placeholder in the namespace — so the invitation currently reads as a
+generic sentence with the workspace's name sitting unused in the row beside
+it.
+
+This is the same shape as `WELCOME`'s `firstName`, captured on the same
+branch and equally unrendered, and it is deliberate in both cases: the
+backend snapshot and the copy are separable, and the snapshot has to exist
+*first* or the copy has nothing true to say later.
+
+**Trigger:** whoever writes the invitation copy — most likely alongside
+Phase 2's email templates, since the same fact ("Ana invited you to Salão X")
+is wanted in both places. Changing `type.teamInvitation` to interpolate
+`{{providerName}}` is the whole change; the data is already in every row
+written since this branch. Rows written *before* it have no name and will
+render the placeholder — decide then whether that is worth a backfill or a
+fallback, because there are none in production today and the cheapest answer
+is likely neither.
