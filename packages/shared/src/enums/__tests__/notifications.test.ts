@@ -78,4 +78,20 @@ describe("notification channels", () => {
     expect(isMeteredChannel(NotificationChannel.Email)).toBe(false);
     expect(isMeteredChannel(NotificationChannel.Push)).toBe(false);
   });
+
+  it("offers only the channels the platform can actually deliver on", () => {
+    // SMS was removed when delivery was decided to be email-only: there is no SMS
+    // adapter in the repository at all, and a switch for a channel that cannot
+    // send is a promise the settings page has no way to keep. The enum keeps
+    // `Sms` — phone verification still needs the concept, and the metered rule is
+    // right whenever it returns.
+    expect(OPTIONAL_NOTIFICATION_CHANNELS).toEqual([
+      NotificationChannel.Email,
+      NotificationChannel.Push,
+    ]);
+  });
+
+  it("still knows SMS is metered, for whenever it comes back", () => {
+    expect(isMeteredChannel(NotificationChannel.Sms)).toBe(true);
+  });
 });

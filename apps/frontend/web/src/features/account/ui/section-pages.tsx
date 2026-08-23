@@ -4,6 +4,7 @@ import { BadgeCheck, CreditCard, KeyRound, ShieldAlert } from "lucide-react";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import {
   NotificationBucket,
+  NotificationChannel,
   OPTIONAL_NOTIFICATION_CHANNELS,
   isMeteredChannel,
 } from "@ntizo/shared";
@@ -202,6 +203,16 @@ function NotificationSettings() {
                         {t("channelCosts")}
                       </span>
                     ) : null}
+                    {/* Push has no adapter in this repository either — the SMS
+                        column was removed rather than left silent about the
+                        same problem, so Push cannot go unlabelled: a column
+                        with no note next to a metered one reads as a channel
+                        that works. */}
+                    {channel === NotificationChannel.Push ? (
+                      <span className="block text-[10px] opacity-70">
+                        {t("channelUnavailable")}
+                      </span>
+                    ) : null}
                   </th>
                 ))}
               </tr>
@@ -233,8 +244,13 @@ function NotificationSettings() {
         </div>
 
         {/* Disabled, and said out loud. There is nowhere to store a
-            preference yet and nothing that sends a notification, so a switch
-            that appeared to work would be the worst of the three states. */}
+            preference yet — and even once there is, no switch on this page
+            would govern anything this slice raises: every notification type
+            with a live producer (Welcome, ProviderWorkspaceWelcome,
+            ProviderVerified, ProviderDocumentsRequired, TeamInvitation) is
+            transactional by `bucketForNotificationType`, sent regardless of
+            what any bucket switch says. A switch that appeared to work would
+            be the worst of the three states. */}
         <p className="type-caption mt-4 flex items-start gap-2 rounded-[var(--radius-field)] bg-[var(--color-muted)] p-3 text-[var(--color-muted-foreground)]">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           {t("notificationsPending")}
