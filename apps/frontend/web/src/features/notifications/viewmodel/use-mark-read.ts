@@ -5,6 +5,10 @@ import type { InboxScope } from "@/features/notifications/viewmodel/use-inbox";
 // Field names are flat (`notificationMarkRead`, not `notification { markRead }`)
 // — see the comment on `notificationQueries` for how the schema builder derives
 // them, confirmed the same way: introspecting the running API's mutation type.
+//
+// `ok` is the string "true" here and in every `z.literal(true)` mutation in
+// this codebase, so treat mutation success as resolution and failure as
+// `onError` — never by inspecting `.ok` (follow-ups.md #45).
 const MARK_ONE = `
   mutation MarkRead($input: NotificationMarkReadInput!) {
     notificationMarkRead(input: $input) { ok }

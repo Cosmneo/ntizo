@@ -954,3 +954,37 @@ currently exercises this path at all.
 **Trigger:** the first provider who says they do not work by appointment — a
 caterer, a mechanic taking walk-ins, anyone with a counter. Until then this is
 a branch of the engine no screen can display.
+
+## 45. Every `z.literal(true)` mutation output serialises as a String, not a boolean
+
+The GraphQL schema builder (`@cosmneo/onion-lasagna/graphql/field`) maps any
+zod schema whose JSON Schema carries an `enum`/`const` — which is what
+`z.literal(true)` produces — to the GraphQL `String` scalar, not `Boolean`.
+So a mutation declared `output: zodSchema(z.object({ ok: z.literal(true) }))`
+resolves over the wire as `{ "ok": "true" }`, the string, not `{ "ok": true }`.
+Verified on the wire for the notification BC's `markRead` /
+`markProviderRead` mutations (task 12): the response was literally
+`{"ok":"true"}`.
+
+This is not a notification-only quirk. `z.literal(true)` is this repo's
+standing idiom for "a mutation that only needs to say it worked" — 18
+occurrences across six bounded contexts' write-side mutation schemas
+(`catalog`, `notification`, `provider`, `review`, `scheduling`, `user`), all
+under `packages/backend/src/modules/ntizo/write/*/graphql/schema/mutations.ts`.
+Every one of them has the same property: `.ok === true` is silently `false`,
+because `.ok` is never a boolean to begin with.
+
+Nothing is broken today. Every current caller treats a mutation's outcome as
+"did the promise resolve" (success) vs. `onError` (failure) and never reads
+`.ok` itself — task 12's `useMarkRead` is one instance of that shape.
+Three ways out were considered and none were taken: changing the two
+notification mutations' output to `z.boolean()` would make them the
+exception among 16 siblings a future maintainer has to remember; dropping the
+field changes a public contract for no behavioral gain; fixing the idiom
+repo-wide is the right shape but touches five bounded contexts this task has
+no business in.
+
+**Trigger:** the first caller — frontend or otherwise — that needs to branch
+on a mutation's *return value* rather than on whether it threw. Until then
+this is a landmine nobody has stepped on, because nobody has needed to read
+`.ok`.
