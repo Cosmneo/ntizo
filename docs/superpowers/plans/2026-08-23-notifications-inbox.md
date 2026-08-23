@@ -2264,7 +2264,6 @@ so, not because the server needs telling."
   - `type DomainEventHandler = (event: BaseDomainEvent) => Promise<void>`
   - `class EventRouter { on(eventName: string, handler: DomainEventHandler): void; dispatch(events: BaseDomainEvent[]): Promise<void> }`
   - `getEventRouter(): EventRouter` — the process-wide instance
-  - `dispatchAfterCommit(events: BaseDomainEvent[]): Promise<void>`
 
 - [ ] **Step 1: Write the failing test**
 
