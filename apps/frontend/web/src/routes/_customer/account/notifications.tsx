@@ -1,14 +1,13 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { NotificationsPage } from "@/features/notifications/ui/notifications-page";
 
 /**
- * Notifications moved into Preferences as one of its sections.
+ * The redirect this replaces existed because the page did not. It does now.
  *
- * The route stays as a redirect rather than being deleted: it was in the
- * sidebar, so it is in browser histories and bookmarks, and a 404 is a worse
- * answer than the page the user was actually looking for.
+ * Client-rendered like every other session-dependent route: an inbox is the
+ * most personal thing on the site and has no business in a prerendered
+ * document.
  */
 export const Route = createFileRoute("/_customer/account/notifications")({
-  beforeLoad: () => {
-    throw redirect({ to: "/account/preferences", replace: true });
-  },
+  component: () => <NotificationsPage scope={{ kind: "mine" }} />,
 });

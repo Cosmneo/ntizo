@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Bell } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { NotificationBell } from "@/features/notifications/ui/notification-bell";
 import { LanguageSwitcher } from "@/shared/components/language-switcher";
 import { UserMenu } from "@/shared/components/user-menu";
 
@@ -65,10 +66,8 @@ export function HeaderActions({
       />
       {!showAccount ? null : user ? (
         <>
-          {/* Inert until notifications exist. Kept because the header's
-              shape was designed around it; it opens nothing today. */}
-          <button
-            type="button"
+          <Link
+            to="/account/notifications"
             aria-label={t("notifications")}
             className={
               onDark
@@ -76,8 +75,8 @@ export function HeaderActions({
                 : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
             }
           >
-            <Bell className="h-5 w-5" />
-          </button>
+            <NotificationBell scope={{ kind: "mine" }} />
+          </Link>
           <UserMenu />
         </>
       ) : (

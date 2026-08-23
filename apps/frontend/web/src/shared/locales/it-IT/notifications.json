@@ -1,0 +1,21 @@
+{
+  "title": "Notifiche",
+  "providerTitle": "Notifiche dell'attività",
+  "markAllRead": "Segna tutte come lette",
+  "groupToday": "Oggi",
+  "groupYesterday": "Ieri",
+  "groupEarlier": "Precedenti",
+  "emptyTitle": "Ancora niente",
+  "emptyBody": "Quando succede qualcosa sul tuo account, comparirà qui.",
+  "unreadBadge": "{{count}} notifica non letta",
+  "unreadBadge_other": "{{count}} notifiche non lette",
+  "loadError": "Non è stato possibile caricare le tue notifiche.",
+  "type": {
+    "welcome": "Benvenuto su Ntizo",
+    "providerWorkspaceWelcome": "Il tuo spazio di lavoro è pronto",
+    "providerVerified": "La tua attività è stata verificata",
+    "providerDocumentsRequired": "I tuoi documenti richiedono attenzione",
+    "teamInvitation": "Sei stato invitato in un team",
+    "unknown": "Hai una nuova notifica"
+  }
+}

@@ -991,3 +991,28 @@ no business in.
 on a mutation's *return value* rather than on whether it threw. Until then
 this is a landmine nobody has stepped on, because nobody has needed to read
 `.ok`.
+
+## 46. The provider shell's own topbar bell is still inert
+
+`ProviderShell`'s header (`shared/components/provider-shell.tsx`) carries its
+own notification button, separate from `HeaderActions`' bell — `showAccount=
+{false}` turns `HeaderActions`' copy off for this zone, so this hardcoded
+button is what a provider-zone user actually sees. Task 13 wired the real
+bell into `HeaderActions` (the customer and admin zones) and gave the
+provider sidebar a working Notifications entry beside Wallet
+(`shared/lib/navigation.ts`), but left this second, independent button
+alone: it still renders a permanently lit dot
+(`<span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full
+bg-primary" />`, unconditional markup, not sourced from `useUnreadCount`)
+and opens nothing on click.
+
+Left alone deliberately, not missed: Task 13's brief scoped the bell change
+to `header-actions.tsx` by name, and folding a second, differently-styled
+control into `NotificationBell` (a 36px bordered square button versus the
+20px bare icon `HeaderActions` wraps) is a design decision about that
+button's shape, not the one-line swap the brief asked for.
+
+**Trigger:** the first person who notices a provider-zone screen always shows
+an unread dot regardless of `useUnreadCount`, or the first task that touches
+`ProviderShell`'s header for another reason and can fold this in along the
+way.

@@ -1,0 +1,37 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { NotificationsPage } from "@/features/notifications/ui/notifications-page";
+
+vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
+  useInbox: () => ({
+    page: {
+      total: 1,
+      items: [
+        {
+          id: "n1",
+          type: "PROVIDER_VERIFIED",
+          payload: {},
+          createdAt: new Date().toISOString(),
+          read: false,
+        },
+      ],
+    },
+    isPending: false,
+    isError: false,
+  }),
+}));
+vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
+  useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
+}));
+
+describe("NotificationsPage", () => {
+  it("draws the sentence for a known type", () => {
+    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    expect(screen.getByText(/verified/i)).toBeInTheDocument();
+  });
+
+  it("groups under a day heading", () => {
+    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    expect(screen.getByRole("heading", { name: /today/i })).toBeInTheDocument();
+  });
+});

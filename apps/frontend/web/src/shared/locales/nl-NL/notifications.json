@@ -1,0 +1,21 @@
+{
+  "title": "Meldingen",
+  "providerTitle": "Meldingen van het bedrijf",
+  "markAllRead": "Alles als gelezen markeren",
+  "groupToday": "Vandaag",
+  "groupYesterday": "Gisteren",
+  "groupEarlier": "Eerder",
+  "emptyTitle": "Nog niets",
+  "emptyBody": "Zodra er iets gebeurt op je account, verschijnt het hier.",
+  "unreadBadge": "{{count}} ongelezen melding",
+  "unreadBadge_other": "{{count}} ongelezen meldingen",
+  "loadError": "Je meldingen konden niet worden geladen.",
+  "type": {
+    "welcome": "Welkom bij Ntizo",
+    "providerWorkspaceWelcome": "Je werkruimte is klaar",
+    "providerVerified": "Je bedrijf is geverifieerd",
+    "providerDocumentsRequired": "Je documenten hebben aandacht nodig",
+    "teamInvitation": "Je bent uitgenodigd voor een team",
+    "unknown": "Je hebt een nieuwe melding"
+  }
+}
