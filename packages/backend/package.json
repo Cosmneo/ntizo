@@ -27,6 +27,7 @@
     "./shared/infra": "./src/shared/infrastructure/stores/infra-store.ts",
     "./shared/infra/database": "./src/shared/infrastructure/database/connection.ts",
     "./shared/infra/logger": "./src/shared/infrastructure/logger/index.ts",
+    "./shared/infra/events": "./src/shared/infrastructure/events/index.ts",
     "./shared/infra/config": "./src/shared/infrastructure/config/stage-properties.ts",
     "./shared/infra/email": "./src/shared/infrastructure/email/index.ts",
     "./shared/infra/sms": "./src/shared/infrastructure/sms/index.ts",
