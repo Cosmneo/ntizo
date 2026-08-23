@@ -17,6 +17,12 @@ import {
   createWalletReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/wallet";
 import { createSchedulingReadHandlers } from "@ntizo/backend/modules/ntizo/read/scheduling";
+import {
+  bootstrapNotificationRead,
+  createNotificationReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/notification";
+import { createNotificationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/notification";
+import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
 import { createCatalogWriteHandlers } from "@ntizo/backend/modules/ntizo/write/catalog";
 import { bootstrapCatalog } from "@ntizo/backend/modules/ntizo/bounded-contexts/catalog";
@@ -51,6 +57,13 @@ function getYoga(stage: string) {
     const scheduling = bootstrapScheduling();
     const review = bootstrapReview();
     const walletRead = bootstrapWalletRead();
+    // The eight notification fields are already in `privateGraphqlSchema` —
+    // read/schema.ts and write/schema.ts merge them in. A field declared in
+    // the schema with no handler behind it resolves to nothing, so leaving
+    // these unmounted would put an inbox in the type the frontend generates
+    // against and give it nothing to call.
+    const notificationRead = bootstrapNotificationRead();
+    const notification = bootstrapNotification();
     const workflows = bootstrapProviderWorkflows({
       userInternal: {
         upgradeProfileToProvider: user.useCases.internal.upgradeProfileToProvider,
@@ -70,10 +83,12 @@ function getYoga(stage: string) {
         ...createCatalogReadHandlers(catalogRead.useCases),
         ...createWalletReadHandlers(walletRead.useCases),
         ...createSchedulingReadHandlers({ scheduling }),
+        ...createNotificationReadHandlers({ notificationRead }),
         ...createProviderWriteHandlers({ provider, workflows }),
         ...createCatalogWriteHandlers({ catalog }),
         ...createSchedulingWriteHandlers({ scheduling }),
         ...createReviewWriteHandlers({ review }),
+        ...createNotificationWriteHandlers({ notification }),
         ...createUserWriteHandlers({
             updateMyProfile: user.useCases.updateMyProfile,
             addMyAddress: user.useCases.addMyAddress,

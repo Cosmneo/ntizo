@@ -1,6 +1,12 @@
 import { Hono } from "hono";
 import { getAuth, registerSignUpHook } from "@ntizo/backend/modules/better-auth";
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
+import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
+import {
+  registerProviderNotificationHandlers,
+  registerUserNotificationHandlers,
+} from "@ntizo/backend/modules/ntizo/write/notification";
+import { getEventRouter } from "@ntizo/backend/shared/infra/events";
 import { mountPrivateGraphql } from "./graphql/private";
 import { mountPublicGraphql } from "./graphql/public";
 import { mountDocuments } from "./documents";
@@ -48,6 +54,29 @@ const userBootstrap = bootstrapUser();
 registerSignUpHook((input) =>
   userBootstrap.useCases.internal.createUserOnSignUp.execute(input),
 );
+
+// Who reacts to whose events is wired here, at the app layer, for the same
+// reason every adapter choice is: this is the only place allowed to know that
+// the Provider and User contexts produce events the Notification context turns
+// into inbox rows. Neither producing context imports the consumer — they
+// publish, and the router decides who hears it.
+//
+// At module scope, not per request: the router is a singleton for the isolate
+// (see `getEventRouter`), and this must have run before the first sign-up,
+// which is the first thing that dispatches. Registering per request would add
+// a second copy of every handler on every request.
+const notificationBootstrap = bootstrapNotification();
+const eventRouter = getEventRouter();
+registerProviderNotificationHandlers(eventRouter, {
+  raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,
+  // The invite handler resolves the invitee itself, because
+  // `provider.invite.sent` identifies them by an email address that may
+  // belong to nobody yet.
+  userByEmailReader: notificationBootstrap.adapters.userByEmailReader,
+});
+registerUserNotificationHandlers(eventRouter, {
+  raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,
+});
 
 // GraphQL (private, session-authed). The user and provider BCs are served
 // exclusively through this endpoint now — REST routers for both were

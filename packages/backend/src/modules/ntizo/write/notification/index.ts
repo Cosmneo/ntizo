@@ -1,2 +1,5 @@
 export { createNotificationWriteHandlers } from "./graphql/handlers/mutations.handlers";
-export { registerProviderNotificationHandlers } from "./events";
+export {
+  registerProviderNotificationHandlers,
+  registerUserNotificationHandlers,
+} from "./events";
