@@ -22,6 +22,31 @@ export interface WebhookResponse {
 }
 
 /**
+ * How many bodies have been refused, counted somewhere that outlives one
+ * request.
+ *
+ * A mutable box rather than a module-scope `let` so the *caller* decides what
+ * "since boot" means. The Hono binding keeps one at module scope, which in a
+ * Worker is exactly one per isolate; a test hands over a fresh one and gets a
+ * deterministic first refusal instead of inheriting whatever ran before it.
+ */
+export interface RefusalCount {
+  count: number;
+}
+
+/**
+ * Refusals at which a line is written: the first, then every hundredth.
+ *
+ * The first is the one that matters — see the `catch` below for why a silent
+ * 401 is the failure mode this exists to break. The hundredths keep a
+ * sustained attack visible without letting an open endpoint write a log line
+ * per probe.
+ */
+function shouldLogRefusal(refused: number): boolean {
+  return refused === 1 || refused % 100 === 0;
+}
+
+/**
  * Resend's bounce and complaint webhook.
  *
  * **Framework-free on purpose.** It takes a raw body and headers and returns a
@@ -45,6 +70,11 @@ export interface WebhookResponse {
  * is indistinguishable from ordinary attacker noise, so Resend would retry,
  * give up, and the endpoint would sit dead with nothing in the log saying so.
  *
+ * **A secret that is merely *wrong* cannot reach that 500**, because a
+ * well-formed `whsec_…` from the wrong endpoint constructs perfectly and only
+ * fails at `verify`. That is the likeliest misconfiguration of the three, so
+ * the refusal path logs too — sampled, not per-request. See the `catch`.
+ *
  * **Everything the command can decide is a 200.** A provider retries anything
  * else, and an event we chose to ignore was handled successfully. A *thrown*
  * command — a dropped database connection — is deliberately not caught: that
@@ -53,6 +83,8 @@ export interface WebhookResponse {
 export function createResendWebhookHandler(deps: {
   handleWebhook: HandleResendWebhookInternalCommand;
   secret: string | undefined;
+  /** Shared across requests by the caller — see `RefusalCount`. */
+  refusals: RefusalCount;
 }) {
   return async (req: WebhookRequest): Promise<WebhookResponse> => {
     // console.error, not the logger: getRequestScopedLogger() throws when no
@@ -71,20 +103,44 @@ export function createResendWebhookHandler(deps: {
     try {
       event = webhook.verify(req.body, req.headers);
     } catch {
-      // Deliberately no detail, and deliberately not logged per-request:
-      // telling a caller *why* verification failed is telling them how to
-      // pass it, and an open endpoint collects noise.
+      // The RESPONSE says nothing about why. Telling a caller which check
+      // failed is telling them how to pass it, so both a missing header and a
+      // signature over different bytes come back byte-identical.
+      //
+      // The LOG is a different question, and the answer changed. A secret that
+      // is well-formed but simply wrong — the other endpoint's, a rotated one,
+      // dev's value deployed to prod — constructs fine and lands here, not on
+      // the 500 above. Left unlogged, every callback would be refused with
+      // nothing anywhere saying so: Resend retries, exhausts, gives up, and
+      // the endpoint sits dead exactly as if the secret had been missing. That
+      // is the failure the 500 branch exists to prevent, so this branch must
+      // not reintroduce it. Sampled rather than per-request because the
+      // endpoint is public and unauthenticated, so it collects noise.
+      deps.refusals.count += 1;
+      if (shouldLogRefusal(deps.refusals.count)) {
+        console.error(
+          "[resend-webhook] refused a body whose signature did not verify — " +
+            "if this is every request, the configured secret is wrong",
+          { refusedSinceBoot: deps.refusals.count },
+        );
+      }
       return { status: 401, body: JSON.stringify({ error: "invalid signature" }) };
     }
 
-    // A signed body still has to be an object before anything can read
-    // `.type` off it. `JSON.parse("null")` is a valid parse and would throw a
-    // TypeError inside the command, which would surface as a 500 and be
-    // retried forever — for a body no retry can improve. Acknowledged and
-    // logged instead.
-    if (typeof event !== "object" || event === null) {
-      console.error("[resend-webhook] signed body is not an object — nothing to decide", {
-        received: typeof event,
+    // A signed body still has to be an event-shaped object before anything can
+    // read `.type` off it. `JSON.parse("null")` is a valid parse and `null`
+    // would throw a TypeError inside the command, surfacing as a 500 that
+    // Resend retries forever — for a body no retry can improve.
+    //
+    // `Array.isArray` is part of the check, not decoration: an array satisfies
+    // `typeof === "object"`, so without it the guard is wider than the
+    // sentence above claims. An array reaching the command happens to be
+    // harmless today (`event.type` is undefined, so it no-ops), but "happens
+    // to be harmless" is not the property being asserted here — "this is not
+    // a Resend event" is, and an array is not one.
+    if (typeof event !== "object" || event === null || Array.isArray(event)) {
+      console.error("[resend-webhook] signed body is not an event object — nothing to decide", {
+        received: Array.isArray(event) ? "array" : typeof event,
       });
       return { status: 200, body: JSON.stringify({ ok: true }) };
     }

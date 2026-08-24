@@ -5,6 +5,7 @@ export {
 } from "./events";
 export {
   createResendWebhookHandler,
+  type RefusalCount,
   type WebhookRequest,
   type WebhookResponse,
 } from "./http";
