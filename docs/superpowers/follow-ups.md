@@ -1184,3 +1184,38 @@ touched `apps/backend/api` at all until Task 7, whose brief added
 late. CI's `bun run check-types` is `turbo run typecheck` across the workspace
 and does include `@ntizo/api`, so this branch has been red there since
 `ec431f2`. The app's own `test` and `lint` scripts are still in no gate list.
+
+---
+
+## 51. Nothing enforces the app→infrastructure import direction
+
+Two fitness tests guard bounded-context structure —
+`fitness-no-framework-in-packages` (no Hono/Yoga inside `packages/backend/src`)
+and `fitness-no-bc-router` (no `rest`/`http`/`graphql` directories, no
+`create*Router` exports inside `bounded-contexts/`). Neither says anything about
+the direction that matters most to this architecture: **an app-layer use case
+must not import infrastructure.**
+
+It is currently violated. `provider/app/use-cases/invite/invite-provider-member.command.ts:12`
+imports `infraStore` from `shared/infrastructure/stores/`, and
+`shared/infrastructure/email/templates/provider-invite.template` on the next
+line. A use case that reads the request-scoped store cannot be constructed
+outside a request, which is why the notification context went the other way in
+Task 7: the deferral there lives in
+`notification/infrastructure/inbound-adapters/deferred-notification-delivery.adapter.ts`,
+a decorator wired at the bootstrap, precisely so `RaiseNotificationInternalCommand`
+stays free of it.
+
+A test asserting "no file under `bounded-contexts/*/app/` imports from
+`infrastructure/`" would go red immediately on that pre-existing violation, in a
+bounded context nobody was touching — which is why it was ruled out of scope for
+Task 7 rather than written and skipped.
+
+**Do it in this order:** move the invite command's `infraStore` read out to an
+outbound port (an `AppUrlPort`, or pass the base URL in on the input) and its
+template import to an adapter; *then* add the fitness test, so it lands green
+and stays that way.
+
+**Trigger:** the next change to `invite-provider-member.command.ts`, or the next
+time anyone is tempted to reach for `infraStore` from an app-layer use case
+because there is already precedent for it. The precedent is the bug.

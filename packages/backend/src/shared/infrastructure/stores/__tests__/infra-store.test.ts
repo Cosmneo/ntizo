@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { infraStore } from "../infra-store";
 
 const env = {
@@ -120,5 +120,63 @@ describe("infraStore.settleDeferredWork", () => {
 
   it("resolves immediately outside a request scope", async () => {
     await expect(infraStore.settleDeferredWork()).resolves.toBeUndefined();
+  });
+
+  it("gives up, loudly, when deferred work reschedules without ever yielding", async () => {
+    // The pathological shape: rescheduling on an already-resolved promise
+    // never yields to the timer or IO queues, so an unbounded drain would not
+    // merely run long — it would starve the isolate and nothing else in it
+    // would ever progress again. `stop` and the 500 guard are the test's own
+    // seatbelts; the assertion is that the drain stopped at its cap long
+    // before either.
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      let waves = 0;
+      let stop = false;
+      let wavesAtGiveUp = 0;
+      await infraStore.runAsync(env, async () => {
+        const reschedule = () => {
+          waves += 1;
+          if (!stop && waves < 500) infraStore.waitUntil(Promise.resolve().then(reschedule));
+        };
+        infraStore.waitUntil(Promise.resolve().then(reschedule));
+        await infraStore.settleDeferredWork();
+        stop = true;
+        wavesAtGiveUp = waves;
+      });
+
+      // `waves` counts reschedules, not drain waves: `allSettled` takes
+      // several microtask ticks to resolve and this chain advances on every
+      // one of them, so a single wave swallows a handful. What matters is that
+      // the drain stopped on its own cap and not on the test's 500 seatbelt,
+      // and that it said so.
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(String(logged.mock.calls[0]![0])).toContain("still rescheduling after 50 waves");
+      expect(String(logged.mock.calls[0]![0])).toContain("Abandoning");
+      expect(wavesAtGiveUp).toBeGreaterThan(0);
+      expect(wavesAtGiveUp).toBeLessThan(500);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("does not complain about work that nests legitimately", async () => {
+    // The cap must not fire on the shape that actually happens: a couple of
+    // generations deep. A cap that cried wolf would train everyone to ignore
+    // the log line above.
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await infraStore.runAsync(env, async () => {
+        infraStore.waitUntil(
+          tick(2).then(() => {
+            infraStore.waitUntil(tick(2));
+          }),
+        );
+        await infraStore.settleDeferredWork();
+      });
+      expect(logged).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+    }
   });
 });

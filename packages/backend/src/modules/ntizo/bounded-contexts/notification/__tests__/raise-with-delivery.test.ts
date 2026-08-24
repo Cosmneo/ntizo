@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { NotificationType } from "@ntizo/shared";
 import type { Notification } from "../domain/aggregates/notification.aggregate";
 import type {
@@ -114,10 +114,37 @@ describe("raising with a deliverer wired", () => {
     // The inbox row is the thing that must survive. An email that could not be
     // sent is a worse outcome than no email; a notification lost because of one
     // is worse than both.
-    deliverer.fail = true;
-    const cmd = new RaiseNotificationInternalCommand(repo, deliverer);
-    await expect(cmd.execute(input)).resolves.toEqual({ notificationId: "n1" });
-    expect(repo.saved).toHaveLength(1);
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      deliverer.fail = true;
+      const cmd = new RaiseNotificationInternalCommand(repo, deliverer);
+      await expect(cmd.execute(input)).resolves.toEqual({ notificationId: "n1" });
+      expect(repo.saved).toHaveLength(1);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("says which notification lost its email, rather than swallowing it", async () => {
+    // Swallowing is the whole design here, so the log line IS the record —
+    // there is no exception left, no status on any row (delivery never got far
+    // enough to write one), and nothing else that names what happened. Its own
+    // comment says "leave it, or somebody upgrades it back into a bug"; this
+    // is what makes that true. The deferred path has the same test.
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      deliverer.fail = true;
+      await new RaiseNotificationInternalCommand(repo, deliverer).execute(input);
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(logged.mock.calls[0]![0]).toBe("[notification] delivery failed");
+      expect(logged.mock.calls[0]![1]).toEqual({
+        notificationId: "n1",
+        type: NotificationType.Welcome,
+        error: "delivery exploded",
+      });
+    } finally {
+      logged.mockRestore();
+    }
   });
 });
 

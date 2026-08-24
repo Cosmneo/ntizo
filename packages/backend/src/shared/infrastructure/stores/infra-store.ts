@@ -22,6 +22,16 @@ export interface InfraEnvBindings {
   MICROSOFT_CLIENT_SECRET: string;
 }
 
+/**
+ * How many generations of deferred work `settleDeferredWork` will drain.
+ *
+ * Deferred work can schedule more deferred work, so draining is a loop rather
+ * than one `allSettled`. Real nesting is one or two deep — the loop's bound
+ * exists for the pathological case, not the normal one. See
+ * `settleDeferredWork`.
+ */
+const MAX_DEFERRED_WAVES = 50;
+
 /** A Cloudflare Hyperdrive binding — only the field we consume. */
 export interface HyperdriveBinding {
   readonly connectionString: string;
@@ -154,13 +164,36 @@ class InfraStore {
    * AsyncLocalStorage scope, so it can schedule more of its own, and a single
    * `allSettled` would close the connection out from under whatever it
    * scheduled.
+   *
+   * Capped at `MAX_DEFERRED_WAVES` generations. Legitimate nesting is one or
+   * two deep and nothing in the codebase reschedules at all, so the cap is not
+   * a throttle — it is the bound on an otherwise unbounded loop sitting in a
+   * request's `finally`. Work that reschedules behind a timer or IO yields
+   * between waves and would be fine either way; work that reschedules on an
+   * already-resolved promise never yields, so it starves the isolate's timer
+   * and IO queues and nothing else in that isolate progresses again. Giving up
+   * closes the connection under whatever is still running, which is bad — and
+   * strictly less bad than an isolate that never runs anything again. The log
+   * line exists because abandoning work silently would leave the symptom
+   * looking like the delivery bug this whole task was about.
    */
   async settleDeferredWork(): Promise<void> {
     const store = this.storage.getStore();
     if (!store) return;
-    while (store.deferred.length > 0) {
+    for (let wave = 0; wave < MAX_DEFERRED_WAVES; wave += 1) {
+      if (store.deferred.length === 0) return;
       await Promise.allSettled(store.deferred.splice(0));
     }
+    if (store.deferred.length === 0) return;
+    // console.error, not the logger: getRequestScopedLogger() throws when no
+    // scope is set and nothing in this repo ever sets one — the same reason
+    // tx-context.ts:21 uses it.
+    console.error(
+      `[infra-store] deferred work is still rescheduling after ${MAX_DEFERRED_WAVES} waves. ` +
+        `Abandoning ${store.deferred.length} promise(s) and releasing the request. ` +
+        "Something handed to waitUntil is scheduling more work every time it settles.",
+    );
+    store.deferred.length = 0;
   }
 
   /**
