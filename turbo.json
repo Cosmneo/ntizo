@@ -14,7 +14,18 @@
       "dependsOn": ["^typecheck"]
     },
     "test": {
-      "cache": false
+      "cache": false,
+      // Turbo filters the environment: a variable a task does not declare
+      // never reaches it, even when the CI job sets it and the step logs
+      // show it. Five test files read DEV_DB_URL to assert against a real
+      // Postgres, and without this line they see it unset and throw at
+      // module load — which is exactly how the Test gate spent its life
+      // verifying none of the schema it exists to protect.
+      //
+      // The `e2e` task below needed the same treatment for E2E_DB_URL, and
+      // ci.yml's comment on that job already spelled the trap out. It cost
+      // a CI round to rediscover it here.
+      "passThroughEnv": ["DEV_DB_URL"]
     },
     "e2e": {
       "cache": false,
