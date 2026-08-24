@@ -1151,3 +1151,36 @@ methods on one class, and `notification-read.schema.ts` re-declares
 **Trigger:** the next substantive change inside `bounded-contexts/notification`
 or `features/notifications` — read this list first and fix whatever sits in the
 file you are already opening. Not worth a dedicated pass.
+
+---
+
+## 50. Two copies of the "which email adapter" decision, and one went stale
+
+`apps/backend/api/src/bootstrap.ts` and
+`packages/backend/src/shared/infrastructure/email/resolve-email-service.ts`
+both implement `resolveEmailService` + `LazyEmailServiceAdapter`. They differ
+only in two log strings: the shared one says `[email]` where the app one says
+`[bootstrap]`, and the app one prints an extra `console.info` naming the
+console adapter on a local run. The shared module's own doc already claims to
+be the single definition ("One definition, called by everything that sends.
+The API bootstrap had this logic…"), so the duplicate was meant to go when it
+landed and did not.
+
+It cost something: when Task 4 gave `EmailServicePort.sendEmail` a return
+value, only the shared copy was updated. `apps/backend/api` stopped
+typechecking at `ec431f2` and nobody noticed for four commits, because
+`wrangler` bundles with esbuild and never typechecks. Fixed in place at
+`095e77d` rather than consolidated — deleting the duplicate changes two log
+strings and drops a local-dev hint, which is a decision of its own.
+
+**Trigger:** the next change to either file, or the next field added to
+`EmailServicePort`. A port with two implementations of its own factory will
+drift again, and the second one will be found by whatever breaks next rather
+than by CI.
+
+**Related, and cheap while you are there:** no per-task gate on this branch
+touched `apps/backend/api` at all until Task 7, whose brief added
+`bun run typecheck` there and found the break on its first run — four commits
+late. CI's `bun run check-types` is `turbo run typecheck` across the workspace
+and does include `@ntizo/api`, so this branch has been red there since
+`ec431f2`. The app's own `test` and `lint` scripts are still in no gate list.
