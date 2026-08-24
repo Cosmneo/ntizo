@@ -1,19 +1,21 @@
-import type { NotificationType } from "@ntizo/shared";
 import { NotificationDelivery } from "../../domain/aggregates/notification-delivery.aggregate";
+import type {
+  DeliverNotificationInternalInput,
+  DeliverNotificationInternalPort,
+} from "../ports/inbound/deliver-notification.internal.command.port";
 import type { NotificationDeliveryRepositoryPort } from "../ports/outbound/notification-delivery.repository.port";
 import type { EmailSuppressionRepositoryPort } from "../ports/outbound/email-suppression.repository.port";
 import type { Recipient, RecipientReaderPort } from "../ports/outbound/recipient-reader.port";
 import type { TemplateRendererPort } from "../ports/outbound/template-renderer.port";
 import type { EmailServicePort } from "../../../../../../shared/infrastructure/email/email-service.port";
 
-export type DeliverNotificationInput = {
-  notificationId: string | null;
-  type: NotificationType;
-  payload: Record<string, unknown>;
-} & (
-  | { audience: "user"; userId: string }
-  | { audience: "provider"; providerId: string }
-);
+/**
+ * The input moved to the inbound port when Task 7 gave this command one, so
+ * the raise command could name what it depends on without importing this
+ * class. Re-exported here because that is where it was first declared and
+ * where a reader of this file will look for it.
+ */
+export type DeliverNotificationInput = DeliverNotificationInternalInput;
 
 /**
  * Turning a raised notification into email.
@@ -44,7 +46,7 @@ export type DeliverNotificationInput = {
  * isolate that died mid-send with no trace of an email that may well have
  * gone out.
  */
-export class DeliverNotificationInternalCommand {
+export class DeliverNotificationInternalCommand implements DeliverNotificationInternalPort {
   constructor(
     private readonly deliveries: NotificationDeliveryRepositoryPort,
     private readonly suppressions: EmailSuppressionRepositoryPort,
