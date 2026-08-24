@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { infraStore } from "../stores/infra-store";
-import type { EmailMessage, EmailServicePort } from "./email-service.port";
+import type { EmailMessage, EmailServicePort, SendResult } from "./email-service.port";
 
 export class ResendEmailServiceAdapter implements EmailServicePort {
   private client: Resend | null = null;
@@ -13,11 +13,11 @@ export class ResendEmailServiceAdapter implements EmailServicePort {
     return this.client;
   }
 
-  async sendEmail(message: EmailMessage): Promise<void> {
+  async sendEmail(message: EmailMessage): Promise<SendResult> {
     const env = infraStore.getEnv();
     const client = this.getClient();
 
-    const { error } = await client.emails.send({
+    const { data, error } = await client.emails.send({
       from: env.EMAIL_FROM,
       to: message.to,
       subject: message.subject,
@@ -28,5 +28,9 @@ export class ResendEmailServiceAdapter implements EmailServicePort {
     if (error) {
       throw new Error(`Resend error: ${error.name} — ${error.message}`);
     }
+
+    // The id is what a bounce webhook arrives carrying, and the only way back
+    // from "this address bounced" to "this is what we sent it".
+    return { messageId: data?.id ?? null };
   }
 }
