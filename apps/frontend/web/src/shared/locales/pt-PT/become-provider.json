@@ -1,0 +1,73 @@
+{
+  "eyebrow": "Prestadores Ntizo",
+  "title": "Ofereça os seus serviços.",
+  "titleAccent": "Receba o preço inteiro.",
+  "subtitle": "Junte-se aos prestadores que encontram clientes em Maputo, Matola e Beira — sem mensalidades e sem comissão sobre o que ganha.",
+  "cta": "Começar",
+  "trustFree": "Inscrição gratuita",
+  "trustPaid": "Pagamento garantido",
+  "trustLocal": "Clientes da sua zona",
+  "pathsTitle": "Duas formas de prestar",
+  "pathsBlurb": "Escolhe uma no início. Pode mudar depois — o que muda é como a agenda e a equipa funcionam.",
+  "path": {
+    "individual": {
+      "title": "Por conta própria",
+      "body": "Você é o serviço: o seu perfil, os seus preços, as horas que escolher. Trabalha em casa do cliente, no seu espaço ou à distância.",
+      "tag": "Uma agenda — a sua"
+    },
+    "organization": {
+      "title": "Estabelecimento com equipa",
+      "body": "Vários funcionários sob um nome, com reservas em paralelo conforme quem está livre. Convide a equipa e defina o que cada um pode fazer.",
+      "tag": "Uma agenda por funcionário"
+    }
+  },
+  "pricingTitle": "Zero de comissão para si",
+  "pricingBody": "O preço que define é o preço que recebe. A taxa de serviço de 10% é paga pelo cliente, por cima do seu preço — nunca sai do seu bolso.",
+  "stepsTitle": "Como funciona",
+  "step": {
+    "apply": {
+      "title": "Candidate-se",
+      "body": "Crie a conta e diga-nos o que faz e onde. Leva alguns minutos.",
+      "tag": "≈ 5 minutos"
+    },
+    "review": {
+      "title": "Verificação",
+      "body": "Confirmamos a sua identidade antes de o mostrar aos clientes. É o que dá valor ao selo de verificado.",
+      "tag": "1 a 2 dias"
+    },
+    "publish": {
+      "title": "Publique serviços",
+      "body": "Preços, duração e disponibilidade. Os horários livres são gerados automaticamente.",
+      "tag": "quando quiser"
+    },
+    "earn": {
+      "title": "Receba",
+      "body": "O pagamento fica retido até o serviço estar concluído, e depois segue para si.",
+      "tag": "após concluir"
+    }
+  },
+  "requirementsTitle": "O que precisa de ter",
+  "requirementsBlurb": "Nada de papelada complicada. Três coisas.",
+  "requirement": {
+    "identity": {
+      "title": "Documento de identidade",
+      "body": "Bilhete de identidade, passaporte ou carta de condução, para confirmarmos que é quem diz ser."
+    },
+    "payout": {
+      "title": "Forma de receber",
+      "body": "M-Pesa, e-Mola ou conta bancária. É para onde enviamos o que ganhou."
+    },
+    "terms": {
+      "title": "Aceitar os termos",
+      "body": "As regras da plataforma, incluindo o que acontece se uma reserva correr mal."
+    }
+  },
+  "ctaSecondary": "Ver prestadores",
+  "pathsEyebrow": "Escolha o seu caminho",
+  "pricingEyebrow": "O que lhe custa",
+  "stepsEyebrow": "Do registo à primeira reserva",
+  "requirementsEyebrow": "Antes de começar",
+  "closingTitle": "Pronto para começar a ganhar?",
+  "closingBody": "A inscrição é gratuita e não há nada a pagar até ter a primeira reserva.",
+  "closingTalk": "Falar connosco"
+}

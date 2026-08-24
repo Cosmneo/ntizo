@@ -22,6 +22,125 @@
       "when": 1786369266424,
       "tag": "0002_hesitant_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786370999589,
+      "tag": "0003_known_wonder_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786374531949,
+      "tag": "0004_tricky_kitty_pryde",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786387792128,
+      "tag": "0005_bent_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786388955070,
+      "tag": "0006_cultured_spirit",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786398734046,
+      "tag": "0007_unknown_dormammu",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786427768530,
+      "tag": "0008_watery_owl",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786433645587,
+      "tag": "0009_aspiring_groot",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786433716777,
+      "tag": "0010_legal_ghost_rider",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786445574576,
+      "tag": "0011_brown_sabretooth",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786455090358,
+      "tag": "0012_colossal_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786460820462,
+      "tag": "0013_confused_absorbing_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786505385336,
+      "tag": "0014_complete_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786610069754,
+      "tag": "0015_clear_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786616443864,
+      "tag": "0016_clumsy_phantom_reporter",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786649025921,
+      "tag": "0017_thin_betty_brant",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787489542723,
+      "tag": "0018_public_johnny_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787506925534,
+      "tag": "0019_chilly_overlord",
+      "breakpoints": true
     }
   ]
 }

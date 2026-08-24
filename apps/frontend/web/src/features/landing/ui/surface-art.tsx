@@ -36,7 +36,7 @@ const PALETTES: ReadonlyArray<readonly [string, string, string]> = [
 /** Tiny LCG. Seeded so the same tile paints identically every time. */
 function seeded(seed: number): () => number {
   let s = seed * 9301 + 49297;
-  return () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  return () => (s = (s * 9301 + 49297) % 233280) / 233280;
 }
 
 function paint(canvas: HTMLCanvasElement, seed: number, hero: boolean) {
@@ -72,7 +72,9 @@ function paint(canvas: HTMLCanvasElement, seed: number, hero: boolean) {
   for (let i = 0; i < (hero ? 7 : 5); i++) {
     const x = rnd() * width;
     const y = hero ? height * (0.25 + rnd() * 0.7) : rnd() * height;
-    const r = (hero ? 0.2 + rnd() * 0.45 : 0.28 + rnd() * 0.5) * Math.max(width, height);
+    const r =
+      (hero ? 0.2 + rnd() * 0.45 : 0.28 + rnd() * 0.5) *
+      Math.max(width, height);
     const bloom = g.createRadialGradient(x, y, 0, x, y, r);
     bloom.addColorStop(0, `${light}${hero ? "4d" : "88"}`);
     bloom.addColorStop(1, `${light}00`);

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import i18n from "@/shared/lib/i18n";
 import { ProviderDetailPage } from "@/features/directory/ui/provider-detail-page";
 import { prefetchProviderDetail } from "@/features/directory/viewmodel/use-directory";
 
@@ -14,7 +15,14 @@ import { prefetchProviderDetail } from "@/features/directory/viewmodel/use-direc
  */
 export const Route = createFileRoute("/providers/$slug")({
   ssr: true,
-  loader: ({ context, params }) => prefetchProviderDetail(context.queryClient, params.slug),
+  // The locale is part of the answer, not only of the page around it: the
+  // category names on a provider's card are resolved server-side.
+  loader: ({ context, params }) =>
+    prefetchProviderDetail(
+      context.queryClient,
+      params.slug,
+      i18n.resolvedLanguage ?? i18n.language,
+    ),
   head: ({ loaderData }) => {
     const provider = loaderData ?? null;
     if (!provider) return { meta: [{ title: "Ntizo" }] };

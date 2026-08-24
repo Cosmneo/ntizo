@@ -51,3 +51,6 @@ apps/mobile/.idea/
 playwright-report/
 .playwright-mcp/
 test-results/
+
+# Harness-managed git worktrees (EnterWorktree)
+.claude/worktrees/

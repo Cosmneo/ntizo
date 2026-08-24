@@ -56,7 +56,10 @@ export function SignIn() {
           // normalize it the same way so the form always has a message to
           // show, instead of `.form` being undefined on a bare thrown value.
           return {
-            form: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+            form:
+              err instanceof Error
+                ? err.message
+                : "Something went wrong. Please try again.",
           };
         }
       },
@@ -66,7 +69,11 @@ export function SignIn() {
   return (
     <AuthSplitLayout
       pitch={t("pitchSignIn")}
-      points={[t("proofVerified"), t("proofSecurePayment"), t("proofRealReviews")]}
+      points={[
+        t("proofVerified"),
+        t("proofSecurePayment"),
+        t("proofRealReviews"),
+      ]}
     >
       <Card>
         <CardContent className="flex flex-col gap-6 p-8">
@@ -128,9 +135,15 @@ export function SignIn() {
                     <InputGroupAddon align="inline-end">
                       <InputGroupButton
                         onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                        aria-label={
+                          showPassword ? t("hidePassword") : t("showPassword")
+                        }
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </InputGroupButton>
                     </InputGroupAddon>
                   </InputGroup>
@@ -144,7 +157,9 @@ export function SignIn() {
               )}
             </form.Field>
 
-            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+            <form.Subscribe
+              selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+            >
               {([canSubmit, isSubmitting]) => (
                 <Button type="submit" className="w-full" disabled={!canSubmit}>
                   <LogIn className="h-4 w-4" />
@@ -166,7 +181,10 @@ export function SignIn() {
                 type="button"
                 variant="outline"
                 onClick={() =>
-                  authClient.signIn.social({ provider: "google", callbackURL: "/sign-in" })
+                  authClient.signIn.social({
+                    provider: "google",
+                    callbackURL: "/sign-in",
+                  })
                 }
               >
                 <GoogleIcon className="h-4 w-4" />
@@ -176,7 +194,10 @@ export function SignIn() {
                 type="button"
                 variant="outline"
                 onClick={() =>
-                  authClient.signIn.social({ provider: "microsoft", callbackURL: "/sign-in" })
+                  authClient.signIn.social({
+                    provider: "microsoft",
+                    callbackURL: "/sign-in",
+                  })
                 }
               >
                 <MicrosoftIcon className="h-4 w-4" />
@@ -187,7 +208,10 @@ export function SignIn() {
 
           <p className="text-center text-sm text-[var(--color-muted-foreground)]">
             {t("dontHaveAccount")}{" "}
-            <Link to="/sign-up" className="text-[var(--color-accent)] hover:underline">
+            <Link
+              to="/sign-up"
+              className="text-[var(--color-accent)] hover:underline"
+            >
               {t("signUp")}
             </Link>
           </p>

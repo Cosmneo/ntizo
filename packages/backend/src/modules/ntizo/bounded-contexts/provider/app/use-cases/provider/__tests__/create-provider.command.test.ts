@@ -1,4 +1,15 @@
 import { describe, expect, it } from "bun:test";
+
+/** Records that a wallet was asked for, so a test can assert it happened. */
+const walletCalls: { providerId: string }[] = [];
+/** The platform default, as the command reads it at creation. */
+const settingsRepo = { async defaultCommissionBps() { return 1000; } };
+
+const walletRepo = {
+  async createForProvider(input: { providerId: string }) {
+    walletCalls.push(input);
+  },
+};
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import type { ProviderListItemDTO } from "@ntizo/shared";
@@ -70,7 +81,10 @@ class FakeProviderRepository implements ProviderRepositoryPort {
     throw new Error("not used by this test");
   }
   async findBySlug(_slug: string): Promise<Provider | null> {
-    throw new Error("not used by this test");
+    // Free. These tests are about atomicity and events, not slug collisions —
+    // they threw here until the command started resolving collisions, which is
+    // the fake correctly reporting that its assumptions had moved.
+    return null;
   }
   async findAllByOwnerOrMemberUserId(_userId: string): Promise<Provider[]> {
     throw new Error("not used by this test");
@@ -152,6 +166,8 @@ describe("CreateProviderCommand — atomicity", () => {
     const command = new CreateProviderCommand(
       providerRepo,
       memberRepo,
+      walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       new FakeOutboxPort(),
     );
@@ -187,6 +203,8 @@ describe("CreateProviderCommand — events", () => {
     const command = new CreateProviderCommand(
       providerRepo,
       memberRepo,
+      walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       outboxPort,
     );

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, Heart, MessageSquare } from "lucide-react";
-import { EmptyState } from "@/features/account/ui/empty-state";
+import { EmptyCard } from "@/shared/components/empty-card";
 
 /**
  * The three customer pages whose features do not exist yet.
@@ -11,7 +11,13 @@ import { EmptyState } from "@/features/account/ui/empty-state";
  * there. Each moves out on its own the moment it grows real content.
  */
 
-function Shell({ title, children }: { title: string; children: React.ReactNode }) {
+function Shell({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="type-h1">{title}</h1>
@@ -20,22 +26,28 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+/** The way out of an empty customer page is always the same: go and browse. */
+function BrowseLink({ label }: { label: string }) {
+  return (
+    <Link
+      to="/providers"
+      className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function BookingsPage() {
   const { t } = useTranslation("account");
   return (
     <Shell title={t("bookingsTitle")}>
-      <EmptyState
-        icon={<CalendarDays className="h-6 w-6" />}
+      <EmptyCard
+        framed
+        badge={CalendarDays}
         title={t("bookingsEmptyTitle")}
         body={t("bookingsEmptyBody")}
-        action={
-          <Link
-            to="/providers"
-            className="mt-2 rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            {t("browseProviders")}
-          </Link>
-        }
+        action={<BrowseLink label={t("browseProviders")} />}
       />
     </Shell>
   );
@@ -45,8 +57,9 @@ export function MessagesPage() {
   const { t } = useTranslation("account");
   return (
     <Shell title={t("messagesTitle")}>
-      <EmptyState
-        icon={<MessageSquare className="h-6 w-6" />}
+      <EmptyCard
+        framed
+        badge={MessageSquare}
         title={t("messagesEmptyTitle")}
         body={t("messagesEmptyBody")}
       />
@@ -58,18 +71,12 @@ export function FavouritesPage() {
   const { t } = useTranslation("account");
   return (
     <Shell title={t("favouritesTitle")}>
-      <EmptyState
-        icon={<Heart className="h-6 w-6" />}
+      <EmptyCard
+        framed
+        badge={Heart}
         title={t("favouritesEmptyTitle")}
         body={t("favouritesEmptyBody")}
-        action={
-          <Link
-            to="/providers"
-            className="mt-2 rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            {t("browseProviders")}
-          </Link>
-        }
+        action={<BrowseLink label={t("browseProviders")} />}
       />
     </Shell>
   );

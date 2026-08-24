@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Compass, LayoutGrid, Users } from "lucide-react";
 import { HeaderActions } from "@/shared/components/header-actions";
-
-const NAV = [
-  { key: "nav.explore", to: "/", icon: Compass },
-  { key: "nav.categories", to: "/providers", icon: LayoutGrid },
-  { key: "nav.providers", to: "/providers", icon: Users },
-] as const;
+import { PUBLIC_NAV } from "@/shared/lib/public-nav";
 
 /**
  * The header every public page wears.
@@ -28,7 +22,7 @@ export function SiteHeader({
   current = "explore",
 }: {
   overlay?: boolean;
-  current?: "explore" | "categories" | "providers";
+  current?: "explore" | "categories" | "services" | "providers";
 }) {
   const { t } = useTranslation("landing");
 
@@ -45,7 +39,7 @@ export function SiteHeader({
           <img
             src={overlay ? "/brand/logo-white.svg" : "/brand/logo-primary.svg"}
             alt="Ntizo"
-            className="h-8"
+            className="h-7"
           />
         </Link>
 
@@ -56,7 +50,7 @@ export function SiteHeader({
               : "hidden justify-self-center gap-0.5 rounded-full bg-[var(--color-muted)] p-1 lg:flex"
           }
         >
-          {NAV.map((item) => {
+          {PUBLIC_NAV.map((item) => {
             const Icon = item.icon;
             const active = item.key.endsWith(current);
             return (
@@ -78,7 +72,6 @@ export function SiteHeader({
 
         <div className="col-start-3 justify-self-end">
           <HeaderActions
-            currentZone="landing"
             onDark={overlay}
             signedOutAction={
               <Link

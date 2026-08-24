@@ -9,8 +9,11 @@ import type {
   InviteProviderMemberOutput,
   InviteProviderMemberPort,
 } from "../../ports/inbound/invite";
+import { infraStore } from "../../../../../../../shared/infrastructure/stores/infra-store";
+import { buildProviderInviteEmail } from "../../../../../../../shared/infrastructure/email/templates/provider-invite.template";
 import type {
   EmailServicePort,
+  InviterLocalePort,
   ProviderInviteRepositoryPort,
   ProviderMemberRepositoryPort,
   ProviderRepositoryPort,
@@ -30,6 +33,7 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
     private readonly memberRepo: ProviderMemberRepositoryPort,
     private readonly inviteRepo: ProviderInviteRepositoryPort,
     private readonly emailService: EmailServicePort,
+    private readonly inviterLocale: InviterLocalePort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
@@ -71,6 +75,7 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
       role: input.role,
       token,
       expiresAt,
+      invitedByUserId: requester.userId,
     });
 
     await this.unitOfWork.atomicExecute(async () => {
@@ -89,26 +94,46 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
 
     // Sent only once the invite row + event are durably committed — an email
     // for an invite that got rolled back would be worse than none.
-    await this.emailService.sendEmail({
-      to: [invite.email],
-      subject: `You've been invited to join ${provider.name} on Ntizo`,
-      htmlBody: buildInviteHtml({
-        providerName: provider.name,
-        inviterName: requester.email,
-        token,
-      }),
-      textBody: `You've been invited to join ${provider.name} on Ntizo. Use this token: ${token}`,
+    // In the inviter's language. The recipient has no account yet, so that is
+    // the only signal available — and a colleague inviting a colleague almost
+    // always shares one.
+    const locale = await this.inviterLocale.localeFor(requester.userId);
+    const appUrl = infraStore.getEnv().APP_URL.replace(/\/+$/, "");
+    const mail = buildProviderInviteEmail({
+      providerName: provider.name,
+      inviterName: requester.email,
+      role: invite.role,
+      // The link the email exists to carry. The version this replaces sent a
+      // 48-character hex token in a paragraph and nothing to click.
+      acceptUrl: `${appUrl}/accept-invite/${token}`,
+      expiresInDays: INVITE_TTL_DAYS,
+      ...(locale ? { locale } : {}),
     });
 
-    return { inviteId: invite.id, token };
-  }
-}
+    // Reported, not thrown. The invite row and its event are already durably
+    // committed by this point, so a mail failure that rejected the mutation
+    // would tell the caller nothing happened while something did — and the
+    // obvious response, trying again, mints a second invitation.
+    //
+    // Silence would be worse in the other direction: the invitee is never
+    // going to hear about it. So the outcome travels back and the UI says so.
+    let emailSent = true;
+    try {
+      await this.emailService.sendEmail({
+        to: [invite.email],
+        subject: mail.subject,
+        htmlBody: mail.html,
+        textBody: mail.text,
+      });
+    } catch (error) {
+      emailSent = false;
+      console.error("[invite] the invitation email did not send", {
+        inviteId: invite.id,
+        providerId: provider.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
-function buildInviteHtml(params: {
-  providerName: string;
-  inviterName: string;
-  token: string;
-}): string {
-  return `<p>${params.inviterName} invited you to join <strong>${params.providerName}</strong> on Ntizo.</p>
-<p>Use this token to accept the invite: <code>${params.token}</code></p>`;
+    return { inviteId: invite.id, token, emailSent };
+  }
 }

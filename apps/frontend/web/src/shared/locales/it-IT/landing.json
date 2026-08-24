@@ -6,7 +6,7 @@
   "heroLine3": "Fatto.",
   "nav": {
     "explore": "Esplora",
-    "services": "Servizi",
+    "services": "Services",
     "providers": "Fornitori",
     "howItWorks": "Come funziona",
     "categories": "Categorie"
@@ -76,5 +76,9 @@
   },
   "zeroFeeTitle": "di commissione per chi lavora.",
   "zeroFeeBody": "La commissione del 10% è a carico del cliente e si somma al tuo prezzo. Quello che concordi con il cliente è esattamente quello che ricevi.",
-  "zeroFeeCta": "Crea un account fornitore"
+  "zeroFeeCta": "Crea un account fornitore",
+  "categoriesEmpty": "Le categorie di servizi compariranno qui non appena vengono pubblicate.",
+  "categoriesError": "Impossibile caricare le categorie.",
+  "categoriesLoadMore": "Carica altro",
+  "categoriesEmptyTitle": "Ancora nessuna categoria"
 }

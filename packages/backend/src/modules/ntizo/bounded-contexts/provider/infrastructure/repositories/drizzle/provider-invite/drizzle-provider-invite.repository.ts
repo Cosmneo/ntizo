@@ -79,6 +79,21 @@ export class DrizzleProviderInviteRepository
       .where(eq(providerInviteTable.id, id));
   }
 
+  async markDeclinedIfPending(id: string): Promise<boolean> {
+    const db = getDb();
+    const updated = await db
+      .update(providerInviteTable)
+      .set({ status: "declined" })
+      .where(
+        and(
+          eq(providerInviteTable.id, id),
+          eq(providerInviteTable.status, "pending"),
+        ),
+      )
+      .returning({ id: providerInviteTable.id });
+    return updated.length > 0;
+  }
+
   async markAcceptedIfPending(id: string): Promise<boolean> {
     const db = getDb();
     const updated = await db

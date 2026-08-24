@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from "@ntizo/shared";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import type { GetPublicProviderInput, GetPublicProviderPort } from "../ports/inbound";
 import type { ProviderPublicRepositoryPort } from "../ports/outbound/provider-public.repository.port";
@@ -13,6 +14,6 @@ export class GetPublicProviderProjection implements GetPublicProviderPort {
    * exist but are hidden, which is exactly what deactivating is meant to stop.
    */
   execute(input: GetPublicProviderInput): Promise<ProviderPublicDTO | null> {
-    return this.repo.findActiveBySlug(input.slug);
+    return this.repo.findActiveBySlug(input.slug, input.locale ?? DEFAULT_LOCALE);
   }
 }

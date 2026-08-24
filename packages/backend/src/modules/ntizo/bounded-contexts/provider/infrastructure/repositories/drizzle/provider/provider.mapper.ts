@@ -26,6 +26,12 @@ export const providerMapper = {
       slug: row.slug,
       status: row.status as ProviderStatus,
       description: row.description ?? undefined,
+      commissionBps: row.commissionBps,
+      logoKey: row.logoKey ?? undefined,
+      photoKeys: row.photoKeys ?? undefined,
+      payoutType: row.payoutType,
+      payoutIdentifier: row.payoutIdentifier,
+      timezone: row.timezone,
       address: hasAddress
         ? Address.create({
             street: row.addressStreet ?? undefined,
@@ -52,6 +58,21 @@ export const providerMapper = {
       slug: json.slug,
       status: json.status,
       description: json.description ?? null,
+      commissionBps: json.commissionBps,
+      // Missing in both directions until now, and that is where every logo
+      // upload was lost: the route stored the object, the mutation accepted
+      // the key, the aggregate held it — and the row handed to Postgres simply
+      // had no such field, so the column stayed null and the UI reported
+      // success.
+      logoKey: json.logoKey ?? null,
+      photoKeys: json.photoKeys ?? null,
+      // Both directions, deliberately together with the two above. The comment
+      // above is the reason: a field the aggregate holds and the mapper does
+      // not carry is a field that silently never persists, and the UI reports
+      // success either way.
+      payoutType: json.payoutType,
+      payoutIdentifier: json.payoutIdentifier,
+      timezone: json.timezone,
       addressStreet: json.address?.street ?? null,
       addressCity: json.address?.city ?? null,
       addressDistrict: json.address?.district ?? null,

@@ -8,6 +8,7 @@ const env = {
   BETTER_AUTH_SECRET: "s",
   RESEND_API_KEY: "",
   EMAIL_FROM: "a@b.c",
+  APP_URL: "http://localhost:3000",
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",
   MICROSOFT_CLIENT_ID: "",

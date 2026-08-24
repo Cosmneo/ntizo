@@ -4,18 +4,25 @@ import { BadgeCheck, CreditCard, KeyRound, ShieldAlert } from "lucide-react";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import {
   NotificationBucket,
+  NotificationChannel,
   OPTIONAL_NOTIFICATION_CHANNELS,
   isMeteredChannel,
 } from "@ntizo/shared";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
-import { EmptyState } from "@/features/account/ui/empty-state";
-import { LanguagePreference } from "@/features/account/ui/language-preference";
+import { EmptyCard } from "@/shared/components/empty-card";
+import {
+  AppearancePreference,
+  LanguagePreference,
+} from "@/features/account/ui/language-preference";
+import { Setting } from "@/features/account/ui/setting";
 
 function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
   return (
     <div className="mb-5">
       <h1 className="type-h1">{title}</h1>
-      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{blurb}</p>
+      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+        {blurb}
+      </p>
     </div>
   );
 }
@@ -32,9 +39,13 @@ export function PaymentMethodsPage() {
   const { t } = useTranslation("account");
   return (
     <>
-      <SectionHeading title={t("navPaymentMethods")} blurb={t("paymentsBlurb")} />
-      <EmptyState
-        icon={<CreditCard className="h-6 w-6" />}
+      <SectionHeading
+        title={t("navPaymentMethods")}
+        blurb={t("paymentsBlurb")}
+      />
+      <EmptyCard
+        framed
+        badge={CreditCard}
         title={t("paymentsEmptyTitle")}
         body={t("paymentsEmptyBody")}
       />
@@ -87,7 +98,11 @@ export function SecurityPage() {
         {/* Email is confirmed by definition: sign-in requires it. Showing the
             row anyway is what makes the phone row below it read as an
             outstanding task rather than an oddity. */}
-        <VerificationRow label={t("fieldEmail")} value={user?.email ?? null} verified />
+        <VerificationRow
+          label={t("fieldEmail")}
+          value={user?.email ?? null}
+          verified
+        />
         <VerificationRow
           label={t("fieldPhone")}
           value={user?.phoneNumber ?? null}
@@ -111,7 +126,9 @@ export function SecurityPage() {
               <KeyRound className="h-5 w-5 text-[var(--color-primary)]" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="type-body-medium font-semibold">{t("passwordTitle")}</div>
+              <div className="type-body-medium font-semibold">
+                {t("passwordTitle")}
+              </div>
               <div className="type-body text-[var(--color-muted-foreground)]">
                 {t("passwordBlurb")}
               </div>
@@ -130,27 +147,39 @@ export function SecurityPage() {
   );
 }
 
+/**
+ * Preferences: language, appearance and notifications, one under the other.
+ *
+ * They were three places — two sidebar entries and a submenu in the account
+ * dropdown. All three answer the same question, how the app should behave for
+ * this person, and splitting that across a sidebar turns navigation into a
+ * table of contents.
+ */
 export function PreferencesPage() {
   const { t } = useTranslation("account");
+
   return (
     <>
-      <SectionHeading title={t("navPreferences")} blurb={t("preferencesBlurb")} />
+      <SectionHeading
+        title={t("navPreferences")}
+        blurb={t("preferencesBlurb")}
+      />
       <Panel>
         <LanguagePreference />
+        <AppearancePreference />
+        <NotificationSettings />
       </Panel>
     </>
   );
 }
 
-export function NotificationsPage() {
+function NotificationSettings() {
   const { t } = useTranslation("account");
   const buckets = Object.values(NotificationBucket);
 
   return (
-    <>
-      <SectionHeading title={t("navNotifications")} blurb={t("notificationsBlurb")} />
-
-      <Panel>
+    <Setting title={t("navNotifications")} blurb={t("notificationsBlurb")}>
+      <>
         {/* Only the switchable buckets appear. Confirmations, refunds and
             sign-in alerts are transactional — they are sent regardless, and
             offering a switch that does nothing would be a lie. The list comes
@@ -170,7 +199,19 @@ export function NotificationsPage() {
                   >
                     {t(`channel.${channel}`)}
                     {isMeteredChannel(channel) ? (
-                      <span className="block text-[10px] opacity-70">{t("channelCosts")}</span>
+                      <span className="block text-[10px] opacity-70">
+                        {t("channelCosts")}
+                      </span>
+                    ) : null}
+                    {/* Push has no adapter in this repository either — the SMS
+                        column was removed rather than left silent about the
+                        same problem, so Push cannot go unlabelled: a column
+                        with no note next to a metered one reads as a channel
+                        that works. */}
+                    {channel === NotificationChannel.Push ? (
+                      <span className="block text-[10px] opacity-70">
+                        {t("channelUnavailable")}
+                      </span>
                     ) : null}
                   </th>
                 ))}
@@ -178,8 +219,13 @@ export function NotificationsPage() {
             </thead>
             <tbody>
               {buckets.map((bucket) => (
-                <tr key={bucket} className="border-t border-[var(--color-border)]">
-                  <td className="type-body-medium py-3.5">{t(`bucket.${bucket}`)}</td>
+                <tr
+                  key={bucket}
+                  className="border-t border-[var(--color-border)]"
+                >
+                  <td className="type-body-medium py-3.5">
+                    {t(`bucket.${bucket}`)}
+                  </td>
                   {OPTIONAL_NOTIFICATION_CHANNELS.map((channel) => (
                     <td key={channel} className="py-3.5 text-center">
                       <input
@@ -198,14 +244,19 @@ export function NotificationsPage() {
         </div>
 
         {/* Disabled, and said out loud. There is nowhere to store a
-            preference yet and nothing that sends a notification, so a switch
-            that appeared to work would be the worst of the three states. */}
+            preference yet — and even once there is, no switch on this page
+            would govern anything this slice raises: every notification type
+            with a live producer (Welcome, ProviderWorkspaceWelcome,
+            ProviderVerified, ProviderDocumentsRequired, TeamInvitation) is
+            transactional by `bucketForNotificationType`, sent regardless of
+            what any bucket switch says. A switch that appeared to work would
+            be the worst of the three states. */}
         <p className="type-caption mt-4 flex items-start gap-2 rounded-[var(--radius-field)] bg-[var(--color-muted)] p-3 text-[var(--color-muted-foreground)]">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           {t("notificationsPending")}
         </p>
-      </Panel>
-    </>
+      </>
+    </Setting>
   );
 }
 

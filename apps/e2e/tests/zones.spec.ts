@@ -2,24 +2,35 @@ import { test, expect } from "@playwright/test";
 import { createVerifiedUser } from "../fixtures/auth";
 import { fillSignInForm } from "../fixtures/ui";
 
-test("a customer does not see the Provider or Admin zone links", async ({ page }) => {
+/**
+ * Rewritten 2026-08-23. It used to sign a customer in and assert that a
+ * "Switch view" pill offered them no Provider or Admin link. That pill was
+ * deleted in `ac746e4` ("registering as a provider is an application, not a
+ * launch") and switching workspace moved into the sidebar's own user menu —
+ * so BOTH of the old assertions had become unfailable: they checked that
+ * elements which exist for nobody were absent for a customer, and would have
+ * passed just as happily for a provider.
+ *
+ * The guarantee is still real, but it is now enforced by a redirect rather
+ * than by hiding a link: a customer with no provider who asks for /provider
+ * is sent to the onboarding wizard instead of into somebody's dashboard.
+ * That is what this asserts, because that is what would actually break.
+ */
+test("a customer asking for the provider zone is sent to onboarding, not into it", async ({
+  page,
+}) => {
   const customer = await createVerifiedUser();
   await page.goto("/sign-in");
   await fillSignInForm(page, customer);
   await page.waitForURL("http://localhost:3000/");
 
-  // Any authenticated user may reach /provider/no-provider — becoming a
-  // provider is opt-in, not gated — so it is a real, always-reachable page to
-  // read the switcher off for a plain customer.
   await page.goto("/provider");
-  await page.waitForURL(/\/provider\/no-provider/);
+  await page.waitForURL(/\/onboarding/);
 
-  // No switcher at all, not a switcher with one entry. A customer who owns no
-  // provider has nowhere to switch to, and a lone "Customer" pill would imply
-  // a choice that does not exist. Admin is never a segment for anyone; it
-  // lives in the account menu.
-  await expect(page.getByRole("navigation", { name: "Switch view" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Provider dashboard" })).toHaveCount(0);
+  // Not merely "somewhere else" — specifically not inside a workspace. A
+  // regression that sent them to some other provider's overview would still
+  // satisfy a bare "did not stay on /provider".
+  expect(page.url()).not.toMatch(/\/provider\/[^/]+\/(overview|members|settings)/);
 });
 
 test("/admin bounces a non-admin to the landing page", async ({ page }) => {

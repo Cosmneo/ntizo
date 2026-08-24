@@ -1,4 +1,11 @@
 {
   "extends": "@ntizo/typescript-config/react-library.json",
-  "include": ["src"]
+  "include": ["src"],
+  // image-cropper.test.ts runs on Bun's own test runner (`bun:test`) and
+  // this package carries no `@types/bun` — unlike packages/backend, which
+  // declares it — so `tsc` cannot resolve that module. Excluded here rather
+  // than adding a dependency for the one file that needs it; `bun test`
+  // still runs it directly, untyped, exactly as it did before this package
+  // had a `typecheck` script at all.
+  "exclude": ["src/components/__tests__/image-cropper.test.ts"]
 }

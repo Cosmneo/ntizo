@@ -8,6 +8,16 @@ export type ProviderInviteStatus =
   | "pending"
   | "accepted"
   | "revoked"
+  /**
+   * Turned down by the person it was sent to.
+   *
+   * Its own state rather than folded into `revoked`, because the two say
+   * opposite things about who decided: revoked is the workspace withdrawing an
+   * offer, declined is the invitee refusing one. An admin looking at the list
+   * needs to tell those apart — one means "I changed my mind", the other means
+   * "they said no", and only the second is a reason not to send it again.
+   */
+  | "declined"
   | "expired";
 
 export interface ProviderInviteProps {
@@ -17,6 +27,8 @@ export interface ProviderInviteProps {
   role: ProviderInviteRole;
   token: string;
   status: ProviderInviteStatus;
+  /** Who sent it. Null on rows written before the column existed. */
+  invitedByUserId: string | null;
   expiresAt: Date;
   createdAt: Date;
 }
@@ -35,6 +47,7 @@ export class ProviderInvite {
     role: ProviderInviteRole;
     token: string;
     expiresAt: Date;
+    invitedByUserId?: string;
   }): ProviderInvite {
     return new ProviderInvite({
       id: params.id,
@@ -43,6 +56,7 @@ export class ProviderInvite {
       role: params.role,
       token: params.token,
       status: "pending",
+      invitedByUserId: params.invitedByUserId ?? null,
       expiresAt: params.expiresAt,
       createdAt: new Date(),
     });
@@ -65,6 +79,9 @@ export class ProviderInvite {
   }
   get status() {
     return this.props.status;
+  }
+  get invitedByUserId() {
+    return this.props.invitedByUserId;
   }
   get expiresAt() {
     return this.props.expiresAt;
@@ -89,6 +106,10 @@ export class ProviderInvite {
 
   markRevoked(): void {
     this.props.status = "revoked";
+  }
+
+  markDeclined(): void {
+    this.props.status = "declined";
   }
 
   toJSON(): ProviderInviteProps {

@@ -1,2 +1,3 @@
-// catalog schemas — stub. Entity schema files will be added here.
-export {};
+export * from "./category.schema";
+export * from "./service.schema";
+export * from "./service-member.schema";

@@ -1,0 +1,1 @@
+ALTER TABLE "ntizo_provider"."provider" ADD COLUMN "commission_bps" integer DEFAULT 1000 NOT NULL;

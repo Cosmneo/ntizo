@@ -29,7 +29,9 @@ export function useInviteMember(providerId: string) {
   return useMutation({
     mutationFn: (body: InviteMemberBody) => inviteMember(providerId, body),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerQueries.byId(providerId).queryKey });
+      void qc.invalidateQueries({
+        queryKey: providerQueries.byId(providerId).queryKey,
+      });
     },
   });
 }
@@ -39,7 +41,9 @@ export function useRevokeInvite(providerId: string) {
   return useMutation({
     mutationFn: (inviteId: string) => revokeInvite(providerId, inviteId),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerQueries.byId(providerId).queryKey });
+      void qc.invalidateQueries({
+        queryKey: providerQueries.byId(providerId).queryKey,
+      });
     },
   });
 }
@@ -49,7 +53,9 @@ export function useRemoveMember(providerId: string) {
   return useMutation({
     mutationFn: (userId: string) => removeMember(providerId, userId),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerQueries.byId(providerId).queryKey });
+      void qc.invalidateQueries({
+        queryKey: providerQueries.byId(providerId).queryKey,
+      });
     },
   });
 }
@@ -60,7 +66,9 @@ export function useUpdateMemberRole(providerId: string) {
     mutationFn: ({ userId, role }: { userId: string; role: ProviderRole }) =>
       updateMemberRole(providerId, userId, role),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: providerQueries.byId(providerId).queryKey });
+      void qc.invalidateQueries({
+        queryKey: providerQueries.byId(providerId).queryKey,
+      });
     },
   });
 }

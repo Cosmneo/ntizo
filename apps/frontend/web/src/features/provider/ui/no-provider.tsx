@@ -22,7 +22,7 @@ export function NoProviderPage() {
       const { providerId } = await registerMut.mutateAsync({});
       await refresh();
       if (providerId) setActive(providerId);
-      nav({ to: "/provider/overview" });
+      nav({ to: "/provider" });
     } catch {
       /* error state via mutation */
     }
@@ -31,7 +31,9 @@ export function NoProviderPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-2xl font-semibold mb-2">{t("welcomeTitle")}</h1>
-      <p className="text-[var(--color-muted-foreground)] mb-6">{t("welcomeSubtitle")}</p>
+      <p className="text-[var(--color-muted-foreground)] mb-6">
+        {t("welcomeSubtitle")}
+      </p>
 
       <div className="flex gap-3">
         <Button onClick={handleAuto} disabled={registerMut.isPending}>
@@ -53,7 +55,7 @@ export function NoProviderPage() {
         onOpenChange={setDialogOpen}
         onCreated={(id) => {
           setActive(id);
-          nav({ to: "/provider/overview" });
+          nav({ to: "/provider" });
         }}
       />
     </div>

@@ -1,0 +1,6 @@
+ALTER TABLE "ntizo_scheduling"."member_availability" ADD COLUMN "buffer_minutes" integer;--> statement-breakpoint
+ALTER TABLE "ntizo_scheduling"."member_availability" ADD COLUMN "slot_interval_minutes" integer;--> statement-breakpoint
+ALTER TABLE "ntizo_scheduling"."member_availability" ADD COLUMN "capacity" integer;--> statement-breakpoint
+ALTER TABLE "ntizo_scheduling"."member_availability" ADD CONSTRAINT "member_availability_buffer_range" CHECK ("ntizo_scheduling"."member_availability"."buffer_minutes" IS NULL OR "ntizo_scheduling"."member_availability"."buffer_minutes" BETWEEN 0 AND 480);--> statement-breakpoint
+ALTER TABLE "ntizo_scheduling"."member_availability" ADD CONSTRAINT "member_availability_slot_interval" CHECK ("ntizo_scheduling"."member_availability"."slot_interval_minutes" IS NULL OR "ntizo_scheduling"."member_availability"."slot_interval_minutes" IN (0, 15, 30, 60));--> statement-breakpoint
+ALTER TABLE "ntizo_scheduling"."member_availability" ADD CONSTRAINT "member_availability_capacity" CHECK ("ntizo_scheduling"."member_availability"."capacity" IS NULL OR "ntizo_scheduling"."member_availability"."capacity" >= 1);

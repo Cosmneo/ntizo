@@ -79,3 +79,57 @@ export class IndividualProviderCannotHaveMembersError extends UnprocessableError
     this.name = "IndividualProviderCannotHaveMembersError";
   }
 }
+
+/**
+ * A status change the lifecycle does not allow.
+ *
+ * Thrown by `Provider.decide` rather than checked at the edge: the admin screen
+ * only offers legal moves, and the screen is not the thing that has to be
+ * right. Two of the refusals matter — rejecting a business that already traded,
+ * and suspending an application that never did — because both read the same to
+ * whoever clicks and mean different things to the business afterwards.
+ */
+export class InvalidProviderStatusTransitionError extends UnprocessableError {
+  constructor(from: string, to: string) {
+    super({
+      message: `A provider cannot go from ${from} to ${to}`,
+      code: "INVALID_PROVIDER_STATUS_TRANSITION",
+    });
+    this.name = "InvalidProviderStatusTransitionError";
+  }
+}
+
+/**
+ * Where a business is paid, refused.
+ *
+ * `UnprocessableError`, not a bare `Error`. A bare one surfaces as
+ * "An unexpected error occurred" with an INTERNAL_ERROR code, which tells
+ * somebody who picked the wrong payment method that the server broke — and
+ * files a rejected input in the monitoring as if it were a fault.
+ */
+export class InvalidPayoutDestinationError extends UnprocessableError {
+  constructor(reason: string, code: "PAYOUT_INCOMPLETE" | "PAYOUT_METHOD_NOT_CAPABLE") {
+    super({ message: reason, code });
+    this.name = "InvalidPayoutDestinationError";
+  }
+}
+
+/**
+ * Refused by `Provider.update` when the caller's timezone is not one
+ * `Intl.DateTimeFormat` recognises.
+ *
+ * Same `code` as the scheduling BC's own `TimezoneInvalidError` — both name
+ * the one thing the availability screen's timezone field can get wrong — but
+ * declared separately here rather than imported across bounded contexts: the
+ * provider BC owns the `provider.timezone` column and the write path that
+ * sets it, and scheduling only ever reads it back.
+ */
+export class TimezoneInvalidError extends UnprocessableError {
+  constructor(public readonly timezone: string) {
+    super({
+      message: `"${timezone}" is not a usable timezone`,
+      code: "TIMEZONE_INVALID",
+    });
+    this.name = "TimezoneInvalidError";
+  }
+}

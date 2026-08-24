@@ -1,5 +1,8 @@
 import { DrizzleProviderPublicRepository } from "./infra/repositories/drizzle/provider-public.repository";
-import { ListPublicProvidersProjection } from "./app/use-cases/list-public-providers.projection";
+import {
+  ListProviderCityFacetsProjection,
+  ListPublicProvidersProjection,
+} from "./app/use-cases/list-public-providers.projection";
 import { GetPublicProviderProjection } from "./app/use-cases/get-public-provider.projection";
 import type { ProviderPublicModule } from "./graphql/handlers/queries.handlers";
 
@@ -13,6 +16,7 @@ export function bootstrapProviderPublic(): {
     useCases: {
       listProviders: new ListPublicProvidersProjection(providerPublicRepository),
       getProvider: new GetPublicProviderProjection(providerPublicRepository),
+      listCityFacets: new ListProviderCityFacetsProjection(providerPublicRepository),
     },
   };
 }

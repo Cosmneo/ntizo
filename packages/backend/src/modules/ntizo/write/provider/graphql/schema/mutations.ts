@@ -1,10 +1,29 @@
 import { z } from "zod";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { PROVIDER_STATUSES } from "@ntizo/shared";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 const providerIdResult = z.object({ providerId: z.string().min(1) });
 const okResult = z.object({ ok: z.literal(true) });
+
+/**
+ * Where the business is.
+ *
+ * Optional as a whole and optional field by field. The aggregate has always
+ * accepted an address; only this schema did not declare one, so the onboarding
+ * wizard had nowhere to send what it collected. Every part stays optional
+ * because a provider who works only at the customer's home has no premises to
+ * describe, and refusing to create them over a missing street would be refusing
+ * a legitimate business.
+ */
+const addressInput = z.object({
+  country: z.string().trim().length(2).optional(),
+  city: z.string().trim().max(120).optional(),
+  district: z.string().trim().max(120).optional(),
+  street: z.string().trim().max(200).optional(),
+  postalCode: z.string().trim().max(20).optional(),
+});
 
 export const createProvider = defineMutation({
   input: zodSchema(
@@ -13,6 +32,7 @@ export const createProvider = defineMutation({
       name: z.string().min(1),
       slug: z.string().min(1),
       description: z.string().optional(),
+      address: addressInput.optional(),
     }),
   ),
   output: zodSchema(providerIdResult),
@@ -25,6 +45,30 @@ export const updateProvider = defineMutation({
       providerId: z.string().min(1),
       name: z.string().min(1).optional(),
       description: z.string().optional(),
+      // Where this business is paid. `.nullable()` because clearing it has to
+      // be expressible — an optional-only field can say "leave it" but never
+      // "take it away".
+      payoutType: z.string().trim().max(40).nullable().optional(),
+      payoutIdentifier: z.string().trim().max(120).nullable().optional(),
+      // Keys, not URLs — the upload route hands back a key and the reader
+      // composes the URL from the public base, so a bucket or CDN move does
+      // not rewrite every row.
+      // `.nullable()`, because removing the logo has to be expressible.
+      // Optional alone means "leave it alone" and nothing else, so the remove
+      // button sent `null`, validation refused it, and the control could never
+      // have worked.
+      logoKey: z.string().max(300).nullable().optional(),
+      photoKeys: z.array(z.string().max(300)).max(24).optional(),
+      // The command has always accepted an address; only this schema did not
+      // declare one, which is why the settings page shipped with its address
+      // block greyed out under "temporarily unavailable". It was not
+      // temporary — nothing was going to change it but this line.
+      address: addressInput.optional(),
+      // Not validated for real IANA-ness here — `.min(1)` only rejects the
+      // empty string. `Provider.update` is what checks it against
+      // `Intl.DateTimeFormat` and throws `TIMEZONE_INVALID`; the aggregate is
+      // the one place that rule needs to live, not the transport schema.
+      timezone: z.string().min(1).optional(),
     }),
   ),
   output: zodSchema(okResult),
@@ -56,7 +100,9 @@ export const inviteProviderMember = defineMutation({
       role: z.enum(["admin", "staff"]),
     }),
   ),
-  output: zodSchema(z.object({ inviteId: z.string().min(1) })),
+  output: zodSchema(
+    z.object({ inviteId: z.string().min(1), emailSent: z.boolean() }),
+  ),
   docs: { summary: "Invite a member to a provider", tags: ["Provider"] },
 });
 
@@ -64,6 +110,15 @@ export const acceptProviderInvite = defineMutation({
   input: zodSchema(z.object({ token: z.string().min(1) })),
   output: zodSchema(providerIdResult),
   docs: { summary: "Accept a provider invite", tags: ["Provider"] },
+});
+
+export const declineProviderInvite = defineMutation({
+  input: zodSchema(z.object({ token: z.string().min(1) })),
+  // `declined: false` when somebody else resolved it first — revoked, accepted
+  // or expired. Not an error: the invitation is not going to happen either
+  // way, which is what the person asked for.
+  output: zodSchema(z.object({ declined: z.boolean() })),
+  docs: { summary: "Decline a provider invite", tags: ["Provider"] },
 });
 
 export const revokeProviderInvite = defineMutation({
@@ -78,7 +133,18 @@ export const removeProviderMember = defineMutation({
   input: zodSchema(
     z.object({ providerId: z.string().min(1), userId: z.string().min(1) }),
   ),
-  output: zodSchema(okResult),
+  // Beyond `ok`: the use case may unpublish services left with no performer
+  // by this removal, and the caller — an owner in a browser — has to be told
+  // which ones, not just that the call succeeded. Named back, not counted,
+  // so the owner can act on them instead of hunting through the catalogue.
+  output: zodSchema(
+    z.object({
+      ok: z.literal(true),
+      unpublishedServices: z.array(
+        z.object({ serviceId: z.string().min(1), name: z.string() }),
+      ),
+    }),
+  ),
   docs: { summary: "Remove a member from a provider", tags: ["Provider"] },
 });
 
@@ -94,6 +160,40 @@ export const updateProviderMemberRole = defineMutation({
   docs: { summary: "Change a member's role", tags: ["Provider"] },
 });
 
+/**
+ * Two administrator decisions, deliberately separate mutations.
+ *
+ * Approving a business and setting what it is charged are different acts with
+ * different consequences, and one mutation taking both would let a slip in the
+ * commission field ride along with an approval nobody meant to revisit.
+ *
+ * Which status moves are legal is not stated here: the aggregate owns that and
+ * the read hands the screen the list. Repeating it in the input schema would
+ * be a second copy of a rule that has to stay in step with the first.
+ */
+export const decideProviderStatus = defineMutation({
+  input: zodSchema(
+    z.object({
+      providerId: z.string().min(1),
+      status: z.enum(PROVIDER_STATUSES as [string, ...string[]]),
+    }),
+  ),
+  output: zodSchema(providerIdResult),
+  docs: { summary: "Approve, reject, suspend or archive a provider", tags: ["Admin"] },
+});
+
+export const setProviderCommission = defineMutation({
+  input: zodSchema(
+    z.object({
+      providerId: z.string().min(1),
+      /** Basis points. Bounded here as a contract; the aggregate enforces it. */
+      commissionBps: z.number().int().min(0).max(10_000),
+    }),
+  ),
+  output: zodSchema(providerIdResult),
+  docs: { summary: "Set a provider's commission", tags: ["Admin"] },
+});
+
 export const providerWriteSchema = defineGraphQLSchema(
   {
     provider: {
@@ -101,9 +201,17 @@ export const providerWriteSchema = defineGraphQLSchema(
       update: updateProvider,
       deactivate: deactivateProvider,
       registerMe: registerMeAsProvider,
+      // Nested under `admin` so the guard is visible from the field name. A
+      // reviewer scanning this tree should be able to see which mutations need
+      // one without opening the handler.
+      admin: {
+        decideStatus: decideProviderStatus,
+        setCommission: setProviderCommission,
+      },
       invites: {
         send: inviteProviderMember,
         accept: acceptProviderInvite,
+        decline: declineProviderInvite,
         revoke: revokeProviderInvite,
       },
       members: {

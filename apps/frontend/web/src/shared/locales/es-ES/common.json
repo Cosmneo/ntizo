@@ -30,5 +30,7 @@
   "themeSystem": "Sistema",
   "mainNavigation": "Navegación principal",
   "navExplore": "Explorar",
-  "navProfile": "Perfil"
+  "navProfile": "Perfil",
+  "createProvider": "Crear nuevo proveedor",
+  "activity": "Actividad"
 }

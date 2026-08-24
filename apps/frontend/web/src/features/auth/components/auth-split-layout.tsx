@@ -16,7 +16,12 @@ interface AuthSplitLayoutProps {
  * The layout itself is i18n-agnostic on purpose — `useTranslation` lives here,
  * in the app, so the UI package stays free of a react-i18next dependency.
  */
-export function AuthSplitLayout({ pitch, points, pointsAsList, children }: AuthSplitLayoutProps) {
+export function AuthSplitLayout({
+  pitch,
+  points,
+  pointsAsList,
+  children,
+}: AuthSplitLayoutProps) {
   const { t } = useTranslation("common");
   return (
     <SplitBrandLayout

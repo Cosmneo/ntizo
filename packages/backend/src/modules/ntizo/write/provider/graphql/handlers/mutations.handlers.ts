@@ -1,5 +1,10 @@
 import { graphqlRoutes } from "@cosmneo/onion-lasagna/graphql/server";
-import { asNtizoGraphqlContext } from "../../../../graphql/context";
+import { ForbiddenError } from "@cosmneo/onion-lasagna";
+import type { ProviderStatus } from "@ntizo/shared";
+import {
+  asNtizoGraphqlContext,
+  type NtizoGraphqlContext,
+} from "../../../../graphql/context";
 import type { ProviderBootstrap } from "../../../../bounded-contexts/provider/bootstrap";
 import type { ProviderWorkflowsBootstrap } from "../../../../orchestrations/workflows/provider/bootstrap";
 import type {
@@ -24,8 +29,8 @@ export interface ProviderWriteModule {
  */
 export function mapProviderInviteSendOutput(
   result: InviteProviderMemberOutput,
-): { inviteId: string } {
-  return { inviteId: result.inviteId };
+): { inviteId: string; emailSent: boolean } {
+  return { inviteId: result.inviteId, emailSent: result.emailSent };
 }
 
 /**
@@ -39,10 +44,41 @@ export function mapProviderInviteAcceptOutput(
   return { providerId: result.providerId };
 }
 
+/**
+ * Refuses anyone whose platform role is not `admin`.
+ *
+ * Both the id and the role: the context defaults an anonymous caller to
+ * `customer`, so a role check alone would be reading a value chosen for the
+ * absence of a user. This is the entire security surface of the two commands
+ * below — neither asserts ownership, because an administrator is not a member
+ * of the business they are deciding about.
+ */
+function requireAdmin(ctx: NtizoGraphqlContext): void {
+  if (!ctx.requesterUserId || ctx.role !== "admin") {
+    throw new ForbiddenError({
+      message: "Only administrators may decide about a provider",
+      code: "ADMIN_ONLY",
+    });
+  }
+}
+
 export function createProviderWriteHandlers(mod: ProviderWriteModule) {
   const uc = mod.provider.useCases;
 
   return graphqlRoutes(providerWriteSchema)
+    .handle("provider.admin.decideStatus", async (args, ctx) => {
+      const c = asNtizoGraphqlContext(ctx);
+      requireAdmin(c);
+      return uc.decideProviderStatus.execute(toExecutionContext(c), {
+        providerId: args.input.providerId,
+        status: args.input.status as ProviderStatus,
+      });
+    })
+    .handle("provider.admin.setCommission", async (args, ctx) => {
+      const c = asNtizoGraphqlContext(ctx);
+      requireAdmin(c);
+      return uc.setProviderCommission.execute(toExecutionContext(c), args.input);
+    })
     .handle("provider.create", async (args, ctx) =>
       uc.createProvider.execute(toExecutionContext(asNtizoGraphqlContext(ctx)), args.input),
     )
@@ -76,6 +112,12 @@ export function createProviderWriteHandlers(mod: ProviderWriteModule) {
       // boundary. See mapProviderInviteSendOutput.
       return mapProviderInviteSendOutput(result);
     })
+    .handle("provider.invites.decline", async (args, ctx) =>
+      uc.declineProviderInvite.execute(
+        toExecutionContext(asNtizoGraphqlContext(ctx)),
+        { token: args.input.token },
+      ),
+    )
     .handle("provider.invites.accept", async (args, ctx) => {
       const result = await uc.acceptProviderInvite.execute(
         toExecutionContext(asNtizoGraphqlContext(ctx)),
@@ -93,11 +135,15 @@ export function createProviderWriteHandlers(mod: ProviderWriteModule) {
       return { ok: true as const };
     })
     .handle("provider.members.remove", async (args, ctx) => {
-      await uc.removeProviderMember.execute(
+      const result = await uc.removeProviderMember.execute(
         toExecutionContext(asNtizoGraphqlContext(ctx)),
         args.input,
       );
-      return { ok: true as const };
+      // Carries `unpublishedServices` through — the use case already
+      // computes it (see `RemoveProviderMemberOutput`); this handler used to
+      // discard it here, so the domain rule fired but the owner was never
+      // told which service went dark.
+      return { ok: true as const, unpublishedServices: result.unpublishedServices };
     })
     .handle("provider.members.updateRole", async (args, ctx) => {
       await uc.updateProviderMemberRole.execute(

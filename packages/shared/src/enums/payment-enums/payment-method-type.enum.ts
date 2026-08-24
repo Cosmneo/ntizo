@@ -83,3 +83,14 @@ export function identifierKindFor(type: PaymentMethodType): PaymentIdentifierKin
       return PaymentIdentifierKind.ProcessorToken;
   }
 }
+
+/**
+ * Narrows an untrusted string to a `PaymentMethodType`.
+ *
+ * A guard rather than a cast, for the same reason `toUserRole` is one: nothing
+ * upstream constrains what arrives, and a cast would let an unknown method
+ * through to a payout that then fails at the gateway.
+ */
+export function isPaymentMethodType(value: string): value is PaymentMethodType {
+  return (Object.values(PaymentMethodType) as string[]).includes(value);
+}

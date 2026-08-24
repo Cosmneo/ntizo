@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { GENDERS, type CurrentUserDTO } from "@ntizo/shared";
-import { Button, Input, Label } from "@ntizo/frontend-ui";
+import { Button, DatePicker, Input, Label, Select } from "@ntizo/frontend-ui";
 import { useUpdateMyProfile } from "@/features/account/viewmodel/use-update-profile";
 
 /**
@@ -19,7 +19,7 @@ export function ProfileForm({
   user: CurrentUserDTO;
   onDone: () => void;
 }) {
-  const { t } = useTranslation("account");
+  const { t, i18n } = useTranslation("account");
   const update = useUpdateMyProfile();
 
   const form = useForm({
@@ -42,7 +42,9 @@ export function ProfileForm({
             // screen and the user emptied it, which is an instruction.
             bio: value.bio.trim() || null,
             dateOfBirth: value.dateOfBirth || null,
-            gender: value.gender ? (value.gender as (typeof GENDERS)[number]) : null,
+            gender: value.gender
+              ? (value.gender as (typeof GENDERS)[number])
+              : null,
           });
           toast.success(t("saved"));
           onDone();
@@ -67,7 +69,9 @@ export function ProfileForm({
       <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
         {(error) =>
           error ? (
-            <p className="type-body-medium text-[var(--color-destructive)]">{error.form}</p>
+            <p className="type-body-medium text-[var(--color-destructive)]">
+              {error.form}
+            </p>
           ) : null
         }
       </form.Subscribe>
@@ -118,11 +122,20 @@ export function ProfileForm({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={field.name}>{t("fieldDateOfBirth")}</Label>
-              <Input
+              <DatePicker
                 id={field.name}
-                type="date"
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={field.handleChange}
+                locale={i18n.resolvedLanguage ?? i18n.language}
+                // Nobody being born today is filling this in, and a date of
+                // birth in the future is not a typo worth accepting.
+                max={new Date().toISOString().slice(0, 10)}
+                placeholder={t("fieldDateOfBirthPlaceholder")}
+                todayLabel={t("datePickerToday")}
+                clearLabel={t("datePickerClear")}
+                monthLabel={t("datePickerMonth")}
+                yearLabel={t("datePickerYear")}
+                yearSearchPlaceholder={t("datePickerYearSearch")}
               />
             </div>
           )}
@@ -132,21 +145,22 @@ export function ProfileForm({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={field.name}>{t("fieldGender")}</Label>
-              <select
+              <Select
                 id={field.name}
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                className="type-body h-11 rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-              >
-                {/* Empty is "not answered", distinct from the "undisclosed"
-                    option below it, which is an answer. */}
-                <option value="">{t("notSet")}</option>
-                {GENDERS.map((g) => (
-                  <option key={g} value={g}>
-                    {t(`gender.${g}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={field.handleChange}
+                placeholder={t("notSet")}
+                options={[
+                  // Empty is "not answered", distinct from the "undisclosed"
+                  // option, which is an answer. Both are offered, because
+                  // clearing a field you filled in must be possible.
+                  { value: "", label: t("notSet") },
+                  ...GENDERS.map((g) => ({
+                    value: g,
+                    label: t(`gender.${g}`),
+                  })),
+                ]}
+              />
             </div>
           )}
         </form.Field>
@@ -168,7 +182,9 @@ export function ProfileForm({
       </form.Field>
 
       <div className="flex gap-3">
-        <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+        <form.Subscribe
+          selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+        >
           {([canSubmit, isSubmitting]) => (
             <Button type="submit" disabled={!canSubmit}>
               {isSubmitting ? t("saving") : t("save")}

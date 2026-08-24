@@ -59,7 +59,9 @@ export function LanguageDialog({
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-secondary)]">
             <Globe className="h-5 w-5 text-[var(--color-primary)]" />
           </span>
-          <h2 className="flex-1 pt-1.5 text-xl font-semibold">{t("language")}</h2>
+          <h2 className="flex-1 pt-1.5 text-xl font-semibold">
+            {t("language")}
+          </h2>
           <button
             type="button"
             onClick={() => onOpenChange(false)}

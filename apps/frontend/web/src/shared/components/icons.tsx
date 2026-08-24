@@ -10,13 +10,22 @@ export function NtizoLogo(props: { className?: string }) {
   );
 }
 
-export function NtizoIcon(props: { className?: string }) {
+/**
+ * The brand mark.
+ *
+ * Two files, one component. The variant matters more than it looks: the
+ * primary mark is navy, so on the brand-blue tile in the provider sidebar it
+ * rendered as a shape you could only make out by knowing it was there.
+ */
+export function NtizoMark({
+  className,
+  variant = "primary",
+}: {
+  className?: string;
+  variant?: "primary" | "white";
+}) {
   return (
-    <img
-      src="/brand/icon-primary.svg"
-      alt="Ntizo"
-      className={props.className}
-    />
+    <img src={`/brand/icon-${variant}.svg`} alt="Ntizo" className={className} />
   );
 }
 

@@ -9,10 +9,13 @@ import {
   SidebarMenuItem,
 } from "@ntizo/frontend-ui";
 import { providerNavGroups } from "@/shared/lib/navigation";
+import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 
 export function SidebarNav() {
   const { t } = useTranslation("provider");
   const { location } = useRouterState();
+  const { activeProvider } = useActiveProvider();
+  const slug = activeProvider?.slug;
 
   return (
     <>
@@ -23,7 +26,12 @@ export function SidebarNav() {
             <SidebarMenu>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.url);
+                // The template is what React Router matches on; the resolved
+                // path is what the current location is compared against.
+                const href = slug ? item.url.replace("$slug", slug) : null;
+                const isActive = href
+                  ? location.pathname.startsWith(href)
+                  : false;
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton
@@ -31,7 +39,7 @@ export function SidebarNav() {
                       isActive={isActive}
                       tooltip={t(item.titleKey)}
                     >
-                      <Link to={item.url}>
+                      <Link to={item.url} params={{ slug: slug ?? "" }}>
                         <Icon />
                         <span>{t(item.titleKey)}</span>
                       </Link>

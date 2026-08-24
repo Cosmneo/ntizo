@@ -15,3 +15,5 @@ export type {
   ProviderInviteRow,
   NewProviderInviteRow,
 } from "./provider-invite.schema";
+export * from "./provider-document.schema";
+export * from "./wallet.schema";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { UnauthorizedError } from "@cosmneo/onion-lasagna";
+import { ForbiddenError, UnauthorizedError } from "@cosmneo/onion-lasagna";
 import type { GraphQLHandlerContext } from "@cosmneo/onion-lasagna/graphql/server";
 import { userRoleSchema, type UserRole } from "@ntizo/shared";
 
@@ -78,4 +78,27 @@ export function requireRequesterUserId(ctx: NtizoGraphqlContext): string {
     });
   }
   return ctx.requesterUserId;
+}
+
+/**
+ * Throws unless the requester is a platform administrator.
+ *
+ * The authorization boundary for every admin-scoped field, kept here beside
+ * `requireRequesterUserId` rather than in the slices that use it — one place to
+ * read when the question is "who can reach this", and one place to change.
+ *
+ * `ForbiddenError`, not `UnauthorizedError`: an authenticated customer asking
+ * for an admin field is not a session problem, and answering "sign in" would
+ * send them round a loop that cannot help. The two also mean different things
+ * to the frontend, which retries one and not the other.
+ */
+export function requireAdminUserId(ctx: NtizoGraphqlContext): string {
+  const userId = requireRequesterUserId(ctx);
+  if (ctx.role !== "admin") {
+    throw new ForbiddenError({
+      message: "Administrator role required",
+      code: "FORBIDDEN",
+    });
+  }
+  return userId;
 }

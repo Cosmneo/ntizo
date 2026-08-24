@@ -77,6 +77,7 @@
     "PUSH": "Push"
   },
   "channelCosts": "may cost you",
+  "channelUnavailable": "nog niet beschikbaar",
   "bucket": {
     "REMINDERS": "Boekingsherinneringen",
     "REVIEWS": "Beoordelingsverzoeken",
@@ -106,6 +107,11 @@
   "addrLabelPlaceholder": "Thuis, Kantoor…",
   "addrCountry": "Land",
   "addrCity": "Stad",
+  "addrCityPlaceholder": "Begin de stad te typen",
+  "addrCityToggle": "Steden tonen",
+  "addrCityNoResults": "Geen stad gevonden",
+  "addrCityLoading": "Zoeken…",
+  "addrCityCredit": "Stadsgegevens van",
   "addrDistrict": "Wijk",
   "addrLine1": "Adres",
   "addrDirections": "Hoe je er komt",
@@ -116,10 +122,27 @@
   "addrDeleted": "Adres verwijderd",
   "edit": "Bewerken",
   "delete": "Verwijderen",
-  "country": {
-    "MZ": "Mozambique",
-    "PT": "Portugal",
-    "ZA": "Zuid-Afrika",
-    "BR": "Brazilië"
-  }
+  "fieldDateOfBirthPlaceholder": "Niet ingevuld",
+  "datePickerToday": "Vandaag",
+  "datePickerClear": "Wissen",
+  "languageSearchPlaceholder": "Taal zoeken",
+  "languageNoResults": "Geen taal gevonden",
+  "datePickerMonth": "Maand",
+  "datePickerYear": "Jaar",
+  "datePickerYearSearch": "Jaar zoeken",
+  "navLanguage": "Taal",
+  "appearance": "Weergave",
+  "appearanceBlurb": "De kleurmodus terwijl je Ntizo gebruikt.",
+  "appearanceLabel": "Thema",
+  "theme": {
+    "light": "Licht",
+    "dark": "Donker",
+    "system": "Systeem"
+  },
+  "addrPostalCode": "Postal code",
+  "activityTitle": "Activiteit",
+  "activityListTitle": "Recente activiteit",
+  "activityHint": "Wat je op Ntizo hebt gedaan.",
+  "activityEmptyTitle": "Nog geen activiteit",
+  "activityEmptyBody": "Je boekingen, berichten en betalingen verschijnen hier zodra ze plaatsvinden."
 }

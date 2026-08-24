@@ -4,18 +4,84 @@ import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { MapPin, Plus, Star, Trash2 } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
-import { Badge, Button, Input, Label } from "@ntizo/frontend-ui";
-import { useAddressMutations, useMyAddresses } from "@/features/account/viewmodel/use-addresses";
-import { EmptyState } from "@/features/account/ui/empty-state";
+import {
+  Badge,
+  Button,
+  CitySelect,
+  CountrySelect,
+  Input,
+  Label,
+  countryName,
+} from "@ntizo/frontend-ui";
+import {
+  useAddressMutations,
+  useMyAddresses,
+} from "@/features/account/viewmodel/use-addresses";
+import { useCities } from "@/features/account/viewmodel/use-cities";
+import { EmptyCard } from "@/shared/components/empty-card";
 
 /**
- * Country stays a two-letter code end to end.
+ * Bridges the city field to the gazetteer.
  *
- * A short list rather than all 245: these are the markets the platform
- * serves, and a picker of every country on earth is a worse experience than
- * one of the four somebody might plausibly need. It grows when a market does.
+ * Its own component because the query has to key off the country, and a hook
+ * cannot be called inside the `Subscribe` render prop that supplies it. The
+ * search term IS the field's value: the user is typing the city they want, and
+ * a separate query box for the same thing would be one box too many.
  */
-const COUNTRIES = ["MZ", "PT", "ZA", "BR"] as const;
+function CityField({
+  id,
+  country,
+  value,
+  onChange,
+}: {
+  id: string;
+  country: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const { t } = useTranslation("account");
+  const { cities, loading } = useCities(country, value);
+
+  return (
+    <CitySelect
+      id={id}
+      value={value}
+      onChange={onChange}
+      cities={cities}
+      loading={loading}
+      placeholder={t("addrCityPlaceholder")}
+      toggleLabel={t("addrCityToggle")}
+      noResultsText={t("addrCityNoResults")}
+      loadingText={t("addrCityLoading")}
+      required
+    />
+  );
+}
+
+/**
+ * Attribution for the city data.
+ *
+ * Not optional politeness: GeoNames ships under CC BY 4.0, and the licence
+ * requires crediting the source wherever the data is shown. It sits by the
+ * field it describes rather than in a page nobody opens.
+ */
+function CityDataCredit() {
+  const { t } = useTranslation("account");
+  return (
+    <p className="type-caption text-[var(--color-muted-foreground)]">
+      {t("addrCityCredit")}{" "}
+      <a
+        href="https://www.geonames.org/"
+        target="_blank"
+        rel="noreferrer noopener"
+        className="underline underline-offset-2"
+      >
+        GeoNames
+      </a>{" "}
+      (CC BY 4.0)
+    </p>
+  );
+}
 
 function AddressForm({
   initial,
@@ -36,7 +102,8 @@ function AddressForm({
   }) => Promise<void>;
   submitting: boolean;
 }) {
-  const { t } = useTranslation("account");
+  const { t, i18n } = useTranslation("account");
+  const { t: tc } = useTranslation("auth");
 
   const form = useForm({
     defaultValues: {
@@ -64,7 +131,9 @@ function AddressForm({
           });
           return null;
         } catch (error) {
-          return { form: error instanceof Error ? error.message : t("saveFailed") };
+          return {
+            form: error instanceof Error ? error.message : t("saveFailed"),
+          };
         }
       },
     },
@@ -81,7 +150,9 @@ function AddressForm({
       <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
         {(error) =>
           error ? (
-            <p className="type-body-medium text-[var(--color-destructive)]">{error.form}</p>
+            <p className="type-body-medium text-[var(--color-destructive)]">
+              {error.form}
+            </p>
           ) : null
         }
       </form.Subscribe>
@@ -106,18 +177,26 @@ function AddressForm({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={field.name}>{t("addrCountry")}</Label>
-              <select
+              {/* The same searchable list the phone field uses. A four-entry
+                  hardcoded select was wrong twice over: it named the markets
+                  we happen to serve today as the only places a customer can
+                  live, and it disagreed with the phone field about how a
+                  country is spelled. */}
+              <CountrySelect
                 id={field.name}
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                className="type-body h-11 rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-              >
-                {COUNTRIES.map((code) => (
-                  <option key={code} value={code}>
-                    {t(`country.${code}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={(code) => {
+                  field.handleChange(code);
+                  // The city suggestions belong to a country. Keeping the old
+                  // city after switching would leave "Maputo, Portugal" on
+                  // screen, which the user has to notice to fix.
+                  form.setFieldValue("city", "");
+                }}
+                locale={i18n.resolvedLanguage ?? i18n.language}
+                ariaLabel={t("addrCountry")}
+                searchPlaceholder={tc("countrySearchPlaceholder")}
+                noResultsText={tc("countryNoResults")}
+              />
             </div>
           )}
         </form.Field>
@@ -126,12 +205,16 @@ function AddressForm({
           {(field) => (
             <div className="grid gap-1.5">
               <Label htmlFor={field.name}>{t("addrCity")}</Label>
-              <Input
-                id={field.name}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                required
-              />
+              <form.Subscribe selector={(st) => st.values.country}>
+                {(country) => (
+                  <CityField
+                    id={field.name}
+                    country={country}
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                )}
+              </form.Subscribe>
             </div>
           )}
         </form.Field>
@@ -205,6 +288,8 @@ function AddressForm({
           {t("cancel")}
         </Button>
       </div>
+
+      <CityDataCredit />
     </form>
   );
 }
@@ -222,12 +307,15 @@ function AddressCard({
   onMakeDefault: () => void;
   busy: boolean;
 }) {
-  const { t } = useTranslation("account");
+  const { t, i18n } = useTranslation("account");
   const lines = [
     address.line1,
     address.line2,
     [address.district, address.city].filter(Boolean).join(", "),
-    t(`country.${address.country}`, { defaultValue: address.country }),
+    // Named by the platform, not by a `country.MZ` translation key. The picker
+    // offers every country there is, so a key-per-country table would need 245
+    // entries in each of the eight languages to stop this line reading "JP".
+    countryName(address.country, i18n.resolvedLanguage ?? i18n.language),
   ].filter(Boolean);
 
   return (
@@ -239,7 +327,9 @@ function AddressCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="type-h3 font-semibold">{address.label}</span>
-            {address.isDefault ? <Badge tone="info">{t("addrDefault")}</Badge> : null}
+            {address.isDefault ? (
+              <Badge tone="info">{t("addrDefault")}</Badge>
+            ) : null}
           </div>
           <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
             {lines.join(" · ")}
@@ -257,7 +347,12 @@ function AddressCard({
           {t("edit")}
         </Button>
         {!address.isDefault ? (
-          <Button variant="ghost" size="sm" onClick={onMakeDefault} disabled={busy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onMakeDefault}
+            disabled={busy}
+          >
             <Star className="h-4 w-4" />
             {t("addrMakeDefault")}
           </Button>
@@ -319,8 +414,9 @@ export function AddressesPage() {
       ) : null}
 
       {isPending ? null : addresses.length === 0 && editing === null ? (
-        <EmptyState
-          icon={<MapPin className="h-6 w-6" />}
+        <EmptyCard
+          framed
+          badge={MapPin}
           title={t("addressesEmptyTitle")}
           body={t("addressesEmptyBody")}
         />

@@ -77,6 +77,7 @@
     "PUSH": "Push"
   },
   "channelCosts": "may cost you",
+  "channelUnavailable": "pas encore disponible",
   "bucket": {
     "REMINDERS": "Rappels de réservation",
     "REVIEWS": "Demandes d'avis",
@@ -106,6 +107,11 @@
   "addrLabelPlaceholder": "Domicile, Bureau…",
   "addrCountry": "Pays",
   "addrCity": "Ville",
+  "addrCityPlaceholder": "Commencez à saisir la ville",
+  "addrCityToggle": "Afficher les villes",
+  "addrCityNoResults": "Aucune ville trouvée",
+  "addrCityLoading": "Recherche…",
+  "addrCityCredit": "Données des villes :",
   "addrDistrict": "Quartier",
   "addrLine1": "Adresse",
   "addrDirections": "Comment y arriver",
@@ -116,10 +122,27 @@
   "addrDeleted": "Adresse supprimée",
   "edit": "Modifier",
   "delete": "Supprimer",
-  "country": {
-    "MZ": "Mozambique",
-    "PT": "Portugal",
-    "ZA": "Afrique du Sud",
-    "BR": "Brésil"
-  }
+  "fieldDateOfBirthPlaceholder": "Non renseignée",
+  "datePickerToday": "Aujourd'hui",
+  "datePickerClear": "Effacer",
+  "languageSearchPlaceholder": "Rechercher une langue",
+  "languageNoResults": "Aucune langue trouvée",
+  "datePickerMonth": "Mois",
+  "datePickerYear": "Année",
+  "datePickerYearSearch": "Rechercher une année",
+  "navLanguage": "Langue",
+  "appearance": "Apparence",
+  "appearanceBlurb": "Mode de couleur utilisé pendant votre navigation sur Ntizo.",
+  "appearanceLabel": "Thème",
+  "theme": {
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système"
+  },
+  "addrPostalCode": "Postal code",
+  "activityTitle": "Activité",
+  "activityListTitle": "Activité récente",
+  "activityHint": "Ce que vous avez fait sur Ntizo.",
+  "activityEmptyTitle": "Aucune activité pour l’instant",
+  "activityEmptyBody": "Vos réservations, messages et paiements seront listés ici au fil de l’eau."
 }

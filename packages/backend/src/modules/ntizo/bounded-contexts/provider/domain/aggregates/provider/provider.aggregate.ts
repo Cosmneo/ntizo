@@ -7,6 +7,19 @@
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Address } from "../../value-objects/address.vo";
 import {
+  ProviderStatus as SharedProviderStatus,
+  canTransition,
+  isValidTimeZone,
+  PaymentDirection,
+  isPaymentMethodType,
+  supportsDirection,
+} from "@ntizo/shared";
+import {
+  InvalidPayoutDestinationError,
+  InvalidProviderStatusTransitionError,
+  TimezoneInvalidError,
+} from "../../exceptions";
+import {
   IndividualProviderCannotHaveMembersError,
   InsufficientProviderPermissionsError,
   NotProviderOwnerError,
@@ -14,11 +27,19 @@ import {
 import {
   ProviderCreated,
   ProviderDeactivated,
+  ProviderStatusDecided,
   ProviderUpdated,
 } from "../../events";
 
 export type ProviderType = "individual" | "organization";
-export type ProviderStatus = "pending" | "active" | "suspended" | "archived";
+/**
+ * Re-exported from the shared enum rather than declared here.
+ *
+ * The local union drifted: it carried `archived` and no `rejected`, so the
+ * domain could not express the decision an admin actually makes on a pending
+ * application.
+ */
+export type ProviderStatus = SharedProviderStatus;
 
 export interface ProviderProps {
   id: string;
@@ -27,11 +48,37 @@ export interface ProviderProps {
   name: string;
   slug: string;
   status: ProviderStatus;
+  payoutType: string | null;
+  payoutIdentifier: string | null;
   description?: string;
+  /**
+   * The customer-side platform fee on this provider's bookings, in basis
+   * points. Copied from the platform default at creation and kept, so the rate
+   * a business signed up under does not move when the default does.
+   *
+   * Never a deduction from the provider — they receive the price they quoted.
+   */
+  commissionBps: number;
+  /** R2 key of the logo, not a URL — see the schema for why. */
+  logoKey?: string;
+  /** R2 keys of the portfolio, in the order they should be shown. */
+  photoKeys?: string[];
   address?: Address;
+  /**
+   * Where this workspace's wall clock runs, an IANA name.
+   *
+   * Chosen explicitly on the availability screen — never derived from the
+   * address country, since a country can span several zones — and always
+   * present: the column defaults to `"Africa/Maputo"` and `create()` mirrors
+   * that so a freshly built aggregate matches a freshly inserted row.
+   */
+  timezone: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** The DB column's own default, mirrored here so `create()` without an explicit choice matches a fresh row. */
+const DEFAULT_TIMEZONE = "Africa/Maputo";
 
 export class Provider {
   private readonly _events: BaseDomainEvent[] = [];
@@ -52,6 +99,10 @@ export class Provider {
     slug: string;
     description?: string;
     address?: Address;
+    /** From the platform default. Required, so it cannot be forgotten. */
+    commissionBps: number;
+    /** Defaults to the DB column's own default when omitted. */
+    timezone?: string;
   }): Provider {
     const now = new Date();
     const provider = new Provider({
@@ -60,7 +111,18 @@ export class Provider {
       type: params.type,
       name: params.name,
       slug: params.slug,
-      status: "active",
+      commissionBps: params.commissionBps,
+      timezone: params.timezone ?? DEFAULT_TIMEZONE,
+      // An application, not a live business.
+      //
+      // Registering creates a workspace the owner can start filling in; it does
+      // not put them in front of customers. The public directory shows only
+      // `Active`, so nothing here is findable or bookable until an
+      // administrator decides — which is what makes the "verified" badge and
+      // the review queue mean anything.
+      status: SharedProviderStatus.Pending,
+      payoutType: null,
+      payoutIdentifier: null,
       description: params.description,
       address: params.address,
       createdAt: now,
@@ -102,6 +164,9 @@ export class Provider {
   get address() {
     return this.props.address;
   }
+  get timezone() {
+    return this.props.timezone;
+  }
   get createdAt() {
     return this.props.createdAt;
   }
@@ -135,23 +200,120 @@ export class Provider {
 
   // ---- mutations ---------------------------------------------------------
 
+  get commissionBps() {
+    return this.props.commissionBps;
+  }
+
+  /**
+   * Only an administrator reaches this.
+   *
+   * Separate from `update()` rather than another optional field on it: that
+   * method is what the provider's own settings page calls, and a rate they can
+   * set for themselves is not a rate. Keeping it out of that shape means the
+   * mistake cannot be made by adding a line to a form.
+   */
+  setCommissionByAdmin(bps: number): void {
+    if (!Number.isInteger(bps) || bps < 0 || bps > 10_000) {
+      throw new RangeError(`commissionBps out of range: ${bps}`);
+    }
+    this.props.commissionBps = bps;
+    this.props.updatedAt = new Date();
+    this._events.push(new ProviderUpdated({ providerId: this.props.id }));
+  }
+
+  /**
+   * Where this business is paid.
+   *
+   * Both together or neither: a method with no number and a number with no
+   * method are each half of an instruction, and storing half means the payout
+   * fails at the moment it matters instead of at the moment it was entered.
+   *
+   * A card is refused. Card networks push refunds back to the original charge,
+   * never to an arbitrary account, so "pay me on this Visa" is not a thing that
+   * can happen — `supportsDirection` already says so and this is where it is
+   * enforced rather than trusted to whichever form asked.
+   */
+  setPayoutDestination(type: string | null, identifier: string | null): void {
+    const t = type?.trim() || null;
+    const id = identifier?.trim() || null;
+    if ((t === null) !== (id === null)) {
+      throw new InvalidPayoutDestinationError(
+        "A payout destination needs both a method and an identifier",
+        "PAYOUT_INCOMPLETE",
+      );
+    }
+    if (t !== null) {
+      if (!isPaymentMethodType(t) || !supportsDirection(t, PaymentDirection.Payout)) {
+        throw new InvalidPayoutDestinationError(
+          `Not a payout-capable method: ${t}`,
+          "PAYOUT_METHOD_NOT_CAPABLE",
+        );
+      }
+    }
+    this.props.payoutType = t;
+    this.props.payoutIdentifier = id;
+    this.props.updatedAt = new Date();
+    this._events.push(new ProviderUpdated({ providerId: this.props.id }));
+  }
+
   update(params: {
     name?: string;
     description?: string;
     address?: Address;
+    /** `null` clears it; `undefined` leaves it alone. */
+    logoKey?: string | null;
+    photoKeys?: string[];
+    /** Chosen explicitly on the availability screen. Refused if not a real IANA zone. */
+    timezone?: string;
   }): void {
     if (params.name !== undefined) this.props.name = params.name;
     if (params.description !== undefined)
       this.props.description = params.description;
     if (params.address !== undefined) this.props.address = params.address;
+    // Distinguishing null from undefined is what lets the logo be *removed*.
+    // Treating both as "no change" would make the remove button do nothing.
+    if (params.logoKey !== undefined) this.props.logoKey = params.logoKey ?? undefined;
+    if (params.photoKeys !== undefined) this.props.photoKeys = params.photoKeys;
+    if (params.timezone !== undefined) {
+      // Checked here, not merely by the GraphQL schema's `.min(1)`: a
+      // non-empty string that is not a real IANA zone (`"Nowhere"`,
+      // `"UTC+2"`) would otherwise reach `provider.timezone` and break every
+      // slot the scheduling engine derives from it, silently, at read time
+      // rather than at the moment someone typed it.
+      if (!isValidTimeZone(params.timezone)) {
+        throw new TimezoneInvalidError(params.timezone);
+      }
+      this.props.timezone = params.timezone;
+    }
     this.props.updatedAt = new Date();
     this._events.push(new ProviderUpdated({ providerId: this.props.id }));
   }
 
   deactivate(): void {
-    this.props.status = "suspended";
+    this.props.status = SharedProviderStatus.Suspended;
     this.props.updatedAt = new Date();
     this._events.push(new ProviderDeactivated({ providerId: this.props.id }));
+  }
+
+  /**
+   * An administrator's decision about whether this business may trade.
+   *
+   * The legal moves live in the shared enum and are checked here rather than
+   * at the edge: the UI only offers legal ones, and the UI is not the thing
+   * that has to be right. Rejecting a business that already traded and
+   * suspending one that never did are both refused — they read the same to
+   * whoever clicks and mean different things afterwards.
+   */
+  decide(to: SharedProviderStatus, decidedByUserId: string): void {
+    const from = this.props.status;
+    if (!canTransition(from, to)) {
+      throw new InvalidProviderStatusTransitionError(from, to);
+    }
+    this.props.status = to;
+    this.props.updatedAt = new Date();
+    this._events.push(
+      new ProviderStatusDecided({ providerId: this.props.id, from, to, decidedByUserId }),
+    );
   }
 
   // ---- events ------------------------------------------------------------

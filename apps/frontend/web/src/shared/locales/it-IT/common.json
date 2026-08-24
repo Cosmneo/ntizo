@@ -30,5 +30,7 @@
   "themeSystem": "Sistema",
   "mainNavigation": "Navigazione principale",
   "navExplore": "Esplora",
-  "navProfile": "Profilo"
+  "navProfile": "Profilo",
+  "createProvider": "Crea nuovo operatore",
+  "activity": "Attività"
 }

@@ -2,14 +2,23 @@ import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Star } from "lucide-react";
+import { Skeleton } from "@ntizo/frontend-ui";
 import {
-  MOCK_CATEGORIES,
   MOCK_PROVIDERS,
   MOCK_STORIES,
   initialsOf,
 } from "@/features/landing/domain/mock-content";
+import { ScrollRail } from "./scroll-rail";
+import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
-import { ACCENT, BORDER, CARD, MUTED, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import {
+  ACCENT,
+  BORDER,
+  CARD,
+  MUTED,
+  NAVY,
+  PAGE_TOP,
+} from "@/features/landing/ui/palette";
 
 /**
  * The landing palette, exposed to the sections below as local custom
@@ -37,44 +46,119 @@ function Head({
   more?: { label: string; to: string };
 }) {
   return (
-    <div className="mb-9 flex items-end justify-between gap-8">
-      <div>
-        <h2 className="font-rounded text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h2>
-        <p className="mt-2 max-w-[54ch] text-[color:var(--l-muted)]">{blurb}</p>
+    <div className="mb-7 sm:mb-9">
+      {/* A notch smaller on a phone. At 30px these titles wrap to two lines
+          and the heading eats the screen before the cards it introduces. */}
+      <h2 className="font-rounded text-2xl font-extrabold tracking-tight sm:text-3xl md:text-4xl">
+        {title}
+      </h2>
+      {/* The link holds its place and the text wraps around it.
+          
+          Two earlier versions both moved it. `items-end` levelled it with the
+          blurb's *last* line, so it sat lower in a section whose text ran to
+          two lines. `flex-wrap` then let a long blurb push it onto a line of
+          its own, left-aligned — which is worse, because now it is in a
+          different place *and* on a different side.
+          
+          So: no wrapping, the blurb takes the space that is left
+          (`min-w-0 flex-1`) and wraps inside its own column, and the link is
+          `shrink-0` on the first baseline. It lands in the same spot in every
+          section at every width, which is the whole point of a section
+          heading being shared. */}
+      <div className="mt-2 flex items-baseline justify-between gap-x-6 sm:gap-x-8">
+        <p className="min-w-0 flex-1 max-w-[54ch] text-[color:var(--l-muted)]">
+          {blurb}
+        </p>
+        {more ? (
+          <Link
+            to={more.to}
+            className="font-rounded shrink-0 text-sm font-bold text-[color:var(--l-accent)] hover:underline"
+          >
+            {more.label}
+          </Link>
+        ) : null}
       </div>
-      {more ? (
-        <Link
-          to={more.to}
-          className="font-rounded shrink-0 text-sm font-bold text-[color:var(--l-accent)] hover:underline"
-        >
-          {more.label}
-        </Link>
-      ) : null}
     </div>
   );
 }
 
+/**
+ * The vertical rhythm between sections.
+ *
+ * Was a flat `py-20`, which is 160px of nothing between one section and the
+ * next — a quarter of a section's own height, on a page whose sections are
+ * 500-700px tall. The gap read as a mistake rather than as breathing room, and
+ * on a phone it meant scrolling past a screenful of empty page between every
+ * two things.
+ *
+ * Tighter on small screens on purpose: 160px is a third of a phone viewport
+ * and the same 160px is a seventh of a laptop's.
+ */
+const SECTION_PAD = "py-10 md:py-14";
+
+/** How many tiles the home page shows before "see all". */
+const LANDING_CATEGORIES = 4;
+
 export function Categories() {
   const { t } = useTranslation("landing");
+  // Real categories now, in the reader's language: the server resolves the
+  // name and falls back to the platform's own where a translation is missing,
+  // so switching language changes these the way it changes everything else.
+  // They used to be eight translation keys, which worked only for a list
+  // developers shipped — the point of the admin form is the ninth.
+  // Four, not all of them. The home page is an invitation to browse, and a
+  // rail of everything is a directory rendered where nobody came looking for
+  // one — "see all" is what leads to the full list.
+  const { data, isLoading } = useCategoryPreview(LANDING_CATEGORIES);
+  const rail = data?.items ?? [];
   return (
-    <section id="categorias" className="py-20">
+    <section id="categorias" className={SECTION_PAD}>
       <div className="page-shell">
         <Head
           title={t("categoriesTitle")}
           blurb={t("categoriesBlurb")}
-          more={{ label: t("seeAll"), to: "/providers" }}
+          more={{ label: t("seeAll"), to: "/categories" }}
         />
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
-          {MOCK_CATEGORIES.map((cat, i) => (
-            <Link key={cat.labelKey} to="/providers" className="group">
-              <SurfaceArt
-                seed={i + 1}
-                className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
-              />
-              <b className="font-rounded mt-3 block text-sm font-bold">{t(cat.labelKey)}</b>
-            </Link>
-          ))}
-        </div>
+        <ScrollRail columns={4} cardWidth="44%">
+          {isLoading
+            ? // As many placeholders as tiles that land, so the rail does not
+              // change height when they arrive.
+              Array.from({ length: LANDING_CATEGORIES }, (_, i) => (
+                <div key={i}>
+                  <Skeleton className="aspect-[16/11] w-full rounded-2xl" />
+                  <Skeleton className="mt-3 h-[17px] w-24" />
+                </div>
+              ))
+            : rail.map((cat, i) => (
+                <Link
+                  key={cat.id}
+                  // Plain, until the directory can filter by category. A link
+                  // carrying a parameter the page ignores is a control that
+                  // lies about being one.
+                  to="/providers"
+                  className="group"
+                >
+                  {cat.imageUrl ? (
+                    <img
+                      src={cat.imageUrl}
+                      alt=""
+                      className="aspect-[16/11] w-full rounded-2xl object-cover outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
+                    />
+                  ) : (
+                    // The generated art stays as the stand-in for a category
+                    // with no photograph yet — seeded by position, so the same
+                    // tile keeps the same pattern between visits.
+                    <SurfaceArt
+                      seed={i + 1}
+                      className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
+                    />
+                  )}
+                  <b className="font-rounded mt-3 block text-sm font-bold">
+                    {cat.name}
+                  </b>
+                </Link>
+              ))}
+        </ScrollRail>
       </div>
     </section>
   );
@@ -91,14 +175,14 @@ export function PopularProviders() {
   });
 
   return (
-    <section id="populares" className="bg-[color:var(--l-band)] py-20">
+    <section id="populares" className={`bg-[color:var(--l-band)] ${SECTION_PAD}`}>
       <div className="page-shell">
         <Head
           title={t("popularTitle")}
           blurb={t("popularBlurb")}
           more={{ label: t("seeAll"), to: "/providers" }}
         />
-        <div className="grid gap-6 md:grid-cols-3">
+        <ScrollRail columns={3}>
           {MOCK_PROVIDERS.map((p, i) => (
             <Link
               key={p.id}
@@ -121,7 +205,9 @@ export function PopularProviders() {
                     </span>
                   ) : null}
                 </div>
-                <span className="text-sm text-[color:var(--l-muted)]">{t(p.roleKey)}</span>
+                <span className="text-sm text-[color:var(--l-muted)]">
+                  {t(p.roleKey)}
+                </span>
                 <span className="flex items-center gap-1.5 text-sm tabular-nums">
                   <Star className="h-3.5 w-3.5 fill-[#f5a524] text-[#f5a524]" />
                   {rf.format(p.rating)}
@@ -129,7 +215,9 @@ export function PopularProviders() {
                     ({t("reviewCount", { count: p.reviews })})
                   </span>
                 </span>
-                <span className="text-sm text-[color:var(--l-muted)]">{p.city}</span>
+                <span className="text-sm text-[color:var(--l-muted)]">
+                  {p.city}
+                </span>
                 <span className="mt-1 text-sm">
                   {t("fromPrice")}{" "}
                   <b className="font-rounded font-extrabold tabular-nums">
@@ -139,7 +227,7 @@ export function PopularProviders() {
               </div>
             </Link>
           ))}
-        </div>
+        </ScrollRail>
       </div>
     </section>
   );
@@ -148,10 +236,10 @@ export function PopularProviders() {
 export function Stories() {
   const { t } = useTranslation("landing");
   return (
-    <section className="py-20">
+    <section className={SECTION_PAD}>
       <div className="page-shell">
         <Head title={t("storiesTitle")} blurb={t("storiesBlurb")} />
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <ScrollRail columns={4} className="md:grid-cols-2 lg:grid-cols-4">
           {MOCK_STORIES.map((s, i) => (
             <article
               key={s.id}
@@ -167,15 +255,22 @@ export function Stories() {
                 </span>
               </div>
               <div className="grid gap-1.5 p-4">
-                <span aria-hidden="true" className="tracking-[0.1em] text-[#f5a524]">
+                <span
+                  aria-hidden="true"
+                  className="tracking-[0.1em] text-[#f5a524]"
+                >
                   ★★★★★
                 </span>
-                <p className="text-sm text-[color:var(--l-muted)]">{t(s.quoteKey)}</p>
-                <span className="font-rounded mt-1 text-sm font-bold">{s.author}</span>
+                <p className="text-sm text-[color:var(--l-muted)]">
+                  {t(s.quoteKey)}
+                </p>
+                <span className="font-rounded mt-1 text-sm font-bold">
+                  {s.author}
+                </span>
               </div>
             </article>
           ))}
-        </div>
+        </ScrollRail>
       </div>
     </section>
   );
@@ -201,9 +296,14 @@ export function ProviderCall() {
           <h2 className="font-rounded mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
             {t("zeroFeeTitle")}
           </h2>
-          <p className="mx-auto mt-4 max-w-[48ch] text-white/75">{t("zeroFeeBody")}</p>
+          <p className="mx-auto mt-4 max-w-[48ch] text-white/75">
+            {t("zeroFeeBody")}
+          </p>
+          {/* The page, not the sign-up form. This block makes an offer;
+              sending someone straight to a password field answers a question
+              they have not asked yet. */}
           <Link
-            to="/sign-up"
+            to="/become-provider"
             className="font-rounded mt-8 inline-block rounded-full bg-[color:var(--l-accent)] px-9 py-4 font-extrabold text-white"
           >
             {t("zeroFeeCta")}

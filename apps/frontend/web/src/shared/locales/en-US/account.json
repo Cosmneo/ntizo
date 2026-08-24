@@ -77,6 +77,7 @@
     "PUSH": "Push"
   },
   "channelCosts": "may cost you",
+  "channelUnavailable": "not available yet",
   "bucket": {
     "REMINDERS": "Booking reminders",
     "REVIEWS": "Review requests",
@@ -106,6 +107,11 @@
   "addrLabelPlaceholder": "Home, Office…",
   "addrCountry": "Country",
   "addrCity": "City",
+  "addrCityPlaceholder": "Start typing a city",
+  "addrCityToggle": "Show cities",
+  "addrCityNoResults": "No city found",
+  "addrCityLoading": "Searching…",
+  "addrCityCredit": "City data from",
   "addrDistrict": "District",
   "addrLine1": "Street address",
   "addrDirections": "How to find it",
@@ -116,10 +122,27 @@
   "addrDeleted": "Address deleted",
   "edit": "Edit",
   "delete": "Delete",
-  "country": {
-    "MZ": "Mozambique",
-    "PT": "Portugal",
-    "ZA": "South Africa",
-    "BR": "Brazil"
-  }
+  "fieldDateOfBirthPlaceholder": "Not set",
+  "datePickerToday": "Today",
+  "datePickerClear": "Clear",
+  "languageSearchPlaceholder": "Search language",
+  "languageNoResults": "No language found",
+  "datePickerMonth": "Month",
+  "datePickerYear": "Year",
+  "datePickerYearSearch": "Search year",
+  "navLanguage": "Language",
+  "appearance": "Appearance",
+  "appearanceBlurb": "The colour mode used while you browse Ntizo.",
+  "appearanceLabel": "Theme",
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "addrPostalCode": "Postal code",
+  "activityTitle": "Activity",
+  "activityListTitle": "Recent activity",
+  "activityHint": "What you have done on Ntizo.",
+  "activityEmptyTitle": "No activity yet",
+  "activityEmptyBody": "Your bookings, messages and payments will be listed here as they happen."
 }

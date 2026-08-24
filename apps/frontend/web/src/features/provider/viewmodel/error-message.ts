@@ -30,9 +30,15 @@ export function providerErrorMessage(t: TFunction, error: unknown): string {
     if (key) return t(key, { ns: "provider" });
   }
   if (error instanceof Error) {
-    console.error("[provider] unmapped error, showing generic copy:", error.message);
+    console.error(
+      "[provider] unmapped error, showing generic copy:",
+      error.message,
+    );
   } else {
-    console.error("[provider] unmapped non-Error throw, showing generic copy:", error);
+    console.error(
+      "[provider] unmapped non-Error throw, showing generic copy:",
+      error,
+    );
   }
   return t(GENERIC_PROVIDER_ERROR_KEY, { ns: "provider" });
 }

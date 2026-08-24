@@ -8,6 +8,8 @@ import {
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { user, profile } from "../../../../../shared/infrastructure/database/user/schemas";
 import type { ProviderReadRepositoryPort } from "../../../app/ports/outbound/provider-read.repository.port";
+import { mediaUrl } from "../../../../../shared/infrastructure/media";
+import { listProviderDocuments } from "../../../../../shared/infrastructure/documents";
 
 /**
  * Read-side repository. Projects straight to read models — no aggregate
@@ -79,6 +81,8 @@ export class DrizzleProviderReadRepository implements ProviderReadRepositoryPort
       : [];
     const byId = new Map(people.map((p) => [p.id, p]));
 
+    const documents = await listProviderDocuments(providerId);
+
     const inviteRows = await getDb()
       .select({
         id: providerInvite.id,
@@ -96,6 +100,23 @@ export class DrizzleProviderReadRepository implements ProviderReadRepositoryPort
       type: row.type as ProviderDetailDTO["type"],
       status: row.status,
       description: row.description ?? null,
+      // Flat columns, reassembled. The table stores the Address VO spread
+      // across `address_*`; the read model gives it back as one object so the
+      // settings form has something shaped like the thing it edits.
+      address: {
+        street: row.addressStreet ?? null,
+        city: row.addressCity ?? null,
+        district: row.addressDistrict ?? null,
+        country: row.addressCountry ?? null,
+        postalCode: row.addressPostalCode ?? null,
+      },
+      // Keys become URLs here, at read time, so nothing stored has to change
+      // when the bucket or the CDN in front of it does. The key travels with
+      // its URL because the settings form shows one and saves the other.
+      logo: row.logoKey ? { key: row.logoKey, url: mediaUrl(row.logoKey) } : null,
+      photos: (row.photoKeys ?? []).map((key) => ({ key, url: mediaUrl(key) })),
+      documents,
+      reverificationRequestedAt: row.reverificationRequestedAt?.toISOString() ?? null,
       ownerUserId: row.ownerUserId,
       members: memberRows.map((m) => ({
         userId: m.userId,

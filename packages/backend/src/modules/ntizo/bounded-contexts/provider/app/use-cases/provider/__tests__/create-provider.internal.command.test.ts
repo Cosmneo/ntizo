@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+
+const walletRepo = { async createForProvider() {} };
+const settingsRepo = { async defaultCommissionBps() { return 1000; } };
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import type { ProviderListItemDTO } from "@ntizo/shared";
@@ -129,6 +132,8 @@ describe("CreateProviderInternalCommand — atomicity", () => {
     const command = new CreateProviderInternalCommand(
       providerRepo,
       memberRepo,
+      walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       new FakeOutboxPort(),
     );
@@ -165,6 +170,8 @@ describe("CreateProviderInternalCommand — events", () => {
     const command = new CreateProviderInternalCommand(
       providerRepo,
       memberRepo,
+      walletRepo as never,
+      settingsRepo as never,
       unitOfWork,
       outboxPort,
     );

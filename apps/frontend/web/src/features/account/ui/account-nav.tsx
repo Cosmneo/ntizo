@@ -2,27 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
-
-/**
- * The account sections, in the order they are used rather than alphabetically:
- * the profile first, then the things attached to it, then the settings, then
- * the legal text nobody opens twice.
- *
- * Documents are deliberately absent. Only a provider submits any, and a
- * provider's documents belong to their workspace, not to the person's account.
- */
-const SECTIONS = [
-  { to: "/account", key: "navProfile", exact: true },
-  { to: "/account/addresses", key: "navAddresses", exact: false },
-  { to: "/account/payment-methods", key: "navPaymentMethods", exact: false },
-  { to: "/account/security", key: "navSecurity", exact: false },
-  { to: "/account/preferences", key: "navPreferences", exact: false },
-  { to: "/account/notifications", key: "navNotifications", exact: false },
-  { to: "/account/legal", key: "navLegal", exact: false },
-] as const;
+import { accountSections } from "@/shared/lib/account-sections";
 
 export function AccountNav() {
   const { t } = useTranslation("account");
+  const sections = accountSections();
   const { t: ta } = useTranslation("auth");
   const signOut = useSignOut();
 
@@ -37,7 +21,7 @@ export function AccountNav() {
       className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-2"
     >
       <ul className="grid list-none gap-0.5 p-0">
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <li key={section.to}>
             <Link
               to={section.to}

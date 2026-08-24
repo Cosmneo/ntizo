@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { isSafeInternalPath } from "@/shared/lib/zones";
 import { useForm } from "@tanstack/react-form";
 import { Eye, EyeOff, UserPlus, MailCheck } from "lucide-react";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -25,6 +26,9 @@ import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
 export function SignUp() {
   const { t, i18n } = useTranslation("auth");
   const { t: tc } = useTranslation("common");
+  // Where to go once the address is verified. `strict: false` so this works
+  // whether or not the route declares the param.
+  const { next } = useSearch({ strict: false }) as { next?: string };
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
 
@@ -46,7 +50,8 @@ export function SignUp() {
         // Re-checked against the same library the server validates with, so
         // a number that passes here cannot be rejected there. `value.phone`
         // is already E.164 — PhoneInput emits nothing else.
-        if (!isValidPhoneNumber(value.phone)) return { form: t("invalidPhone") };
+        if (!isValidPhoneNumber(value.phone))
+          return { form: t("invalidPhone") };
         try {
           const { error } = await authClient.signUp.email({
             email: value.email,
@@ -60,7 +65,18 @@ export function SignUp() {
             // redirects here afterwards — without this the user lands on the
             // API's JSON root instead of the app. Origin-checked server-side
             // against trustedOrigins, which already includes this origin.
-            callbackURL: `${window.location.origin}/`,
+            //
+            // The path carries the intent through verification. Someone who
+            // arrived from "become a provider" comes back to `/onboarding`
+            // rather than the customer home — which is where the chain used to
+            // break: they registered, landed on `/`, and the thing they came to
+            // do was never offered again.
+            //
+            // Checked with `isSafeInternalPath` because this ends up in a URL a
+            // server redirects to, and an unchecked `next` is an open redirect.
+            callbackURL: `${window.location.origin}${
+              isSafeInternalPath(next ?? null) ? next : "/"
+            }`,
           } as Parameters<typeof authClient.signUp.email>[0]);
           if (error) return { form: error.message ?? "Sign up failed" };
           setSubmitted(value.email);
@@ -71,7 +87,10 @@ export function SignUp() {
           // normalize it the same way so the form always has a message to
           // show, instead of `.form` being undefined on a bare thrown value.
           return {
-            form: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+            form:
+              err instanceof Error
+                ? err.message
+                : "Something went wrong. Please try again.",
           };
         }
       },
@@ -96,7 +115,10 @@ export function SignUp() {
             <p className="text-sm text-[var(--color-muted-foreground)]">
               {t("verificationSent", { email: submitted })}
             </p>
-            <Link to="/sign-in" className="text-sm text-[var(--color-accent)] hover:underline">
+            <Link
+              to="/sign-in"
+              className="text-sm text-[var(--color-accent)] hover:underline"
+            >
               {t("backToSignIn")}
             </Link>
           </CardContent>
@@ -111,7 +133,9 @@ export function SignUp() {
         <CardContent className="flex flex-col gap-6 p-8">
           <div className="flex flex-col gap-1">
             <h1 className="text-xl font-semibold">{t("createYourAccount")}</h1>
-            <p className="text-sm text-[var(--color-muted-foreground)]">{t("fastAndFree")}</p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {t("fastAndFree")}
+            </p>
           </div>
 
           <form
@@ -223,9 +247,15 @@ export function SignUp() {
                     <InputGroupAddon align="inline-end">
                       <InputGroupButton
                         onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? t("hidePassword") : t("showPassword")}
+                        aria-label={
+                          showPassword ? t("hidePassword") : t("showPassword")
+                        }
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </InputGroupButton>
                     </InputGroupAddon>
                   </InputGroup>
@@ -246,12 +276,16 @@ export function SignUp() {
                     className="mt-0.5"
                     required
                   />
-                  <span className="text-[var(--color-muted-foreground)]">{t("acceptTerms")}</span>
+                  <span className="text-[var(--color-muted-foreground)]">
+                    {t("acceptTerms")}
+                  </span>
                 </label>
               )}
             </form.Field>
 
-            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+            <form.Subscribe
+              selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+            >
               {([canSubmit, isSubmitting]) => (
                 <Button type="submit" className="w-full" disabled={!canSubmit}>
                   <UserPlus className="h-4 w-4" />
@@ -273,7 +307,10 @@ export function SignUp() {
                 type="button"
                 variant="outline"
                 onClick={() =>
-                  authClient.signIn.social({ provider: "google", callbackURL: "/sign-in" })
+                  authClient.signIn.social({
+                    provider: "google",
+                    callbackURL: "/sign-in",
+                  })
                 }
               >
                 <GoogleIcon className="h-4 w-4" />
@@ -283,7 +320,10 @@ export function SignUp() {
                 type="button"
                 variant="outline"
                 onClick={() =>
-                  authClient.signIn.social({ provider: "microsoft", callbackURL: "/sign-in" })
+                  authClient.signIn.social({
+                    provider: "microsoft",
+                    callbackURL: "/sign-in",
+                  })
                 }
               >
                 <MicrosoftIcon className="h-4 w-4" />
@@ -294,7 +334,10 @@ export function SignUp() {
 
           <p className="text-center text-sm text-[var(--color-muted-foreground)]">
             {t("alreadyHaveAccount")}{" "}
-            <Link to="/sign-in" className="text-[var(--color-accent)] hover:underline">
+            <Link
+              to="/sign-in"
+              className="text-[var(--color-accent)] hover:underline"
+            >
               {t("signIn")}
             </Link>
           </p>

@@ -14,7 +14,12 @@ const listItem: ProviderListItemDTO = {
 
 const detail: ProviderDetailDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization", status: "active",
-  description: null, ownerUserId: "u1", members: [], invites: [],
+  description: null,
+  address: null,
+  logo: null,
+  photos: [],
+  documents: [],
+  reverificationRequestedAt: null, ownerUserId: "u1", members: [], invites: [],
 };
 
 function makeModule(calls: string[] = []) {
@@ -26,7 +31,9 @@ function makeModule(calls: string[] = []) {
         return [listItem];
       },
     },
-    getProviderDetail: {
+    listProvidersForAdmin: { async execute() { return []; } },
+    getProviderDetailForAdmin: { async execute() { return {}; } } as never,
+  getProviderDetail: {
       execute: async (input: { providerId: string; requestedByUserId: string }) => {
         calls.push(`detail:${input.providerId}:${input.requestedByUserId}`);
         return detail;
@@ -39,7 +46,9 @@ describe("createProviderReadHandlers", () => {
   it("builds a handler for every read field", () => {
     const handlers = createProviderReadHandlers(makeModule());
     expect(Array.isArray(handlers)).toBe(true);
-    expect(handlers.length).toBe(2);
+    // Three: the two member-scoped reads plus the admin queue.
+    // Four now: my list, my detail, the admin list and the admin detail.
+    expect(handlers.length).toBe(4);
   });
 
   it("stamps requestedByUserId from the session, never from args", async () => {

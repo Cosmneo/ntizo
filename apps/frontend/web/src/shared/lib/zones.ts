@@ -1,7 +1,5 @@
 import type { CurrentUserDTO } from "@ntizo/shared";
 
-export type Zone = "landing" | "provider" | "admin";
-
 const PROVIDER_ROLES: ReadonlySet<CurrentUserDTO["role"]> = new Set([
   "individual_provider",
   "organization_owner",
@@ -19,14 +17,26 @@ export function canAccessProvider(
   return providerCount > 0 || PROVIDER_ROLES.has(user.role);
 }
 
-export function accessibleZones(
-  user: CurrentUserDTO | null,
-  providerCount: number,
-): Zone[] {
-  const zones: Zone[] = ["landing"];
-  if (canAccessProvider(user, providerCount)) zones.push("provider");
-  if (canAccessAdmin(user)) zones.push("admin");
-  return zones;
+/**
+ * The zones that bring their own navigation.
+ *
+ * `/provider` and `/admin` each have a sidebar with its own trigger in the
+ * header, so the customer bottom bar on top of that is a second navigation
+ * offering four destinations that lead out of the zone you are working in.
+ */
+const OWN_CHROME = ["provider", "admin"];
+
+/**
+ * Whether this path belongs to a zone that draws its own navigation.
+ *
+ * Compared segment by segment rather than with `startsWith`, because
+ * `"/providers".startsWith("/provider")` is true — the public directory of
+ * businesses is a customer page and would lose its bottom bar to a prefix
+ * test.
+ */
+export function zoneOwnsChrome(pathname: string): boolean {
+  const [first] = pathname.split("/").filter(Boolean);
+  return first !== undefined && OWN_CHROME.includes(first);
 }
 
 /** True only for app-internal absolute paths ("/x"), never external URLs. */

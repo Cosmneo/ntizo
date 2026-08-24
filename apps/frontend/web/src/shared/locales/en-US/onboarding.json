@@ -1,0 +1,146 @@
+{
+  "back": "Back",
+  "continue": "Continue",
+  "type": {
+    "title": "How will you provide services?",
+    "description": "This decides how the calendar works and who does the work. You can change it later in settings.",
+    "individual": {
+      "title": "On your own",
+      "body": "You are the service. One calendar, your profile, your prices."
+    },
+    "organization": {
+      "title": "A business with staff",
+      "body": "Several people under one name, with bookings in parallel."
+    }
+  },
+  "identity": {
+    "title": {
+      "individual": "What should you be known as?",
+      "organization": "What is the business called?"
+    },
+    "description": "This is the name customers see in search results and on your page.",
+    "nameLabel": "Name",
+    "nameHint": "You can change it later. Your page's address is generated from it.",
+    "namePlaceholder": {
+      "individual": "e.g. João Matola — Plumbing",
+      "organization": "e.g. Salão Beleza Maputo"
+    },
+    "descriptionLabel": "Description",
+    "descriptionHint": "Optional. A sentence or two about what you do and for whom.",
+    "descriptionPlaceholder": "Household plumbing across Maputo and Matola, travel included."
+  },
+  "location": {
+    "title": "Where do you work?",
+    "description": "We use this to show you to customers near you. Your exact address never appears on your public page.",
+    "streetHint": "Optional. Leave it blank if you only work at the customer's.",
+    "postalCodeLabel": "Postal code (optional)",
+    "directionsHint": "Optional, and often the most useful line: a landmark beats a door number.",
+    "mapLabel": "Map for marking where you work",
+    "mapHint": "Tap the map or drag the pin to mark the spot — we fill the fields for you.",
+    "mapPicked": "Spot marked. Correct the fields below if anything is off."
+  },
+  "payout": {
+    "title": "How would you like to be paid?",
+    "description": "This is where your earnings go after each job is completed. You can deal with it later.",
+    "skip": "Do this later",
+    "method": {
+      "BANK_ACCOUNT": {
+        "title": "Bank account",
+        "body": "Transfer to your NIB or IBAN",
+        "identifierLabel": "NIB or IBAN",
+        "identifierHint": "No spaces"
+      },
+      "M_PESA": {
+        "title": "M-Pesa",
+        "body": "Vodacom mobile wallet",
+        "identifierLabel": "M-Pesa number",
+        "identifierHint": "With the country code, e.g. +258 84 123 4567"
+      },
+      "E_MOLA": {
+        "title": "e-Mola",
+        "body": "Movitel mobile wallet",
+        "identifierLabel": "e-Mola number",
+        "identifierHint": "With the country code, e.g. +258 86 123 4567"
+      }
+    }
+  },
+  "review": {
+    "title": "{{name}} is under review",
+    "body": "We will confirm who you are before showing you to customers. It usually takes a day or two, and we will email you.",
+    "meanwhile": {
+      "profile": "Fill in the business profile — photos, opening hours, service area",
+      "services": "Get your services and prices ready to publish",
+      "team": "Invite your team, if you have one"
+    },
+    "cta": "Go to the dashboard"
+  },
+  "error": {
+    "typeRequired": "Choose one of the two ways to provide.",
+    "nameRequired": "Enter the name you want to be known by.",
+    "countryRequired": "Choose the country.",
+    "cityRequired": "Enter the city where you work.",
+    "createFailed": "We could not create your business. Please try again."
+  },
+  "step": {
+    "type": "Business type",
+    "identity": "Your details",
+    "location": "Location",
+    "media": "Photos",
+    "payout": "Getting paid",
+    "documents": "Documents",
+    "review": "Under review"
+  },
+  "documents": {
+    "title": "We need to confirm who you are",
+    "description": "This is what makes the verified badge mean something — and what lets a customer let you into their home with confidence.",
+    "identity": {
+      "label": "Proof of identity",
+      "hint": "One of the three, not all three. A legible photo of both sides."
+    },
+    "type": {
+      "NATIONAL_ID": {
+        "label": "National ID (BI)",
+        "hint": ""
+      },
+      "DIRE": {
+        "label": "DIRE",
+        "hint": ""
+      },
+      "PASSPORT": {
+        "label": "Passport",
+        "hint": ""
+      },
+      "TAX_NUMBER": {
+        "label": "Tax number (NUIT)",
+        "hint": "Your NUIT certificate or card. It is what lets us pay you."
+      },
+      "BUSINESS_LICENCE": {
+        "label": "Business licence (Alvará)",
+        "hint": "The activity licence issued by your municipality."
+      },
+      "COMMERCIAL_REGISTRY": {
+        "label": "Commercial registry certificate",
+        "hint": "Carrying the establishment's NUEL."
+      }
+    },
+    "privacy": "Documents are used only for verification, held in private storage, and never appear on your public page.",
+    "skip": "Send later",
+    "upload": "Upload",
+    "remove": "Remove"
+  },
+  "status": {
+    "done": "Complete",
+    "active": "In progress",
+    "stepPrefix": "Step"
+  },
+  "alreadyProvider": "Already a provider? <a>Go to the dashboard</a>",
+  "media": {
+    "title": "Show customers your work",
+    "description": "A logo and a few photographs are the difference between a listing people scroll past and one they tap. You can add more at any time.",
+    "portfolioHint": "Photographs of finished work. These live on your business page — each service you create later gets photos of its own.",
+    "empty": "Add up to {{max}} to start with.",
+    "full": "That is {{max}} — plenty to start. Add the rest from settings.",
+    "later": "Nothing here is required to finish. Everything can be added or replaced later from your workspace settings.",
+    "skip": "Skip for now"
+  }
+}

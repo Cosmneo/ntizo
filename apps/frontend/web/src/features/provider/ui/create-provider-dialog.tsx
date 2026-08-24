@@ -12,6 +12,7 @@ import {
   Input,
   Label,
   Separator,
+  Select,
 } from "@ntizo/frontend-ui";
 import { slugify } from "../domain/slugify";
 import { providerErrorMessage } from "../viewmodel/error-message";
@@ -100,7 +101,8 @@ export function CreateProviderDialog({ open, onOpenChange, onCreated }: Props) {
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
-                    if (!slugTouched) form.setFieldValue("slug", slugify(e.target.value));
+                    if (!slugTouched)
+                      form.setFieldValue("slug", slugify(e.target.value));
                   }}
                 />
               </div>
@@ -125,14 +127,14 @@ export function CreateProviderDialog({ open, onOpenChange, onCreated }: Props) {
 
           <div className="flex flex-col gap-1.5">
             <Label>{t("type")}</Label>
-            <select
+            <Select
               value={type}
-              onChange={(e) => setType(e.target.value as ProviderType)}
-              className="h-10 rounded-md border border-[var(--color-input)] bg-[var(--color-background)] px-3 text-sm"
-            >
-              <option value="organization">{t("organization")}</option>
-              <option value="individual">{t("individual")}</option>
-            </select>
+              onChange={(next) => setType(next as ProviderType)}
+              options={[
+                { value: "organization", label: t("organization") },
+                { value: "individual", label: t("individual") },
+              ]}
+            />
           </div>
 
           <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
@@ -146,10 +148,16 @@ export function CreateProviderDialog({ open, onOpenChange, onCreated }: Props) {
           </form.Subscribe>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               {t("cancel", { ns: "common", defaultValue: "Cancel" })}
             </Button>
-            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+            <form.Subscribe
+              selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+            >
               {([canSubmit, isSubmitting]) => (
                 <Button type="submit" disabled={!canSubmit}>
                   {isSubmitting ? t("creating") : t("create")}

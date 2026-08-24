@@ -6,7 +6,11 @@ import {
   registerMe,
   updateProvider,
 } from "../data/provider.repository";
-import type { CreateProviderBody, RegisterMeBody, ProviderDetail } from "../domain/types";
+import type {
+  CreateProviderBody,
+  RegisterMeBody,
+  UpdateProviderBody,
+} from "../domain/types";
 
 export function useCreateProvider() {
   const qc = useQueryClient();
@@ -31,11 +35,12 @@ export function useRegisterMe() {
 export function useUpdateProvider(providerId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<Pick<ProviderDetail, "name" | "description" | "address">>) =>
-      updateProvider(providerId, body),
+    mutationFn: (body: UpdateProviderBody) => updateProvider(providerId, body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: providerQueries.mine().queryKey });
-      void qc.invalidateQueries({ queryKey: providerQueries.byId(providerId).queryKey });
+      void qc.invalidateQueries({
+        queryKey: providerQueries.byId(providerId).queryKey,
+      });
     },
   });
 }

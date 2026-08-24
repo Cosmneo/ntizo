@@ -1,14 +1,10 @@
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { Bell } from "lucide-react";
-import type { Zone } from "@/shared/lib/zones";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
-import { ZoneSwitcher } from "@/shared/components/zone-switcher";
+import { NotificationBellLink } from "@/shared/components/notification-bell-link";
 import { LanguageSwitcher } from "@/shared/components/language-switcher";
 import { UserMenu } from "@/shared/components/user-menu";
 
 interface HeaderActionsProps {
-  currentZone: Zone;
   /**
    * Rendered in place of the account cluster when nobody is signed in.
    *
@@ -37,8 +33,24 @@ interface HeaderActionsProps {
   onDark?: boolean;
 }
 
+/** The customer header's own styling for the shared bell link — a bare icon,
+ * not the provider shell's bordered square. `NotificationBellLink` fetches
+ * the count and composes the accessible name; this only supplies the look
+ * and the route. */
+function headerBellClassName(onDark: boolean): string {
+  return onDark
+    ? "rounded-full p-2 text-white/90 hover:bg-white/15"
+    : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]";
+}
+
 /**
  * The right-hand side of the top bar, in every zone.
+ *
+ * It carried a Cliente|Prestador segmented switch until every zone had its own
+ * navigation — a sidebar in the provider and admin zones, a top menu in the
+ * customer one. A control that duplicates the navigation beside it is one more
+ * thing to keep in step, and a second answer to a question the page already
+ * answers.
  *
  * The signed-out action shows until a session is known, rather than the
  * header staying empty while the query is in flight. That order matters on
@@ -48,35 +60,24 @@ interface HeaderActionsProps {
  * "Sign in" before their avatar arrives.
  */
 export function HeaderActions({
-  currentZone,
   signedOutAction,
   showAccount = true,
   onDark = false,
 }: HeaderActionsProps) {
-  const { t } = useTranslation("common");
   const { data: user } = useCurrentUser();
 
   return (
     <div className="flex items-center gap-2">
-      {user ? <ZoneSwitcher current={currentZone} /> : null}
       <LanguageSwitcher
         className={onDark ? "text-white/90 hover:bg-white/15" : undefined}
       />
       {!showAccount ? null : user ? (
         <>
-          {/* Inert until notifications exist. Kept because the header's
-              shape was designed around it; it opens nothing today. */}
-          <button
-            type="button"
-            aria-label={t("notifications")}
-            className={
-              onDark
-                ? "rounded-full p-2 text-white/90 hover:bg-white/15"
-                : "rounded-full p-2 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-            }
-          >
-            <Bell className="h-5 w-5" />
-          </button>
+          <NotificationBellLink
+            scope={{ kind: "mine" }}
+            to="/account/notifications"
+            className={headerBellClassName(onDark)}
+          />
           <UserMenu />
         </>
       ) : (
