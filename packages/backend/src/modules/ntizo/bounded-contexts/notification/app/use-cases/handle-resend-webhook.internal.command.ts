@@ -69,7 +69,16 @@ export class HandleResendWebhookInternalCommand {
     const reason = reasonFor(event);
     if (!reason) return { suppressed: false };
 
-    const recipients = event.data?.to ?? [];
+    // `Array.isArray`, not `?? []`: Resend's docs say `data.to` is an array,
+    // but nothing upstream of this command enforces that shape at runtime
+    // (Task 9's signature check gates the request, not the field). A bare
+    // string would still satisfy `?? []` and then `for...of` iterates it one
+    // character at a time — one `suppress()` call per character, none of them
+    // the real address, with no un-suppression path to undo the junk rows.
+    // Treating a non-array as no recipients is the same "do nothing" this
+    // command already does for other unexpected shapes.
+    const to = event.data?.to;
+    const recipients = Array.isArray(to) ? to : [];
     if (recipients.length === 0) return { suppressed: false };
 
     const detail = await this.enrichedDetail(event);

@@ -1219,3 +1219,32 @@ and stays that way.
 **Trigger:** the next change to `invite-provider-member.command.ts`, or the next
 time anyone is tempted to reach for `infraStore` from an app-layer use case
 because there is already precedent for it. The precedent is the bug.
+
+---
+
+## 52. Suppression keys are byte-exact, and nothing normalizes an email anywhere in the round trip
+
+`email_suppression.email` is `text("email").primaryKey()` with no
+case-folding, and neither the write side
+(`resend-email-service.adapter.ts:22`, which sends `message.to` verbatim) nor
+the webhook side
+(`handle-resend-webhook.internal.command.ts`'s `execute`, which suppresses
+each string in `event.data.to` verbatim) lowercases an address before it
+touches this table. That is fine today only because the round trip happens to
+be exact: whatever casing we sent is the casing Resend echoes back in
+`data.to` on the bounce/complaint webhook.
+
+If that round-trip ever stops being exact — Resend starts normalizing
+addresses before echoing them, a provider migration changes casing, a second
+email provider is added with different echo behavior — `ana@Ntizo.test`
+suppressed as stored would silently fail to match `ana@ntizo.test` looked up
+later (or vice versa), and there is no un-suppression path to notice the
+mismatch by, only a bounce that keeps recurring because the suppression never
+actually took.
+
+**Trigger:** this becomes worth fixing only if the round-trip is ever observed
+to not be exact — a second email provider, a Resend behavior change, or a
+support ticket about an address that keeps bouncing despite being
+"suppressed." Until then, lowercasing (or otherwise normalizing) on both the
+write and lookup sides is speculative generality for a problem that has not
+happened.

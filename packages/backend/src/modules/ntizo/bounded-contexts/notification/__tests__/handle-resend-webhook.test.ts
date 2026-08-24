@@ -103,6 +103,20 @@ describe("events that must not", () => {
     });
     expect(out.suppressed).toBe(false);
   });
+
+  it("ignores an event whose `to` is not an array", async () => {
+    // Resend's docs say `data.to` is an array. If a future shape drift ever
+    // sends a bare string instead, `for...of` over a string iterates one
+    // character at a time — without this guard that would call `suppress()`
+    // once per character while the real address goes unsuppressed, and there
+    // is no un-suppression path to undo the junk rows.
+    const out = await cmd.execute({
+      type: "email.bounced",
+      data: { to: "ana@ntizo.test" as unknown as string[], bounce: { type: "Permanent" } },
+    });
+    expect(out.suppressed).toBe(false);
+    expect(suppressions.calls).toEqual([]);
+  });
 });
 
 describe("R8: only an explicit Permanent suppresses", () => {
@@ -128,7 +142,11 @@ describe("R8: only an explicit Permanent suppresses", () => {
       expect(logged.mock.calls[0]![0]).toBe(
         "[handle-resend-webhook] bounce with unrecognized bounce.type",
       );
-      expect(logged.mock.calls[0]![1]).toEqual({
+      // toStrictEqual, not toEqual: Bun's `toEqual` treats a missing key the
+      // same as a key present with value `undefined`, so it would still pass
+      // if `bounceType: kind` were deleted from the logged object entirely —
+      // vacuous. toStrictEqual requires the key to actually be there.
+      expect(logged.mock.calls[0]![1]).toStrictEqual({
         type: "email.bounced",
         bounceType: undefined,
       });
@@ -145,7 +163,7 @@ describe("R8: only an explicit Permanent suppresses", () => {
         data: { to: ["ana@ntizo.test"], bounce: { type: "SoftBounced" } },
       });
       expect(out.suppressed).toBe(false);
-      expect(logged.mock.calls[0]![1]).toEqual({
+      expect(logged.mock.calls[0]![1]).toStrictEqual({
         type: "email.bounced",
         bounceType: "SoftBounced",
       });
@@ -182,16 +200,59 @@ describe("R7: best-effort correlation never blocks the suppression", () => {
     });
   });
 
-  it("still suppresses when the lookup throws — the lookup is best-effort, the suppression is not", async () => {
+  // The next three pin `detail` on every fallback path that returns
+  // `event.data ?? null` (no `email_id`, `email_id` present but unmatched,
+  // and the lookup throwing). `suppress()` is `ON CONFLICT DO NOTHING`, so a
+  // suppression is written exactly once, ever — a `detail` that silently
+  // became `null` on any of these paths is unrecoverable, and it is the
+  // *only* evidence a bounce investigation has for every address we cannot
+  // correlate back to a delivery row (see `email-suppression.schema.ts`'s own
+  // doc comment). Without these, a refactor collapsing any one of the three
+  // fallback returns to `return null` still leaves every test in this file
+  // green.
+  it("falls back to the raw event body as detail when there is no email_id to correlate", async () => {
+    const event = {
+      type: "email.bounced",
+      data: { to: ["ana@ntizo.test"], bounce: { type: "Permanent" } },
+    };
+    await cmd.execute(event);
+    expect(suppressions.calls[0]!.detail).toStrictEqual(event.data);
+  });
+
+  it("falls back to the raw event body as detail when email_id matches no delivery", async () => {
+    const event = {
+      type: "email.bounced",
+      data: {
+        to: ["ana@ntizo.test"],
+        email_id: "resend-unknown",
+        bounce: { type: "Permanent" },
+      },
+    };
+    await cmd.execute(event); // deliveries.byProviderMessageId is empty — no match
+    expect(suppressions.calls[0]!.detail).toStrictEqual(event.data);
+  });
+
+  it("still suppresses when the lookup throws, falls back to the raw event body as detail, and logs the failure", async () => {
     deliveries.throwOnLookup = true;
     const logged = spyOn(console, "error").mockImplementation(() => {});
     try {
-      const out = await cmd.execute({
+      const event = {
         type: "email.bounced",
-        data: { to: ["ana@ntizo.test"], email_id: "resend-123", bounce: { type: "Permanent" } },
-      });
+        data: {
+          to: ["ana@ntizo.test"],
+          email_id: "resend-123",
+          bounce: { type: "Permanent" },
+        },
+      };
+      const out = await cmd.execute(event);
       expect(out.suppressed).toBe(true);
       expect(suppressions.calls[0]).toMatchObject({ email: "ana@ntizo.test", reason: "bounce" });
+      expect(suppressions.calls[0]!.detail).toStrictEqual(event.data);
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(logged.mock.calls[0]![0]).toBe(
+        "[handle-resend-webhook] provider-message lookup failed",
+      );
+      expect(logged.mock.calls[0]![1]).toBeInstanceOf(Error);
     } finally {
       logged.mockRestore();
     }
