@@ -90,17 +90,27 @@ const BY_LOCALE: Record<string, Copy> = {
 export const welcomeTemplate: TemplateModule = {
   render(locale, payload) {
     const c = pickCopy(BY_LOCALE, locale);
-    const firstName = typeof payload["firstName"] === "string" ? payload["firstName"] : null;
+    const rawFirstName = typeof payload["firstName"] === "string" ? payload["firstName"] : null;
+
+    // `firstName` is typed by the person signing up, and `c.heading(...)`
+    // lands directly inside `emailLayout`'s `<h1>` — `emailLayout` interpolates
+    // `heading` raw, with no escaping of its own (see layout.ts). Escaped once,
+    // here, at the point it enters the template — the same point
+    // `team-invitation.template.ts` escapes `providerName`, for the same
+    // reason. `Copy.heading` builds our own words around the name, so escaping
+    // its *result* instead would mangle punctuation we wrote ourselves; escape
+    // the value, not the sentence.
+    const safeFirstName = rawFirstName ? escapeHtml(rawFirstName) : null;
     const appUrl = appBaseUrl();
 
     return {
       subject: c.subject,
       html: emailLayout({
-        heading: c.heading(firstName),
+        heading: c.heading(safeFirstName),
         bodyHtml: `<p style="font-size:14px;color:#333;line-height:1.5;">${escapeHtml(c.body)}</p>${buttonHtml(appUrl, c.cta)}`,
         disclaimer: c.disclaimer,
       }),
-      text: `${c.heading(firstName)}\n\n${c.body}\n\n${appUrl}`,
+      text: `${c.heading(rawFirstName)}\n\n${c.body}\n\n${appUrl}`,
     };
   },
 };

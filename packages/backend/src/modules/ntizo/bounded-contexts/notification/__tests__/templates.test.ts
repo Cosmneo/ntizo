@@ -97,3 +97,31 @@ describe("a type with no template", () => {
     expect(renderer.render(NotificationType.BookingConfirmed, "en-US", {})).toBeNull();
   });
 });
+
+describe("payload-derived text is escaped before it reaches HTML", () => {
+  // `emailLayout` interpolates `heading` raw into `<h1>` — it does no
+  // escaping of its own (read `layout.ts`; there is none). Every value a
+  // person or a provider typed that reaches a heading or body must therefore
+  // be escaped by the template before it gets there, or this exact payload
+  // becomes a live `onerror` handler inside an email sent from Ntizo's own
+  // domain, in a message the recipient has every reason to trust.
+  const XSS_PAYLOAD = '<img src=x onerror="alert(1)">';
+
+  it("escapes an attacker-shaped firstName in welcome's heading", async () => {
+    const out = (await withInfra(() =>
+      renderer.render(NotificationType.Welcome, "en-US", { firstName: XSS_PAYLOAD }),
+    ))!;
+    expect(out.html).not.toContain("<img");
+  });
+
+  it("escapes an attacker-shaped providerName in team-invitation's heading", async () => {
+    const out = (await withInfra(() =>
+      renderer.render(NotificationType.TeamInvitation, "en-US", {
+        providerId: "p1",
+        providerName: XSS_PAYLOAD,
+        role: "staff",
+      }),
+    ))!;
+    expect(out.html).not.toContain("<img");
+  });
+});
