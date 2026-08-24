@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createVerifiedUser } from "../fixtures/auth";
+import { sql } from "../fixtures/db";
 import { fillSignInForm } from "../fixtures/ui";
 
 /**
@@ -75,4 +76,64 @@ test("marking it read clears the badge", async ({ page }) => {
   // The dot is gone from the row, which is the assertion that survives a
   // refactor of the badge's polling interval.
   await expect(row).not.toHaveClass(/border-\[var\(--color-primary\)\]/);
+});
+
+/**
+ * The other half of that seam: the email.
+ *
+ * Everything about delivery is otherwise proven with fakes — a fake sender, a
+ * fake clock, an in-memory repository. This is the only place the whole chain
+ * runs against a real Worker and a real Postgres: sign-up commits,
+ * `runAfterCommit` dispatches `user.registered`, the handler raises, and the
+ * deferring adapter hands the actual send to `waitUntil`.
+ *
+ * **Polled, not asserted once.** Under `wrangler dev` there IS an execution
+ * context, so `infraStore.waitUntil` really does hand the work to the
+ * platform and it finishes AFTER the response to sign-up has been written.
+ * (Outside a Worker there is none, and `settleDeferredWork()` drains it inside
+ * the request instead — same row, different moment. Polling is what covers
+ * both without encoding either.) A single SELECT here would be a race the
+ * harness would lose often enough to look like flake and rarely enough to
+ * look like a bug.
+ *
+ * **Why exactly one row, `sent`, with no provider message id.** One row
+ * because `audience: "user"` resolves to a single recipient — the workspace
+ * fan-out that produces one delivery per member is a different audience.
+ * `sent` because this harness sets no `RESEND_API_KEY` and `STAGE` stays at
+ * wrangler.jsonc's `"local"`, so `resolveEmailService()` picks the console
+ * adapter, which prints the message and reports success. Its `messageId` is
+ * `null` — a real fact about a sender that hands back no reference, which
+ * `DeliverNotificationInternalCommand` stores unmodified rather than papering
+ * over with `""`. Asserting the whole row in one poll rather than counting
+ * first and reading second keeps it a single observation: a second query
+ * could see a different row than the one the count matched.
+ *
+ * The address is the one `createVerifiedUser` generated, not one this test
+ * chose. The fixture returns it, and `notification_delivery.to_email` is
+ * whatever `ntizo_user.user.email` holds — passing an address in would add a
+ * parameter to the fixture that tells this assertion nothing extra.
+ *
+ * No `resetDb()` here, deliberately: `globalSetup` resets once, and a second
+ * reset would drop the schemas out from under every spec running in parallel.
+ * Every row this reads is scoped to its own freshly-generated address anyway.
+ */
+test("registering also records the email it queued, per attempt", async ({ page }) => {
+  const user = await createVerifiedUser(undefined, { firstName: "Ana", lastName: "Registrant" });
+
+  await page.goto("/sign-in");
+  await fillSignInForm(page, user);
+  await page.waitForURL("http://localhost:3000/");
+
+  await expect
+    .poll(
+      async () => {
+        const rows = await sql()<{ status: string; provider_message_id: string | null }[]>`
+          SELECT status, provider_message_id
+          FROM ntizo_notification.notification_delivery
+          WHERE to_email = ${user.email}`;
+        return rows.map((r) => `${r.status}/${r.provider_message_id ?? "no-message-id"}`);
+      },
+      { timeout: 15_000, message: "expected exactly one delivery row for the new user" },
+    )
+    .toEqual(["sent/no-message-id"]);
 });

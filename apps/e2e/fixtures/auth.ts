@@ -1,6 +1,5 @@
-import postgres from "postgres";
 import type { UserRole } from "@ntizo/shared";
-import { E2E_DB_URL } from "./db";
+import { sql } from "./db";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8788";
 
@@ -34,21 +33,6 @@ export interface VerifiedUser {
   firstName: string;
   lastName: string;
   name: string;
-}
-
-let sqlClient: postgres.Sql | undefined;
-
-function sql(): postgres.Sql {
-  sqlClient ??= postgres(E2E_DB_URL, { max: 1 });
-  return sqlClient;
-}
-
-/** Closes this fixture's own DB connection. Call from a global teardown so the process can exit. */
-export async function closeAuthDb(): Promise<void> {
-  if (sqlClient) {
-    await sqlClient.end({ timeout: 5 });
-    sqlClient = undefined;
-  }
 }
 
 /**
