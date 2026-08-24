@@ -2297,12 +2297,16 @@ export class HandleResendWebhookInternalCommand {
 function reasonFor(event: ResendWebhookEvent): "bounce" | "complaint" | null {
   if (event.type === "email.complained") return "complaint";
   if (event.type !== "email.bounced") return null;
-  // Absent `bounce.type` is treated as permanent: Resend has sent the shape
-  // both ways across versions, and a missed suppression costs sender
-  // reputation while a wrong one costs one recipient. Neither is free; this
-  // is the cheaper mistake.
+  // SUPERSEDED BY RULING R8 — do not restore the line below. Only an
+  // explicit "Permanent" suppresses. Transient, Undetermined, absent and
+  // anything unrecognized do NOT, and the absent/unrecognized case is
+  // logged. The asymmetry that settles it: there is no un-suppression path
+  // in this system, so a wrong suppression loses a real recipient forever
+  // while a missed one costs sender reputation, which recovers. The shipped
+  // code is handle-resend-webhook.internal.command.ts; trust it over this.
+  //   WAS: return kind === undefined || kind === "Permanent" ? "bounce" : null;
   const kind = event.data?.bounce?.type;
-  return kind === undefined || kind === "Permanent" ? "bounce" : null;
+  return kind === "Permanent" ? "bounce" : null;
 }
 ```
 
@@ -2328,9 +2332,10 @@ lose a real recipient forever over a week they were away, and there is no
 un-suppression path to rescue them. Silent and unrecoverable, so the
 check is explicit rather than 'any bounce'. Break-checked.
 
-An absent bounce.type is read as permanent. A missed suppression costs
-sender reputation; a wrong one costs one recipient. Neither is free and
-this is the cheaper mistake.
+Only an explicit Permanent suppresses (ruling R8). Transient,
+Undetermined, absent and unrecognized do not, and the last two are
+logged. There is no un-suppression path here: a wrong suppression loses
+a real recipient forever, a missed one costs reputation that recovers.
 
 An unknown event type is a no-op. Providers add events without asking,
 and a route that throws on one gets retried until they give up."
