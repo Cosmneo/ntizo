@@ -90,7 +90,10 @@ export class DeliverNotificationInternalCommand {
 
       if (await this.suppressions.isSuppressed(recipient.email)) {
         // Recorded, not skipped. "We refused to write here" is a fact somebody
-        // investigating a missing email needs to find.
+        // investigating a missing email needs to find. The `await` here is
+        // load-bearing: without it, a rejection from `save` would return as
+        // a rejected promise rather than throw inside this try, and escape
+        // uncaught instead of being caught below.
         return await this.deliveries.save(
           NotificationDelivery.suppressed({
             notificationId: input.notificationId,
@@ -109,34 +112,53 @@ export class DeliverNotificationInternalCommand {
       });
       const id = await this.deliveries.save(queued);
 
+      let sent: { messageId: string | null };
       try {
-        const { messageId } = await this.sender.sendEmail({
+        sent = await this.sender.sendEmail({
           to: [recipient.email],
           subject: rendered.subject,
           htmlBody: rendered.html,
           textBody: rendered.text,
         });
-        // Passed through unmodified, null included. A null id is a real fact
-        // — "this provider sent it but didn't hand back a reference" — not a
-        // missing value to paper over with "". `notification_delivery_message_idx`
-        // is a partial index on `provider_message_id IS NOT NULL`; storing ""
-        // would put every such delivery in it under the same key and make
-        // findByProviderMessageId("") return "whichever is newest" instead of
-        // "not found".
-        await this.deliveries.update(id, queued.markSent(messageId));
       } catch (error) {
+        // The send itself is what failed: nothing went out, so `failed` is
+        // an honest status here, and the one that invites the retry the
+        // aggregate's own doc says a `failed` delivery should invite.
         const message = error instanceof Error ? error.message : String(error);
         await this.deliveries.update(id, queued.markFailed(message));
+        return id;
       }
+
+      // The email is already out — a failure from here on is not a failure
+      // to send. If this update itself throws (a connection dropping between
+      // the send and the write is ordinary), marking the row `failed` would
+      // be a false record, and a worse one than a missing update: `failed`
+      // means "this did not send" and would invite somebody to resend an
+      // email its recipient already has. Left `queued`, the row says the one
+      // honest thing available — "we do not know what became of this" — and
+      // the outer catch below logs the update's own error.
+      //
+      // The id is also passed through unmodified, null included. A null id
+      // is a real fact — "this provider sent it but didn't hand back a
+      // reference" — not a missing value to paper over with "".
+      // `notification_delivery_message_idx` is a partial index on
+      // `provider_message_id IS NOT NULL`; storing "" would put every such
+      // delivery in it under the same key and make
+      // findByProviderMessageId("") return "whichever is newest" instead of
+      // "not found".
+      await this.deliveries.update(id, queued.markSent(sent.messageId));
 
       return id;
     } catch (error) {
       // Everything above this line — the render, the suppression check,
-      // `save` itself — can throw for reasons that have nothing to do with
-      // this recipient's email being deliverable: a dropped connection, a
-      // query timeout. One recipient's infrastructure failure must not cost
-      // every other recipient in the loop their delivery, so it's caught
-      // here rather than only around the send.
+      // `save` itself, and the post-send `update` — can throw for reasons
+      // that have nothing to do with this recipient's email being
+      // deliverable: a dropped connection, a query timeout. One recipient's
+      // infrastructure failure must not cost every other recipient in the
+      // loop their delivery, so it's caught here rather than only around
+      // the send. When it's the post-send `update` that throws, this id
+      // never makes it into `deliveryIds` even though the email genuinely
+      // went out — logging here is all there is for that case too.
       //
       // Honest limit: when `deliveries.save` itself is what throws, there is
       // no row to record the failure on — the row *is* the recording

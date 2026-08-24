@@ -102,10 +102,15 @@ describe("a personal notification", () => {
   it("writes the row before attempting, then updates it", async () => {
     await cmd.execute(personal);
     expect(deliveries.saved[0]!.status).toBe("queued");
-    // toMatchObject, not toEqual: the update also carries the provider's
-    // message id (see "a provider message id" below), which isn't this
-    // test's concern.
-    expect(deliveries.updates[0]).toMatchObject({ id: "d1", status: "sent" });
+    // The real id, not just its presence: a regression that dropped the
+    // provider's message id on the floor (e.g. `markSent(null)` no matter
+    // what came back) would still pass a looser assertion here, and the id
+    // is the only thing a bounce webhook has to find this row again by.
+    expect(deliveries.updates[0]).toEqual({
+      id: "d1",
+      status: "sent",
+      providerMessageId: "msg1",
+    });
   });
 
   it("writes in the recipient's own language", async () => {
@@ -173,6 +178,19 @@ describe("an address we must not write to", () => {
     // the difference between what we tried and what we refused.
     expect(deliveries.updates).toEqual([]);
   });
+
+  it("does not throw when recording the refusal itself fails", async () => {
+    // The `return await this.deliveries.save(...)` on the suppressed path
+    // has to actually await: a bare `return this.deliveries.save(...)`
+    // returns the rejected promise without it ever throwing inside
+    // deliverOne's try, so the rejection would escape uncaught. This is the
+    // test that goes red if that `await` is ever "simplified" away.
+    suppressions.suppressed.add("ana@ntizo.test");
+    deliveries.save = async () => {
+      throw new Error("suppression row insert failed");
+    };
+    await expect(cmd.execute(personal)).resolves.toEqual({ deliveryIds: [] });
+  });
 });
 
 describe("a type with no template", () => {
@@ -202,6 +220,24 @@ describe("a provider message id", () => {
     };
     await cmd.execute(personal);
     expect(deliveries.updates[0]).toMatchObject({ status: "sent", providerMessageId: null });
+  });
+});
+
+describe("an email that sent but couldn't be recorded", () => {
+  it("does not mark it failed just because the recording update failed", async () => {
+    // The send already succeeded by the time this update runs. Marking the
+    // row `failed` here would be a false record — worse than a missing one,
+    // since `failed` means "did not send" and invites a resend of an email
+    // its recipient already has. It stays `queued`: the honest "we don't
+    // know what happened", visible to whoever reads the row, with the
+    // update's own error only logged.
+    deliveries.update = async () => {
+      throw new Error("connection dropped after send");
+    };
+    const out = await cmd.execute(personal);
+    expect(out.deliveryIds).toEqual([]);
+    expect(deliveries.saved[0]!.status).toBe("queued");
+    expect(deliveries.updates).toEqual([]);
   });
 });
 
