@@ -65,7 +65,11 @@ const NL: Copy = {
   disclaimer: "Je ontvangt dit bericht omdat er een aanbieder-werkruimte is aangemaakt met dit adres.",
 };
 
-const BY_LOCALE: Record<string, Copy> = {
+// Exported so templates.test.ts can assert on the table directly.
+// pickCopy() falls back gracefully (exact locale, then language-only,
+// then English) — a table silently missing a key would still render,
+// quietly in English, and "renders in every locale" would not catch it.
+export const BY_LOCALE: Record<string, Copy> = {
   "en-US": EN,
   "pt-MZ": PT,
   "pt-PT": PT,

@@ -4,6 +4,11 @@ import { infraStore } from "../../../../../shared/infrastructure/stores/infra-st
 import { TEMPLATE_LOCALES } from "../infrastructure/templates/copy";
 import { TEMPLATE_REGISTRY } from "../infrastructure/templates/registry";
 import { LocalTemplateRenderer } from "../infrastructure/outbound-adapters/template-renderer.adapter";
+import { BY_LOCALE as WELCOME_BY_LOCALE } from "../infrastructure/templates/welcome.template";
+import { BY_LOCALE as PROVIDER_WORKSPACE_WELCOME_BY_LOCALE } from "../infrastructure/templates/provider-workspace-welcome.template";
+import { BY_LOCALE as PROVIDER_VERIFIED_BY_LOCALE } from "../infrastructure/templates/provider-verified.template";
+import { BY_LOCALE as PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE } from "../infrastructure/templates/provider-documents-required.template";
+import { BY_LOCALE as TEAM_INVITATION_BY_LOCALE } from "../infrastructure/templates/team-invitation.template";
 
 const renderer = new LocalTemplateRenderer();
 
@@ -124,4 +129,44 @@ describe("payload-derived text is escaped before it reaches HTML", () => {
     ))!;
     expect(out.html).not.toContain("<img");
   });
+
+  it("escapes an attacker-shaped role in team-invitation's body", async () => {
+    // `c.roles[role] ?? role` falls back to the raw payload string for a
+    // role outside the "owner" | "admin" | "staff" dictionary. Unreachable
+    // through today's producer (`ProviderInviteRole` is a closed union
+    // upstream), but `TemplateRendererPort` documents `payload` as
+    // unconstrained by design, so the fallback branch is real code, not
+    // dead code, and needs its own guard against exactly this payload.
+    const out = (await withInfra(() =>
+      renderer.render(NotificationType.TeamInvitation, "en-US", {
+        providerId: "p1",
+        providerName: "Salão X",
+        role: XSS_PAYLOAD,
+      }),
+    ))!;
+    expect(out.html).not.toContain("<img");
+  });
+});
+
+describe("every template's locale table actually has all eight keys", () => {
+  // `pickCopy` falls back gracefully — exact locale, then language-only,
+  // then English — so a `BY_LOCALE` table silently missing a key would still
+  // render: non-empty output, no placeholder, quietly English. "every
+  // template renders in every locale" above calls `render()`, which goes
+  // through that fallback, so it cannot see the gap it would paper over.
+  // This asserts on the table itself, the one place a missing locale would
+  // actually show up.
+  const TABLES: Record<string, Record<string, unknown>> = {
+    [NotificationType.Welcome]: WELCOME_BY_LOCALE,
+    [NotificationType.ProviderWorkspaceWelcome]: PROVIDER_WORKSPACE_WELCOME_BY_LOCALE,
+    [NotificationType.ProviderVerified]: PROVIDER_VERIFIED_BY_LOCALE,
+    [NotificationType.ProviderDocumentsRequired]: PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE,
+    [NotificationType.TeamInvitation]: TEAM_INVITATION_BY_LOCALE,
+  };
+
+  for (const [type, table] of Object.entries(TABLES)) {
+    it(`${type}'s BY_LOCALE has exactly the eight shipped locales`, () => {
+      expect(Object.keys(table).sort()).toEqual([...TEMPLATE_LOCALES].sort());
+    });
+  }
 });

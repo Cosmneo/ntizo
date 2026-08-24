@@ -82,7 +82,11 @@ const NL: Copy = {
   unnamedWorkspace: "een werkruimte",
 };
 
-const BY_LOCALE: Record<string, Copy> = {
+// Exported so templates.test.ts can assert on the table directly.
+// pickCopy() falls back gracefully (exact locale, then language-only,
+// then English) — a table silently missing a key would still render,
+// quietly in English, and "renders in every locale" would not catch it.
+export const BY_LOCALE: Record<string, Copy> = {
   "en-US": EN,
   "pt-MZ": PT,
   "pt-PT": PT,
@@ -118,6 +122,12 @@ export const teamInvitationTemplate: TemplateModule = {
         ? payload["providerName"]
         : c.unnamedWorkspace;
     const role = typeof payload["role"] === "string" ? payload["role"] : "staff";
+    // Looked up in our own dictionary, so `roleWord` is safe today — but the
+    // lookup has a fallback to the raw payload string (`?? role`), and
+    // `TemplateRendererPort` documents `payload` as unconstrained by design.
+    // Escaped for the same reason `providerName` is: not because the closed
+    // `"admin" | "staff"` union upstream can reach it now, but because
+    // nothing here enforces that it never will.
     const roleWord = c.roles[role] ?? role;
     const signInUrl = `${appBaseUrl()}/sign-in`;
 
@@ -127,8 +137,12 @@ export const teamInvitationTemplate: TemplateModule = {
     // reason ("A business called `<b>` must not become markup somebody else
     // wrote"). Escaped once, here, before it reaches the copy functions below
     // — those are not escaped again, so an already-escaped "&lt;" cannot turn
-    // into "&amp;lt;".
+    // into "&amp;lt;". `safeRoleWord` gets the same treatment, for the same
+    // reason: it is the other payload-derived value this template
+    // interpolates, and escaping one and not the other is exactly the gap
+    // `firstName` in `welcome.template.ts` left open.
     const safeName = escapeHtml(rawName);
+    const safeRoleWord = escapeHtml(roleWord);
 
     return {
       // Plain text, not markup, like every other template's subject here —
@@ -136,7 +150,7 @@ export const teamInvitationTemplate: TemplateModule = {
       subject: c.subject(rawName),
       html: emailLayout({
         heading: c.heading(safeName),
-        bodyHtml: `<p style="font-size:14px;color:#333;line-height:1.5;">${c.body(safeName, roleWord)}</p>${buttonHtml(signInUrl, c.cta)}`,
+        bodyHtml: `<p style="font-size:14px;color:#333;line-height:1.5;">${c.body(safeName, safeRoleWord)}</p>${buttonHtml(signInUrl, c.cta)}`,
         disclaimer: c.disclaimer,
       }),
       text: `${c.heading(rawName)}\n\n${c.body(rawName, roleWord)}\n\n${signInUrl}`,
