@@ -31,13 +31,58 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    # Five test files assert against a real Postgres rather than a mocked
+    # Drizzle, and say why in their own headers: a CHECK constraint nobody
+    # exercises is a CHECK that might not be on the table, and a LEFT JOIN that
+    # silently drops rows is invisible to any mock. They read `DEV_DB_URL` and
+    # throw at module load when it is unset — so before this service existed,
+    # every one of them failed here while passing on a developer's machine,
+    # and CI verified none of the schema it claims to gate.
+    #
+    # A throwaway container, not the dev database. These tests want a real
+    # Postgres with the real migrations applied; nothing about them wants
+    # *that specific* database, and pointing CI at Neon would make the gate
+    # depend on a network and let a red build corrupt shared data.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ntizo_test_ci
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d ntizo_test_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # Both point at the same container, and they are not redundant.
+      # `reset-test-db.ts` accepts E2E_DB_URL and *only* that — a deliberate
+      # guard, so no other variable can ever aim a destructive script at a
+      # database somebody cares about. The tests then read DEV_DB_URL, which
+      # is the name they already use locally.
+      #
+      # Port 55433, not the e2e job's 55432: the two jobs run on separate
+      # runners so they cannot collide, but a distinct port keeps a local
+      # reproduction of one from silently reusing the other's container.
+      E2E_DB_URL: postgres://postgres:postgres@localhost:55433/ntizo_test_ci
+      DEV_DB_URL: postgres://postgres:postgres@localhost:55433/ntizo_test_ci
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      # Covers all four workspaces with a `test` script, including the
+      # An empty database is not enough: these tests insert rows Postgres must
+      # refuse, which needs the tables and their constraints to exist. This is
+      # the same script the e2e job's globalSetup runs, applying both migration
+      # chains from zero.
+      - name: Build the schema from zero
+        working-directory: packages/backend
+        run: bun run scripts/reset-test-db.ts
+      # Covers every workspace with a `test` script, including the
       # architecture fitness gates (tier segregation, framework isolation)
       # and the /graphql CORS regression suite.
       - run: bun run test
