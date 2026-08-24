@@ -15,6 +15,7 @@ import {
   ResendEmailServiceAdapter,
   type EmailMessage,
   type EmailServicePort,
+  type SendResult,
 } from "@ntizo/backend/shared/infra/email";
 import {
   ConsoleSmsServiceAdapter,
@@ -57,11 +58,20 @@ function resolveEmailService(): EmailServicePort {
  * Registered once at module scope, but resolves + delegates to the real
  * adapter on every send — so the STAGE / RESEND_API_KEY check always runs
  * against the current request's env, never a stale or absent one.
+ *
+ * The provider's receipt is passed straight back. better-auth's hooks ignore
+ * it, but swallowing it here would make this the one sender on the platform
+ * that cannot say what it sent — and `notification_delivery` rows are keyed on
+ * exactly that id.
+ *
+ * This duplicates `shared/infrastructure/email/resolve-email-service.ts`,
+ * whose own doc says it is meant to be the single definition. The copies
+ * differ only in two log strings, and this one silently went stale when
+ * `EmailServicePort` grew a return value — see the follow-up.
  */
 class LazyEmailServiceAdapter implements EmailServicePort {
-  async sendEmail(message: EmailMessage): Promise<void> {
-    const service = resolveEmailService();
-    await service.sendEmail(message);
+  async sendEmail(message: EmailMessage): Promise<SendResult> {
+    return resolveEmailService().sendEmail(message);
   }
 }
 
