@@ -3,3 +3,8 @@ export {
   registerProviderNotificationHandlers,
   registerUserNotificationHandlers,
 } from "./events";
+export {
+  createResendWebhookHandler,
+  type WebhookRequest,
+  type WebhookResponse,
+} from "./http";

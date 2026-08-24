@@ -11,6 +11,7 @@ import { mountPrivateGraphql } from "./graphql/private";
 import { mountPublicGraphql } from "./graphql/public";
 import { mountDocuments } from "./documents";
 import { mountMedia } from "./media";
+import { mountWebhooks } from "./webhooks";
 import { configureMediaUrlBase } from "@ntizo/backend/modules/ntizo/media";
 import "./bootstrap";
 import { configMiddleware } from "./middlewares/config.middleware";
@@ -36,6 +37,25 @@ app.use("*", async (c, next) => {
   );
   await next();
 });
+// Bootstrapped here rather than beside the event-handler registration below,
+// because the webhook mount on the next line needs it and that mount has to be
+// registered before `authCors` — see mountWebhooks. One instance for the
+// isolate, shared by both, the same way `userBootstrap` is shared with the
+// sign-up hook.
+const notificationBootstrap = bootstrapNotification();
+
+// Inbound provider callbacks (Resend's bounce and complaint webhook).
+//
+// Registered BEFORE `authCors`, and the order is load-bearing: Hono composes
+// matching handlers in registration order, so a route registered after that
+// line runs the CORS middleware and one registered before it does not. A
+// webhook is a server-to-server POST with no origin; `authCors` polices
+// browsers. `configMiddleware` above still wraps it, because the suppression
+// write needs the request-scoped infra store.
+mountWebhooks(app, {
+  handleResendWebhook: notificationBootstrap.useCases.internal.handleResendWebhook,
+});
+
 app.use("/api/*", authCors);
 // /graphql's own CORS enforcement lives inside mountPrivateGraphql
 // (graphql/cors.ts) rather than as a Hono middleware here — Yoga's bundled
@@ -65,7 +85,9 @@ registerSignUpHook((input) =>
 // (see `getEventRouter`), and this must have run before the first sign-up,
 // which is the first thing that dispatches. Registering per request would add
 // a second copy of every handler on every request.
-const notificationBootstrap = bootstrapNotification();
+//
+// `notificationBootstrap` itself is constructed further up, beside the webhook
+// mount that also needs it.
 const eventRouter = getEventRouter();
 registerProviderNotificationHandlers(eventRouter, {
   raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,

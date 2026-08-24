@@ -11,6 +11,21 @@
     "APP_URL": "http://localhost:3000"
   },
 
+  // SECRETS — deliberately absent from every `vars` block above and below.
+  //
+  // `RESEND_WEBHOOK_SECRET` signs Resend's bounce and complaint callbacks to
+  // `POST /api/webhooks/resend`. Anyone holding it can forge a permanent
+  // bounce for any address, and a permanent bounce suppresses that address
+  // with no un-suppression path — so it is set out of band, per stage:
+  //
+  //   wrangler secret put RESEND_WEBHOOK_SECRET             # top-level
+  //   wrangler secret put RESEND_WEBHOOK_SECRET --env dev   # and qa, prod
+  //
+  // Locally it comes from `.dev.vars` / `.env` (see .env.example). Absent, the
+  // route refuses every event with a 500 rather than accepting unverified
+  // ones. `RESEND_API_KEY`, `DATABASE_URL` and `BETTER_AUTH_SECRET` are set
+  // the same way and for the same reason.
+
   // Provider identity documents.
   //
   // `r2_buckets` is NOT inheritable in wrangler: an env that omits it gets no

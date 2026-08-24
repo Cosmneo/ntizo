@@ -9,6 +9,7 @@ import { DrizzleUserByEmailReader } from "../infrastructure/outbound-adapters/cr
 import { LocalTemplateRenderer } from "../infrastructure/outbound-adapters/template-renderer.adapter";
 import { DeferredNotificationDelivery } from "../infrastructure/inbound-adapters/deferred-notification-delivery.adapter";
 import { DeliverNotificationInternalCommand } from "../app/use-cases/deliver-notification.internal.command";
+import { HandleResendWebhookInternalCommand } from "../app/use-cases/handle-resend-webhook.internal.command";
 import { RaiseNotificationInternalCommand } from "../app/use-cases/raise-notification.internal.command";
 import {
   MarkAllNotificationsReadCommand,
@@ -57,6 +58,25 @@ export function bootstrapNotification() {
         // happened — it returns the delivery ids and can be awaited. Anything
         // reached from a request handler should prefer the deferred path.
         deliverNotification,
+        // What Resend's bounce and complaint callbacks mean for an address.
+        //
+        // Two repositories, and the order is the constructor's: suppressions
+        // first, because writing one is this command's only load-bearing
+        // effect; deliveries second, for the best-effort lookup that folds
+        // "which notification was this?" into the suppression's `detail`.
+        // Handing it only the suppressions — the obvious reading of "it
+        // suppresses addresses" — would leave every suppression recording the
+        // raw provider payload and nothing about what we had sent.
+        //
+        // NOT deferred, unlike `raiseNotification`. The webhook route's 200
+        // is a promise to Resend that the event was handled; scheduling the
+        // work past the response would make that promise before the write,
+        // and a failure after it would be answered with a 200 and never
+        // retried.
+        handleResendWebhook: new HandleResendWebhookInternalCommand(
+          suppressionRepository,
+          deliveryRepository,
+        ),
       },
     },
   };

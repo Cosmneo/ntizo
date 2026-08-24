@@ -4,6 +4,7 @@ import { infraStore } from "../../../../../shared/infrastructure/stores/infra-st
 import { bootstrapNotification } from "../bootstrap";
 import { DeferredNotificationDelivery } from "../infrastructure/inbound-adapters/deferred-notification-delivery.adapter";
 import { DeliverNotificationInternalCommand } from "../app/use-cases/deliver-notification.internal.command";
+import { HandleResendWebhookInternalCommand } from "../app/use-cases/handle-resend-webhook.internal.command";
 
 /**
  * The wiring is the feature.
@@ -150,5 +151,126 @@ describe("bootstrapNotification wires delivery off the critical path", () => {
     expect(useCases.internal.deliverNotification).not.toBeInstanceOf(
       DeferredNotificationDelivery,
     );
+  });
+});
+
+/**
+ * The webhook command's own wiring, guarded the same way and for the same
+ * reason.
+ *
+ * `handle-resend-webhook.test.ts` proves the command's decisions against two
+ * fakes, and every one of those tests passes on a command nothing constructs —
+ * which is exactly what the bootstrap did until Task 9. Its two constructor
+ * arguments are also easy to get wrong in a way nothing else notices: they are
+ * both repositories, swapping them throws only at call time, and passing the
+ * suppressions twice degrades silently to a suppression with no idea which
+ * notification produced it.
+ *
+ * So this drives the composed command through its front door — a hard bounce
+ * carrying an `email_id` — and reads back both effects: the suppression row
+ * (the `suppressions` argument) and the notification folded into its `detail`
+ * (the `deliveries` argument).
+ */
+const DELIVERY_ROW = {
+  id: "d-1",
+  notificationId: "n-1",
+  type: NotificationType.Welcome,
+  toEmail: "ana@ntizo.test",
+  locale: "pt",
+  status: "sent",
+  providerMessageId: "prov-123",
+  error: null,
+};
+
+/**
+ * `select(...).from(...).where(...).orderBy(...).limit(...)` for the delivery
+ * lookup, `insert(...).values(...).onConflictDoNothing()` for the suppression.
+ * Both are what the two real Drizzle repositories actually call, so a change
+ * that reshapes either query fails here rather than in production.
+ */
+function fakeWebhookDb() {
+  const suppressed: Array<Record<string, unknown>> = [];
+  const lookedUp: unknown[] = [];
+
+  const selectQuery: Record<string, unknown> = {
+    then(resolve: (rows: unknown[]) => void) {
+      resolve([DELIVERY_ROW]);
+    },
+  };
+  for (const step of ["from", "where", "orderBy", "limit"]) {
+    selectQuery[step] = () => selectQuery;
+  }
+
+  const drizzleDbClient = {
+    select: () => {
+      lookedUp.push(true);
+      return selectQuery;
+    },
+    insert: () => ({
+      values: (row: Record<string, unknown>) => ({
+        onConflictDoNothing: async () => {
+          suppressed.push(row);
+        },
+      }),
+    }),
+  };
+
+  return {
+    connection: { drizzleDbClient: drizzleDbClient as never, postgresDbClient: {} as never },
+    suppressed,
+    lookedUp,
+  };
+}
+
+describe("bootstrapNotification wires the Resend webhook command", () => {
+  it("constructs it at all", () => {
+    // The bootstrap built two commands and not this one for a whole task.
+    // Nothing failed, because nothing asked.
+    const { useCases } = bootstrapNotification();
+    expect(useCases.internal.handleResendWebhook).toBeInstanceOf(
+      HandleResendWebhookInternalCommand,
+    );
+  });
+
+  it("gives it the suppressions repository, and the deliveries one too", async () => {
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { connection, suppressed, lookedUp } = fakeWebhookDb();
+      await infraStore.runAsync(TEST_ENV, async () => {
+        infraStore.setDbConnection(connection);
+
+        const { useCases } = bootstrapNotification();
+        const out = await useCases.internal.handleResendWebhook.execute({
+          type: "email.bounced",
+          data: {
+            email_id: "prov-123",
+            to: ["ana@ntizo.test"],
+            bounce: { type: "Permanent" },
+          },
+        });
+
+        expect(out).toEqual({ suppressed: true });
+
+        // Argument one. Swap the two and this line throws instead, because a
+        // delivery repository has no `suppress`.
+        expect(suppressed).toHaveLength(1);
+        expect(suppressed[0]).toMatchObject({ email: "ana@ntizo.test", reason: "bounce" });
+
+        // Argument two. Pass the suppressions twice — the reading of this
+        // command as "the thing that suppresses addresses" — and the lookup
+        // throws inside its own best-effort catch, `detail` silently falls
+        // back to the raw provider payload, and only this assertion notices.
+        expect(lookedUp).toHaveLength(1);
+        expect(suppressed[0]!.detail).toMatchObject({
+          notification: { id: "n-1", type: NotificationType.Welcome },
+        });
+      });
+
+      // A hard bounce that correlates cleanly logs nothing. Any line here
+      // means one of the two lookups above failed and was swallowed.
+      expect(logged).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+    }
   });
 });
