@@ -62,7 +62,15 @@ export class DrizzleNotificationDeliveryRepository
       id: row.id,
       notificationId: row.notificationId,
       type: row.type as NotificationType,
-      channel: "EMAIL",
+      // Read from the row, not hardcoded, even though `EMAIL` is the only
+      // value the check constraint permits today. The column exists precisely
+      // "so adding a channel is a value, not a migration"
+      // (notification-delivery.schema.ts) — and a literal here is the one
+      // thing that would make that false: on the day a second channel lands,
+      // every rehydrated delivery would come back mislabeled `EMAIL` and
+      // nothing anywhere would fail. Cast like `type` and `status` beside it,
+      // because the column is `text` and the aggregate's union is narrower.
+      channel: row.channel as NotificationDelivery["channel"],
       toEmail: row.toEmail,
       locale: row.locale,
       status: row.status as NotificationDelivery["status"],

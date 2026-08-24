@@ -79,7 +79,10 @@
     "lint": "eslint .",
     "db:slugs:dev:backfill": "STAGE=dev bun run scripts/backfill-provider-slugs.ts",
     "db:slugs:qa:backfill": "STAGE=qa bun run scripts/backfill-provider-slugs.ts",
-    "db:slugs:prod:backfill": "STAGE=prod bun run scripts/backfill-provider-slugs.ts"
+    "db:slugs:prod:backfill": "STAGE=prod bun run scripts/backfill-provider-slugs.ts",
+    "db:delivery:dev:check": "STAGE=dev bun run scripts/check-delivery.ts",
+    "db:delivery:qa:check": "STAGE=qa bun run scripts/check-delivery.ts",
+    "db:delivery:prod:check": "STAGE=prod bun run scripts/check-delivery.ts"
   },
   "dependencies": {
     "@cosmneo/onion-lasagna": "1.0.0-beta.3",

@@ -1314,24 +1314,53 @@ happened.
 
 ---
 
-## 53. Two DB-backed tests in `bun run test` reach a remote Neon database, and time out when it is far away
+## 53. Seven DB-backed tests in `bun run test` reach a remote Neon database, and time out when it is far away
 
-`catalog-service-search.test.ts` and `catalog-unpublish-sweep.test.ts`
-(`shared/infrastructure/database/__tests__/`) connect to `DEV_DB_URL` — the
-real dev Neon database — and seed their fixtures in `beforeAll`. Bun's hook
-timeout is 5 seconds and neither test raises it. Against a Neon instance a
-round trip away that budget is a handful of statements: observed on
-2026-08-24 as `a beforeEach/afterEach hook timed out for this test` twice,
-followed by `TypeError: undefined is not an object (evaluating 'seeded')`
-from the `afterAll` cleanup that then had nothing to clean up. The identical
-command passed on the next run, and passed again after that.
+**Corrected 2026-08-24 (email-delivery review): this said "two", and named
+only the two that happened to flake on the day it was written. Seven test
+files read `DEV_DB_URL`, and the same argument covers all of them —
+understating the count understates the case for moving them.** The full list,
+from `grep -rl DEV_DB_URL packages/backend/src`:
 
-Both tests are right to exist — the whole argument in their headers is that
-an `EXISTS` correlated on the wrong column or a sweep with the wrong
-predicate looks correct in review and only a real query proves otherwise. The
-problem is where they run: `bun run test` is a gate that is supposed to be
-deterministic and offline-safe, and these two make it depend on the latency
-of a shared remote database that anybody can also be writing to.
+- `shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
+- `shared/infrastructure/database/__tests__/catalog-unpublish-sweep.test.ts`
+- `shared/infrastructure/database/__tests__/scheduling-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/notification-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/notification-delivery-constraints.test.ts`
+- `bounded-contexts/notification/__tests__/notification.repository.test.ts`
+- `bounded-contexts/notification/__tests__/notification-delivery.repository.test.ts`
+
+The last two arrived with the notifications inbox and the email-delivery
+phase, which is how a pattern spreads: each one is individually right, and
+nobody is counting. `turbo.json`'s `passThroughEnv` comment carries the same
+number and was corrected with it.
+
+They connect to `DEV_DB_URL` — the real dev Neon database — and seed their
+fixtures in `beforeAll`. Bun's hook timeout is 5 seconds and none of them
+raises it. Against a Neon instance a round trip away that budget is a handful
+of statements: observed on 2026-08-24 as `a beforeEach/afterEach hook timed
+out for this test` twice, followed by `TypeError: undefined is not an object
+(evaluating 'seeded')` from the `afterAll` cleanup that then had nothing to
+clean up. The identical command passed on the next run, and passed again
+after that. It reproduced again during the email-delivery review, on
+`catalog-unpublish-sweep.test.ts`, and passed on a re-run of that file alone.
+
+Every one of them is right to exist — the whole argument in their headers is
+that an `EXISTS` correlated on the wrong column, a sweep with the wrong
+predicate, or a check constraint that does not constrain looks correct in
+review and only a real query proves otherwise. The problem is where they run:
+`bun run test` is a gate that is supposed to be deterministic and offline-safe,
+and these make it depend on the latency of a shared remote database that
+anybody can also be writing to.
+
+A second cost, separate from the flake: a shared database accumulates whatever
+these tests forget. `notification-delivery.repository.test.ts` leaked one
+`notification_delivery` row per run until it was fixed in the same review —
+108 of them were sitting in dev when it was found, because
+`__runWithTransactionContextForTests` binds a handle and does not roll back,
+so every write is real and every cleanup has to be written by hand. An
+isolated database makes that class of mistake impossible rather than merely
+noticed.
 
 The `resetDb` harness the e2e suite already uses (a throwaway Postgres
 container, `packages/backend/scripts/reset-test-db.ts`) is the obvious home

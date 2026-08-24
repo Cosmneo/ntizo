@@ -135,6 +135,40 @@ jobs:
             echo "::error::API smoke failed (status=$STATUS)"; cat /tmp/api.json; exit 1
           fi
 
+      # RESEND_WEBHOOK_SECRET is required for correctness and, unlike
+      # RESEND_API_KEY, nothing in the code can fail fast on it: the key is
+      # checked at send time by resolve-email-service.ts, while the secret is
+      # only consulted when Resend calls US. It is set out of band
+      # (`wrangler secret put`, per stage — see apps/backend/api/wrangler.jsonc),
+      # so no `vars` block and no repository secret can attest to it.
+      #
+      # Ship a stage without it and every callback answers 500. Resend retries,
+      # then disables the endpoint; suppressions are never recorded;
+      # hard-bounced addresses keep receiving mail and the sending domain's
+      # reputation degrades — with nothing but a console.error nobody tails as
+      # the signal. This step is that signal, and it runs BEFORE the flip so a
+      # misconfigured stage is never promoted rather than auto-reverted after.
+      #
+      # An unsigned POST is the whole probe. 401 means a secret was loaded and
+      # this body was refused by it; 500 means the route found no usable secret
+      # at all — the two cases the handler deliberately answers differently
+      # (see write/notification/http/resend-webhook.routes.ts). It reaches no
+      # database: verification runs before the body is parsed or acted on, so
+      # nothing is written and it is safe against prod.
+      - name: Assert the Resend webhook secret is configured
+        run: |
+          CODE=$(curl --silent --show-error --output /tmp/webhook.json --write-out '%{http_code}' \
+            --max-time 15 --retry 3 --retry-delay 5 --retry-all-errors \
+            -X POST -H 'content-type: application/json' --data '{}' \
+            "${{ steps.upload.outputs.preview_url }}/api/webhooks/resend")
+          if [ "$CODE" != "401" ]; then
+            echo "::error::Resend webhook probe expected 401 (a secret is loaded and refused an unsigned body) but got $CODE"
+            if [ "$CODE" = "500" ]; then
+              echo "::error::500 means RESEND_WEBHOOK_SECRET is missing or unusable on ${{ needs.migrate.outputs.stage }}. Set it and re-run: bunx wrangler secret put RESEND_WEBHOOK_SECRET --env ${{ needs.migrate.outputs.stage }}"
+            fi
+            cat /tmp/webhook.json; exit 1
+          fi
+
   flip-api:
     name: Flip api
     needs: [migrate, deploy-api]

@@ -25,6 +25,13 @@
   // route refuses every event with a 500 rather than accepting unverified
   // ones. `RESEND_API_KEY`, `DATABASE_URL` and `BETTER_AUTH_SECRET` are set
   // the same way and for the same reason.
+  //
+  // Because it is set out of band, nothing in this repo can *see* whether it
+  // survived a stage — and unlike `RESEND_API_KEY`, no code path fails fast on
+  // it (that key is checked when we send; this secret is only consulted when
+  // Resend calls us). So CD asserts it: `deploy-api` POSTs an unsigned body to
+  // the new version's preview URL and requires a 401, before the flip. A 500
+  // there means this secret is missing on that stage.
 
   // Provider identity documents.
   //

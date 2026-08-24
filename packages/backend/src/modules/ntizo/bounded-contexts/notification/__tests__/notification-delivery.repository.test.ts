@@ -5,7 +5,10 @@ import postgres from "postgres";
 import { NotificationType } from "@ntizo/shared";
 import * as authSchema from "../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../shared/infrastructure/database/tx-context";
-import { emailSuppression } from "../../../shared/infrastructure/database/notification/schemas";
+import {
+  emailSuppression,
+  notificationDelivery,
+} from "../../../shared/infrastructure/database/notification/schemas";
 import { user } from "../../../shared/infrastructure/database/user/schemas";
 import { profile } from "../../../shared/infrastructure/database/user/schemas";
 import { NotificationDelivery } from "../domain/aggregates/notification-delivery.aggregate";
@@ -33,6 +36,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Every write in this file is real. `__runWithTransactionContextForTests`
+  // binds a handle for the repositories to find; it does not open a
+  // transaction and it does not roll anything back — so anything committed
+  // here has to be deleted here. The delivery row is the one that is easy to
+  // miss, because nothing else in the test refers to it after the assertion
+  // and no foreign key takes it out with the user: `notification_delivery` has
+  // no FK to `user` at all, on purpose (a delivery must outlive the person it
+  // was about). Without this line the dev database gained one orphan row per
+  // run, and had 108 of them by the time anybody looked.
+  await db.delete(notificationDelivery).where(eq(notificationDelivery.toEmail, anaEmail));
   await db.delete(emailSuppression).where(eq(emailSuppression.email, anaEmail));
   await db.delete(user).where(eq(user.id, anaId));
   await sql.end();

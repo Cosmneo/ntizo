@@ -250,6 +250,17 @@ describe("an oversized body is refused before it is verified", () => {
     // The cheap half: a caller announcing 50 MB is turned away without those
     // bytes ever being buffered. Deliberately paired with a *small* actual
     // body, so only the header check can be what rejected it.
+    //
+    // The MECHANISM here is synthetic, and this note is so nobody later reads
+    // this test as proof of something it cannot show. `app.request()` builds a
+    // `Request` from this object and lets a `content-length` that contradicts
+    // the body stand; over real HTTP the runtime computes the header itself
+    // and a forged one never survives. Probed against real workerd, this exact
+    // pair answered 401 — the signature check, not the size check. What the
+    // test pins is the branch: given a declared size over the limit, the
+    // handler returns 413 without reading. That the guard *works* on a genuine
+    // oversized body is the previous test's job, and a real 50 MiB POST does
+    // 413 in ~97ms.
     const res = await app.request(
       "/api/webhooks/resend",
       {

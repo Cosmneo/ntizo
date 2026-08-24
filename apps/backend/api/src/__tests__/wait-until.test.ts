@@ -88,6 +88,61 @@ describe("the per-request pool closes behind deferred work", () => {
     expect(order).toEqual(["delivery", "close"]);
   });
 
+  it("closes behind deferred work even when what it wraps rejects", async () => {
+    // The `finally` is the only thing that makes this true, and nothing
+    // asserted it until now: every other test in this file returns normally,
+    // so replacing `try { return await next() } finally { … }` with a
+    // straight-line `await next()` followed by the same block leaves all of
+    // them green.
+    //
+    // What that costs is no longer just a leaked socket. That block is now the
+    // sole thing that runs `settleDeferredWork()`, which is the sole thing
+    // awaiting an in-flight email delivery — so on a rejecting request the
+    // delivery promise floats with nothing awaiting it while this request's
+    // `{ max: 1 }` pool stays checked out until `max_lifetime` (5 minutes).
+    // Under `wrangler dev` the delivery still completes, so a local run would
+    // not show it either.
+    //
+    // Invoked directly rather than through a Hono app, deliberately. Hono's
+    // default error handler catches an `Error` thrown by a route handler at
+    // *that handler's own* `dispatch` level and turns it into a 500 there, so
+    // `next()` resolves and an app-driven test cannot tell the two shapes
+    // apart. What still reaches this `await next()` in production is whatever
+    // Hono re-raises — a non-`Error` throw, an `onError` that itself fails —
+    // and, more to the point, this middleware's cleanup must not owe its
+    // correctness to a framework detail it does not control.
+    const order: string[] = [];
+    Db.closeDbConnection = async () => {
+      order.push("close");
+    };
+
+    const { ctx, scheduled } = fakeExecutionContext();
+    const c = { env: ENV, executionCtx: ctx } as unknown as Parameters<
+      typeof configMiddleware
+    >[0];
+
+    const failing = configMiddleware(c, async () => {
+      // The ordinary shape: something raised a notification, the delivery was
+      // deferred, and then the request failed for an unrelated reason.
+      infraStore.waitUntil(
+        (async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          order.push("delivery");
+        })(),
+      );
+      throw new Error("the handler failed after raising a notification");
+    });
+
+    await expect(failing).rejects.toThrow("the handler failed after raising a notification");
+    // Scheduled by the time the rejection surfaced, not merely eventually: the
+    // delivery, and the close chained behind it. This is the assertion that
+    // goes red if the block ever stops being a `finally` — a straight-line
+    // version schedules only the delivery.
+    expect(scheduled).toHaveLength(2);
+    await Promise.all(scheduled);
+    expect(order).toEqual(["delivery", "close"]);
+  });
+
   it("still closes when nothing was deferred", async () => {
     const order: string[] = [];
     Db.closeDbConnection = async () => {

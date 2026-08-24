@@ -119,6 +119,85 @@ describe("events that must not", () => {
   });
 });
 
+describe("a signed body is still an untrusted one", () => {
+  // The signature says who sent this, not that it is sane. Holding the secret
+  // should buy "suppress the addresses you can name" — not "stall the Worker
+  // and write rows nobody can undo".
+  const hardBounceTo = (to: unknown) => ({
+    type: "email.bounced",
+    data: { to: to as string[], bounce: { type: "Permanent" } },
+  });
+
+  it("refuses an event naming more recipients than a send can have, and suppresses none of them", async () => {
+    // 100k addresses fit inside the mount's 1 MiB body cap, and each would be
+    // its own sequential `await suppress()` on the request's `{ max: 1 }`
+    // connection — on a command that is deliberately not deferred past the
+    // response. None of the first fifty are taken either: an event this shape
+    // is not one Resend sends, so acting on any part of it is guessing about
+    // writes there is no un-suppression path to reverse.
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const many = Array.from({ length: 51 }, (_, i) => `bulk${i}@ntizo.test`);
+      const out = await cmd.execute(hardBounceTo(many));
+      expect(out.suppressed).toBe(false);
+      expect(suppressions.calls).toEqual([]);
+      expect(logged.mock.calls[0]![0]).toBe(
+        "[handle-resend-webhook] refusing an event that names more recipients than a send can have",
+      );
+      expect(logged.mock.calls[0]![1]).toStrictEqual({
+        type: "email.bounced",
+        recipients: 51,
+        max: 50,
+      });
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("still suppresses an ordinary event at the edge of the bound", async () => {
+    // The bound must not have grown teeth: a real callback names one address.
+    const fifty = Array.from({ length: 50 }, (_, i) => `bulk${i}@ntizo.test`);
+    const out = await cmd.execute(hardBounceTo(fifty));
+    expect(out.suppressed).toBe(true);
+    expect(suppressions.calls).toHaveLength(50);
+  });
+
+  it("drops recipients that are not strings, and keeps the real address beside them", async () => {
+    // `email` is the primary key of `email_suppression`, a `text` column, so
+    // an object or a number reaching the insert is a write of a shape nothing
+    // downstream expects. Dropped rather than failing the whole event: losing
+    // a real suppression is the recoverable side of this command's asymmetry,
+    // and the junk is logged so the drift is not silent.
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await cmd.execute(hardBounceTo([{}, 123, "ana@ntizo.test", null, ""]));
+      expect(out.suppressed).toBe(true);
+      expect(suppressions.calls.map((c) => c.email)).toEqual(["ana@ntizo.test"]);
+      expect(logged.mock.calls[0]![0]).toBe(
+        "[handle-resend-webhook] ignored recipients that were not strings",
+      );
+      expect(logged.mock.calls[0]![1]).toStrictEqual({
+        type: "email.bounced",
+        listed: 5,
+        usable: 1,
+      });
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it("suppresses nothing when every recipient is unusable", async () => {
+    const logged = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await cmd.execute(hardBounceTo([{}, 123]));
+      expect(out.suppressed).toBe(false);
+      expect(suppressions.calls).toEqual([]);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+});
+
 describe("R8: only an explicit Permanent suppresses", () => {
   it("does NOT suppress on Undetermined", async () => {
     const out = await cmd.execute({

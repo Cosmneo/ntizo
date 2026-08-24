@@ -7,14 +7,19 @@
  * without writing SQL answers the question only for people who already knew
  * how, and support does not.
  *
- * Prints every delivery for an address, newest first, then whether the address
- * is suppressed and why. Read-only: it writes nothing, so it is safe to point
- * at prod.
+ * Prints every delivery for an address, newest first, with when each outcome
+ * was recorded, then whether the address is suppressed and why. Read-only: it
+ * writes nothing, so it is safe to point at prod.
  *
- *   bun run --env-file=.env scripts/check-delivery.ts somebody@example.com
- *   STAGE=prod bun run --env-file=.env scripts/check-delivery.ts somebody@example.com
+ *   bun run db:delivery:dev:check  somebody@example.com
+ *   bun run db:delivery:prod:check somebody@example.com
  *
- * `STAGE` selects the database exactly as the seeds and the slug backfill do.
+ * `STAGE` selects the database exactly as the seeds and the slug backfill do,
+ * and each stage has its own script for the same reason they do: naming the
+ * stage in the command is what stops somebody reading prod by accident. Called
+ * directly it is the same thing with `STAGE` supplied by hand:
+ *
+ *   STAGE=dev bun run --env-file=.env scripts/check-delivery.ts somebody@example.com
  */
 import { desc, eq, sql as raw } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -44,7 +49,7 @@ function addressArgument(): string {
   const arg = process.argv.slice(2).find((a) => !a.startsWith("-"));
   const email = arg?.trim().replace(/^mailto:/i, "");
   if (!email) {
-    console.error("Usage: bun run --env-file=.env scripts/check-delivery.ts <email-address>");
+    console.error("Usage: bun run db:delivery:<dev|qa|prod>:check <email-address>");
     process.exit(1);
   }
   return email;
@@ -52,6 +57,24 @@ function addressArgument(): string {
 
 function when(value: Date | null): string {
   return value ? value.toISOString() : "—";
+}
+
+/**
+ * How long ago, in the coarsest unit that is still informative.
+ *
+ * "Stuck for 3h" is the answer somebody wants when they ask about a queued
+ * row; a millisecond count is not, and neither is a second timestamp they have
+ * to subtract in their head.
+ */
+function ago(value: Date | null): string {
+  if (!value) return "an unknown length of time";
+  const minutes = Math.floor((Date.now() - value.getTime()) / 60_000);
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
 }
 
 async function main(): Promise<void> {
@@ -73,6 +96,14 @@ async function main(): Promise<void> {
 
     for (const d of deliveries) {
       console.log(`  ${when(d.createdAt)}  ${d.type}  ${d.locale}  ${d.status.toUpperCase()}`);
+      // `updated_at` is maintained by the repository's `update` for exactly one
+      // reason — "what is stuck, and for how long" — and this is the only place
+      // that question gets asked. Printed only when it differs from
+      // `created_at`: an equal pair means nothing was ever recorded against the
+      // row, which the `queued` line below already says, better.
+      if (d.updatedAt && d.createdAt && d.updatedAt.getTime() !== d.createdAt.getTime()) {
+        console.log(`      outcome recorded: ${when(d.updatedAt)} (${ago(d.updatedAt)} ago)`);
+      }
       if (d.providerMessageId) {
         console.log(`      message id: ${d.providerMessageId}`);
       } else if (d.status === "sent") {
@@ -92,7 +123,8 @@ async function main(): Promise<void> {
       // strength of it may deliver a second copy.
       if (d.status === "queued") {
         console.log(
-          "      still queued — no outcome was ever recorded. The email may or may not have been sent.",
+          `      still queued after ${ago(d.updatedAt)} — no outcome was ever recorded.` +
+            " The email may or may not have been sent.",
         );
       }
     }

@@ -58,10 +58,20 @@ export class DeliverNotificationInternalCommand implements DeliverNotificationIn
   async execute(input: DeliverNotificationInput): Promise<{ deliveryIds: string[] }> {
     let to: Recipient[];
     try {
-      to =
+      const resolved =
         input.audience === "user"
           ? await this.oneOrNone(input.userId)
           : await this.recipients.forProviderMembers(input.providerId);
+      // `Array.isArray`, not a trust in the port's signature. The loop below
+      // sits OUTSIDE this try — it has to, so each recipient's own catch is
+      // what contains a per-recipient failure — which means a reader that
+      // resolves to `undefined` would throw a TypeError out of `execute`
+      // itself, past every catch in this file and past the "never throws at
+      // its caller" sentence at the top of this class, which is stated
+      // unconditionally. TypeScript makes that unreachable through the port
+      // today; a stub, a mock, or an adapter written later is not bound by it,
+      // and the guarantee is the kind that must not depend on a type.
+      to = Array.isArray(resolved) ? resolved : [];
     } catch (error) {
       // Same "never throws at its caller" reasoning as deliverOne's catch
       // below: with no recipients resolved there is nobody to deliver to and

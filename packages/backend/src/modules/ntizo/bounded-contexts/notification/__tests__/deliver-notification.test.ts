@@ -295,4 +295,16 @@ describe("an unguarded port throwing", () => {
     };
     await expect(cmd.execute(personal)).resolves.toEqual({ deliveryIds: [] });
   });
+
+  it("does not throw when the recipient reader resolves to nothing at all", async () => {
+    // Not "throws" — *resolves*, to something that is not a list. The loop
+    // over recipients is outside the try that wraps the lookup, so
+    // `for (const r of undefined)` is a TypeError escaping `execute` itself:
+    // past every catch in the file, and past a "never throws at its caller"
+    // guarantee the class states with no conditions on it. Only the port's
+    // TypeScript signature stood between that and a stub or a later adapter,
+    // and a guarantee written that absolutely should not rest on a type.
+    recipients.forProviderMembers = async () => undefined as never;
+    await expect(cmd.execute(workspace)).resolves.toEqual({ deliveryIds: [] });
+  });
 });

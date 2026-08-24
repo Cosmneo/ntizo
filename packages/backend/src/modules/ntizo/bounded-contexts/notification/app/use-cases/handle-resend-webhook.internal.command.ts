@@ -25,6 +25,31 @@ export interface ResendWebhookEvent {
 }
 
 /**
+ * How many addresses one event may suppress.
+ *
+ * Resend caps a send at 50 recipients and this platform sends to exactly one,
+ * so 50 is generous by a factor of fifty. The bound is not about plausible
+ * events, though — it is about the one that is not. A signed 1 MiB body holds
+ * roughly a hundred thousand addresses, each of which would take its own
+ * sequential `await suppress()` on the request's `{ max: 1 }` connection, on a
+ * command that is deliberately NOT deferred past the response. That is a
+ * stalled Worker plus a hundred thousand rows on a table with no
+ * un-suppression path.
+ *
+ * Reaching that needs the signing secret, so this is not a bypass and the
+ * signature check is still the security boundary. What it changes is what a
+ * leaked secret is worth: "suppress the addresses you can name" rather than
+ * "take the Worker down and write damage nobody can undo".
+ *
+ * Over the cap, nothing is suppressed at all — not the first fifty. The same
+ * asymmetry that governs `bounce.type` decides it: a wrong suppression loses a
+ * real recipient forever, a missed one costs reputation and reputation
+ * recovers. An event this shape is not one Resend sends, so acting on any part
+ * of it is guessing, and the log line is what makes the refusal visible.
+ */
+const MAX_SUPPRESSIONS_PER_EVENT = 50;
+
+/**
  * What a bounce or a complaint means for an address.
  *
  * **Only an explicit `"Permanent"` suppresses.** Resend also sends
@@ -50,6 +75,12 @@ export interface ResendWebhookEvent {
  * send, and the suppression table is where facts about addresses already
  * live — that's the reason to put it there, not just that it's the cheaper
  * option.
+ *
+ * **`data.to` is bounded and its elements are checked.** A signature proves
+ * who sent a body, not that the body is sane, and this command is deliberately
+ * not deferred past the response — so an event naming more addresses than a
+ * send can have is refused whole (`MAX_SUPPRESSIONS_PER_EVENT`) and anything in
+ * the list that is not a string is dropped before it can become a primary key.
  *
  * `deliveries.findByProviderMessageId` is used only to enrich *what gets
  * written to the suppression*, not to decide *whether* to suppress: it looks
@@ -78,7 +109,37 @@ export class HandleResendWebhookInternalCommand {
     // Treating a non-array as no recipients is the same "do nothing" this
     // command already does for other unexpected shapes.
     const to = event.data?.to;
-    const recipients = Array.isArray(to) ? to : [];
+    const listed: unknown[] = Array.isArray(to) ? to : [];
+    if (listed.length === 0) return { suppressed: false };
+
+    // The bound, before any per-element work. See MAX_SUPPRESSIONS_PER_EVENT:
+    // nothing is suppressed when an event names more addresses than Resend
+    // could ever have sent to, because acting on part of a body that shape is
+    // guessing about writes that cannot be undone.
+    if (listed.length > MAX_SUPPRESSIONS_PER_EVENT) {
+      // console.error, not the logger — same reasoning as `reasonFor` below.
+      console.error(
+        "[handle-resend-webhook] refusing an event that names more recipients than a send can have",
+        { type: event.type, recipients: listed.length, max: MAX_SUPPRESSIONS_PER_EVENT },
+      );
+      return { suppressed: false };
+    }
+
+    // Elements are checked, not assumed, for the same reason the array is.
+    // `email` becomes the primary key of `email_suppression`, a `text` column:
+    // a signed `to: [{}, 123]` would otherwise reach the insert as an object
+    // or a number. Non-strings are dropped rather than failing the whole
+    // event, so a real address listed beside junk is still suppressed — the
+    // missable side of the asymmetry, not the unrecoverable one — and the
+    // discards are logged so the shape drift is not silent.
+    const recipients = listed.filter((x): x is string => typeof x === "string" && x !== "");
+    if (recipients.length !== listed.length) {
+      console.error("[handle-resend-webhook] ignored recipients that were not strings", {
+        type: event.type,
+        listed: listed.length,
+        usable: recipients.length,
+      });
+    }
     if (recipients.length === 0) return { suppressed: false };
 
     const detail = await this.enrichedDetail(event);
