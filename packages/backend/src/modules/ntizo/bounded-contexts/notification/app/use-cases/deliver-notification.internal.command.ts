@@ -21,10 +21,16 @@ export type DeliverNotificationInput = {
  * **Never throws at its caller.** This runs after the inbox row is written and,
  * in production, after the response has gone. A provider approval must not
  * become a 500 because Resend was slow, and losing the inbox row because an
- * email failed would be the tail wagging the dog. Every failure is recorded on
- * its own delivery row and swallowed. Where there is no row yet to record
- * against — the recipient lookup, or a `save` that never completes — there is
- * nothing to write, so the failure is logged instead and swallowed there too.
+ * email failed would be the tail wagging the dog. Only one shape gets a
+ * status written onto its row: a send that failed, recorded `failed`, when
+ * that recording write itself succeeds. Every other failure is logged and
+ * swallowed without changing the row's status — three different shapes of
+ * "without", not one: no row exists yet to write to (the recipient lookup, or
+ * `save` itself failing); a row exists and the email genuinely sent, but the
+ * `update` recording that fails; or a row exists, the send failed, and the
+ * `update` recording *that* also fails. The last two leave the row `queued`
+ * on purpose — writing a status in that moment would either repeat a failure
+ * that already didn't land, or assert something we can no longer confirm.
  *
  * **One notification can be several deliveries.** A workspace notification
  * becomes one per member, each rendered in that member's own language, each
@@ -121,9 +127,14 @@ export class DeliverNotificationInternalCommand {
           textBody: rendered.text,
         });
       } catch (error) {
-        // The send itself is what failed: nothing went out, so `failed` is
-        // an honest status here, and the one that invites the retry the
-        // aggregate's own doc says a `failed` delivery should invite.
+        // Not a certainty that nothing went out — a timeout can fire after
+        // the provider has already accepted the message, the same kind of
+        // unknowability the post-send case below exists to be honest about.
+        // But there is no messageId here to correlate a later "did this
+        // already send" against, so there is nothing safer to do with the
+        // uncertainty than record `failed` and let it invite the retry the
+        // aggregate's own doc says a `failed` delivery should invite. An
+        // occasional duplicate email is the cheaper mistake of the two.
         const message = error instanceof Error ? error.message : String(error);
         await this.deliveries.update(id, queued.markFailed(message));
         return id;
@@ -150,15 +161,19 @@ export class DeliverNotificationInternalCommand {
 
       return id;
     } catch (error) {
-      // Everything above this line — the render, the suppression check,
-      // `save` itself, and the post-send `update` — can throw for reasons
-      // that have nothing to do with this recipient's email being
-      // deliverable: a dropped connection, a query timeout. One recipient's
+      // Everything above this line can throw for reasons that have nothing
+      // to do with this recipient's email being deliverable: a dropped
+      // connection, a query timeout. That includes every await in this
+      // method — the render, the suppression check, the `queue`/`suppressed`
+      // factory calls, `save` itself, the send-failure path's own `update`
+      // (markFailed, when even recording the failure fails), and the
+      // post-send success `update` (markSent). One recipient's
       // infrastructure failure must not cost every other recipient in the
-      // loop their delivery, so it's caught here rather than only around
-      // the send. When it's the post-send `update` that throws, this id
-      // never makes it into `deliveryIds` even though the email genuinely
-      // went out — logging here is all there is for that case too.
+      // loop their delivery, so it's caught here rather than only around the
+      // send. When it's either `update` that throws, this id never makes it
+      // into `deliveryIds` even though a row exists — for the post-send case
+      // the email genuinely went out — and logging here is all there is for
+      // both.
       //
       // Honest limit: when `deliveries.save` itself is what throws, there is
       // no row to record the failure on — the row *is* the recording

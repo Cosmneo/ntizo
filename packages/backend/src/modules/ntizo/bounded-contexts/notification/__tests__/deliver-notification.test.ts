@@ -231,8 +231,34 @@ describe("an email that sent but couldn't be recorded", () => {
     // its recipient already has. It stays `queued`: the honest "we don't
     // know what happened", visible to whoever reads the row, with the
     // update's own error only logged.
+    //
+    // Throwing on every call (rather than just the first) would pass this
+    // test under the regression too: reverting to the old merged try means
+    // a thrown markSent update falls into the same catch that retries with
+    // markFailed, and if that retry also always threw, nothing would ever
+    // reach `deliveries.updates` either way — the two shapes would look
+    // identical. Counting calls and letting a second one land is what makes
+    // the fixed and regressed code produce different, checkable output.
+    let updateCalls = 0;
+    deliveries.update = async (id, e) => {
+      updateCalls += 1;
+      if (updateCalls === 1) throw new Error("connection dropped after send");
+      deliveries.updates.push({ id, status: e.status, providerMessageId: e.providerMessageId });
+    };
+    const out = await cmd.execute(personal);
+    expect(out.deliveryIds).toEqual([]);
+    expect(deliveries.saved[0]!.status).toBe("queued");
+    expect(deliveries.updates).toEqual([]);
+  });
+
+  it("does not throw when the send fails and recording that failure also fails", async () => {
+    // The mirror case: nothing went out, and the row saying so can't be
+    // written either. There's no good status left to leave — the row stays
+    // `queued`, the same honest "we don't know" as the send-succeeded case
+    // above — and the failure is only logged.
+    sender.fail = true;
     deliveries.update = async () => {
-      throw new Error("connection dropped after send");
+      throw new Error("failed-status write also failed");
     };
     const out = await cmd.execute(personal);
     expect(out.deliveryIds).toEqual([]);
