@@ -32,6 +32,14 @@ describe("NotificationDelivery.queue", () => {
   });
 });
 
+describe("NotificationDelivery.suppressed", () => {
+  it("refuses a type the platform does not define", () => {
+    expect(() =>
+      NotificationDelivery.suppressed({ ...base, type: "INVENTED" as NotificationType }),
+    ).toThrow(UnknownNotificationTypeError);
+  });
+});
+
 describe("what a delivery becomes", () => {
   it("carries the provider's id once it is sent, so a bounce can find it", () => {
     const sent = NotificationDelivery.queue(base).markSent("resend_abc123");
