@@ -81,7 +81,7 @@ export class NotificationDelivery {
     return new NotificationDelivery(props);
   }
 
-  markSent(providerMessageId: string): NotificationDelivery {
+  markSent(providerMessageId: string | null): NotificationDelivery {
     return new NotificationDelivery({
       ...this.props,
       status: "sent",
