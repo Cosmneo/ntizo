@@ -35,24 +35,51 @@ const TEST_ENV = {
 };
 
 /**
- * Just enough drizzle for `DrizzleNotificationRepository.save`.
+ * Just enough drizzle for the two queries this path makes, and instrumented so
+ * the test can see *when* the second one happens.
  *
  * Seeded onto the store so `Db.getDbConnection()` finds a connection and never
- * opens a real one. Everything the deferred delivery then reaches for —
- * `select`, the recipient lookup — is absent on purpose: that work fails, the
- * delivery command swallows and logs it exactly as designed, and none of it
- * changes what this test is asking, which is whether the promise was handed to
- * `waitUntil` at all.
+ * opens a real one. `insert` serves the inbox write. `select` serves the
+ * recipient lookup, which is the delivery command's first move — and its
+ * builder only settles on a **macrotask**, which is the whole point: a
+ * macrotask cannot interleave into the microtask-only path of the raise
+ * returning, so "did the raise come back before delivery finished" has a
+ * stable answer instead of a race.
+ *
+ * It resolves to no rows, so delivery finds no recipient, writes nothing and
+ * returns cleanly. Nothing is logged, and the test asserts that too.
  */
 function fakeDbConnection() {
+  const seen = { lookupStarted: false, lookupSettled: false };
+
+  const query: Record<string, unknown> = {
+    then(resolve: (rows: unknown[]) => void) {
+      setTimeout(() => {
+        seen.lookupSettled = true;
+        resolve([]);
+      }, 0);
+    },
+  };
+  for (const step of ["from", "leftJoin", "innerJoin", "where", "orderBy", "limit", "offset"]) {
+    query[step] = () => query;
+  }
+
   const drizzleDbClient = {
     insert: () => ({
       values: () => ({
         returning: async () => [{ id: "n-wired" }],
       }),
     }),
+    select: () => {
+      seen.lookupStarted = true;
+      return query;
+    },
   };
-  return { drizzleDbClient: drizzleDbClient as never, postgresDbClient: {} as never };
+
+  return {
+    connection: { drizzleDbClient: drizzleDbClient as never, postgresDbClient: {} as never },
+    seen,
+  };
 }
 
 describe("bootstrapNotification wires delivery off the critical path", () => {
@@ -60,8 +87,9 @@ describe("bootstrapNotification wires delivery off the critical path", () => {
     const logged = spyOn(console, "error").mockImplementation(() => {});
     try {
       const scheduled: Promise<unknown>[] = [];
+      const { connection, seen } = fakeDbConnection();
       await infraStore.runAsync(TEST_ENV, async () => {
-        infraStore.setDbConnection(fakeDbConnection());
+        infraStore.setDbConnection(connection);
         infraStore.setWaitUntil((p) => {
           scheduled.push(p);
         });
@@ -80,8 +108,31 @@ describe("bootstrapNotification wires delivery off the critical path", () => {
         // scheduled here if the bootstrap hands the raise the bare command.
         expect(scheduled).toHaveLength(1);
 
+        // And it is genuinely *later*. Delivery has begun — the decorator must
+        // call `inner.execute` to have a promise to hand over, so "not yet
+        // started" was never the property — but it has not finished, and the
+        // raise did not wait for it. A decorator that awaited the inner call
+        // before scheduling still leaves `scheduled` at 1 and fails right here.
+        //
+        // This assertion is deliberately not left to
+        // `deferred-delivery.test.ts`, which proves the same thing about the
+        // decorator in isolation: two guards that only work together mean
+        // deleting either file silently un-guards the property.
+        expect(seen.lookupStarted).toBe(true);
+        expect(seen.lookupSettled).toBe(false);
+
         await infraStore.settleDeferredWork();
+
+        // The promise handed to waitUntil really was the delivery, and the
+        // drain really does wait for it. Without this, "scheduled.length === 1"
+        // would be satisfied by scheduling anything at all.
+        expect(seen.lookupSettled).toBe(true);
       });
+
+      // Delivery ran to completion without incident: no recipient, no row, no
+      // complaint. Any log line here would mean this test is passing for a
+      // reason other than the one it claims.
+      expect(logged).not.toHaveBeenCalled();
     } finally {
       logged.mockRestore();
     }
