@@ -33,14 +33,38 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       infraStore.setHyperdrive(
         (c.env as unknown as { HYPERDRIVE?: { connectionString: string } }).HYPERDRIVE,
       );
+      // The platform's own `waitUntil`, carried into the store along the path
+      // env already takes, so work that must outlive the response — email
+      // delivery — can be scheduled by code that knows nothing about Hono.
+      //
+      // Read inside a try because `c.executionCtx` THROWS when there is no
+      // execution context (a test, a script, `app.request()`) rather than
+      // returning undefined, so `?.` would not help. Same shape as the close
+      // below, which has always done this.
+      try {
+        infraStore.setWaitUntil(c.executionCtx.waitUntil.bind(c.executionCtx));
+      } catch {
+        // Nothing to register. Deferred work still runs and is still waited
+        // for by `settleDeferredWork`; only the platform is unaware of it.
+      }
       try {
         return await next();
       } finally {
-        // Workers run nothing after the response unless scheduled.
+        // Workers run nothing after the response unless scheduled — and the
+        // deferred work scheduled above still needs this request's `{ max: 1 }`
+        // postgres pool for recipients, suppressions and delivery rows. So the
+        // close is chained BEHIND it, not scheduled beside it: `waitUntil`
+        // tasks are not ordered against each other, so a bare
+        // `waitUntil(closeDbConnection())` races every delivery and wins often
+        // enough to matter — intermittently, in production, on the one path
+        // `wrangler dev` is most forgiving about locally.
+        const closeBehindDeferredWork = infraStore
+          .settleDeferredWork()
+          .then(() => Db.closeDbConnection());
         try {
-          c.executionCtx.waitUntil(Db.closeDbConnection());
+          c.executionCtx.waitUntil(closeBehindDeferredWork);
         } catch {
-          void Db.closeDbConnection();
+          void closeBehindDeferredWork;
         }
       }
     },

@@ -4,7 +4,14 @@ import { providerMember } from "../../../../../shared/infrastructure/database/pr
 import type { ProviderMemberReaderPort } from "../../../app/ports/outbound/provider-member-reader.port";
 
 /**
- * The single place the Notification context touches Provider's tables.
+ * Where the Notification context asks whether somebody belongs to a provider.
+ *
+ * It was "the single place the Notification context touches Provider's tables"
+ * when it was the only one. It is not any more — `provider-name-reader.adapter`
+ * reads `provider.name` for an invitation's workspace, and
+ * `recipient-reader.adapter` joins `provider_member` to find who a workspace
+ * notification goes to. All three live in this `cross-bc` directory, which is
+ * the actual boundary; no adapter outside it reaches across.
  *
  * A cross-BC adapter rather than an import of Provider's repository: this
  * context needs one boolean, and depending on the other context's bootstrap to

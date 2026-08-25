@@ -1,6 +1,6 @@
 import { infraStore } from "../stores/infra-store";
 import { ConsoleEmailServiceAdapter } from "./console-email-service.adapter";
-import type { EmailServicePort } from "./email-service.port";
+import type { EmailServicePort, SendResult } from "./email-service.port";
 import { ResendEmailServiceAdapter } from "./resend-email-service.adapter";
 
 /**
@@ -37,7 +37,7 @@ export function resolveEmailService(): EmailServicePort {
  * against the current request's env instead of a stale or absent one.
  */
 export class LazyEmailServiceAdapter implements EmailServicePort {
-  async sendEmail(message: Parameters<EmailServicePort["sendEmail"]>[0]): Promise<void> {
-    await resolveEmailService().sendEmail(message);
+  async sendEmail(message: Parameters<EmailServicePort["sendEmail"]>[0]): Promise<SendResult> {
+    return resolveEmailService().sendEmail(message);
   }
 }

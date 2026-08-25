@@ -79,7 +79,10 @@
     "lint": "eslint .",
     "db:slugs:dev:backfill": "STAGE=dev bun run scripts/backfill-provider-slugs.ts",
     "db:slugs:qa:backfill": "STAGE=qa bun run scripts/backfill-provider-slugs.ts",
-    "db:slugs:prod:backfill": "STAGE=prod bun run scripts/backfill-provider-slugs.ts"
+    "db:slugs:prod:backfill": "STAGE=prod bun run scripts/backfill-provider-slugs.ts",
+    "db:delivery:dev:check": "STAGE=dev bun run scripts/check-delivery.ts",
+    "db:delivery:qa:check": "STAGE=qa bun run scripts/check-delivery.ts",
+    "db:delivery:prod:check": "STAGE=prod bun run scripts/check-delivery.ts"
   },
   "dependencies": {
     "@cosmneo/onion-lasagna": "1.0.0-beta.3",
@@ -91,6 +94,7 @@
     "libphonenumber-js": "^1.13.10",
     "postgres": "^3.4.8",
     "resend": "^4.0.0",
+    "svix": "^2.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

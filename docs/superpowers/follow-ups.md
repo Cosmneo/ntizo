@@ -185,6 +185,19 @@ WELCOME, every PROVIDER_VERIFIED, into inboxes people have already read and
 dismissed. An inbox row about something that did not just happen cannot be
 recalled.
 
+**Since 2026-08-24 that replay also sends email.** Raising a notification now
+queues a delivery, so a relay replaying the outbox would re-send **every email
+this platform has ever sent** — every welcome, every verification result,
+every workspace invitation, to addresses that may since have gone somewhere
+else. That is strictly worse than the duplicate inbox row it comes with: an
+inbox row at least sits inside an app its owner can dismiss it in, while an
+email cannot be recalled at all, arrives in front of people who never open the
+app, and looks from the outside exactly like the kind of mass send that gets a
+sending domain blocklisted. `notification_delivery` is a second reconciliation
+source for whoever writes the relay — it records what actually left — but it
+is a record of sends, not of outbox rows, and reading it as one would be its
+own bug.
+
 So this is a hard requirement on whoever writes the relay, not a nicety: it is
 not enough to drain `pending`. Before the first replay it must either
 
@@ -382,6 +395,26 @@ per template. No i18n framework belongs on the backend for this.
 Note the SMS constraint that the emails do not share: providers bill per
 160-character GSM-7 segment, and a single accented character halves that to 70.
 Localised bodies must be counted, not just translated.
+
+**Still open — the notifications email-delivery phase (2026-08-24) did not fix
+it.** `verifyEmailTemplate`, `resetPasswordTemplate` and `verifyPhoneTemplate`
+are the same fixed English strings they were. What that phase did change is
+how much precedent the fix now has: the per-locale pattern this entry proposes
+("a small message table per template") has five more users in
+`bounded-contexts/notification/infrastructure/templates/` — a `Copy`
+interface, one `const` per language, a `BY_LOCALE` table over all eight
+locales, and a shared `pickCopy` that falls back exact locale → language-only
+→ English, so a `pt-BR` reader gets Portuguese rather than English. That is
+five worked examples and an argued-out fallback rule, where this entry was
+written against one partial precedent: `provider-invite.template.ts`, which
+carries EN and PT only and has no language-only fallback.
+
+The undone half is the one this entry already names, and it is the harder one:
+carrying the requester's locale into the better-auth hooks. The five templates
+above are handed a locale read off `profile.language`; verification cannot use
+that column, because at sign-up it still holds its `"en-US"` default — nothing
+writes a language until the user edits their profile. So `Accept-Language`
+from the endpoint context really is the only source, exactly as written above.
 
 **Trigger:** before launch in Mozambique, where Portuguese is the working
 language and the SMS is the one message a user cannot skim past.
@@ -1077,7 +1110,37 @@ enough and the offset control described above is the next step.
 
 ---
 
-## 48. `TeamInvitation` snapshots the workspace's name, and nothing renders it
+## ~~48. `TeamInvitation` snapshots the workspace's name, and nothing renders it~~ — RESOLVED 2026-08-24
+
+The invitation email renders it. `team-invitation.template.ts`
+(`bounded-contexts/notification/infrastructure/templates/`) reads
+`payload.providerName` and interpolates it into the subject, the heading and
+the body, in all eight locales — "Foi convidado para Salão X na Ntizo" rather
+than the generic sentence this entry describes. The name is escaped before it
+reaches the copy (a workspace names itself, and this message lands in someone
+else's inbox), and a name the lookup could not resolve falls back to a generic
+phrase rather than failing the render, so a deleted or renamed workspace still
+gets its invitation out.
+
+This is the trigger the entry predicted, firing where it predicted: "most
+likely alongside Phase 2's email templates, since the same fact is wanted in
+both places." The email is the place it matters most — it is read outside the
+app, with no row beside it to give it context.
+
+**The in-app half is still generic, and that is the remainder.** The
+`type.teamInvitation` string in the eight locale catalogues still says "You
+have been invited to a team", with no `{{providerName}}` in it, exactly as
+described below. That was never a backend problem: the snapshot is in every row written
+since the notifications-inbox branch, and changing the string is the whole
+change. The email templates are now the worked example of how to say it.
+
+The original analysis is kept below because it still explains why the field is
+snapshotted rather than looked up, and because the in-app copy it was written
+about has not changed.
+
+---
+
+## 48. (original) `TeamInvitation` snapshots the workspace's name, and nothing renders it
 
 The team-invitation notification carries `providerName` in its payload as of
 the notifications-inbox branch (2026-08-23). The reason it is there is
@@ -1151,3 +1214,159 @@ methods on one class, and `notification-read.schema.ts` re-declares
 **Trigger:** the next substantive change inside `bounded-contexts/notification`
 or `features/notifications` — read this list first and fix whatever sits in the
 file you are already opening. Not worth a dedicated pass.
+
+---
+
+## 50. Two copies of the "which email adapter" decision, and one went stale
+
+`apps/backend/api/src/bootstrap.ts` and
+`packages/backend/src/shared/infrastructure/email/resolve-email-service.ts`
+both implement `resolveEmailService` + `LazyEmailServiceAdapter`. They differ
+only in two log strings: the shared one says `[email]` where the app one says
+`[bootstrap]`, and the app one prints an extra `console.info` naming the
+console adapter on a local run. The shared module's own doc already claims to
+be the single definition ("One definition, called by everything that sends.
+The API bootstrap had this logic…"), so the duplicate was meant to go when it
+landed and did not.
+
+It cost something: when Task 4 gave `EmailServicePort.sendEmail` a return
+value, only the shared copy was updated. `apps/backend/api` stopped
+typechecking at `ec431f2` and nobody noticed for four commits, because
+`wrangler` bundles with esbuild and never typechecks. Fixed in place at
+`095e77d` rather than consolidated — deleting the duplicate changes two log
+strings and drops a local-dev hint, which is a decision of its own.
+
+**Trigger:** the next change to either file, or the next field added to
+`EmailServicePort`. A port with two implementations of its own factory will
+drift again, and the second one will be found by whatever breaks next rather
+than by CI.
+
+**Related, and cheap while you are there:** no per-task gate on this branch
+touched `apps/backend/api` at all until Task 7, whose brief added
+`bun run typecheck` there and found the break on its first run — four commits
+late. CI's `bun run check-types` is `turbo run typecheck` across the workspace
+and does include `@ntizo/api`, so this branch has been red there since
+`ec431f2`. The app's own `test` and `lint` scripts are still in no gate list.
+
+---
+
+## 51. Nothing enforces the app→infrastructure import direction
+
+Two fitness tests guard bounded-context structure —
+`fitness-no-framework-in-packages` (no Hono/Yoga inside `packages/backend/src`)
+and `fitness-no-bc-router` (no `rest`/`http`/`graphql` directories, no
+`create*Router` exports inside `bounded-contexts/`). Neither says anything about
+the direction that matters most to this architecture: **an app-layer use case
+must not import infrastructure.**
+
+It is currently violated. `provider/app/use-cases/invite/invite-provider-member.command.ts:12`
+imports `infraStore` from `shared/infrastructure/stores/`, and
+`shared/infrastructure/email/templates/provider-invite.template` on the next
+line. A use case that reads the request-scoped store cannot be constructed
+outside a request, which is why the notification context went the other way in
+Task 7: the deferral there lives in
+`notification/infrastructure/inbound-adapters/deferred-notification-delivery.adapter.ts`,
+a decorator wired at the bootstrap, precisely so `RaiseNotificationInternalCommand`
+stays free of it.
+
+A test asserting "no file under `bounded-contexts/*/app/` imports from
+`infrastructure/`" would go red immediately on that pre-existing violation, in a
+bounded context nobody was touching — which is why it was ruled out of scope for
+Task 7 rather than written and skipped.
+
+**Do it in this order:** move the invite command's `infraStore` read out to an
+outbound port (an `AppUrlPort`, or pass the base URL in on the input) and its
+template import to an adapter; *then* add the fitness test, so it lands green
+and stays that way.
+
+**Trigger:** the next change to `invite-provider-member.command.ts`, or the next
+time anyone is tempted to reach for `infraStore` from an app-layer use case
+because there is already precedent for it. The precedent is the bug.
+
+---
+
+## 52. Suppression keys are byte-exact, and nothing normalizes an email anywhere in the round trip
+
+`email_suppression.email` is `text("email").primaryKey()` with no
+case-folding, and neither the write side
+(`resend-email-service.adapter.ts:22`, which sends `message.to` verbatim) nor
+the webhook side
+(`handle-resend-webhook.internal.command.ts`'s `execute`, which suppresses
+each string in `event.data.to` verbatim) lowercases an address before it
+touches this table. That is fine today only because the round trip happens to
+be exact: whatever casing we sent is the casing Resend echoes back in
+`data.to` on the bounce/complaint webhook.
+
+If that round-trip ever stops being exact — Resend starts normalizing
+addresses before echoing them, a provider migration changes casing, a second
+email provider is added with different echo behavior — `ana@Ntizo.test`
+suppressed as stored would silently fail to match `ana@ntizo.test` looked up
+later (or vice versa), and there is no un-suppression path to notice the
+mismatch by, only a bounce that keeps recurring because the suppression never
+actually took.
+
+**Trigger:** this becomes worth fixing only if the round-trip is ever observed
+to not be exact — a second email provider, a Resend behavior change, or a
+support ticket about an address that keeps bouncing despite being
+"suppressed." Until then, lowercasing (or otherwise normalizing) on both the
+write and lookup sides is speculative generality for a problem that has not
+happened.
+
+---
+
+## 53. Seven DB-backed tests in `bun run test` reach a remote Neon database, and time out when it is far away
+
+**Corrected 2026-08-24 (email-delivery review): this said "two", and named
+only the two that happened to flake on the day it was written. Seven test
+files read `DEV_DB_URL`, and the same argument covers all of them —
+understating the count understates the case for moving them.** The full list,
+from `grep -rl DEV_DB_URL packages/backend/src`:
+
+- `shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
+- `shared/infrastructure/database/__tests__/catalog-unpublish-sweep.test.ts`
+- `shared/infrastructure/database/__tests__/scheduling-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/notification-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/notification-delivery-constraints.test.ts`
+- `bounded-contexts/notification/__tests__/notification.repository.test.ts`
+- `bounded-contexts/notification/__tests__/notification-delivery.repository.test.ts`
+
+The last two arrived with the notifications inbox and the email-delivery
+phase, which is how a pattern spreads: each one is individually right, and
+nobody is counting. `turbo.json`'s `passThroughEnv` comment carries the same
+number and was corrected with it.
+
+They connect to `DEV_DB_URL` — the real dev Neon database — and seed their
+fixtures in `beforeAll`. Bun's hook timeout is 5 seconds and none of them
+raises it. Against a Neon instance a round trip away that budget is a handful
+of statements: observed on 2026-08-24 as `a beforeEach/afterEach hook timed
+out for this test` twice, followed by `TypeError: undefined is not an object
+(evaluating 'seeded')` from the `afterAll` cleanup that then had nothing to
+clean up. The identical command passed on the next run, and passed again
+after that. It reproduced again during the email-delivery review, on
+`catalog-unpublish-sweep.test.ts`, and passed on a re-run of that file alone.
+
+Every one of them is right to exist — the whole argument in their headers is
+that an `EXISTS` correlated on the wrong column, a sweep with the wrong
+predicate, or a check constraint that does not constrain looks correct in
+review and only a real query proves otherwise. The problem is where they run:
+`bun run test` is a gate that is supposed to be deterministic and offline-safe,
+and these make it depend on the latency of a shared remote database that
+anybody can also be writing to.
+
+A second cost, separate from the flake: a shared database accumulates whatever
+these tests forget. `notification-delivery.repository.test.ts` leaked one
+`notification_delivery` row per run until it was fixed in the same review —
+108 of them were sitting in dev when it was found, because
+`__runWithTransactionContextForTests` binds a handle and does not roll back,
+so every write is real and every cleanup has to be written by hand. An
+isolated database makes that class of mistake impossible rather than merely
+noticed.
+
+The `resetDb` harness the e2e suite already uses (a throwaway Postgres
+container, `packages/backend/scripts/reset-test-db.ts`) is the obvious home
+for them, and would make them faster and isolated at the same time. A
+`test.setTimeout`-style bump would only move the flake further out.
+
+**Trigger:** the next time CI goes red on one of these with nothing in the
+diff to explain it — or sooner, because a gate that fails for reasons unrelated
+to the change is a gate people learn to re-run rather than read.

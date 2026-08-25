@@ -6,6 +6,7 @@
 import {
   type EmailMessage,
   type EmailServicePort,
+  type SendResult,
   LazyEmailServiceAdapter,
 } from "../../../../../../shared/infrastructure/email";
 
@@ -18,8 +19,8 @@ export class ProviderEmailServiceAdapter implements EmailServicePort {
     private readonly inner: EmailServicePort = new LazyEmailServiceAdapter(),
   ) {}
 
-  async sendEmail(message: EmailMessage): Promise<void> {
-    await this.inner.sendEmail(message);
+  async sendEmail(message: EmailMessage): Promise<SendResult> {
+    return this.inner.sendEmail(message);
   }
 }
 

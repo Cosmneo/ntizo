@@ -1,4 +1,4 @@
-import type { EmailMessage, EmailServicePort } from "./email-service.port";
+import type { EmailMessage, EmailServicePort, SendResult } from "./email-service.port";
 
 /**
  * Local-development EmailService. Prints the message to stdout instead of
@@ -11,7 +11,7 @@ import type { EmailMessage, EmailServicePort } from "./email-service.port";
  * Never select this outside STAGE=local: it silently drops real mail.
  */
 export class ConsoleEmailServiceAdapter implements EmailServicePort {
-  async sendEmail(message: EmailMessage): Promise<void> {
+  async sendEmail(message: EmailMessage): Promise<SendResult> {
     const links = extractUrls(message.textBody ?? message.htmlBody);
 
     console.info(
@@ -28,6 +28,8 @@ export class ConsoleEmailServiceAdapter implements EmailServicePort {
         "",
       ].join("\n"),
     );
+
+    return { messageId: null };
   }
 }
 

@@ -1,12 +1,5 @@
-import postgres from "postgres";
-import { E2E_DB_URL } from "./db";
+import { sql } from "./db";
 import { createVerifiedUser } from "./auth";
-
-let sqlClient: postgres.Sql | undefined;
-function sql(): postgres.Sql {
-  sqlClient ??= postgres(E2E_DB_URL, { max: 1 });
-  return sqlClient;
-}
 
 export interface SeedProviderInput {
   name: string;
@@ -80,9 +73,4 @@ export async function createProvider(input: SeedProviderInput): Promise<string> 
     on conflict (provider_id, user_id) do nothing`;
 
   return providerId;
-}
-
-export async function closeProviderDb(): Promise<void> {
-  await sqlClient?.end();
-  sqlClient = undefined;
 }
