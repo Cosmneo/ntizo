@@ -15,7 +15,9 @@ import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as BecomeProviderRouteImport } from './routes/become-provider'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
 import { Route as CustomerAccountRouteRouteImport } from './routes/_customer/account/route'
 import { Route as CustomerActivityRouteImport } from './routes/_customer/activity'
@@ -86,9 +88,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProviderRouteRoute = ProviderRouteRouteImport.update({
   id: '/provider',
   path: '/provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyPhoneRoute = VerifyPhoneRouteImport.update({
@@ -312,6 +324,8 @@ export interface FileRoutesByFullPath {
   '/provider': typeof ProviderRouteRouteWithChildren
   '/become-provider': typeof BecomeProviderRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/account': typeof CustomerAccountRouteRouteWithChildren
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
@@ -358,6 +372,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/become-provider': typeof BecomeProviderRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/activity': typeof CustomerActivityRoute
@@ -408,6 +424,8 @@ export interface FileRoutesById {
   '/provider': typeof ProviderRouteRouteWithChildren
   '/become-provider': typeof BecomeProviderRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/verify-phone': typeof VerifyPhoneRoute
   '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
@@ -458,6 +476,8 @@ export interface FileRouteTypes {
     | '/provider'
     | '/become-provider'
     | '/onboarding'
+    | '/privacy'
+    | '/terms'
     | '/verify-phone'
     | '/account'
     | '/provider/$slug'
@@ -504,6 +524,8 @@ export interface FileRouteTypes {
     | '/'
     | '/become-provider'
     | '/onboarding'
+    | '/privacy'
+    | '/terms'
     | '/verify-phone'
     | '/provider/$slug'
     | '/activity'
@@ -553,6 +575,8 @@ export interface FileRouteTypes {
     | '/provider'
     | '/become-provider'
     | '/onboarding'
+    | '/privacy'
+    | '/terms'
     | '/verify-phone'
     | '/_customer/account'
     | '/provider/$slug'
@@ -604,6 +628,8 @@ export interface RootRouteChildren {
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
   BecomeProviderRoute: typeof BecomeProviderRoute
   OnboardingRoute: typeof OnboardingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   VerifyPhoneRoute: typeof VerifyPhoneRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   ServicesIdRoute: typeof ServicesIdRoute
@@ -655,11 +681,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/provider': {
       id: '/provider'
       path: '/provider'
       fullPath: '/provider'
       preLoaderRoute: typeof ProviderRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify-phone': {
@@ -1090,6 +1130,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
   BecomeProviderRoute: BecomeProviderRoute,
   OnboardingRoute: OnboardingRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   VerifyPhoneRoute: VerifyPhoneRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   ServicesIdRoute: ServicesIdRoute,

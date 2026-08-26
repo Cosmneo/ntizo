@@ -1,0 +1,152 @@
+{
+  "backHome": "← Terug naar home",
+  "lastUpdated": "Laatst bijgewerkt: {{date}}",
+  "contact": "Vragen over dit document? Schrijf naar privacidade@ntizo.co.mz.",
+  "privacy": {
+    "title": "Privacybeleid",
+    "updated": "26 augustus 2026",
+    "intro": "Ntizo brengt klanten en dienstverleners bij elkaar. Daarvoor hebben we een deel van je gegevens nodig. Dit document zegt welke, waarom, met wie ze worden gedeeld en hoe je ze kunt laten verwijderen. Het is geschreven om gelezen te worden, niet om moeilijk te zijn.",
+    "sections": [
+      {
+        "heading": "Welke gegevens we verzamelen",
+        "body": [
+          "Bij het aanmaken van een account: voor- en achternaam, e-mailadres, telefoonnummer en een wachtwoord, dat we gehasht opslaan en nooit leesbaar. Log je in met Google, dan geeft Google ons je naam, e-mailadres en profielfoto — nooit je wachtwoord.",
+          "In je profiel, als je ze invult: foto, een beschrijving van jezelf, geboortedatum, geslacht, taal en tijdzone.",
+          "Adressen die je opslaat om diensten te ontvangen, inclusief stad, wijk, aanwijzingen voor de toegang en de coördinaten van het punt dat je aangeeft.",
+          "Betaalmethoden: we bewaren de identificatie van de mobiele rekening (bijvoorbeeld het M-Pesa- of e-Mola-nummer) en het land. Kaartnummers bewaren we niet.",
+          "Ben je dienstverlener: identiteitsdocumenten die je uploadt voor verificatie, en de status daarvan.",
+          "Technische gegevens per sessie: IP-adres en browseridentificatie, zodat we weten wanneer een sessie van jou is en wanneer niet."
+        ]
+      },
+      {
+        "heading": "Waarvoor we ze gebruiken",
+        "body": [
+          "Om je account aan te maken, te onderhouden en veilig te houden.",
+          "Om je in contact te brengen met dienstverleners, en zodat een dienstverlener weet waar en wanneer de geboekte dienst moet plaatsvinden.",
+          "Om de identiteit van dienstverleners te verifiëren — dat is wat het platform bruikbaar maakt tussen onbekenden.",
+          "Om je e-mails te sturen over wat er in je account gebeurt — een boeking, een uitnodiging, een bevestiging. We sturen geen reclame.",
+          "Om misbruik op te sporen en te stoppen."
+        ]
+      },
+      {
+        "heading": "Met wie ze worden gedeeld",
+        "body": [
+          "Met de andere partij bij een boeking, en alleen voor zover de boeking dat vraagt: een dienstverlener ziet je naam, contactgegevens en het adres van de dienst; een klant ziet naam en contactgegevens van de dienstverlener.",
+          "Met leveranciers die het platform draaiende houden: Resend verstuurt onze e-mail, Cloudflare host de applicatie, Neon host de database. Zij verwerken de gegevens namens ons en mogen ze nergens anders voor gebruiken.",
+          "Wanneer de wet dat vereist.",
+          "We verkopen je gegevens niet en geven ze niet aan wie ze voor reclame wil."
+        ]
+      },
+      {
+        "heading": "Hoe lang",
+        "body": [
+          "Zolang je een account hebt. Verwijder je het, dan wissen we je persoonsgegevens, met twee uitzonderingen die er om praktische redenen zijn: boekings- en betaalgegevens die we wettelijk moeten bewaren, en e-mailadressen die definitief zijn geweigerd, die we juist op een lijst houden zodat we ze nooit meer aanschrijven."
+        ]
+      },
+      {
+        "heading": "Je rechten",
+        "body": [
+          "Het meeste van je gegevens kun je op elk moment in je account bekijken en corrigeren.",
+          "Je kunt een kopie van je gegevens vragen, of vragen ze te wissen, via privacidade@ntizo.co.mz. We antwoorden binnen 30 dagen.",
+          "Logde je in met Google, dan kun je die toegang intrekken in je Google-accountinstellingen. Dat verwijdert je Ntizo-account niet — vraag ons daarvoor."
+        ]
+      },
+      {
+        "heading": "Beveiliging",
+        "body": [
+          "Wachtwoorden worden gehasht opgeslagen. Het verkeer tussen jou en het platform is versleuteld. Identiteitsdocumenten van dienstverleners hebben geen openbaar adres: ze zijn alleen bereikbaar via een geauthenticeerd verzoek van een beheerder.",
+          "Geen enkel systeem is overal tegen bestand. Komt er ooit een inbreuk die jou raakt, dan laten we het je weten."
+        ]
+      },
+      {
+        "heading": "Wijzigingen",
+        "body": [
+          "Wijzigen we dit document wezenlijk, dan mailen we je voordat de wijziging ingaat. De datum bovenaan zegt altijd wanneer het laatst is herzien."
+        ]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Servicevoorwaarden",
+    "updated": "26 augustus 2026",
+    "intro": "Deze voorwaarden gelden voor je gebruik van Ntizo. Een account aanmaken betekent dat je ze aanvaardt. Ben je het met iets hier niet eens, gebruik het platform dan niet — en zeg ons waarom, dat is nuttige informatie.",
+    "sections": [
+      {
+        "heading": "Wat Ntizo is, en niet is",
+        "body": [
+          "Ntizo is een marktplaats die mensen die een dienst zoeken verbindt met mensen die er een leveren. Wij leveren de vermelde diensten niet: dat doet de dienstverlener die je boekte, en het contract voor de dienst is met hem.",
+          "We verifiëren de identiteit van dienstverleners voordat ze mogen adverteren. Dat is geen garantie voor de kwaliteit van het werk — het is de garantie dat we weten wie ze zijn."
+        ]
+      },
+      {
+        "heading": "Je account",
+        "body": [
+          "Je moet minstens 18 jaar zijn.",
+          "De gegevens die je opgeeft moeten kloppen en actueel blijven. Een verkeerd adres kost iemand een rit.",
+          "Je bent verantwoordelijk voor wat er in je account gebeurt. Bewaar je wachtwoord goed en laat het weten als je denkt dat iemand erbij kwam.",
+          "Eén persoon, één account."
+        ]
+      },
+      {
+        "heading": "Boekingen, prijzen en de servicekosten",
+        "body": [
+          "De prijs van een dienst wordt door de dienstverlener bepaald en getoond voordat je bevestigt.",
+          "Daar bovenop komen servicekosten van het platform, betaald door jou, de klant. Op dit moment is dat 10%. Ze worden altijd getoond vóór je bevestigt, en worden nooit ingehouden op de dienstverlener: de prijs die hij bepaalt is de prijs die hij ontvangt.",
+          "Voor annuleringen gelden de voorwaarden die bij de boeking zijn getoond."
+        ]
+      },
+      {
+        "heading": "Als je dienstverlener bent",
+        "body": [
+          "Bied alleen diensten aan die je daadwerkelijk kunt leveren, en beschrijf ze eerlijk.",
+          "Kom boekingen die je aanneemt na, of annuleer op tijd genoeg zodat de klant iets anders kan regelen.",
+          "Je bent zelf verantwoordelijk voor vergunningen, verzekeringen en belastingverplichtingen die je activiteit vraagt. Wij zijn niet je werkgever.",
+          "Documenten die je uploadt voor verificatie worden alleen daarvoor gebruikt."
+        ]
+      },
+      {
+        "heading": "Wat niet mag",
+        "body": [
+          "Het platform gebruiken voor iets onwettigs, of diensten aanbieden die de Mozambikaanse wet niet toestaat.",
+          "Je voordoen als iemand anders, of adverteren namens iemand die dat niet toestond.",
+          "Een andere gebruiker lastigvallen, bedreigen of discrimineren.",
+          "Buiten het platform om afspreken om de servicekosten te omzeilen, nadat het contact erdoor tot stand kwam.",
+          "Proberen bij accounts of gegevens te komen die niet van jou zijn."
+        ]
+      },
+      {
+        "heading": "Beoordelingen",
+        "body": [
+          "Beoordelingen zijn van wie ze schrijft en moeten een echte ervaring beschrijven. We halen ze niet weg omdat ze negatief zijn. Wel als ze onwaar of beledigend zijn, of geschreven door iemand die de dienst nooit kreeg."
+        ]
+      },
+      {
+        "heading": "Aansprakelijkheid",
+        "body": [
+          "We doen wat we kunnen om het platform beschikbaar en correct te houden, maar garanderen niet dat het vrij is van fouten of onderbrekingen.",
+          "We staan niet in voor de uitvoering van de dienst zelf; die is de verantwoordelijkheid van de dienstverlener. We helpen geschillen oplossen en kunnen accounts schorsen, maar het werk wordt tussen de twee partijen afgesproken.",
+          "Niets in deze voorwaarden neemt rechten weg die de wet je geeft en waarvan niet kan worden afgeweken."
+        ]
+      },
+      {
+        "heading": "Schorsing en beëindiging",
+        "body": [
+          "Je kunt je account verwijderen wanneer je wilt.",
+          "We kunnen een account schorsen of sluiten dat deze voorwaarden schendt, en leggen uit waarom tenzij dat een onderzoek of iemands veiligheid zou schaden."
+        ]
+      },
+      {
+        "heading": "Toepasselijk recht",
+        "body": [
+          "Op deze voorwaarden is het recht van de Republiek Mozambique van toepassing, en de Mozambikaanse rechter is bevoegd voor geschillen die eruit voortvloeien."
+        ]
+      },
+      {
+        "heading": "Wijzigingen",
+        "body": [
+          "We kunnen deze voorwaarden herzien. Is de wijziging wezenlijk, dan mailen we voordat ze ingaat. Blijf je het platform daarna gebruiken, dan aanvaard je ze."
+        ]
+      }
+    ]
+  }
+}

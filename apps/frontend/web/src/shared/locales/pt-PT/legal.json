@@ -1,0 +1,152 @@
+{
+  "backHome": "← Voltar ao início",
+  "lastUpdated": "Última actualização: {{date}}",
+  "contact": "Dúvidas sobre este documento? Escreva para privacidade@ntizo.co.mz.",
+  "privacy": {
+    "title": "Política de Privacidade",
+    "updated": "26 de Agosto de 2026",
+    "intro": "A Ntizo liga clientes a prestadores de serviços. Para isso precisamos de alguns dados seus. Este documento diz quais, porquê, com quem são partilhados e como pode pedir que os apaguemos. Está escrito para ser lido, não para ser difícil.",
+    "sections": [
+      {
+        "heading": "Que dados recolhemos",
+        "body": [
+          "Quando cria conta: nome próprio e apelido, endereço de e-mail, número de telemóvel e uma palavra-passe, que guardamos cifrada e nunca em texto legível. Se entrar com a Google, recebemos da Google o seu nome, e-mail e fotografia de perfil — nunca a sua palavra-passe.",
+          "No seu perfil, se as preencher: fotografia, uma descrição sua, data de nascimento, género, idioma e fuso horário.",
+          "Moradas que registe para receber serviços, incluindo cidade, bairro, indicações de acesso e coordenadas geográficas do ponto que marcar.",
+          "Métodos de pagamento: guardamos o identificador da conta móvel (por exemplo, o número M-Pesa ou e-Mola) e o país. Não guardamos números de cartão.",
+          "Se for prestador: documentos de identificação que carregue para verificação, e o estado dessa verificação.",
+          "Dados técnicos de cada sessão: endereço IP e identificação do navegador, para sabermos quando uma sessão é sua e quando não é."
+        ]
+      },
+      {
+        "heading": "Para que os usamos",
+        "body": [
+          "Para criar e manter a sua conta e mantê-la segura.",
+          "Para o ligar a prestadores e para que um prestador saiba onde e quando prestar o serviço que reservou.",
+          "Para verificar a identidade de prestadores, que é o que torna a plataforma utilizável por estranhos.",
+          "Para lhe enviar e-mails sobre coisas que aconteceram na sua conta — uma reserva, um convite, uma confirmação. Não enviamos publicidade.",
+          "Para detectar e travar utilização abusiva."
+        ]
+      },
+      {
+        "heading": "Com quem são partilhados",
+        "body": [
+          "Com a outra parte de uma reserva, e apenas o necessário para a realizar: um prestador vê o seu nome, contacto e a morada do serviço; um cliente vê o nome e o contacto do prestador.",
+          "Com fornecedores que operam a plataforma: a Resend envia os nossos e-mails, a Cloudflare aloja a aplicação, a Neon aloja a base de dados. Tratam os dados por nossa conta e não os podem usar para outros fins.",
+          "Quando a lei o exigir.",
+          "Não vendemos os seus dados, e não os cedemos a quem os queira para publicidade."
+        ]
+      },
+      {
+        "heading": "Durante quanto tempo",
+        "body": [
+          "Enquanto tiver conta connosco. Se a apagar, apagamos os seus dados pessoais, com duas excepções que existem por razões práticas: registos de reservas e pagamentos que a lei nos obrigue a conservar, e endereços de e-mail que tenham devolvido permanentemente, que guardamos numa lista precisamente para não voltarmos a escrever para eles."
+        ]
+      },
+      {
+        "heading": "Os seus direitos",
+        "body": [
+          "Pode ver e corrigir a maior parte dos seus dados na sua conta, a qualquer momento.",
+          "Pode pedir uma cópia dos seus dados, ou pedir que os apaguemos, escrevendo para privacidade@ntizo.co.mz. Respondemos no prazo de 30 dias.",
+          "Se entrou com a Google, pode retirar esse acesso nas definições da sua conta Google. Isso não apaga a conta Ntizo — para isso, peça-nos."
+        ]
+      },
+      {
+        "heading": "Segurança",
+        "body": [
+          "As palavras-passe são guardadas cifradas. O tráfego entre si e a plataforma é encriptado. Os documentos de identificação dos prestadores não têm endereço público: só são acessíveis através de um pedido autenticado por um administrador.",
+          "Nenhum sistema é infalível. Se alguma vez houver uma violação que o afecte, informamo-lo."
+        ]
+      },
+      {
+        "heading": "Alterações",
+        "body": [
+          "Se mudarmos este documento de forma significativa, avisamos por e-mail antes de a alteração entrar em vigor. A data no topo diz sempre quando foi a última revisão."
+        ]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Termos de Serviço",
+    "updated": "26 de Agosto de 2026",
+    "intro": "Estes termos regem a utilização da Ntizo. Ao criar conta, aceita-os. Se não concordar com alguma coisa aqui, não use a plataforma — e diga-nos porquê, que é informação útil.",
+    "sections": [
+      {
+        "heading": "O que a Ntizo é, e o que não é",
+        "body": [
+          "A Ntizo é um mercado que liga quem procura um serviço a quem o presta. Não somos nós que prestamos os serviços anunciados: quem os presta é o prestador que reservou, e é com ele que o contrato do serviço existe.",
+          "Verificamos a identidade dos prestadores antes de os deixar anunciar. Isso não é uma garantia da qualidade do trabalho — é uma garantia de que sabemos quem eles são."
+        ]
+      },
+      {
+        "heading": "A sua conta",
+        "body": [
+          "Precisa de ter pelo menos 18 anos.",
+          "Os dados que der têm de ser verdadeiros, e mantidos actualizados. Uma morada errada custa uma deslocação a alguém.",
+          "É responsável pelo que acontece na sua conta. Guarde a palavra-passe e avise-nos se achar que alguém lhe acedeu.",
+          "Uma pessoa, uma conta."
+        ]
+      },
+      {
+        "heading": "Reservas, preços e a taxa de serviço",
+        "body": [
+          "O preço de um serviço é definido pelo prestador e mostrado antes de confirmar.",
+          "Sobre esse preço acresce uma taxa de serviço da plataforma, paga por si, cliente. Actualmente é de 10%. É sempre mostrada antes de confirmar a reserva, e nunca é descontada ao prestador: o preço que ele define é o que recebe.",
+          "Cancelamentos seguem as condições apresentadas no momento da reserva."
+        ]
+      },
+      {
+        "heading": "Se for prestador",
+        "body": [
+          "Anuncie apenas serviços que sabe prestar, e descreva-os com honestidade.",
+          "Cumpra as reservas que aceitar, ou cancele com antecedência suficiente para o cliente se organizar.",
+          "É responsável pelas licenças, seguros e obrigações fiscais que a sua actividade exija. Nós não somos seu empregador.",
+          "Os documentos que carrega para verificação servem só para isso."
+        ]
+      },
+      {
+        "heading": "O que não é permitido",
+        "body": [
+          "Usar a plataforma para algo ilegal, ou para anunciar serviços que a lei moçambicana não permita.",
+          "Fazer-se passar por outra pessoa, ou anunciar em nome de quem não autorizou.",
+          "Assediar, ameaçar ou discriminar outro utilizador.",
+          "Combinar por fora para evitar a taxa de serviço depois de o contacto ter sido feito através da plataforma.",
+          "Tentar aceder a contas ou dados que não sejam seus."
+        ]
+      },
+      {
+        "heading": "Avaliações",
+        "body": [
+          "As avaliações são de quem as escreve e devem descrever uma experiência real. Não as apagamos por serem negativas. Apagamos as que sejam falsas, ofensivas ou escritas por quem não teve o serviço."
+        ]
+      },
+      {
+        "heading": "Responsabilidade",
+        "body": [
+          "Fazemos o possível para manter a plataforma disponível e correcta, mas não a garantimos livre de erros ou interrupções.",
+          "Não respondemos pela execução do serviço em si, que é da responsabilidade do prestador. Ajudamos a resolver disputas e podemos suspender contas, mas o trabalho é contratado entre as duas partes.",
+          "Nada nestes termos afasta direitos que a lei lhe dê e que não possam ser afastados."
+        ]
+      },
+      {
+        "heading": "Suspensão e encerramento",
+        "body": [
+          "Pode apagar a sua conta quando quiser.",
+          "Podemos suspender ou encerrar uma conta que viole estes termos, e explicamos porquê salvo se isso comprometer uma investigação ou a segurança de alguém."
+        ]
+      },
+      {
+        "heading": "Lei aplicável",
+        "body": [
+          "Estes termos regem-se pela lei da República de Moçambique, e os tribunais moçambicanos são os competentes para os litígios que deles resultem."
+        ]
+      },
+      {
+        "heading": "Alterações",
+        "body": [
+          "Podemos rever estes termos. Se a alteração for significativa, avisamos por e-mail antes de entrar em vigor. Continuar a usar a plataforma depois disso significa que os aceita."
+        ]
+      }
+    ]
+  }
+}

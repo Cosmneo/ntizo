@@ -278,8 +278,18 @@ export function SignUp() {
                     className="mt-0.5"
                     required
                   />
+                  {/* The two documents, reachable from the checkbox that asks
+                      you to accept them. It read as a plain sentence before,
+                      naming things a person had no way to go and read. */}
                   <span className="text-[var(--color-muted-foreground)]">
-                    {t("acceptTerms")}
+                    {t("acceptTerms")}{" "}
+                    <Link to="/terms" target="_blank" className="underline">
+                      {tc("footer.terms", { ns: "landing" })}
+                    </Link>
+                    {" · "}
+                    <Link to="/privacy" target="_blank" className="underline">
+                      {tc("footer.privacy", { ns: "landing" })}
+                    </Link>
                   </span>
                 </label>
               )}

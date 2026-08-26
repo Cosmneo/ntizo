@@ -1,0 +1,152 @@
+{
+  "backHome": "← Zurück zur Startseite",
+  "lastUpdated": "Zuletzt aktualisiert: {{date}}",
+  "contact": "Fragen zu diesem Dokument? Schreiben Sie an privacidade@ntizo.co.mz.",
+  "privacy": {
+    "title": "Datenschutzerklärung",
+    "updated": "26. August 2026",
+    "intro": "Ntizo bringt Kundinnen und Kunden mit Dienstleistern zusammen. Dafür brauchen wir einige Ihrer Daten. Dieses Dokument sagt, welche, wozu, mit wem sie geteilt werden und wie Sie ihre Löschung verlangen. Es ist zum Lesen geschrieben, nicht um schwierig zu sein.",
+    "sections": [
+      {
+        "heading": "Welche Daten wir erheben",
+        "body": [
+          "Bei der Kontoerstellung: Vor- und Nachname, E-Mail-Adresse, Telefonnummer und ein Passwort, das wir gehasht und nie im Klartext speichern. Wenn Sie sich mit Google anmelden, gibt Google uns Ihren Namen, Ihre E-Mail-Adresse und Ihr Profilbild — nie Ihr Passwort.",
+          "In Ihrem Profil, sofern Sie sie ausfüllen: Foto, eine Beschreibung, Geburtsdatum, Geschlecht, Sprache und Zeitzone.",
+          "Adressen, die Sie für den Empfang von Leistungen speichern, einschließlich Stadt, Stadtteil, Zufahrtshinweisen und den Koordinaten des von Ihnen gesetzten Punktes.",
+          "Zahlungsmethoden: Wir speichern die Kennung des Mobilkontos (etwa die M-Pesa- oder e-Mola-Nummer) und das Land. Kartennummern speichern wir nicht.",
+          "Wenn Sie Anbieter sind: die zur Verifizierung hochgeladenen Ausweisdokumente und den Stand dieser Verifizierung.",
+          "Technische Daten je Sitzung: IP-Adresse und Browserkennung, damit wir erkennen, wann eine Sitzung Ihre ist und wann nicht."
+        ]
+      },
+      {
+        "heading": "Wozu wir sie verwenden",
+        "body": [
+          "Um Ihr Konto anzulegen, zu führen und sicher zu halten.",
+          "Um Sie mit Anbietern zusammenzubringen, und damit ein Anbieter weiß, wo und wann die gebuchte Leistung zu erbringen ist.",
+          "Um die Identität von Anbietern zu prüfen — das macht die Plattform unter Fremden erst benutzbar.",
+          "Um Ihnen E-Mails über Vorgänge in Ihrem Konto zu senden — eine Buchung, eine Einladung, eine Bestätigung. Werbung versenden wir nicht.",
+          "Um Missbrauch zu erkennen und zu unterbinden."
+        ]
+      },
+      {
+        "heading": "Mit wem sie geteilt werden",
+        "body": [
+          "Mit der jeweils anderen Partei einer Buchung, und nur soweit die Buchung es erfordert: Ein Anbieter sieht Ihren Namen, Ihre Kontaktdaten und die Leistungsadresse; ein Kunde sieht Name und Kontakt des Anbieters.",
+          "Mit Dienstleistern, die die Plattform betreiben: Resend versendet unsere E-Mails, Cloudflare hostet die Anwendung, Neon hostet die Datenbank. Sie verarbeiten die Daten in unserem Auftrag und dürfen sie zu nichts anderem verwenden.",
+          "Wenn das Gesetz es verlangt.",
+          "Wir verkaufen Ihre Daten nicht und geben sie niemandem, der sie für Werbung möchte."
+        ]
+      },
+      {
+        "heading": "Wie lange",
+        "body": [
+          "Solange Sie ein Konto haben. Löschen Sie es, löschen wir Ihre personenbezogenen Daten — mit zwei Ausnahmen aus praktischen Gründen: Buchungs- und Zahlungsunterlagen, zu deren Aufbewahrung das Gesetz uns verpflichtet, und dauerhaft unzustellbare E-Mail-Adressen, die wir auf einer Liste führen, gerade damit wir ihnen nie wieder schreiben."
+        ]
+      },
+      {
+        "heading": "Ihre Rechte",
+        "body": [
+          "Den größten Teil Ihrer Daten können Sie jederzeit in Ihrem Konto einsehen und berichtigen.",
+          "Sie können eine Kopie Ihrer Daten oder deren Löschung verlangen — schreiben Sie an privacidade@ntizo.co.mz. Wir antworten innerhalb von 30 Tagen.",
+          "Wenn Sie sich mit Google angemeldet haben, können Sie diesen Zugriff in Ihren Google-Kontoeinstellungen entziehen. Das löscht Ihr Ntizo-Konto nicht — dafür wenden Sie sich an uns."
+        ]
+      },
+      {
+        "heading": "Sicherheit",
+        "body": [
+          "Passwörter werden gehasht gespeichert. Der Verkehr zwischen Ihnen und der Plattform ist verschlüsselt. Die Ausweisdokumente der Anbieter haben keine öffentliche Adresse: Sie sind nur über eine authentifizierte Anfrage einer Administratorin erreichbar.",
+          "Kein System ist gegen alles gefeit. Sollte es je eine Verletzung geben, die Sie betrifft, sagen wir es Ihnen."
+        ]
+      },
+      {
+        "heading": "Änderungen",
+        "body": [
+          "Ändern wir dieses Dokument wesentlich, informieren wir Sie per E-Mail, bevor die Änderung wirksam wird. Das Datum oben nennt immer die letzte Überarbeitung."
+        ]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen",
+    "updated": "26. August 2026",
+    "intro": "Diese Bedingungen regeln Ihre Nutzung von Ntizo. Mit der Kontoerstellung nehmen Sie sie an. Sind Sie mit etwas hier nicht einverstanden, nutzen Sie die Plattform nicht — und sagen Sie uns warum, das ist nützlich zu wissen.",
+    "sections": [
+      {
+        "heading": "Was Ntizo ist und was nicht",
+        "body": [
+          "Ntizo ist ein Marktplatz, der Suchende und Anbieter von Dienstleistungen zusammenbringt. Die aufgeführten Leistungen erbringen nicht wir: Das tut der von Ihnen gebuchte Anbieter, und der Leistungsvertrag besteht mit ihm.",
+          "Wir prüfen die Identität der Anbieter, bevor wir sie inserieren lassen. Das ist keine Gewähr für die Qualität der Arbeit — es ist die Gewähr, dass wir wissen, wer sie sind."
+        ]
+      },
+      {
+        "heading": "Ihr Konto",
+        "body": [
+          "Sie müssen mindestens 18 Jahre alt sein.",
+          "Ihre Angaben müssen zutreffen und aktuell gehalten werden. Eine falsche Adresse kostet jemanden eine Fahrt.",
+          "Sie sind verantwortlich für das, was in Ihrem Konto geschieht. Bewahren Sie Ihr Passwort sicher auf und sagen Sie uns Bescheid, wenn jemand darauf zugegriffen haben könnte.",
+          "Eine Person, ein Konto."
+        ]
+      },
+      {
+        "heading": "Buchungen, Preise und die Servicegebühr",
+        "body": [
+          "Den Preis einer Leistung legt der Anbieter fest; er wird vor der Bestätigung angezeigt.",
+          "Darauf kommt eine Servicegebühr der Plattform, die Sie als Kunde zahlen. Sie beträgt derzeit 10 %. Sie wird stets vor der Bestätigung angezeigt und dem Anbieter nie abgezogen: Der Preis, den er festlegt, ist der, den er erhält.",
+          "Für Stornierungen gelten die bei der Buchung angezeigten Bedingungen."
+        ]
+      },
+      {
+        "heading": "Wenn Sie Anbieter sind",
+        "body": [
+          "Bieten Sie nur Leistungen an, die Sie erbringen können, und beschreiben Sie sie ehrlich.",
+          "Halten Sie angenommene Buchungen ein oder sagen Sie früh genug ab, damit der Kunde umdisponieren kann.",
+          "Für Genehmigungen, Versicherungen und steuerliche Pflichten Ihrer Tätigkeit sind Sie selbst verantwortlich. Wir sind nicht Ihr Arbeitgeber.",
+          "Zur Verifizierung hochgeladene Dokumente dienen ausschließlich diesem Zweck."
+        ]
+      },
+      {
+        "heading": "Was nicht erlaubt ist",
+        "body": [
+          "Die Plattform für Rechtswidriges nutzen oder Leistungen anbieten, die das mosambikanische Recht nicht zulässt.",
+          "Sich als jemand anderes ausgeben oder für jemanden inserieren, der das nicht erlaubt hat.",
+          "Andere Nutzerinnen und Nutzer belästigen, bedrohen oder diskriminieren.",
+          "Nach einem über die Plattform zustande gekommenen Kontakt außerhalb der Plattform vereinbaren, um die Servicegebühr zu umgehen.",
+          "Versuchen, auf Konten oder Daten zuzugreifen, die nicht Ihre sind."
+        ]
+      },
+      {
+        "heading": "Bewertungen",
+        "body": [
+          "Bewertungen gehören denen, die sie schreiben, und müssen eine tatsächliche Erfahrung beschreiben. Wir entfernen sie nicht, weil sie negativ sind. Wir entfernen falsche, beleidigende oder solche von jemandem, der die Leistung nie erhalten hat."
+        ]
+      },
+      {
+        "heading": "Haftung",
+        "body": [
+          "Wir tun, was wir können, damit die Plattform verfügbar und richtig ist, gewährleisten aber keine Fehler- oder Unterbrechungsfreiheit.",
+          "Für die Erbringung der Leistung selbst haften wir nicht; sie liegt beim Anbieter. Wir helfen bei Streitigkeiten und können Konten sperren, aber beauftragt wird die Arbeit zwischen den beiden Parteien.",
+          "Nichts in diesen Bedingungen nimmt Ihnen Rechte, die das Gesetz Ihnen gibt und auf die nicht verzichtet werden kann."
+        ]
+      },
+      {
+        "heading": "Sperrung und Beendigung",
+        "body": [
+          "Sie können Ihr Konto jederzeit löschen.",
+          "Wir können ein Konto sperren oder schließen, das gegen diese Bedingungen verstößt, und erklären warum — außer dies gefährdete eine Untersuchung oder die Sicherheit einer Person."
+        ]
+      },
+      {
+        "heading": "Anwendbares Recht",
+        "body": [
+          "Diese Bedingungen unterliegen dem Recht der Republik Mosambik; für Streitigkeiten daraus sind die mosambikanischen Gerichte zuständig."
+        ]
+      },
+      {
+        "heading": "Änderungen",
+        "body": [
+          "Wir können diese Bedingungen überarbeiten. Ist die Änderung wesentlich, informieren wir vorher per E-Mail. Wer die Plattform danach weiter nutzt, nimmt sie an."
+        ]
+      }
+    ]
+  }
+}

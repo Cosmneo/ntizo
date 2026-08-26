@@ -1,0 +1,152 @@
+{
+  "backHome": "← Volver al inicio",
+  "lastUpdated": "Última actualización: {{date}}",
+  "contact": "¿Dudas sobre este documento? Escribe a privacidade@ntizo.co.mz.",
+  "privacy": {
+    "title": "Política de Privacidad",
+    "updated": "26 de agosto de 2026",
+    "intro": "Ntizo conecta a clientes con proveedores de servicios. Para hacerlo necesitamos algunos de tus datos. Este documento dice cuáles, por qué, con quién se comparten y cómo pedir que los borremos. Está escrito para leerse, no para resultar difícil.",
+    "sections": [
+      {
+        "heading": "Qué datos recogemos",
+        "body": [
+          "Al crear una cuenta: nombre y apellidos, correo electrónico, número de teléfono y una contraseña, que guardamos cifrada y nunca en texto legible. Si entras con Google, Google nos da tu nombre, correo y foto de perfil — nunca tu contraseña.",
+          "En tu perfil, si los rellenas: foto, una descripción tuya, fecha de nacimiento, género, idioma y zona horaria.",
+          "Direcciones que guardes para recibir servicios, incluidas ciudad, barrio, indicaciones de acceso y las coordenadas del punto que marques.",
+          "Métodos de pago: guardamos el identificador de la cuenta móvil (por ejemplo, el número de M-Pesa o e-Mola) y el país. No guardamos números de tarjeta.",
+          "Si eres proveedor: los documentos de identidad que subas para la verificación, y el estado de esa verificación.",
+          "Datos técnicos de cada sesión: dirección IP e identificación del navegador, para saber cuándo una sesión es tuya y cuándo no."
+        ]
+      },
+      {
+        "heading": "Para qué los usamos",
+        "body": [
+          "Para crear y mantener tu cuenta, y mantenerla segura.",
+          "Para conectarte con proveedores, y para que un proveedor sepa dónde y cuándo prestar el servicio que reservaste.",
+          "Para verificar la identidad de los proveedores, que es lo que hace la plataforma utilizable entre desconocidos.",
+          "Para enviarte correos sobre cosas que han pasado en tu cuenta — una reserva, una invitación, una confirmación. No enviamos publicidad.",
+          "Para detectar y frenar usos abusivos."
+        ]
+      },
+      {
+        "heading": "Con quién se comparten",
+        "body": [
+          "Con la otra parte de una reserva, y solo lo que la reserva necesita: un proveedor ve tu nombre, contacto y la dirección del servicio; un cliente ve el nombre y el contacto del proveedor.",
+          "Con proveedores que operan la plataforma: Resend envía nuestros correos, Cloudflare aloja la aplicación, Neon aloja la base de datos. Tratan los datos por cuenta nuestra y no pueden usarlos para otra cosa.",
+          "Cuando la ley lo exija.",
+          "No vendemos tus datos, y no los cedemos a quien los quiera para publicidad."
+        ]
+      },
+      {
+        "heading": "Durante cuánto tiempo",
+        "body": [
+          "Mientras tengas cuenta. Si la borras, borramos tus datos personales, con dos excepciones que existen por razones prácticas: registros de reservas y pagos que la ley nos obliga a conservar, y direcciones de correo que hayan rebotado de forma permanente, que guardamos en una lista precisamente para no volver a escribirles."
+        ]
+      },
+      {
+        "heading": "Tus derechos",
+        "body": [
+          "Puedes ver y corregir la mayoría de tus datos en tu cuenta, en cualquier momento.",
+          "Puedes pedir una copia de tus datos, o pedir que los borremos, escribiendo a privacidade@ntizo.co.mz. Respondemos en un plazo de 30 días.",
+          "Si entraste con Google, puedes retirar ese acceso en los ajustes de tu cuenta de Google. Eso no borra tu cuenta de Ntizo — para eso, pídenoslo."
+        ]
+      },
+      {
+        "heading": "Seguridad",
+        "body": [
+          "Las contraseñas se guardan cifradas. El tráfico entre tú y la plataforma va cifrado. Los documentos de identidad de los proveedores no tienen dirección pública: solo son accesibles mediante una petición autenticada de un administrador.",
+          "Ningún sistema es infalible. Si alguna vez hay una brecha que te afecte, te lo diremos."
+        ]
+      },
+      {
+        "heading": "Cambios",
+        "body": [
+          "Si cambiamos este documento de forma significativa, te avisaremos por correo antes de que el cambio entre en vigor. La fecha de arriba siempre dice cuándo se revisó por última vez."
+        ]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Términos del Servicio",
+    "updated": "26 de agosto de 2026",
+    "intro": "Estos términos rigen el uso de Ntizo. Al crear una cuenta, los aceptas. Si no estás de acuerdo con algo de aquí, no uses la plataforma — y dinos por qué, que es información útil.",
+    "sections": [
+      {
+        "heading": "Qué es Ntizo, y qué no es",
+        "body": [
+          "Ntizo es un mercado que conecta a quien busca un servicio con quien lo presta. No prestamos nosotros los servicios anunciados: los presta el proveedor que reservaste, y el contrato del servicio es con él.",
+          "Verificamos la identidad de los proveedores antes de dejarles anunciar. Eso no es una garantía de la calidad del trabajo — es una garantía de que sabemos quiénes son."
+        ]
+      },
+      {
+        "heading": "Tu cuenta",
+        "body": [
+          "Debes tener al menos 18 años.",
+          "Los datos que des tienen que ser verdaderos y estar actualizados. Una dirección equivocada le cuesta un viaje a alguien.",
+          "Eres responsable de lo que pase en tu cuenta. Guarda tu contraseña y avísanos si crees que alguien ha accedido.",
+          "Una persona, una cuenta."
+        ]
+      },
+      {
+        "heading": "Reservas, precios y la tarifa de servicio",
+        "body": [
+          "El precio de un servicio lo fija el proveedor y se muestra antes de confirmar.",
+          "Sobre ese precio se añade una tarifa de servicio de la plataforma, que pagas tú, el cliente. Actualmente es del 10%. Siempre se muestra antes de confirmar la reserva, y nunca se descuenta al proveedor: el precio que fija es el que recibe.",
+          "Las cancelaciones siguen las condiciones mostradas en el momento de la reserva."
+        ]
+      },
+      {
+        "heading": "Si eres proveedor",
+        "body": [
+          "Anuncia solo servicios que sepas prestar, y descríbelos con honestidad.",
+          "Cumple las reservas que aceptes, o cancela con antelación suficiente para que el cliente se organice.",
+          "Eres responsable de las licencias, seguros y obligaciones fiscales que tu actividad exija. No somos tu empleador.",
+          "Los documentos que subes para la verificación sirven solo para eso."
+        ]
+      },
+      {
+        "heading": "Qué no está permitido",
+        "body": [
+          "Usar la plataforma para algo ilegal, o anunciar servicios que la ley mozambiqueña no permita.",
+          "Hacerse pasar por otra persona, o anunciar en nombre de quien no lo autorizó.",
+          "Acosar, amenazar o discriminar a otro usuario.",
+          "Acordar por fuera para evitar la tarifa de servicio, una vez hecho el contacto a través de la plataforma.",
+          "Intentar acceder a cuentas o datos que no sean tuyos."
+        ]
+      },
+      {
+        "heading": "Valoraciones",
+        "body": [
+          "Las valoraciones son de quien las escribe y deben describir una experiencia real. No las quitamos por ser negativas. Sí quitamos las que sean falsas, ofensivas o escritas por quien no recibió el servicio."
+        ]
+      },
+      {
+        "heading": "Responsabilidad",
+        "body": [
+          "Hacemos lo posible por mantener la plataforma disponible y correcta, pero no garantizamos que esté libre de errores o interrupciones.",
+          "No respondemos por la ejecución del servicio en sí, que es responsabilidad del proveedor. Ayudamos a resolver disputas y podemos suspender cuentas, pero el trabajo se contrata entre las dos partes.",
+          "Nada en estos términos elimina derechos que la ley te dé y que no puedan eliminarse."
+        ]
+      },
+      {
+        "heading": "Suspensión y cierre",
+        "body": [
+          "Puedes borrar tu cuenta cuando quieras.",
+          "Podemos suspender o cerrar una cuenta que incumpla estos términos, y explicamos por qué salvo que hacerlo comprometa una investigación o la seguridad de alguien."
+        ]
+      },
+      {
+        "heading": "Ley aplicable",
+        "body": [
+          "Estos términos se rigen por la ley de la República de Mozambique, y los tribunales mozambiqueños son competentes para los litigios que deriven de ellos."
+        ]
+      },
+      {
+        "heading": "Cambios",
+        "body": [
+          "Podemos revisar estos términos. Si el cambio es significativo, avisaremos por correo antes de que entre en vigor. Seguir usando la plataforma después de eso significa que los aceptas."
+        ]
+      }
+    ]
+  }
+}

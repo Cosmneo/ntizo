@@ -1,0 +1,152 @@
+{
+  "backHome": "← Retour à l’accueil",
+  "lastUpdated": "Dernière mise à jour : {{date}}",
+  "contact": "Des questions sur ce document ? Écrivez à privacidade@ntizo.co.mz.",
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "updated": "26 août 2026",
+    "intro": "Ntizo met en relation des clients et des prestataires de services. Cela demande certaines de vos données. Ce document dit lesquelles, pourquoi, avec qui elles sont partagées et comment en demander la suppression. Il est écrit pour être lu, pas pour être difficile.",
+    "sections": [
+      {
+        "heading": "Ce que nous collectons",
+        "body": [
+          "À la création du compte : prénom et nom, adresse e-mail, numéro de téléphone et un mot de passe, que nous stockons haché et jamais en clair. Si vous vous connectez avec Google, Google nous transmet votre nom, votre e-mail et votre photo de profil — jamais votre mot de passe.",
+          "Sur votre profil, si vous les renseignez : photo, description, date de naissance, genre, langue et fuseau horaire.",
+          "Les adresses que vous enregistrez pour recevoir des services, y compris la ville, le quartier, les indications d’accès et les coordonnées du point que vous placez.",
+          "Les moyens de paiement : nous conservons l’identifiant du compte mobile (un numéro M-Pesa ou e-Mola, par exemple) et le pays. Nous ne conservons pas de numéros de carte.",
+          "Si vous êtes prestataire : les pièces d’identité téléversées pour la vérification, et l’état de cette vérification.",
+          "Des données techniques pour chaque session : adresse IP et identification du navigateur, afin de savoir quand une session est la vôtre et quand elle ne l’est pas."
+        ]
+      },
+      {
+        "heading": "À quoi elles servent",
+        "body": [
+          "À créer et maintenir votre compte, et à le garder sécurisé.",
+          "À vous mettre en relation avec des prestataires, et à ce qu’un prestataire sache où et quand exécuter la prestation réservée.",
+          "À vérifier l’identité des prestataires, ce qui rend la plateforme utilisable entre inconnus.",
+          "À vous envoyer des e-mails sur ce qui s’est passé dans votre compte — une réservation, une invitation, une confirmation. Nous n’envoyons pas de publicité.",
+          "À détecter et arrêter les abus."
+        ]
+      },
+      {
+        "heading": "Avec qui elles sont partagées",
+        "body": [
+          "Avec l’autre partie à une réservation, et seulement dans la mesure nécessaire : un prestataire voit votre nom, votre contact et l’adresse de la prestation ; un client voit le nom et le contact du prestataire.",
+          "Avec les fournisseurs qui font tourner la plateforme : Resend envoie nos e-mails, Cloudflare héberge l’application, Neon héberge la base de données. Ils traitent les données pour notre compte et ne peuvent pas les utiliser autrement.",
+          "Lorsque la loi l’exige.",
+          "Nous ne vendons pas vos données et ne les cédons à personne qui les voudrait à des fins publicitaires."
+        ]
+      },
+      {
+        "heading": "Pendant combien de temps",
+        "body": [
+          "Tant que vous avez un compte. Si vous le supprimez, nous supprimons vos données personnelles, à deux exceptions près qui existent pour des raisons pratiques : les enregistrements de réservations et de paiements que la loi nous impose de conserver, et les adresses e-mail définitivement rejetées, que nous conservons sur une liste précisément pour ne plus jamais leur écrire."
+        ]
+      },
+      {
+        "heading": "Vos droits",
+        "body": [
+          "Vous pouvez consulter et corriger la plupart de vos données dans votre compte, à tout moment.",
+          "Vous pouvez demander une copie de vos données, ou leur suppression, en écrivant à privacidade@ntizo.co.mz. Nous répondons sous 30 jours.",
+          "Si vous vous êtes connecté avec Google, vous pouvez retirer cet accès dans les paramètres de votre compte Google. Cela ne supprime pas votre compte Ntizo — pour cela, demandez-le-nous."
+        ]
+      },
+      {
+        "heading": "Sécurité",
+        "body": [
+          "Les mots de passe sont stockés hachés. Le trafic entre vous et la plateforme est chiffré. Les pièces d’identité des prestataires n’ont pas d’adresse publique : elles ne sont accessibles que par une requête authentifiée d’un administrateur.",
+          "Aucun système n’est infaillible. S’il survient une violation qui vous concerne, nous vous en informerons."
+        ]
+      },
+      {
+        "heading": "Modifications",
+        "body": [
+          "Si nous modifions ce document de façon substantielle, nous vous préviendrons par e-mail avant l’entrée en vigueur. La date en haut indique toujours la dernière révision."
+        ]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Conditions d’utilisation",
+    "updated": "26 août 2026",
+    "intro": "Ces conditions régissent votre utilisation de Ntizo. Créer un compte vaut acceptation. Si vous n’êtes pas d’accord avec quelque chose ici, n’utilisez pas la plateforme — et dites-nous pourquoi, c’est une information utile.",
+    "sections": [
+      {
+        "heading": "Ce qu’est Ntizo, et ce qu’elle n’est pas",
+        "body": [
+          "Ntizo est une place de marché qui relie ceux qui cherchent un service à ceux qui le fournissent. Nous ne fournissons pas les services annoncés : c’est le prestataire réservé qui le fait, et le contrat de prestation est conclu avec lui.",
+          "Nous vérifions l’identité des prestataires avant de les laisser publier. Ce n’est pas une garantie de la qualité du travail — c’est la garantie que nous savons qui ils sont."
+        ]
+      },
+      {
+        "heading": "Votre compte",
+        "body": [
+          "Vous devez avoir au moins 18 ans.",
+          "Les informations que vous donnez doivent être exactes et tenues à jour. Une adresse erronée coûte un déplacement à quelqu’un.",
+          "Vous êtes responsable de ce qui se passe sur votre compte. Gardez votre mot de passe et prévenez-nous si vous pensez que quelqu’un y a accédé.",
+          "Une personne, un compte."
+        ]
+      },
+      {
+        "heading": "Réservations, prix et frais de service",
+        "body": [
+          "Le prix d’une prestation est fixé par le prestataire et affiché avant confirmation.",
+          "S’y ajoutent des frais de service de la plateforme, payés par vous, le client. Ils sont actuellement de 10 %. Ils sont toujours affichés avant la confirmation, et ne sont jamais prélevés sur le prestataire : le prix qu’il fixe est celui qu’il reçoit.",
+          "Les annulations suivent les conditions affichées au moment de la réservation."
+        ]
+      },
+      {
+        "heading": "Si vous êtes prestataire",
+        "body": [
+          "Ne proposez que des prestations que vous savez exécuter, et décrivez-les honnêtement.",
+          "Honorez les réservations acceptées, ou annulez assez tôt pour que le client puisse s’organiser.",
+          "Vous êtes responsable des licences, assurances et obligations fiscales qu’exige votre activité. Nous ne sommes pas votre employeur.",
+          "Les documents téléversés pour la vérification ne servent qu’à cela."
+        ]
+      },
+      {
+        "heading": "Ce qui n’est pas permis",
+        "body": [
+          "Utiliser la plateforme à des fins illégales, ou proposer des services que la loi mozambicaine n’autorise pas.",
+          "Se faire passer pour quelqu’un d’autre, ou publier au nom d’une personne qui ne l’a pas autorisé.",
+          "Harceler, menacer ou discriminer un autre utilisateur.",
+          "S’arranger en dehors de la plateforme pour éviter les frais de service, une fois le contact établi par son intermédiaire.",
+          "Tenter d’accéder à des comptes ou des données qui ne sont pas les vôtres."
+        ]
+      },
+      {
+        "heading": "Avis",
+        "body": [
+          "Les avis appartiennent à ceux qui les écrivent et doivent décrire une expérience réelle. Nous ne les retirons pas parce qu’ils sont négatifs. Nous retirons ceux qui sont faux, injurieux, ou écrits par quelqu’un qui n’a jamais eu la prestation."
+        ]
+      },
+      {
+        "heading": "Responsabilité",
+        "body": [
+          "Nous faisons le nécessaire pour que la plateforme reste disponible et exacte, mais nous ne la garantissons pas exempte d’erreurs ou d’interruptions.",
+          "Nous ne répondons pas de l’exécution de la prestation elle-même, qui relève du prestataire. Nous aidons à résoudre les litiges et pouvons suspendre des comptes, mais le travail est contracté entre les deux parties.",
+          "Rien dans ces conditions ne supprime des droits que la loi vous donne et auxquels il ne peut être renoncé."
+        ]
+      },
+      {
+        "heading": "Suspension et clôture",
+        "body": [
+          "Vous pouvez supprimer votre compte quand vous le souhaitez.",
+          "Nous pouvons suspendre ou clôturer un compte qui enfreint ces conditions, en expliquant pourquoi sauf si cela compromettrait une enquête ou la sécurité de quelqu’un."
+        ]
+      },
+      {
+        "heading": "Droit applicable",
+        "body": [
+          "Ces conditions sont régies par le droit de la République du Mozambique, et les tribunaux mozambicains sont compétents pour les litiges qui en découlent."
+        ]
+      },
+      {
+        "heading": "Modifications",
+        "body": [
+          "Nous pouvons réviser ces conditions. Si la modification est substantielle, nous préviendrons par e-mail avant son entrée en vigueur. Continuer à utiliser la plateforme après cela vaut acceptation."
+        ]
+      }
+    ]
+  }
+}

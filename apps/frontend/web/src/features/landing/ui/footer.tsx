@@ -57,8 +57,8 @@ export function Footer() {
           </FooterCol>
 
           <FooterCol title={t("footer.legal")}>
-            <FooterLink href="#">{t("footer.terms")}</FooterLink>
-            <FooterLink href="#">{t("footer.privacy")}</FooterLink>
+            <FooterLink to="/terms">{t("footer.terms")}</FooterLink>
+            <FooterLink to="/privacy">{t("footer.privacy")}</FooterLink>
             <FooterLink href="#">{t("footer.cookies")}</FooterLink>
             <FooterLink to="/admin">{t("admin")}</FooterLink>
           </FooterCol>
