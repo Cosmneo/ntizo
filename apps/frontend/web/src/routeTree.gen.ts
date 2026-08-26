@@ -31,7 +31,6 @@ import { Route as AdminActivityRouteImport } from './routes/admin/activity'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as CategoriesIndexRouteImport } from './routes/categories.index'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
 import { Route as ProviderSlugRouteRouteImport } from './routes/provider/$slug/route'
 import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
@@ -166,11 +165,6 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRouteRoute,
-} as any)
-const CategoriesIndexRoute = CategoriesIndexRouteImport.update({
-  id: '/categories/',
-  path: '/categories/',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const ProviderIndexRoute = ProviderIndexRouteImport.update({
   id: '/',
@@ -337,7 +331,6 @@ export interface FileRoutesByFullPath {
   '/providers/$slug': typeof ProvidersSlugRoute
   '/services/$id': typeof ServicesIdRoute
   '/admin/': typeof AdminIndexRoute
-  '/categories/': typeof CategoriesIndexRoute
   '/provider/': typeof ProviderIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/services/': typeof ServicesIndexRoute
@@ -383,7 +376,6 @@ export interface FileRoutesByTo {
   '/providers/$slug': typeof ProvidersSlugRoute
   '/services/$id': typeof ServicesIdRoute
   '/admin': typeof AdminIndexRoute
-  '/categories': typeof CategoriesIndexRoute
   '/provider': typeof ProviderIndexRoute
   '/providers': typeof ProvidersIndexRoute
   '/services': typeof ServicesIndexRoute
@@ -435,7 +427,6 @@ export interface FileRoutesById {
   '/providers/$slug': typeof ProvidersSlugRoute
   '/services/$id': typeof ServicesIdRoute
   '/admin/': typeof AdminIndexRoute
-  '/categories/': typeof CategoriesIndexRoute
   '/provider/': typeof ProviderIndexRoute
   '/providers/': typeof ProvidersIndexRoute
   '/services/': typeof ServicesIndexRoute
@@ -486,7 +477,6 @@ export interface FileRouteTypes {
     | '/providers/$slug'
     | '/services/$id'
     | '/admin/'
-    | '/categories/'
     | '/provider/'
     | '/providers/'
     | '/services/'
@@ -532,7 +522,6 @@ export interface FileRouteTypes {
     | '/providers/$slug'
     | '/services/$id'
     | '/admin'
-    | '/categories'
     | '/provider'
     | '/providers'
     | '/services'
@@ -583,7 +572,6 @@ export interface FileRouteTypes {
     | '/providers/$slug'
     | '/services/$id'
     | '/admin/'
-    | '/categories/'
     | '/provider/'
     | '/providers/'
     | '/services/'
@@ -619,7 +607,6 @@ export interface RootRouteChildren {
   VerifyPhoneRoute: typeof VerifyPhoneRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   ServicesIdRoute: typeof ServicesIdRoute
-  CategoriesIndexRoute: typeof CategoriesIndexRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   ServicesIndexRoute: typeof ServicesIndexRoute
 }
@@ -779,13 +766,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRouteRoute
-    }
-    '/categories/': {
-      id: '/categories/'
-      path: '/categories'
-      fullPath: '/categories/'
-      preLoaderRoute: typeof CategoriesIndexRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/provider/': {
       id: '/provider/'
@@ -1113,7 +1093,6 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyPhoneRoute: VerifyPhoneRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   ServicesIdRoute: ServicesIdRoute,
-  CategoriesIndexRoute: CategoriesIndexRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   ServicesIndexRoute: ServicesIndexRoute,
 }

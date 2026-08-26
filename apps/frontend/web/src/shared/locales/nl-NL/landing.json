@@ -8,8 +8,7 @@
     "explore": "Ontdekken",
     "services": "Services",
     "providers": "Aanbieders",
-    "howItWorks": "Hoe het werkt",
-    "categories": "Categorieën"
+    "howItWorks": "Hoe het werkt"
   },
   "footer": {
     "support": "Ondersteuning",
@@ -76,9 +75,5 @@
   },
   "zeroFeeTitle": "commissie voor wie het werk doet.",
   "zeroFeeBody": "De 10% is voor de klant en komt boven op jouw prijs. Wat je met de klant afspreekt, is precies wat je ontvangt.",
-  "zeroFeeCta": "Aanbiedersaccount aanmaken",
-  "categoriesEmpty": "Dienstcategorieën verschijnen hier zodra ze zijn gepubliceerd.",
-  "categoriesError": "Kan de categorieën niet laden.",
-  "categoriesLoadMore": "Meer laden",
-  "categoriesEmptyTitle": "Nog geen categorieën"
+  "zeroFeeCta": "Aanbiedersaccount aanmaken"
 }

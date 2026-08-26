@@ -8,8 +8,7 @@
     "explore": "Entdecken",
     "services": "Services",
     "providers": "Anbieter",
-    "howItWorks": "So funktioniert's",
-    "categories": "Kategorien"
+    "howItWorks": "So funktioniert's"
   },
   "footer": {
     "support": "Hilfe",
@@ -76,9 +75,5 @@
   },
   "zeroFeeTitle": "Provision für alle, die die Arbeit machen.",
   "zeroFeeBody": "Die 10 % zahlt der Kunde, zusätzlich zu deinem Preis. Was du mit dem Kunden vereinbarst, bekommst du genau so.",
-  "zeroFeeCta": "Anbieterkonto erstellen",
-  "categoriesEmpty": "Leistungskategorien erscheinen hier, sobald sie veröffentlicht sind.",
-  "categoriesError": "Die Kategorien konnten nicht geladen werden.",
-  "categoriesLoadMore": "Mehr laden",
-  "categoriesEmptyTitle": "Noch keine Kategorien"
+  "zeroFeeCta": "Anbieterkonto erstellen"
 }
