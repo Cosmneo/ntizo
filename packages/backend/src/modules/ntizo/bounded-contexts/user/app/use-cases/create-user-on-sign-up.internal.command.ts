@@ -55,6 +55,10 @@ export class CreateUserOnSignUpInternalCommand
         // apply the platform default; passing null would mean writing "no
         // language" into a column that has to hold one.
         ...(input.language ? { language: input.language } : {}),
+        // Same rule, same reason: UTC is the aggregate's default, and an
+        // absent header is not an instruction to store an empty timezone.
+        ...(input.timezone ? { timezone: input.timezone } : {}),
+        avatarUrl: input.image ?? null,
       });
       // Through the aggregate's own method rather than passed into `create`:
       // a phone is a contact detail a user changes later, and `create` takes

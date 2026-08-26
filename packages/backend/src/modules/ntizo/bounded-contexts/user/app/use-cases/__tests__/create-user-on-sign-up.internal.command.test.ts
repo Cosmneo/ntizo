@@ -239,3 +239,66 @@ describe("CreateUserOnSignUpInternalCommand — events", () => {
     expect(outbox.published).toEqual([]);
   });
 });
+
+describe("CreateUserOnSignUpInternalCommand — what the sign-up knew", () => {
+  function subject() {
+    const store = createStore();
+    const command = new CreateUserOnSignUpInternalCommand(
+      new FakeUserRepository(store),
+      new FakeProfileRepository(store),
+      new InMemoryUnitOfWork(store),
+      new SpyOutbox(),
+    );
+    const profileOf = (userId: string) => {
+      const profile = store.profiles.get(userId);
+      if (!profile) throw new Error("no profile was written");
+      return profile;
+    };
+    return { command, profileOf };
+  }
+
+  const base = {
+    userId: "user-1",
+    email: "new@ntizo.test",
+    firstName: "New",
+    lastName: "User",
+  };
+
+  it("puts the sign-in provider's photo on the new profile", async () => {
+    // better-auth's Google provider builds the user as
+    // `{ ..., image: user.picture, ...mapProfileToUser(...) }` — the picture
+    // has been in `better_auth.user.image` all along. This is the carry
+    // across, and the only part that was missing.
+    const { command, profileOf } = subject();
+
+    await command.execute({ ...base, image: "https://lh3.googleusercontent.com/a/x" });
+
+    expect(profileOf("user-1").avatarUrl).toBe("https://lh3.googleusercontent.com/a/x");
+    // Not a key: this photo is not ours and has no R2 object.
+    expect(profileOf("user-1").avatarKey).toBeNull();
+  });
+
+  it("leaves the avatar null when the provider had no photo", async () => {
+    const { command, profileOf } = subject();
+
+    await command.execute({ ...base, image: null });
+
+    expect(profileOf("user-1").avatarUrl).toBeNull();
+  });
+
+  it("puts the request's timezone on the new profile", async () => {
+    const { command, profileOf } = subject();
+
+    await command.execute({ ...base, image: null, timezone: "Africa/Maputo" });
+
+    expect(profileOf("user-1").timezone).toBe("Africa/Maputo");
+  });
+
+  it("falls back to UTC when the request carried no timezone", async () => {
+    const { command, profileOf } = subject();
+
+    await command.execute({ ...base, image: null });
+
+    expect(profileOf("user-1").timezone).toBe("UTC");
+  });
+});

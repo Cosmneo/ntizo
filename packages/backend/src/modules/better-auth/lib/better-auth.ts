@@ -45,6 +45,18 @@ export interface SignUpHookInput {
    * rather than being looked up later.
    */
   language?: Locale;
+  /**
+   * The provider's photo, or null for an e-mail sign-up.
+   *
+   * better-auth already stores Google's `picture` on the auth user — the
+   * default social mapping sets `image` and `mapProfileToUser`'s result is
+   * spread after it, so our `firstName`/`lastName` override never displaced
+   * it. Nothing needed changing there; this is the carry across to the
+   * domain profile, which was the only missing half.
+   */
+  image: string | null;
+  /** IANA name from `X-Timezone`, resolved at the edge. */
+  timezone?: string | null;
 }
 export type SignUpHook = (input: SignUpHookInput) => Promise<void>;
 
@@ -243,6 +255,10 @@ function createAuthInstance() {
                 // Already normalised to E.164 by the create.before hook above,
                 // so the profile and the auth user store the same string.
                 phoneNumber: (u.phoneNumber as string | undefined) ?? null,
+                image: (u.image as string | undefined) ?? null,
+                // Read here rather than inside the user context, which has no
+                // request. Same route the language takes, one line above.
+                timezone: infraStore.getTimezone(),
                 // Resolved here rather than inside the user context, which has
                 // no request to read. The web app overrides the browser's own
                 // Accept-Language with whatever the language switcher says, so

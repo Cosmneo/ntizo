@@ -16,6 +16,22 @@ export interface CreateUserOnSignUpInternalInput {
    * falls back to the platform default.
    */
   language?: Locale | null;
+  /**
+   * The photo the sign-in provider supplied, or null.
+   *
+   * Written to `avatarUrl`, never to `avatarKey`: it is somebody else's URL on
+   * somebody else's host. If it ever breaks, the profile falls back to
+   * initials and the person can upload their own — which then wins.
+   */
+  image?: string | null;
+  /**
+   * IANA name, resolved at the edge from `X-Timezone`.
+   *
+   * Absent means "we could not tell" — a Google sign-up arrives through an
+   * OAuth callback that carries no header of ours — and the Profile falls
+   * back to UTC.
+   */
+  timezone?: string | null;
 }
 
 export interface CreateUserOnSignUpInternalPort {
