@@ -182,4 +182,13 @@ export class DrizzleReviewRepository implements ReviewRepositoryPort {
       .limit(1);
     return row !== undefined;
   }
+
+  async findProviderName(providerId: string): Promise<string | null> {
+    const [row] = await getDb()
+      .select({ name: provider.name })
+      .from(provider)
+      .where(eq(provider.id, providerId))
+      .limit(1);
+    return row?.name ?? null;
+  }
 }

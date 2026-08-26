@@ -39,4 +39,15 @@ export interface ReviewRepositoryPort {
   isReviewableProvider(providerId: string): Promise<boolean>;
   /** Whether this person holds a `provider_member` row here — owner, admin or staff alike. */
   worksAtProvider(providerId: string, userId: string): Promise<boolean>;
+  /**
+   * The provider's display name, for `ReviewCreated`'s payload.
+   *
+   * A second query rather than reusing `isReviewableProvider`'s: that check
+   * runs on every call including a revision, and a revision never publishes
+   * `ReviewCreated` and so never needs a name. `SubmitReviewCommand` only
+   * calls this for a genuinely new review. Null only when the provider row
+   * cannot be found at all — not expected on this path, since
+   * `isReviewableProvider` already confirmed it moments earlier.
+   */
+  findProviderName(providerId: string): Promise<string | null>;
 }

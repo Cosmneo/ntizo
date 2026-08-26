@@ -1,10 +1,13 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Review } from "../../domain/aggregates/review.aggregate";
+import { ReviewCreated } from "../../domain/events";
 import {
   CannotReviewOwnBusinessError,
   ProviderNotReviewableError,
   ReviewNotEarnedError,
   ReviewNotFoundError,
 } from "../../domain/exceptions";
+import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { ReviewEligibilityPort } from "../ports/outbound/review-eligibility.port";
 import type { ReviewRepositoryPort } from "../ports/outbound/review.repository.port";
 
@@ -29,6 +32,8 @@ export class SubmitReviewCommand {
   constructor(
     private readonly repo: ReviewRepositoryPort,
     private readonly eligibility: ReviewEligibilityPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(input: {
@@ -66,7 +71,41 @@ export class SubmitReviewCommand {
           comment: input.comment,
         });
 
-    return { reviewId: await this.repo.upsert(review) };
+    // Only a genuinely new review raises ReviewCreated — an edit already has
+    // its own row and its own moment in history; re-announcing it on every
+    // revision would repeat that moment rather than correct it. The name is
+    // read only on this path for the same reason: a revision never needs it.
+    const providerName = existing ? null : await this.repo.findProviderName(input.providerId);
+    if (!existing && providerName === null) {
+      // isReviewableProvider confirmed this same provider row moments ago;
+      // a null here means the two queries disagree — a broken invariant, not
+      // a condition a well-formed request can trigger. Mirrors
+      // CreateServiceCommand's identical guard for creatorMemberId.
+      throw new Error(
+        `[review] isReviewableProvider said yes for "${input.providerId}" but findProviderName found no row`,
+      );
+    }
+
+    let reviewId!: string;
+    await this.unitOfWork.atomicExecute(async () => {
+      reviewId = await this.repo.upsert(review);
+      if (!existing) {
+        await this.outboxPort.publish(
+          [
+            new ReviewCreated({
+              reviewId,
+              providerId: input.providerId,
+              providerName: providerName!,
+              rating: input.rating,
+              actorUserId: input.requesterUserId,
+            }),
+          ],
+          "review",
+        );
+      }
+    });
+
+    return { reviewId };
   }
 }
 
