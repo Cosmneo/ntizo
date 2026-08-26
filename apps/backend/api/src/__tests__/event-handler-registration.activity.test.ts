@@ -20,29 +20,34 @@ import "../api";
  * (`@ntizo/backend/shared/infra/events`), the same specifier `api.ts` uses,
  * rather than by relative path.
  *
- * Nine event names, not four: this is every event `ACTIVITY_TYPES` has a
- * producer for today (Task 5 added the ninth, `review.created`). The four
- * that overlap with the Notification context's own registrations
- * (`user.registered`, `provider.created`, `provider.status.decided`,
- * `provider.invite.sent`) are covered for exact count in
- * `event-handler-registration.test.ts`; this file only asserts presence.
+ * The count asserted per event is exact, not `>= 1`: a duplicate
+ * `register*ActivityHandlers(...)` call — e.g. a merge that lands the same
+ * block twice — writes two identical rows per event and is invisible to a
+ * `>= 1` assertion. Four of the nine (`user.registered`, `provider.created`,
+ * `provider.status.decided`, `provider.invite.sent`) are also where the
+ * Notification context listens, so those carry 2 (one notification handler,
+ * one activity handler — `event-handler-registration.test.ts` asserts the
+ * same fact from the notification side); the other five carry 1. This file
+ * does not lean on that other file to prove activity's own handlers are
+ * mounted — each file proves its own consumer independently, even though
+ * both read the same router.
  */
-const REGISTERED_EVENTS = [
-  "user.registered",
-  "provider.created",
-  "provider.status.decided",
-  "provider.invite.sent",
-  "provider.invite.accepted",
-  "service.created",
-  "service.published",
-  "service.unpublished",
-  "review.created",
-] as const;
+const EXPECTED_HANDLER_COUNT: Record<string, number> = {
+  "user.registered": 2,
+  "provider.created": 2,
+  "provider.status.decided": 2,
+  "provider.invite.sent": 2,
+  "provider.invite.accepted": 1,
+  "service.created": 1,
+  "service.published": 1,
+  "service.unpublished": 1,
+  "review.created": 1,
+};
 
 describe("activity event handlers are registered when the API loads", () => {
-  for (const eventName of REGISTERED_EVENTS) {
-    it(`has at least one handler for ${eventName}`, () => {
-      expect(getEventRouter().handlerCount(eventName)).toBeGreaterThanOrEqual(1);
+  for (const [eventName, expected] of Object.entries(EXPECTED_HANDLER_COUNT)) {
+    it(`registers exactly ${expected} handler(s) for ${eventName}`, () => {
+      expect(getEventRouter().handlerCount(eventName)).toBe(expected);
     });
   }
 

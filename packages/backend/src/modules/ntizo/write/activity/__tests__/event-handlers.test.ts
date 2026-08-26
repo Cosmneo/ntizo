@@ -44,13 +44,30 @@ class FakeProviderNames implements ProviderNameReaderPort {
   }
 }
 
-// Same shape as `FakeProviderNames`, ignoring the locale argument: these
-// tests only need one language, so the fake does not need to model the
-// multi-translation fallback the real `DrizzleServiceNameReader` does.
+// Same shape as `FakeProviderNames`: a map keyed by id, a miss answered as
+// null rather than a throw. The real `DrizzleServiceNameReader` resolves a
+// service's own `source_locale` translation with a fallback across the
+// rest — this fake does not need to model that, since these tests only
+// care that a name comes back or doesn't; `service-name-reader.adapter.test.ts`
+// is what proves the real resolution and fallback.
 class FakeServiceNames implements ServiceNameReaderPort {
   constructor(private readonly namesById: Record<string, string> = {}) {}
   async findNameById(serviceId: string): Promise<string | null> {
     return this.namesById[serviceId] ?? null;
+  }
+}
+
+// For the "the reader itself throws" tests below: a transient DB failure,
+// not a legitimate "no such row" miss. `findNameById` never resolves for
+// these — it always rejects.
+class ThrowingProviderNames implements ProviderNameReaderPort {
+  async findNameById(): Promise<string | null> {
+    throw new Error("boom");
+  }
+}
+class ThrowingServiceNames implements ServiceNameReaderPort {
+  async findNameById(): Promise<string | null> {
+    throw new Error("boom");
   }
 }
 
@@ -116,6 +133,24 @@ describe("provider.created", () => {
     ]);
     expect(record.calls[0]!.payload).toEqual({ providerName: null });
   });
+
+  it("still records, nameless, when the name reader itself throws", async () => {
+    // A different failure than "no such provider": the reader rejects
+    // rather than resolving null. The handler must not let that propagate
+    // out of `router.on(...)` — `EventRouter.dispatch` would swallow it
+    // along with the entire `recordActivity.execute` call, silently
+    // dropping the row instead of writing it nameless.
+    const throwingRouter = new EventRouter();
+    registerProviderActivityHandlers(throwingRouter, {
+      recordActivity: record,
+      providerNameReader: new ThrowingProviderNames(),
+    });
+    await throwingRouter.dispatch([
+      new ProviderCreated({ providerId: "p1", ownerUserId: "u1", type: "individual" }),
+    ]);
+    expect(record.calls).toHaveLength(1);
+    expect(record.calls[0]!.payload).toEqual({ providerName: null });
+  });
 });
 
 describe("provider.status.decided", () => {
@@ -157,15 +192,23 @@ describe("provider.invite.sent", () => {
 
 describe("provider.invite.accepted", () => {
   it("records against the invitee who accepted, snapshotting the workspace's name", async () => {
+    // `userId` and `actorUserId` deliberately distinct values (they are the
+    // same person for this event in production — see `ProviderInviteAccepted`'s
+    // own docblock — but a handler reading the wrong field would still pass
+    // this test if the two matched, and that is exactly the bug worth
+    // catching).
     await router.dispatch([
       new ProviderInviteAccepted({
         providerId: "p1",
         email: "colega@ntizo.test",
-        userId: "u9",
-        actorUserId: "u9",
+        userId: "u9-membership",
+        actorUserId: "u9-acceptor",
       }),
     ]);
-    expect(record.calls[0]).toMatchObject({ actorUserId: "u9", type: "provider.invite.accepted" });
+    expect(record.calls[0]).toMatchObject({
+      actorUserId: "u9-acceptor",
+      type: "provider.invite.accepted",
+    });
     expect(record.calls[0]!.payload).toEqual({ providerName: "Salão X" });
   });
 });
@@ -186,6 +229,7 @@ describe("service.published", () => {
     // id, and resolving on read would rewrite history when the service is
     // renamed.
     await router.dispatch([new ServicePublished({ serviceId: "s1", actorUserId: "u2" })]);
+    expect(record.calls[0]).toMatchObject({ actorUserId: "u2", type: "service.published" });
     expect(record.calls[0]!.payload).toEqual({ serviceId: "s1", serviceName: "Corte de cabelo" });
   });
 
@@ -195,6 +239,20 @@ describe("service.published", () => {
     await router.dispatch([new ServicePublished({ serviceId: "gone", actorUserId: "u2" })]);
     expect(record.calls).toHaveLength(1);
     expect(record.calls[0]!.payload).toEqual({ serviceId: "gone", serviceName: null });
+  });
+
+  it("still records, nameless, when the name reader itself throws", async () => {
+    // Same distinction as the provider handler's equivalent test: a reader
+    // that rejects must not let the failure propagate out of
+    // `router.on(...)` and silently cost the whole row.
+    const throwingRouter = new EventRouter();
+    registerCatalogActivityHandlers(throwingRouter, {
+      recordActivity: record,
+      serviceNameReader: new ThrowingServiceNames(),
+    });
+    await throwingRouter.dispatch([new ServicePublished({ serviceId: "s1", actorUserId: "u2" })]);
+    expect(record.calls).toHaveLength(1);
+    expect(record.calls[0]!.payload).toEqual({ serviceId: "s1", serviceName: null });
   });
 });
 
@@ -221,7 +279,6 @@ describe("review.created", () => {
     expect(record.calls[0]!.payload).toEqual({ providerName: "Salão X", rating: 5 });
   });
 });
-
 
 describe("ACTIVITY_TYPES alignment", () => {
   it("registers exactly one handler under each activity type's own name", () => {

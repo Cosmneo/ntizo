@@ -1,37 +1,51 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
-import { serviceTranslation } from "../../../../../shared/infrastructure/database/catalog/schemas";
+import {
+  service,
+  serviceTranslation,
+} from "../../../../../shared/infrastructure/database/catalog/schemas";
 import type { ServiceNameReaderPort } from "../../../app/ports/outbound/service-name-reader.port";
 
 /**
  * The single place the Activity context reads a service's name.
  *
- * Unlike `DrizzleProviderNameReader`, this is not one column off one row:
- * `service_translation` carries one row per language for a given service,
- * unique on `(serviceId, locale)`, with nothing marking which one the
- * provider actually wrote — see `ServiceNameReaderPort`'s docblock for why
- * picking by `updatedAt` cannot recover that either.
+ * The primary path is one query: join `service` to `service_translation` on
+ * `service_translation.locale = service.source_locale`, the same predicate
+ * `DrizzleServiceRepository.unpublishServicesWithoutMembers` uses to name a
+ * service for its own banner. That predicate is what marks "the translation
+ * the provider actually wrote" — see `ServiceNameReaderPort`'s docblock for
+ * why nothing else on the table can (not `updatedAt`, since every
+ * translation is deleted and re-inserted on each save).
  *
- * So this reads `locale` first, and falls back — deterministically, by
- * locale, ascending — only when that language has no row for the service.
- * It never guesses which language the provider prefers.
+ * The join returns nothing in two cases this adapter cannot tell apart, and
+ * does not need to: the service no longer exists, or it exists but its
+ * `source_locale` translation is missing (only reachable before
+ * `Service.publish`'s `hasSourceName` invariant runs, i.e. between
+ * `service.created` and a first publish). Either way, the fallback below
+ * picks *some* translation of the service, ordered by locale, rather than
+ * leaving the caller with nothing when one exists.
  */
 export class DrizzleServiceNameReader implements ServiceNameReaderPort {
-  async findNameById(serviceId: string, locale: string): Promise<string | null> {
+  async findNameById(serviceId: string): Promise<string | null> {
     const db = getDb();
 
-    const [preferred] = await db
+    const [bySourceLocale] = await db
       .select({ name: serviceTranslation.name })
-      .from(serviceTranslation)
-      .where(
-        and(eq(serviceTranslation.serviceId, serviceId), eq(serviceTranslation.locale, locale)),
+      .from(service)
+      .innerJoin(
+        serviceTranslation,
+        and(
+          eq(serviceTranslation.serviceId, service.id),
+          eq(serviceTranslation.locale, service.sourceLocale),
+        ),
       )
+      .where(eq(service.id, serviceId))
       .limit(1);
-    if (preferred) return preferred.name;
+    if (bySourceLocale) return bySourceLocale.name;
 
-    // No row in the preferred locale. Ordered by locale rather than left to
-    // whatever the planner returns first, so two calls for the same
-    // unresolved service agree with each other.
+    // No row for `service.id` joined to its own `source_locale`. Ordered by
+    // locale rather than left to whatever the planner returns first, so two
+    // calls for the same unresolved service agree with each other.
     const [fallback] = await db
       .select({ name: serviceTranslation.name })
       .from(serviceTranslation)

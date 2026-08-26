@@ -21,10 +21,6 @@
  * actor is a product decision for whichever phase decides it is worth
  * recording — not a gap in this list, and not this phase's to make by
  * default.
- *
- * `review.created` is in the list below but has no producer yet: `Review`
- * raises no domain events today. Task 5 of this phase adds the event that
- * fills this type in — until then, nothing writes it.
  */
 export const ACTIVITY_TYPES = [
   "user.registered",
