@@ -62,9 +62,9 @@ jobs:
         name: Resolve stage and live URLs from the branch
         run: |
           case "${GITHUB_REF_NAME}" in
-            main) NAME=prod; UPPER=PROD; API=https://api.ntizo.com;    WEB=https://ntizo.com ;;
-            qa)   NAME=qa;   UPPER=QA;   API=https://qa.api.ntizo.com; WEB=https://qa.ntizo.com ;;
-            dev)  NAME=dev;  UPPER=DEV;  API=https://dev.api.ntizo.com; WEB=https://dev.ntizo.com ;;
+            main) NAME=prod; UPPER=PROD; API=https://api.ntizo.co.mz;     WEB=https://ntizo.co.mz ;;
+            qa)   NAME=qa;   UPPER=QA;   API=https://qa.api.ntizo.co.mz;  WEB=https://qa.ntizo.co.mz ;;
+            dev)  NAME=dev;  UPPER=DEV;  API=https://dev.api.ntizo.co.mz; WEB=https://dev.ntizo.co.mz ;;
             *)    echo "::error::CD triggered on unexpected branch ${GITHUB_REF_NAME}" >&2; exit 1 ;;
           esac
           {

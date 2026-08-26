@@ -9,7 +9,10 @@ import { normalizeSignUpPhoneNumber } from "./phone-number";
 import { eq } from "drizzle-orm";
 import { db } from "../infrastructure/client/drizzle";
 import * as schema from "../infrastructure/database/schema";
-import { getTrustedOrigins } from "../../../shared/infrastructure/config/stage-properties";
+import {
+  getStageProperties,
+  getTrustedOrigins,
+} from "../../../shared/infrastructure/config/stage-properties";
 import { infraStore } from "../../../shared/infrastructure/stores/infra-store";
 import type { EmailServicePort } from "../../../shared/infrastructure/email";
 import {
@@ -88,6 +91,7 @@ function requireEmailService(): EmailServicePort {
 
 function createAuthInstance() {
   const env = infraStore.getEnv();
+  const { cookieDomain } = getStageProperties(env.STAGE);
 
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
@@ -256,14 +260,21 @@ function createAuthInstance() {
     },
     advanced: {
       // In non-local stages, widen the session cookie to the root domain so
-      // landing / admin / provider subdomains share the same session.
+      // the app and the api subdomain share one session.
       // In local dev, all apps hit localhost:8788 directly and cookies are
       // already shared via the bare `localhost` host, so no override needed.
-      ...(env.STAGE !== "local"
+      //
+      // The domain comes from the stage rather than a literal here. It used
+      // to read "ntizo.com" while every URL had moved to ntizo.co.mz — and a
+      // browser refuses a cookie for a domain it is not visiting, so sign-in
+      // would have appeared to work and the session would have vanished on
+      // the next request, logging nothing. Local never applies this block, so
+      // no test could have caught it.
+      ...(cookieDomain
         ? {
             crossSubDomainCookies: {
               enabled: true,
-              domain: "ntizo.com",
+              domain: cookieDomain,
             },
             defaultCookieAttributes: {
               sameSite: "none" as const,

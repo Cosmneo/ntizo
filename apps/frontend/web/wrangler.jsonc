@@ -21,21 +21,21 @@
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
   "assets": { "directory": "./dist/client", "html_handling": "none" },
-  // NOTE: "routes.pattern" hostnames below (dev.ntizo.com / qa.ntizo.com / ntizo.com) are
+  // NOTE: "routes.pattern" hostnames below (dev.ntizo.co.mz / qa.ntizo.co.mz / ntizo.co.mz) are
   // placeholders. Confirm the real hostnames and that the zones are on Cloudflare before
   // running any `wrangler deploy` against these environments.
   "env": {
     "dev": {
-      "vars": { "VITE_AUTH_API_URL": "https://dev.api.ntizo.com" },
-      "routes": [{ "pattern": "dev.ntizo.com", "custom_domain": true }]
+      "vars": { "VITE_AUTH_API_URL": "https://dev.api.ntizo.co.mz" },
+      "routes": [{ "pattern": "dev.ntizo.co.mz", "custom_domain": true }]
     },
     "qa": {
-      "vars": { "VITE_AUTH_API_URL": "https://qa.api.ntizo.com" },
-      "routes": [{ "pattern": "qa.ntizo.com", "custom_domain": true }]
+      "vars": { "VITE_AUTH_API_URL": "https://qa.api.ntizo.co.mz" },
+      "routes": [{ "pattern": "qa.ntizo.co.mz", "custom_domain": true }]
     },
     "prod": {
-      "vars": { "VITE_AUTH_API_URL": "https://api.ntizo.com" },
-      "routes": [{ "pattern": "ntizo.com", "custom_domain": true }]
+      "vars": { "VITE_AUTH_API_URL": "https://api.ntizo.co.mz" },
+      "routes": [{ "pattern": "ntizo.co.mz", "custom_domain": true }]
     }
   }
 }
