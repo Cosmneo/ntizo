@@ -10,6 +10,30 @@ import { SetServiceTranslationCommand } from "../app/use-cases/set-service-trans
 import type { ServiceRepositoryPort } from "../app/ports/outbound/service.repository.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
 
+/**
+ * Flips `insideTransaction` around `work()`, and resets an `order` log at
+ * the start of every call, so `FakeRepo.save` and `CapturingOutbox.publish`
+ * can each stamp themselves onto it. The earlier fake ran `work()` inline
+ * with no way to tell "called inside the transaction" apart from "called
+ * after it returned" — which is why moving a command's publish entirely
+ * outside `atomicExecute`, or ahead of `repo.save` but still inside it,
+ * changed no test's outcome. Both are now directly observable.
+ */
+class TrackingUnitOfWork implements UnitOfWorkPort {
+  insideTransaction = false;
+  order: string[] = [];
+
+  async atomicExecute<T>(work: () => Promise<T>): Promise<T> {
+    this.insideTransaction = true;
+    this.order = [];
+    try {
+      return await work();
+    } finally {
+      this.insideTransaction = false;
+    }
+  }
+}
+
 class FakeRepo implements ServiceRepositoryPort {
   saved: Service[] = [];
   stored = new Map<string, Service>();
@@ -31,8 +55,14 @@ class FakeRepo implements ServiceRepositoryPort {
     ["prov-1:user-3", "member-3"],
   ]);
 
+  constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
+
   async findById(id: string) { return this.stored.get(id) ?? null; }
-  async save(s: Service) { this.saved.push(s); this.stored.set(s.id, s); }
+  async save(s: Service) {
+    this.saved.push(s);
+    this.stored.set(s.id, s);
+    this.unitOfWork.order.push("save");
+  }
   async delete(id: string) { this.stored.delete(id); }
   async isProviderMember(providerId: string, userId: string) {
     return this.members.has(`${providerId}:${userId}`);
@@ -54,26 +84,40 @@ class FakeRepo implements ServiceRepositoryPort {
 
 /**
  * Records what each command actually hands the outbox — the layer that was
- * missing entirely before this round. Mirrors
- * `decide-provider-status.command.test.ts`'s `CapturingOutbox`.
+ * missing entirely before this round — plus, per batch, whether that call
+ * landed inside `unitOfWork.atomicExecute` and after `repo.save` had
+ * already run within that same cycle. Mirrors
+ * `decide-provider-status.command.test.ts`'s `CapturingOutbox`, extended
+ * with the two booleans a plain "was publish called" assertion cannot see.
  */
 class CapturingOutbox implements OutboxPort {
-  published: { events: BaseDomainEvent[]; aggregateType: string }[] = [];
+  published: {
+    events: BaseDomainEvent[];
+    aggregateType: string;
+    insideTransaction: boolean;
+    afterSave: boolean;
+  }[] = [];
+
+  constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
+
   async publish(events: BaseDomainEvent[], aggregateType: string): Promise<void> {
-    this.published.push({ events, aggregateType });
+    this.published.push({
+      events,
+      aggregateType,
+      insideTransaction: this.unitOfWork.insideTransaction,
+      afterSave: this.unitOfWork.order.includes("save"),
+    });
+    this.unitOfWork.order.push("publish");
   }
 }
 
-/** Runs the work inline; no test here exercises rollback. */
-const unitOfWork: UnitOfWorkPort = {
-  atomicExecute: async <T,>(work: () => Promise<T>): Promise<T> => work(),
-} as UnitOfWorkPort;
-
 let repo: FakeRepo;
 let outbox: CapturingOutbox;
+let unitOfWork: TrackingUnitOfWork;
 beforeEach(() => {
-  repo = new FakeRepo();
-  outbox = new CapturingOutbox();
+  unitOfWork = new TrackingUnitOfWork();
+  repo = new FakeRepo(unitOfWork);
+  outbox = new CapturingOutbox(unitOfWork);
 });
 
 const base = {
@@ -566,24 +610,36 @@ describe("SetServiceTranslationCommand", () => {
 // `service.pullEvents()` (see `service.aggregate.test.ts`) cannot catch
 // that — it never asks whether anything downstream of the command actually
 // received the events. This block asks that question directly.
+//
+// It also asserts on `insideTransaction` and `afterSave` (see
+// `TrackingUnitOfWork`/`CapturingOutbox` above): a first pass at these
+// tests only checked "publish was called with the right events", which is
+// exactly as true whether the publish call sits inside or outside
+// `atomicExecute`, and whether it runs before or after `repo.save`. Both
+// orderings look identical to a fake that just runs `work()` inline —
+// which is what let a mutated command (publish moved outside the
+// transaction, or moved ahead of the save but still inside it) pass all
+// 132 tests in this file unchanged. The two booleans close that gap.
 // ---------------------------------------------------------------------------
 
 describe("the outbox", () => {
-  it("creating a service publishes ServiceCreated with the actor on it", async () => {
+  it("creating a service publishes ServiceCreated with the actor on it, inside the transaction, after the save", async () => {
     await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
 
     expect(outbox.published).toHaveLength(1);
-    expect(outbox.published[0]!.aggregateType).toBe("service");
-    const created = outbox.published[0]!.events.find(
-      (e) => e.eventName === "service.created",
-    );
+    const batch = outbox.published[0]!;
+    expect(batch.aggregateType).toBe("service");
+    expect(batch.insideTransaction).toBe(true);
+    expect(batch.afterSave).toBe(true);
+
+    const created = batch.events.find((e) => e.eventName === "service.created");
     expect(created).toBeDefined();
     expect((created!.payload as { actorUserId: string }).actorUserId).toBe(
       base.requesterUserId,
     );
   });
 
-  it("publishing a service publishes ServicePublished with the actor on it", async () => {
+  it("publishing a service publishes ServicePublished with the actor on it, inside the transaction, after the save", async () => {
     const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new ManageOptionsCommand(repo).add({
       requesterUserId: "user-1",
@@ -604,9 +660,12 @@ describe("the outbox", () => {
     });
 
     // One batch from CreateServiceCommand, one from SetServiceStatusCommand
-    // — both tagged "service", both actually reaching the outbox port.
+    // — both tagged "service", both actually reaching the outbox port,
+    // each inside its own command's transaction and after its own save.
     expect(outbox.published).toHaveLength(2);
     expect(outbox.published.every((p) => p.aggregateType === "service")).toBe(true);
+    expect(outbox.published.every((p) => p.insideTransaction)).toBe(true);
+    expect(outbox.published.every((p) => p.afterSave)).toBe(true);
 
     const publishedEvent = outbox.published
       .flatMap((p) => p.events)
@@ -642,9 +701,13 @@ describe("the outbox", () => {
       status: "draft",
     });
 
-    const unpublishedEvent = outbox.published
-      .flatMap((p) => p.events)
-      .find((e) => e.eventName === "service.unpublished");
+    const unpublishBatch = outbox.published.at(-1)!;
+    expect(unpublishBatch.insideTransaction).toBe(true);
+    expect(unpublishBatch.afterSave).toBe(true);
+
+    const unpublishedEvent = unpublishBatch.events.find(
+      (e) => e.eventName === "service.unpublished",
+    );
     expect(unpublishedEvent).toBeDefined();
     // user-3 (an admin), not user-1 who created and published it — the
     // actor is whoever performed *this* act, not the service's creator.
@@ -653,7 +716,14 @@ describe("the outbox", () => {
     );
   });
 
-  it("a refused status change publishes nothing", async () => {
+  it("a refused status change publishes nothing — the aggregate's own invariant", async () => {
+    // SERVICE_NEEDS_OPTION, thrown by `Service.publish()` itself. `user-1`
+    // is the owner, so this exercises the invariant refusal specifically,
+    // not authorization — the sibling test below covers that branch, which
+    // this one cannot: mutation testing showed this was the only one of
+    // the two refusal paths any pre-existing test caught, because both
+    // `:371`/`:388`-style authz tests only ever asserted the thrown code,
+    // never the outbox.
     const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
 
     await expect(
@@ -668,5 +738,64 @@ describe("the outbox", () => {
     // reached the outbox, matching `repo.save()` never being called for it
     // either.
     expect(outbox.published).toHaveLength(1);
+  });
+
+  it("a refused status change publishes nothing — authorization, not the aggregate's invariant", async () => {
+    // The invariant test above (SERVICE_NEEDS_OPTION) is the one mutation
+    // testing caught; a publish call added only on the authorization branch
+    // — `NOT_PROVIDER_OWNER_OR_ADMIN`, thrown one line earlier for `user-2`,
+    // a staff member — passed every existing test unchanged, because
+    // nothing exercising that branch (the two tests at `:371`/`:388`) ever
+    // looked at the outbox, only at the thrown code.
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    const publishedBeforeAttempt = outbox.published.length;
+
+    await expect(
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+        requesterUserId: "user-2",
+        serviceId,
+        status: "published",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_PROVIDER_OWNER_OR_ADMIN" });
+
+    expect(outbox.published).toHaveLength(publishedBeforeAttempt);
+  });
+
+  it("archiving publishes ServiceUpdated — the only status change with no actor-carrying event of its own", async () => {
+    // `Service.archive()` raises no event of its own — but unlike a batch
+    // with genuinely nothing to say, it is not empty either: `archive()`
+    // still calls the aggregate's `touch()`, same as every other mutating
+    // method, and `touch()` unconditionally pushes `ServiceUpdated`.
+    // Confirmed directly against the aggregate before writing this
+    // assertion, rather than assumed: `publish([], "service")` never
+    // happens on this path. What actually distinguishes archiving from
+    // publish/unpublish is that its batch carries no event with an
+    // `actorUserId` — `ServiceUpdated` has none — so this is still an
+    // outbox row (`insertEvents` runs, `dispatch` runs), just not one an
+    // activity-feed handler will find anything to attribute in.
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
+
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+      requesterUserId: "user-1",
+      serviceId,
+      status: "archived",
+    });
+
+    const archiveBatch = outbox.published.at(-1)!;
+    expect(archiveBatch.aggregateType).toBe("service");
+    expect(archiveBatch.insideTransaction).toBe(true);
+    expect(archiveBatch.afterSave).toBe(true);
+    expect(archiveBatch.events.map((e) => e.eventName)).toEqual(["service.updated"]);
   });
 });
