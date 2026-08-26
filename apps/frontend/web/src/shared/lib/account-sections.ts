@@ -30,6 +30,11 @@ export interface AccountSection {
 
 const SUFFIXES = [
   { path: "", key: "navProfile", exact: true },
+  // Second, not last. The inbox already rendered inside this shell with no
+  // entry pointing at it, so standing on it highlighted nothing and the menu
+  // said you were nowhere. It is also the page opened most often, which is
+  // the other reason it sits near the top rather than beside the settings.
+  { path: "/notifications", key: "navNotifications", exact: false },
   { path: "/addresses", key: "navAddresses", exact: false },
   { path: "/security", key: "navSecurity", exact: false },
   { path: "/preferences", key: "navPreferences", exact: false },
