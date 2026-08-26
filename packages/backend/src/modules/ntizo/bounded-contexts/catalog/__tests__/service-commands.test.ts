@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Service } from "../domain/aggregates/service.aggregate";
 import { CreateServiceCommand } from "../app/use-cases/create-service.command";
 import { UpdateServiceCommand } from "../app/use-cases/update-service.command";
@@ -6,6 +8,7 @@ import { ManageOptionsCommand } from "../app/use-cases/manage-options.command";
 import { SetServiceStatusCommand } from "../app/use-cases/set-service-status.command";
 import { SetServiceTranslationCommand } from "../app/use-cases/set-service-translation.command";
 import type { ServiceRepositoryPort } from "../app/ports/outbound/service.repository.port";
+import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
 
 class FakeRepo implements ServiceRepositoryPort {
   saved: Service[] = [];
@@ -49,8 +52,29 @@ class FakeRepo implements ServiceRepositoryPort {
   }
 }
 
+/**
+ * Records what each command actually hands the outbox — the layer that was
+ * missing entirely before this round. Mirrors
+ * `decide-provider-status.command.test.ts`'s `CapturingOutbox`.
+ */
+class CapturingOutbox implements OutboxPort {
+  published: { events: BaseDomainEvent[]; aggregateType: string }[] = [];
+  async publish(events: BaseDomainEvent[], aggregateType: string): Promise<void> {
+    this.published.push({ events, aggregateType });
+  }
+}
+
+/** Runs the work inline; no test here exercises rollback. */
+const unitOfWork: UnitOfWorkPort = {
+  atomicExecute: async <T,>(work: () => Promise<T>): Promise<T> => work(),
+} as UnitOfWorkPort;
+
 let repo: FakeRepo;
-beforeEach(() => { repo = new FakeRepo(); });
+let outbox: CapturingOutbox;
+beforeEach(() => {
+  repo = new FakeRepo();
+  outbox = new CapturingOutbox();
+});
 
 const base = {
   requesterUserId: "user-1",
@@ -64,20 +88,20 @@ const base = {
 
 describe("CreateServiceCommand", () => {
   it("creates a draft owned by the provider", async () => {
-    const out = await new CreateServiceCommand(repo).execute(base);
+    const out = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     expect(out.serviceId).toBeTruthy();
     expect(repo.saved[0]!.toJSON().status).toBe("draft");
   });
 
   it("refuses somebody who does not belong to the workspace", async () => {
     await expect(
-      new CreateServiceCommand(repo).execute({ ...base, requesterUserId: "stranger" }),
+      new CreateServiceCommand(repo, unitOfWork, outbox).execute({ ...base, requesterUserId: "stranger" }),
     ).rejects.toMatchObject({ code: "NOT_PROVIDER_MEMBER" });
     expect(repo.saved).toHaveLength(0);
   });
 
   it("gives a quote service its form and no options", async () => {
-    const out = await new CreateServiceCommand(repo).execute({ ...base, bookingMode: "quote" });
+    const out = await new CreateServiceCommand(repo, unitOfWork, outbox).execute({ ...base, bookingMode: "quote" });
     const json = repo.stored.get(out.serviceId)!.toJSON();
     expect(json.quoteForm?.responseHours).toBe(48);
     expect(json.options).toEqual([]);
@@ -87,7 +111,7 @@ describe("CreateServiceCommand", () => {
     // Whoever creates a service is inserted into it — design spec,
     // "Additions to slice 1". `base.requesterUserId` is user-1, whose
     // provider-member id in this fixture is "member-1".
-    const out = await new CreateServiceCommand(repo).execute(base);
+    const out = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     expect(repo.stored.get(out.serviceId)!.toJSON().memberIds).toEqual(["member-1"]);
   });
 
@@ -95,7 +119,7 @@ describe("CreateServiceCommand", () => {
     // The whole point of seeding the creator on creation: a service should
     // not be born unpublishable for want of a performer nobody was asked to
     // add.
-    const out = await new CreateServiceCommand(repo).execute(base);
+    const out = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new ManageOptionsCommand(repo).add({
       requesterUserId: "user-1",
       serviceId: out.serviceId,
@@ -107,7 +131,7 @@ describe("CreateServiceCommand", () => {
       stepMinutes: null,
       name: "Só cabelo",
     });
-    await new SetServiceStatusCommand(repo).execute({
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
       requesterUserId: "user-1",
       serviceId: out.serviceId,
       status: "published",
@@ -118,7 +142,7 @@ describe("CreateServiceCommand", () => {
 
 describe("ManageOptionsCommand", () => {
   async function withService() {
-    const out = await new CreateServiceCommand(repo).execute(base);
+    const out = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     return out.serviceId;
   }
 
@@ -273,7 +297,7 @@ describe("ManageOptionsCommand", () => {
 
 describe("SetServiceStatusCommand", () => {
   async function withOption() {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new ManageOptionsCommand(repo).add({
       requesterUserId: "user-1",
       serviceId,
@@ -295,12 +319,12 @@ describe("SetServiceStatusCommand", () => {
   }
 
   it("refuses to publish a priced service with no options", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     // A performer, so this isolates the option check this test is named
     // for from the member check `canPublish` now runs first.
     repo.stored.get(serviceId)!.setMembers(["member-1"]);
     await expect(
-      new SetServiceStatusCommand(repo).execute({
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
         requesterUserId: "user-1",
         serviceId,
         status: "published",
@@ -309,7 +333,7 @@ describe("SetServiceStatusCommand", () => {
   });
 
   it("refuses to publish a service with nobody performing it", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new ManageOptionsCommand(repo).add({
       requesterUserId: "user-1",
       serviceId,
@@ -328,7 +352,7 @@ describe("SetServiceStatusCommand", () => {
     // draft service is allowed" test relying on the same possibility.
     repo.stored.get(serviceId)!.setMembers([]);
     await expect(
-      new SetServiceStatusCommand(repo).execute({
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
         requesterUserId: "user-1",
         serviceId,
         status: "published",
@@ -337,9 +361,9 @@ describe("SetServiceStatusCommand", () => {
   });
 
   it("refuses a stranger trying to change status", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await expect(
-      new SetServiceStatusCommand(repo).execute({
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
         requesterUserId: "stranger",
         serviceId,
         status: "archived",
@@ -356,7 +380,7 @@ describe("SetServiceStatusCommand", () => {
     // service, only owner/admin may decide whether it is live.
     const serviceId = await withOption();
     await expect(
-      new SetServiceStatusCommand(repo).execute({
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
         requesterUserId: "user-2",
         serviceId,
         status: "published",
@@ -368,7 +392,7 @@ describe("SetServiceStatusCommand", () => {
 
   it("lets an owner publish", async () => {
     const serviceId = await withOption();
-    await new SetServiceStatusCommand(repo).execute({
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
       requesterUserId: "user-1",
       serviceId,
       status: "published",
@@ -378,7 +402,7 @@ describe("SetServiceStatusCommand", () => {
 
   it("lets an admin publish", async () => {
     const serviceId = await withOption();
-    await new SetServiceStatusCommand(repo).execute({
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
       requesterUserId: "user-3",
       serviceId,
       status: "published",
@@ -390,7 +414,7 @@ describe("SetServiceStatusCommand", () => {
     // The half of the decision that is easy to break by accident: tightening
     // `SetServiceStatusCommand` must not touch `ManageOptionsCommand` or
     // `SetServiceTranslationCommand`, which stay on plain membership.
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new ManageOptionsCommand(repo).add({
       requesterUserId: "user-2",
       serviceId,
@@ -418,7 +442,7 @@ describe("SetServiceStatusCommand", () => {
 
 describe("UpdateServiceCommand", () => {
   it("updates the category of an existing service", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new UpdateServiceCommand(repo).execute({
       requesterUserId: "user-1",
       serviceId,
@@ -438,7 +462,7 @@ describe("UpdateServiceCommand", () => {
   });
 
   it("refuses a stranger", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await expect(
       new UpdateServiceCommand(repo).execute({
         requesterUserId: "stranger",
@@ -454,7 +478,7 @@ describe("UpdateServiceCommand", () => {
     // `base` is `bookingMode: "priced"`. This input type carries `quoteForm`
     // regardless of the service's booking mode — nothing upstream of the
     // aggregate stops it, so the aggregate itself has to.
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await expect(
       new UpdateServiceCommand(repo).execute({
         requesterUserId: "user-1",
@@ -474,7 +498,7 @@ describe("UpdateServiceCommand", () => {
 
 describe("SetServiceTranslationCommand", () => {
   it("sets a service-level translation", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new SetServiceTranslationCommand(repo).execute({
       requesterUserId: "user-1",
       serviceId,
@@ -487,7 +511,7 @@ describe("SetServiceTranslationCommand", () => {
   });
 
   it("sets an option-level translation when optionId is given", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await new ManageOptionsCommand(repo).add({
       requesterUserId: "user-1",
       serviceId,
@@ -515,7 +539,7 @@ describe("SetServiceTranslationCommand", () => {
   });
 
   it("refuses a stranger", async () => {
-    const { serviceId } = await new CreateServiceCommand(repo).execute(base);
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
     await expect(
       new SetServiceTranslationCommand(repo).execute({
         requesterUserId: "stranger",
@@ -528,5 +552,121 @@ describe("SetServiceTranslationCommand", () => {
     // Never got to the mutation: no en-US row was added.
     const translations = repo.stored.get(serviceId)!.toJSON().translations;
     expect(translations.find((t) => t.locale === "en-US")).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The outbox — the layer `Service.pullEvents()` alone never reaches.
+// `CreateServiceCommand` and `SetServiceStatusCommand` are the only two
+// commands in this bounded context that raise events carrying an actor
+// (`ServiceCreated`, `ServicePublished`, `ServiceUnpublished`), and until
+// this round neither of them published anything: they called `repo.save()`
+// and stopped, so every event `Service`'s aggregate methods pushed onto
+// `_events` died with the aggregate. A test asserting only on
+// `service.pullEvents()` (see `service.aggregate.test.ts`) cannot catch
+// that — it never asks whether anything downstream of the command actually
+// received the events. This block asks that question directly.
+// ---------------------------------------------------------------------------
+
+describe("the outbox", () => {
+  it("creating a service publishes ServiceCreated with the actor on it", async () => {
+    await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
+
+    expect(outbox.published).toHaveLength(1);
+    expect(outbox.published[0]!.aggregateType).toBe("service");
+    const created = outbox.published[0]!.events.find(
+      (e) => e.eventName === "service.created",
+    );
+    expect(created).toBeDefined();
+    expect((created!.payload as { actorUserId: string }).actorUserId).toBe(
+      base.requesterUserId,
+    );
+  });
+
+  it("publishing a service publishes ServicePublished with the actor on it", async () => {
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+      requesterUserId: "user-1",
+      serviceId,
+      status: "published",
+    });
+
+    // One batch from CreateServiceCommand, one from SetServiceStatusCommand
+    // — both tagged "service", both actually reaching the outbox port.
+    expect(outbox.published).toHaveLength(2);
+    expect(outbox.published.every((p) => p.aggregateType === "service")).toBe(true);
+
+    const publishedEvent = outbox.published
+      .flatMap((p) => p.events)
+      .find((e) => e.eventName === "service.published");
+    expect(publishedEvent).toBeDefined();
+    expect((publishedEvent!.payload as { actorUserId: string }).actorUserId).toBe(
+      "user-1",
+    );
+  });
+
+  it("unpublishing a service publishes ServiceUnpublished with the actor on it", async () => {
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
+    await new ManageOptionsCommand(repo).add({
+      requesterUserId: "user-1",
+      serviceId,
+      pricingMode: "fixed",
+      amountMinor: 30000,
+      currency: "MZN",
+      durationMinutes: 30,
+      minMinutes: null,
+      stepMinutes: null,
+      name: "Só cabelo",
+    });
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+      requesterUserId: "user-1",
+      serviceId,
+      status: "published",
+    });
+
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+      requesterUserId: "user-3",
+      serviceId,
+      status: "draft",
+    });
+
+    const unpublishedEvent = outbox.published
+      .flatMap((p) => p.events)
+      .find((e) => e.eventName === "service.unpublished");
+    expect(unpublishedEvent).toBeDefined();
+    // user-3 (an admin), not user-1 who created and published it — the
+    // actor is whoever performed *this* act, not the service's creator.
+    expect((unpublishedEvent!.payload as { actorUserId: string }).actorUserId).toBe(
+      "user-3",
+    );
+  });
+
+  it("a refused status change publishes nothing", async () => {
+    const { serviceId } = await new CreateServiceCommand(repo, unitOfWork, outbox).execute(base);
+
+    await expect(
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+        requesterUserId: "user-1",
+        serviceId,
+        status: "published",
+      }),
+    ).rejects.toMatchObject({ code: "SERVICE_NEEDS_OPTION" });
+
+    // Only the create call's batch — the refused publish attempt never
+    // reached the outbox, matching `repo.save()` never being called for it
+    // either.
+    expect(outbox.published).toHaveLength(1);
   });
 });

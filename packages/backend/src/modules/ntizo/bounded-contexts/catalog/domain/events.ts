@@ -25,9 +25,10 @@ export class ServiceUpdated extends BaseDomainEvent<{ serviceId: string }> {
 }
 
 /**
- * `actorUserId` is who did it, and is separate from `providerId`, which is
- * whose it is. A workspace has several members and "the provider published
- * this" cannot say which of them to put it in front of.
+ * `actorUserId` is who did it — the workspace member who published this
+ * service. `ServicePublished` carries only `serviceId`, the aggregate this
+ * event is about; nothing else on the payload can say which of the
+ * workspace's several members performed the act.
  */
 export class ServicePublished extends BaseDomainEvent<{
   serviceId: string;
@@ -39,9 +40,10 @@ export class ServicePublished extends BaseDomainEvent<{
 }
 
 /**
- * `actorUserId` is who did it, and is separate from `providerId`, which is
- * whose it is. A workspace has several members and "the provider published
- * this" cannot say which of them to put it in front of.
+ * `actorUserId` is who did it — the workspace member who unpublished this
+ * service. `ServiceUnpublished` carries only `serviceId`, the aggregate this
+ * event is about; nothing else on the payload can say which of the
+ * workspace's several members performed the act.
  */
 export class ServiceUnpublished extends BaseDomainEvent<{
   serviceId: string;

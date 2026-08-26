@@ -1,8 +1,14 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { NotProviderOwnerOrAdminError, ServiceNotFoundError } from "../../domain/exceptions";
 import type { ServiceRepositoryPort } from "../ports/outbound/service.repository.port";
+import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 
 export class SetServiceStatusCommand {
-  constructor(private readonly repo: ServiceRepositoryPort) {}
+  constructor(
+    private readonly repo: ServiceRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
+  ) {}
 
   async execute(input: {
     requesterUserId: string;
@@ -25,7 +31,11 @@ export class SetServiceStatusCommand {
     else if (input.status === "draft") service.unpublish(input.requesterUserId);
     else service.archive();
 
-    await this.repo.save(service);
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.repo.save(service);
+      await this.outboxPort.publish(service.pullEvents(), "service");
+    });
+
     return { ok: true };
   }
 }
