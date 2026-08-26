@@ -21,6 +21,10 @@ import {
   bootstrapNotificationRead,
   createNotificationReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/notification";
+import {
+  bootstrapActivityRead,
+  createActivityReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/activity";
 import { createNotificationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/notification";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
@@ -64,6 +68,7 @@ function getYoga(stage: string) {
     // against and give it nothing to call.
     const notificationRead = bootstrapNotificationRead();
     const notification = bootstrapNotification();
+    const activityRead = bootstrapActivityRead();
     const workflows = bootstrapProviderWorkflows({
       userInternal: {
         upgradeProfileToProvider: user.useCases.internal.upgradeProfileToProvider,
@@ -84,6 +89,7 @@ function getYoga(stage: string) {
         ...createWalletReadHandlers(walletRead.useCases),
         ...createSchedulingReadHandlers({ scheduling }),
         ...createNotificationReadHandlers({ notificationRead }),
+        ...createActivityReadHandlers({ activityRead }),
         ...createProviderWriteHandlers({ provider, workflows }),
         ...createCatalogWriteHandlers({ catalog }),
         ...createSchedulingWriteHandlers({ scheduling }),

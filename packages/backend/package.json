@@ -40,6 +40,7 @@
     "./modules/ntizo/read/wallet": "./src/modules/ntizo/read/wallet/index.ts",
     "./modules/ntizo/read/scheduling": "./src/modules/ntizo/read/scheduling/index.ts",
     "./modules/ntizo/read/notification": "./src/modules/ntizo/read/notification/index.ts",
+    "./modules/ntizo/read/activity": "./src/modules/ntizo/read/activity/index.ts",
     "./modules/ntizo/write/provider": "./src/modules/ntizo/write/provider/index.ts",
     "./modules/ntizo/write/user": "./src/modules/ntizo/write/user/index.ts",
     "./modules/ntizo/write/catalog": "./src/modules/ntizo/write/catalog/index.ts",
