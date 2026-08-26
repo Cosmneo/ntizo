@@ -13,6 +13,7 @@ import type {
   ReviewRepositoryPort,
   ReviewRow,
   ReviewSummary,
+  UpsertedReview,
 } from "../app/ports/outbound/review.repository.port";
 import type {
   ReviewEligibility,
@@ -53,7 +54,18 @@ class FakeRepo implements ReviewRepositoryPort {
       works?: boolean;
       existing?: Review | null;
       deletes?: boolean;
-      providerName?: string | null;
+      providerName?: string;
+      /**
+       * What `upsert` reports it did. Defaults to the opposite of
+       * `existing` — an uncontested request behaves exactly as the read
+       * predicted. Overriding this independently of `existing` is what lets
+       * a test express the double-submit race: `findByAuthor` said
+       * "nothing here" (`existing` unset) but by the time this call's
+       * `upsert` actually ran, a racing submission had already inserted the
+       * row, so Postgres reports an update (`inserted: false`) despite the
+       * read never having seen it.
+       */
+      inserted?: boolean;
     } = {},
     private readonly unitOfWork?: TrackingUnitOfWork,
   ) {}
@@ -61,10 +73,10 @@ class FakeRepo implements ReviewRepositoryPort {
   async findByAuthor(): Promise<Review | null> {
     return this.opts.existing ?? null;
   }
-  async upsert(entity: Review): Promise<string> {
+  async upsert(entity: Review): Promise<UpsertedReview> {
     this.upserted = entity;
     this.unitOfWork?.order.push("upsert");
-    return "r1";
+    return { id: "r1", inserted: this.opts.inserted ?? !this.opts.existing };
   }
   async removeOwn(providerId: string): Promise<boolean> {
     this.removed = providerId;
@@ -76,14 +88,12 @@ class FakeRepo implements ReviewRepositoryPort {
   async summary(): Promise<ReviewSummary> {
     return { average: null, count: 0, histogram: { one: 0, two: 0, three: 0, four: 0, five: 0 } };
   }
-  async isReviewableProvider(): Promise<boolean> {
-    return this.opts.reviewable ?? true;
+  async isReviewableProvider(): Promise<{ name: string } | null> {
+    if (this.opts.reviewable === false) return null;
+    return { name: this.opts.providerName ?? "Barbearia do João" };
   }
   async worksAtProvider(): Promise<boolean> {
     return this.opts.works ?? false;
-  }
-  async findProviderName(): Promise<string | null> {
-    return this.opts.providerName === undefined ? "Barbearia do João" : this.opts.providerName;
   }
 }
 
@@ -269,6 +279,28 @@ describe("the outbox", () => {
       rating: INPUT.rating,
       actorUserId: INPUT.requesterUserId,
     });
+  });
+
+  it("a double-submit publishes ReviewCreated once, not twice — the write decides, not the read", async () => {
+    // The race review.repository.ts's own upsert docblock names: two
+    // submissions can both run findByAuthor before either transaction
+    // commits, so both see "nothing here" and both take the create path.
+    // Only the first to actually reach the database inserts; the second
+    // resolves through ON CONFLICT ... DO UPDATE. This call simulates being
+    // that second one — `existing` is unset (the read said "new"), but
+    // `inserted: false` (the write says otherwise). Branching the publish
+    // on `existing`, the way this command used to, would publish here; the
+    // real bug this guards is the SAME review publishing ReviewCreated
+    // twice across the two racing calls.
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({ inserted: false }, unitOfWork);
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "b7" });
+
+    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT);
+
+    expect(repo.upserted).not.toBeNull();
+    expect(outbox.published).toHaveLength(0);
   });
 
   it("editing an existing review publishes nothing — it is a revision, not a creation", async () => {

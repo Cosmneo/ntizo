@@ -17,6 +17,13 @@ import { BaseDomainEvent } from "@cosmneo/onion-lasagna";
  * says "You reviewed X". A handler that looked the name up later would tie a
  * history entry written once to a provider that can be renamed afterwards,
  * and the entry would then quietly change what it said about the past.
+ *
+ * Unlike every other event in this outbox, `SubmitReviewCommand` constructs
+ * this directly rather than pulling it off the aggregate's own event list —
+ * `Review` has none. It cannot: `review.id` is assigned by Postgres'
+ * `defaultRandom()` and is only known once `upsert` returns, so the
+ * aggregate is never in a position to raise an event carrying an id it does
+ * not yet have.
  */
 export class ReviewCreated extends BaseDomainEvent<{
   reviewId: string;

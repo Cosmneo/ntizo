@@ -42,7 +42,8 @@ export class SubmitReviewCommand {
     rating: number;
     comment: string | null;
   }): Promise<{ reviewId: string }> {
-    if (!(await this.repo.isReviewableProvider(input.providerId))) {
+    const reviewableProvider = await this.repo.isReviewableProvider(input.providerId);
+    if (!reviewableProvider) {
       throw new ProviderNotReviewableError(input.providerId);
     }
     if (await this.repo.worksAtProvider(input.providerId, input.requesterUserId)) {
@@ -71,31 +72,26 @@ export class SubmitReviewCommand {
           comment: input.comment,
         });
 
-    // Only a genuinely new review raises ReviewCreated — an edit already has
-    // its own row and its own moment in history; re-announcing it on every
-    // revision would repeat that moment rather than correct it. The name is
-    // read only on this path for the same reason: a revision never needs it.
-    const providerName = existing ? null : await this.repo.findProviderName(input.providerId);
-    if (!existing && providerName === null) {
-      // isReviewableProvider confirmed this same provider row moments ago;
-      // a null here means the two queries disagree — a broken invariant, not
-      // a condition a well-formed request can trigger. Mirrors
-      // CreateServiceCommand's identical guard for creatorMemberId.
-      throw new Error(
-        `[review] isReviewableProvider said yes for "${input.providerId}" but findProviderName found no row`,
-      );
-    }
+    const { id: reviewId } = await this.unitOfWork.atomicExecute(async () => {
+      const upserted = await this.repo.upsert(review);
 
-    let reviewId!: string;
-    await this.unitOfWork.atomicExecute(async () => {
-      reviewId = await this.repo.upsert(review);
-      if (!existing) {
+      // Whether this publishes ReviewCreated is decided by what THIS write
+      // did (`upserted.inserted`, Postgres' own xmax), not by whether
+      // `existing` was found — that read ran outside this transaction, and
+      // `review.repository.ts`'s own docblock already names the race a
+      // read-then-branch would reopen: two submissions can both read
+      // "nothing here" and both take this path, but only the one that
+      // actually inserted should announce a review that did not exist
+      // before. Returning `upserted` from this callback, rather than
+      // assigning to a `let` above it, is what makes "publish only after the
+      // write resolved" a type error to get backwards, not just a comment.
+      if (upserted.inserted) {
         await this.outboxPort.publish(
           [
             new ReviewCreated({
-              reviewId,
+              reviewId: upserted.id,
               providerId: input.providerId,
-              providerName: providerName!,
+              providerName: reviewableProvider.name,
               rating: input.rating,
               actorUserId: input.requesterUserId,
             }),
@@ -103,6 +99,8 @@ export class SubmitReviewCommand {
           "review",
         );
       }
+
+      return upserted;
     });
 
     return { reviewId };
