@@ -31,7 +31,8 @@ export interface UpdateMyProfileInput {
   lastName?: string;
   displayName?: string;
   bio?: string | null;
-  avatarUrl?: string | null;
+  phoneNumber?: string | null;
+  avatarKey?: string | null;
   language?: CurrentUserDTO["language"];
   timezone?: string;
   dateOfBirth?: string | null;
