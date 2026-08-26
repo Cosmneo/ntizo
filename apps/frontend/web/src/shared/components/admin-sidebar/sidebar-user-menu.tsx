@@ -14,6 +14,7 @@ import {
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -76,6 +77,7 @@ export function SidebarUserMenu() {
                 tooltip={user?.name ?? user?.email ?? ""}
               >
                 <Avatar className="h-8 w-8">
+                  {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.name ?? ""} /> : null}
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left leading-tight">
@@ -93,6 +95,7 @@ export function SidebarUserMenu() {
               <DropdownMenuLabel className="px-3 py-3">
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
+                    {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.name ?? ""} /> : null}
                     <AvatarFallback className="text-xs">
                       {initials}
                     </AvatarFallback>

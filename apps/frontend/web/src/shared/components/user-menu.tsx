@@ -19,6 +19,7 @@ import {
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -80,6 +81,7 @@ export function UserMenu() {
           className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2"
         >
           <Avatar className="h-10 w-10">
+            {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={label} /> : null}
             <AvatarFallback className="type-body-medium bg-[var(--color-primary)] font-semibold text-white">
               {initials}
             </AvatarFallback>
@@ -91,6 +93,7 @@ export function UserMenu() {
         <DropdownMenuLabel className="px-3 py-3">
           <div className="flex items-center gap-2">
             <Avatar className="h-9 w-9">
+              {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={label} /> : null}
               <AvatarFallback className="bg-[var(--color-primary)] text-xs font-semibold text-white">
                 {initials}
               </AvatarFallback>

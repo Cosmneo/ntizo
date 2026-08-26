@@ -1,17 +1,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import {
-  BadgeCheck,
-  Cake,
-  Clock,
-  Languages,
-  Pencil,
-  Sparkles,
-  UserRound,
-} from "lucide-react";
+import { Cake, Clock, Languages, Pencil, Sparkles, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Avatar, AvatarFallback, Badge, Button } from "@ntizo/frontend-ui";
+import { Avatar, AvatarFallback, AvatarImage, Button } from "@ntizo/frontend-ui";
+import { useSession } from "@ntizo/auth-client";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useMyProviders } from "@/features/provider/viewmodel/use-providers";
 import { canAccessProvider } from "@/shared/lib/zones";
@@ -88,6 +81,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 export function AccountPage() {
   const { t, i18n } = useTranslation("account");
   const { data: user } = useCurrentUser();
+  const { data: session } = useSession();
   const { data: providers = [] } = useMyProviders();
   const [editing, setEditing] = useState(false);
 
@@ -107,16 +101,12 @@ export function AccountPage() {
     year: "numeric",
   });
 
-  // Verified means email and phone, the two signals that exist. Identity
-  // documents are a provider's obligation and live with their workspace, so
-  // this badge deliberately does not claim them.
-  const verified = Boolean(user.phoneNumber);
-
   return (
     <>
       <section className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-6">
         <div className="flex flex-wrap items-start gap-4">
           <Avatar className="h-[72px] w-[72px]">
+            {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={name} /> : null}
             <AvatarFallback className="type-h2 bg-[var(--color-primary)] font-semibold text-white">
               {initialsOf(name)}
             </AvatarFallback>
@@ -125,17 +115,27 @@ export function AccountPage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="type-h1">{name}</h1>
-              {verified ? (
-                <Badge tone="success" className="gap-1">
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  {t("verified")}
-                </Badge>
-              ) : (
-                <Badge tone="warning">{t("unverified")}</Badge>
-              )}
             </div>
             <p className="type-body mt-1 [overflow-wrap:anywhere] text-[var(--color-muted-foreground)]">
-              {[user.phoneNumber, user.email].filter(Boolean).join(" · ")}
+              {user.phoneNumber ? (
+                <>
+                  {user.phoneNumber}
+                  {/* Read from the session, not the read model: whether a
+                      number is verified is an auth fact, and copying it into
+                      the domain profile would create a second truth that
+                      drifts. It reads "not verified" for nearly everyone
+                      until an SMS provider exists — which is accurate, and
+                      why it sits beside the number rather than standing as a
+                      verdict on the whole account. */}
+                  {session?.user?.phoneNumberVerified ? null : (
+                    <span className="ml-1.5 text-[var(--color-warning)]">
+                      · {t("phoneUnverified")}
+                    </span>
+                  )}
+                  {" · "}
+                </>
+              ) : null}
+              {user.email}
             </p>
           </div>
 
