@@ -151,7 +151,7 @@
     "providerCreated": "{{providerName}} créé",
     "providerStatusDecided": "{{providerName}} évalué",
     "providerInviteSent": "{{email}} invité",
-    "providerInviteAccepted": "{{providerName}} rejoint",
+    "providerInviteAccepted": "Rejoint {{providerName}}",
     "serviceCreated": "{{serviceName}} créé",
     "servicePublished": "{{serviceName}} publié",
     "serviceUnpublished": "{{serviceName}} dépublié",

@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@ntizo/frontend-ui";
-import { activityTypeKey, type ActivityEntry } from "../domain/types";
+import type { ActivityEntry } from "../domain/types";
 import { useMyActivity } from "../viewmodel/use-activity";
+import { describeActivity } from "../viewmodel/describe-activity";
 import { ActivityList } from "./activity-list";
 
 /**
@@ -13,37 +14,17 @@ import { ActivityList } from "./activity-list";
  *
  * The only one of the three zones wired to `useMyActivity()` — the provider
  * and admin feeds read a different slice of the same table and are not this
- * task's to wire. `renderDescription` reads the `account` namespace's own
- * `activityType.*` keys, dotted keys flattened through `activityTypeKey`
- * because i18next reads a dot in a key as nesting. See `withFallbackNames`
- * for what happens when the name a key wants to interpolate is null.
+ * task's to wire. `renderDescription` delegates to `describeActivity`
+ * (`viewmodel/describe-activity.ts`), which reads the `account` namespace's
+ * own `activityType.*` keys and handles the null-name fallback and its
+ * capitalisation — kept out of this component so it can be unit-tested
+ * against real translation resources without mounting a page.
  */
 export function CustomerActivityPage() {
   const { t, i18n } = useTranslation("account");
   const { entries, loading, hasMore, loadMore } = useMyActivity();
 
-  const renderDescription = (entry: ActivityEntry) =>
-    t(`activityType.${activityTypeKey(entry.type)}`, {
-      replace: withFallbackNames(entry.payload),
-    });
-
-  /**
-   * `payload` as written, with a null `serviceName`/`providerName` replaced
-   * by a translated placeholder noun. Every other field — `email`, `rating`,
-   * whatever a given event carries — passes through untouched; `t`'s
-   * `interpolation.replace` only reads the placeholders a template actually
-   * names, so handing it two extra keys a template does not use is inert.
-   * Declared inside the component (not module scope) because it closes over
-   * `t` — pulling `t` in as a parameter instead would mean typing against
-   * `TFunction`'s overloaded signature for no benefit.
-   */
-  function withFallbackNames(payload: Record<string, unknown>): Record<string, unknown> {
-    return {
-      ...payload,
-      serviceName: payload.serviceName ?? t("activityType.unnamedService"),
-      providerName: payload.providerName ?? t("activityType.unnamedProvider"),
-    };
-  }
+  const renderDescription = (entry: ActivityEntry) => describeActivity(t, entry);
 
   return (
     <div className="mx-auto max-w-3xl">

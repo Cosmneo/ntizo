@@ -32,13 +32,17 @@ describe("activity copy", () => {
   });
 
   it("is translated, not English under a locale name", () => {
+    // All nine keys, not just `userRegistered`: a translator who leaves one
+    // key in English (or pastes the English string as a placeholder to come
+    // back to later) ships it to real users otherwise — checking only the
+    // first key would miss every other one.
     const en = byLocale.find((l) => l.locale === "en-US")!;
     for (const { locale, data } of byLocale) {
       if (locale.startsWith("en")) continue;
       // pt-MZ and pt-PT may agree with each other, never with English.
-      expect(data.activityType!.userRegistered, `${locale}`).not.toBe(
-        en.data.activityType!.userRegistered,
-      );
+      for (const k of KEYS) {
+        expect(data.activityType![k], `${locale}.${k}`).not.toBe(en.data.activityType![k]);
+      }
     }
   });
 

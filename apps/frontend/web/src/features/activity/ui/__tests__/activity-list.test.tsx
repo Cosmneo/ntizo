@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import i18n from "@/shared/lib/i18n";
-import { activityTypeKey } from "../../domain/types";
+import { describeActivity } from "../../viewmodel/describe-activity";
 import { ActivityList } from "../activity-list";
 
 /**
@@ -54,14 +54,15 @@ describe("ActivityList renders a hostile payload value safely", () => {
 
   it("stays safe through the real translation call the page actually makes", () => {
     // The production path, not a stand-in for it: `customer-activity-page.tsx`
-    // computes `description` as `t(activityType.<key>, { replace: payload })`.
-    // `i18n.ts` sets `escapeValue: false`, so this call hands the hostile
+    // computes `description` via `describeActivity`, the same function it
+    // calls. `i18n.ts` sets `escapeValue: false`, so this hands the hostile
     // string straight through into the sentence — verifying it still lands
     // on the page as inert text is what closes the loop the isolated test
-    // above leaves open.
-    const description = i18n.t(`account:activityType.${activityTypeKey(entry.type)}`, {
-      replace: entry.payload,
-    });
+    // above leaves open. `serviceName` here is a real (non-null) value, so
+    // `describeActivity`'s fallback/capitalisation path never engages —
+    // this test is about escaping, not about the null-name behaviour
+    // covered in `viewmodel/__tests__/describe-activity.test.ts`.
+    const description = describeActivity(i18n.getFixedT("en-US", "account"), entry);
     expect(description).toContain(HOSTILE);
 
     render(
