@@ -1370,3 +1370,40 @@ for them, and would make them faster and isolated at the same time. A
 **Trigger:** the next time CI goes red on one of these with nothing in the
 diff to explain it — or sooner, because a gate that fails for reasons unrelated
 to the change is a gate people learn to re-run rather than read.
+
+---
+
+## 54. The mark-all-read button overflows the page at very narrow widths — pre-existing, not from the activity-column task
+
+Found while verifying Task 10 (the activity column beside the notifications
+inbox) at narrow viewports. At a 200px CSS viewport,
+`document.documentElement.scrollWidth - clientWidth` is 45px on
+`/account/notifications`. The cause is the "Marcar todas como lidas" (mark
+all as read) `<Button>` in `notifications-page.tsx`'s header row
+(`flex flex-wrap items-end justify-between gap-4`): the button's label is one
+`white-space: nowrap` run wider than 200px, the row's `flex-wrap` moves it to
+its own line but does not shrink it, and nothing downstream clips it, so it
+paints past the viewport edge.
+
+Confirmed pre-existing and unrelated to the activity-column change: `git
+stash`-ing `notifications-page.tsx`'s Task 10 diff and re-measuring the old,
+one-column structure at the same 200px width, with the same wait for the
+async notification query to resolve, reproduced the identical 45px overflow
+from the identical button. The two-column grid Task 10 added contributes
+nothing extra at this width — a separate, smaller overflow source inside the
+new `ActivityList` row (its `<li>` lacks its own `min-w-0`, `right≈220px`)
+stays entirely inside the button's larger footprint (`right≈246px`), so the
+*measured* total is identical with or without the activity column.
+
+Judged non-blocking for Task 10 because 200px is narrower than any shipping
+phone (320px/375px, the realistic floor, measured 0 overflow both before and
+after) and the button lives outside that task's one-file scope (the
+component is `@ntizo/frontend-ui`'s `Button`; the long label is
+`notifications.json`'s `markAllRead` copy, translated per-locale). Neither
+was touched implementing Task 10.
+
+**Trigger:** the next task that touches `notifications-page.tsx`'s header row,
+adds another action button beside "Marcar todas como lidas", or does a
+narrow-viewport pass on the notifications page specifically — at that point
+either shrink/wrap the button's label handling or accept a documented minimum
+supported width above 200px.
