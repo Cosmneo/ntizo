@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { NotificationsPage } from "@/features/notifications/ui/notifications-page";
 
 // A separate file rather than a second describe alongside the other
@@ -66,5 +66,27 @@ describe("NotificationsPage (activity column)", () => {
     const newerIndex = texts.findIndex((text) => text.includes("Published Haircut"));
     expect(olderIndex).toBeGreaterThanOrEqual(0);
     expect(newerIndex).toBeGreaterThan(olderIndex);
+  });
+
+  /**
+   * Nothing about the grid's markup enforces which cell comes first — below
+   * `lg` the grid falls back to its one implicit column and stacks children
+   * in DOM order, so this is the one thing standing between "the activity
+   * column lands under the inbox" (the brief's Step 2) and a later refactor
+   * (e.g. extracting a shared wrapper around both cells) silently swapping
+   * that order. Every other test in this file and its siblings passes
+   * whichever cell renders first, since none of them looks at relative
+   * position — this is deliberately the one that does.
+   */
+  it("keeps the inbox before the activity column in the DOM", () => {
+    render(<NotificationsPage scope={{ kind: "mine" }} />);
+
+    const inboxHeading = screen.getByRole("heading", { name: /notifications/i });
+    const activityTitle = screen.getByText(/recent activity/i);
+
+    expect(
+      inboxHeading.compareDocumentPosition(activityTitle) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

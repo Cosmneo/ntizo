@@ -144,7 +144,7 @@
   "activityListTitle": "Recente activiteit",
   "activityHint": "Wat je op Ntizo hebt gedaan.",
   "activityEmptyTitle": "Nog geen activiteit",
-  "activityEmptyBody": "Je boekingen, berichten en betalingen verschijnen hier zodra ze plaatsvinden.",
+  "activityEmptyBody": "Zodra je een dienst publiceert, een aanbieder beoordeelt of iemand uitnodigt, verschijnt dat hier.",
   "activityLoadMore": "Meer laden",
   "activityType": {
     "userRegistered": "Je account aangemaakt",

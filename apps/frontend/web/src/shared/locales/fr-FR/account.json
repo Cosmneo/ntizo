@@ -144,7 +144,7 @@
   "activityListTitle": "Activité récente",
   "activityHint": "Ce que vous avez fait sur Ntizo.",
   "activityEmptyTitle": "Aucune activité pour l’instant",
-  "activityEmptyBody": "Vos réservations, messages et paiements seront listés ici au fil de l’eau.",
+  "activityEmptyBody": "Dès que vous publierez un service, noterez un prestataire ou inviterez quelqu’un, cela apparaîtra ici.",
   "activityLoadMore": "Charger plus",
   "activityType": {
     "userRegistered": "Votre compte créé",

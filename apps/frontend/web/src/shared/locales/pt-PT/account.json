@@ -144,7 +144,7 @@
   "activityListTitle": "Atividade recente",
   "activityHint": "O que fez na Ntizo.",
   "activityEmptyTitle": "Ainda sem atividade",
-  "activityEmptyBody": "As suas reservas, mensagens e pagamentos serão listados aqui à medida que acontecem.",
+  "activityEmptyBody": "Quando publicar um serviço, avaliar um prestador ou convidar alguém, aparece aqui.",
   "activityLoadMore": "Carregar mais",
   "activityType": {
     "userRegistered": "Criou a sua conta",

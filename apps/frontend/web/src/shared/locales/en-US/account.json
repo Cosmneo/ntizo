@@ -144,7 +144,7 @@
   "activityListTitle": "Recent activity",
   "activityHint": "What you have done on Ntizo.",
   "activityEmptyTitle": "No activity yet",
-  "activityEmptyBody": "Your bookings, messages and payments will be listed here as they happen.",
+  "activityEmptyBody": "The things you do on Ntizo — services you publish, reviews you write, people you invite — will appear here.",
   "activityLoadMore": "Load more",
   "activityType": {
     "userRegistered": "Created your account",
