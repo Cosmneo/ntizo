@@ -25,9 +25,19 @@ export const activityEntryReadModel = z.object({
    * failure fails every row on the page, not just itself — the same
    * "one bad row must not take down the page" property
    * `DrizzleActivityRepository.listForActor`'s `Activity.rehydrate` already
-   * upholds for `type`. A degraded entry renders as an activity with no
-   * interpolation values rather than a masked `INTERNAL_ERROR` for the whole
-   * feed.
+   * upholds for `type`.
+   *
+   * A degraded entry does **not** render as an activity with no
+   * interpolation values — that would require `describeActivity`'s template
+   * lookup to also notice the payload is empty, and nothing does. It renders
+   * with every placeholder its template names left as the literal
+   * `{{token}}`, e.g. `"Published {{serviceName}}"`: i18next 23.16.8 defaults
+   * `skipOnVariables: true`, `shared/lib/i18n.ts` never overrides it, and a
+   * missing interpolation value is left untouched rather than blanked. This
+   * comment used to claim the gentler failure; it does not happen. The whole
+   * point of `.catch({})` still holds — one bad row degrades to visible
+   * garbage on its own line instead of an `INTERNAL_ERROR` for the whole
+   * feed — it degrades to visible garbage, not to a clean sentence.
    */
   payload: z.record(z.string(), z.unknown()).catch({}),
   occurredAt: z.string(),
