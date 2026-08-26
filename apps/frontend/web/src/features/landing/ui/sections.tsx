@@ -114,11 +114,10 @@ export function Categories() {
   return (
     <section id="categorias" className={SECTION_PAD}>
       <div className="page-shell">
-        <Head
-          title={t("categoriesTitle")}
-          blurb={t("categoriesBlurb")}
-          more={{ label: t("seeAll"), to: "/categories" }}
-        />
+        {/* No "see all": the page it led to is gone, and a link to a 404 is
+            worse than no link. The tiles below still all land on /providers
+            undifferentiated — see the note on the rail. */}
+        <Head title={t("categoriesTitle")} blurb={t("categoriesBlurb")} />
         <ScrollRail columns={4} cardWidth="44%">
           {isLoading
             ? // As many placeholders as tiles that land, so the rail does not
