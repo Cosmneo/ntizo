@@ -15,7 +15,7 @@ export const API_ENV_FILE_PATH = path.join(os.tmpdir(), "ntizo-e2e-api.env");
  * `--env-file` (see playwright.config.ts for the full mechanism, including
  * why `.dev.vars` is never touched or read). Only the keys that actually
  * need to differ from wrangler.jsonc's committed defaults are set here —
- * everything else (RESEND_API_KEY, GOOGLE_*, MICROSOFT_*) is left absent so
+ * everything else (RESEND_API_KEY, GOOGLE_*) is left absent so
  * the app's own `?? ""` / `?? "dev-secret-change-me"` fallbacks in
  * config.middleware.ts apply, same as an unconfigured local dev box.
  */
