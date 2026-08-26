@@ -323,7 +323,16 @@ export function SignUp() {
                 onClick={() =>
                   authClient.signIn.social({
                     provider: "google",
-                    callbackURL: "/sign-in",
+                    // Absolute, and pointing at THIS app. A relative path is
+                    // resolved against better-auth's own baseURL, which is the
+                    // API origin — a successful sign-in landed on the API's
+                    // JSON root instead of the app.
+                    callbackURL: `${window.location.origin}/`,
+                    // And the failure needs its own destination, or the error
+                    // goes to that same JSON root: a person who tried to sign
+                    // in read `{"status":"ok"}` and an error code in the URL
+                    // bar. Sent back to the form, which knows how to say it.
+                    errorCallbackURL: `${window.location.origin}/sign-in`,
                   })
                 }
               >

@@ -265,6 +265,26 @@ function createAuthInstance() {
         },
       },
     },
+    account: {
+      accountLinking: {
+        enabled: true,
+        /**
+         * Google only, and the restriction is the point.
+         *
+         * Linking means: somebody signs in with a provider, the provider
+         * asserts an e-mail, and we attach that login to whatever account
+         * already holds it. Trusting a provider that does not verify e-mail
+         * ownership would let anyone register an identity claiming a
+         * stranger's address and walk into their account. Google verifies.
+         *
+         * Without this, signing in with Google using an address that already
+         * has a password account failed with `unable_to_create_user` — the
+         * user is told nothing, and the one thing they cannot do is the thing
+         * they were trying to do.
+         */
+        trustedProviders: ["google"],
+      },
+    },
     session: {
       cookieCache: { enabled: true, maxAge: 60 },
     },

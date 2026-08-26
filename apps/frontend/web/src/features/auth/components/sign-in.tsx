@@ -27,7 +27,10 @@ export function SignIn() {
   const { t: tc } = useTranslation("common");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { next } = useSearch({ strict: false }) as { next?: string };
+  const { next, error: socialError } = useSearch({ strict: false }) as {
+    next?: string;
+    error?: string;
+  };
   const clearSessionQueryCache = useClearSessionQueryCache();
 
   const form = useForm({
@@ -87,6 +90,17 @@ export function SignIn() {
               void form.handleSubmit();
             }}
           >
+            {/* A social sign-in that failed comes back here with ?error=...
+                rather than dying on the API's JSON root. better-auth writes
+                the code in lower snake case; the map is keyed the way the
+                API returns codes elsewhere, so it is upper-cased here — at
+                the one place that knows about the URL. */}
+            {socialError ? (
+              <div className="text-sm text-[var(--color-destructive)] text-center">
+                {authErrorMessage(t, { code: socialError.toUpperCase() })}
+              </div>
+            ) : null}
+
             <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
               {(error) =>
                 error ? (
@@ -181,7 +195,16 @@ export function SignIn() {
                 onClick={() =>
                   authClient.signIn.social({
                     provider: "google",
-                    callbackURL: "/sign-in",
+                    // Absolute, and pointing at THIS app. A relative path is
+                    // resolved against better-auth's own baseURL, which is the
+                    // API origin — a successful sign-in landed on the API's
+                    // JSON root instead of the app.
+                    callbackURL: `${window.location.origin}/`,
+                    // And the failure needs its own destination, or the error
+                    // goes to that same JSON root: a person who tried to sign
+                    // in read `{"status":"ok"}` and an error code in the URL
+                    // bar. Sent back to the form, which knows how to say it.
+                    errorCallbackURL: `${window.location.origin}/sign-in`,
                   })
                 }
               >

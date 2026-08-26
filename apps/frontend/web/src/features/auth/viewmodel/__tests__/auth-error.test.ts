@@ -16,6 +16,10 @@ const REAL_CODES = [
   "VALIDATION_ERROR",
   "INVALID_TOKEN",
   "OTP_NOT_FOUND",
+  // Arrives as ?error=unable_to_create_user on a failed social sign-in, and
+  // reaches the map upper-cased. Observed live: a Google sign-in with an
+  // address that already had a password account.
+  "UNABLE_TO_CREATE_USER",
 ];
 
 function copyExists(dotted: string): boolean {
@@ -60,6 +64,16 @@ describe("authErrorMessage", () => {
     const raw = "[body.email] Invalid email address";
     expect(authErrorMessage(t, { code: "VALIDATION_ERROR", message: raw })).not.toContain("body.email");
     expect(authErrorMessage(t, { code: "SOMETHING_NEW", message: raw })).not.toContain("body.email");
+  });
+
+  it("maps a social error code the way it arrives in the URL", () => {
+    // better-auth writes the code lower-cased into ?error=; the sign-in page
+    // upper-cases before looking it up. This pins that contract, because the
+    // two halves live in different files and nothing else connects them.
+    const fromUrl = "unable_to_create_user";
+    expect(authErrorMessage(t, { code: fromUrl.toUpperCase() })).toBe(
+      "errors.accountExistsWithPassword",
+    );
   });
 
   it("answers a rate limit from the status, which carries no code", () => {

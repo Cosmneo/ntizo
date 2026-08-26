@@ -41,6 +41,21 @@ const CODE_I18N_KEYS: Partial<Record<string, string>> = {
   OTP_EXPIRED: "errors.codeExpired",
 
   INVALID_PHONE_NUMBER: "errors.invalidPhone",
+
+  // Social sign-in failures arrive as a ?error= parameter rather than a
+  // response body, lower-cased by better-auth; the caller upper-cases before
+  // looking them up here.
+  //
+  // UNABLE_TO_CREATE_USER was what a Google sign-in returned when the address
+  // already had a password account, before account linking was enabled. It
+  // stays mapped: linking is limited to Google, so any provider added later
+  // without that trust hits this again, and "something went wrong" would be a
+  // worse answer than naming it.
+  UNABLE_TO_CREATE_USER: "errors.accountExistsWithPassword",
+  ACCOUNT_NOT_LINKED: "errors.accountExistsWithPassword",
+  SOCIAL_ACCOUNT_ALREADY_LINKED: "errors.accountExistsWithPassword",
+  OAUTH_ACCESS_DENIED: "errors.googleCancelled",
+  ACCESS_DENIED: "errors.googleCancelled",
 };
 
 /** Shown when a code has no dedicated copy, or when nothing usable was thrown. */
