@@ -69,12 +69,21 @@ beforeAll(async () => {
     return row!.id;
   }
 
-  // Has its own `source_locale` translation — the normal case, and the one
-  // that must win even when a fallback candidate also exists.
+  // Has its own `source_locale` translation AND a competing `de-DE` one —
+  // "de-DE" sorts before "pt-MZ" alphabetically, so this is what actually
+  // proves the source-locale join wins over the fallback: an adapter that
+  // ignored `source_locale` and always fell through to the locale-ordered
+  // scan would answer "Haarschnitt" here too, not "Corte de Cabelo". A
+  // fixture with only the `pt-MZ` row (the earlier version of this file)
+  // could not tell the two implementations apart — both return the same
+  // name when there is nothing else to return.
   hasSourceLocaleRow = await makeService();
   await db
     .insert(serviceTranslation)
     .values({ serviceId: hasSourceLocaleRow, locale: "pt-MZ", name: "Corte de Cabelo" });
+  await db
+    .insert(serviceTranslation)
+    .values({ serviceId: hasSourceLocaleRow, locale: "de-DE", name: "Haarschnitt (errado)" });
 
   // No `pt-MZ` row at all — only reachable, in production, before a first
   // publish (`hasSourceName` is a publish invariant). Inserted en-US first,
@@ -107,7 +116,12 @@ afterAll(async () => {
 });
 
 describe("DrizzleServiceNameReader — real join, real fallback, real rows", () => {
-  test("resolves the service's own source_locale translation", async () => {
+  test("resolves the service's own source_locale translation over a competing, alphabetically-earlier one", async () => {
+    // `hasSourceLocaleRow` carries both a `pt-MZ` row (its `source_locale`)
+    // and a `de-DE` row that would win the fallback's `ORDER BY locale` on
+    // its own. "Corte de Cabelo" only comes back if the join actually
+    // matches on `source_locale` — an adapter that fell straight to the
+    // fallback would answer "Haarschnitt (errado)" instead.
     const name = await __runWithTransactionContextForTests(db, () =>
       reader.findNameById(hasSourceLocaleRow),
     );
