@@ -2,10 +2,17 @@ import { Hono } from "hono";
 import { getAuth, registerSignUpHook } from "@ntizo/backend/modules/better-auth";
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
+import { bootstrapActivity } from "@ntizo/backend/modules/ntizo/bounded-contexts/activity";
 import {
   registerProviderNotificationHandlers,
   registerUserNotificationHandlers,
 } from "@ntizo/backend/modules/ntizo/write/notification";
+import {
+  registerCatalogActivityHandlers,
+  registerProviderActivityHandlers,
+  registerReviewActivityHandlers,
+  registerUserActivityHandlers,
+} from "@ntizo/backend/modules/ntizo/write/activity";
 import { getEventRouter } from "@ntizo/backend/shared/infra/events";
 import { mountPrivateGraphql } from "./graphql/private";
 import { mountPublicGraphql } from "./graphql/public";
@@ -43,6 +50,11 @@ app.use("*", async (c, next) => {
 // isolate, shared by both, the same way `userBootstrap` is shared with the
 // sign-up hook.
 const notificationBootstrap = bootstrapNotification();
+
+// Bootstrapped here too, at module scope beside `notificationBootstrap`: the
+// activity handlers registered below need `recordActivity` and the two
+// cross-BC name readers, and this is the one instance for the isolate.
+const activityBootstrap = bootstrapActivity();
 
 // Inbound provider callbacks (Resend's bounce and complaint webhook).
 //
@@ -101,6 +113,33 @@ registerProviderNotificationHandlers(eventRouter, {
 });
 registerUserNotificationHandlers(eventRouter, {
   raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,
+});
+
+// Same router, a second, independent set of listeners: nine of the Provider,
+// User, Catalog and Review contexts' events also turn into a row in the
+// acting person's own history. Neither producing context, and neither the
+// notification handlers above, know this consumer exists — this is still
+// the only place allowed to know it does.
+//
+// This line is the one a compiler cannot miss for you: deleting any one of
+// these four calls breaks nothing that builds or that a handler's own unit
+// test would catch — every producer keeps publishing, every handler test
+// keeps passing, and the only symptom is a history that is silently always
+// empty. `event-handler-registration.test.ts` (and its activity-focused
+// sibling) exist to catch exactly that.
+registerProviderActivityHandlers(eventRouter, {
+  recordActivity: activityBootstrap.useCases.internal.recordActivity,
+  providerNameReader: activityBootstrap.adapters.providerNameReader,
+});
+registerUserActivityHandlers(eventRouter, {
+  recordActivity: activityBootstrap.useCases.internal.recordActivity,
+});
+registerCatalogActivityHandlers(eventRouter, {
+  recordActivity: activityBootstrap.useCases.internal.recordActivity,
+  serviceNameReader: activityBootstrap.adapters.serviceNameReader,
+});
+registerReviewActivityHandlers(eventRouter, {
+  recordActivity: activityBootstrap.useCases.internal.recordActivity,
 });
 
 // GraphQL (private, session-authed). The user and provider BCs are served
