@@ -13,9 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",
-    "deploy:dev": "vite build && wrangler deploy --env dev",
-    "deploy:qa": "vite build && wrangler deploy --env qa",
-    "deploy:prod": "vite build && wrangler deploy --env prod"
+    "deploy:dev": "VITE_AUTH_API_URL=https://dev.api.ntizo.co.mz vite build && wrangler deploy --env dev",
+    "deploy:qa": "VITE_AUTH_API_URL=https://qa.api.ntizo.co.mz vite build && wrangler deploy --env qa",
+    "deploy:prod": "VITE_AUTH_API_URL=https://api.ntizo.co.mz vite build && wrangler deploy --env prod"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",
