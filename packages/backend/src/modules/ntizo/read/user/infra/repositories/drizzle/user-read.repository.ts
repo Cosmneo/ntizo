@@ -3,6 +3,27 @@ import { toUserRole, type CurrentUserDTO, type UserRole } from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { user, profile } from "../../../../../shared/infrastructure/database/user/schemas";
 import type { UserReadRepositoryPort } from "../../../app/ports/outbound/user-read.repository.port";
+import { mediaUrl } from "../../../../../shared/infrastructure/media";
+
+/**
+ * Which photo to show, and where it lives.
+ *
+ * An uploaded photo wins over the one a sign-in provider supplied, so a
+ * deliberate choice is never displaced by a later Google sign-in. The
+ * composer is a parameter so precedence can be tested without a request
+ * scope; every caller passes `mediaUrl`.
+ */
+export function resolveAvatarUrl(
+  avatarKey: string | null,
+  avatarUrl: string | null,
+  compose: (key: string) => string | null = mediaUrl,
+): string | null {
+  if (avatarKey) {
+    const composed = compose(avatarKey);
+    if (composed) return composed;
+  }
+  return avatarUrl ?? null;
+}
 
 /**
  * Read-side repository. Projects straight to the read model — no aggregate
@@ -35,6 +56,7 @@ export class DrizzleUserReadRepository implements UserReadRepositoryPort {
         lastName: profile.lastName,
         displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
+        avatarKey: profile.avatarKey,
         phoneNumber: profile.phoneNumber,
         bio: profile.bio,
         language: profile.language,
@@ -66,7 +88,8 @@ export class DrizzleUserReadRepository implements UserReadRepositoryPort {
       firstName,
       lastName,
       displayName,
-      avatarUrl: row.avatarUrl ?? null,
+      avatarUrl: resolveAvatarUrl(row.avatarKey ?? null, row.avatarUrl ?? null),
+      avatarKey: row.avatarKey ?? null,
       phoneNumber: row.phoneNumber ?? null,
       bio: row.bio ?? null,
       language: row.language ?? "en-US",

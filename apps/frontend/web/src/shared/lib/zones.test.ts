@@ -11,6 +11,7 @@ import {
 const user = (role: CurrentUserDTO["role"]): CurrentUserDTO =>
   ({ id: "u1", email: "a@b.c", role, status: "active", createdAt: "", name: "",
      firstName: "", lastName: "", displayName: "", avatarUrl: null,
+     avatarKey: null,
      phoneNumber: null, bio: null, language: "en-US", timezone: "UTC",
      dateOfBirth: null, gender: null });
 

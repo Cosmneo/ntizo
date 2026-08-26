@@ -15,6 +15,14 @@ export const currentUserReadModel = z.object({
   lastName: z.string(),
   displayName: z.string(),
   avatarUrl: z.string().nullable(),
+  /**
+   * Set when the photo is one this person uploaded.
+   *
+   * `avatarUrl` above is the resolved address of whichever photo wins, so it
+   * cannot answer "is this mine, or the one my sign-in provider had?" — and
+   * the profile form needs that to know whether to offer "remove".
+   */
+  avatarKey: z.string().nullable(),
   phoneNumber: z.string().nullable(),
   bio: z.string().nullable(),
   // Derived, not restated — the third copy of this list was the one that

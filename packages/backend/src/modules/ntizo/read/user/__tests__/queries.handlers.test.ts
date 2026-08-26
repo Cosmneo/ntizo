@@ -11,7 +11,7 @@ const dto: CurrentUserDTO = {
   id: "u1", email: "a@b.c", role: "customer", status: "active",
   createdAt: "2026-01-01T00:00:00.000Z", name: "A B",
   firstName: "A", lastName: "B", displayName: "A B",
-  avatarUrl: null, phoneNumber: null, bio: null,
+  avatarUrl: null, avatarKey: null, phoneNumber: null, bio: null,
   language: "en-US", timezone: "UTC",
   dateOfBirth: null, gender: null,
 };

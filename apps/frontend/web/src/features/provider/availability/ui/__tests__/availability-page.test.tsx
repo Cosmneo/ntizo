@@ -47,6 +47,7 @@ const CURRENT_USER: CurrentUserDTO = {
   lastName: "M",
   displayName: "Ana",
   avatarUrl: null,
+  avatarKey: null,
   phoneNumber: null,
   bio: null,
   language: "en-US",

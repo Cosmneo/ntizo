@@ -10,7 +10,7 @@ import type { CurrentUserDTO } from "../domain/current-user";
 const ME = `
   query UserMe($input: JSON!) {
     userMe(input: $input) {
-      id email role status createdAt name firstName lastName displayName avatarUrl phoneNumber bio language timezone dateOfBirth gender
+      id email role status createdAt name firstName lastName displayName avatarUrl avatarKey phoneNumber bio language timezone dateOfBirth gender
     }
   }`;
 
