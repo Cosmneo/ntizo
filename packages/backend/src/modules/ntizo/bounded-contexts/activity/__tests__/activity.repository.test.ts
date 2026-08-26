@@ -6,6 +6,7 @@ import * as authSchema from "../../../../better-auth/infrastructure/database/sch
 import { __runWithTransactionContextForTests } from "../../../../../shared/infrastructure/database/tx-context";
 import { activity } from "../../../shared/infrastructure/database/activity/schemas";
 import { Activity } from "../domain/aggregates/activity.aggregate";
+import { CursorInvalidError } from "../domain/exceptions";
 import { DrizzleActivityRepository } from "../infrastructure/repositories/drizzle/activity.repository";
 
 const url = process.env["DEV_DB_URL"];
@@ -123,17 +124,22 @@ describe("save, then read back", () => {
 });
 
 describe("an invalid cursor", () => {
-  test("is rejected rather than silently restarting the reader at page one", async () => {
+  test("is rejected with a typed, client-facing error — not a generic 500", async () => {
     // A malformed or tampered cursor decodes to null. Falling back to "no
     // cursor" here would hand back the newest page under a fresh
     // `nextCursor` — indistinguishable from a normal first call — so a
     // client paginating by following `nextCursor` until it sees null could
     // loop forever on a corrupted token instead of ever finding out.
+    //
+    // `CursorInvalidError` specifically, not just any thrown error: a plain
+    // `Error` here is exactly what `getGraphQLErrorCode` cannot recognise —
+    // it would mask to INTERNAL_ERROR and a bad cursor would read to a
+    // client identically to a genuine crash.
     const actor = newActor();
     await __runWithTransactionContextForTests(db, async () => {
       await expect(
         repo.listForActor({ actorUserId: actor, limit: 10, cursor: "not-a-real-cursor" }),
-      ).rejects.toThrow();
+      ).rejects.toThrow(CursorInvalidError);
     });
   });
 });

@@ -2,6 +2,7 @@ import { and, desc, eq, lt, or } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { activity } from "../../../../../shared/infrastructure/database/activity/schemas";
 import { Activity } from "../../../domain/aggregates/activity.aggregate";
+import { CursorInvalidError } from "../../../domain/exceptions";
 import type { ActivityPage, ActivityRepositoryPort } from "../../../app/ports/outbound/activity.repository.port";
 
 /**
@@ -53,11 +54,22 @@ export class DrizzleActivityRepository implements ActivityRepositoryPort {
     // client that loops on "cursor in, cursor out" until `nextCursor` is
     // null would loop forever on a truncated or tampered token instead of
     // ever finding out something was wrong.
+    //
+    // This is a deliberate trade, not a free improvement: a cursor is an
+    // opaque string a client holds onto between requests, and if the
+    // `<occurredAt ISO>|<id>` encoding above ever changes, every
+    // previously-issued cursor becomes undecodable at once. Before this
+    // change that would have quietly restarted every one of those clients at
+    // page one; now it hard-errors all of them. A loud, simultaneous failure
+    // on a format change is still the outcome to want — the alternative is a
+    // client that can loop forever and never finds out — but it is the
+    // consequence of picking this over silence, not a side effect nobody
+    // decided.
     let after: { occurredAt: Date; id: string } | null = null;
     if (params.cursor) {
       after = decodeCursor(params.cursor);
       if (!after) {
-        throw new Error(`[activity] invalid cursor: ${params.cursor}`);
+        throw new CursorInvalidError(params.cursor);
       }
     }
     // One more than asked for: its existence is what says another page exists,
