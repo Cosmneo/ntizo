@@ -73,3 +73,19 @@ export class AvatarKeyNotOwnedError extends ForbiddenError {
     this.name = "AvatarKeyNotOwnedError";
   }
 }
+
+/**
+ * Same code and shape as the provider context's own `TimezoneInvalidError`
+ * (and scheduling's): each bounded context declares its own rather than one
+ * importing another's domain layer, but the string is deliberately identical
+ * — it is one fact ("not a real IANA zone"), not two.
+ */
+export class TimezoneInvalidError extends UnprocessableError {
+  constructor(public readonly timezone: string) {
+    super({
+      message: `"${timezone}" is not a usable timezone`,
+      code: "TIMEZONE_INVALID",
+    });
+    this.name = "TimezoneInvalidError";
+  }
+}

@@ -1,6 +1,7 @@
 // Profile aggregate — extended personal data, one-to-one with User.
 
-import { DEFAULT_LOCALE, type Locale, type Gender } from "@ntizo/shared";
+import { DEFAULT_LOCALE, isValidTimeZone, type Locale, type Gender } from "@ntizo/shared";
+import { TimezoneInvalidError } from "../exceptions";
 
 export interface ProfileProps {
   userId: string;
@@ -73,7 +74,12 @@ export class Profile {
       // in a comment — two constants disagreeing about what language the
       // product speaks, with the aggregate quietly winning.
       language: params.language ?? DEFAULT_LOCALE,
-      timezone: params.timezone ?? "UTC",
+      // Falls back to UTC rather than throwing on a bad value: at this
+      // moment the timezone came off an `X-Timezone` header nobody typed —
+      // sign-up is not the point to reject somebody over it. `updatePreferences`
+      // below is where a person is actually asserting a choice, and that one
+      // refuses instead of silently substituting a value they did not pick.
+      timezone: params.timezone && isValidTimeZone(params.timezone) ? params.timezone : "UTC",
       dateOfBirth: null,
       gender: null,
       createdAt: now,
@@ -165,7 +171,19 @@ export class Profile {
 
   updatePreferences(params: { language?: Locale; timezone?: string }): void {
     if (params.language !== undefined) this.props.language = params.language;
-    if (params.timezone !== undefined) this.props.timezone = params.timezone;
+    if (params.timezone !== undefined) {
+      // Checked here, not merely by the GraphQL schema's `.min(1)`: a
+      // non-empty string that is not a real IANA zone would otherwise reach
+      // `profile.timezone` and break every date this person's own app
+      // renders, silently, at read time rather than at the moment they
+      // picked it. Refused, unlike `create()` above, because this is the
+      // person actually asserting a choice — there is no "we could not
+      // tell" fallback to reach for.
+      if (!isValidTimeZone(params.timezone)) {
+        throw new TimezoneInvalidError(params.timezone);
+      }
+      this.props.timezone = params.timezone;
+    }
     this.props.updatedAt = new Date();
   }
 

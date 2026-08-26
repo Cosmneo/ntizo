@@ -301,4 +301,16 @@ describe("CreateUserOnSignUpInternalCommand — what the sign-up knew", () => {
 
     expect(profileOf("user-1").timezone).toBe("UTC");
   });
+
+  it("falls back to UTC, without throwing, when the X-Timezone header carried garbage", async () => {
+    // Registration must not fail over a header nobody typed. The Profile
+    // aggregate is what decides this (see `Profile.create`); this proves the
+    // command does not need to guard it separately, and that a bad value here
+    // does not abort the sign-up.
+    const { command, profileOf } = subject();
+
+    await command.execute({ ...base, image: null, timezone: "Not/AZone" });
+
+    expect(profileOf("user-1").timezone).toBe("UTC");
+  });
 });
