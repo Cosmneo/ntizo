@@ -16,10 +16,6 @@ const REAL_CODES = [
   "VALIDATION_ERROR",
   "INVALID_TOKEN",
   "OTP_NOT_FOUND",
-  // Arrives as ?error=unable_to_create_user on a failed social sign-in, and
-  // reaches the map upper-cased. Observed live: a Google sign-in with an
-  // address that already had a password account.
-  "UNABLE_TO_CREATE_USER",
 ];
 
 function copyExists(dotted: string): boolean {
@@ -70,8 +66,18 @@ describe("authErrorMessage", () => {
     // better-auth writes the code lower-cased into ?error=; the sign-in page
     // upper-cases before looking it up. This pins that contract, because the
     // two halves live in different files and nothing else connects them.
-    const fromUrl = "unable_to_create_user";
+    const fromUrl = "account_not_linked";
     expect(authErrorMessage(t, { code: fromUrl.toUpperCase() })).toBe(
+      "errors.accountExistsWithPassword",
+    );
+  });
+
+  it("does not tell someone to use a password when linking already signed them in", () => {
+    // UNABLE_TO_CREATE_USER meant "this email already has an account" only
+    // while account linking was off. With Google trusted it signs them in
+    // instead, so copy sending them to find a password would point at a
+    // problem that no longer exists.
+    expect(authErrorMessage(t, { code: "UNABLE_TO_CREATE_USER" })).not.toBe(
       "errors.accountExistsWithPassword",
     );
   });

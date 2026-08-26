@@ -47,11 +47,15 @@ const CODE_I18N_KEYS: Partial<Record<string, string>> = {
   // looking them up here.
   //
   // UNABLE_TO_CREATE_USER was what a Google sign-in returned when the address
-  // already had a password account, before account linking was enabled. It
-  // stays mapped: linking is limited to Google, so any provider added later
-  // without that trust hits this again, and "something went wrong" would be a
-  // worse answer than naming it.
-  UNABLE_TO_CREATE_USER: "errors.accountExistsWithPassword",
+  // already had a password account. That case is fixed at the source now —
+  // account linking signs the person in and attaches Google to the account
+  // they already had — so this no longer means "the account exists". It maps
+  // to the generic line rather than to copy telling somebody to go and use a
+  // password, which would send them looking for a problem that isn't there.
+  UNABLE_TO_CREATE_USER: "errors.generic",
+
+  // These two DO mean it: a provider whose email we do not trust enough to
+  // link on, or an identity already attached to a different account.
   ACCOUNT_NOT_LINKED: "errors.accountExistsWithPassword",
   SOCIAL_ACCOUNT_ALREADY_LINKED: "errors.accountExistsWithPassword",
   OAUTH_ACCESS_DENIED: "errors.googleCancelled",
