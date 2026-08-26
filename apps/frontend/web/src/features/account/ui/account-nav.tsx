@@ -16,20 +16,26 @@ export function AccountNav() {
   }
 
   return (
+    /* A scrolling strip on a phone, the sidebar it always was from `lg`.
+       Stacked vertically, seven entries plus sign-out filled the whole
+       screen: every settings page opened on a menu, with the thing you came
+       to read below the fold. The strip keeps the map of the area visible —
+       which was the reason for not using a drawer — without spending the
+       viewport on it. */
     <nav
       aria-label={t("navLabel")}
-      className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-2"
+      className="-mx-4 border-b border-[var(--color-border)] px-4 lg:mx-0 lg:rounded-[var(--radius-card)] lg:border lg:bg-[var(--color-background)] lg:p-2"
     >
-      <ul className="grid list-none gap-0.5 p-0">
+      <ul className="flex list-none gap-1 overflow-x-auto p-0 pb-2 lg:grid lg:gap-0.5 lg:overflow-visible lg:pb-0">
         {sections.map((section) => (
-          <li key={section.to}>
+          <li key={section.to} className="shrink-0">
             <Link
               to={section.to}
               activeOptions={{ exact: section.exact }}
-              className="type-body-medium block rounded-[var(--radius-field)] px-3.5 py-2.5 text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
+              className="type-body-medium block whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
               activeProps={{
                 className:
-                  "block rounded-[var(--radius-field)] px-3.5 py-2.5 type-body-medium bg-[var(--color-muted)] text-[var(--color-primary)] font-semibold",
+                  "block whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 type-body-medium bg-[var(--color-muted)] text-[var(--color-primary)] font-semibold",
               }}
             >
               {t(section.key)}
@@ -37,14 +43,17 @@ export function AccountNav() {
           </li>
         ))}
 
-        <li className="mt-1 border-t border-[var(--color-border)] pt-1">
+        {/* Last, and separated only in the column: a horizontal rule between
+            two chips in a strip reads as a divider between groups, not as
+            "this one is different". */}
+        <li className="shrink-0 lg:mt-1 lg:border-t lg:border-[var(--color-border)] lg:pt-1">
           {/* A button, not a link. Signing out is an action with a request
               behind it, and rendering it as a link invites a middle-click
               that opens a tab and leaves the session intact. */}
           <button
             type="button"
             onClick={() => void handleSignOut()}
-            className="type-body-medium w-full rounded-[var(--radius-field)] px-3.5 py-2.5 text-left text-[var(--color-destructive)] hover:bg-[color-mix(in_srgb,var(--color-destructive)_8%,transparent)]"
+            className="type-body-medium w-full whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 text-left text-[var(--color-destructive)] hover:bg-[color-mix(in_srgb,var(--color-destructive)_8%,transparent)]"
           >
             {t("navSignOut")}
           </button>

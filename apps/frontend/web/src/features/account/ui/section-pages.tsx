@@ -68,7 +68,10 @@ function VerificationRow({
   const { t } = useTranslation("account");
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] py-4 last:border-0">
-      <div className="min-w-0 flex-1">
+      {/* `basis-full sm:basis-0` so the badge drops to its own line on a
+          phone rather than crushing an e-mail address into two characters
+          per line. flex-1 alone would let it shrink without ever wrapping. */}
+      <div className="min-w-0 flex-1 basis-full sm:basis-0">
         <div className="type-body-medium font-semibold">{label}</div>
         <div className="type-body text-[var(--color-muted-foreground)]">
           {value || t("notSet")}
@@ -121,7 +124,11 @@ export function SecurityPage() {
 
       <div className="mt-4">
         <Panel>
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Stacked below `sm`, a row above it. `flex-wrap` alone did not
+              wrap: `flex-1` on the text lets it shrink to a sliver rather
+              than pushing the button onto its own line, so on a phone the
+              sentence came out five words tall beside a button. */}
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
               <KeyRound className="h-5 w-5 text-[var(--color-primary)]" />
             </span>
@@ -137,8 +144,10 @@ export function SecurityPage() {
                 rather than an in-page form. Changing a password from an
                 already-open session proves nothing about who is at the
                 keyboard; the email does. */}
-            <Link to="/forgot-password">
-              <Button variant="outline">{t("changePassword")}</Button>
+            <Link to="/forgot-password" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">
+                {t("changePassword")}
+              </Button>
             </Link>
           </div>
         </Panel>
