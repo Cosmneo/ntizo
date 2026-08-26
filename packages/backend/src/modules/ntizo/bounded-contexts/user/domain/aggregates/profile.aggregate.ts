@@ -8,6 +8,19 @@ export interface ProfileProps {
   lastName: string;
   displayName: string | null;
   avatarUrl: string | null;
+  /**
+   * The R2 key of a photo this person uploaded, or null.
+   *
+   * Separate from `avatarUrl` because the two have different shapes and
+   * different owners: Google hands over an absolute URL on a host we do not
+   * control, and an upload of ours produces a key whose URL is composed at
+   * read time from the stage's own media base. Storing that composed URL
+   * would put one stage's hostname into the database.
+   *
+   * The key wins when both are set, so a photo somebody chose is never
+   * displaced by a later Google sign-in.
+   */
+  avatarKey: string | null;
   phoneNumber: string | null;
   bio: string | null;
   language: Locale;
@@ -36,6 +49,8 @@ export class Profile {
     displayName?: string;
     language?: Locale;
     timezone?: string;
+    /** Google's, at sign-up. Never one of ours — an upload cannot exist yet. */
+    avatarUrl?: string | null;
   }): Profile {
     const now = new Date();
     const firstName = params.firstName ?? "";
@@ -49,7 +64,8 @@ export class Profile {
       firstName,
       lastName,
       displayName: displayName === "" ? "" : displayName,
-      avatarUrl: null,
+      avatarUrl: params.avatarUrl ?? null,
+      avatarKey: null,
       phoneNumber: null,
       bio: null,
       // DEFAULT_LOCALE, not a literal. This read "en-US" while
@@ -82,6 +98,9 @@ export class Profile {
   }
   get avatarUrl() {
     return this.props.avatarUrl;
+  }
+  get avatarKey() {
+    return this.props.avatarKey;
   }
   get phoneNumber() {
     return this.props.phoneNumber;
@@ -132,12 +151,15 @@ export class Profile {
     phoneNumber?: string | null;
     bio?: string | null;
     avatarUrl?: string | null;
+    avatarKey?: string | null;
   }): void {
     if (params.phoneNumber !== undefined)
       this.props.phoneNumber = params.phoneNumber;
     if (params.bio !== undefined) this.props.bio = params.bio;
     if (params.avatarUrl !== undefined)
       this.props.avatarUrl = params.avatarUrl;
+    if (params.avatarKey !== undefined)
+      this.props.avatarKey = params.avatarKey;
     this.props.updatedAt = new Date();
   }
 

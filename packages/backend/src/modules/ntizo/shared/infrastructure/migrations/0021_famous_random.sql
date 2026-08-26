@@ -1,0 +1,1 @@
+ALTER TABLE "ntizo_user"."profile" ADD COLUMN "avatar_key" text;

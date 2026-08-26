@@ -11,6 +11,12 @@ export const profile = userSchema.table("profile", {
   lastName: text("last_name").notNull().default(""),
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),
+  /**
+   * An R2 key, not a URL. `mediaUrl()` composes the URL at read time from the
+   * stage's `MEDIA_PUBLIC_URL_BASE`, which differs per stage — locally it
+   * points at this Worker. Same convention as `provider.logo_key`.
+   */
+  avatarKey: text("avatar_key"),
   phoneNumber: text("phone_number"),
   bio: text("bio"),
   language: text("language").$type<Locale>().notNull().default("en-US"),
