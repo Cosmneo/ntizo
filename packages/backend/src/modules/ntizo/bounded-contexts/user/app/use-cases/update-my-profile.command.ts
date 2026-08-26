@@ -8,7 +8,7 @@ import {
   type ExecutionContext,
   requireAuthenticated,
 } from "../../../../shared/infrastructure/execution-context";
-import { ProfileNotFoundError } from "../../domain/exceptions";
+import { AvatarKeyNotOwnedError, ProfileNotFoundError } from "../../domain/exceptions";
 import { normalizePhoneNumber } from "../../domain/value-objects/phone-number";
 
 /**
@@ -40,6 +40,10 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
     const profile = await this.profileRepo.findByUserId(requester.userId);
     if (!profile) throw new ProfileNotFoundError(requester.userId);
 
+    // Captured before anything on the aggregate changes: if the identity
+    // write below fails, this is what the compensating revert restores.
+    const previousPhone = profile.phoneNumber;
+
     // Normalised before anything is compared or written: "+258 84 123 4567"
     // and "+258841234567" are one number, and the unique index that protects
     // it can only see strings.
@@ -53,6 +57,16 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
     // Only when it actually changed. Saving the form without touching the
     // phone must not clear a verification the person already went through.
     const phoneChanged = nextPhone !== undefined && nextPhone !== profile.phoneNumber;
+
+    // A key, not a URL, and the check is the point: the upload route only
+    // ever writes under `avatar/<uploaderId>/...`, so a key naming any other
+    // prefix — including a real one, just not this caller's — was never
+    // produced by anything this account did. The trailing slash matters: it
+    // is what stops `avatar/u1x/...` from being accepted as belonging to
+    // `u1`.
+    if (input.avatarKey && !input.avatarKey.startsWith(`avatar/${requester.userId}/`)) {
+      throw new AvatarKeyNotOwnedError();
+    }
 
     const touchesName =
       input.firstName !== undefined ||
@@ -110,13 +124,31 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
 
     // After the profile commits, not inside the transaction: the two live in
     // different modules' tables and one postgres transaction does not span
-    // them anyway. If this throws — a number another account already holds —
-    // the caller sees PHONE_NUMBER_ALREADY_IN_USE and the profile carries a
-    // number the identity does not, which is visible and correctable. The
-    // reverse order would leave the identity holding a number no profile
-    // shows, which is neither.
+    // them anyway. THAT ORDERING STAYS.
+    //
+    // But `profile.phone_number` has no unique index of its own — only
+    // `better_auth.user.phone_number` does — so by the time this throws (most
+    // commonly PHONE_NUMBER_ALREADY_IN_USE), the profile has already
+    // committed the duplicate number the identity just refused. Left alone,
+    // the caller sees a failure while everything except this one write in
+    // fact saved, and the profile carries a number no unique index is
+    // watching. Compensate by writing the prior number back onto the profile,
+    // then re-throw the ORIGINAL error — the caller must see the failure that
+    // actually happened, not whatever the compensating save does.
     if (phoneChanged) {
-      await this.authIdentity.setPhoneNumber(requester.userId, nextPhone ?? null);
+      try {
+        await this.authIdentity.setPhoneNumber(requester.userId, nextPhone ?? null);
+      } catch (error) {
+        profile.updateContact({ phoneNumber: previousPhone });
+        try {
+          await this.profileRepo.save(profile);
+        } catch {
+          // The compensating write failed too. Swallowed: the caller still
+          // needs to see the error above, not a different one about a revert
+          // it never asked for and cannot act on.
+        }
+        throw error;
+      }
     }
   }
 }

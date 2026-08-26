@@ -1,4 +1,9 @@
-import { ConflictError, NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnprocessableError,
+} from "@cosmneo/onion-lasagna";
 
 /**
  * User BC domain exceptions.
@@ -47,5 +52,24 @@ export class PhoneNumberAlreadyInUseError extends ConflictError {
       code: "PHONE_NUMBER_ALREADY_IN_USE",
     });
     this.name = "PhoneNumberAlreadyInUseError";
+  }
+}
+
+/**
+ * `avatarKey` names an object in the public media bucket, and the upload
+ * route only ever writes under `avatar/<uploaderId>/...`. Accepting any other
+ * key would let an account "adopt" a photo it never uploaded — including one
+ * belonging to somebody else — by simply typing that person's id into the
+ * mutation. This is what makes the inbound port's comment that "a key can
+ * only name an object this platform stored" actually true, rather than a
+ * claim nothing checks.
+ */
+export class AvatarKeyNotOwnedError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "That avatar key does not belong to this account.",
+      code: "AVATAR_KEY_NOT_OWNED",
+    });
+    this.name = "AvatarKeyNotOwnedError";
   }
 }
