@@ -165,7 +165,11 @@ function createAuthInstance() {
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
         const svc = requireEmailService();
-        const tpl = verifyEmailTemplate(url);
+        // Same source as the profile's own language, and for the same
+        // reason: this fires during the signup request, so the header is
+        // there. It is also the only signal available — the profile does not
+        // exist yet when this runs.
+        const tpl = verifyEmailTemplate(url, resolveLocale(infraStore.getAcceptLanguage()));
         await svc.sendEmail({
           to: [user.email],
           subject: tpl.subject,
@@ -205,7 +209,10 @@ function createAuthInstance() {
       requireEmailVerification: true,
       sendResetPassword: async ({ user, url }) => {
         const svc = requireEmailService();
-        const tpl = resetPasswordTemplate(url);
+        // The language of the browser asking for the reset, not the one
+        // stored on the profile. Somebody who has switched device or language
+        // reads the mail where they asked for it.
+        const tpl = resetPasswordTemplate(url, resolveLocale(infraStore.getAcceptLanguage()));
         await svc.sendEmail({
           to: [user.email],
           subject: tpl.subject,

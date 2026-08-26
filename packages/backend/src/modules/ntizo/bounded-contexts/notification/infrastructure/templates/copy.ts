@@ -16,24 +16,11 @@ export const TEMPLATE_LOCALES = [
 export type TemplateLocale = (typeof TEMPLATE_LOCALES)[number];
 
 /**
- * Picks the copy for a locale, falling back to English.
- *
- * Two fallbacks, in order: an exact match, then the language without its
- * region — so a `pt-BR` we do not ship still reads Portuguese rather than
- * English. Only then English. A Mozambican reader getting Brazilian
- * Portuguese is a much smaller failure than getting a language they may not
- * read at all.
+ * Re-exported from shared so better-auth's own mails and these templates
+ * share one implementation. It moved there, not away: the behaviour and the
+ * reasoning below it are unchanged.
  */
-export function pickCopy<T>(byLocale: Record<string, T>, locale: string): T {
-  const exact = byLocale[locale];
-  if (exact) return exact;
-
-  const language = locale.split("-")[0];
-  const sameLanguage = Object.entries(byLocale).find(([k]) => k.split("-")[0] === language);
-  if (sameLanguage) return sameLanguage[1];
-
-  return byLocale["en-US"]!;
-}
+export { pickCopy } from "../../../../../../shared/infrastructure/email/templates/copy";
 
 /** Every template module exports exactly this. */
 export interface TemplateModule {
