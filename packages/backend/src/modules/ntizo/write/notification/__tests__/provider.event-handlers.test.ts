@@ -136,6 +136,7 @@ describe("provider.invite.sent", () => {
         inviteId: "inv1",
         email: "colega@ntizo.test",
         role: "staff",
+        actorUserId: "u-inviter",
       }),
     ]);
     expect(raise.calls[0]).toMatchObject({
@@ -152,6 +153,7 @@ describe("provider.invite.sent", () => {
         inviteId: "inv1",
         email: "colega@ntizo.test",
         role: "staff",
+        actorUserId: "u-inviter",
       }),
     ]);
     expect(raise.calls[0]!.payload).toEqual({
@@ -171,6 +173,7 @@ describe("provider.invite.sent", () => {
         inviteId: "inv3",
         email: "colega@ntizo.test",
         role: "staff",
+        actorUserId: "u-inviter",
       }),
     ]);
     expect(raise.calls[0]).toMatchObject({
@@ -194,6 +197,7 @@ describe("provider.invite.sent", () => {
         inviteId: "inv2",
         email: "stranger@ntizo.test",
         role: "staff",
+        actorUserId: "u-inviter",
       }),
     ]);
     expect(raise.calls).toHaveLength(0);

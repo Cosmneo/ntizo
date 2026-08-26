@@ -108,6 +108,10 @@ export class AcceptProviderInviteCommand implements AcceptProviderInvitePort {
           providerId: provider.id,
           email: invite.email,
           userId: requester.userId,
+          // The invitee accepting, not the inviter who sent it —
+          // `requester` here is whoever is authenticated on this request,
+          // and this command is only ever called by the person accepting.
+          actorUserId: requester.userId,
         }),
       );
       await this.outboxPort.publish(provider.pullEvents(), "provider");

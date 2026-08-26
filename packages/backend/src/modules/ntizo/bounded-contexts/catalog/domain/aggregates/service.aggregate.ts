@@ -79,6 +79,7 @@ export class Service {
     bookingMode: "priced" | "quote";
     name: string;
     description?: string | null;
+    actorUserId: string;
   }): Service {
     const now = new Date();
     const service = new Service({
@@ -108,7 +109,11 @@ export class Service {
       updatedAt: now,
     });
     service._events.push(
-      new ServiceCreated({ serviceId: params.id, providerId: params.providerId }),
+      new ServiceCreated({
+        serviceId: params.id,
+        providerId: params.providerId,
+        actorUserId: params.actorUserId,
+      }),
     );
     return service;
   }
@@ -270,7 +275,7 @@ export class Service {
     this.touch();
   }
 
-  publish(): void {
+  publish(actorUserId: string): void {
     canPublish({
       bookingMode: this.props.bookingMode,
       categoryId: this.props.categoryId,
@@ -282,13 +287,13 @@ export class Service {
     });
     this.props.status = "published";
     this.touch();
-    this._events.push(new ServicePublished({ serviceId: this.props.id }));
+    this._events.push(new ServicePublished({ serviceId: this.props.id, actorUserId }));
   }
 
-  unpublish(): void {
+  unpublish(actorUserId: string): void {
     this.props.status = "draft";
     this.touch();
-    this._events.push(new ServiceUnpublished({ serviceId: this.props.id }));
+    this._events.push(new ServiceUnpublished({ serviceId: this.props.id, actorUserId }));
   }
 
   archive(): void {

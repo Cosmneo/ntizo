@@ -87,6 +87,7 @@ export class InviteProviderMemberCommand implements InviteProviderMemberPort {
           inviteId: invite.id,
           email: invite.email,
           role: invite.role,
+          actorUserId: requester.userId,
         }),
       );
       await this.outboxPort.publish(provider.pullEvents(), "provider");

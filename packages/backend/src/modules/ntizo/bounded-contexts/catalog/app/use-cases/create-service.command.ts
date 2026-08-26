@@ -55,6 +55,7 @@ export class CreateServiceCommand {
       bookingMode: input.bookingMode,
       name: input.name.trim(),
       description: input.description?.trim() || null,
+      actorUserId: input.requesterUserId,
     });
     service.setMembers([creatorMemberId]);
 

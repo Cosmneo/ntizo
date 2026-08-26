@@ -14,6 +14,7 @@ function built() {
     bookingMode: "priced",
     name: "Corte de cabelo",
     description: "Barbearia",
+    actorUserId: "actor-1",
   });
   s.addOption({
     id: "opt-1",
@@ -44,6 +45,7 @@ function builtQuote() {
     bookingMode: "quote",
     name: "Consultoria",
     description: "Consultoria personalizada",
+    actorUserId: "actor-2",
   });
   s.update({ imageKeys: ["service/svc-2/1"] });
   s.setTranslation("en-US", "Consulting", "Personalised consulting");

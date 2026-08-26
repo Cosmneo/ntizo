@@ -105,28 +105,51 @@ export class ProviderMemberRoleUpdated extends BaseDomainEvent<{
 // enough for a future consumer to identify the invite; it is not a
 // credential. Do not add `token` back without also adding redaction/pruning
 // for the outbox table.
+/**
+ * `actorUserId` is who did it, and is separate from `providerId`, which is
+ * whose it is. A workspace has several members and "the provider published
+ * this" cannot say which of them to put it in front of.
+ */
 export class ProviderInviteSent extends BaseDomainEvent<{
   providerId: string;
   inviteId: string;
   email: string;
   role: string;
+  actorUserId: string;
 }> {
   constructor(payload: {
     providerId: string;
     inviteId: string;
     email: string;
     role: string;
+    actorUserId: string;
   }) {
     super("provider.invite.sent", payload.providerId, payload);
   }
 }
 
+/**
+ * `actorUserId` is who did it, and is separate from `providerId`, which is
+ * whose it is. A workspace has several members and "the provider published
+ * this" cannot say which of them to put it in front of.
+ *
+ * Here the actor is the invitee accepting, not the inviter who sent it —
+ * same person as `userId` below, kept as two fields because `userId` is the
+ * membership being created and `actorUserId` is the activity-feed contract
+ * every one of these five events now carries.
+ */
 export class ProviderInviteAccepted extends BaseDomainEvent<{
   providerId: string;
   email: string;
   userId: string;
+  actorUserId: string;
 }> {
-  constructor(payload: { providerId: string; email: string; userId: string }) {
+  constructor(payload: {
+    providerId: string;
+    email: string;
+    userId: string;
+    actorUserId: string;
+  }) {
     super("provider.invite.accepted", payload.providerId, payload);
   }
 }

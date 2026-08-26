@@ -42,11 +42,13 @@ describe("provider domain events", () => {
         inviteId: "inv-1",
         email: "a@b.com",
         role: "staff",
+        actorUserId: "u1",
       }),
       new ProviderInviteAccepted({
         providerId: "p8",
         email: "a@b.com",
         userId: "u1",
+        actorUserId: "u1",
       }),
       new ProviderInviteRevoked({ providerId: "p9", inviteId: "i1" }),
     ] as const;
@@ -83,6 +85,7 @@ describe("provider domain events", () => {
       inviteId: "inv-1",
       email: "a@b.com",
       role: "staff",
+      actorUserId: "u1",
     });
 
     expect(Object.keys(event.payload)).not.toContain("token");
@@ -91,6 +94,7 @@ describe("provider domain events", () => {
       inviteId: "inv-1",
       email: "a@b.com",
       role: "staff",
+      actorUserId: "u1",
     });
   });
 
@@ -132,11 +136,13 @@ describe("provider domain events", () => {
         inviteId: "inv-1",
         email: "a@b.com",
         role: "staff",
+        actorUserId: "u1",
       }).eventName,
       ProviderInviteAccepted: new ProviderInviteAccepted({
         providerId: "p1",
         email: "a@b.com",
         userId: "u1",
+        actorUserId: "u1",
       }).eventName,
       ProviderInviteRevoked: new ProviderInviteRevoked({
         providerId: "p1",

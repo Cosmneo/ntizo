@@ -21,8 +21,8 @@ export class SetServiceStatusCommand {
 
     // Publishing is where the invariants are checked; the aggregate throws the
     // first thing standing in the way, with a code the form puts under a field.
-    if (input.status === "published") service.publish();
-    else if (input.status === "draft") service.unpublish();
+    if (input.status === "published") service.publish(input.requesterUserId);
+    else if (input.status === "draft") service.unpublish(input.requesterUserId);
     else service.archive();
 
     await this.repo.save(service);

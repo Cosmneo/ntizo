@@ -24,6 +24,7 @@ function newService(over: Partial<Parameters<typeof Service.create>[0]> = {}) {
     locationType: "at_provider",
     bookingMode: "priced",
     name: "Corte de cabelo",
+    actorUserId: "actor-1",
     ...over,
   });
 }
@@ -82,7 +83,7 @@ describe("options", () => {
     // A performer, so `publish()` gets past the member check and this test
     // still exercises the option check it is named for.
     s.setMembers(["member-1"]);
-    s.publish();
+    s.publish("actor-1");
     expect(codeOf(() => s.removeOption("opt-1"))).toBe("OPTION_LAST_ONE");
   });
 
@@ -188,19 +189,19 @@ describe("publishing", () => {
     // A performer, so this exercises the option check rather than the
     // member check that now runs before it.
     s.setMembers(["member-1"]);
-    expect(codeOf(() => s.publish())).toBe("SERVICE_NEEDS_OPTION");
+    expect(codeOf(() => s.publish("actor-1"))).toBe("SERVICE_NEEDS_OPTION");
   });
 
   it("refuses a service with no performer", () => {
     const s = newService();
     s.addOption(fixedOption);
-    expect(codeOf(() => s.publish())).toBe("SERVICE_NEEDS_MEMBER");
+    expect(codeOf(() => s.publish("actor-1"))).toBe("SERVICE_NEEDS_MEMBER");
   });
 
   it("publishes a quote service with none", () => {
     const s = newService({ bookingMode: "quote" });
     s.setMembers(["member-1"]);
-    s.publish();
+    s.publish("actor-1");
     expect(s.toJSON().status).toBe("published");
   });
 
@@ -208,7 +209,7 @@ describe("publishing", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.removeTranslation("pt-MZ");
-    expect(codeOf(() => s.publish())).toBe("SERVICE_NAME_REQUIRED");
+    expect(codeOf(() => s.publish("actor-1"))).toBe("SERVICE_NAME_REQUIRED");
   });
 
   it("refuses to publish with only whitespace in the source name", () => {
@@ -217,7 +218,7 @@ describe("publishing", () => {
     const s = newService();
     s.addOption(fixedOption);
     s.setTranslation("pt-MZ", "   ", null);
-    expect(codeOf(() => s.publish())).toBe("SERVICE_NAME_REQUIRED");
+    expect(codeOf(() => s.publish("actor-1"))).toBe("SERVICE_NAME_REQUIRED");
   });
 });
 
