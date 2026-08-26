@@ -144,5 +144,19 @@
   "activityListTitle": "Recente activiteit",
   "activityHint": "Wat je op Ntizo hebt gedaan.",
   "activityEmptyTitle": "Nog geen activiteit",
-  "activityEmptyBody": "Je boekingen, berichten en betalingen verschijnen hier zodra ze plaatsvinden."
+  "activityEmptyBody": "Je boekingen, berichten en betalingen verschijnen hier zodra ze plaatsvinden.",
+  "activityLoadMore": "Meer laden",
+  "activityType": {
+    "userRegistered": "Je account aangemaakt",
+    "providerCreated": "{{providerName}} aangemaakt",
+    "providerStatusDecided": "{{providerName}} gecontroleerd",
+    "providerInviteSent": "{{email}} uitgenodigd",
+    "providerInviteAccepted": "Toegetreden tot {{providerName}}",
+    "serviceCreated": "{{serviceName}} aangemaakt",
+    "servicePublished": "{{serviceName}} gepubliceerd",
+    "serviceUnpublished": "{{serviceName}} gedepubliceerd",
+    "reviewCreated": "{{providerName}} beoordeeld",
+    "unnamedProvider": "een aanbieder",
+    "unnamedService": "een dienst"
+  }
 }

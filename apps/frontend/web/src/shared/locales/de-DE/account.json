@@ -144,5 +144,19 @@
   "activityListTitle": "Letzte Aktivität",
   "activityHint": "Was Sie auf Ntizo getan haben.",
   "activityEmptyTitle": "Noch keine Aktivität",
-  "activityEmptyBody": "Ihre Buchungen, Nachrichten und Zahlungen erscheinen hier, sobald sie geschehen."
+  "activityEmptyBody": "Ihre Buchungen, Nachrichten und Zahlungen erscheinen hier, sobald sie geschehen.",
+  "activityLoadMore": "Mehr laden",
+  "activityType": {
+    "userRegistered": "Ihr Konto erstellt",
+    "providerCreated": "{{providerName}} erstellt",
+    "providerStatusDecided": "{{providerName}} geprüft",
+    "providerInviteSent": "{{email}} eingeladen",
+    "providerInviteAccepted": "{{providerName}} beigetreten",
+    "serviceCreated": "{{serviceName}} erstellt",
+    "servicePublished": "{{serviceName}} veröffentlicht",
+    "serviceUnpublished": "{{serviceName}} depubliziert",
+    "reviewCreated": "{{providerName}} bewertet",
+    "unnamedProvider": "Anbieter",
+    "unnamedService": "Dienst"
+  }
 }

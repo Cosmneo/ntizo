@@ -144,5 +144,19 @@
   "activityListTitle": "Atividade recente",
   "activityHint": "O que fez na Ntizo.",
   "activityEmptyTitle": "Ainda sem atividade",
-  "activityEmptyBody": "As suas reservas, mensagens e pagamentos serão listados aqui à medida que acontecem."
+  "activityEmptyBody": "As suas reservas, mensagens e pagamentos serão listados aqui à medida que acontecem.",
+  "activityLoadMore": "Carregar mais",
+  "activityType": {
+    "userRegistered": "Criou a sua conta",
+    "providerCreated": "Criou {{providerName}}",
+    "providerStatusDecided": "Analisou {{providerName}}",
+    "providerInviteSent": "Convidou {{email}}",
+    "providerInviteAccepted": "Aderiu a {{providerName}}",
+    "serviceCreated": "Criou {{serviceName}}",
+    "servicePublished": "Publicou {{serviceName}}",
+    "serviceUnpublished": "Despublicou {{serviceName}}",
+    "reviewCreated": "Avaliou {{providerName}}",
+    "unnamedProvider": "um prestador",
+    "unnamedService": "um serviço"
+  }
 }
