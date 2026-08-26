@@ -27,11 +27,28 @@ import { activityTypeKey, type ActivityEntry } from "../domain/types";
  * actually substituted, never when the interpolated value is a name someone
  * chose — a service genuinely called "iPhone repair" is left exactly as
  * typed, in whatever case its owner gave it.
+ *
+ * `context: entry.payload.to` is i18next's own outcome-selector, not a
+ * second vocabulary: the wire type stays the single `provider.status.decided`
+ * (`ACTIVITY_TYPES` is unchanged), but `to` — the `ProviderStatus` an admin
+ * moved the provider *to* (`packages/shared`'s `PROVIDER_STATUSES`: `active`,
+ * `rejected`, `suspended`, `archived`; `decide()` never targets `pending`) —
+ * picks `activityType.providerStatusDecided_<to>` when that key exists and
+ * falls back to the bare `activityType.providerStatusDecided` otherwise
+ * (i18next's own resolution order: the context key is tried first, the plain
+ * key second — see `Interpolator`/`Translator#extendTranslation` in
+ * i18next 23.16.8). Every other event's payload has no `to`, so `context` is
+ * `undefined` for them and this is a no-op. Before this, every outcome of an
+ * admin's decision rendered as the same "Reviewed {{providerName}}" — an
+ * approval and a rejection of two different providers left one
+ * indistinguishable sentence each in a person's own audit trail.
  */
 export function describeActivity(t: TFunction, entry: ActivityEntry): string {
   const { replace, usedFallback } = withFallbackNames(t, entry.payload);
+  const context = typeof entry.payload.to === "string" ? entry.payload.to : undefined;
   const description = t(`activityType.${activityTypeKey(entry.type)}`, {
     replace,
+    context,
   }) as string;
   return usedFallback ? capitalizeFirst(description) : description;
 }
