@@ -117,7 +117,12 @@ describe("the per-request pool closes behind deferred work", () => {
     };
 
     const { ctx, scheduled } = fakeExecutionContext();
-    const c = { env: ENV, executionCtx: ctx } as unknown as Parameters<
+    // `req` is not optional decoration: `configMiddleware` reads
+    // `c.req.header("accept-language")` before it reaches anything this test
+    // asserts, so without it the middleware throws a TypeError and the
+    // rejection this test is checking for is never the one it sees. The other
+    // tests in this file go through a real Hono app and get a real `req`.
+    const c = { env: ENV, executionCtx: ctx, req: { header: () => undefined } } as unknown as Parameters<
       typeof configMiddleware
     >[0];
 
