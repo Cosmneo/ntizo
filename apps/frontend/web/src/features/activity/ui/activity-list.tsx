@@ -96,7 +96,7 @@ function EntryRow({
   }).format(new Date(entry.occurredAt));
 
   return (
-    <li className="flex items-center justify-between gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5">
+    <li className="flex items-center gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
           <Activity className="h-4 w-4" />
@@ -128,7 +128,7 @@ function ActivitySkeleton({ rows }: { rows: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <li
           key={i}
-          className="flex items-center justify-between gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5"
+          className="flex items-center gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5"
         >
           <div className="flex min-w-0 items-center gap-3">
             <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
