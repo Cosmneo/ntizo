@@ -83,7 +83,14 @@ export class GetServiceProjection {
       performers: performers.map((p) => ({
         id: p.id,
         firstName: p.firstName,
-        avatarUrl: p.avatarUrl,
+        // Resolved from `avatarKey`, never from `profile.avatarUrl`, and
+        // with no fallback to it either. This is the one surface in the app
+        // that deliberately differs: uploading a photo to a marketplace
+        // profile is a decision to publish it; signing in with Google is
+        // not, so a Google photo must never appear here, even when it is
+        // the only photo on file. A performer with no uploaded photo simply
+        // has no `avatarUrl` — the UI already falls back to initials.
+        avatarUrl: mediaUrl(p.avatarKey),
       })),
       isFallback: t.isFallback,
     };

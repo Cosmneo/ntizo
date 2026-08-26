@@ -113,9 +113,7 @@ export function AccountPage() {
           </Avatar>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="type-h1">{name}</h1>
-            </div>
+            <h1 className="type-h1">{name}</h1>
             <p className="type-body mt-1 [overflow-wrap:anywhere] text-[var(--color-muted-foreground)]">
               {user.phoneNumber ? (
                 <>

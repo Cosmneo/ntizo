@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -56,12 +56,17 @@ export function ProfileForm({
     avatarKey !== undefined ? avatarKey !== null : user.avatarKey !== null;
 
   // Every IANA zone the browser knows, with the reader's own first so the
-  // common case is one click.
-  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const zones = [
-    browserZone,
-    ...Intl.supportedValuesOf("timeZone").filter((z) => z !== browserZone),
-  ];
+  // common case is one click. `Intl.supportedValuesOf("timeZone")` is ~450
+  // entries and neither the browser's zone nor its own list changes between
+  // renders, so this is computed once rather than rebuilt and re-sorted on
+  // every keystroke elsewhere on the form.
+  const zones = useMemo(() => {
+    const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return [
+      browserZone,
+      ...Intl.supportedValuesOf("timeZone").filter((z) => z !== browserZone),
+    ];
+  }, []);
 
   const form = useForm({
     defaultValues: {

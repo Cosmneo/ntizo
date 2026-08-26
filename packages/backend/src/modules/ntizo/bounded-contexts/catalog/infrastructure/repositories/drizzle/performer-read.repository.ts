@@ -21,7 +21,9 @@ export class DrizzlePerformerReadRepository implements PerformerReadPort {
       .select({
         id: providerMember.id,
         firstName: profile.firstName,
-        avatarUrl: profile.avatarUrl,
+        // Not `profile.avatarUrl` — see `PerformerRow.avatarKey`'s doc
+        // comment for why this one column is deliberately off-limits here.
+        avatarKey: profile.avatarKey,
       })
       .from(providerMember)
       .innerJoin(profile, eq(profile.userId, providerMember.userId))

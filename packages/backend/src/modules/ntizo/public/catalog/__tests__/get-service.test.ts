@@ -1,7 +1,12 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { GetServiceProjection } from "../app/use-cases/get-service.projection";
 import { mapGetServiceInput } from "../graphql/handlers/arg-mappers";
 import { DrizzleServiceReadRepository } from "../../../bounded-contexts/catalog/infrastructure/repositories/drizzle/service-read.repository";
+import {
+  __resetMediaUrlBaseForTests,
+  configureMediaUrlBase,
+  mediaUrl,
+} from "../../../shared/infrastructure/media/media-url";
 
 const row = (over = {}) => ({
   id: "svc-1",
@@ -46,6 +51,17 @@ const make = (r: unknown, p = new FakePerformers()) =>
   new GetServiceProjection(new FakeRepo(r) as never, p as never);
 
 describe("GetServiceProjection", () => {
+  beforeEach(() => {
+    // Module-level state (`configureMediaUrlBase` is "first call wins"), so
+    // it must be cleared before every test rather than assumed absent.
+    __resetMediaUrlBaseForTests();
+    configureMediaUrlBase("https://media.example.test");
+  });
+
+  afterEach(() => {
+    __resetMediaUrlBaseForTests();
+  });
+
   it("returns the service with its packages, cheapest first", async () => {
     const out = await make(row()).execute({ id: "svc-1", locale: "pt-MZ" });
     expect(out?.name).toBe("Fotografia de casamentos");
@@ -80,12 +96,42 @@ describe("GetServiceProjection", () => {
 
   it("asks the performer port for exactly this service's members", async () => {
     const performers = new FakePerformers([
-      { id: "m1", firstName: "Ana", avatarUrl: null },
-      { id: "m2", firstName: "Flávio", avatarUrl: "https://cdn/x.jpg" },
+      { id: "m1", firstName: "Ana", avatarKey: null },
+      { id: "m2", firstName: "Flávio", avatarKey: "profiles/m2/avatar.jpg" },
     ]);
     const out = await make(row(), performers).execute({ id: "svc-1", locale: "pt-MZ" });
     expect(performers.lastIds).toEqual(["m1", "m2"]);
     expect(out?.performers.map((p) => p.firstName)).toEqual(["Ana", "Flávio"]);
+  });
+
+  it("resolves a performer's avatarUrl from their uploaded avatarKey, not a raw URL", async () => {
+    // The whole point of this surface: a marketplace-uploaded photo is
+    // published here, resolved the same way `mediaUrl()` resolves any other
+    // key. If the projection started returning a raw `avatarUrl` field off
+    // the row unchanged, this would still pass by coincidence unless the row
+    // never carries one at all — see the next test for that guarantee.
+    const performers = new FakePerformers([
+      { id: "m2", firstName: "Flávio", avatarKey: "profiles/m2/avatar.jpg" },
+    ]);
+    const out = await make(row(), performers).execute({ id: "svc-1", locale: "pt-MZ" });
+    expect(out?.performers[0]?.avatarUrl).toBe(mediaUrl("profiles/m2/avatar.jpg"));
+    expect(out?.performers[0]?.avatarUrl).toBe(
+      "https://media.example.test/profiles/m2/avatar.jpg",
+    );
+  });
+
+  it("never publishes a Google sign-in photo: a row with no uploaded avatarKey yields no avatarUrl", async () => {
+    // Regression guard for the bug this fixes: before, this projection read
+    // `profile.avatarUrl` raw, so a person who only ever signed in with
+    // Google — and never uploaded a photo — had their Google picture shown
+    // here without ever choosing to publish it. The port no longer even
+    // carries an `avatarUrl` field to fall back to; a performer with no
+    // `avatarKey` must resolve to `null`, not to some other photo on file.
+    const performers = new FakePerformers([
+      { id: "m1", firstName: "Ana", avatarKey: null },
+    ]);
+    const out = await make(row(), performers).execute({ id: "svc-1", locale: "pt-MZ" });
+    expect(out?.performers[0]?.avatarUrl).toBeNull();
   });
 
   it("carries a quote service through with no packages", async () => {

@@ -2,7 +2,15 @@ export interface PerformerRow {
   /** A `provider_member.id`. */
   id: string;
   firstName: string;
-  avatarUrl: string | null;
+  /**
+   * A storage key, not a URL — the caller resolves it with `mediaUrl()`.
+   *
+   * Deliberately `avatarKey` and not `avatarUrl`: this row backs a public
+   * page nobody asked to appear on, so it must never carry `profile.avatarUrl`
+   * (a Google sign-in photo, published without anyone choosing to publish
+   * it). Only a photo someone deliberately uploaded belongs here.
+   */
+  avatarKey: string | null;
 }
 
 /**
