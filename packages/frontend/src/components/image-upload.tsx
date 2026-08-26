@@ -197,6 +197,13 @@ export interface LogoUploadProps {
   replaceText: string;
   removeText: string;
   className?: string;
+  /**
+   * The preview's outline. `LOGO_CROP` is already `{ aspect: 1, width: 512 }`,
+   * which is an avatar's shape as much as a logo's — only the frame differs,
+   * so this is a prop rather than a second component copying the picker, the
+   * crop dialog, the rejection handling and the busy state.
+   */
+  shape?: "square" | "round";
 }
 
 /** The one image that stands in for the business everywhere it is listed. */
@@ -215,6 +222,7 @@ export function LogoUpload({
   replaceText,
   removeText,
   className,
+  shape = "square",
 }: LogoUploadProps) {
   const pendingFiles = React.useMemo(
     () => (pending ? [pending] : []),
@@ -240,7 +248,8 @@ export function LogoUpload({
             disabled={disabled || busy}
             aria-label={label}
             className={cn(
-              "relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-card-sm)] border-2 border-dashed transition-colors",
+              "relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden border-2 border-dashed transition-colors",
+              shape === "round" ? "rounded-full" : "rounded-[var(--radius-card-sm)]",
               dragging
                 ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)]"
                 : "border-[var(--color-border)] hover:border-[var(--color-primary)]",
