@@ -1370,3 +1370,58 @@ for them, and would make them faster and isolated at the same time. A
 **Trigger:** the next time CI goes red on one of these with nothing in the
 diff to explain it — or sooner, because a gate that fails for reasons unrelated
 to the change is a gate people learn to re-run rather than read.
+
+---
+
+## The catalogue search test asks for one page and asserts on all of it
+
+`packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
+fails today on `returns everything when no search was asked for`. Its helper calls
+`listPublished({ q, limit: 48, offset: 0 })` and then filters the page down to the five services it
+seeded — so the assertion only holds while the whole database fits on one page. Dev holds 72
+published services now, the seeded rows fall off the end, and the set comes back empty.
+
+Nothing is wrong with the code under test. The test is data-dependent and started failing when the
+database grew, which is why CI stays green: its job builds a fresh database from zero
+(`ci.yml`, `DEV_DB_URL` pointed at a throwaway Postgres), so the page is never full.
+
+The fix is a decision about what that case is for. Raising the limit only moves the cliff. Scoping
+the query to the seeded provider, or asserting `isSupersetOf` rather than equality, would say what
+it means.
+
+**Trigger:** the next time somebody runs the backend suite locally and has to be told which failure
+to ignore.
+
+---
+
+## `better_auth.user.phone_number` has a second writer
+
+`BetterAuthIdentityAdapter` is the only place the user bounded context writes that column, and the
+context is careful about it. But better-auth's own `phoneNumber` plugin is registered
+(`better-auth.ts`), and its `send-otp` and `update` routes write the same column directly —
+bypassing the adapter and leaving `ntizo_user.profile.phone_number` stale behind it.
+
+This is unreachable today only because `requireSmsService()` throws when no SMS provider is
+configured, which is every deployed stage. It goes live the day SMS is wired up, which is precisely
+when the number starts mattering.
+
+Options when that day comes: disable the plugin's own update route and route everything through the
+adapter, or give the plugin an `after` hook that writes the profile too.
+
+**Trigger:** the first commit that configures an SMS provider.
+
+---
+
+## Two media routes have no behavioural test
+
+`POST /api/media/:providerId/:kind` (provider logo and portfolio) and
+`POST /api/media/category/:categoryId` have never had one. This surfaced while writing
+`media-avatar.test.ts`, which is the only test file `apps/backend/api/src/media.ts` has ever had.
+Both untested routes carry an authorization guard — `canWriteProviderMedia` and `isPlatformAdmin` —
+and neither is exercised.
+
+The avatar test is a working template: `mock.module` on the auth module, a fake R2 bucket, and
+`app.request` against a freshly mounted `mountMedia`.
+
+**Trigger:** the next change to either guard, or to the shared type and size checks all three
+routes rely on.
