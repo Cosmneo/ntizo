@@ -31,6 +31,29 @@ describe("Activity.record", () => {
     // A handler that runs late must not sort to the top of a history.
     expect(Activity.record(base).occurredAt.toISOString()).toBe("2026-08-26T10:00:00.000Z");
   });
+
+  it("refuses an array payload", () => {
+    // The jsonb column accepts an array without complaint, and TypeScript's
+    // `Record<string, unknown>` is a type-only guarantee a cast at any
+    // write-side event handler can defeat. Left unchecked, this row would
+    // fail `activityPageReadModel`'s output validation for the entire page
+    // it appears on, not just itself.
+    expect(() => Activity.record({ ...base, payload: [] as never })).toThrow(/plain object/i);
+  });
+
+  it("refuses a null payload", () => {
+    expect(() => Activity.record({ ...base, payload: null as never })).toThrow(/plain object/i);
+  });
+
+  it("refuses a scalar payload", () => {
+    expect(() => Activity.record({ ...base, payload: "not an object" as never })).toThrow(
+      /plain object/i,
+    );
+  });
+
+  it("keeps an empty object payload — the shape most events without extra facts use", () => {
+    expect(() => Activity.record({ ...base, payload: {} })).not.toThrow();
+  });
 });
 
 describe("Activity.rehydrate", () => {

@@ -13,8 +13,23 @@ export const activityEntryReadModel = z.object({
   id: z.string(),
   /** The key the client translates. Never a sentence — the server has no locale. */
   type: z.string(),
-  /** Interpolation values for that key, snapshotted when the row was written. */
-  payload: z.record(z.string(), z.unknown()),
+  /**
+   * Interpolation values for that key, snapshotted when the row was written.
+   *
+   * `.catch({})`, not a bare `z.record(...)`: the write side (`Activity.record`)
+   * now rejects a non-object payload before it can be written, but that check
+   * did not always exist, and the jsonb column itself never enforced it — a
+   * row written before the check landed, or inserted by hand, can still hold
+   * an array or a scalar here. Without the fallback, one such row fails this
+   * field's parse, and because `items` is validated as a whole array, that
+   * failure fails every row on the page, not just itself — the same
+   * "one bad row must not take down the page" property
+   * `DrizzleActivityRepository.listForActor`'s `Activity.rehydrate` already
+   * upholds for `type`. A degraded entry renders as an activity with no
+   * interpolation values rather than a masked `INTERNAL_ERROR` for the whole
+   * feed.
+   */
+  payload: z.record(z.string(), z.unknown()).catch({}),
   occurredAt: z.string(),
 });
 

@@ -32,6 +32,21 @@ export class Activity {
     if (!params.actorUserId.trim()) {
       throw new Error("[activity] an activity row needs an actor");
     }
+    // `ActivityProps.payload` is typed `Record<string, unknown>`, but the
+    // type-only guarantee ends the moment a caller passes an event payload
+    // through with a cast (every write-side handler does exactly this) —
+    // nothing stops an array or a bare scalar landing in the jsonb column,
+    // which the DB accepts without complaint. Caught here, on the way in,
+    // rather than left for the read side to discover: `payload` reaching the
+    // GraphQL output schema as anything but a record fails that field's
+    // output validation for the WHOLE page, not just the one row — a single
+    // bad write turning into every reader of that page seeing a masked
+    // INTERNAL_ERROR forever. The read model still degrades a row it
+    // encounters despite this check (a row written before this validation
+    // existed, or inserted by hand) — see `activityEntryReadModel`.
+    if (typeof params.payload !== "object" || params.payload === null || Array.isArray(params.payload)) {
+      throw new Error("[activity] payload must be a plain object");
+    }
     return new Activity(params);
   }
 

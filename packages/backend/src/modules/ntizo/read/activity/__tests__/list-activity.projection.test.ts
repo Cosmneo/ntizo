@@ -59,11 +59,23 @@ describe("ListActivityProjection", () => {
     expect((repo.lastCall as { cursor: unknown }).cursor).toBeNull();
   });
 
-  it("maps a repository page into the DTO shape, ISO-stringifying occurredAt", async () => {
+  it("maps a repository page into the DTO shape, ISO-stringifying occurredAt, without dropping or reordering rows", async () => {
+    // Two rows, not one: a fixture with a single item cannot tell a correct
+    // page apart from one that has been truncated to its first row (or
+    // reversed) — `items.slice(0, 1).reverse().map(...)` in the projection
+    // passed every test in this file when the fixture only had one row.
+    // Distinct `occurredAt` values so an ordering bug (reversed, or a
+    // mis-sorted map) is visible in the assertion, not just item count.
     class RepoWithRows {
       async listForActor() {
         return {
           items: [
+            {
+              id: "a2",
+              type: "service.published",
+              payload: { serviceId: "s1" },
+              occurredAt: new Date("2026-08-21T09:00:00.000Z"),
+            },
             {
               id: "a1",
               type: "user.registered",
@@ -83,6 +95,12 @@ describe("ListActivityProjection", () => {
     });
     expect(result).toEqual({
       items: [
+        {
+          id: "a2",
+          type: "service.published",
+          payload: { serviceId: "s1" },
+          occurredAt: "2026-08-21T09:00:00.000Z",
+        },
         {
           id: "a1",
           type: "user.registered",

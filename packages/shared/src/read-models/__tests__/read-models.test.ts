@@ -6,6 +6,7 @@ import {
 import { currentUserReadModel } from "../system/user";
 import { availabilityConfigReadModel } from "../system/availability";
 import { inboxPageReadModel, notificationReadModel } from "../system/notification";
+import { activityEntryReadModel, activityPageReadModel } from "../system/activity";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -193,5 +194,91 @@ describe("inboxPageReadModel", () => {
   it("carries total alongside items", () => {
     const parsed = inboxPageReadModel.parse({ items: [], total: 12 });
     expect(parsed.total).toBe(12);
+  });
+});
+
+describe("activityEntryReadModel", () => {
+  it("accepts a row as the projection returns it", () => {
+    const parsed = activityEntryReadModel.parse({
+      id: "a1",
+      type: "user.registered",
+      payload: { welcomeName: "Ana" },
+      occurredAt: "2026-08-20T09:00:00.000Z",
+    });
+    expect(parsed.type).toBe("user.registered");
+  });
+
+  it("keeps an arbitrary payload rather than pinning one shape", () => {
+    const parsed = activityEntryReadModel.parse({
+      id: "a1",
+      type: "service.published",
+      payload: { serviceId: "s1", serviceName: "Corte", nested: { ok: true } },
+      occurredAt: "2026-08-20T09:00:00.000Z",
+    });
+    expect(parsed.payload["nested"]).toEqual({ ok: true });
+  });
+
+  // The write side (`Activity.record`) now refuses to create a row like
+  // this, but a row written before that check existed — or inserted by
+  // hand — can still hold one. Without `.catch({})` on `payload`, this
+  // parse throws, and because a page validates its whole `items` array in
+  // one pass, one such row would fail every entry on the page alongside it,
+  // not just itself.
+  it("degrades a non-object payload to an empty one, rather than failing the whole row", () => {
+    const parsed = activityEntryReadModel.parse({
+      id: "a1",
+      type: "user.registered",
+      payload: ["not", "an", "object"],
+      occurredAt: "2026-08-20T09:00:00.000Z",
+    });
+    expect(parsed.payload).toEqual({});
+  });
+
+  it("degrades a null payload the same way", () => {
+    const parsed = activityEntryReadModel.parse({
+      id: "a1",
+      type: "user.registered",
+      payload: null,
+      occurredAt: "2026-08-20T09:00:00.000Z",
+    });
+    expect(parsed.payload).toEqual({});
+  });
+});
+
+describe("activityPageReadModel", () => {
+  it("carries items and an opaque, nullable cursor", () => {
+    const parsed = activityPageReadModel.parse({
+      items: [
+        {
+          id: "a1",
+          type: "user.registered",
+          payload: {},
+          occurredAt: "2026-08-20T09:00:00.000Z",
+        },
+      ],
+      nextCursor: "2026-08-20T09:00:00.000Z|a1",
+    });
+    expect(parsed.nextCursor).toBe("2026-08-20T09:00:00.000Z|a1");
+  });
+
+  it("accepts a null cursor for the last page", () => {
+    const parsed = activityPageReadModel.parse({ items: [], nextCursor: null });
+    expect(parsed.nextCursor).toBeNull();
+  });
+
+  // The property Review Item 1 exists to guard, checked at the schema level
+  // too: a page is a whole array, not a single item, so a bad entry inside
+  // it must not sink entries around it.
+  it("does not let one bad-payload row sink the rest of the page", () => {
+    const parsed = activityPageReadModel.parse({
+      items: [
+        { id: "a1", type: "user.registered", payload: "bad", occurredAt: "2026-08-20T09:00:00.000Z" },
+        { id: "a2", type: "service.published", payload: { serviceId: "s1" }, occurredAt: "2026-08-19T09:00:00.000Z" },
+      ],
+      nextCursor: null,
+    });
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items[0]?.payload).toEqual({});
+    expect(parsed.items[1]?.payload).toEqual({ serviceId: "s1" });
   });
 });
