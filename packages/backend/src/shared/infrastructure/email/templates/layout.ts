@@ -1,3 +1,15 @@
+/**
+ * The app's primary, as an inline literal.
+ *
+ * Email cannot read a CSS custom property: Gmail strips `<style>` and every
+ * `var()` with it, so a token here would render as no colour at all and the
+ * link would fall back to browser blue. It is duplicated from
+ * `--color-primary` / `--color-brand-accent` in the web app's stylesheet, and
+ * from ACCENT in provider-invite.template.ts, which arrived at the same value
+ * for the same reason.
+ */
+const PRIMARY = "#006ffd";
+
 export function emailLayout(opts: {
   heading: string;
   bodyHtml: string;
@@ -21,8 +33,20 @@ export function emailLayout(opts: {
 </html>`;
 }
 
+/**
+ * A button, drawn as a table cell rather than a styled link.
+ *
+ * `bgcolor` on the `<td>`, not `background` on the `<a>`: Outlook drops the
+ * latter and the button arrives as blue underlined text on white — the same
+ * reason provider-invite.template.ts is built this way, where the note above
+ * its own button says so.
+ */
 export function buttonHtml(url: string, label: string): string {
-  return `<p style="margin:24px 0;">
-    <a href="${url}" style="background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block;font-weight:500;">${label}</a>
-  </p>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
+    <tr>
+      <td align="center" bgcolor="${PRIMARY}" style="border-radius:8px;">
+        <a href="${url}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;">${label}</a>
+      </td>
+    </tr>
+  </table>`;
 }

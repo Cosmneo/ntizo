@@ -40,9 +40,13 @@ export function buildProviderInviteEmail(params: {
         <p style="font-size:14px;color:#333;line-height:1.5;">
           ${params.inviterName} has invited you to join <strong>${params.providerName}</strong> on Ntizo.
         </p>
-        <p style="margin:24px 0;">
-          <a href="${params.acceptUrl}" style="background:#111;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block;font-weight:500;">Accept invite</a>
-        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
+          <tr>
+            <td align="center" bgcolor="#006ffd" style="border-radius:8px;">
+              <a href="${params.acceptUrl}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;border-radius:8px;">Accept invite</a>
+            </td>
+          </tr>
+        </table>
         <p style="font-size:12px;color:#888;">Or use this token in the app: <code>${params.token}</code></p>
         <hr style="border:none;border-top:1px solid #eee;margin:32px 0 16px;" />
         <p style="font-size:12px;color:#888;margin:0;">If you weren't expecting this invitation, you can safely ignore this email.</p>
