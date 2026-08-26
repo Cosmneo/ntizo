@@ -13,6 +13,7 @@ import {
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
+import { authErrorMessage } from "@/features/auth/viewmodel/auth-error";
 
 /**
  * Where the emailed link lands.
@@ -40,12 +41,12 @@ export function ResetPassword() {
             newPassword: value.password,
             token,
           });
-          if (error) return { form: error.message ?? t("resetFailed") };
+          if (error) return { form: authErrorMessage(t, error) };
           navigate({ to: "/sign-in" });
           return null;
         } catch (err) {
           return {
-            form: err instanceof Error ? err.message : t("resetFailed"),
+            form: authErrorMessage(t, err),
           };
         }
       },

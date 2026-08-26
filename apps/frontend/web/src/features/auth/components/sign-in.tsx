@@ -20,6 +20,7 @@ import { useClearSessionQueryCache } from "@/features/user/viewmodel/use-current
 import { resolveDestinationForSession } from "@/features/provider/viewmodel/post-login";
 import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
+import { authErrorMessage } from "@/features/auth/viewmodel/auth-error";
 
 export function SignIn() {
   const { t } = useTranslation("auth");
@@ -38,7 +39,7 @@ export function SignIn() {
             email: value.email,
             password: value.password,
           });
-          if (error) return { form: error.message ?? "Sign in failed" };
+          if (error) return { form: authErrorMessage(t, error) };
           // Clear before navigating, for the same reason sign-out does.
           //
           // The sign-in page is itself signed out, so any session-scoped
@@ -55,12 +56,7 @@ export function SignIn() {
           // network-level failure rejects instead of resolving {error} —
           // normalize it the same way so the form always has a message to
           // show, instead of `.form` being undefined on a bare thrown value.
-          return {
-            form:
-              err instanceof Error
-                ? err.message
-                : "Something went wrong. Please try again.",
-          };
+          return { form: authErrorMessage(t, err) };
         }
       },
     },

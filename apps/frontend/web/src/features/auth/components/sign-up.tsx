@@ -22,6 +22,7 @@ import {
 import { authClient } from "@/shared/lib/api/auth-client";
 import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
 import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
+import { authErrorMessage } from "@/features/auth/viewmodel/auth-error";
 
 export function SignUp() {
   const { t, i18n } = useTranslation("auth");
@@ -78,7 +79,7 @@ export function SignUp() {
               isSafeInternalPath(next ?? null) ? next : "/"
             }`,
           } as Parameters<typeof authClient.signUp.email>[0]);
-          if (error) return { form: error.message ?? "Sign up failed" };
+          if (error) return { form: authErrorMessage(t, error) };
           setSubmitted(value.email);
           return null;
         } catch (err) {
@@ -86,12 +87,7 @@ export function SignUp() {
           // network-level failure rejects instead of resolving {error} —
           // normalize it the same way so the form always has a message to
           // show, instead of `.form` being undefined on a bare thrown value.
-          return {
-            form:
-              err instanceof Error
-                ? err.message
-                : "Something went wrong. Please try again.",
-          };
+          return { form: authErrorMessage(t, err) };
         }
       },
     },

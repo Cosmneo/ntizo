@@ -5,6 +5,7 @@ import { MessageSquare, ShieldCheck } from "lucide-react";
 import { Button, OtpInput } from "@ntizo/frontend-ui";
 import { authClient, useSession } from "@/shared/lib/api/auth-client";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
+import { authErrorMessage } from "@/features/auth/viewmodel/auth-error";
 
 /** Matches `expiresIn: 300` on the server plugin; a resend before then is wasted spend. */
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -40,7 +41,7 @@ export function VerifyPhone() {
         phoneNumber,
       });
       if (err) {
-        setError(err.message ?? t("otpSendFailed"));
+        setError(authErrorMessage(t, err));
         return;
       }
       setSent(true);
@@ -65,7 +66,7 @@ export function VerifyPhone() {
         // Clear the boxes: leaving a rejected code in place invites the user
         // to press submit again on the exact input that just failed.
         setCode("");
-        setError(err.message ?? t("otpInvalid"));
+        setError(authErrorMessage(t, err));
         return;
       }
       navigate({ to: "/" });
