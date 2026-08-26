@@ -26,8 +26,6 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       APP_URL: env.APP_URL ?? "http://localhost:3000",
       GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ?? "",
       GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET ?? "",
-      MICROSOFT_CLIENT_ID: env.MICROSOFT_CLIENT_ID ?? "",
-      MICROSOFT_CLIENT_SECRET: env.MICROSOFT_CLIENT_SECRET ?? "",
     },
     async () => {
       // Carried so signup can create the profile in the language the person is

@@ -191,18 +191,6 @@ function createAuthInstance() {
             },
           }
         : {}),
-      ...(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
-        ? {
-            microsoft: {
-              clientId: env.MICROSOFT_CLIENT_ID,
-              clientSecret: env.MICROSOFT_CLIENT_SECRET,
-              mapProfileToUser: (profile: { given_name?: string; family_name?: string }) => ({
-                firstName: profile.given_name ?? "",
-                lastName: profile.family_name ?? "",
-              }),
-            },
-          }
-        : {}),
     },
     emailAndPassword: {
       enabled: true,

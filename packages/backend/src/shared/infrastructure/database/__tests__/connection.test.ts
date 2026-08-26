@@ -11,8 +11,6 @@ const env = {
   APP_URL: "http://localhost:3000",
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",
-  MICROSOFT_CLIENT_ID: "",
-  MICROSOFT_CLIENT_SECRET: "",
 };
 
 describe("infraStore request scoping", () => {

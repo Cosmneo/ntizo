@@ -21,7 +21,7 @@ import {
 } from "@ntizo/frontend-ui";
 import { authClient } from "@/shared/lib/api/auth-client";
 import { AuthSplitLayout } from "@/features/auth/components/auth-split-layout";
-import { GoogleIcon, MicrosoftIcon } from "@/shared/components/icons";
+import { GoogleIcon } from "@/shared/components/icons";
 import { authErrorMessage } from "@/features/auth/viewmodel/auth-error";
 
 export function SignUp() {
@@ -304,7 +304,9 @@ export function SignUp() {
               <Separator className="flex-1" />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            {/* One column: Microsoft is gone and a lone button in a
+                two-column grid sits at half width beside a hole. */}
+            <div className="grid grid-cols-1">
               <Button
                 type="button"
                 variant="outline"
@@ -317,19 +319,6 @@ export function SignUp() {
               >
                 <GoogleIcon className="h-4 w-4" />
                 {tc("google")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  authClient.signIn.social({
-                    provider: "microsoft",
-                    callbackURL: "/sign-in",
-                  })
-                }
-              >
-                <MicrosoftIcon className="h-4 w-4" />
-                {tc("microsoft")}
               </Button>
             </div>
           </form>
