@@ -50,11 +50,15 @@ describe("currentUserReadModel", () => {
       id: "u1", email: "a@b.c", role: "customer", status: "active",
       createdAt: "2026-08-07T00:00:00.000Z", name: "A B",
       firstName: "A", lastName: "B", displayName: "A B",
-      avatarUrl: null, phoneNumber: null, bio: null,
+      avatarUrl: null, avatarKey: null, phoneNumber: null, bio: null,
       language: "en-US", timezone: "UTC",
       dateOfBirth: null, gender: null,
     });
     expect(parsed.avatarUrl).toBeNull();
+    // Set only when the photo is an upload of this person's own. Null here
+    // means "nothing uploaded" — same as a fresh profile, or one still
+    // showing whatever their sign-in provider supplied.
+    expect(parsed.avatarKey).toBeNull();
     // Two optional personal details a user may never fill in. Null here is
     // "never answered"; "undisclosed" is an answer, and is not this.
     expect(parsed.dateOfBirth).toBeNull();
