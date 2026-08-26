@@ -78,6 +78,12 @@ export function SignUp() {
             callbackURL: `${window.location.origin}${
               isSafeInternalPath(next ?? null) ? next : "/"
             }`,
+            // The language on screen, not the browser's own. Someone reading
+            // the app in Portuguese with an English-configured browser gets
+            // Portuguese email, which is the whole point — and this is the
+            // only request that can say so, because the profile is created
+            // from it and nothing afterwards knows what was on the screen.
+            fetchOptions: { headers: { "Accept-Language": i18n.language } },
           } as Parameters<typeof authClient.signUp.email>[0]);
           if (error) return { form: authErrorMessage(t, error) };
           setSubmitted(value.email);

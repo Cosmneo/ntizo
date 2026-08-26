@@ -1,3 +1,4 @@
+import { resolveLocale, type Locale } from "@ntizo/shared";
 // Better-auth factory for Ntizo. Mirrors flowzao's better-auth module pattern:
 // email verification + reset-password wired via a pluggable EmailServicePort.
 
@@ -36,6 +37,14 @@ export interface SignUpHookInput {
    * user who had just confirmed their number that it was unverified.
    */
   phoneNumber: string | null;
+  /**
+   * The language the request was made in, resolved to a supported Locale.
+   *
+   * Signup is the only moment this is knowable — the request carries it and
+   * nothing downstream has one — so it travels with the rest of the profile
+   * rather than being looked up later.
+   */
+  language?: Locale;
 }
 export type SignUpHook = (input: SignUpHookInput) => Promise<void>;
 
@@ -239,6 +248,12 @@ function createAuthInstance() {
                 // Already normalised to E.164 by the create.before hook above,
                 // so the profile and the auth user store the same string.
                 phoneNumber: (u.phoneNumber as string | undefined) ?? null,
+                // Resolved here rather than inside the user context, which has
+                // no request to read. The web app overrides the browser's own
+                // Accept-Language with whatever the language switcher says, so
+                // this is the language on screen, not the one the OS was
+                // installed in.
+                language: resolveLocale(infraStore.getAcceptLanguage()),
               });
             } catch (error) {
               // Compensation: delete the auth user so the next signup attempt isn't blocked.

@@ -42,3 +42,4 @@ export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = LOCALES[0];
 
 export type Currency = "MZN" | "USD" | "EUR";
+export * from "./resolve-locale";

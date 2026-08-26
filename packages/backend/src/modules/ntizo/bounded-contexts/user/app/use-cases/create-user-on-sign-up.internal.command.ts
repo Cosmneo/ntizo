@@ -51,6 +51,10 @@ export class CreateUserOnSignUpInternalCommand
         userId: input.userId,
         firstName: input.firstName,
         lastName: input.lastName,
+        // Only when we actually resolved one. `undefined` lets the aggregate
+        // apply the platform default; passing null would mean writing "no
+        // language" into a column that has to hold one.
+        ...(input.language ? { language: input.language } : {}),
       });
       // Through the aggregate's own method rather than passed into `create`:
       // a phone is a contact detail a user changes later, and `create` takes

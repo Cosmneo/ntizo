@@ -1,6 +1,6 @@
 // Profile aggregate — extended personal data, one-to-one with User.
 
-import type { Locale, Gender } from "@ntizo/shared";
+import { DEFAULT_LOCALE, type Locale, type Gender } from "@ntizo/shared";
 
 export interface ProfileProps {
   userId: string;
@@ -52,7 +52,11 @@ export class Profile {
       avatarUrl: null,
       phoneNumber: null,
       bio: null,
-      language: params.language ?? "en-US",
+      // DEFAULT_LOCALE, not a literal. This read "en-US" while
+      // packages/shared declared the platform default to be pt-MZ and said so
+      // in a comment — two constants disagreeing about what language the
+      // product speaks, with the aggregate quietly winning.
+      language: params.language ?? DEFAULT_LOCALE,
       timezone: params.timezone ?? "UTC",
       dateOfBirth: null,
       gender: null,

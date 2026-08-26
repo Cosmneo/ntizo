@@ -57,6 +57,14 @@ interface InfraStoreData {
   hyperdrive?: HyperdriveBinding;
   waitUntil?: WaitUntilFn;
   /**
+   * The requester's `Accept-Language`, verbatim.
+   *
+   * Kept raw rather than resolved so the one place that needs a Locale does
+   * the resolving — this store carries request context, it does not decide
+   * what the context means.
+   */
+  acceptLanguage?: string;
+  /**
    * Every promise handed to `waitUntil` on this request.
    *
    * Kept so the per-request postgres pool can be closed *behind* deferred work
@@ -97,6 +105,21 @@ class InfraStore {
 
   isInContext(): boolean {
     return this.storage.getStore() !== undefined;
+  }
+
+  /** Records the request's `Accept-Language`. Absent outside a request. */
+  setAcceptLanguage(value: string | null | undefined): void {
+    if (value) this.require().acceptLanguage = value;
+  }
+
+  /**
+   * The request's `Accept-Language`, or null.
+   *
+   * Deliberately does NOT throw outside a request scope, unlike `getEnv`: a
+   * caller with no language should fall back to the default, not fail.
+   */
+  getAcceptLanguage(): string | null {
+    return this.storage.getStore()?.acceptLanguage ?? null;
   }
 
   getDbConnection(): DbConnection | undefined {

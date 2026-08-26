@@ -30,6 +30,10 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       MICROSOFT_CLIENT_SECRET: env.MICROSOFT_CLIENT_SECRET ?? "",
     },
     async () => {
+      // Carried so signup can create the profile in the language the person is
+      // actually reading. Nothing else knows it: by the time the user bounded
+      // context runs, the request is gone.
+      infraStore.setAcceptLanguage(c.req.header("accept-language"));
       infraStore.setHyperdrive(
         (c.env as unknown as { HYPERDRIVE?: { connectionString: string } }).HYPERDRIVE,
       );
