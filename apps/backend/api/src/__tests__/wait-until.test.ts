@@ -117,7 +117,11 @@ describe("the per-request pool closes behind deferred work", () => {
     };
 
     const { ctx, scheduled } = fakeExecutionContext();
-    const c = { env: ENV, executionCtx: ctx } as unknown as Parameters<
+    // `req` is not decoration. The middleware reads `accept-language` off it
+    // before it ever reaches the cleanup block, so a fake without one throws
+    // there instead — and this test then "rejects" for the wrong reason while
+    // the ordering it exists to pin never runs at all.
+    const c = { env: ENV, executionCtx: ctx, req: { header: () => undefined } } as unknown as Parameters<
       typeof configMiddleware
     >[0];
 
