@@ -45,12 +45,7 @@ export function registerProviderActivityHandlers(
     const providerName = await deps.providerNameReader.findNameById(payload.providerId);
     await deps.recordActivity.execute({
       actorUserId: payload.decidedByUserId,
-      // ACTIVITY_TYPES spells this "provider.statusDecided" — camelCase
-      // after the dot — even though the event name this handler listens on
-      // is "provider.status.decided". The two strings answer different
-      // questions (what the EventRouter fans out on vs. what a closed list
-      // of history-row kinds contains) and are not required to match.
-      type: "provider.statusDecided",
+      type: "provider.status.decided",
       payload: { providerName, to: payload.to },
       occurredAt: event.occurredOn,
     });
@@ -60,7 +55,7 @@ export function registerProviderActivityHandlers(
     const payload = event.payload as { actorUserId: string; email: string };
     await deps.recordActivity.execute({
       actorUserId: payload.actorUserId,
-      type: "provider.inviteSent",
+      type: "provider.invite.sent",
       payload: { email: payload.email },
       occurredAt: event.occurredOn,
     });
@@ -71,7 +66,7 @@ export function registerProviderActivityHandlers(
     const providerName = await deps.providerNameReader.findNameById(payload.providerId);
     await deps.recordActivity.execute({
       actorUserId: payload.actorUserId,
-      type: "provider.inviteAccepted",
+      type: "provider.invite.accepted",
       payload: { providerName },
       occurredAt: event.occurredOn,
     });

@@ -18,6 +18,7 @@ import {
   ServicePublished,
   ServiceUnpublished,
 } from "../../../bounded-contexts/catalog/domain/events";
+import { ACTIVITY_TYPES } from "../../../bounded-contexts/activity/domain/activity-type";
 import { ReviewCreated } from "../../../bounded-contexts/review/domain/events";
 import { UserRegistered } from "../../../bounded-contexts/user/domain/events";
 import { registerCatalogActivityHandlers } from "../events/handlers/catalog.event-handlers";
@@ -127,12 +128,9 @@ describe("provider.status.decided", () => {
         decidedByUserId: "admin1",
       }),
     ]);
-    // ACTIVITY_TYPES spells this "provider.statusDecided", not
-    // "provider.status.decided" — the event name and the activity type are
-    // two different strings answering two different questions.
     expect(record.calls[0]).toMatchObject({
       actorUserId: "admin1",
-      type: "provider.statusDecided",
+      type: "provider.status.decided",
     });
     expect(record.calls[0]!.payload).toEqual({ providerName: "Salão X", to: "active" });
   });
@@ -151,7 +149,7 @@ describe("provider.invite.sent", () => {
     ]);
     expect(record.calls[0]).toMatchObject({
       actorUserId: "u-inviter",
-      type: "provider.inviteSent",
+      type: "provider.invite.sent",
     });
     expect(record.calls[0]!.payload).toEqual({ email: "colega@ntizo.test" });
   });
@@ -167,7 +165,7 @@ describe("provider.invite.accepted", () => {
         actorUserId: "u9",
       }),
     ]);
-    expect(record.calls[0]).toMatchObject({ actorUserId: "u9", type: "provider.inviteAccepted" });
+    expect(record.calls[0]).toMatchObject({ actorUserId: "u9", type: "provider.invite.accepted" });
     expect(record.calls[0]!.payload).toEqual({ providerName: "Salão X" });
   });
 });
@@ -221,5 +219,23 @@ describe("review.created", () => {
     ]);
     expect(record.calls[0]).toMatchObject({ actorUserId: "u3", type: "review.created" });
     expect(record.calls[0]!.payload).toEqual({ providerName: "Salão X", rating: 5 });
+  });
+});
+
+
+describe("ACTIVITY_TYPES alignment", () => {
+  it("registers exactly one handler under each activity type's own name", () => {
+    // Event names and activity types are one vocabulary, not two that
+    // happen to agree — fix round 1 removed a bridge that translated three
+    // of the nine (Task 2 had let them drift into camelCase, which read as
+    // "type == event name" often enough to be believed and rarely enough
+    // wrong to bite whoever added the tenth type). This iterates the closed
+    // list itself, against the same router the tests above dispatch
+    // through, so a future type added to ACTIVITY_TYPES without a matching
+    // `router.on(...)` call — or a handler renamed on one side and not the
+    // other — reds here instead of only in a comment claiming they agree.
+    for (const type of ACTIVITY_TYPES) {
+      expect(router.handlerCount(type)).toBe(1);
+    }
   });
 });

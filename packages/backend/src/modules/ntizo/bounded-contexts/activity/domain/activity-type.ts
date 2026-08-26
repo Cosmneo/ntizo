@@ -29,9 +29,9 @@
 export const ACTIVITY_TYPES = [
   "user.registered",
   "provider.created",
-  "provider.statusDecided",
-  "provider.inviteSent",
-  "provider.inviteAccepted",
+  "provider.status.decided",
+  "provider.invite.sent",
+  "provider.invite.accepted",
   "service.created",
   "service.published",
   "service.unpublished",
