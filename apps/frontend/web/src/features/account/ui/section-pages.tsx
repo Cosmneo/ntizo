@@ -206,8 +206,13 @@ function NotificationSettings() {
             offering a switch that does nothing would be a lie. The list comes
             from the enum, so a notification type added later shows up here
             once someone assigns it a bucket. */}
+        {/* No min-width. It was 420px inside a scroller, which on a phone
+            meant the second channel column sat off-screen with nothing
+            saying so — a preference you cannot see is one you cannot set.
+            The label column wraps instead and both channels fit. The
+            scroller stays as a backstop for a third channel later. */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
                 <th className="type-caption pb-3 text-left font-medium text-[var(--color-muted-foreground)]">
@@ -216,7 +221,7 @@ function NotificationSettings() {
                 {OPTIONAL_NOTIFICATION_CHANNELS.map((channel) => (
                   <th
                     key={channel}
-                    className="type-caption pb-3 text-center font-medium text-[var(--color-muted-foreground)]"
+                    className="type-caption w-16 pb-3 text-center font-medium text-[var(--color-muted-foreground)] sm:w-24"
                   >
                     {t(`channel.${channel}`)}
                     {isMeteredChannel(channel) ? (
@@ -244,7 +249,7 @@ function NotificationSettings() {
                   key={bucket}
                   className="border-t border-[var(--color-border)]"
                 >
-                  <td className="type-body-medium py-3.5">
+                  <td className="type-body-medium py-3.5 pr-3">
                     {t(`bucket.${bucket}`)}
                   </td>
                   {OPTIONAL_NOTIFICATION_CHANNELS.map((channel) => (
