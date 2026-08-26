@@ -73,7 +73,13 @@ function VerificationRow({
           per line. flex-1 alone would let it shrink without ever wrapping. */}
       <div className="min-w-0 flex-1 basis-full sm:basis-0">
         <div className="type-body-medium font-semibold">{label}</div>
-        <div className="type-body text-[var(--color-muted-foreground)]">
+        {/* An address and a phone number are single words with nowhere to
+            break, so they set the row's minimum width and push the page into
+            a sideways scroll. `anywhere` lets them wrap mid-token — ugly for
+            two characters, and the alternative is a horizontal scrollbar on
+            every page. Measured: a 29-character address wanted 181px in an
+            82px column. */}
+        <div className="type-body [overflow-wrap:anywhere] text-[var(--color-muted-foreground)]">
           {value || t("notSet")}
         </div>
       </div>
@@ -145,7 +151,13 @@ export function SecurityPage() {
                 already-open session proves nothing about who is at the
                 keyboard; the email does. */}
             <Link to="/forgot-password" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">
+              {/* whitespace-normal: the button's own class is nowrap, which
+                  is right for a short label and wrong for a two-word one on a
+                  narrow phone, where it overflowed its own box. */}
+              <Button
+                variant="outline"
+                className="h-auto w-full whitespace-normal py-2 sm:w-auto"
+              >
                 {t("changePassword")}
               </Button>
             </Link>

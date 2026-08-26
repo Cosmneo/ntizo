@@ -16,7 +16,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
     // that eight short entries sit fine above the content — they do not. On a
     // phone they filled the screen, so every settings page opened on its own
     // menu with the content below the fold.
-    <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start">
       <AccountNav />
       <div className="min-w-0">{children}</div>
     </div>

@@ -21,10 +21,15 @@ export function AccountNav() {
        screen: every settings page opened on a menu, with the thing you came
        to read below the fold. The strip keeps the map of the area visible —
        which was the reason for not using a drawer — without spending the
-       viewport on it. */
+       viewport on it.
+
+       No bleed to the screen edge: `page-shell` sizes itself with
+       `width: min(1320px, 100% - 3rem)` and centres with margin, not padding,
+       so a negative inline margin here does not escape a padding box — it
+       escapes the viewport, and the whole page gains a horizontal scrollbar. */
     <nav
       aria-label={t("navLabel")}
-      className="-mx-4 border-b border-[var(--color-border)] px-4 lg:mx-0 lg:rounded-[var(--radius-card)] lg:border lg:bg-[var(--color-background)] lg:p-2"
+      className="border-b border-[var(--color-border)] lg:rounded-[var(--radius-card)] lg:border lg:bg-[var(--color-background)] lg:p-2"
     >
       <ul className="flex list-none gap-1 overflow-x-auto p-0 pb-2 lg:grid lg:gap-0.5 lg:overflow-visible lg:pb-0">
         {sections.map((section) => (

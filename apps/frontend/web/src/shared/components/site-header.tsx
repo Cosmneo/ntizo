@@ -34,7 +34,12 @@ export function SiteHeader({
           : "sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-background)]"
       }
     >
-      <div className="page-shell grid h-[84px] grid-cols-[1fr_auto_1fr] items-center gap-4">
+      {/* minmax(0,1fr), not 1fr. A bare `1fr` is minmax(auto,1fr): its minimum
+          is the content's own width, so the actions column refused to shrink
+          and pushed the header past the viewport — which scrolls the whole
+          page sideways, not just the header. Measured at a 180px viewport:
+          155px of actions inside a 132px shell. */}
+      <div className="page-shell grid h-[84px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
         <Link to="/" className="justify-self-start">
           <img
             src={overlay ? "/brand/logo-white.svg" : "/brand/logo-primary.svg"}
