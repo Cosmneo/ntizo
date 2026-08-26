@@ -134,13 +134,21 @@ export function AccountPage() {
                 <Badge tone="warning">{t("unverified")}</Badge>
               )}
             </div>
-            <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+            <p className="type-body mt-1 [overflow-wrap:anywhere] text-[var(--color-muted-foreground)]">
               {[user.phoneNumber, user.email].filter(Boolean).join(" · ")}
             </p>
           </div>
 
           {!editing ? (
-            <Button variant="outline" onClick={() => setEditing(true)}>
+            // basis-full below `sm`: with only `flex-1` on the name block the
+            // button stayed on the same line and squeezed the name into two
+            // rows beside it. Taking a whole line gives the name the width and
+            // the button a target worth tapping.
+            <Button
+              variant="outline"
+              onClick={() => setEditing(true)}
+              className="basis-full justify-center sm:basis-auto sm:ml-auto"
+            >
               <Pencil className="h-4 w-4" />
               {t("editProfile")}
             </Button>
@@ -206,7 +214,7 @@ export function AccountPage() {
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-white/20">
             <Sparkles className="h-5 w-5" />
           </span>
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0 flex-1 basis-[calc(100%-3.75rem)] sm:basis-0">
             <span className="type-h3 block font-semibold">
               {t("becomeProviderTitle")}
             </span>
@@ -214,7 +222,10 @@ export function AccountPage() {
               {t("becomeProviderBody")}
             </span>
           </span>
-          <span className="type-button rounded-[var(--radius-card-sm)] bg-white px-5 py-3 text-[var(--color-primary)]">
+          {/* Its own line on a phone, inline from `sm`. Sharing the row, it
+              left the pitch three words wide — the sentence that is supposed
+              to do the persuading. */}
+          <span className="type-button basis-full rounded-[var(--radius-card-sm)] bg-white px-5 py-3 text-center text-[var(--color-primary)] sm:basis-auto">
             {t("becomeProviderCta")}
           </span>
         </Link>
