@@ -94,6 +94,48 @@ describe("save, then read back", () => {
       expect(page.nextCursor).toBeNull();
     });
   });
+
+  test("a row whose type has since fallen out of ACTIVITY_TYPES still renders, instead of failing the whole page", async () => {
+    // `Activity.record` would throw on this row — that's the whole point of
+    // the split. Inserted with the raw postgres client, bypassing `save` and
+    // the aggregate entirely, to stand in for a row written back when
+    // "service.renamed" was still a valid type and left behind after it was
+    // dropped from the list. `listForActor` must rehydrate it, not validate
+    // it: one stale row must not 500 an entire page of somebody's history.
+    const actor = newActor();
+    const staleId = crypto.randomUUID();
+    await sql`
+      INSERT INTO ntizo_activity.activity (id, actor_user_id, type, payload, occurred_at)
+      VALUES (${staleId}, ${actor}, 'service.renamed', ${JSON.stringify({ old: true })}::jsonb, now())
+    `;
+
+    await __runWithTransactionContextForTests(db, async () => {
+      const page = await repo.listForActor({ actorUserId: actor, limit: 10 });
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]!.id).toBe(staleId);
+      // `.type` is typed as `ActivityType`, which by definition no longer
+      // includes this value — that's the whole scenario. Widened to `string`
+      // so the assertion can even be written; a compiler that only accepted
+      // members of `ActivityType` here would be proving the wrong thing.
+      expect(page.items[0]!.type as string).toBe("service.renamed");
+    });
+  });
+});
+
+describe("an invalid cursor", () => {
+  test("is rejected rather than silently restarting the reader at page one", async () => {
+    // A malformed or tampered cursor decodes to null. Falling back to "no
+    // cursor" here would hand back the newest page under a fresh
+    // `nextCursor` — indistinguishable from a normal first call — so a
+    // client paginating by following `nextCursor` until it sees null could
+    // loop forever on a corrupted token instead of ever finding out.
+    const actor = newActor();
+    await __runWithTransactionContextForTests(db, async () => {
+      await expect(
+        repo.listForActor({ actorUserId: actor, limit: 10, cursor: "not-a-real-cursor" }),
+      ).rejects.toThrow();
+    });
+  });
 });
 
 describe("keyset pagination", () => {

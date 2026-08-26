@@ -46,8 +46,15 @@ describe("RecordActivityInternalCommand", () => {
     const seen: unknown[] = [];
     const original = console.error;
     console.error = (...args: unknown[]) => { seen.push(args); };
-    await cmd.execute(input);
-    console.error = original;
+    // try/finally, not a bare restore after the await: this is the test
+    // proving execute() never throws, so if that guarantee ever broke, an
+    // unguarded restore below a rejected await would never run and the
+    // patched console.error would leak into every test after this one.
+    try {
+      await cmd.execute(input);
+    } finally {
+      console.error = original;
+    }
     expect(seen).toHaveLength(1);
   });
 

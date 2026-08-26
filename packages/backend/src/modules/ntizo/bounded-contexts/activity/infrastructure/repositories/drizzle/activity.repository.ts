@@ -1,6 +1,6 @@
 import { and, desc, eq, lt, or } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
-import { activity } from "../../../../../shared/infrastructure/database/activity/schemas/activity.schema";
+import { activity } from "../../../../../shared/infrastructure/database/activity/schemas";
 import { Activity } from "../../../domain/aggregates/activity.aggregate";
 import type { ActivityPage, ActivityRepositoryPort } from "../../../app/ports/outbound/activity.repository.port";
 
@@ -15,6 +15,11 @@ function encodeCursor(occurredAt: Date, id: string): string {
   return `${occurredAt.toISOString()}|${id}`;
 }
 
+/**
+ * Null on anything that doesn't parse. `listForActor` turns that into a
+ * thrown error rather than a silent "start over at page one" — see the
+ * comment there for why.
+ */
 function decodeCursor(cursor: string): { occurredAt: Date; id: string } | null {
   const [when, id] = cursor.split("|");
   if (!when || !id) return null;
@@ -41,7 +46,20 @@ export class DrizzleActivityRepository implements ActivityRepositoryPort {
     limit: number;
     cursor?: string | null;
   }): Promise<ActivityPage> {
-    const after = params.cursor ? decodeCursor(params.cursor) : null;
+    // A cursor that fails to decode is rejected, not treated as absent.
+    // Silently falling back to page one would hand a paginating client the
+    // newest page and a fresh `nextCursor` under a cursor it thought was
+    // mid-list — nothing distinguishes that from a normal first call, so a
+    // client that loops on "cursor in, cursor out" until `nextCursor` is
+    // null would loop forever on a truncated or tampered token instead of
+    // ever finding out something was wrong.
+    let after: { occurredAt: Date; id: string } | null = null;
+    if (params.cursor) {
+      after = decodeCursor(params.cursor);
+      if (!after) {
+        throw new Error(`[activity] invalid cursor: ${params.cursor}`);
+      }
+    }
     // One more than asked for: its existence is what says another page exists,
     // without a second COUNT query that could disagree with this one.
     const rows = await getDb()
