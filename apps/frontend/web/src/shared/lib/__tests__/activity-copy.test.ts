@@ -53,4 +53,25 @@ describe("activity copy", () => {
           expect(data.activityType![k], `${locale}.${k} missing {{${v}}}`).toContain(`{{${v}}}`);
     }
   });
+
+  it("gives every action its own sentence within a locale", () => {
+    // `differs from English` only ever compares a locale to English, never
+    // English to itself — two English keys rendering identically is
+    // invisible to it by construction. This is the check that would have
+    // caught `providerStatusDecided` and `reviewCreated` both reading
+    // "Reviewed {{providerName}}": two unrelated actions (an admin decision,
+    // a customer's star rating) sharing one sentence in the one locale that
+    // never had to translate the collision away.
+    for (const { locale, data } of byLocale) {
+      const seenBy = new Map<string, string>();
+      for (const k of KEYS) {
+        const value = data.activityType![k]!;
+        expect(
+          seenBy.has(value),
+          `${locale}: "${k}" and "${seenBy.get(value)}" both render as "${value}"`,
+        ).toBe(false);
+        seenBy.set(value, k);
+      }
+    }
+  });
 });

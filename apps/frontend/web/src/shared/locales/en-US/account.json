@@ -155,7 +155,7 @@
     "serviceCreated": "Created {{serviceName}}",
     "servicePublished": "Published {{serviceName}}",
     "serviceUnpublished": "Unpublished {{serviceName}}",
-    "reviewCreated": "Reviewed {{providerName}}",
+    "reviewCreated": "Rated {{providerName}}",
     "unnamedProvider": "a provider",
     "unnamedService": "a service"
   }
