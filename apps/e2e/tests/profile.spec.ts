@@ -66,5 +66,13 @@ test("a photo, a phone and a timezone survive a save and a reload", async ({ pag
   expect(identity!.phone_number_verified).toBe(false);
 
   await page.reload();
-  await expect(page.locator("img").first()).toBeVisible();
+  // Scoped to the avatar's own key, not just any `<img>`: `/account` renders
+  // inside `CustomerShell` -> `SiteHeader`, which puts an unconditional
+  // `<img src="/brand/logo-primary.svg">` (and `UserMenu` another `<img>`)
+  // ahead of this page's content, so an unscoped `page.locator("img").first()`
+  // would match the brand logo and pass even if the avatar never rendered at
+  // all. `mediaUrl()` embeds the R2 key (`avatar/${userId}/${timestamp}`,
+  // media.ts:138) verbatim in the `src`, which the logo's `/brand/...` path
+  // cannot collide with — do not loosen this back to a bare "img".
+  await expect(page.locator('img[src*="/avatar/"]').first()).toBeVisible();
 });
