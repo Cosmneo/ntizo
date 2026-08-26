@@ -1407,3 +1407,48 @@ adds another action button beside "Marcar todas como lidas", or does a
 narrow-viewport pass on the notifications page specifically — at that point
 either shrink/wrap the button's label handling or accept a documented minimum
 supported width above 200px.
+
+---
+
+## 55. The provider and admin activity pages still render `[]`
+
+`ProviderActivityPage` and `AdminActivityPage`
+(`apps/frontend/web/src/features/activity/ui/`) are real, routable pages —
+correct copy, correct header, wired to the real `ActivityList` component and
+a real `renderDescription` — but both hand it `entries={[]}` rather than a
+query result. Their own doc comments say why: `useMyActivity()` (Task 8) is
+the signed-in caller's *own* history, `activityMine` scoped to the caller's
+`actor_user_id`. "What did this workspace do" (provider) and "what did an
+admin do to anything" (admin) are both a different filter over the same
+`ntizo_activity.activity` table — grouped by provider, or unfiltered by actor
+behind an elevated read — not the per-caller cursor Task 8 built. The
+projection, repository method, and GraphQL field either would need did not
+exist before this task, and inventing a new query surface was out of scope
+for "prove the read-your-own-history path works."
+
+**Trigger:** the next task that gives an admin or a workspace owner a reason
+to see this page with real content — for admin, the compliance angle its own
+comment names ("the one activity feed whose absence is a compliance problem
+rather than a missing convenience"); for provider, any team-visibility
+feature.
+
+---
+
+## 56. If the isolate dies between the producing commit and the handler dispatch, the activity row is lost
+
+`EventRouter`'s in-process dispatch (follow-up #8) runs after the producing
+transaction commits, inside the same request/isolate — no queue or relay sits
+between the outbox row and the handler that turns it into an activity row.
+If the isolate is recycled, crashes, or the request is cut short after the
+commit but before (or during) the matching `registerXActivityHandlers`
+handler running `RecordActivityInternalCommand`, the outbox row stays durable
+and correctly ordered, but the activity write that should have followed it
+never happens — a silent gap the same shape as the one this task's own e2e
+test proves against, except caused by infrastructure timing rather than a
+missing registration call. The same isolate-death window drops the
+equivalent notification row for the same reason: both ride the same
+in-process router.
+
+**Trigger:** follow-up #8's relay work. Replaying the outbox at rest is what
+recovers both gaps together — do not build a narrower one-off fix for
+activity alone when that lands.
