@@ -63,6 +63,14 @@ interface InfraStoreData {
    */
   acceptLanguage?: string;
   /**
+   * The requester's IANA timezone, from `X-Timezone`.
+   *
+   * Sign-up is the only moment this is knowable — the request carries it and
+   * nothing downstream has one — so it travels with the language, for the
+   * same reason and by the same route.
+   */
+  timezone?: string;
+  /**
    * Every promise handed to `waitUntil` on this request.
    *
    * Kept so the per-request postgres pool can be closed *behind* deferred work
@@ -118,6 +126,21 @@ class InfraStore {
    */
   getAcceptLanguage(): string | null {
     return this.storage.getStore()?.acceptLanguage ?? null;
+  }
+
+  /** Records the request's `X-Timezone`. Absent outside a request. */
+  setTimezone(value: string | null | undefined): void {
+    if (value) this.require().timezone = value;
+  }
+
+  /**
+   * The request's timezone, or null.
+   *
+   * Does NOT throw outside a request scope, matching `getAcceptLanguage`: a
+   * caller with no timezone should fall back to the default, not fail.
+   */
+  getTimezone(): string | null {
+    return this.storage.getStore()?.timezone ?? null;
   }
 
   getDbConnection(): DbConnection | undefined {

@@ -83,7 +83,15 @@ export function SignUp() {
             // Portuguese email, which is the whole point — and this is the
             // only request that can say so, because the profile is created
             // from it and nothing afterwards knows what was on the screen.
-            fetchOptions: { headers: { "Accept-Language": i18n.language } },
+            fetchOptions: {
+              headers: {
+                "Accept-Language": i18n.language,
+                // So a new profile is born in the reader's own timezone
+                // instead of UTC. `resolvedOptions().timeZone` is an IANA
+                // name in every browser this app supports.
+                "X-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+              },
+            },
           } as Parameters<typeof authClient.signUp.email>[0]);
           if (error) return { form: authErrorMessage(t, error) };
           setSubmitted(value.email);

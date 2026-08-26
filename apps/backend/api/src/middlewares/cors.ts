@@ -33,6 +33,12 @@ export function resolveTrustedOrigin(origin: string): string {
 export const authCors = cors({
   origin: (origin) => resolveTrustedOrigin(origin),
   credentials: true,
-  allowHeaders: ["Content-Type", "Authorization"],
+  // `X-Timezone` must be listed and `Accept-Language` need not be: the latter
+  // is a CORS-safelisted request header, a custom `X-` header is not, and a
+  // preflight refuses what it is not told about. Local development would
+  // never show this — the Vite proxy makes those requests same-origin — so it
+  // would have failed first in dev, silently, with the timezone simply never
+  // arriving.
+  allowHeaders: ["Content-Type", "Authorization", "X-Timezone"],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 });

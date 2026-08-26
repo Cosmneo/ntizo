@@ -32,6 +32,10 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       // actually reading. Nothing else knows it: by the time the user bounded
       // context runs, the request is gone.
       infraStore.setAcceptLanguage(c.req.header("accept-language"));
+      // Same reason, same moment: a Google sign-up arrives through an OAuth
+      // callback that carries neither, so this covers the e-mail path only
+      // and the profile form covers the rest.
+      infraStore.setTimezone(c.req.header("x-timezone"));
       infraStore.setHyperdrive(
         (c.env as unknown as { HYPERDRIVE?: { connectionString: string } }).HYPERDRIVE,
       );
