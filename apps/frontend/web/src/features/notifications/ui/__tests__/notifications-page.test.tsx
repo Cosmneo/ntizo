@@ -23,6 +23,19 @@ vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
 vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
 }));
+// Task 10's column beside the inbox: `NotificationsPage` now calls
+// `useMyActivity()` too, which reaches `useInfiniteQuery` and throws without
+// a `QueryClientProvider` in the tree. Mocked empty here because these tests
+// are about the inbox, not the activity column — that column gets its own
+// coverage in `notifications-page-activity.test.tsx`.
+vi.mock("@/features/activity/viewmodel/use-activity", () => ({
+  useMyActivity: () => ({
+    entries: [],
+    loading: false,
+    hasMore: false,
+    loadMore: vi.fn(),
+  }),
+}));
 
 describe("NotificationsPage", () => {
   it("draws the sentence for a known type", () => {
