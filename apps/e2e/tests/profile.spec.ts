@@ -9,8 +9,29 @@ import { fillSignInForm } from "../fixtures/ui";
  * URL back out of it. Every half is covered in isolation; this is the proof
  * they are joined.
  */
+/**
+ * A Mozambican mobile number nobody else in this run will claim.
+ *
+ * NOT a constant. `better_auth.user.phone_number` is unique, and this suite
+ * both retries failed tests and runs specs in parallel workers — so a fixed
+ * number is claimed by the first attempt and rejected for every one after it
+ * with PHONE_NUMBER_ALREADY_IN_USE. The feature was working; the test was
+ * colliding with itself.
+ *
+ * `84` is a real Vodacom prefix, so the seven random digits after it still
+ * parse as valid E.164 — which the command requires before it stores anything.
+ */
+function uniqueNationalNumber(): string {
+  const digits = Math.floor(Math.random() * 10_000_000)
+    .toString()
+    .padStart(7, "0");
+  return `84${digits}`;
+}
+
 test("a photo, a phone and a timezone survive a save and a reload", async ({ page }) => {
   const user = await createVerifiedUser(undefined, { firstName: "Ana", lastName: "Sitoe" });
+  const national = uniqueNationalNumber();
+  const e164 = `+258${national}`;
 
   await page.goto("/sign-in");
   await fillSignInForm(page, user);
@@ -47,11 +68,11 @@ test("a photo, a phone and a timezone survive a save and a reload", async ({ pag
   // national significant number: the dial code is a separate control fixed
   // at `defaultCountry="MZ"` in profile-form.tsx, and `PhoneInput.emit()`
   // *prepends* that country's calling code to whatever digits land in this
-  // field. Filling the full "+258841234567" here would strip the "+" and
+  // field. Filling the full "+258…" form here would strip the "+" and
   // hand "258841234567" to `emit`, which would then prefix another "+258",
   // producing "+258258841234567" — not the number this test asserts below.
   // National digits only, matching auth.spec.ts's own sign-up flow.
-  await page.getByLabel("Mobile number").fill("841234567");
+  await page.getByLabel("Mobile number").fill(national);
 
   // `createVerifiedUser` signs up over a server-side fetch with no
   // `X-Timezone` header, so this profile was born UTC and the select
@@ -65,7 +86,7 @@ test("a photo, a phone and a timezone survive a save and a reload", async ({ pag
 
   await page.getByRole("button", { name: /^save$/i }).click();
 
-  await expect(page.getByText("+258841234567")).toBeVisible();
+  await expect(page.getByText(e164)).toBeVisible();
 
   // The key reached the database, and the profile's number reached the auth
   // identity — the two halves that a green screen alone does not prove.
@@ -77,13 +98,13 @@ test("a photo, a phone and a timezone survive a save and a reload", async ({ pag
     SELECT avatar_key, phone_number, timezone FROM ntizo_user.profile WHERE user_id = ${user.id}
   `;
   expect(profile!.avatar_key).toMatch(/^avatar\//);
-  expect(profile!.phone_number).toBe("+258841234567");
+  expect(profile!.phone_number).toBe(e164);
   expect(profile!.timezone).toBe("Africa/Maputo");
 
   const [identity] = await sql()<{ phone_number: string | null; phone_number_verified: boolean }[]>`
     SELECT phone_number, phone_number_verified FROM better_auth."user" WHERE id = ${user.id}
   `;
-  expect(identity!.phone_number).toBe("+258841234567");
+  expect(identity!.phone_number).toBe(e164);
   // Changing a number un-verifies it. Nothing has verified this one — and
   // `createVerifiedUser` signs up with no phone at all, so this is a genuine
   // first write rather than an edit.

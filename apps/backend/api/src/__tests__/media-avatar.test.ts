@@ -1,10 +1,24 @@
 import { describe, expect, it, mock } from "bun:test";
 import { Hono } from "hono";
+import * as betterAuth from "@ntizo/backend/modules/better-auth";
 import type { AppBindings } from "../types";
 
-/** Swaps the session the route will see. Call before importing the module. */
+/**
+ * Swaps the session the route will see, and NOTHING else about the module.
+ *
+ * The spread is load-bearing. `mock.module` replaces the whole module for the
+ * rest of the test PROCESS, not just this file, so a factory returning only
+ * `getAuth` leaves every other export gone — and the next file to load
+ * `registerSmsService`, `registerEmailService` or `registerSignUpHook` dies
+ * with "Export named ... not found in module".
+ *
+ * Whether that happens depends on the order bun discovers test files, which is
+ * the filesystem's order and therefore differs between macOS and Linux. Without
+ * the spread this suite passed on a developer's machine and failed in CI.
+ */
 function withSession(sessionUser: unknown) {
   mock.module("@ntizo/backend/modules/better-auth", () => ({
+    ...betterAuth,
     getAuth: () => ({
       api: { getSession: async () => (sessionUser ? { user: sessionUser } : null) },
     }),

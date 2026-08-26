@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
+import * as betterAuth from "@ntizo/backend/modules/better-auth";
 import type { UserRole } from "@ntizo/shared";
 
 /**
@@ -9,7 +10,13 @@ import type { UserRole } from "@ntizo/shared";
  * brain, where authorization enforces one role and `userMe` displays another.
  */
 function withSession(sessionUser: unknown) {
+  // The spread keeps every other export alive. `mock.module` replaces the
+  // module for the rest of the test PROCESS, so a factory returning only
+  // `getAuth` makes the next file to load `registerSmsService` die with
+  // "Export named ... not found" — and which file that is depends on the order
+  // bun walks the directory, which differs between macOS and Linux.
   mock.module("@ntizo/backend/modules/better-auth", () => ({
+    ...betterAuth,
     getAuth: () => ({ api: { getSession: async () => (sessionUser ? { user: sessionUser } : null) } }),
   }));
 }
