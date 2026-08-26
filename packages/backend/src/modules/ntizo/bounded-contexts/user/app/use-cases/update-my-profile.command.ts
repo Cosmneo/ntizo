@@ -1,5 +1,5 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
-import type { ProfileRepositoryPort } from "../ports/outbound";
+import type { AuthIdentityPort, ProfileRepositoryPort } from "../ports/outbound";
 import type {
   UpdateMyProfileInput,
   UpdateMyProfilePort,
@@ -9,6 +9,7 @@ import {
   requireAuthenticated,
 } from "../../../../shared/infrastructure/execution-context";
 import { ProfileNotFoundError } from "../../domain/exceptions";
+import { normalizePhoneNumber } from "../../domain/value-objects/phone-number";
 
 /**
  * Updates the caller's own profile.
@@ -28,6 +29,7 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
   constructor(
     private readonly profileRepo: ProfileRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
+    private readonly authIdentity: AuthIdentityPort,
   ) {}
 
   async execute(ctx: ExecutionContext, input: UpdateMyProfileInput): Promise<void> {
@@ -38,14 +40,28 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
     const profile = await this.profileRepo.findByUserId(requester.userId);
     if (!profile) throw new ProfileNotFoundError(requester.userId);
 
+    // Normalised before anything is compared or written: "+258 84 123 4567"
+    // and "+258841234567" are one number, and the unique index that protects
+    // it can only see strings.
+    const nextPhone =
+      input.phoneNumber === undefined
+        ? undefined
+        : input.phoneNumber === null || input.phoneNumber.trim() === ""
+          ? null
+          : normalizePhoneNumber(input.phoneNumber);
+
+    // Only when it actually changed. Saving the form without touching the
+    // phone must not clear a verification the person already went through.
+    const phoneChanged = nextPhone !== undefined && nextPhone !== profile.phoneNumber;
+
     const touchesName =
       input.firstName !== undefined ||
       input.lastName !== undefined ||
       input.displayName !== undefined;
     const touchesContact =
-      input.phoneNumber !== undefined ||
+      nextPhone !== undefined ||
       input.bio !== undefined ||
-      input.avatarUrl !== undefined;
+      input.avatarKey !== undefined;
     const touchesPreferences =
       input.language !== undefined || input.timezone !== undefined;
     const touchesPersonal =
@@ -62,9 +78,9 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
     }
     if (touchesContact) {
       profile.updateContact({
-        phoneNumber: input.phoneNumber,
+        phoneNumber: nextPhone,
         bio: input.bio,
-        avatarUrl: input.avatarUrl,
+        avatarKey: input.avatarKey,
       });
     }
     if (touchesPreferences) {
@@ -91,5 +107,16 @@ export class UpdateMyProfileCommand implements UpdateMyProfilePort {
     await this.unitOfWork.atomicExecute(async () => {
       await this.profileRepo.save(profile);
     });
+
+    // After the profile commits, not inside the transaction: the two live in
+    // different modules' tables and one postgres transaction does not span
+    // them anyway. If this throws — a number another account already holds —
+    // the caller sees PHONE_NUMBER_ALREADY_IN_USE and the profile carries a
+    // number the identity does not, which is visible and correctable. The
+    // reverse order would leave the identity holding a number no profile
+    // shows, which is neither.
+    if (phoneChanged) {
+      await this.authIdentity.setPhoneNumber(requester.userId, nextPhone ?? null);
+    }
   }
 }

@@ -12,6 +12,7 @@ import {
   UpdateMyAddressCommand,
 } from "../app/use-cases/manage-my-addresses.command";
 import { DrizzleAddressRepository } from "../infrastructure/repositories/drizzle-address.repository";
+import { BetterAuthIdentityAdapter } from "../infrastructure/adapters/better-auth-identity.adapter";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
 import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
@@ -35,7 +36,12 @@ export function bootstrapUser() {
     outboxPort,
   );
 
-  const updateMyProfile = new UpdateMyProfileCommand(profileRepository, unitOfWork);
+  const authIdentity = new BetterAuthIdentityAdapter();
+  const updateMyProfile = new UpdateMyProfileCommand(
+    profileRepository,
+    unitOfWork,
+    authIdentity,
+  );
 
   const addressRepository = new DrizzleAddressRepository();
   const addMyAddress = new AddMyAddressCommand(addressRepository, unitOfWork);
@@ -49,6 +55,7 @@ export function bootstrapUser() {
       addressRepository,
       unitOfWork,
       outboxPort,
+      authIdentity,
     },
     useCases: {
       updateMyProfile,

@@ -15,9 +15,10 @@ const okResult = z.object({ ok: z.literal(true) });
  * "can this person edit that profile" question into a mutation that has no
  * legitimate caller needing it.
  *
- * `.nullable()` on the contact fields is load-bearing: null clears the value,
- * an omitted key leaves it alone. Without the distinction there is no way to
- * remove a phone number once it has been set.
+ * `.nullable()` on the contact fields (`phoneNumber`, `bio`, `avatarKey`) is
+ * load-bearing: null clears the value, an omitted key leaves it alone.
+ * Without the distinction there is no way to remove a phone number once it
+ * has been set.
  */
 export const updateMyProfile = defineMutation({
   input: zodSchema(
@@ -27,7 +28,11 @@ export const updateMyProfile = defineMutation({
       displayName: z.string().min(1).optional(),
       phoneNumber: z.string().nullable().optional(),
       bio: z.string().nullable().optional(),
-      avatarUrl: z.string().url().nullable().optional(),
+      // A key, not a URL, and the change is the point: the previous
+      // `z.string().url()` accepted any address on the internet, so any
+      // account could serve any image — or any tracking pixel — from its own
+      // face. A key can only name an object this platform stored.
+      avatarKey: z.string().max(300).nullable().optional(),
       // Derived from the shared list, not restated. The literal here carried
       // three locales while the web app shipped eight, so a user who picked
       // Deutsch in the header could never save it.
