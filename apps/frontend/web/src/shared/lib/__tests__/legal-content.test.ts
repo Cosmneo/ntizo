@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * across locales; nothing there notices that a locale's value is the English
  * sentence pasted in, which is the mistake that actually happens.
  */
-const modules = import.meta.glob<Record<string, unknown>>("../../../shared/locales/*/legal.json", {
+const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/legal.json", {
   eager: true,
   import: "default",
 });
