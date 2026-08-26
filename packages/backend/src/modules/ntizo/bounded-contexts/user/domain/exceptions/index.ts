@@ -1,4 +1,4 @@
-import { NotFoundError } from "@cosmneo/onion-lasagna";
+import { ConflictError, NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
 
 /**
  * User BC domain exceptions.
@@ -13,5 +13,39 @@ export class ProfileNotFoundError extends NotFoundError {
   constructor(userId: string) {
     super({ message: `Profile not found for user: ${userId}`, code: "PROFILE_NOT_FOUND" });
     this.name = "ProfileNotFoundError";
+  }
+}
+
+/**
+ * Deliberately does not name the number it rejected.
+ *
+ * Error messages end up in logs, and a phone number is not a detail about a
+ * request — it is the person making it. The caller supplied the value and
+ * does not need it read back.
+ */
+export class InvalidPhoneNumberError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "Phone number must be in international format, for example +258841234567.",
+      code: "INVALID_PHONE_NUMBER",
+    });
+    this.name = "InvalidPhoneNumberError";
+  }
+}
+
+/**
+ * One number, one account.
+ *
+ * Enforced by the unique index on `better_auth.user.phone_number`, which is
+ * what an SMS is ultimately delivered against: two accounts sharing a number
+ * means a code sent to one arriving for the other.
+ */
+export class PhoneNumberAlreadyInUseError extends ConflictError {
+  constructor() {
+    super({
+      message: "That phone number is already in use by another account.",
+      code: "PHONE_NUMBER_ALREADY_IN_USE",
+    });
+    this.name = "PhoneNumberAlreadyInUseError";
   }
 }
