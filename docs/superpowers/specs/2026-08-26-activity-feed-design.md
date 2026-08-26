@@ -106,6 +106,21 @@ so this is passing a value that is already in hand.
 
 Adding a field to an event payload is additive: existing consumers ignore it.
 
+### The six events deliberately left out
+
+`provider.updated`, `service.updated`, `provider.member.added`,
+`provider.member.removed`, `provider.invite.declined` and
+`provider.invite.revoked` produce no activity, and that is a decision rather
+than an oversight.
+
+An "updated" says nothing a person would want to read back — updated what? —
+and a feed of them is noise that buries the entries that mean something. The
+membership and invite-outcome events are the *other* side of an action already
+logged: `invite.sent` is in the inviter's feed and `invite.accepted` in the
+invitee's, so `member.added` would log the same moment a third time.
+
+They are one handler each to add later if that judgement turns out wrong.
+
 ### Review needs an event
 
 The review context emits nothing. Without `review.created`, a customer's feed
