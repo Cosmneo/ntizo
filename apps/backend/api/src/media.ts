@@ -110,6 +110,47 @@ export function mountMedia(app: Hono<{ Bindings: AppBindings }>) {
   });
 
   /**
+   * Somebody's own profile photo.
+   *
+   * No id in the path, and that is the design. The subject is the session
+   * user, exactly as in `user.updateMe`: a route that accepts a target id is
+   * one authorization bug away from letting anybody replace anybody's face,
+   * and no caller here has a reason to write someone else's.
+   *
+   * One segment after the prefix, so it cannot collide with
+   * `/:providerId/:kind`, which needs two — no ordering dependency between
+   * the two handlers.
+   */
+  app.post("/api/media/avatar", async (c) => {
+    const session = await getAuth().api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user) return c.json({ error: "UNAUTHENTICATED" }, 401);
+
+    const bucket = c.env.MEDIA_BUCKET;
+    if (!bucket) return c.json({ error: "MEDIA_STORAGE_UNCONFIGURED" }, 503);
+
+    const form = await c.req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) return c.json({ error: "NO_FILE" }, 400);
+    if (!isImage(file.type)) return c.json({ error: "UNACCEPTED_TYPE" }, 415);
+    if (file.size > MAX_IMAGE_BYTES) return c.json({ error: "TOO_LARGE" }, 413);
+
+    // The id comes from the session, never from the request.
+    const key = `avatar/${session.user.id}/${Date.now()}`;
+    await bucket.put(key, await file.arrayBuffer(), {
+      httpMetadata: {
+        contentType: file.type,
+        // The key carries a timestamp, so a replaced photo is a new key and
+        // never a stale cache.
+        cacheControl: "public, max-age=31536000, immutable",
+      },
+      customMetadata: { uploadedByUserId: session.user.id },
+    });
+
+    const base = c.env.MEDIA_PUBLIC_URL_BASE;
+    return c.json({ key, url: base ? `${base}/${key}` : null }, 201);
+  });
+
+  /**
    * `kind` is `logo` or `photo`.
    *
    * One route rather than two: the only thing that differs is where the key
