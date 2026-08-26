@@ -17,9 +17,7 @@ export interface ActivityProps {
  * carry a status through time.
  */
 export class Activity {
-  private constructor(
-    private readonly props: Required<Omit<ActivityProps, "id">> & { id?: string },
-  ) {}
+  private constructor(private readonly props: ActivityProps) {}
 
   /**
    * The way in. Used by the command that turns a domain event into a row.
@@ -34,13 +32,7 @@ export class Activity {
     if (!params.actorUserId.trim()) {
       throw new Error("[activity] an activity row needs an actor");
     }
-    return new Activity({
-      id: params.id,
-      actorUserId: params.actorUserId,
-      type: params.type,
-      payload: params.payload,
-      occurredAt: params.occurredAt,
-    });
+    return new Activity(params);
   }
 
   /**
@@ -57,13 +49,7 @@ export class Activity {
    * same reason.
    */
   static rehydrate(props: ActivityProps): Activity {
-    return new Activity({
-      id: props.id,
-      actorUserId: props.actorUserId,
-      type: props.type,
-      payload: props.payload,
-      occurredAt: props.occurredAt,
-    });
+    return new Activity(props);
   }
 
   get id() {
