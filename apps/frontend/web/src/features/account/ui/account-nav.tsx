@@ -1,20 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 import { accountSections } from "@/shared/lib/account-sections";
 
 export function AccountNav() {
   const { t } = useTranslation("account");
   const sections = accountSections();
-  const { t: ta } = useTranslation("auth");
-  const signOut = useSignOut();
-
-  async function handleSignOut() {
-    const { serverRevokeFailed } = await signOut();
-    if (serverRevokeFailed) toast.error(ta("signOutOffline"));
-  }
-
   return (
     /* A scrolling strip on a phone, the sidebar it always was from `lg`.
        Stacked vertically, seven entries plus sign-out filled the whole
@@ -48,21 +38,6 @@ export function AccountNav() {
           </li>
         ))}
 
-        {/* Last, and separated only in the column: a horizontal rule between
-            two chips in a strip reads as a divider between groups, not as
-            "this one is different". */}
-        <li className="shrink-0 lg:mt-1 lg:border-t lg:border-[var(--color-border)] lg:pt-1">
-          {/* A button, not a link. Signing out is an action with a request
-              behind it, and rendering it as a link invites a middle-click
-              that opens a tab and leaves the session intact. */}
-          <button
-            type="button"
-            onClick={() => void handleSignOut()}
-            className="type-body-medium w-full whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 text-left text-[var(--color-destructive)] hover:bg-[color-mix(in_srgb,var(--color-destructive)_8%,transparent)]"
-          >
-            {t("navSignOut")}
-          </button>
-        </li>
       </ul>
     </nav>
   );

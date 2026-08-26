@@ -7,8 +7,14 @@
  * one of them two homes.
  *
  * In the order they are used rather than alphabetically: the profile first,
- * then the things attached to it, then the settings, then the legal text
- * nobody opens twice.
+ * then the things attached to it, then the settings.
+ *
+ * Payment methods and the legal text are deliberately absent from this list.
+ * Their routes still exist and answer — this removes them from the menu, not
+ * from the app — but neither belongs in a short list of things a person
+ * changes about themselves: payments are not wired up yet, and the terms are
+ * linked from the footer and from the sign-up form, where they are actually
+ * read.
  *
  * Documents are deliberately absent. Only a provider submits any, and a
  * provider's documents belong to their workspace, not to the person.
@@ -25,10 +31,8 @@ export interface AccountSection {
 const SUFFIXES = [
   { path: "", key: "navProfile", exact: true },
   { path: "/addresses", key: "navAddresses", exact: false },
-  { path: "/payment-methods", key: "navPaymentMethods", exact: false },
   { path: "/security", key: "navSecurity", exact: false },
   { path: "/preferences", key: "navPreferences", exact: false },
-  { path: "/legal", key: "navLegal", exact: false },
 ] as const;
 
 export function accountSections(): AccountSection[] {
