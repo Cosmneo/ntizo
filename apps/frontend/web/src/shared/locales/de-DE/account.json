@@ -44,6 +44,34 @@
   "fieldGender": "Geschlecht",
   "fieldLanguages": "Sprache",
   "fieldTimezone": "Zeitzone",
+  "fieldPhoto": "Profilfoto",
+  "fieldPhotoHint": "JPG, PNG oder WebP, bis zu 5 MB.",
+  "photoChoose": "Foto auswählen",
+  "photoReplace": "Ersetzen",
+  "photoRemove": "Entfernen",
+  "phoneUnverified": "Nicht bestätigt",
+  "invalidPhone": "Nutze das internationale Format, zum Beispiel +258 84 123 4567.",
+  "countrySearchPlaceholder": "Land suchen",
+  "countryNoResults": "Kein Land gefunden",
+  "countrySelectLabel": "Land auswählen",
+  "crop": {
+    "title": "Foto ausrichten",
+    "hint": "Quadratisch, damit es überall gleich aussieht. Ziehen zum Verschieben, Rad oder Regler zum Zoomen.",
+    "cancel": "Abbrechen",
+    "confirm": "Diesen Ausschnitt verwenden",
+    "zoom": "Zoom"
+  },
+  "mediaReject": {
+    "type": "Diese Datei ist kein JPG-, PNG- oder WebP-Bild.",
+    "size": "Dieses Bild ist größer als 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an.",
+    "TOO_LARGE": "Dieses Bild ist größer als 5 MB.",
+    "UNACCEPTED_TYPE": "Diese Datei ist kein JPG-, PNG- oder WebP-Bild.",
+    "MEDIA_STORAGE_UNCONFIGURED": "Der Bildspeicher ist in dieser Umgebung noch nicht eingerichtet.",
+    "GENERIC": "Der Upload ist fehlgeschlagen. Prüfen Sie Ihre Verbindung."
+  },
   "gender": {
     "female": "Weiblich",
     "male": "Männlich",

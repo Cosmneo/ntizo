@@ -44,6 +44,34 @@
   "fieldGender": "Geslacht",
   "fieldLanguages": "Taal",
   "fieldTimezone": "Tijdzone",
+  "fieldPhoto": "Profielfoto",
+  "fieldPhotoHint": "JPG, PNG of WebP, tot 5 MB.",
+  "photoChoose": "Kies een foto",
+  "photoReplace": "Vervangen",
+  "photoRemove": "Verwijderen",
+  "phoneUnverified": "Niet geverifieerd",
+  "invalidPhone": "Gebruik de internationale notatie, bijvoorbeeld +258 84 123 4567.",
+  "countrySearchPlaceholder": "Land zoeken",
+  "countryNoResults": "Geen land gevonden",
+  "countrySelectLabel": "Land selecteren",
+  "crop": {
+    "title": "Foto uitsnijden",
+    "hint": "Vierkant, zodat het overal hetzelfde oogt. Sleep om te verplaatsen, scroll of schuif om te zoomen.",
+    "cancel": "Annuleren",
+    "confirm": "Deze uitsnede gebruiken",
+    "zoom": "Zoom"
+  },
+  "mediaReject": {
+    "type": "Dat bestand is geen JPG-, PNG- of WebP-afbeelding.",
+    "size": "Die afbeelding is groter dan 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Je sessie is verlopen. Log opnieuw in en probeer het nogmaals.",
+    "TOO_LARGE": "Die afbeelding is groter dan 5 MB.",
+    "UNACCEPTED_TYPE": "Dat bestand is geen JPG-, PNG- of WebP-afbeelding.",
+    "MEDIA_STORAGE_UNCONFIGURED": "Afbeeldingsopslag is nog niet ingesteld in deze omgeving.",
+    "GENERIC": "Het uploaden is mislukt. Controleer je verbinding en probeer opnieuw."
+  },
   "gender": {
     "female": "Vrouw",
     "male": "Man",

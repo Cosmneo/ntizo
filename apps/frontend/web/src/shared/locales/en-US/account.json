@@ -44,6 +44,34 @@
   "fieldGender": "Gender",
   "fieldLanguages": "Language",
   "fieldTimezone": "Time zone",
+  "fieldPhoto": "Profile photo",
+  "fieldPhotoHint": "JPG, PNG or WebP, up to 5 MB.",
+  "photoChoose": "Choose a photo",
+  "photoReplace": "Replace",
+  "photoRemove": "Remove",
+  "phoneUnverified": "Not verified",
+  "invalidPhone": "Use the international format, for example +258 84 123 4567.",
+  "countrySearchPlaceholder": "Search country",
+  "countryNoResults": "No country found",
+  "countrySelectLabel": "Select country",
+  "crop": {
+    "title": "Frame your photo",
+    "hint": "Square, so it looks the same everywhere it appears. Drag to move, scroll or use the slider to zoom.",
+    "cancel": "Cancel",
+    "confirm": "Use this framing",
+    "zoom": "Zoom"
+  },
+  "mediaReject": {
+    "type": "That file is not a JPG, PNG or WebP image.",
+    "size": "That image is larger than 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Your session expired. Sign in again and retry the upload.",
+    "TOO_LARGE": "That image is larger than 5 MB.",
+    "UNACCEPTED_TYPE": "That file is not a JPG, PNG or WebP image.",
+    "MEDIA_STORAGE_UNCONFIGURED": "Image storage is not set up on this environment yet.",
+    "GENERIC": "The upload did not go through. Check your connection and try again."
+  },
   "gender": {
     "female": "Female",
     "male": "Male",

@@ -44,6 +44,34 @@
   "fieldGender": "Género",
   "fieldLanguages": "Idioma",
   "fieldTimezone": "Zona horaria",
+  "fieldPhoto": "Foto de perfil",
+  "fieldPhotoHint": "JPG, PNG o WebP, hasta 5 MB.",
+  "photoChoose": "Elegir una foto",
+  "photoReplace": "Reemplazar",
+  "photoRemove": "Quitar",
+  "phoneUnverified": "No verificado",
+  "invalidPhone": "Usa el formato internacional, por ejemplo +258 84 123 4567.",
+  "countrySearchPlaceholder": "Buscar país",
+  "countryNoResults": "No se encontró ningún país",
+  "countrySelectLabel": "Seleccionar país",
+  "crop": {
+    "title": "Encuadra tu foto",
+    "hint": "Cuadrado, para que se vea igual en todas partes. Arrastra para mover; rueda o control deslizante para ampliar.",
+    "cancel": "Cancelar",
+    "confirm": "Usar este encuadre",
+    "zoom": "Zoom"
+  },
+  "mediaReject": {
+    "type": "Ese archivo no es una imagen JPG, PNG o WebP.",
+    "size": "Esa imagen supera los 5 MB."
+  },
+  "mediaError": {
+    "UNAUTHENTICATED": "Tu sesión caducó. Inicia sesión de nuevo y reintenta.",
+    "TOO_LARGE": "Esa imagen supera los 5 MB.",
+    "UNACCEPTED_TYPE": "Ese archivo no es una imagen JPG, PNG o WebP.",
+    "MEDIA_STORAGE_UNCONFIGURED": "El almacenamiento de imágenes no está configurado en este entorno.",
+    "GENERIC": "La subida no se completó. Revisa tu conexión e inténtalo de nuevo."
+  },
   "gender": {
     "female": "Femenino",
     "male": "Masculino",
