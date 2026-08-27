@@ -85,3 +85,24 @@ export class ThreadTypeInvalidError extends UnprocessableError {
     this.name = "ThreadTypeInvalidError";
   }
 }
+
+/**
+ * A cursor `listForCustomer`, `listForProvider`, or `listForThread` could not
+ * decode.
+ *
+ * Same shape and same reason as `activity/domain/exceptions.ts`'s
+ * `CursorInvalidError`: `UnprocessableError`, not `NotFoundError` — nothing is
+ * missing, the value the caller sent is simply not one this repository can
+ * use. A distinct class (and a distinct `code`) per context rather than a
+ * shared one, so a client branching on `code` never has to guess which
+ * bounded context refused it.
+ */
+export class CursorInvalidError extends UnprocessableError {
+  constructor(public readonly cursor: string) {
+    super({
+      message: `The requested cursor is not usable: "${cursor}"`,
+      code: "COMMUNICATION_CURSOR_INVALID",
+    });
+    this.name = "CursorInvalidError";
+  }
+}
