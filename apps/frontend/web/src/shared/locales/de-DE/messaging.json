@@ -3,6 +3,7 @@
   "listTitle": "Unterhaltungen",
   "emptyTitle": "Noch keine Unterhaltungen",
   "emptyBody": "Starte eine über die Seite eines Anbieters, und sie erscheint hier.",
+  "providerEmptyBody": "Sobald dir ein Kunde schreibt, erscheint das Gespräch hier.",
   "loadMore": "Mehr laden",
   "unknownProvider": "Anbieter",
   "noPreview": "Noch keine Nachrichten",
@@ -20,6 +21,7 @@
   "charCount": "{{count}}/{{max}}",
   "send": "Senden",
   "sending": "Wird gesendet…",
+  "loadError": "Deine Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
   "sendError": {
     "VALIDATION_ERROR": "Nachrichten dürfen bis zu 4000 Zeichen lang sein.",
     "THREAD_NOT_VISIBLE": "Diese Unterhaltung ist nicht mehr verfügbar.",

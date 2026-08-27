@@ -22,6 +22,8 @@ export function ThreadList({
   hasMore,
   onLoadMore,
   locale,
+  emptyTitle,
+  emptyBody,
 }: {
   threads: readonly Thread[];
   loading: boolean;
@@ -30,6 +32,15 @@ export function ThreadList({
   hasMore: boolean;
   onLoadMore: () => void;
   locale: string;
+  /**
+   * Overrides the empty-state copy. Defaults to the customer's own
+   * ("start one from any provider's page…") — a provider's inbox means
+   * something different by "no conversations yet" (nobody on this side
+   * starts one; a customer does), so `provider-messages-page.tsx` passes
+   * its own pair rather than reusing text that would be false for it.
+   */
+  emptyTitle?: string;
+  emptyBody?: string;
 }) {
   const { t } = useTranslation("messaging");
 
@@ -45,7 +56,11 @@ export function ThreadList({
         {loading ? (
           <ThreadListSkeleton />
         ) : threads.length === 0 ? (
-          <EmptyCard badge={MessageSquare} title={t("emptyTitle")} body={t("emptyBody")} />
+          <EmptyCard
+            badge={MessageSquare}
+            title={emptyTitle ?? t("emptyTitle")}
+            body={emptyBody ?? t("emptyBody")}
+          />
         ) : (
           <ul className="grid list-none gap-0 p-0">
             {threads.map((thread) => (

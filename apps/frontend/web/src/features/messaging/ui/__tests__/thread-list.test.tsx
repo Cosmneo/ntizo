@@ -151,6 +151,29 @@ describe("ThreadList", () => {
     expect(screen.getByText("No conversations yet")).toBeInTheDocument();
   });
 
+  it("uses the given empty-state copy instead of the namespace default when the caller provides one", () => {
+    // `provider-messages-page.tsx` passes its own `emptyBody` — a provider's
+    // inbox means something different by "no conversations yet" than the
+    // customer's own ("start one from any provider's page…", which is false
+    // for a provider — nobody on this side starts a thread).
+    render(
+      <ThreadList
+        threads={[]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+        emptyTitle="Custom title"
+        emptyBody="Custom body"
+      />,
+    );
+    expect(screen.getByText("Custom title")).toBeInTheDocument();
+    expect(screen.getByText("Custom body")).toBeInTheDocument();
+    expect(screen.queryByText("No conversations yet")).toBeNull();
+  });
+
   it("offers to load more only when there is more, and calls back on click", async () => {
     const onLoadMore = vi.fn();
     const user = userEvent.setup();

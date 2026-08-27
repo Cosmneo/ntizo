@@ -3,6 +3,7 @@
   "listTitle": "Conversations",
   "emptyTitle": "Aucune conversation pour l'instant",
   "emptyBody": "Démarrez-en une depuis la page d'un prestataire et elle apparaîtra ici.",
+  "providerEmptyBody": "Quand un client vous écrit, la conversation apparaît ici.",
   "loadMore": "Charger plus",
   "unknownProvider": "Prestataire",
   "noPreview": "Aucun message pour l'instant",
@@ -20,6 +21,7 @@
   "charCount": "{{count}}/{{max}}",
   "send": "Envoyer",
   "sending": "Envoi en cours…",
+  "loadError": "Impossible de charger vos conversations. Veuillez réessayer.",
   "sendError": {
     "VALIDATION_ERROR": "Les messages peuvent compter jusqu'à 4000 caractères.",
     "THREAD_NOT_VISIBLE": "Cette conversation n'est plus disponible.",

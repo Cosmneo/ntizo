@@ -3,6 +3,7 @@
   "listTitle": "Conversations",
   "emptyTitle": "No conversations yet",
   "emptyBody": "Start one from any provider's page and it will show up here.",
+  "providerEmptyBody": "When a customer messages you, the conversation appears here.",
   "loadMore": "Load more",
   "unknownProvider": "Provider",
   "noPreview": "No messages yet",
@@ -20,6 +21,7 @@
   "charCount": "{{count}}/{{max}}",
   "send": "Send",
   "sending": "Sending…",
+  "loadError": "Couldn't load your conversations. Please try again.",
   "sendError": {
     "VALIDATION_ERROR": "Messages can be up to 4000 characters.",
     "THREAD_NOT_VISIBLE": "This conversation is no longer available.",

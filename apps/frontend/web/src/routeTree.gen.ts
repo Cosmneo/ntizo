@@ -53,6 +53,7 @@ import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/pro
 import { Route as ProviderSlugActivityRouteImport } from './routes/provider/$slug/activity'
 import { Route as ProviderSlugAvailabilityRouteImport } from './routes/provider/$slug/availability'
 import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
+import { Route as ProviderSlugMessagesRouteImport } from './routes/provider/$slug/messages'
 import { Route as ProviderSlugNotificationsRouteImport } from './routes/provider/$slug/notifications'
 import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
 import { Route as ProviderSlugSettingsRouteImport } from './routes/provider/$slug/settings'
@@ -284,6 +285,11 @@ const ProviderSlugMembersRoute = ProviderSlugMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => ProviderSlugRouteRoute,
 } as any)
+const ProviderSlugMessagesRoute = ProviderSlugMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
 const ProviderSlugNotificationsRoute =
   ProviderSlugNotificationsRouteImport.update({
     id: '/notifications',
@@ -359,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
+  '/provider/$slug/messages': typeof ProviderSlugMessagesRoute
   '/provider/$slug/notifications': typeof ProviderSlugNotificationsRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
@@ -406,6 +413,7 @@ export interface FileRoutesByTo {
   '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
+  '/provider/$slug/messages': typeof ProviderSlugMessagesRoute
   '/provider/$slug/notifications': typeof ProviderSlugNotificationsRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
@@ -459,6 +467,7 @@ export interface FileRoutesById {
   '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
+  '/provider/$slug/messages': typeof ProviderSlugMessagesRoute
   '/provider/$slug/notifications': typeof ProviderSlugNotificationsRoute
   '/provider/$slug/overview': typeof ProviderSlugOverviewRoute
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
@@ -511,6 +520,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
+    | '/provider/$slug/messages'
     | '/provider/$slug/notifications'
     | '/provider/$slug/overview'
     | '/provider/$slug/settings'
@@ -558,6 +568,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
+    | '/provider/$slug/messages'
     | '/provider/$slug/notifications'
     | '/provider/$slug/overview'
     | '/provider/$slug/settings'
@@ -610,6 +621,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
+    | '/provider/$slug/messages'
     | '/provider/$slug/notifications'
     | '/provider/$slug/overview'
     | '/provider/$slug/settings'
@@ -947,6 +959,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProviderSlugMembersRouteImport
       parentRoute: typeof ProviderSlugRouteRoute
     }
+    '/provider/$slug/messages': {
+      id: '/provider/$slug/messages'
+      path: '/messages'
+      fullPath: '/provider/$slug/messages'
+      preLoaderRoute: typeof ProviderSlugMessagesRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
     '/provider/$slug/notifications': {
       id: '/provider/$slug/notifications'
       path: '/notifications'
@@ -1083,6 +1102,7 @@ interface ProviderSlugRouteRouteChildren {
   ProviderSlugActivityRoute: typeof ProviderSlugActivityRoute
   ProviderSlugAvailabilityRoute: typeof ProviderSlugAvailabilityRoute
   ProviderSlugMembersRoute: typeof ProviderSlugMembersRoute
+  ProviderSlugMessagesRoute: typeof ProviderSlugMessagesRoute
   ProviderSlugNotificationsRoute: typeof ProviderSlugNotificationsRoute
   ProviderSlugOverviewRoute: typeof ProviderSlugOverviewRoute
   ProviderSlugSettingsRoute: typeof ProviderSlugSettingsRoute
@@ -1095,6 +1115,7 @@ const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
   ProviderSlugActivityRoute: ProviderSlugActivityRoute,
   ProviderSlugAvailabilityRoute: ProviderSlugAvailabilityRoute,
   ProviderSlugMembersRoute: ProviderSlugMembersRoute,
+  ProviderSlugMessagesRoute: ProviderSlugMessagesRoute,
   ProviderSlugNotificationsRoute: ProviderSlugNotificationsRoute,
   ProviderSlugOverviewRoute: ProviderSlugOverviewRoute,
   ProviderSlugSettingsRoute: ProviderSlugSettingsRoute,

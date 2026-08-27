@@ -1,4 +1,4 @@
-import { Activity, Bell, Briefcase, CalendarClock, LayoutDashboard, Settings, Users, Wallet } from "lucide-react";
+import { Activity, Bell, Briefcase, CalendarClock, LayoutDashboard, MessageSquare, Settings, Users, Wallet } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 export interface NavItem {
@@ -23,6 +23,13 @@ export const providerNavGroups: readonly NavGroup[] = [
     // Above overview: what a provider sells is the thing this zone exists
     // to manage, and a dashboard of numbers about it is secondary.
     { titleKey: "nav.services", url: "/provider/$slug/services", icon: Briefcase },
+    // Beside services, not under management: a conversation with a customer
+    // is answered by whoever on the team gets to it — reading and replying
+    // marks a thread read for the whole workspace, not just the member who
+    // opened it (see `ProviderMessagesPage`'s own doc comment) — the same
+    // "every member, not just whoever administers" reasoning `availability`
+    // below already gives.
+    { titleKey: "nav.messages", url: "/provider/$slug/messages", icon: MessageSquare },
     // Beside services rather than under management: setting when you work
     // is as much a part of the job as what you sell, and every member —
     // owner, admin or staff — has their own week to set here, not just

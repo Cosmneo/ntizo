@@ -3,6 +3,7 @@
   "listTitle": "Gesprekken",
   "emptyTitle": "Nog geen gesprekken",
   "emptyBody": "Begin er een vanaf de pagina van een aanbieder en het verschijnt hier.",
+  "providerEmptyBody": "Zodra een klant je een bericht stuurt, verschijnt het gesprek hier.",
   "loadMore": "Meer laden",
   "unknownProvider": "Aanbieder",
   "noPreview": "Nog geen berichten",
@@ -20,6 +21,7 @@
   "charCount": "{{count}}/{{max}}",
   "send": "Versturen",
   "sending": "Bezig met versturen…",
+  "loadError": "Je gesprekken konden niet worden geladen. Probeer het opnieuw.",
   "sendError": {
     "VALIDATION_ERROR": "Berichten mogen maximaal 4000 tekens bevatten.",
     "THREAD_NOT_VISIBLE": "Dit gesprek is niet meer beschikbaar.",

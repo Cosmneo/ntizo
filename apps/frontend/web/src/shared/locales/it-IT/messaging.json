@@ -3,6 +3,7 @@
   "listTitle": "Conversazioni",
   "emptyTitle": "Ancora nessuna conversazione",
   "emptyBody": "Avviane una dalla pagina di un fornitore e comparirà qui.",
+  "providerEmptyBody": "Quando un cliente ti scrive, la conversazione comparirà qui.",
   "loadMore": "Carica altri",
   "unknownProvider": "Fornitore",
   "noPreview": "Ancora nessun messaggio",
@@ -20,6 +21,7 @@
   "charCount": "{{count}}/{{max}}",
   "send": "Invia",
   "sending": "Invio…",
+  "loadError": "Non è stato possibile caricare le tue conversazioni. Riprova.",
   "sendError": {
     "VALIDATION_ERROR": "I messaggi possono contenere fino a 4000 caratteri.",
     "THREAD_NOT_VISIBLE": "Questa conversazione non è più disponibile.",
