@@ -1,5 +1,5 @@
 import { infraStore } from "@ntizo/backend/shared/infra";
-import { Db } from "@ntizo/backend/shared/infra/database";
+import { closeDbBehindDeferredWork } from "@ntizo/backend/shared/infra/database";
 import type { Stage } from "@ntizo/backend/shared/infra/config";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
@@ -41,8 +41,10 @@ export const SWEEP_LIMIT = 200;
  * problem `configMiddleware` solves for a request: the sweep defers email
  * delivery past its own return, and Cloudflare does not order `waitUntil`
  * tasks against each other, so the close must be chained *behind* the
- * deferred work rather than scheduled beside it. See
- * `middlewares/config.middleware.ts`, whose closing block this copies.
+ * deferred work rather than scheduled beside it. Shares
+ * `closeDbBehindDeferredWork` with `configMiddleware` rather than
+ * hand-copying that chain a second time — see that function's own doc
+ * comment for the full argument.
  */
 export async function scheduled(
   controller: ScheduledController,
@@ -96,19 +98,8 @@ export async function scheduled(
         // Workers run nothing after this function returns unless scheduled —
         // and the deferred work scheduled above still needs this run's
         // `{ max: 1 }` postgres pool for recipients, suppressions and
-        // delivery rows. So the close is chained BEHIND it, not scheduled
-        // beside it: `waitUntil` tasks are not ordered against each other,
-        // so a bare `waitUntil(closeDbConnection())` races every delivery
-        // and wins often enough to matter. Copied from configMiddleware's
-        // own closing block — see its comment for the full argument.
-        const closeBehindDeferredWork = infraStore
-          .settleDeferredWork()
-          .then(() => Db.closeDbConnection());
-        try {
-          ctx.waitUntil(closeBehindDeferredWork);
-        } catch {
-          void closeBehindDeferredWork;
-        }
+        // delivery rows. See `closeDbBehindDeferredWork`'s doc comment.
+        closeDbBehindDeferredWork((promise) => ctx.waitUntil(promise));
       }
     },
   );

@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import { infraStore } from "@ntizo/backend/shared/infra";
-import { Db } from "@ntizo/backend/shared/infra/database";
+import { closeDbBehindDeferredWork } from "@ntizo/backend/shared/infra/database";
 import type { Stage } from "@ntizo/backend/shared/infra/config";
 import type { AppBindings } from "../types";
 
@@ -59,19 +59,10 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
         // Workers run nothing after the response unless scheduled — and the
         // deferred work scheduled above still needs this request's `{ max: 1 }`
         // postgres pool for recipients, suppressions and delivery rows. So the
-        // close is chained BEHIND it, not scheduled beside it: `waitUntil`
-        // tasks are not ordered against each other, so a bare
-        // `waitUntil(closeDbConnection())` races every delivery and wins often
-        // enough to matter — intermittently, in production, on the one path
-        // `wrangler dev` is most forgiving about locally.
-        const closeBehindDeferredWork = infraStore
-          .settleDeferredWork()
-          .then(() => Db.closeDbConnection());
-        try {
-          c.executionCtx.waitUntil(closeBehindDeferredWork);
-        } catch {
-          void closeBehindDeferredWork;
-        }
+        // close is chained BEHIND it, not scheduled beside it — see
+        // `closeDbBehindDeferredWork`'s own doc comment for the full argument,
+        // and for why this is a shared call rather than a hand-copied block.
+        closeDbBehindDeferredWork((promise) => c.executionCtx.waitUntil(promise));
       }
     },
   );

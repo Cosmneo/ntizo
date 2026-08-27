@@ -11,7 +11,7 @@ import type { AppBindings } from "../types";
  *
  * `NotifyUnreadInternalCommand` (Task 5) is fully built and fully tested, and
  * calling it does nothing on its own: nobody schedules it. `scheduled.ts` is
- * the cron handler that does, and this file proves the two ways that could
+ * the cron handler that does, and this file proves the ways that could
  * silently fail to matter:
  *
  * 1. `scheduled` runs the sweep *outside* the request-scoped `infraStore`
@@ -23,11 +23,17 @@ import type { AppBindings } from "../types";
  *    "establishes the infra-store scope before running the sweep" below,
  *    which fails the moment `infraStore.runAsync` stops wrapping the sweep —
  *    see that test's comment for exactly how.
- * 2. `scheduled` exists in this file but is never attached to the Worker's
+ * 2. `scheduled` defers the pool close BESIDE the deferred work it started
+ *    instead of BEHIND it, letting the close win a race it must not win.
+ *    Guarded by "closes the run's postgres pool behind deferred work, not
+ *    beside it" below, which needs — and creates — a genuine race: see that
+ *    test's own comment for why the first version of this test could not
+ *    have caught this.
+ * 3. `scheduled` exists in this file but is never attached to the Worker's
  *    default export, so Cloudflare never calls it and the sweep never runs.
  *    Guarded by "wires `scheduled` into the worker's default export" below.
  *
- * These tests run the real sweep against the real dev database (via
+ * Tests 1 and 3 run the real sweep against the real dev database (via
  * `process.env.DATABASE_URL`, which `bun test` loads from `.env`) rather than
  * a fake repository, because the whole point is to prove the *wiring* down to
  * a real `getDb()` call — a fake repository would never notice a missing
@@ -114,40 +120,60 @@ describe("the scheduled worker", () => {
   });
 
   it("closes the run's postgres pool behind deferred work, not beside it", async () => {
-    // Same trap `wait-until.test.ts` guards for `configMiddleware`, copied
-    // onto the cron path: `scheduled.ts` chains
-    // `settleDeferredWork().then(() => closeDbConnection())` rather than
-    // scheduling the two as separate `waitUntil` tasks, because Cloudflare
-    // does not order `waitUntil` tasks against each other. Spying on both
-    // calls (not just the outcome) catches the version that schedules them
-    // side by side too: that version still calls `settleDeferredWork` and
-    // still calls `closeDbConnection` eventually, so only the *order they
-    // were invoked in* tells them apart. `settleDeferredWork()` is called
-    // synchronously before `.then(...)` can ever run its callback, so the
-    // chained shape always shows settle-before-close; a
-    // `ctx.waitUntil(closeDbConnection())` fired as its own task would not
-    // wait its turn behind that promise at all — nothing here would force
-    // close to be invoked strictly after settle returns.
+    // Fix round 1: the first version of this test spied on
+    // `settleDeferredWork` / `closeDbConnection` and checked *call order*
+    // against a sweep that has nothing to defer (zero due messages in the
+    // dev DB). `settleDeferredWork()` resolves instantly either way when
+    // there is nothing queued, so that version could not tell the correct,
+    // chained shape apart from the broken one:
+    //
+    //   try { ctx.waitUntil(infraStore.settleDeferredWork()); } catch {}
+    //   try { ctx.waitUntil(Db.closeDbConnection()); } catch {}
+    //
+    // — both still call `settleDeferredWork` once and `closeDbConnection`
+    // once, in that textual order, so the earlier assertions passed against
+    // either. Confirmed by mutation: applying exactly that shape left the
+    // old version of this test at 3/3 pass.
+    //
+    // A genuine race needs genuine deferred work, so this test mocks
+    // `NotifyUnreadInternalCommand.execute` (rather than seeding a real due
+    // message, which would need a real Resend call through the dev
+    // `RESEND_API_KEY` to be honest, and this task must leave the dev
+    // database at zero rows) to do what a real notified message would: call
+    // `infraStore.waitUntil` with a promise that takes real time — mirroring
+    // `wait-until.test.ts`'s own race test for `configMiddleware`, one layer
+    // up the stack. The mock runs inside the exact `infraStore.runAsync`
+    // scope `scheduled()` establishes, since it is invoked synchronously
+    // from within it — that scope is the only thing this test needs from the
+    // production sweep.
     const order: string[] = [];
-    Db.closeDbConnection = async (...args: Parameters<typeof originalClose>) => {
+    Db.closeDbConnection = async () => {
       order.push("close");
-      return originalClose(...args);
     };
-    const settleSpy = spyOn(infraStore, "settleDeferredWork");
+    const executeSpy = spyOn(NotifyUnreadInternalCommand.prototype, "execute").mockImplementation(
+      async () => {
+        infraStore.waitUntil(
+          (async () => {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            order.push("delivery");
+          })(),
+        );
+        return { notified: 1, failed: 0 };
+      },
+    );
 
     const { ctx, scheduledPromises } = fakeExecutionContext();
     await scheduled(fakeController(), ENV, ctx);
+
+    // The run itself did not pay for the delivery — it is still in flight.
+    expect(order).toEqual([]);
+
     await Promise.all(scheduledPromises);
+    // The close is registered as a SECOND task chained behind the first, not
+    // beside it: it must not run before the 20ms delivery finishes.
+    expect(order).toEqual(["delivery", "close"]);
 
-    expect(settleSpy).toHaveBeenCalledTimes(1);
-    expect(order).toEqual(["close"]);
-    // `close` was invoked only after `settleDeferredWork()`'s call was
-    // already on the stack — the `.then` callback cannot run before the
-    // function it is chained off of was called.
-    const settleCallOrder = settleSpy.mock.invocationCallOrder[0];
-    expect(settleCallOrder).toBeDefined();
-
-    settleSpy.mockRestore();
+    executeSpy.mockRestore();
   });
 
   it("wires `scheduled` into the worker's default export", async () => {
