@@ -81,7 +81,7 @@ describe("Thread.open", () => {
     expect(() => Thread.open({ ...threadBase, type: "support" as never })).toThrow(ThreadTypeInvalidError);
   });
 
-  it("defaults id to null when none is given, like Review.create and Activity.record", () => {
+  it("always opens with a null id — Thread has no revise, so there is never a known id to build around; the repository assigns one on insert", () => {
     const t = Thread.open({ ...threadBase, type: "inquiry" });
     expect(t.id).toBeNull();
   });

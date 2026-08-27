@@ -22,17 +22,20 @@ export interface ThreadProps {
  * addition — see `Message`'s and `Activity.rehydrate`'s doc comments for the
  * general argument.
  *
- * `open` takes `id` as an optional input, not a required one: a thread has
- * no identity worth asserting before it exists as a row, so like
- * `Review.create` and `Activity.record` it defaults to `null` and the
- * repository fills it in once persisted.
+ * `open` takes no `id`: unlike `Review.create`, which accepts one because
+ * `Review.revise()` reuses it to rebuild an *existing* review around its
+ * known id, `Thread` has no revise and no other reason to be constructed
+ * around an id it did not just get from a fresh insert. A thread's id is
+ * always `null` coming out of `open` — the repository assigns the real one,
+ * via `INSERT … RETURNING id` against the table's `defaultRandom()` column
+ * — and reconstructing a thread that already has one is `rehydrate`'s job,
+ * not `open`'s.
  */
 export class Thread {
   private constructor(readonly props: ThreadProps) {}
 
   /** The write path: validates that `type` is one Task 1's `THREAD_TYPES` lists. */
   static open(params: {
-    id?: string | null;
     type: ThreadType;
     customerUserId: string;
     providerId: string;
@@ -43,7 +46,7 @@ export class Thread {
     }
 
     return new Thread({
-      id: params.id ?? null,
+      id: null,
       type: params.type,
       customerUserId: params.customerUserId,
       providerId: params.providerId,
