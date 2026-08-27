@@ -91,6 +91,44 @@
   --radius-card-sm: 12px;
   --radius-card: 16px;
   --radius: 16px;
+
+  /*
+   * The ground the browse surfaces sit on.
+   *
+   * Separate from `--color-muted`, which is the design system's Tint Blue and
+   * is a *highlight*. This is the opposite job: a neutral floor, so that white
+   * comes to mean "an object you can act on" — the header, the search card, a
+   * result card — and nothing else on the page is white. The listings read as
+   * a wireframe before this because white cards sat on a white page, separated
+   * only by a hairline.
+   */
+  --color-surface-raised: #eef2f9;
+
+  /*
+   * A divider with enough weight to read as structure rather than as a
+   * hairline between rows. The price stub's perforation and the facet
+   * checkboxes are the two things that need it; `--color-border` disappears at
+   * both sizes.
+   */
+  --color-border-strong: #d7dbe3;
+
+  /*
+   * The brand blue pressed down, for a CTA's hover and the hero's halo. Not a
+   * second brand colour: nothing is ever *at rest* in this one.
+   */
+  --color-primary-deep: #0a4fbd;
+
+  /*
+   * One elevation scale, so a card cannot lift by a different amount than its
+   * neighbour. `browse-service-card.tsx` and `provider-card.tsx` carry
+   * character-identical copies of the first two today — they agree by
+   * transcription, not by definition, and the redesign multiplies the number
+   * of surfaces that have to keep agreeing.
+   */
+  --shadow-xs: 0 1px 2px rgba(19, 23, 27, 0.05);
+  --shadow-sm: 0 1px 3px rgba(19, 23, 27, 0.06), 0 6px 16px -10px rgba(19, 23, 27, 0.14);
+  --shadow-lift: 0 2px 4px rgba(19, 23, 27, 0.06), 0 16px 34px -18px rgba(19, 23, 27, 0.24);
+  --shadow-float: 0 10px 34px -14px rgba(13, 32, 64, 0.22), 0 2px 6px rgba(19, 23, 27, 0.05);
 }
 
 .dark {
@@ -122,6 +160,23 @@
   --color-sidebar-accent-foreground: #e6e9ef;
   --color-sidebar-border: #1f2532;
   --color-sidebar-ring: #007aff;
+
+  --color-surface-raised: #0e131c;
+  --color-border-strong: #2b3242;
+  --color-primary-deep: #3d9bff;
+
+  /*
+   * Deeper and more opaque than the light scale, and that is not a tweak: a
+   * shadow tuned for a white page is invisible on a near-black one. The lift
+   * has to come from a darker shadow, never from a paler one.
+   *
+   * `--color-primary-deep` inverts for the same reason — "pressed down" on a
+   * dark ground means brighter, not darker, or a hovered button disappears.
+   */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 6px 16px -10px rgba(0, 0, 0, 0.6);
+  --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 34px -18px rgba(0, 0, 0, 0.7);
+  --shadow-float: 0 10px 34px -14px rgba(0, 0, 0, 0.75), 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {
@@ -147,6 +202,9 @@
   --color-brand-accent: var(--color-brand-accent);
   --color-brand-sky: var(--color-brand-sky);
   --color-brand-ink: var(--color-brand-ink);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border-strong: var(--color-border-strong);
+  --color-primary-deep: var(--color-primary-deep);
   --color-background: var(--color-background);
   --color-foreground: var(--color-foreground);
   --color-primary: var(--color-primary);
@@ -183,6 +241,14 @@
    * assembling `text-[22px] font-semibold font-display` at each call site is
    * what keeps a section title the same size on every page.
    */
+  /*
+   * One step above `type-h1`, and only for a page's own head.
+   *
+   * `clamp` rather than a breakpoint: this is the one size on the page that
+   * has to work at 360px and at 1440px, and a two-value jump at `lg` leaves a
+   * tablet reading either a phone's heading or a desktop's.
+   */
+  .type-display { font-family: var(--font-display); font-weight: 600; font-size: clamp(30px, 3.6vw, 42px); line-height: 1.1; letter-spacing: -0.025em; }
   .type-h1 { font-family: var(--font-display); font-weight: 600; font-size: 28px; line-height: 1.25; letter-spacing: -0.01em; }
   .type-h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; }
   .type-h3 { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 1.35; }
