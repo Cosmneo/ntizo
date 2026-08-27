@@ -20,6 +20,101 @@ import type { ThreadRow } from "../../../shared/infrastructure/database/communic
 
 const NOW = new Date("2026-08-27T10:00:00.000Z");
 
+type TrackedOp = "insert" | "touch";
+
+/**
+ * A record of one write a fake repository made, tagged with whichever
+ * `atomicExecute` invocation was open at the moment it happened — `null`
+ * when none was.
+ *
+ * The tag is what `TrackingUnitOfWork.bothWritesInSameTransaction` needs
+ * and a plain ordered log cannot give it: an ordered log can prove "touch
+ * happened after insert" without ever proving the two happened inside the
+ * SAME transaction, or inside any transaction at all — see that getter's
+ * own doc comment for the mutation this closes.
+ */
+interface TrackedWrite {
+  op: TrackedOp;
+  transactionId: string | null;
+}
+
+/**
+ * Reports whether `atomicExecute` ran the callback at all — deliberately
+ * does not reset to `false` once the callback returns, unlike a "currently
+ * inside a transaction" flag would: the assertion this exists for
+ * (`sending`'s "in one transaction" test) checks it AFTER `execute()` has
+ * already resolved, so a flag that reset itself in a `finally` block could
+ * never observe anything but `false` there.
+ *
+ * `record(op)` is called by the fake repositories below, never by
+ * production code — it stamps each write with whichever transaction id is
+ * currently open (or `null`, outside every `atomicExecute`), so
+ * `bothWritesInSameTransaction` can tell "both writes happened while the
+ * same call to `atomicExecute` was open" apart from "happened in the right
+ * order, but at least one of them outside a transaction, or inside two
+ * different ones".
+ */
+class TrackingUnitOfWork implements UnitOfWorkPort {
+  insideTransaction = false;
+  readonly writes: TrackedWrite[] = [];
+  private openTransactionId: string | null = null;
+  private nextId = 1;
+
+  async atomicExecute<T>(work: () => Promise<T>): Promise<T> {
+    this.insideTransaction = true;
+    const id = `tx-${this.nextId++}`;
+    const outer = this.openTransactionId;
+    this.openTransactionId = id;
+    try {
+      return await work();
+    } finally {
+      // Restored, not cleared to `null` unconditionally — a nested
+      // `atomicExecute` (none of this task's commands call one, but
+      // `DrizzleUnitOfWork.atomicExecute` joins an already-open transaction
+      // rather than opening a second one, so a future command that does
+      // nest must see the OUTER transaction still open on the way back out,
+      // not "no transaction").
+      this.openTransactionId = outer;
+    }
+  }
+
+  record(op: TrackedOp): void {
+    this.writes.push({ op, transactionId: this.openTransactionId });
+  }
+
+  get touchedAfterInsert(): boolean {
+    const insertAt = this.writes.findIndex((w) => w.op === "insert");
+    const touchAt = this.writes.findIndex((w) => w.op === "touch");
+    return insertAt !== -1 && touchAt !== -1 && insertAt < touchAt;
+  }
+
+  /**
+   * The claim `SendMessageCommand`'s own doc comment makes: not merely that
+   * touch happened after insert in program order (a `touch` call sitting
+   * entirely outside `atomicExecute`, positioned after it, would also
+   * satisfy that), but that both writes were logged while ONE SAME
+   * `atomicExecute` invocation was the currently-open one.
+   *
+   * A production change that narrows the transaction to cover only the
+   * insert — `await this.unitOfWork.atomicExecute(() => this.messages.insert(message));
+   * await this.threads.touch(...)` outside it — keeps the writes in the
+   * right order and still calls `atomicExecute` once, so `insideTransaction`
+   * and `touchedAfterInsert` both stay green under it. This getter is what
+   * actually catches that: `touch`'s `transactionId` is `null` (recorded
+   * outside every open transaction), so it can never equal `insert`'s.
+   */
+  get bothWritesInSameTransaction(): boolean {
+    const insert = this.writes.find((w) => w.op === "insert");
+    const touch = this.writes.find((w) => w.op === "touch");
+    return (
+      insert !== undefined &&
+      touch !== undefined &&
+      insert.transactionId !== null &&
+      insert.transactionId === touch.transactionId
+    );
+  }
+}
+
 /**
  * A thread repository whose `findVisible` actually enforces the rule it
  * exists to enforce — the customer on the thread, or a member of its
@@ -37,7 +132,7 @@ class FakeThreadRepository implements ThreadRepositoryPort {
 
   constructor(
     private readonly members: Map<string, string[]>,
-    private readonly order?: string[],
+    private readonly tracker?: TrackingUnitOfWork,
   ) {}
 
   seed(row: ThreadRow): void {
@@ -63,7 +158,7 @@ class FakeThreadRepository implements ThreadRepositoryPort {
   }
 
   async touch(threadId: string, at: Date): Promise<void> {
-    this.order?.push("touch");
+    this.tracker?.record("touch");
     this.touched.push({ threadId, at });
     const row = this.threads.get(threadId);
     if (row) this.threads.set(threadId, { ...row, lastMessageAt: at });
@@ -91,10 +186,10 @@ class FakeMessageRepository implements MessageRepositoryPort {
   markReadCalls: { threadId: string; viewerUserId: string; at: Date }[] = [];
   markReadResult = 1;
 
-  constructor(private readonly order?: string[]) {}
+  constructor(private readonly tracker?: TrackingUnitOfWork) {}
 
   async insert(message: Message): Promise<string> {
-    this.order?.push("insert");
+    this.tracker?.record("insert");
     this.inserted.push(message);
     return crypto.randomUUID();
   }
@@ -133,33 +228,6 @@ class FakeProviderReader implements ProviderReaderPort {
   }
 }
 
-/**
- * Reports whether `atomicExecute` ran the callback at all — deliberately
- * does not reset to `false` once the callback returns, unlike a "currently
- * inside a transaction" flag would: the assertion this exists for
- * (`sending`'s "in one transaction" test) checks it AFTER `execute()` has
- * already resolved, so a flag that reset itself in a `finally` block could
- * never observe anything but `false` there. `order` is the log both fake
- * repositories stamp themselves onto, shared by reference, so
- * `touchedAfterInsert` can tell "insert, then touch" apart from the reverse
- * or from "touch never happened".
- */
-class TrackingUnitOfWork implements UnitOfWorkPort {
-  insideTransaction = false;
-  readonly order: string[] = [];
-
-  async atomicExecute<T>(work: () => Promise<T>): Promise<T> {
-    this.insideTransaction = true;
-    return await work();
-  }
-
-  get touchedAfterInsert(): boolean {
-    const insertAt = this.order.indexOf("insert");
-    const touchAt = this.order.indexOf("touch");
-    return insertAt !== -1 && touchAt !== -1 && insertAt < touchAt;
-  }
-}
-
 const customerId = "customer-1";
 const providerId = "provider-1";
 
@@ -177,8 +245,8 @@ let markRead: MarkThreadReadCommand;
 beforeEach(() => {
   members = new Map();
   uow = new TrackingUnitOfWork();
-  fakeThreads = new FakeThreadRepository(members, uow.order);
-  fakeMessages = new FakeMessageRepository(uow.order);
+  fakeThreads = new FakeThreadRepository(members, uow);
+  fakeMessages = new FakeMessageRepository(uow);
   fakeProviders = new FakeProviderReader(members);
 
   existingThread = crypto.randomUUID();
@@ -239,10 +307,16 @@ describe("authorization", () => {
 });
 
 describe("sending", () => {
-  it("writes the message and moves the thread's last_message_at, in one transaction", async () => {
+  it("writes the message and moves the thread's last_message_at, inside the same transaction", async () => {
     await send.execute({ threadId: existingThread, senderUserId: customerId, body: "olá" });
     expect(uow.insideTransaction).toBe(true);
     expect(uow.touchedAfterInsert).toBe(true);
+    // The assertion that actually proves "one transaction", not merely
+    // "a transaction was opened, and touch happened after insert" — see
+    // `bothWritesInSameTransaction`'s own doc comment for the mutation this
+    // alone catches: narrowing `atomicExecute` to wrap only the insert,
+    // order otherwise preserved, leaves both assertions above green.
+    expect(uow.bothWritesInSameTransaction).toBe(true);
   });
 
   it("composes the message through Message.compose, trimmed and stamped with the injected clock", async () => {
