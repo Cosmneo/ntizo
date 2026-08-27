@@ -16,6 +16,7 @@
   "conversationEmptyBody": "Dit is het begin van je gesprek. Stuur het eerste bericht wanneer je zover bent.",
   "loadEarlier": "Eerdere berichten laden",
   "composerPlaceholder": "Schrijf een bericht…",
+  "composerLabel": "Berichttekst",
   "charCount": "{{count}}/{{max}}",
   "send": "Versturen",
   "sending": "Bezig met versturen…",

@@ -58,6 +58,7 @@ export function MessageComposer({
         value={body}
         onChange={(event) => setBody(event.target.value)}
         placeholder={t("composerPlaceholder")}
+        aria-label={t("composerLabel")}
         disabled={disabled}
         maxLength={MESSAGE_BODY_MAX_LENGTH}
         rows={3}

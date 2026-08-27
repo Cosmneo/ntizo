@@ -7,7 +7,7 @@
   "notFoundTitle": "Fornitore non trovato",
   "notFoundBody": "Questo fornitore potrebbe essere stato rimosso, oppure il link non è corretto.",
   "backToDirectory": "Torna a tutti i fornitori",
-  "messageProviderCta": "Messaggio",
+  "messageProviderCta": "Invia messaggio",
   "messageProviderStarting": "Avvio…",
   "messageProviderError": {
     "PROVIDER_NOT_CONTACTABLE": "Al momento non puoi contattare questo fornitore.",

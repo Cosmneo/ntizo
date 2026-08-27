@@ -16,6 +16,7 @@
   "conversationEmptyBody": "Das ist der Anfang eurer Unterhaltung. Schick die erste Nachricht, wenn du bereit bist.",
   "loadEarlier": "Frühere Nachrichten laden",
   "composerPlaceholder": "Schreib eine Nachricht…",
+  "composerLabel": "Nachrichtentext",
   "charCount": "{{count}}/{{max}}",
   "send": "Senden",
   "sending": "Wird gesendet…",

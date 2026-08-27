@@ -7,7 +7,7 @@
   "notFoundTitle": "Provider not found",
   "notFoundBody": "This provider may have been removed, or the link is wrong.",
   "backToDirectory": "Back to all providers",
-  "messageProviderCta": "Message",
+  "messageProviderCta": "Send message",
   "messageProviderStarting": "Starting…",
   "messageProviderError": {
     "PROVIDER_NOT_CONTACTABLE": "This provider can't be messaged right now.",

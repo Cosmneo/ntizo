@@ -16,6 +16,7 @@
   "conversationEmptyBody": "Este es el comienzo de tu conversación. Envía el primer mensaje cuando quieras.",
   "loadEarlier": "Cargar mensajes anteriores",
   "composerPlaceholder": "Escribe un mensaje…",
+  "composerLabel": "Cuerpo del mensaje",
   "charCount": "{{count}}/{{max}}",
   "send": "Enviar",
   "sending": "Enviando…",

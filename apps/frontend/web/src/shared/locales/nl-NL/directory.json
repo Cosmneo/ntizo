@@ -7,7 +7,7 @@
   "notFoundTitle": "Aanbieder niet gevonden",
   "notFoundBody": "Deze aanbieder is mogelijk verwijderd, of de link klopt niet.",
   "backToDirectory": "Terug naar alle aanbieders",
-  "messageProviderCta": "Bericht",
+  "messageProviderCta": "Bericht sturen",
   "messageProviderStarting": "Starten…",
   "messageProviderError": {
     "PROVIDER_NOT_CONTACTABLE": "Je kunt deze aanbieder op dit moment niet berichten.",

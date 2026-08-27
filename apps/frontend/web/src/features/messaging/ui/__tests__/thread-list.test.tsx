@@ -1,0 +1,186 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { Thread } from "@/features/messaging/domain/types";
+import { ThreadList } from "../thread-list";
+
+/** Two rows, distinct timestamps — a one-row fixture cannot prove order. */
+const older: Thread = {
+  id: "t1",
+  providerId: "p1",
+  providerName: "Barbearia Central",
+  lastMessageAt: "2026-08-20T09:00:00Z",
+  lastMessagePreview: "Olá, ainda tem vaga?",
+  unreadCount: 3,
+};
+const newer: Thread = {
+  id: "t2",
+  providerId: "p2",
+  providerName: "Studio Beleza",
+  lastMessageAt: "2026-08-21T10:00:00Z",
+  lastMessagePreview: "Confirmado para sexta.",
+  unreadCount: 0,
+};
+
+function noop() {}
+
+describe("ThreadList", () => {
+  it("renders every thread it is given, in the order it is given", () => {
+    render(
+      <ThreadList
+        threads={[older, newer]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    const rows = screen.getAllByRole("button").filter((b) => b.textContent?.includes("Central") || b.textContent?.includes("Beleza"));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Barbearia Central");
+    expect(rows[1]).toHaveTextContent("Studio Beleza");
+  });
+
+  it("shows the unread count only for a thread that actually has one", () => {
+    render(
+      <ThreadList
+        threads={[older, newer]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByLabelText("3 unread messages")).toBeInTheDocument();
+    // `newer` has `unreadCount: 0` — no badge rendered for it at all, not a
+    // badge showing "0".
+    expect(screen.queryByText("0")).toBeNull();
+  });
+
+  it("marks the selected thread's row so it can be styled apart from the rest", () => {
+    render(
+      <ThreadList
+        threads={[older, newer]}
+        loading={false}
+        selectedThreadId="t2"
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.getByText("Studio Beleza").closest("button")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(screen.getByText("Barbearia Central").closest("button")).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("calls back with the clicked thread's id", async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ThreadList
+        threads={[older, newer]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={onSelect}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    await user.click(screen.getByText("Studio Beleza"));
+    expect(onSelect).toHaveBeenCalledWith("t2");
+  });
+
+  it("falls back to a placeholder name and preview for a degraded row", () => {
+    // `Thread`'s own doc comment: `providerName`/`lastMessagePreview` land
+    // empty when the backend's enrichment lookup misses, not never.
+    const degraded: Thread = { ...older, id: "t3", providerName: "", lastMessagePreview: "" };
+    render(
+      <ThreadList
+        threads={[degraded]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.getByText("Provider")).toBeInTheDocument();
+    expect(screen.getByText("No messages yet")).toBeInTheDocument();
+  });
+
+  it("shows a loading skeleton instead of the list while loading", () => {
+    render(
+      <ThreadList
+        threads={[]}
+        loading
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText(/no conversations/i)).toBeNull();
+  });
+
+  it("shows the empty state only once loading has actually finished", () => {
+    render(
+      <ThreadList
+        threads={[]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.getByText("No conversations yet")).toBeInTheDocument();
+  });
+
+  it("offers to load more only when there is more, and calls back on click", async () => {
+    const onLoadMore = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ThreadList
+        threads={[older]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore
+        onLoadMore={onLoadMore}
+        locale="en-US"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /load more/i }));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no 'load more' control when there is nothing more to load", () => {
+    render(
+      <ThreadList
+        threads={[older]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /load more/i })).toBeNull();
+  });
+});

@@ -75,19 +75,40 @@ describe("MessageComposer", () => {
     ).toMatch(/4000 characters/i);
   });
 
-  it("falls back to a generic sentence for an error code it does not recognise", () => {
+  it("falls back to the generic sentence for an error code it does not recognise", () => {
+    // Pinned to the *actual* generic sentence, not just "some alert
+    // appeared" or "the text isn't UNPROCESSABLE" — both of those pass
+    // against `const errorKey = errorCode ?? "GENERIC";` just as well as
+    // against the real allowlist, because an unmapped code then flows
+    // straight into `t(\`sendError.${errorCode}\`)` and i18next renders the
+    // raw missing key, `sendError.SOMETHING_NEW` — a string a customer
+    // would actually see, and one that contains neither "UNPROCESSABLE" nor
+    // nothing. Asserting the real sentence is the only version of this test
+    // that reds under that mutation. Verified: applying it locally turned
+    // this from green to a failure reporting the raw key instead of the
+    // sentence below.
     render(<MessageComposer onSend={vi.fn()} errorCode="SOMETHING_NEW" />);
-    expect(screen.getByRole("alert")).toBeInTheDocument();
-    // Never the coarse wire code some future refactor might pass through by
-    // mistake — this composer only ever branches on the specific domain
-    // codes `messagingErrorCode` resolves to, documented in
-    // `use-send-message.ts`. `UNPROCESSABLE` never arrives there and must
-    // never leak into this component's rendered text either.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "That message didn't send. Please try again.",
+    );
+  });
+
+  it("never renders the coarse wire code, for a known error or an unknown one", () => {
+    render(<MessageComposer onSend={vi.fn()} errorCode="VALIDATION_ERROR" />);
     expect(screen.getByRole("alert").textContent).not.toMatch(/UNPROCESSABLE/);
   });
 
   it("renders no error banner when there is nothing wrong", () => {
     render(<MessageComposer onSend={vi.fn()} />);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("gives the field an accessible name, not just a placeholder", () => {
+    // A placeholder is not an accessible name — it disappears the moment
+    // there is text in the field, and some assistive tech never announces
+    // it at all. `search-box.tsx` pairs its placeholder with a distinct
+    // `aria-label`; this field follows the same convention.
+    render(<MessageComposer onSend={vi.fn()} />);
+    expect(screen.getByRole("textbox", { name: /message body/i })).toBeInTheDocument();
   });
 });

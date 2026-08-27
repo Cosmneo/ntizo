@@ -7,7 +7,7 @@
   "notFoundTitle": "Anbieter nicht gefunden",
   "notFoundBody": "Dieser Anbieter wurde möglicherweise entfernt, oder der Link ist falsch.",
   "backToDirectory": "Zurück zu allen Anbietern",
-  "messageProviderCta": "Nachricht",
+  "messageProviderCta": "Nachricht senden",
   "messageProviderStarting": "Wird gestartet…",
   "messageProviderError": {
     "PROVIDER_NOT_CONTACTABLE": "Sie können diesen Anbieter im Moment nicht kontaktieren.",

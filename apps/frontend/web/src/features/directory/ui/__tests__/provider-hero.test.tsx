@@ -153,4 +153,31 @@ describe("ProviderHero's message button", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/can't be messaged/i);
     expect(router.state.location.pathname).toBe("/");
   });
+
+  it("falls back to the generic sentence for a code it does not recognise", async () => {
+    // Pinned to the real generic sentence, not to "an alert exists" or "the
+    // text isn't PROVIDER_NOT_CONTACTABLE" — both pass just as well against
+    // `const knownError = errorCode === "PROVIDER_NOT_CONTACTABLE" ? errorCode
+    // : errorCode;`, which deletes the allowlist and lets an unrecognised
+    // code flow straight into `t(\`messageProviderError.${errorCode}\`)`, so
+    // i18next renders the raw missing key instead of a sentence. Asserting
+    // the actual sentence is what reds under that mutation.
+    vi.spyOn(client, "sessionGraphql").mockRejectedValue(
+      new GraphqlError(200, [
+        {
+          message: "Something else went wrong.",
+          extensions: { code: "UNPROCESSABLE", originalCode: "SOME_FUTURE_CODE" },
+        },
+      ]),
+    );
+    const user = userEvent.setup();
+
+    const router = renderHero();
+    await user.click(await screen.findByRole("button", { name: /message/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't start that conversation. Please try again.",
+    );
+    expect(router.state.location.pathname).toBe("/");
+  });
 });
