@@ -8,6 +8,7 @@ import type {
   ReviewRepositoryPort,
   ReviewRow,
   ReviewSummary,
+  UpsertedReview,
 } from "../../../app/ports/outbound/review.repository.port";
 
 /** Every score with nobody on it, so a histogram always has five bars. */
@@ -49,8 +50,15 @@ export class DrizzleReviewRepository implements ReviewRepositoryPort {
    * `updatedAt` is set explicitly because a column default only fires on
    * insert; without this an edited review would keep advertising the date of
    * the verdict it replaced.
+   *
+   * `inserted` reads Postgres' own `xmax` system column rather than trusting
+   * whatever the caller believed going in: it is zero on a row this exact
+   * statement inserted and non-zero on one `DO UPDATE` touched, so it is
+   * telling the truth about this write specifically — unlike a `findByAuthor`
+   * read taken before the transaction, which two racing submissions can both
+   * see as "nothing here". See `UpsertedReview`.
    */
-  async upsert(entity: Review): Promise<string> {
+  async upsert(entity: Review): Promise<UpsertedReview> {
     const [row] = await getDb()
       .insert(review)
       .values({
@@ -69,9 +77,9 @@ export class DrizzleReviewRepository implements ReviewRepositoryPort {
           updatedAt: new Date(),
         },
       })
-      .returning({ id: review.id });
+      .returning({ id: review.id, inserted: sql<boolean>`(xmax = 0)` });
 
-    return row!.id;
+    return { id: row!.id, inserted: row!.inserted };
   }
 
   async removeOwn(providerId: string, authorUserId: string): Promise<boolean> {
@@ -164,14 +172,19 @@ export class DrizzleReviewRepository implements ReviewRepositoryPort {
    * `status = 'active'` is part of the lookup, not a filter after it — the same
    * rule the public provider repository follows, so a business that is not
    * trading cannot be reviewed by anyone who happens to hold its id.
+   *
+   * Selects `name` alongside the existence check rather than making
+   * `SubmitReviewCommand` run a second query for it: this row is already
+   * loaded, and the name only needs to travel with the same read that already
+   * decides whether the request may proceed at all.
    */
-  async isReviewableProvider(providerId: string): Promise<boolean> {
+  async isReviewableProvider(providerId: string): Promise<{ name: string } | null> {
     const [row] = await getDb()
-      .select({ id: provider.id })
+      .select({ name: provider.name })
       .from(provider)
       .where(and(eq(provider.id, providerId), eq(provider.status, "active")))
       .limit(1);
-    return row !== undefined;
+    return row ? { name: row.name } : null;
   }
 
   async worksAtProvider(providerId: string, userId: string): Promise<boolean> {

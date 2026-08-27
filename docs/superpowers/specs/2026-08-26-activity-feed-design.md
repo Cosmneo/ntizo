@@ -11,10 +11,15 @@ activity" panel has.
 
 It is not the notification inbox. That one holds what happened *to* you and
 carries unread state and email delivery. This one holds what *you* did, has
-no unread state, and sends nothing. One event never produces both for the
-same person: an admin approving a provider writes activity for the admin
-("approved X") and a notification for the provider ("your account was
-verified"), which is where that already goes today.
+no unread state, and sends nothing. The two surfaces answer different
+questions, not mutually exclusive ones: an admin approving a provider writes
+activity for the admin ("approved X") and a notification for the provider
+("your account was verified") — two different people, which is where that
+already goes today. Where one event legitimately touches both surfaces for
+the *same* person, they must say different things rather than repeat each
+other — signing up is something you did ("Created your account") and being
+welcomed is something that happened to you ("Welcome to Ntizo"), and both are
+true of the same signup.
 
 ## Why now, and what it can honestly show
 

@@ -1,27 +1,43 @@
 /**
  * One thing that happened, in whichever zone is asking.
  *
- * Deliberately thin. Nothing in the backend writes activity yet — there is no
- * booking, payment or audit context — so this is the shape the three zones
- * have agreed to speak, not a mirror of a table that exists. When a real read
- * model lands it maps onto this or this changes to meet it; what must not
- * happen is three zones each inventing their own row.
+ * `type` + `payload`, not a sentence. The server writes the row without
+ * knowing who will read it or in what language; the client holds the
+ * translations and renders at read time. This is the notification inbox's
+ * mechanism, which already does `t(\`type.${key}\`, { replace: payload })`.
+ *
+ * It used to be a pre-translated `description`, written before any read model
+ * existed, on the reasoning that the zone that fetched it knew what it meant.
+ * A real read model landed and that stopped being true: it is one table, read
+ * the same way by three zones.
  */
 export interface ActivityEntry {
   id: string;
-  /**
-   * What happened, already translated.
-   *
-   * A sentence rather than a code, because the zone that fetched it knows what
-   * it means and the list does not. A list that took `type: "booking.created"`
-   * would need a translation table per zone, which is the zone's job.
-   */
-  description: string;
-  /** ISO 8601. Formatted here, so the three zones cannot format it three ways. */
+  /** Translation key under `activityType.*`. */
+  type: string;
+  /** Interpolation values, snapshotted server-side when the row was written. */
+  payload: Record<string, unknown>;
+  /** ISO 8601. Formatted in the list, so three zones cannot format it three ways. */
   occurredAt: string;
-  /**
-   * The right-hand column: an amount, a status, a name. Optional because not
-   * every kind of event has a second fact worth a column of its own.
-   */
-  meta?: string | null;
+}
+
+/**
+ * Turns a dotted wire type into the i18next key that reads it.
+ *
+ * i18next reads a dot in a key as nesting: `t("activityType.service.published")`
+ * looks for `{ service: { published: ... } }` in the `activityType` namespace,
+ * but the translation file is flat — one entry per event name — so the dots
+ * have to go. Every segment after the first is capitalised and joined, the
+ * same flattening `notification`'s presentation layer does not need only
+ * because its types never had a dot in them to begin with.
+ *
+ * `"service.published"` -> `"servicePublished"`. A key with no dot passes
+ * through unchanged.
+ */
+export function activityTypeKey(type: string): string {
+  const [first, ...rest] = type.split(".");
+  return (
+    (first ?? "") +
+    rest.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("")
+  );
 }

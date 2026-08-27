@@ -159,6 +159,7 @@ function draftService(): Service {
     locationType: "at_provider",
     bookingMode: "priced",
     name: "Corte",
+    actorUserId: "actor-1",
   });
 }
 
@@ -214,7 +215,7 @@ describe("SetServiceMembersCommand", () => {
     const service = draftService();
     service.addOption(fixedOption);
     service.setMembers(["m1"]);
-    service.publish();
+    service.publish("actor-1");
     repo.stored.set(service.id, service);
 
     await expect(

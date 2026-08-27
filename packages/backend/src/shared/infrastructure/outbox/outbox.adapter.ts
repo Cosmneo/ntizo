@@ -47,9 +47,10 @@ export class OutboxAdapter extends BaseOutboundAdapter implements OutboxPort {
   }
 
   /**
-   * Every publisher in the system reaches its consumers through here — 14 use
-   * cases today, 13 in the Provider context and one in User — so the dispatch
-   * below must not be able to fail any of them.
+   * Every publisher in the system reaches its consumers through here — 17 use
+   * cases today: 13 in the Provider context, 2 in Catalog, and one each in
+   * User and Review — so the dispatch below must not be able to fail any of
+   * them.
    *
    * Two things make that true, and both were read rather than assumed:
    *

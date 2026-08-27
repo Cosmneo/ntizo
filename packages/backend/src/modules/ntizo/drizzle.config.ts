@@ -17,6 +17,7 @@ const base: Config = {
     "ntizo_communication",
     "ntizo_review",
     "ntizo_notification",
+    "ntizo_activity",
     "ntizo_outbox",
     "ntizo_reference",
     "ntizo_platform",

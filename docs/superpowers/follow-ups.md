@@ -1314,26 +1314,40 @@ happened.
 
 ---
 
-## 53. Seven DB-backed tests in `bun run test` reach a remote Neon database, and time out when it is far away
+## 53. Eleven DB-backed tests in `bun run test` reach a remote Neon database, and time out when it is far away
 
 **Corrected 2026-08-24 (email-delivery review): this said "two", and named
 only the two that happened to flake on the day it was written. Seven test
 files read `DEV_DB_URL`, and the same argument covers all of them —
-understating the count understates the case for moving them.** The full list,
-from `grep -rl DEV_DB_URL packages/backend/src`:
+understating the count understates the case for moving them.**
 
-- `shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
-- `shared/infrastructure/database/__tests__/catalog-unpublish-sweep.test.ts`
-- `shared/infrastructure/database/__tests__/scheduling-constraints.test.ts`
-- `shared/infrastructure/database/__tests__/notification-constraints.test.ts`
-- `shared/infrastructure/database/__tests__/notification-delivery-constraints.test.ts`
+**Corrected again 2026-08-27 (activity-feed final whole-branch review): seven
+became eleven. The activity-feed branch added three new DB-backed tests
+under `bounded-contexts/activity/__tests__/`, and the same review converted
+`activity-constraints.test.ts` from asserting Drizzle object properties
+against themselves to asserting the real table — which made it a fourth new
+`DEV_DB_URL` reader, the same fix this follow-up has been arguing for since
+it was two. `turbo.json`'s `passThroughEnv` comment carries the same number
+and was corrected with it.** The full list, from `grep -rl DEV_DB_URL
+packages/backend/src`, filtered to `*.test.ts` (that grep also matches the
+two `drizzle.config.ts` files, which are not tests):
+
+- `bounded-contexts/activity/__tests__/activity.repository.test.ts`
+- `bounded-contexts/activity/__tests__/provider-name-reader.adapter.test.ts`
+- `bounded-contexts/activity/__tests__/service-name-reader.adapter.test.ts`
 - `bounded-contexts/notification/__tests__/notification.repository.test.ts`
 - `bounded-contexts/notification/__tests__/notification-delivery.repository.test.ts`
+- `shared/infrastructure/database/__tests__/activity-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
+- `shared/infrastructure/database/__tests__/catalog-unpublish-sweep.test.ts`
+- `shared/infrastructure/database/__tests__/notification-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/notification-delivery-constraints.test.ts`
+- `shared/infrastructure/database/__tests__/scheduling-constraints.test.ts`
 
-The last two arrived with the notifications inbox and the email-delivery
-phase, which is how a pattern spreads: each one is individually right, and
-nobody is counting. `turbo.json`'s `passThroughEnv` comment carries the same
-number and was corrected with it.
+The notification pair arrived with the notifications inbox and the
+email-delivery phase, and the four above arrived with the activity feed —
+which is how a pattern spreads: each one is individually right, and nobody
+is counting.
 
 They connect to `DEV_DB_URL` — the real dev Neon database — and seed their
 fixtures in `beforeAll`. Bun's hook timeout is 5 seconds and none of them
@@ -1373,7 +1387,259 @@ to the change is a gate people learn to re-run rather than read.
 
 ---
 
-## The catalogue search test asks for one page and asserts on all of it
+## 54. The mark-all-read button overflows the page at very narrow widths — pre-existing, not from the activity-column task
+
+Found while verifying Task 10 (the activity column beside the notifications
+inbox) at narrow viewports. At a 200px CSS viewport,
+`document.documentElement.scrollWidth - clientWidth` is 45px on
+`/account/notifications`. The cause is the "Marcar todas como lidas" (mark
+all as read) `<Button>` in `notifications-page.tsx`'s header row
+(`flex flex-wrap items-end justify-between gap-4`): the button's label is one
+`white-space: nowrap` run wider than 200px, the row's `flex-wrap` moves it to
+its own line but does not shrink it, and nothing downstream clips it, so it
+paints past the viewport edge.
+
+Confirmed pre-existing and unrelated to the activity-column change: `git
+stash`-ing `notifications-page.tsx`'s Task 10 diff and re-measuring the old,
+one-column structure at the same 200px width, with the same wait for the
+async notification query to resolve, reproduced the identical 45px overflow
+from the identical button. The two-column grid Task 10 added contributes
+nothing extra at this width — a separate, smaller overflow source inside the
+new `ActivityList` row (its `<li>` lacks its own `min-w-0`, `right≈220px`)
+stays entirely inside the button's larger footprint (`right≈246px`), so the
+*measured* total is identical with or without the activity column.
+
+Judged non-blocking for Task 10 because 200px is narrower than any shipping
+phone (320px/375px, the realistic floor, measured 0 overflow both before and
+after) and the button lives outside that task's one-file scope (the
+component is `@ntizo/frontend-ui`'s `Button`; the long label is
+`notifications.json`'s `markAllRead` copy, translated per-locale). Neither
+was touched implementing Task 10.
+
+**Trigger:** the next task that touches `notifications-page.tsx`'s header row,
+adds another action button beside "Marcar todas como lidas", or does a
+narrow-viewport pass on the notifications page specifically — at that point
+either shrink/wrap the button's label handling or accept a documented minimum
+supported width above 200px.
+
+---
+
+## 55. The provider and admin activity pages still render `[]`
+
+**Corrected 2026-08-27 (final whole-branch review): this said both pages were
+"wired to the real `ActivityList` component and a real `renderDescription`".
+The `ActivityList` half still holds; the `renderDescription` half did not —
+both pages called `t(\`activityType.${activityTypeKey(entry.type)}\`, ...)`
+against the `provider`/`admin` i18next namespaces, and neither `provider.json`
+nor `admin.json` has ever had any `activityType.*` key (only `account.json`
+does). Dead only because `entries={[]}` meant the call was never actually
+made — the moment either page got real data it would have rendered the
+literal string `activityType.servicePublished` for every row, not a
+sentence. Both pages now hand `ActivityList` a stub `renderDescription` that
+does nothing and says so, rather than one that looks wired and is not.**
+
+`ProviderActivityPage` and `AdminActivityPage`
+(`apps/frontend/web/src/features/activity/ui/`) are real, routable pages —
+correct copy, correct header, wired to the real `ActivityList` component —
+but both hand it `entries={[]}` rather than a query result. Their own doc
+comments say why: `useMyActivity()` (Task 8) is the signed-in caller's *own*
+history, `activityMine` scoped to the caller's `actor_user_id`. "What did
+this workspace do" (provider) and "what did an admin do to anything" (admin)
+are both a different filter over the same `ntizo_activity.activity` table —
+grouped by provider, or unfiltered by actor behind an elevated read — not the
+per-caller cursor Task 8 built. The projection, repository method, and
+GraphQL field either would need did not exist before this task, and
+inventing a new query surface was out of scope for "prove the
+read-your-own-history path works." Wiring either page for real also needs
+`activityType.*` keys added to that page's own namespace (`provider.json` /
+`admin.json`) in all eight locales, and rendering through
+`describeActivity` (`viewmodel/describe-activity.ts`) rather than a second
+copy of its null-name fallback.
+
+**Trigger:** the next task that gives an admin or a workspace owner a reason
+to see this page with real content — for admin, the compliance angle its own
+comment names ("the one activity feed whose absence is a compliance problem
+rather than a missing convenience"); for provider, any team-visibility
+feature.
+
+---
+
+## 56. If the isolate dies between the producing commit and the handler dispatch, the activity row is lost
+
+`EventRouter`'s in-process dispatch (follow-up #8) runs after the producing
+transaction commits, inside the same request/isolate — no queue or relay sits
+between the outbox row and the handler that turns it into an activity row.
+If the isolate is recycled, crashes, or the request is cut short after the
+commit but before (or during) the matching `registerXActivityHandlers`
+handler running `RecordActivityInternalCommand`, the outbox row stays durable
+and correctly ordered, but the activity write that should have followed it
+never happens — a silent gap the same shape as the one this task's own e2e
+test proves against, except caused by infrastructure timing rather than a
+missing registration call. The same isolate-death window drops the
+equivalent notification row for the same reason: both ride the same
+in-process router.
+
+**Trigger:** follow-up #8's relay work. Replaying the outbox at rest is what
+recovers both gaps together — do not build a narrower one-off fix for
+activity alone when that lands.
+
+---
+
+## 57. `image-cropper.test.ts` never runs anywhere
+
+`packages/frontend/src/components/__tests__/image-cropper.test.ts` exists on
+disk, has real assertions, and is excluded from every gate that could run
+it. `packages/frontend/vitest.config.ts` excludes it by name, with a comment
+saying it "runs on Bun's own test runner" instead — but the package's only
+`test` script is `"vitest run"`. There is no second script, and no CI step,
+that invokes `bun test` against this package. `bun run test` in
+`packages/frontend` reports `Test Files 2 passed (2)` against three
+`*.test.ts*` files on disk; the third is this one.
+
+Fourth instance on this branch of a test that appears to be coverage and is
+not — the same shape as a test excluded by a stale glob, a test whose gate
+never wires the env var it needs, or a test whose own assertion is weaker
+than its comment claims. Each one individually reads as "somebody will get
+to this"; together they are the pattern this project keeps losing a
+whole-branch review round to.
+
+**Trigger:** the next task that touches `image-cropper.tsx` or its test —
+at that point either add a `"test:bun": "bun test src/components/__tests__/image-cropper.test.ts"`
+script and wire it into whatever runs `packages/frontend`'s gates, or
+rewrite the test against Vitest/jsdom like its two siblings and drop the
+exclusion.
+
+---
+
+## 58. Unused exports from the activity context
+
+Three exports the activity-feed branch added are not imported anywhere
+outside their own definition file:
+
+- `ActivityBootstrap` (`packages/backend/.../bounded-contexts/activity/bootstrap/index.ts`,
+  re-exported from `bounded-contexts/activity/index.ts`) — no caller types a
+  variable against it; `apps/backend/api/src/api.ts:57`'s
+  `const activityBootstrap = bootstrapActivity();` lets TypeScript infer the
+  shape instead.
+- `ActivityEntryDTO` (`packages/shared/src/read-models/system/activity/activity.schema.ts`)
+  — every consumer either infers it from `activityEntryReadModel` or reads
+  through `ActivityPageDTO`/`ActivityEntry` instead.
+- `bootstrapActivity().repositories.activity` — `api.ts` reads
+  `activityBootstrap.useCases.internal.recordActivity` and
+  `.adapters.{providerNameReader,serviceNameReader}`, never
+  `.repositories.activity`. The raw `DrizzleActivityRepository` instance is
+  constructed, wrapped into `recordActivity`, and otherwise unreachable from
+  outside the bootstrap function.
+
+None of the three costs anything today — an unused named export is not a
+lint error in this repo, unlike an unused local — so this is a note, not a
+fix. Removing `ActivityBootstrap`/`ActivityEntryDTO` narrows a public
+surface with no runtime effect; removing `repositories` from
+`bootstrapActivity()`'s return would be a real behaviour change if anything
+ever does need direct repository access (a future admin/provider-scoped read
+that bypasses the internal command, say), so that one is better left alone
+until asked for.
+
+**Trigger:** the next dependency-cruiser or knip-style pass over
+`packages/backend`/`packages/shared`, or the next time either type is
+reached for and turns out to already exist.
+
+---
+
+## 59. A spec-listed property has no test: renaming a service must not change what an older activity row says
+
+`docs/superpowers/specs/2026-08-26-activity-feed-design.md`'s Testing
+section lists it first: "The snapshot rule: renaming a service after the
+fact must not change what an older activity row says." Nothing in the
+branch asserts it.
+
+It holds structurally rather than by accident: `catalog.event-handlers.ts`
+snapshots `serviceName` into the activity payload at write time (F5), and
+`describeActivity`/`activityEntryReadModel` never re-resolve a name from a
+live `serviceId` on read — there is no code path left that *could* rewrite
+an old row's rendered sentence after a rename. The two greps that would
+prove a regression instead — a read model that joins back to
+`catalog.service` for the name, or a handler that stores `serviceId` alone
+and expects the reader to resolve it — both come back empty today.
+
+The three `service.renamed` occurrences in
+`bounded-contexts/activity/__tests__/` (`record-activity.test.ts`,
+`activity.aggregate.test.ts`, `activity.repository.test.ts`) are not this
+test in disguise — each uses `"service.renamed"` only as an example of an
+*unknown* activity type string, to prove `Activity.record`/`rehydrate`
+degrade gracefully rather than throw. None of them writes a row, renames the
+service, and re-reads to check the sentence is unchanged.
+
+**Trigger:** the next task that touches `catalog.event-handlers.ts`'s
+`resolveServiceName` call, `describeActivity`, or `activityEntryReadModel`'s
+`payload` field — at that point add the test the spec already promised:
+record `service.published` for a service named "A", rename it to "B" via
+the catalog context, re-fetch the activity page, and assert the row still
+renders "A".
+
+---
+
+## 60. One full-suite run in `packages/backend` reported a different test count than three subsequent runs
+
+Observed once during this review: `bun run test` in `packages/backend`
+reported `809 pass, 4 fail` across 813 tests; three later runs of the
+identical command, no diff in between, reported `813 pass, 1 fail` across
+814 (the 1 failure being `catalog-service-search.test.ts`, already known and
+not this branch's). Not reproduced a second time despite trying; confidence
+is low that this is even the same bug twice rather than two different
+flakes.
+
+The shape matches follow-up #53's argument rather than contradicting it: a
+`beforeAll`/`beforeEach` timing out under contention on the shared remote
+Neon database would produce exactly a swing in both the pass count and the
+total count (a timed-out `beforeAll` can skip every `test` in its
+`describe`, not just fail one), and this branch adds three more
+`DEV_DB_URL`-reading test files to that same contention surface (follow-up
+#53's list, now eleven files deep). Recorded here rather than folded into
+#53 because it is a distinct symptom (count instability, not a single named
+test's timeout) and because "not reproduced" is worth keeping separate from
+"reproduced and diagnosed."
+
+**Trigger:** the next time this reappears with enough detail to name which
+test file's hook timed out — or follow-up #53's move to an isolated
+database, which would make this unreproducible by construction rather than
+merely unreproduced.
+
+---
+
+## 61. `service-name-reader.adapter.test.ts`'s comment overclaims what its primary test proves
+
+The test "resolves the service's own source_locale translation over a
+competing, alphabetically-earlier one" carries the comment: `"Corte de
+Cabelo" only comes back if the join actually matches on source_locale` — but
+it does not only come back then. `DrizzleServiceNameReader.findNameById`'s
+primary query is `service` inner-joined to `serviceTranslation` on *two*
+predicates (`serviceId` and `locale = service.sourceLocale`) with `limit 1`.
+Deleting the second predicate leaves a join on `serviceId` alone, still
+`limit 1`, against a fixture where the `pt-MZ` ("Corte de Cabelo") row was
+inserted before the competing `de-DE` ("Haarschnitt (errado)") row — and
+Postgres returned the `pt-MZ` row first anyway, by heap/insertion order, with
+no `source_locale` predicate doing any of the work. The primary test stayed
+green under that mutation.
+
+This is not a hole in coverage — the fixture is exactly the right shape (a
+real `source_locale` row plus a competing, alphabetically-earlier one), and
+the test *does* catch every mutation a real bug would plausibly take
+(swapping the join predicate for a different column, dropping the `and(...)`
+to only the locale check, reordering the fallback). It caught 3/4 mutations
+tried against it, including the realistic ones. It is a chance pass on one
+specific, unrealistic mutation (deleting a predicate without also changing
+insertion order) — the comment states a stronger guarantee ("only comes back
+if") than the test can currently back up.
+
+**Trigger:** the next time this file is touched — at that point either add
+`orderBy` or a third competing row inserted in the *opposite* order (`de-DE`
+before `pt-MZ`) so the join predicate is the only thing separating the two
+outcomes, or soften the comment to say what is actually proven.
+
+---
+
+## 62. The catalogue search test asks for one page and asserts on all of it
 
 `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
 fails today on `returns everything when no search was asked for`. Its helper calls
@@ -1394,7 +1660,7 @@ to ignore.
 
 ---
 
-## `better_auth.user.phone_number` has a second writer
+## 63. `better_auth.user.phone_number` has a second writer
 
 `BetterAuthIdentityAdapter` is the only place the user bounded context writes that column, and the
 context is careful about it. But better-auth's own `phoneNumber` plugin is registered
@@ -1412,7 +1678,7 @@ adapter, or give the plugin an `after` hook that writes the profile too.
 
 ---
 
-## Two media routes have no behavioural test
+## 64. Two media routes have no behavioural test
 
 `POST /api/media/:providerId/:kind` (provider logo and portfolio) and
 `POST /api/media/category/:categoryId` have never had one. This surfaced while writing

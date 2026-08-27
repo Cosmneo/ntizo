@@ -172,5 +172,23 @@
   "activityListTitle": "Actividad reciente",
   "activityHint": "Lo que has hecho en Ntizo.",
   "activityEmptyTitle": "Aún sin actividad",
-  "activityEmptyBody": "Tus reservas, mensajes y pagos se listarán aquí a medida que ocurran."
+  "activityEmptyBody": "Cuando publiques un servicio, reseñes a un proveedor o invites a alguien, aparecerá aquí.",
+  "activityLoadMore": "Cargar más",
+  "activityType": {
+    "userRegistered": "Creaste tu cuenta",
+    "providerCreated": "Creaste {{providerName}}",
+    "providerStatusDecided": "Revisaste {{providerName}}",
+    "providerStatusDecided_active": "Aprobaste {{providerName}}",
+    "providerStatusDecided_rejected": "Rechazaste {{providerName}}",
+    "providerStatusDecided_suspended": "Suspendiste {{providerName}}",
+    "providerStatusDecided_archived": "Archivaste {{providerName}}",
+    "providerInviteSent": "Invitaste a {{email}}",
+    "providerInviteAccepted": "Te uniste a {{providerName}}",
+    "serviceCreated": "Creaste {{serviceName}}",
+    "servicePublished": "Publicaste {{serviceName}}",
+    "serviceUnpublished": "Despublicaste {{serviceName}}",
+    "reviewCreated": "Reseñaste {{providerName}}",
+    "unnamedProvider": "un proveedor",
+    "unnamedService": "un servicio"
+  }
 }

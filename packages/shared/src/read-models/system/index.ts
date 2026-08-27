@@ -5,3 +5,4 @@ export * from "./service";
 export * from "./wallet";
 export * from "./availability";
 export * from "./notification";
+export * from "./activity";

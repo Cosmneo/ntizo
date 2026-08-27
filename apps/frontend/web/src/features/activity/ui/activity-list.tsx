@@ -14,7 +14,9 @@ import type { ActivityEntry } from "../domain/types";
  *
  * The strings arrive as props rather than through `useTranslation` for that
  * reason: a namespace would have to be one zone's, and the other two would be
- * borrowing it.
+ * borrowing it. `renderDescription` is the same idea applied to one row: the
+ * list gets `type` + `payload`, and only the zone knows the `activityType.*`
+ * namespace to read them through — see `domain/types.ts`'s `activityTypeKey`.
  */
 export function ActivityList({
   entries,
@@ -24,6 +26,7 @@ export function ActivityList({
   emptyTitle,
   emptyBody,
   locale,
+  renderDescription,
   skeletonRows = 5,
 }: {
   entries: readonly ActivityEntry[];
@@ -34,6 +37,8 @@ export function ActivityList({
   emptyTitle: string;
   emptyBody: string;
   locale: string;
+  /** Turns one entry's `type` + `payload` into the sentence this zone shows. */
+  renderDescription: (entry: ActivityEntry) => string;
   /** How many placeholders to draw. Five fills a screen without lying. */
   skeletonRows?: number;
 }) {
@@ -58,7 +63,12 @@ export function ActivityList({
         ) : (
           <ul className="grid list-none gap-0 p-0">
             {entries.map((entry) => (
-              <EntryRow key={entry.id} entry={entry} locale={locale} />
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                locale={locale}
+                description={renderDescription(entry)}
+              />
             ))}
           </ul>
         )}
@@ -67,13 +77,15 @@ export function ActivityList({
   );
 }
 
-/** One event: what it was, when, and the one other fact about it. */
+/** One event: what it was and when. */
 function EntryRow({
   entry,
   locale,
+  description,
 }: {
   entry: ActivityEntry;
   locale: string;
+  description: string;
 }) {
   const when = new Intl.DateTimeFormat(locale, {
     day: "numeric",
@@ -84,25 +96,20 @@ function EntryRow({
   }).format(new Date(entry.occurredAt));
 
   return (
-    <li className="flex items-center justify-between gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5">
+    <li className="flex items-center gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
           <Activity className="h-4 w-4" />
         </span>
         <div className="min-w-0">
           <p className="type-body-medium truncate font-semibold">
-            {entry.description}
+            {description}
           </p>
           <p className="type-caption truncate text-[var(--color-muted-foreground)]">
             {when}
           </p>
         </div>
       </div>
-      {entry.meta && (
-        <p className="type-body-medium shrink-0 text-right font-semibold tabular-nums">
-          {entry.meta}
-        </p>
-      )}
     </li>
   );
 }
@@ -121,7 +128,7 @@ function ActivitySkeleton({ rows }: { rows: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <li
           key={i}
-          className="flex items-center justify-between gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5"
+          className="flex items-center gap-4 border-t border-[var(--color-border)] px-4 py-3.5 first:border-t-0 sm:px-5"
         >
           <div className="flex min-w-0 items-center gap-3">
             <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
@@ -130,7 +137,6 @@ function ActivitySkeleton({ rows }: { rows: number }) {
               <Skeleton className="h-[13px] w-28" />
             </div>
           </div>
-          <Skeleton className="h-[15px] w-20 shrink-0" />
         </li>
       ))}
     </ul>

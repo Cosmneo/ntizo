@@ -1,10 +1,13 @@
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Review } from "../../domain/aggregates/review.aggregate";
+import { ReviewCreated } from "../../domain/events";
 import {
   CannotReviewOwnBusinessError,
   ProviderNotReviewableError,
   ReviewNotEarnedError,
   ReviewNotFoundError,
 } from "../../domain/exceptions";
+import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { ReviewEligibilityPort } from "../ports/outbound/review-eligibility.port";
 import type { ReviewRepositoryPort } from "../ports/outbound/review.repository.port";
 
@@ -29,6 +32,8 @@ export class SubmitReviewCommand {
   constructor(
     private readonly repo: ReviewRepositoryPort,
     private readonly eligibility: ReviewEligibilityPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
   ) {}
 
   async execute(input: {
@@ -37,7 +42,8 @@ export class SubmitReviewCommand {
     rating: number;
     comment: string | null;
   }): Promise<{ reviewId: string }> {
-    if (!(await this.repo.isReviewableProvider(input.providerId))) {
+    const reviewableProvider = await this.repo.isReviewableProvider(input.providerId);
+    if (!reviewableProvider) {
       throw new ProviderNotReviewableError(input.providerId);
     }
     if (await this.repo.worksAtProvider(input.providerId, input.requesterUserId)) {
@@ -66,7 +72,38 @@ export class SubmitReviewCommand {
           comment: input.comment,
         });
 
-    return { reviewId: await this.repo.upsert(review) };
+    const { id: reviewId } = await this.unitOfWork.atomicExecute(async () => {
+      const upserted = await this.repo.upsert(review);
+
+      // Whether this publishes ReviewCreated is decided by what THIS write
+      // did (`upserted.inserted`, Postgres' own xmax), not by whether
+      // `existing` was found — that read ran outside this transaction, and
+      // `review.repository.ts`'s own docblock already names the race a
+      // read-then-branch would reopen: two submissions can both read
+      // "nothing here" and both take this path, but only the one that
+      // actually inserted should announce a review that did not exist
+      // before. Returning `upserted` from this callback, rather than
+      // assigning to a `let` above it, is what makes "publish only after the
+      // write resolved" a type error to get backwards, not just a comment.
+      if (upserted.inserted) {
+        await this.outboxPort.publish(
+          [
+            new ReviewCreated({
+              reviewId: upserted.id,
+              providerId: input.providerId,
+              providerName: reviewableProvider.name,
+              rating: input.rating,
+              actorUserId: input.requesterUserId,
+            }),
+          ],
+          "review",
+        );
+      }
+
+      return upserted;
+    });
+
+    return { reviewId };
   }
 }
 

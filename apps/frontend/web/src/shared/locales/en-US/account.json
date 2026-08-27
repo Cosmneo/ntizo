@@ -172,5 +172,23 @@
   "activityListTitle": "Recent activity",
   "activityHint": "What you have done on Ntizo.",
   "activityEmptyTitle": "No activity yet",
-  "activityEmptyBody": "Your bookings, messages and payments will be listed here as they happen."
+  "activityEmptyBody": "The things you do on Ntizo — services you publish, reviews you write, people you invite — will appear here.",
+  "activityLoadMore": "Load more",
+  "activityType": {
+    "userRegistered": "Created your account",
+    "providerCreated": "Created {{providerName}}",
+    "providerStatusDecided": "Reviewed {{providerName}}",
+    "providerStatusDecided_active": "Approved {{providerName}}",
+    "providerStatusDecided_rejected": "Rejected {{providerName}}",
+    "providerStatusDecided_suspended": "Suspended {{providerName}}",
+    "providerStatusDecided_archived": "Archived {{providerName}}",
+    "providerInviteSent": "Invited {{email}}",
+    "providerInviteAccepted": "Joined {{providerName}}",
+    "serviceCreated": "Created {{serviceName}}",
+    "servicePublished": "Published {{serviceName}}",
+    "serviceUnpublished": "Unpublished {{serviceName}}",
+    "reviewCreated": "Rated {{providerName}}",
+    "unnamedProvider": "a provider",
+    "unnamedService": "a service"
+  }
 }

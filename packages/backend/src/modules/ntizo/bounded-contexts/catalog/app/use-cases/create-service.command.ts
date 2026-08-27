@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Service } from "../../domain/aggregates/service.aggregate";
 import { NotProviderMemberError } from "../../domain/exceptions";
 import type { ServiceRepositoryPort } from "../ports/outbound/service.repository.port";
+import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 
 export interface CreateServiceInput {
   requesterUserId: string;
@@ -15,7 +17,11 @@ export interface CreateServiceInput {
 }
 
 export class CreateServiceCommand {
-  constructor(private readonly repo: ServiceRepositoryPort) {}
+  constructor(
+    private readonly repo: ServiceRepositoryPort,
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly outboxPort: OutboxPort,
+  ) {}
 
   async execute(input: CreateServiceInput): Promise<{ serviceId: string }> {
     // Membership, not ownership: an admin of the workspace may add services.
@@ -55,10 +61,15 @@ export class CreateServiceCommand {
       bookingMode: input.bookingMode,
       name: input.name.trim(),
       description: input.description?.trim() || null,
+      actorUserId: input.requesterUserId,
     });
     service.setMembers([creatorMemberId]);
 
-    await this.repo.save(service);
+    await this.unitOfWork.atomicExecute(async () => {
+      await this.repo.save(service);
+      await this.outboxPort.publish(service.pullEvents(), "service");
+    });
+
     return { serviceId: service.id };
   }
 }

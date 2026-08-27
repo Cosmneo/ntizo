@@ -16,6 +16,14 @@ import {
   PAGE_TOP,
 } from "@/features/landing/ui/palette";
 
+/**
+ * The two brands' own colours, kept out of the markup so the pair reads as a
+ * set. Instagram has no single colour — the gradient is the mark — and this is
+ * the linear approximation of it that its own brand assets use at small sizes.
+ */
+const INSTAGRAM = "linear-gradient(45deg, #F9CE34 0%, #EE2A7B 50%, #6228D7 100%)";
+const LINKEDIN = "#0A66C2";
+
 export function Footer() {
   const { t } = useTranslation("landing"); // t:Footer
   return (
@@ -88,16 +96,18 @@ export function Footer() {
               {t("footer.ourSocials")}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <SocialIcon>
-                <FacebookGlyph />
-              </SocialIcon>
-              <SocialIcon>
+              <SocialIcon
+                href="https://www.instagram.com/ntizo.mz/"
+                label="Instagram"
+                background={INSTAGRAM}
+              >
                 <InstagramGlyph />
               </SocialIcon>
-              <SocialIcon>
-                <XGlyph />
-              </SocialIcon>
-              <SocialIcon>
+              <SocialIcon
+                href="https://www.linkedin.com/company/ntizo/"
+                label="LinkedIn"
+                background={LINKEDIN}
+              >
                 <LinkedInGlyph />
               </SocialIcon>
             </div>
@@ -114,12 +124,17 @@ export function Footer() {
                 flexWrap: "wrap",
               }}
             >
-              <PayChip color="#1a1f71">VISA</PayChip>
-              <PayChip color="#eb001b">MC</PayChip>
-              <PayChip color="#0066b2">AMEX</PayChip>
-              <PayChip color="#003087">PayPal</PayChip>
-              <PayChip color="#000">Apple Pay</PayChip>
-              <PayChip color="#4285f4">G Pay</PayChip>
+              {/* Mobile money first, cards after: this is the order most of
+                  Mozambique actually pays in. The four that left — AMEX,
+                  PayPal, Apple Pay, G Pay — were never accepted; a footer
+                  advertising a payment method the checkout will refuse is a
+                  promise made to someone who has not paid yet. */}
+              <PayChip color="#e60000">M-Pesa</PayChip>
+              {/* TODO(ntizo): approximate. Nobody has checked this against
+                  e-Mola's brand manual — replace it with their own hex. */}
+              <PayChip color="#f58220">e-Mola</PayChip>
+              <PayChip color="#1a1f71">Visa</PayChip>
+              <PayChip color="#eb001b">Mastercard</PayChip>
             </div>
           </div>
         </div>
@@ -180,9 +195,36 @@ function FooterMeta({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SocialIcon({ children }: { children: React.ReactNode }) {
+/**
+ * One social link, wearing its own brand colour.
+ *
+ * `label` is a prop rather than the fixed "social" it used to be: all four
+ * icons announced themselves with the same word, so somebody listening to the
+ * page was told there were links here and nothing about where any of them
+ * went. With `href="#"` on every one, that was at least accurate.
+ */
+function SocialIcon({
+  href,
+  label,
+  background,
+  children,
+}: {
+  href: string;
+  label: string;
+  background: string;
+  children: React.ReactNode;
+}) {
   return (
-    <a href="#" style={socialIcon} aria-label="social">
+    <a
+      href={href}
+      style={{ ...socialIcon, background }}
+      aria-label={label}
+      // Both of these leave the site, so both open away from it. `noopener` is
+      // the half that matters: without it the opened page can reach back
+      // through `window.opener` and navigate this one.
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       {children}
     </a>
   );
@@ -198,13 +240,6 @@ function PayChip({
   return <span style={{ ...payChip, color }}>{children}</span>;
 }
 
-function FacebookGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-3h2.4V9.4c0-2.4 1.4-3.7 3.6-3.7 1 0 2.1.2 2.1.2v2.3h-1.2c-1.2 0-1.5.7-1.5 1.5V12H16l-.4 3h-2.2v7A10 10 0 0 0 22 12z" />
-    </svg>
-  );
-}
 function InstagramGlyph() {
   return (
     <svg
@@ -220,13 +255,6 @@ function InstagramGlyph() {
       <rect x="2" y="2" width="20" height="20" rx="5" />
       <path d="M16 11.4A4 4 0 1 1 12.6 8 4 4 0 0 1 16 11.4z" />
       <line x1="17.5" y1="6.5" x2="17.5" y2="6.5" />
-    </svg>
-  );
-}
-function XGlyph() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M18.244 2H21l-6.52 7.45L22 22h-6.83l-4.78-6.27L4.8 22H2.04l6.97-7.97L2 2h6.91l4.32 5.7L18.244 2zm-1.196 18h1.86L7.06 4H5.07l11.978 16z" />
     </svg>
   );
 }
@@ -291,12 +319,15 @@ const appBadge: React.CSSProperties = {
   width: "fit-content",
 };
 
+/**
+ * The shape only. Each icon supplies its own `background`, and the glyph is
+ * white on top of it — which is why the colour is not here.
+ */
 const socialIcon: React.CSSProperties = {
   width: 38,
   height: 38,
   borderRadius: 999,
-  background: BORDER,
-  color: "#4a5b78",
+  color: "#fff",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",

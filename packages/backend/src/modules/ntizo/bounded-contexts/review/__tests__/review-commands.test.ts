@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Review } from "../domain/aggregates/review.aggregate";
 import {
   CannotReviewOwnBusinessError,
@@ -11,11 +13,36 @@ import type {
   ReviewRepositoryPort,
   ReviewRow,
   ReviewSummary,
+  UpsertedReview,
 } from "../app/ports/outbound/review.repository.port";
 import type {
   ReviewEligibility,
   ReviewEligibilityPort,
 } from "../app/ports/outbound/review-eligibility.port";
+import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
+
+/**
+ * Flips `insideTransaction` around `work()`, and resets an `order` log at the
+ * start of every call, so `FakeRepo.upsert` and `CapturingOutbox.publish` can
+ * each stamp themselves onto it. Mirrors `service-commands.test.ts`'s
+ * `TrackingUnitOfWork` — a fake that just runs `work()` inline cannot tell
+ * "published inside the transaction, after the write" apart from "published
+ * outside it, or before the write", which is exactly the gap Task 4 paid for.
+ */
+class TrackingUnitOfWork implements UnitOfWorkPort {
+  insideTransaction = false;
+  order: string[] = [];
+
+  async atomicExecute<T>(work: () => Promise<T>): Promise<T> {
+    this.insideTransaction = true;
+    this.order = [];
+    try {
+      return await work();
+    } finally {
+      this.insideTransaction = false;
+    }
+  }
+}
 
 class FakeRepo implements ReviewRepositoryPort {
   public upserted: Review | null = null;
@@ -27,15 +54,29 @@ class FakeRepo implements ReviewRepositoryPort {
       works?: boolean;
       existing?: Review | null;
       deletes?: boolean;
+      providerName?: string;
+      /**
+       * What `upsert` reports it did. Defaults to the opposite of
+       * `existing` — an uncontested request behaves exactly as the read
+       * predicted. Overriding this independently of `existing` is what lets
+       * a test express the double-submit race: `findByAuthor` said
+       * "nothing here" (`existing` unset) but by the time this call's
+       * `upsert` actually ran, a racing submission had already inserted the
+       * row, so Postgres reports an update (`inserted: false`) despite the
+       * read never having seen it.
+       */
+      inserted?: boolean;
     } = {},
+    private readonly unitOfWork?: TrackingUnitOfWork,
   ) {}
 
   async findByAuthor(): Promise<Review | null> {
     return this.opts.existing ?? null;
   }
-  async upsert(entity: Review): Promise<string> {
+  async upsert(entity: Review): Promise<UpsertedReview> {
     this.upserted = entity;
-    return "r1";
+    this.unitOfWork?.order.push("upsert");
+    return { id: "r1", inserted: this.opts.inserted ?? !this.opts.existing };
   }
   async removeOwn(providerId: string): Promise<boolean> {
     this.removed = providerId;
@@ -47,11 +88,41 @@ class FakeRepo implements ReviewRepositoryPort {
   async summary(): Promise<ReviewSummary> {
     return { average: null, count: 0, histogram: { one: 0, two: 0, three: 0, four: 0, five: 0 } };
   }
-  async isReviewableProvider(): Promise<boolean> {
-    return this.opts.reviewable ?? true;
+  async isReviewableProvider(): Promise<{ name: string } | null> {
+    if (this.opts.reviewable === false) return null;
+    return { name: this.opts.providerName ?? "Barbearia do João" };
   }
   async worksAtProvider(): Promise<boolean> {
     return this.opts.works ?? false;
+  }
+}
+
+/**
+ * Records what `SubmitReviewCommand` actually hands the outbox, plus — per
+ * batch — whether that call landed inside `unitOfWork.atomicExecute` and
+ * after `repo.upsert` had already run within that same cycle. Mirrors
+ * `service-commands.test.ts`'s `CapturingOutbox`: a fake asserting only "was
+ * publish called" cannot catch a publish moved outside the transaction, or
+ * ahead of the write but still inside it — both look identical to it.
+ */
+class CapturingOutbox implements OutboxPort {
+  published: {
+    events: BaseDomainEvent[];
+    aggregateType: string;
+    insideTransaction: boolean;
+    afterUpsert: boolean;
+  }[] = [];
+
+  constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
+
+  async publish(events: BaseDomainEvent[], aggregateType: string): Promise<void> {
+    this.published.push({
+      events,
+      aggregateType,
+      insideTransaction: this.unitOfWork.insideTransaction,
+      afterUpsert: this.unitOfWork.order.includes("upsert"),
+    });
+    this.unitOfWork.order.push("publish");
   }
 }
 
@@ -66,12 +137,26 @@ class FakeEligibility implements ReviewEligibilityPort {
 
 const INPUT = { requesterUserId: "u1", providerId: "p1", rating: 5, comment: "bom" };
 
+/**
+ * `SubmitReviewCommand` now takes a `UnitOfWorkPort` and an `OutboxPort` —
+ * every test below that does not care about either gets a fresh, unshared
+ * pair from this helper, exactly as `decide-provider-status.command.test.ts`
+ * does for the tests that predate its own outbox wiring.
+ */
+function command(
+  repo: ReviewRepositoryPort,
+  eligibility: ReviewEligibilityPort,
+): SubmitReviewCommand {
+  const unitOfWork = new TrackingUnitOfWork();
+  return new SubmitReviewCommand(repo, eligibility, unitOfWork, new CapturingOutbox(unitOfWork));
+}
+
 describe("SubmitReviewCommand", () => {
   it("writes a first review, carrying the booking that earned it", async () => {
     const repo = new FakeRepo();
     const eligibility = new FakeEligibility({ allowed: true, bookingId: "b7" });
 
-    const result = await new SubmitReviewCommand(repo, eligibility).execute(INPUT);
+    const result = await command(repo, eligibility).execute(INPUT);
 
     expect(result.reviewId).toBe("r1");
     expect(repo.upserted?.rating).toBe(5);
@@ -84,7 +169,7 @@ describe("SubmitReviewCommand", () => {
     const repo = new FakeRepo({ reviewable: false, works: true });
     const eligibility = new FakeEligibility();
 
-    await expect(new SubmitReviewCommand(repo, eligibility).execute(INPUT)).rejects.toThrow(
+    await expect(command(repo, eligibility).execute(INPUT)).rejects.toThrow(
       ProviderNotReviewableError,
     );
     // Existence is checked first so somebody probing ids learns nothing about
@@ -96,7 +181,7 @@ describe("SubmitReviewCommand", () => {
     // The cheapest way to fake a five-star average is to award it to yourself.
     const repo = new FakeRepo({ works: true });
     await expect(
-      new SubmitReviewCommand(repo, new FakeEligibility()).execute(INPUT),
+      command(repo, new FakeEligibility()).execute(INPUT),
     ).rejects.toThrow(CannotReviewOwnBusinessError);
     expect(repo.upserted).toBeNull();
   });
@@ -105,7 +190,7 @@ describe("SubmitReviewCommand", () => {
     const repo = new FakeRepo();
     const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
 
-    await expect(new SubmitReviewCommand(repo, eligibility).execute(INPUT)).rejects.toThrow(
+    await expect(command(repo, eligibility).execute(INPUT)).rejects.toThrow(
       ReviewNotEarnedError,
     );
     expect(repo.upserted).toBeNull();
@@ -124,7 +209,7 @@ describe("SubmitReviewCommand", () => {
     const repo = new FakeRepo({ existing });
     const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
 
-    await new SubmitReviewCommand(repo, eligibility).execute(INPUT);
+    await command(repo, eligibility).execute(INPUT);
 
     expect(eligibility.asked).toBe(0);
     expect(repo.upserted?.rating).toBe(5);
@@ -149,5 +234,128 @@ describe("RemoveReviewCommand", () => {
     await expect(
       new RemoveReviewCommand(repo).execute({ requesterUserId: "u1", providerId: "p1" }),
     ).rejects.toThrow(ReviewNotFoundError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The review context had no event-recording machinery at all — Task 5 gave it
+// one, `ReviewCreated` (see `review-created-event.test.ts` for the event
+// class itself). The lesson Task 4 paid for is that raising an event is only
+// half the job: `Service.pullEvents()` existed and had exactly one caller,
+// a test, because neither catalog command actually published to the outbox.
+// This block asks the question that catches that: does `SubmitReviewCommand`
+// actually hand `ReviewCreated` to the outbox port, inside the transaction
+// that writes the review, and after that write — not merely "was the event
+// constructed".
+// ---------------------------------------------------------------------------
+
+describe("the outbox", () => {
+  it("a first review publishes ReviewCreated, inside the transaction, after the upsert", async () => {
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({ providerName: "Barbearia do João" }, unitOfWork);
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "b7" });
+
+    const { reviewId } = await new SubmitReviewCommand(
+      repo,
+      eligibility,
+      unitOfWork,
+      outbox,
+    ).execute(INPUT);
+
+    expect(outbox.published).toHaveLength(1);
+    const batch = outbox.published[0]!;
+    expect(batch.aggregateType).toBe("review");
+    expect(batch.insideTransaction).toBe(true);
+    expect(batch.afterUpsert).toBe(true);
+
+    expect(batch.events).toHaveLength(1);
+    const event = batch.events[0]!;
+    expect(event.eventName).toBe("review.created");
+    expect(event.payload).toEqual({
+      reviewId,
+      providerId: INPUT.providerId,
+      providerName: "Barbearia do João",
+      rating: INPUT.rating,
+      actorUserId: INPUT.requesterUserId,
+    });
+  });
+
+  it("a double-submit publishes ReviewCreated once, not twice — the write decides, not the read", async () => {
+    // The race review.repository.ts's own upsert docblock names: two
+    // submissions can both run findByAuthor before either transaction
+    // commits, so both see "nothing here" and both take the create path.
+    // Only the first to actually reach the database inserts; the second
+    // resolves through ON CONFLICT ... DO UPDATE. This call simulates being
+    // that second one — `existing` is unset (the read said "new"), but
+    // `inserted: false` (the write says otherwise). Branching the publish
+    // on `existing`, the way this command used to, would publish here; the
+    // real bug this guards is the SAME review publishing ReviewCreated
+    // twice across the two racing calls.
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({ inserted: false }, unitOfWork);
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "b7" });
+
+    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT);
+
+    expect(repo.upserted).not.toBeNull();
+    expect(outbox.published).toHaveLength(0);
+  });
+
+  it("editing an existing review publishes nothing — it is a revision, not a creation", async () => {
+    const existing = Review.create({
+      providerId: "p1",
+      authorUserId: "u1",
+      bookingId: "b1",
+      rating: 1,
+      comment: "mau",
+    });
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({ existing }, unitOfWork);
+    const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
+
+    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT);
+
+    expect(repo.upserted).not.toBeNull();
+    expect(outbox.published).toHaveLength(0);
+  });
+
+  it("a refused submission — provider not reviewable — publishes nothing", async () => {
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({ reviewable: false }, unitOfWork);
+
+    await expect(
+      new SubmitReviewCommand(repo, new FakeEligibility(), unitOfWork, outbox).execute(INPUT),
+    ).rejects.toThrow(ProviderNotReviewableError);
+
+    expect(outbox.published).toHaveLength(0);
+  });
+
+  it("a refused submission — reviewer works there — publishes nothing", async () => {
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({ works: true }, unitOfWork);
+
+    await expect(
+      new SubmitReviewCommand(repo, new FakeEligibility(), unitOfWork, outbox).execute(INPUT),
+    ).rejects.toThrow(CannotReviewOwnBusinessError);
+
+    expect(outbox.published).toHaveLength(0);
+  });
+
+  it("a refused first review — not earned — publishes nothing", async () => {
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({}, unitOfWork);
+    const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
+
+    await expect(
+      new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT),
+    ).rejects.toThrow(ReviewNotEarnedError);
+
+    expect(outbox.published).toHaveLength(0);
   });
 });

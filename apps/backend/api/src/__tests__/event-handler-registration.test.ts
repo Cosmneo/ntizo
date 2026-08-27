@@ -34,11 +34,19 @@ describe("notification event handlers are registered when the API loads", () => 
     });
   }
 
-  it("registers each of them exactly once", () => {
+  it("registers each of them exactly once for notifications", () => {
     // Registration is module-scoped, so it must not be able to accumulate a
     // second copy of every handler — that would raise two rows per event.
+    //
+    // The count pinned here is 2, not 1: Task 6 (activity) also listens on
+    // these same four event names — `event-handler-registration.activity.test.ts`
+    // is the guard for that side — so each of them now carries one
+    // notification handler AND one activity handler on the same router. A
+    // count of 2 still catches a duplicate of either kind; only a count of
+    // exactly 1 would have been wrong to keep asserting once a second,
+    // legitimate consumer existed.
     for (const eventName of REGISTERED_EVENTS) {
-      expect(getEventRouter().handlerCount(eventName)).toBe(1);
+      expect(getEventRouter().handlerCount(eventName)).toBe(2);
     }
   });
 
