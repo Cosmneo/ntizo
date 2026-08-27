@@ -3,7 +3,11 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { and } from "drizzle-orm";
 import { service } from "../../../shared/infrastructure/database/catalog/schemas";
-import { conditionsFor, orderByFor } from "../infrastructure/repositories/drizzle/service-read.repository";
+import {
+  coerceReviewAggregate,
+  conditionsFor,
+  orderByFor,
+} from "../infrastructure/repositories/drizzle/service-read.repository";
 
 /**
  * `orderByFor`'s generated SQL, not a live database.
@@ -53,5 +57,58 @@ describe("conditionsFor — city", () => {
       .toSQL();
     expect(sql).toContain("location_type");
     expect(sql.toLowerCase()).toContain("or");
+  });
+});
+
+/**
+ * `avg()` and `count(*)` never reach the database in this file — see the
+ * module comment on `db` above — so this is the seam that proves the string
+ * Postgres actually returns becomes a number before it reaches
+ * `serviceReadModel`, without needing a live one.
+ */
+describe("coerceReviewAggregate", () => {
+  it("turns the string avg() returns into a rounded number", () => {
+    // Full precision, the way `avg()` over an integer 1–5 column actually
+    // comes back — not the pre-rounded "4.7" a hand-written fixture might use.
+    expect(
+      coerceReviewAggregate({ providerRatingAverage: "4.666666666666667", providerReviewCount: 6 }),
+    ).toEqual({ providerRatingAverage: 4.7, providerReviewCount: 6 });
+  });
+
+  it("keeps a count that arrives as postgres-js's own string", () => {
+    expect(
+      coerceReviewAggregate({ providerRatingAverage: "4", providerReviewCount: "6" }),
+    ).toEqual({ providerRatingAverage: 4, providerReviewCount: 6 });
+  });
+
+  it("a null average stays null, whatever the count", () => {
+    // Never zero: zero is a score a person could have given, and this is the
+    // one function standing between the database and that mistake.
+    expect(
+      coerceReviewAggregate({ providerRatingAverage: null, providerReviewCount: 0 }),
+    ).toEqual({ providerRatingAverage: null, providerReviewCount: 0 });
+  });
+
+  it("treats a missing average the same as a null one", () => {
+    // `undefined` reaches this function only from a hand-built object (a
+    // test, a future caller) — Postgres itself never omits a selected
+    // column — but the fallback must not crash on one either.
+    expect(
+      coerceReviewAggregate({ providerRatingAverage: undefined, providerReviewCount: 0 }),
+    ).toEqual({ providerRatingAverage: null, providerReviewCount: 0 });
+  });
+
+  it("a zero count does not turn a real average into null, or the reverse", () => {
+    // The two fields are coerced independently, each on its own null check —
+    // neither infers its value from the other's. A zero count next to a real
+    // average must not be "corrected" into null, and a null average next to
+    // a nonzero count must not be "corrected" into zero; either guess would
+    // be this function inventing a fact instead of relaying one.
+    expect(
+      coerceReviewAggregate({ providerRatingAverage: "4.5", providerReviewCount: 0 }),
+    ).toEqual({ providerRatingAverage: 4.5, providerReviewCount: 0 });
+    expect(
+      coerceReviewAggregate({ providerRatingAverage: null, providerReviewCount: 3 }),
+    ).toEqual({ providerRatingAverage: null, providerReviewCount: 3 });
   });
 });

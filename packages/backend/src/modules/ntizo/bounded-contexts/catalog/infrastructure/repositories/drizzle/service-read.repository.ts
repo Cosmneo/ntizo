@@ -215,6 +215,43 @@ function reviewAggregate(db: ReturnType<typeof getDb>) {
 }
 
 /**
+ * Turns `reviewAggregate`'s raw joined columns into what `ServicePublicRow`
+ * promises.
+ *
+ * A module-level export, the same seam `orderByFor` and `conditionsFor`
+ * already are: `avg()` returns a string on Postgres, and null on an empty
+ * group. Neither is a number, and a string reaching `serviceReadModel` fails
+ * output validation for the *whole page*, not the one row — a failure mode
+ * worth a direct unit test with no database, not only an inline conversion
+ * nobody re-checks.
+ *
+ * Rounded to one decimal, matching `DrizzleProviderPublicRepository.toDTO`'s
+ * `ratingAverage`. `review.rating` is `integer` with a 1–5 CHECK, so `avg()`
+ * returns full precision — `4.666666666666667`, not `4.7` — and without
+ * rounding here the same business would carry a different number on a
+ * service card than on its own provider page. Both happen to *display* as
+ * "4.7" today because the card formats with `toFixed(1)`, but they would be
+ * different numbers on the wire, and anything that does not format — a test,
+ * a future sort, an export — would see one business disagree with itself.
+ *
+ * `undefined` is treated the same as `null`: a plain object built by hand (a
+ * test, a future caller) that simply omits the field must not crash this
+ * function, and has nothing to report either.
+ */
+export function coerceReviewAggregate(row: {
+  providerRatingAverage: string | null | undefined;
+  providerReviewCount: number | string | null | undefined;
+}): { providerRatingAverage: number | null; providerReviewCount: number } {
+  return {
+    providerRatingAverage:
+      row.providerRatingAverage === null || row.providerRatingAverage === undefined
+        ? null
+        : Math.round(Number(row.providerRatingAverage) * 10) / 10,
+    providerReviewCount: Number(row.providerReviewCount ?? 0),
+  };
+}
+
+/**
  * The `ORDER BY` `listPublished` pages on.
  *
  * A module-level export, not inlined: the same reason `conditionsFor` is
@@ -482,16 +519,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
             ? null
             : Number(agg.fromAmountMinor),
         optionCount: agg?.optionCount ?? 0,
-        // `avg()` comes back as a string on a numeric column and null on an
-        // empty group. Neither is a number, and a string reaching
-        // `serviceReadModel` fails output validation for the whole page rather
-        // than for the one row — the failure mode `activityEntryReadModel`
-        // documents.
-        providerRatingAverage:
-          r.providerRatingAverage === null || r.providerRatingAverage === undefined
-            ? null
-            : Number(r.providerRatingAverage),
-        providerReviewCount: Number(r.providerReviewCount ?? 0),
+        ...coerceReviewAggregate(r),
         categoryTranslations: categoryTranslations
           .filter((t) => t.categoryId === categoryId)
           .map((t) => ({ locale: t.locale, name: t.name, description: null })),
@@ -537,7 +565,6 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     if (!UUID.test(id)) return null;
 
     const db = getDb();
-    const reviewAgg = reviewAggregate(db);
     const [row] = await db
       .select({
         id: service.id,
@@ -546,8 +573,6 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         providerSlug: provider.slug,
         providerStatus: provider.status,
         providerType: provider.type,
-        providerRatingAverage: reviewAgg.average,
-        providerReviewCount: reviewAgg.count,
         providerLogoKey: provider.logoKey,
         providerCity: provider.addressCity,
         providerDistrict: provider.addressDistrict,
@@ -562,9 +587,6 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .from(service)
       .innerJoin(category, eq(category.id, service.categoryId))
       .innerJoin(provider, eq(provider.id, service.providerId))
-      // `leftJoin`, never inner — see `listPublished`'s identical join. A
-      // service whose provider has no reviews yet must still resolve by id.
-      .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .where(eq(service.id, id))
       .limit(1);
 
@@ -597,14 +619,6 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     const { categoryId: _categoryId, ...rest } = row;
     return {
       ...rest,
-      // Same coercion as `listPublished`'s row mapper, and for the same
-      // reason: `avg()` is a string on Postgres, null on an empty group, and
-      // neither is what `ServiceDetailRow` promises.
-      providerRatingAverage:
-        row.providerRatingAverage === null || row.providerRatingAverage === undefined
-          ? null
-          : Number(row.providerRatingAverage),
-      providerReviewCount: Number(row.providerReviewCount ?? 0),
       // The page's own chooser lists cheapest first, which is also the order
       // the "from" price on the browse card is taken from. One order, so the
       // number a reader arrived expecting is the first one they see here.

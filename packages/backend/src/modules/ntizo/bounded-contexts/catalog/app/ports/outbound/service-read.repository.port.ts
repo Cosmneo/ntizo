@@ -113,7 +113,17 @@ export interface ServiceDetailOptionRow {
   translations: { locale: string; name: string }[];
 }
 
-export interface ServiceDetailRow extends ServicePublicRow {
+/**
+ * `Omit`s `providerRatingAverage`/`providerReviewCount` rather than inheriting
+ * them as `ServicePublicRow` requires: nothing on the service's own page reads
+ * either — `serviceDetailReadModel` has no such field, and
+ * `GetServiceProjection` never looks at them — so `getPublishedById` runs no
+ * review join to populate them. A query that ran on every single-service page
+ * load to satisfy a type relationship, for data nothing renders, would be a
+ * real cost paid for nothing. If this page ever wants the score, adding the
+ * join back is one line, and it will be wanted for a reason.
+ */
+export interface ServiceDetailRow extends Omit<ServicePublicRow, "providerRatingAverage" | "providerReviewCount"> {
   providerLogoKey: string | null;
   providerCity: string | null;
   providerDistrict: string | null;
