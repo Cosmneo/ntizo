@@ -31,20 +31,32 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
   return (
     <nav
       aria-label={label}
-      className="relative border-b border-[var(--color-border)] bg-[var(--color-surface-raised)]"
+      // Deliberately NOT positioned, even though everything inside it is. The
+      // hero's search card hangs 16px onto this band and has to be drawn in
+      // front of it — and a positioned element painted after the card wins on
+      // tree order alone, whatever the card does short of taking a z-index of
+      // its own, which it cannot (see `BrowseHero`). A static element paints
+      // its background below every positioned one, so the band goes under the
+      // card and the card's rounded bottom edge survives. The mockup's own
+      // rail is built exactly this way.
+      className="border-b border-[var(--color-border)] bg-[var(--color-surface-raised)]"
     >
-      <Fade side="left" />
-      <Fade side="right" />
+      {/* The positioned wrapper the fades and arrows are measured against.
+          Transparent, so it can sit above the card without covering it. */}
+      <div className="relative">
+        <Fade side="left" />
+        <Fade side="right" />
 
-      <RailArrow side="left" onClick={() => nudge(-SCROLL_STEP)} />
-      <RailArrow side="right" onClick={() => nudge(SCROLL_STEP)} />
+        <RailArrow side="left" onClick={() => nudge(-SCROLL_STEP)} />
+        <RailArrow side="right" onClick={() => nudge(SCROLL_STEP)} />
 
-      <div
-        ref={scroller}
-        data-testid="rail-scroller"
-        className="page-shell flex gap-2 overflow-x-auto py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {children}
+        <div
+          ref={scroller}
+          data-testid="rail-scroller"
+          className="page-shell flex gap-2 overflow-x-auto py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {children}
+        </div>
       </div>
     </nav>
   );

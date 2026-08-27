@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { BadgeCheck, Building2, MapPin, SlidersHorizontal, Star, Tag } from "lucide-react";
@@ -8,6 +8,7 @@ import {
   FacetCount,
   FacetGroup,
   FacetPanel,
+  closeOnChoice,
   facetOptionClass,
 } from "@/shared/components/browse/facet-panel";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
@@ -71,9 +72,13 @@ export function clearedDirectorySearch(current: DirectorySearch): DirectorySearc
  * where somebody arriving looks for it.
  */
 export function ProviderFacets({ current }: { current: DirectorySearch }) {
+  const { t } = useTranslation("directory");
+
   return (
     <aside className="hidden lg:sticky lg:top-5 lg:block">
-      <FacetGroups current={current} />
+      <FacetPanel title={t("filtersTitle")} clear={<ClearAll current={current} />}>
+        <FacetGroups current={current} />
+      </FacetPanel>
     </aside>
   );
 }
@@ -87,12 +92,6 @@ export function ProviderFacets({ current }: { current: DirectorySearch }) {
 function FacetGroups({ current }: { current: DirectorySearch }) {
   const { t, i18n } = useTranslation("directory");
   const cities = useProviderCities();
-  const cleared = clearedDirectorySearch(current);
-  // Nothing to clear is not a disabled link — it is no link. Asked of
-  // `directoryFilterChips` rather than counted again here, because that
-  // function already enumerates exactly the set `clearedDirectorySearch`
-  // drops; a second list is a second place for the two to disagree.
-  const isNarrowed = directoryFilterChips(current).length > 0;
   // The threshold as this reader writes a decimal. Spelling it "4,5" by
   // replacing the point was right for one language and wrong for the other
   // seven the platform ships.
@@ -101,23 +100,7 @@ function FacetGroups({ current }: { current: DirectorySearch }) {
   });
 
   return (
-    <FacetPanel
-      title={t("filtersTitle")}
-      {...(isNarrowed
-        ? {
-            clear: (
-              <Link
-                to="/providers"
-                activeOptions={EXACT_MATCH}
-                search={cleared}
-                className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
-              >
-                {t("filtersClearAll")}
-              </Link>
-            ),
-          }
-        : {})}
-    >
+    <>
       {/* Only when there is more than one place to choose between. A city
           filter offering a single city narrows nothing and takes a group of
           the panel to say so. */}
@@ -187,7 +170,35 @@ function FacetGroups({ current }: { current: DirectorySearch }) {
       <FacetGroup icon={Tag} label={t("filterPrice")}>
         <DirectoryPriceFilter current={current} />
       </FacetGroup>
-    </FacetPanel>
+    </>
+  );
+}
+
+/**
+ * The link that takes every narrowing off at once, or nothing at all.
+ *
+ * Nothing to clear is not a disabled link — it is no link. Asked of
+ * `directoryFilterChips` rather than counted again here, because that function
+ * already enumerates exactly the set `clearedDirectorySearch` drops; a second
+ * list is a second place for the two to disagree.
+ *
+ * `onNavigate` is the sheet's way of closing behind itself. The sidebar passes
+ * nothing, because there is nothing to close.
+ */
+function ClearAll({ current, onNavigate }: { current: DirectorySearch; onNavigate?: () => void }) {
+  const { t } = useTranslation("directory");
+  if (directoryFilterChips(current).length === 0) return null;
+
+  return (
+    <Link
+      to="/providers"
+      activeOptions={EXACT_MATCH}
+      search={clearedDirectorySearch(current)}
+      {...(onNavigate ? { onClick: onNavigate } : {})}
+      className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
+    >
+      {t("filtersClearAll")}
+    </Link>
   );
 }
 
@@ -244,11 +255,15 @@ function FacetOption({
  *
  * It lives here rather than beside the panel it used to wrap: `DirectoryFilters`
  * is gone, and this renders the same `FacetGroups` the sidebar does, so the two
- * placements cannot drift apart.
+ * placements cannot drift apart — which is what the badge depends on, since it
+ * counts narrowings the reader can only reach in here.
+ *
+ * The twin of `MobileFilterBar`, down to the shadow and the border.
  */
 export function MobileDirectoryFilterBar({ current }: { current: DirectorySearch }) {
   const { t } = useTranslation("directory");
   const [open, setOpen] = useState(false);
+  const titleId = useId();
   const count = activeDirectoryFilterCount(current);
 
   return (
@@ -257,8 +272,19 @@ export function MobileDirectoryFilterBar({ current }: { current: DirectorySearch
           pager are not sitting underneath it. */}
       <div className="h-20 lg:hidden" aria-hidden="true" />
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border)] bg-[var(--color-background)] p-3 lg:hidden">
-        <Button type="button" variant="outline" className="w-full" onClick={() => setOpen(true)}>
+      {/* Above the customer bottom bar, not under it. `MobileNav` is `fixed
+          bottom-0 z-40` below `md`, so a bar of its own at `bottom-0` was
+          painted over completely and the filters could not be opened at all on
+          a phone — badge, sheet and every group in it, unreachable. The offset
+          carries the safe-area inset because the nav does too; without it the
+          two overlap by the height of the iOS home indicator. */}
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-[var(--color-border)] bg-[var(--color-background)] p-3 shadow-[var(--shadow-float)] md:bottom-0 lg:hidden">
+        <Button
+          type="button"
+          variant="outline"
+          className="font-rounded h-12 w-full border-[var(--color-border-strong)]"
+          onClick={() => setOpen(true)}
+        >
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
           {t("filtersTitle")}
           {count > 0 && (
@@ -274,17 +300,22 @@ export function MobileDirectoryFilterBar({ current }: { current: DirectorySearch
           side="bottom"
           className="max-h-[85svh] overflow-y-auto rounded-t-[var(--radius-card)] p-5"
         >
-          <SheetHeader>
-            <SheetTitle>{t("filtersTitle")}</SheetTitle>
-          </SheetHeader>
-          {/* Closes on any choice: every control in here navigates, and a sheet
-              left open over the results it just changed hides the answer to the
-              question the reader asked. */}
-          <div className="mt-4" onClick={() => setOpen(false)}>
-            {/* The panel's own heading is dropped here — the sheet's title
-                already says "Filters", and two of them one above the other read
-                as a mistake rather than as structure. */}
-            <div className="[&_h2]:hidden">
+          {/* A dialog of its own, like `MobileSearchSheet`'s: the `Sheet`
+              primitive draws a fixed div and nothing else, so without this a
+              screen reader is handed the groups with no boundary around them
+              and no name saying what they are. */}
+          <div role="dialog" aria-modal="true" aria-labelledby={titleId}>
+            {/* `FacetPanel`'s own heading row is not rendered in here — the
+                sheet's title already says "Filters", and two of them one above
+                the other read as a mistake rather than as structure. The
+                clear-all comes with it, into this row, rather than being left
+                underneath on its own with nothing beside it. */}
+            <SheetHeader className="flex-row items-baseline justify-between gap-3">
+              <SheetTitle id={titleId}>{t("filtersTitle")}</SheetTitle>
+              <ClearAll current={current} onNavigate={() => setOpen(false)} />
+            </SheetHeader>
+
+            <div className="mt-4" onClick={closeOnChoice(() => setOpen(false))}>
               <FacetGroups current={current} />
             </div>
           </div>

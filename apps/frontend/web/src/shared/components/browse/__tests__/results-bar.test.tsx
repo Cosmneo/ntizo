@@ -32,6 +32,35 @@ describe("ResultsBar", () => {
     );
     expect(screen.getByRole("navigation", { name: "Sort" }).className).toContain("overflow-x-auto");
   });
+
+  it("lets the sort shrink, so its own overflow is the thing that gives", () => {
+    // `shrink-0` and `overflow-x-auto` together are a contradiction: a flex
+    // item that refuses to shrink never reaches its own overflow, so the
+    // control kept its full width and took the *page* sideways with it —
+    // 449px of document in a 360px window, every section of it scrollable off
+    // the right edge.
+    render(
+      <ResultsBar summary={<span>8</span>} sortLabel="Sort">
+        <a href="/services">Suggested</a>
+      </ResultsBar>,
+    );
+    const sort = screen.getByRole("navigation", { name: "Sort" });
+    expect(sort.className).not.toContain("shrink-0");
+    expect(sort.className).toContain("min-w-0");
+  });
+
+  it("puts the count and the orders on two rows on a phone", () => {
+    // Side by side at 360px the count and five orders do not fit, and there is
+    // no arrangement of them that does. The mockup stacks them.
+    const { container } = render(
+      <ResultsBar summary={<span>8</span>} sortLabel="Sort">
+        <a href="/services">Suggested</a>
+      </ResultsBar>,
+    );
+    const row = container.firstElementChild!;
+    expect(row.className).toContain("flex-col");
+    expect(row.className).toContain("sm:flex-row");
+  });
 });
 
 describe("segmentClass", () => {

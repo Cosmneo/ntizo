@@ -20,13 +20,22 @@ export function ResultsBar({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    // Two rows on a phone and one from `sm` up, as the mockup draws it. Side
+    // by side at 360px the count and five orders do not fit, and there is no
+    // arrangement of them that does.
+    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <p className="type-body text-[var(--color-muted-foreground)]">{summary}</p>
       {/* Scrolls rather than wraps. Five orders at 360px wrap onto a second
-          row and push the first result off the screen. */}
+          row and push the first result off the screen.
+
+          `min-w-0` and `max-w-full`, never `shrink-0`: a flex item that refuses
+          to shrink never reaches its own `overflow-x-auto`, so the control kept
+          its full width and took the *page* sideways with it instead — 449px of
+          document in a 360px window, and every section of the page scrollable
+          off the right edge. */}
       <nav
         aria-label={sortLabel}
-        className="flex shrink-0 gap-1 overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-background)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex w-full max-w-full min-w-0 gap-1 overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-background)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:w-auto [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </nav>

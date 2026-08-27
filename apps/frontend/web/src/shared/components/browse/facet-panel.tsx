@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, MouseEvent, ReactNode } from "react";
 import { cn } from "@ntizo/frontend-ui";
 
 /**
@@ -140,4 +140,22 @@ export function FacetCount({ value }: { value: number }) {
       {value}
     </span>
   );
+}
+
+/**
+ * Closes the sheet a facet panel is sitting in, when the reader chose
+ * something and only then.
+ *
+ * A sheet left open over the results it just changed hides the answer to the
+ * question the reader asked, so both phone filter bars close on a choice. But
+ * a bare `onClick` on the wrapper closed on *any* click inside it, including
+ * the one that puts the cursor in the price range's "Min" box — so the one
+ * filter in there that has to be typed could not be typed at all.
+ *
+ * A link or a submit is a choice. Anything else is somebody still deciding.
+ */
+export function closeOnChoice(close: () => void) {
+  return (event: MouseEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest("a, button[type='submit']")) close();
+  };
 }

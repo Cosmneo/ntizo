@@ -310,10 +310,93 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 1,
     });
-    const options = await screen.findAllByRole("link", { name: "At your place" });
-    // Two: the sidebar's, and the phone sheet's — both must be clean.
-    expect(options.length).toBeGreaterThan(0);
+    // The sidebar's is the only copy in the document until the bar is opened:
+    // `SheetContent` returns null while closed, so a test that leaves it shut
+    // is checking one link while its comment claims two.
+    const closed = await screen.findAllByRole("link", { name: "At your place" });
+    expect(closed).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /Filters/ }));
+
+    // Two now: the sidebar's, and the phone sheet's — both must be clean.
+    const options = screen.getAllByRole("link", { name: "At your place" });
+    expect(options).toHaveLength(2);
     for (const option of options) expect(option).not.toHaveAttribute("aria-current");
+  });
+
+  it("collapses the search card to one row on a phone, and opens both fields in a sheet", async () => {
+    // Two fields and a button in 360px is a control nobody completes. The card
+    // hides itself below `md` and this takes the width — so the row and the
+    // card are never both on screen, which is why each carries its own half of
+    // the breakpoint.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    const row = await screen.findByRole("button", { name: /What do you need done\?.*Anywhere/ });
+    expect(row.className).toContain("md:hidden");
+    expect(screen.getByRole("search").className).toContain("hidden");
+
+    fireEvent.click(row);
+    const sheet = screen.getByRole("dialog", { name: "What are you looking for?" });
+    expect(within(sheet).getByRole("searchbox", { name: "Service" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("combobox", { name: "City" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Show results" })).toBeInTheDocument();
+  });
+
+  it("carries both of the sheet's fields into the URL, and closes behind itself", async () => {
+    // The same `apply` the card uses, for the same reason: two copies of it is
+    // how one of the two starts dropping a parameter the other keeps. And a
+    // sheet left open over the results it just changed hides the answer.
+    const { router } = renderPage("/services", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /What do you need done\?.*Anywhere/ }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Service" }), {
+      target: { value: "corte" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "City" }), {
+      target: { value: "Beira" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Show results" }));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ q: "corte", city: "Beira" });
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("offers every filter its badge counts, and a way to take them all off", async () => {
+    // The badge counted `city` while the sheet had no city group at all, so it
+    // read 2 over a sheet showing one control the reader could act on. The
+    // sheet renders the sidebar's own groups now, and carries the clear-all
+    // beside its title rather than floating under it.
+    renderPage("/services?city=Maputo&locationType=at_customer", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    const bar = await screen.findByRole("button", { name: /Filters/ });
+    expect(bar).toHaveTextContent("2");
+
+    fireEvent.click(bar);
+    const sheet = screen.getByRole("dialog", { name: "Filters" });
+    expect(within(sheet).getByRole("link", { name: /Maputo/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(sheet).getByRole("link", { name: "At your place" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("link", { name: "Clear all" })).toHaveAttribute(
+      "href",
+      "/services",
+    );
+  });
+
+  it("does not close the filter sheet the moment somebody taps the price box", async () => {
+    // The wrapper closed on any click inside it, including the one that puts
+    // the cursor in "Min" — so the one filter in there that has to be typed
+    // could not be typed at all.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: /Filters/ }));
+    const sheet = screen.getByRole("dialog", { name: "Filters" });
+    fireEvent.click(within(sheet).getByRole("textbox", { name: "Min" }));
+    expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
   });
 
   it("offers no numbered pages when everything matched fits on one", async () => {

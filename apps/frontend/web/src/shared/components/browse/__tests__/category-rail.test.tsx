@@ -26,6 +26,20 @@ describe("CategoryRail", () => {
     expect(scroller.className).not.toContain("flex-wrap");
   });
 
+  it("paints its band from a static element, so the search card can hang over it", () => {
+    // The hero's card straddles this band's top edge by 16px and has to be
+    // drawn in front of it. A positioned element painted after the card wins on
+    // tree order alone — put `relative` on the <nav> itself and the tinted band
+    // covers the card's bottom, which reads as the card being clipped in half.
+    // The positioned wrapper the fades and arrows need is inside, and carries
+    // no background of its own.
+    render(rail);
+    const nav = screen.getByRole("navigation", { name: "Filter by category" });
+    expect(nav.className).not.toContain("relative");
+    expect(nav.className).toContain("bg-[var(--color-surface-raised)]");
+    expect(nav.firstElementChild!.className).toContain("relative");
+  });
+
   it("hides its scroll arrows from assistive technology", () => {
     // They scroll a container a keyboard user already walks with Tab, and the
     // container scrolls to follow focus. Announcing them adds two stops that

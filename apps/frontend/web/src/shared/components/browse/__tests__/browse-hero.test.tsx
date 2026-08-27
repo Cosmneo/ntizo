@@ -30,6 +30,18 @@ describe("BrowseHero", () => {
     expect(container.firstElementChild?.className).not.toContain("overflow-hidden");
   });
 
+  it("gives the search slot no stacking context of its own", () => {
+    // The slot holds the phone's search sheet as well as the card, and a
+    // `z-index` here is a stacking context around both: the sheet came up at
+    // `z-50` inside a `z-10` layer, which put it *under* the filter bar at
+    // `z-30`. The card stays in front of the rail because the rail paints its
+    // band from a static element — see `CategoryRail` — not because of this.
+    render(hero({ search: <div data-testid="search" /> }));
+    const slot = screen.getByTestId("search").parentElement!;
+    expect(slot.className).toContain("relative");
+    expect(slot.className).not.toMatch(/(^|\s)z-\d/);
+  });
+
   it("renders no kicker when none was given", () => {
     const { container } = render(hero());
     expect(container.querySelector("[data-testid='hero-kicker']")).toBeNull();
@@ -63,6 +75,16 @@ describe("BrowseSearchCard", () => {
     );
     expect(screen.getByText("Service")).toBeInTheDocument();
     expect(screen.getByText("City")).toBeInTheDocument();
+  });
+
+  it("is not drawn at all below md, where the trigger takes over", () => {
+    // The two are a pair: this carries `hidden md:block` and
+    // `MobileSearchTrigger` carries `md:hidden`, so one of them is on screen at
+    // every width and never both. Strip either half and both appear at 360px.
+    render(card(<BrowseSearchField icon={Search} label="Service" value="What do you need?" />));
+    const form = screen.getByRole("search");
+    expect(form.className).toContain("hidden");
+    expect(form.className).toContain("md:block");
   });
 
   it("stacks on a phone rather than squeezing three controls into 360px", () => {

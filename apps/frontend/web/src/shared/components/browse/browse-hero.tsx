@@ -53,7 +53,14 @@ export function BrowseHero({
         </div>
 
         {/* The negative margin plus the spacer below is what makes the card
-            straddle the boundary onto the rail rather than float above it. */}
+            straddle the boundary onto the rail rather than float above it.
+
+            `relative` and **no `z-index`**: a layer of its own would be a
+            stacking context around everything the slot holds, and the sheet
+            the phone's trigger opens is in there — trapped at `z-10`, it came
+            up *under* the filter bar. What keeps the card in front of the rail
+            instead is that the rail paints its band from a static element; see
+            `CategoryRail`. */}
         <div className="relative mx-auto mt-8 -mb-[42px] max-w-[1000px]">{search}</div>
         <div className="h-[26px]" aria-hidden="true" />
       </div>
@@ -73,9 +80,14 @@ export function BrowseHero({
  * links that did nothing at all before JavaScript ran. Enter inside a text
  * field is a browser behaviour, not a feature to reimplement.
  *
- * One column on a phone. Two fields and a button squeezed into 360px is a
- * control nobody completes; below `md` each page renders a single collapsed
- * field that opens a full-screen sheet instead.
+ * **Not drawn at all below `md`.** Two fields and a button squeezed into 360px
+ * is a control nobody completes: each field ends up too narrow to show what is
+ * in it. `MobileSearchTrigger` takes over there, and carries the matching
+ * `md:hidden` — the two are a pair, and putting each half on the component
+ * rather than at the call site is what stops one page drawing both at once.
+ *
+ * The grid still stacks to one column, which is what the sheet's own fields
+ * inherit.
  */
 export function BrowseSearchCard({
   action,
@@ -95,7 +107,7 @@ export function BrowseSearchCard({
     <form
       role="search"
       {...(onSubmit ? { onSubmit } : {})}
-      className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-2 shadow-[var(--shadow-float)]"
+      className="hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-2 shadow-[var(--shadow-float)] md:block"
     >
       <div
         data-testid="search-grid"

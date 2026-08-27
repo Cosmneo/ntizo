@@ -19,6 +19,11 @@ import {
   CHIP_REMOVE_CLASS,
 } from "@/shared/components/browse/active-filter-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
+import {
+  MOBILE_SEARCH_FIELD_CLASS,
+  MobileSearchSheet,
+  MobileSearchTrigger,
+} from "@/shared/components/browse/mobile-search-sheet";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
@@ -393,15 +398,21 @@ function resultsScope(values: { category?: string; city?: string }): string {
  * opened it. A control that unmounts under the cursor and drops focus on
  * `<body>` sends a keyboard user back to the top of the document.
  *
- * Below `md` this stacks to one column. Task 21 replaces it there with a single
- * row that opens a sheet — two fields and a button in 360px is a control nobody
- * completes.
+ * **Not drawn at all below `md`.** Two fields and a button in 360px is a
+ * control nobody completes, so the card hides itself there and
+ * `MobileSearchTrigger` takes the width — one row that opens a sheet holding
+ * the same two fields, full size. Both write the URL through one `apply`,
+ * because they are the same search asked at two widths and not two searches.
  */
 function HeroSearch({ current }: { current: DirectorySearch }) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
   const cities = useProviderCities();
   const [open, setOpen] = useState<"q" | "city" | null>(null);
+  // The phone's sheet, which is the whole card at that width. Its own state
+  // rather than a third value of `open`: the two never overlap, because one is
+  // drawn only below `md` and the other only from `md` up.
+  const [sheet, setSheet] = useState(false);
   const [term, setTerm] = useState(current.q ?? "");
   const [city, setCity] = useState(current.city ?? "");
   const termButton = useRef<HTMLButtonElement>(null);
@@ -427,8 +438,14 @@ function HeroSearch({ current }: { current: DirectorySearch }) {
     queueMicrotask(() => back.current?.focus());
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  /**
+   * The drafts, written to the URL.
+   *
+   * Shared by the card and the sheet, which are the same search asked at two
+   * widths — two copies of this is how one of them starts dropping a
+   * parameter the other keeps.
+   */
+  const apply = () => {
     setOpen(null);
     void navigate({
       to: "/providers",
@@ -442,6 +459,11 @@ function HeroSearch({ current }: { current: DirectorySearch }) {
     });
   };
 
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    apply();
+  };
+
   const onEscape = (event: { key: string; preventDefault: () => void }) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -450,62 +472,112 @@ function HeroSearch({ current }: { current: DirectorySearch }) {
   };
 
   return (
-    <BrowseSearchCard
-      onSubmit={submit}
-      action={
-        <button type="submit" className={SEARCH_SUBMIT_CLASS}>
-          <Search className="h-4 w-4" aria-hidden="true" />
-          {t("searchSubmit")}
-        </button>
-      }
-    >
-      {open === "q" ? (
-        <input
-          type="search"
-          autoFocus
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          onKeyDown={onEscape}
-          aria-label={t("searchFieldProvider")}
-          placeholder={t("searchFieldProviderEmpty")}
-          className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
-        />
-      ) : (
-        <BrowseSearchField
-          ref={termButton}
-          icon={Search}
-          label={t("searchFieldProvider")}
-          value={term || t("searchFieldProviderEmpty")}
-          onClick={() => setOpen("q")}
-        />
-      )}
+    <>
+      <BrowseSearchCard
+        onSubmit={submit}
+        action={
+          <button type="submit" className={SEARCH_SUBMIT_CLASS}>
+            <Search className="h-4 w-4" aria-hidden="true" />
+            {t("searchSubmit")}
+          </button>
+        }
+      >
+        {open === "q" ? (
+          <input
+            type="search"
+            autoFocus
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            onKeyDown={onEscape}
+            aria-label={t("searchFieldProvider")}
+            placeholder={t("searchFieldProviderEmpty")}
+            className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
+          />
+        ) : (
+          <BrowseSearchField
+            ref={termButton}
+            icon={Search}
+            label={t("searchFieldProvider")}
+            value={term || t("searchFieldProviderEmpty")}
+            onClick={() => setOpen("q")}
+          />
+        )}
 
-      {open === "city" ? (
-        <select
-          autoFocus
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          onKeyDown={onEscape}
-          aria-label={t("searchFieldCity")}
-          className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
-        >
-          <option value="">{t("searchFieldCityEmpty")}</option>
-          {cities.map((c) => (
-            <option key={c.city} value={c.city}>
-              {c.city}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <BrowseSearchField
-          ref={cityButton}
-          icon={MapPin}
-          label={t("searchFieldCity")}
-          value={city || t("searchFieldCityEmpty")}
-          onClick={() => setOpen("city")}
-        />
-      )}
-    </BrowseSearchCard>
+        {open === "city" ? (
+          <select
+            autoFocus
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            onKeyDown={onEscape}
+            aria-label={t("searchFieldCity")}
+            className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
+          >
+            <option value="">{t("searchFieldCityEmpty")}</option>
+            {cities.map((c) => (
+              <option key={c.city} value={c.city}>
+                {c.city}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <BrowseSearchField
+            ref={cityButton}
+            icon={MapPin}
+            label={t("searchFieldCity")}
+            value={city || t("searchFieldCityEmpty")}
+            onClick={() => setOpen("city")}
+          />
+        )}
+      </BrowseSearchCard>
+
+      <MobileSearchTrigger
+        label={term || t("searchFieldProviderEmpty")}
+        value={city || t("searchFieldCityEmpty")}
+        onOpen={() => setSheet(true)}
+      />
+
+      {/* Real controls, both of them, rather than the card's click-to-open
+          fields: the sheet is the whole screen, so there is nothing to save by
+          collapsing them and nothing on the card left to shift when they
+          expand. */}
+      <MobileSearchSheet
+        open={sheet}
+        onOpenChange={setSheet}
+        title={t("mobileSearchTitle")}
+        apply={t("mobileSearchApply")}
+        onApply={apply}
+      >
+        <label className="grid gap-1.5">
+          <span className="type-caption font-semibold">{t("searchFieldProvider")}</span>
+          <input
+            type="search"
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder={t("searchFieldProviderEmpty")}
+            className={MOBILE_SEARCH_FIELD_CLASS}
+          />
+        </label>
+
+        <label className="grid gap-1.5">
+          <span className="type-caption font-semibold">{t("searchFieldCity")}</span>
+          {/* The same closed set the card offers, for the same reason: a typed
+              place matching none of the cities the server counted is a search
+              that silently returns nothing. */}
+          <select
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className={MOBILE_SEARCH_FIELD_CLASS}
+          >
+            <option value="">{t("searchFieldCityEmpty")}</option>
+            {cities.map((c) => (
+              <option key={c.city} value={c.city}>
+                {c.city}
+              </option>
+            ))}
+          </select>
+        </label>
+      </MobileSearchSheet>
+    </>
   );
 }
 

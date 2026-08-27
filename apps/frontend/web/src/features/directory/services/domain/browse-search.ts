@@ -55,3 +55,31 @@ export function browseSearch(current: BrowseSearch, change: BrowseSearch): Brows
     ...(offset ? { offset } : {}),
   };
 }
+
+/**
+ * How many narrowings are on, for the badge on the phone's filter button.
+ *
+ * The category is excluded: on a phone the rail is still on screen above the
+ * results, so counting it would show a number for something the reader can
+ * already see and clear without opening anything. A price range counts once
+ * however many of its two boxes are filled — counting the bounds separately
+ * shows "2" for a single range. The same rules `activeDirectoryFilterCount`
+ * follows on the directory.
+ *
+ * Every filter counted here has to be reachable inside the sheet the badge
+ * opens. It moved out of `browse-filters.tsx` and down here beside its twin
+ * when the count grew a `city` the sheet had no group for: a badge reading 2
+ * over a sheet offering one control the reader can act on is a badge that
+ * lies about what is on.
+ */
+export function activeFilterCount(current: BrowseSearch): number {
+  return [
+    current.locationType,
+    current.paymentMode,
+    current.providerType,
+    current.language,
+    current.city,
+    current.q,
+    current.minPrice != null || current.maxPrice != null ? "price" : undefined,
+  ].filter((v) => v != null).length;
+}
