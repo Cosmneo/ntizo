@@ -9,6 +9,7 @@ const older: Thread = {
   id: "t1",
   providerId: "p1",
   providerName: "Barbearia Central",
+  customerName: "Ana Silva",
   lastMessageAt: "2026-08-20T09:00:00Z",
   lastMessagePreview: "Olá, ainda tem vaga?",
   unreadCount: 3,
@@ -17,6 +18,7 @@ const newer: Thread = {
   id: "t2",
   providerId: "p2",
   providerName: "Studio Beleza",
+  customerName: "Carlos Mendes",
   lastMessageAt: "2026-08-21T10:00:00Z",
   lastMessagePreview: "Confirmado para sexta.",
   unreadCount: 0,
@@ -118,6 +120,52 @@ describe("ThreadList", () => {
     );
     expect(screen.getByText("Provider")).toBeInTheDocument();
     expect(screen.getByText("No messages yet")).toBeInTheDocument();
+  });
+
+  it("labels each row with customerName instead of providerName when the caller asks for it", () => {
+    // `provider-messages-page.tsx`'s whole reason for this prop: on a
+    // provider's own inbox, `providerName` is this workspace's own name —
+    // identical on every row — and would say nothing about who each
+    // conversation is with. `nameOf` is how that page selects the field
+    // that actually distinguishes the rows.
+    render(
+      <ThreadList
+        threads={[older, newer]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+        nameOf={(thread) => thread.customerName}
+      />,
+    );
+    expect(screen.getByText("Ana Silva")).toBeInTheDocument();
+    expect(screen.getByText("Carlos Mendes")).toBeInTheDocument();
+    // The field `nameOf` was told NOT to read must not leak onto the row.
+    expect(screen.queryByText("Barbearia Central")).toBeNull();
+    expect(screen.queryByText("Studio Beleza")).toBeNull();
+  });
+
+  it("falls back to the caller's own fallbackName, not the hardcoded default, when the selected field is empty", () => {
+    const degraded: Thread = { ...older, id: "t3", customerName: "" };
+    render(
+      <ThreadList
+        threads={[degraded]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+        nameOf={(thread) => thread.customerName}
+        fallbackName="Custom fallback"
+      />,
+    );
+    expect(screen.getByText("Custom fallback")).toBeInTheDocument();
+    // Not the hardcoded "Provider" default this component would otherwise
+    // fall back to — the caller asked for a different one.
+    expect(screen.queryByText("Provider")).toBeNull();
   });
 
   it("shows a loading skeleton instead of the list while loading", () => {

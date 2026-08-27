@@ -298,6 +298,7 @@ describe("threadSummaryReadModel", () => {
     id: "t1",
     providerId: "p1",
     providerName: "Salão X",
+    customerName: "Ana Silva",
     lastMessageAt: "2026-08-24T09:00:00.000Z",
     lastMessagePreview: "See you tomorrow",
     unreadCount: 2,
@@ -306,19 +307,29 @@ describe("threadSummaryReadModel", () => {
   it("accepts a row as the projection returns it", () => {
     const parsed = threadSummaryReadModel.parse(row);
     expect(parsed.unreadCount).toBe(2);
+    // Both names, on the one row — see this model's own doc comment on why
+    // both are always resolved regardless of which inbox is asking.
+    expect(parsed.providerName).toBe("Salão X");
+    expect(parsed.customerName).toBe("Ana Silva");
   });
 
   it("rejects a negative unreadCount rather than clamping it", () => {
     expect(() => threadSummaryReadModel.parse({ ...row, unreadCount: -1 })).toThrow();
   });
 
-  // `providerName`/`lastMessagePreview` are filled in by a lookup the
-  // projection runs beside the thread page, not a column `thread` itself
-  // carries — a row that lookup missed for (a deactivated provider, a
-  // thread with no messages) must degrade, not fail the whole page.
+  // `providerName`/`customerName`/`lastMessagePreview` are filled in by a
+  // lookup the projection runs beside the thread page, not a column
+  // `thread` itself carries — a row that lookup missed for (a deactivated
+  // provider, a customer with no profile row yet, a thread with no
+  // messages) must degrade, not fail the whole page.
   it("degrades a non-string providerName to empty rather than throwing", () => {
     const parsed = threadSummaryReadModel.parse({ ...row, providerName: null });
     expect(parsed.providerName).toBe("");
+  });
+
+  it("degrades a non-string customerName to empty rather than throwing", () => {
+    const parsed = threadSummaryReadModel.parse({ ...row, customerName: null });
+    expect(parsed.customerName).toBe("");
   });
 
   it("degrades a non-string lastMessagePreview to empty rather than throwing", () => {
@@ -333,6 +344,7 @@ describe("threadPageReadModel", () => {
       id: "t1",
       providerId: "p1",
       providerName: "Salão X",
+      customerName: "Ana Silva",
       lastMessageAt: "2026-08-24T09:00:00.000Z",
       lastMessagePreview: "See you tomorrow",
       unreadCount: 0,

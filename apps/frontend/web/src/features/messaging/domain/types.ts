@@ -6,6 +6,17 @@
  * the read side enriches a `Thread` aggregate identically for both
  * (`ListMyThreadsProjection` / `ListProviderThreadsProjection`), so one
  * frontend type covers both lists rather than two near-duplicates.
+ *
+ * **Both `providerName` and `customerName` are always present — which one a
+ * screen displays depends on whose inbox it is, not on this type.**
+ * `CustomerMessagesPage`/`ThreadList`'s default show `providerName` (the
+ * provider a customer is talking to); `ProviderMessagesPage` passes
+ * `ThreadList` a `nameOf` that reads `customerName` instead (the customer a
+ * workspace is talking to) — see that component's own doc comment. Neither
+ * field is optional here or on the wire; the backend resolves both for
+ * every row regardless of which side asked, for the same reason
+ * `threadSummaryReadModel`'s own doc comment gives: one shared enrichment
+ * function, not two near-duplicate ones that would drift.
  */
 export interface Thread {
   id: string;
@@ -17,6 +28,8 @@ export interface Thread {
    * and the response) — a degraded row, not a failed page.
    */
   providerName: string;
+  /** The customer's own current display name. Same degrade-not-fail rule as `providerName` — see this type's own doc comment on which side reads which field. */
+  customerName: string;
   /** ISO 8601. Threads list newest-last-message-first, ordered by this. */
   lastMessageAt: string;
   /** Same degrade-not-fail rule as `providerName`: empty when the lookup missed, or the thread has no messages yet. */

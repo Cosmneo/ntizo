@@ -5,6 +5,7 @@ import type { MessageRepositoryPort } from "../../../../bounded-contexts/communi
 import type { ProviderReaderPort } from "../../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
 import { ThreadNotVisibleError } from "../../../../bounded-contexts/communication/domain/exceptions";
 import type { ProviderNameReaderPort } from "../ports/outbound/provider-name-reader.port";
+import type { CustomerNameReaderPort } from "../ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../ports/outbound/thread-preview-reader.port";
 
 /**
@@ -26,12 +27,20 @@ function clampLimit(limit: number | undefined): number {
 
 /**
  * Turns a page of `Thread` aggregates into the wire shape an inbox row
- * needs. Three enrichments, each one batched query for the whole page rather
+ * needs. Four enrichments, each one batched query for the whole page rather
  * than one per row — unread counts the way `countUnreadForViewer`'s own doc
- * comment demands, provider names and last-message previews the same way for
- * the same reason. Shared by both `ListMyThreadsProjection` and
- * `ListProviderThreadsProjection`: the enrichment is identical, only the
+ * comment demands, provider names, customer names and last-message previews
+ * the same way for the same reason. Shared by both `ListMyThreadsProjection`
+ * and `ListProviderThreadsProjection`: the enrichment is identical, only the
  * page's scope differs.
+ *
+ * **Both names are resolved for both call sites.** `ListMyThreadsProjection`
+ * only ever *displays* `providerName`, `ListProviderThreadsProjection` only
+ * ever displays `customerName` — but this function does not know which side
+ * is asking, and a design that skipped the name the caller supposedly
+ * doesn't need would be two functions wearing one name. See
+ * `threadSummaryReadModel`'s own doc comment for why the DTO itself always
+ * carries both.
  */
 async function toThreadSummaries(
   threads: Thread[],
@@ -39,6 +48,7 @@ async function toThreadSummaries(
   deps: {
     messages: MessageRepositoryPort;
     providerNames: ProviderNameReaderPort;
+    customerNames: CustomerNameReaderPort;
     previews: ThreadPreviewReaderPort;
   },
 ): Promise<ThreadPageDTO["items"]> {
@@ -46,17 +56,20 @@ async function toThreadSummaries(
 
   const threadIds = threads.map((t) => t.id!);
   const providerIds = [...new Set(threads.map((t) => t.providerId))];
+  const customerUserIds = [...new Set(threads.map((t) => t.customerUserId))];
 
-  const [unread, names, previewByThread] = await Promise.all([
+  const [unread, providerNamesById, customerNamesById, previewByThread] = await Promise.all([
     deps.messages.countUnreadForViewer(threadIds, viewerUserId),
     deps.providerNames.findNamesByIds(providerIds),
+    deps.customerNames.findNamesByIds(customerUserIds),
     deps.previews.findLastMessageBodies(threadIds),
   ]);
 
   return threads.map((t) => ({
     id: t.id!,
     providerId: t.providerId,
-    providerName: names.get(t.providerId) ?? "",
+    providerName: providerNamesById.get(t.providerId) ?? "",
+    customerName: customerNamesById.get(t.customerUserId) ?? "",
     lastMessageAt: t.lastMessageAt.toISOString(),
     lastMessagePreview: previewByThread.get(t.id!) ?? "",
     // A thread absent from the map has nothing unread for this viewer —
@@ -78,6 +91,7 @@ export class ListMyThreadsProjection {
     private readonly threads: ThreadRepositoryPort,
     private readonly messages: MessageRepositoryPort,
     private readonly providerNames: ProviderNameReaderPort,
+    private readonly customerNames: CustomerNameReaderPort,
     private readonly previews: ThreadPreviewReaderPort,
   ) {}
 
@@ -91,6 +105,7 @@ export class ListMyThreadsProjection {
     const items = await toThreadSummaries(page.items, input.requesterUserId, {
       messages: this.messages,
       providerNames: this.providerNames,
+      customerNames: this.customerNames,
       previews: this.previews,
     });
     return { items, nextCursor: page.nextCursor };
@@ -111,6 +126,7 @@ export class ListProviderThreadsProjection {
     private readonly messages: MessageRepositoryPort,
     private readonly providers: ProviderReaderPort,
     private readonly providerNames: ProviderNameReaderPort,
+    private readonly customerNames: CustomerNameReaderPort,
     private readonly previews: ThreadPreviewReaderPort,
   ) {}
 
@@ -132,6 +148,7 @@ export class ListProviderThreadsProjection {
     const items = await toThreadSummaries(page.items, input.requesterUserId, {
       messages: this.messages,
       providerNames: this.providerNames,
+      customerNames: this.customerNames,
       previews: this.previews,
     });
     return { items, nextCursor: page.nextCursor };

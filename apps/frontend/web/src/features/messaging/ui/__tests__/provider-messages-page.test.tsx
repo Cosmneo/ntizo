@@ -26,7 +26,13 @@ const threads: Thread[] = [
   {
     id: "t1",
     providerId: "p1",
+    // Deliberately the SAME on every row — `providerId`/`providerName` are
+    // this workspace's own, identical for every thread in its own inbox.
+    // `customerName` is what actually tells the rows apart, and every test
+    // in this file that cares about "who is this conversation with" reads
+    // that, never `providerName`.
     providerName: "Studio Beleza",
+    customerName: "Ana Silva",
     lastMessageAt: "2026-08-20T09:00:00Z",
     lastMessagePreview: "Olá, ainda tem vaga para sexta?",
     unreadCount: 2,
@@ -35,6 +41,7 @@ const threads: Thread[] = [
     id: "t2",
     providerId: "p1",
     providerName: "Studio Beleza",
+    customerName: "Carlos Mendes",
     lastMessageAt: "2026-08-21T10:00:00Z",
     lastMessagePreview: "Obrigado, confirmado!",
     unreadCount: 0,
@@ -167,6 +174,20 @@ describe("ProviderMessagesPage: listing conversations", () => {
     expect(rows[1]).toHaveTextContent("Obrigado, confirmado!");
   });
 
+  it("labels each row with the customer's name, not this workspace's own name repeated on every row", async () => {
+    // The fixture's `providerName` ("Studio Beleza") is identical on both
+    // threads on purpose — it is this workspace's own name, which is what
+    // every row of a provider's own inbox shares. `customerName` is what
+    // actually distinguishes them, and this is the test that reds if the
+    // page ever goes back to reading `providerName` for the row label.
+    renderPage("/provider/studio-beleza/messages");
+
+    expect(await screen.findByText("Ana Silva")).toBeInTheDocument();
+    expect(screen.getByText("Carlos Mendes")).toBeInTheDocument();
+    // Not this workspace's own name — anywhere the row label would be.
+    expect(screen.queryByText("Studio Beleza")).toBeNull();
+  });
+
   it("shows an unread count only for the other side's unread messages", async () => {
     // The fixture's own shape already carries this: t1 has 2 messages the
     // customer sent that this workspace has not yet read, t2 has none —
@@ -214,6 +235,23 @@ describe("ProviderMessagesPage: listing conversations", () => {
     expect(await screen.findByText(/couldn't load your conversations/i)).toBeInTheDocument();
     // Not the ordinary empty state — an error must not read as "nothing to see here".
     expect(screen.queryByText("No conversations yet")).toBeNull();
+  });
+});
+
+describe("ProviderMessagesPage: the open conversation's header", () => {
+  it("names the customer the thread is with, not this workspace's own name", async () => {
+    renderPage("/provider/studio-beleza/messages?thread=t1");
+
+    // "Ana Silva" legitimately appears twice once t1 is open — once in its
+    // still-mounted list row, once in the header — so this scopes to the
+    // header's own `<p>` (the row's own name is a `<span>`) rather than
+    // asserting existence anywhere on the page, which `findByText` alone
+    // would refuse to do once there are two matches.
+    expect(await screen.findByText("Ana Silva", { selector: "p" })).toBeInTheDocument();
+    // t1's `customerName` is "Ana Silva" — the header must say who this
+    // conversation is with, not repeat "Studio Beleza" (this workspace's
+    // own name, and the one thing every open conversation already shares).
+    expect(screen.queryByText("Studio Beleza")).toBeNull();
   });
 });
 

@@ -33,17 +33,25 @@ import { MessageComposer } from "@/features/messaging/ui/message-composer";
  * opened it.** `useMarkRead` marks every unread message in a thread read
  * for the whole team, not just for the signed-in viewer — that is the
  * backend's own design (`MessageRepositoryPort.markReadForViewer`'s doc
- * comment) and is not worked around here. One consequence worth flagging
- * because it is easy to miss: `ThreadView`'s `viewerUserId` decides which
- * bubble renders as "mine" by exact `senderUserId` match against the
- * signed-in staff member's own id, not against "anybody on this provider's
- * team" — the read model has no way to say "sent by this workspace" short
- * of that, since `Thread`/`Message` carry no `customerUserId` on the wire
- * (see this file's own note below). A second staff member replying in the
- * same thread will render as if the first one's earlier reply came from
- * the other side. That is a real gap, not a bug introduced here — closing
- * it needs the thread's customer identity on the wire, which today's
- * `ThreadSummaryDTO`/`MessagePageDTO` do not carry.
+ * comment) and is not worked around here.
+ *
+ * **The list and the header name the customer, not this workspace.**
+ * `Thread.providerName` is this *workspace's own* name — identical on every
+ * row of a provider's own inbox, since every row belongs to the one
+ * provider whose inbox this is — so both the row and the open conversation's
+ * header read `thread.customerName` instead (`ThreadList`'s `nameOf` prop;
+ * see `Thread`'s own doc comment for why both fields exist on one shape).
+ *
+ * **Known, deliberate gap, not fixed here — labelling *which* teammate sent
+ * a reply.** `ThreadView`'s `viewerUserId` decides which bubble renders as
+ * "mine" by exact `senderUserId` match against the signed-in staff member's
+ * own id, not against "anybody on this provider's team". `messageReadModel`
+ * carries `senderUserId` and no name, so a second staff member's earlier
+ * reply in the same thread renders as if it came from the customer rather
+ * than a colleague. Invisible in the common single-owner workspace (the
+ * only shape this phase's e2e exercises); a real multi-staff workspace
+ * deserves its own naming decision, not one rushed in alongside
+ * `customerName`.
  */
 export function ProviderMessagesPage() {
   const { t: tProvider } = useTranslation("provider");
@@ -87,6 +95,8 @@ export function ProviderMessagesPage() {
 
   if (!activeProvider) return null;
 
+  const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? null;
+
   const selectThread = (threadId: string) =>
     void navigate({
       to: "/provider/$slug/messages",
@@ -119,6 +129,8 @@ export function ProviderMessagesPage() {
               locale={locale}
               emptyTitle={t("emptyTitle")}
               emptyBody={t("providerEmptyBody")}
+              nameOf={(thread) => thread.customerName}
+              fallbackName={t("unknownCustomer")}
             />
           )}
         </div>
@@ -141,15 +153,16 @@ export function ProviderMessagesPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <p className="type-body-medium truncate font-semibold">
-                  {/* Always the fallback, never `selectedThread?.providerName`
-                      the way the customer's header uses it: on this side
-                      that field is this *workspace's own* name, identical
-                      on every row (`ListProviderThreadsProjection` enriches
-                      every thread with the one provider's name it belongs
-                      to) — showing it here would repeat "Barbearia Central"
-                      atop every conversation rather than say who it is
-                      with. See this file's doc comment. */}
-                  {t("conversationFallbackTitle")}
+                  {/* `customerName`, never `selectedThread?.providerName`
+                      the way the customer's own header reads it — on this
+                      side `providerName` is this workspace's own name.
+                      Same fallback the customer's header uses for the
+                      identical two cases (the thread not yet resolved in
+                      the loaded page, or the name lookup missing) — a
+                      neutral "Conversation" reads better as a heading than
+                      the row-level `unknownCustomer` placeholder does. See
+                      this file's doc comment. */}
+                  {selectedThread?.customerName || t("conversationFallbackTitle")}
                 </p>
               </div>
 

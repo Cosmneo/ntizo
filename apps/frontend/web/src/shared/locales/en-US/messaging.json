@@ -6,6 +6,7 @@
   "providerEmptyBody": "When a customer messages you, the conversation appears here.",
   "loadMore": "Load more",
   "unknownProvider": "Provider",
+  "unknownCustomer": "Customer",
   "noPreview": "No messages yet",
   "unreadBadge": "{{count}} unread message",
   "unreadBadge_other": "{{count}} unread messages",

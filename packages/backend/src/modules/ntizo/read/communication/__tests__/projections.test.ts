@@ -12,6 +12,7 @@ import type {
 } from "../../../bounded-contexts/communication/app/ports/outbound/message.repository.port";
 import type { ProviderReaderPort } from "../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
 import type { ProviderNameReaderPort } from "../app/ports/outbound/provider-name-reader.port";
+import type { CustomerNameReaderPort } from "../app/ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../app/ports/outbound/thread-preview-reader.port";
 import {
   ListMyThreadsProjection,
@@ -132,6 +133,15 @@ class FakeProviderNameReader implements ProviderNameReaderPort {
   }
 }
 
+class FakeCustomerNameReader implements CustomerNameReaderPort {
+  public readonly calls: string[][] = [];
+  constructor(private readonly names: Map<string, string> = new Map()) {}
+  async findNamesByIds(customerUserIds: string[]): Promise<Map<string, string>> {
+    this.calls.push([...customerUserIds]);
+    return this.names;
+  }
+}
+
 class FakeThreadPreviewReader implements ThreadPreviewReaderPort {
   public readonly calls: string[][] = [];
   constructor(private readonly bodies: Map<string, string> = new Map()) {}
@@ -146,8 +156,9 @@ describe("ListMyThreadsProjection", () => {
     const threads = new FakeThreadRepository();
     const messages = new FakeMessageRepository();
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
       requesterUserId: "u1",
     });
     expect(threads.calls).toEqual(["listForCustomer:u1:20:none"]);
@@ -157,8 +168,9 @@ describe("ListMyThreadsProjection", () => {
     const threads = new FakeThreadRepository();
     const messages = new FakeMessageRepository();
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
       requesterUserId: "u1",
       limit: 5000,
     });
@@ -169,8 +181,9 @@ describe("ListMyThreadsProjection", () => {
     const threads = new FakeThreadRepository();
     const messages = new FakeMessageRepository();
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
       requesterUserId: "u1",
       limit: 0,
     });
@@ -181,8 +194,9 @@ describe("ListMyThreadsProjection", () => {
     const threads = new FakeThreadRepository();
     const messages = new FakeMessageRepository();
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
       requesterUserId: "u9",
     });
     expect(threads.calls).toEqual(["listForCustomer:u9:20:none"]);
@@ -192,8 +206,9 @@ describe("ListMyThreadsProjection", () => {
     const threads = new FakeThreadRepository();
     const messages = new FakeMessageRepository();
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
       requesterUserId: "u1",
       cursor: "2026-08-20T09:00:00.000Z|t1",
     });
@@ -206,8 +221,18 @@ describe("ListMyThreadsProjection", () => {
     async () => {
       const twoThreads: ThreadPage = {
         items: [
-          thread({ id: "t1", providerId: "p1", lastMessageAt: new Date("2026-08-21T09:00:00.000Z") }),
-          thread({ id: "t2", providerId: "p2", lastMessageAt: new Date("2026-08-20T09:00:00.000Z") }),
+          thread({
+            id: "t1",
+            providerId: "p1",
+            customerUserId: "u-customer-1",
+            lastMessageAt: new Date("2026-08-21T09:00:00.000Z"),
+          }),
+          thread({
+            id: "t2",
+            providerId: "p2",
+            customerUserId: "u-customer-2",
+            lastMessageAt: new Date("2026-08-20T09:00:00.000Z"),
+          }),
         ],
         nextCursor: "2026-08-20T09:00:00.000Z|t2",
       };
@@ -221,15 +246,21 @@ describe("ListMyThreadsProjection", () => {
         ]),
       );
       const names = new FakeProviderNameReader(new Map([["p1", "Salão X"]]));
+      // Same "one row's lookup misses, the other's does not" shape
+      // `names` above already has — `u-customer-2` deliberately absent, so
+      // this also proves `customerName` degrades to "" per row, not
+      // per-page.
+      const customerNames = new FakeCustomerNameReader(new Map([["u-customer-1", "Ana Silva"]]));
       const previews = new FakeThreadPreviewReader(new Map([["t1", "See you tomorrow"]]));
 
-      const result = await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+      const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
         requesterUserId: "u1",
       });
 
-      // One call, carrying every id on the page — not two calls, one per row.
+      // One call each, carrying every id on the page — not two calls, one per row.
       expect(messages.calls).toEqual(["countUnreadForViewer:[t1,t2]:u1"]);
       expect(names.calls).toEqual([["p1", "p2"]]);
+      expect(customerNames.calls).toEqual([["u-customer-1", "u-customer-2"]]);
       expect(previews.calls).toEqual([["t1", "t2"]]);
 
       expect(result).toEqual({
@@ -238,6 +269,7 @@ describe("ListMyThreadsProjection", () => {
             id: "t1",
             providerId: "p1",
             providerName: "Salão X",
+            customerName: "Ana Silva",
             lastMessageAt: "2026-08-21T09:00:00.000Z",
             lastMessagePreview: "See you tomorrow",
             unreadCount: 3,
@@ -245,8 +277,9 @@ describe("ListMyThreadsProjection", () => {
           {
             id: "t2",
             providerId: "p2",
-            // Missed by both lookups — degrades to empty/zero, not an error.
+            // Missed by every lookup — degrades to empty/zero, not an error.
             providerName: "",
+            customerName: "",
             lastMessageAt: "2026-08-20T09:00:00.000Z",
             lastMessagePreview: "",
             unreadCount: 0,
@@ -261,13 +294,15 @@ describe("ListMyThreadsProjection", () => {
     const threads = new FakeThreadRepository(emptyThreadPage);
     const messages = new FakeMessageRepository();
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    const result = await new ListMyThreadsProjection(threads, messages, names, previews).execute({
+    const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
       requesterUserId: "u1",
     });
     expect(result).toEqual({ items: [], nextCursor: null });
     expect(messages.calls).toEqual([]);
     expect(names.calls).toEqual([]);
+    expect(customerNames.calls).toEqual([]);
     expect(previews.calls).toEqual([]);
   });
 });
@@ -278,10 +313,11 @@ describe("ListProviderThreadsProjection", () => {
     const messages = new FakeMessageRepository();
     const providers = new FakeProviderReader({ providerId: "p1", userId: "u-owner" });
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
 
     await expect(
-      new ListProviderThreadsProjection(threads, messages, providers, names, previews).execute({
+      new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
         requesterUserId: "u-stranger",
         providerId: "p1",
       }),
@@ -295,24 +331,36 @@ describe("ListProviderThreadsProjection", () => {
 
   it("gets a real member their page, after the membership check passes for that exact pair", async () => {
     const page: ThreadPage = {
-      items: [thread({ id: "t1", providerId: "p1" })],
+      items: [thread({ id: "t1", providerId: "p1", customerUserId: "u-customer-1" })],
       nextCursor: null,
     };
     const threads = new FakeThreadRepository(page);
     const messages = new FakeMessageRepository(emptyMessagePage, new Map([["t1", 1]]));
     const providers = new FakeProviderReader({ providerId: "p1", userId: "u-owner" });
     const names = new FakeProviderNameReader(new Map([["p1", "Salão X"]]));
+    // `Ana Silva` is who this workspace's inbox exists to name — a provider
+    // member reading their own list needs to know which customer each row
+    // is with, and `providerName` (their own workspace's name) cannot say
+    // that; only `customerName` can. See `ProviderMessagesPage`'s own doc
+    // comment on the frontend side of this same requirement.
+    const customerNames = new FakeCustomerNameReader(new Map([["u-customer-1", "Ana Silva"]]));
     const previews = new FakeThreadPreviewReader(new Map([["t1", "hi"]]));
 
-    const result = await new ListProviderThreadsProjection(threads, messages, providers, names, previews).execute({
+    const result = await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
       requesterUserId: "u-owner",
       providerId: "p1",
     });
 
     expect(providers.calls).toEqual(["isMember:p1:u-owner"]);
     expect(threads.calls).toEqual(["listForProvider:p1:20:none"]);
+    expect(customerNames.calls).toEqual([["u-customer-1"]]);
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]).toMatchObject({ id: "t1", providerName: "Salão X", unreadCount: 1 });
+    expect(result.items[0]).toMatchObject({
+      id: "t1",
+      providerName: "Salão X",
+      customerName: "Ana Silva",
+      unreadCount: 1,
+    });
   });
 
   // The same provider, two different requesters. A fixture holding only
@@ -326,8 +374,9 @@ describe("ListProviderThreadsProjection", () => {
     const messages = new FakeMessageRepository();
     const providers = new FakeProviderReader({ providerId: "p1", userId: "u-owner" });
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    const projection = new ListProviderThreadsProjection(threads, messages, providers, names, previews);
+    const projection = new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews);
 
     await expect(
       projection.execute({ requesterUserId: "u-owner", providerId: "p1" }),
@@ -343,8 +392,9 @@ describe("ListProviderThreadsProjection", () => {
     const messages = new FakeMessageRepository();
     const providers = new FakeProviderReader({ providerId: "p1", userId: "u-owner" });
     const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListProviderThreadsProjection(threads, messages, providers, names, previews).execute({
+    await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
       requesterUserId: "u-owner",
       providerId: "p1",
       limit: 5000,

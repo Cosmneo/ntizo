@@ -25,7 +25,7 @@ import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 const MY_THREADS = `
   query MyThreads($input: CommunicationMyThreadsInput!) {
     communicationMyThreads(input: $input) {
-      items { id providerId providerName lastMessageAt lastMessagePreview unreadCount }
+      items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }
       nextCursor
     }
   }`;
@@ -33,7 +33,7 @@ const MY_THREADS = `
 const PROVIDER_THREADS = `
   query ProviderThreads($input: CommunicationProviderThreadsInput!) {
     communicationProviderThreads(input: $input) {
-      items { id providerId providerName lastMessageAt lastMessagePreview unreadCount }
+      items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }
       nextCursor
     }
   }`;

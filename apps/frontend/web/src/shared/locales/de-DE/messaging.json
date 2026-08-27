@@ -6,6 +6,7 @@
   "providerEmptyBody": "Sobald dir ein Kunde schreibt, erscheint das Gespräch hier.",
   "loadMore": "Mehr laden",
   "unknownProvider": "Anbieter",
+  "unknownCustomer": "Kunde",
   "noPreview": "Noch keine Nachrichten",
   "unreadBadge": "{{count}} ungelesene Nachricht",
   "unreadBadge_other": "{{count}} ungelesene Nachrichten",

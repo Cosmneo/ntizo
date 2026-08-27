@@ -24,6 +24,8 @@ export function ThreadList({
   locale,
   emptyTitle,
   emptyBody,
+  nameOf,
+  fallbackName,
 }: {
   threads: readonly Thread[];
   loading: boolean;
@@ -41,8 +43,22 @@ export function ThreadList({
    */
   emptyTitle?: string;
   emptyBody?: string;
+  /**
+   * Which of a `Thread`'s two names each row labels itself with. Defaults
+   * to `providerName` — the customer's own inbox reading "who am I talking
+   * to" off the provider side of the row. `provider-messages-page.tsx`
+   * passes `(t) => t.customerName` instead: on that side `providerName` is
+   * this *workspace's own* name, identical on every row (see `Thread`'s own
+   * doc comment), so reusing the default would repeat the workspace's name
+   * atop every conversation rather than say who it's with.
+   */
+  nameOf?: (thread: Thread) => string;
+  /** The word shown in place of a name the lookup missed. Defaults to `t("unknownProvider")`, matching `nameOf`'s default. */
+  fallbackName?: string;
 }) {
   const { t } = useTranslation("messaging");
+  const resolvedNameOf = nameOf ?? ((thread: Thread) => thread.providerName);
+  const resolvedFallbackName = fallbackName ?? t("unknownProvider");
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
@@ -70,6 +86,7 @@ export function ThreadList({
                 selected={thread.id === selectedThreadId}
                 locale={locale}
                 onSelect={onSelect}
+                name={resolvedNameOf(thread) || resolvedFallbackName}
               />
             ))}
           </ul>
@@ -94,11 +111,14 @@ function ThreadRow({
   selected,
   locale,
   onSelect,
+  name,
 }: {
   thread: Thread;
   selected: boolean;
   locale: string;
   onSelect: (threadId: string) => void;
+  /** Already resolved (which field, and the fallback) by `ThreadList` — this component draws it, it does not decide it. */
+  name: string;
 }) {
   const { t } = useTranslation("messaging");
   const when = new Intl.DateTimeFormat(locale, {
@@ -136,7 +156,7 @@ function ThreadRow({
                 thread.unreadCount > 0 && "font-semibold",
               )}
             >
-              {thread.providerName || t("unknownProvider")}
+              {name}
             </span>
             <time
               dateTime={thread.lastMessageAt}

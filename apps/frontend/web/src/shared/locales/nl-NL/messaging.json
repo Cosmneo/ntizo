@@ -6,6 +6,7 @@
   "providerEmptyBody": "Zodra een klant je een bericht stuurt, verschijnt het gesprek hier.",
   "loadMore": "Meer laden",
   "unknownProvider": "Aanbieder",
+  "unknownCustomer": "Klant",
   "noPreview": "Nog geen berichten",
   "unreadBadge": "{{count}} ongelezen bericht",
   "unreadBadge_other": "{{count}} ongelezen berichten",

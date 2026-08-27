@@ -6,6 +6,7 @@
   "providerEmptyBody": "Cuando un cliente te escriba, la conversación aparecerá aquí.",
   "loadMore": "Cargar más",
   "unknownProvider": "Proveedor",
+  "unknownCustomer": "Cliente",
   "noPreview": "Aún no hay mensajes",
   "unreadBadge": "{{count}} mensaje sin leer",
   "unreadBadge_other": "{{count}} mensajes sin leer",
