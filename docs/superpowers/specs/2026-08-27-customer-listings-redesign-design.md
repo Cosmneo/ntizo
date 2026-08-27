@@ -168,10 +168,26 @@ rendering it for an unreviewed business calls it the worst on the platform.
   badges.** All appear in the approved mockup as slots. The components accept
   the props; the pages pass nothing until the data exists. Slots that render
   nothing must collapse without leaving a gap — assert this.
-
-## Favourites
+## Favourites, and the lists they go into
 
 Its own bounded context, `favourite`, with its own Postgres schema.
+
+A favourite is not a flag on a listing — it is a listing **filed into a named
+list**. Everybody gets one list to begin with and can make more, and one
+listing can sit in several at once: "Casa nova" and "Urgente" are both true
+about the same electrician, and making somebody choose is making them lose one
+of the two facts.
+
+### Save first, ask afterwards
+
+Pressing the heart **saves immediately**, into the default list, and only then
+opens the dialog that lets the person file it somewhere else. The dialog says
+so — "guardado automaticamente" — and its only button is "Concluído".
+
+The alternative, opening a picker before anything is saved, makes the common
+case (save it, never think about it again) cost a decision every time, and
+loses the save entirely if the person dismisses the dialog. Two mutations
+follow from this, one per gesture, rather than one mutation with a mode.
 
 ### Schema
 
@@ -180,72 +196,162 @@ Its own bounded context, `favourite`, with its own Postgres schema.
 `shared/infrastructure/database/schemas.ts`.
 
 ```
+favourite_list
+  id          uuid pk default random
+  user_id     text not null
+  name        varchar(60)                 -- NULL on the default list; see below
+  is_default  boolean not null default false
+  created_at  timestamptz not null default now()
+
+  unique (id, user_id)                          -- exists only for the composite FK below
+  unique (user_id, lower(name))                 -- two lists with one name are unusable
+  unique (user_id) where is_default             -- exactly one default per person
+  index  (user_id, created_at desc)
+
 favourite
   id           uuid pk default random
+  list_id      uuid not null
   user_id      text not null
-  target_type  varchar(16) not null   -- 'service' | 'provider'
+  target_type  varchar(16) not null            -- 'service' | 'provider'
   target_id    uuid not null
   created_at   timestamptz not null default now()
 
-  unique (user_id, target_type, target_id)
-  index  (user_id, created_at desc)
+  foreign key (list_id, user_id)
+    references favourite_list (id, user_id) on delete cascade
+  unique (list_id, target_type, target_id)
+  index  (list_id, created_at desc)
+  index  (user_id, target_type, target_id)
 ```
 
-One table with a target type rather than two tables. A favourite is the same
-act whichever listing it lands on, the `/favourites` page shows both in one
-list ordered by when they were saved, and two tables would make that a union
-with two paging cursors.
+**`name` is nullable, and null means "the default list".** Its name is then
+rendered from a translated key, so somebody reading in French sees *Favoris*
+and somebody in Portuguese sees *Favoritos* — the same list. A stored name
+would freeze it in whatever language the account was created in. Renaming the
+default writes a name and it stops being translated, which is correct: a list
+somebody named is theirs, not the platform's.
 
-**No foreign key to the target.** The two targets live in different bounded
-contexts and a favourite must not reach across a context boundary at the
-database level. A row pointing at a deleted or unpublished service is resolved
-away on read, which is the same rule the listings already apply.
+**`user_id` is on both tables, and the composite foreign key is why that is
+safe.** The hearts query — "which of these twenty-four listings has this person
+saved anywhere" — runs on every render of a listing page for a signed-in
+reader, and routing it through `favourite_list` puts a join on the hottest read
+in the feature. Denormalising is normally two sources of truth that will one
+day disagree; `foreign key (list_id, user_id) references favourite_list (id,
+user_id)` makes disagreeing impossible at the database level, so this is a
+denormalisation with the invariant enforced rather than assumed.
+
+**One table for both target kinds, no foreign key to the target.** A favourite
+is the same act whichever listing it lands on, and a list shows both in one
+run ordered by when they were saved. The two targets live in different bounded
+contexts, so a favourite must not reach across a context boundary at the
+database level; a row pointing at something deleted, unpublished, or belonging
+to a suspended provider is resolved away on read — the same rule both listings
+already apply to their own rows.
+
+### The one list everybody starts with
+
+Created **lazily, on the first save**, not at sign-up: a row for every account
+that never saves anything is a table full of nothing.
+
+It is created by `favouriteQuickSave`, which is a mutation, so no query has a
+side effect. `favouriteListMine` returns an empty array for somebody who has
+never saved, and the page says so rather than inventing a list to show.
+
+The default list can be **renamed but not deleted**. Deleting it would leave
+the heart with nowhere to save to; renaming it harms nothing.
 
 ### Slices
 
 Following the `activity` precedent, which is the project's small-context shape:
 
-- `bounded-contexts/favourite/` — the `Favourite` aggregate, its exceptions,
-  the outbound repository port and its Drizzle adapter, and the inbound
-  command port. The only invariant is the pair uniqueness, enforced at the
-  aggregate and again by the constraint.
-- `write/favourite/` — `toggleFavourite` mutation on the private (session)
-  schema. Toggle rather than add/remove: the button has one meaning to the
-  person pressing it, and two mutations would let the client and the server
-  disagree about which one to send. It returns the resulting state so an
-  optimistic update can be reconciled rather than guessed.
-- `read/favourite/` — two queries:
-  - `favouriteMine` — the `/favourites` page. Paged, ordered by `created_at`
-    descending, resolving each target into the same `ServiceDTO` /
-    `ProviderPublicDTO` the listings already use. Named `mine` rather than
-    `all` to match `activity.mine` and `communication.myThreads`: the word is
-    how this codebase says "the caller's own, and nobody else's".
-  - `favouriteMarked` — **takes the ids currently on screen and returns which
-    of them are saved**, rather than returning every id the reader has ever
-    saved. A reader with two thousand favourites must not ship two thousand
-    ids to draw twenty-four hearts. Bounded to one page of ids per call
-    (`z.array(z.string()).max(48)`, the server's existing page cap).
+- `bounded-contexts/favourite/` — the `FavouriteList` and `Favourite`
+  aggregates, the outbound repository ports and their Drizzle adapters, and the
+  commands. Invariants: exactly one default list per person, a name unique
+  within a person's lists, and the default list cannot be removed.
+- `write/favourite/` — five mutations, on the private (session) schema:
 
-Both queries are session-authed and scoped to the requester; neither accepts a
-user id. A favourite is private.
+  | Mutation | Gesture |
+  |---|---|
+  | `favouriteQuickSave(targetType, targetId)` | the heart. Ensures the default list exists, files the listing into it, returns every list the listing is now in |
+  | `favouriteSetLists(targetType, targetId, listIds)` | the dialog. Sets **exactly** which lists hold this listing; `[]` unsaves it entirely and empties the heart |
+  | `favouriteListCreate(name)` | "criar nova lista", inline in the dialog |
+  | `favouriteListRename(id, name)` | allowed on the default |
+  | `favouriteListRemove(id)` | refuses the default |
+
+  `setLists` replaces an add/remove pair on purpose. The dialog's natural
+  output is "these are the lists it should be in", and a pair of mutations
+  would make the client diff two states and send the difference — which is
+  where a stale card sends `add` for something already added, gets a conflict,
+  and the row flickers.
+
+- `read/favourite/` — four queries, all session-authed and scoped to the
+  requester; none accepts a user id:
+
+  | Query | For |
+  |---|---|
+  | `favouriteListMine` | `/favourites`: every list with its item count and up to four cover images |
+  | `favouriteListById(id, locale, limit, cursor)` | `/favourites/$listId`: a page of entries, resolved into the same `ServiceDTO` / `ProviderPublicDTO` the listings already use |
+  | `favouriteMarked(targetType, targetIds)` | the hearts. **Takes the ids on screen** and returns which are saved *anywhere* — a reader with two thousand favourites must not ship two thousand ids to draw twenty-four hearts. Bounded to 48, the server's existing page cap |
+  | `favouriteListsFor(targetType, targetId)` | the dialog: which lists already hold this one listing |
+
+### The dialog
+
+Two panels above `md`, following the reference the user supplied.
+
+```
+┌───────────────────────┬──────────────────────────────────────┐
+│ A GUARDAR             │ Guardar numa lista              [×]  │
+│                       │ A guardar “Avaria eléctrica urgente” │
+│ Avaria eléctrica      │ ┌──────────────────────────────────┐ │
+│ urgente               │ │ ⌕  Encontrar uma lista…          │ │
+│                       │ └──────────────────────────────────┘ │
+│ ⌖ Sommerschield       │ ▣▣  Favoritos          3 itens   (✓) │
+│                       │ ▣▣                                   │
+│ a partir de 1200 MZN  │ ▣▣  Casa nova          8 itens   ( ) │
+│                       │ 🗀   Urgente            0 itens   ( ) │
+│ ┌───────────────────┐ │ ┌ + Criar nova lista ──────────────┐ │
+│ │      FOTO         │ │ └──────────────────────────────────┘ │
+│ └───────────────────┘ ├──────────────────────────────────────┤
+│                       │ ✓ Guardado automaticamente  [Concluído]│
+└───────────────────────┴──────────────────────────────────────┘
+```
+
+- The left panel reuses `ListingMedia`, generated tile included, so a listing
+  with no photograph looks deliberate here too.
+- Each row's cover is a **2×2 mosaic** of up to four of that list's items,
+  falling back to a folder mark when the list is empty. It is what makes a
+  column of lists scannable when their names are similar.
+- **"Criar nova lista" is inline** — the row becomes a text field and a confirm
+  in place. A second dialog stacked on the first is a modal over a modal, and
+  the thing being saved disappears behind it.
+- The search field appears **only above six lists**. A search box over three
+  rows is a control with nothing to do.
+- On a phone the left panel drops and the listing is named in the subtitle
+  instead; the dialog becomes a bottom sheet.
 
 ### On the client
 
 `features/favourites/` with `data/`, `domain/`, `viewmodel/`, `ui/`.
-`useFavouriteMarks(ids)` is called **once per page** with the ids the results
-contain and returns a `Set` each card reads — not a hook per card, which would
-be one request per card. `useToggleFavourite()` mutates optimistically and
-invalidates both queries.
 
-Signed out, neither query runs: they are session-authed, and firing them
-anonymously trades a wall of 401s for information the page cannot use.
+`useFavouriteMarks(targetType, ids)` is called **once per page** with the ids
+the results contain and returns a `Set` each card reads — not a hook per card,
+which would be one request per card. It is a plain `useQuery`, **not**
+`useSuspenseQuery`, and it is the one place on these pages that differs: the
+hearts are decoration on a page built to be crawled, and suspending on them
+would hold the listing back from a crawler that has no session to read them
+with.
+
+`useQuickSave()` and `useSetLists()` mutate optimistically and invalidate the
+lists and the marks together.
 
 **Signed out, the heart is still there** and pressing it routes to `/sign-in`
 with a return path. Hiding the control teaches nobody the feature exists.
+Neither query runs signed out — they are session-authed, and firing them
+anonymously trades a wall of 401s for information the page cannot use.
 
 `/favourites` stops rendering `FavouritesPage` from
-`features/account/ui/placeholder-pages.tsx` and gets its own page that reuses
-`ListingCard`. Its empty state points at `/services`.
+`features/account/ui/placeholder-pages.tsx` and becomes a grid of list cards;
+`/favourites/$listId` shows one list's contents, reusing `ListingCard`. Its
+empty state points at `/services`.
 
 ## The page head
 
@@ -325,15 +431,19 @@ Behaviour, not markup. The existing suites under
   not a broken image; a provider with `ratingAverage: null` renders no stars;
   a `quote` service renders "sob orçamento" and the quiet CTA; every optional
   slot absent leaves no gap.
-- **Favourites** — the toggle is optimistic and reverts on failure; a signed
-  out press routes to sign-in with the return path; `favouriteMarked` is read
-  once for a page of cards, not once per card.
+- **Favourites** — the heart fills before the server answers and reverts on
+  failure; a signed out press routes to sign-in with the return path;
+  `favouriteMarked` is read once for a page of cards, not once per card;
+  unticking every list in the dialog empties the heart; a listing can be in two
+  lists at once and the heart stays filled while it is in either.
 - **Backend** — `total` matches the count the same filters produce; price sort
   puts unpriced services last and never before a cheaper priced one;
-  `serviceCities` counts are unaffected by the current city filter; the
-  favourite unique constraint makes a double toggle idempotent, and a
-  favourite pointing at an unpublished service is omitted from `favouriteMine`
-  rather than erroring.
+  `serviceCities` counts are unaffected by the current city filter; a second
+  `favouriteQuickSave` for the same listing does not create a second row or a
+  second default list; `favouriteListRemove` refuses the default; two lists
+  cannot share a name within one person and the check ignores case; deleting a
+  list deletes its rows and no other list's; and a favourite pointing at an
+  unpublished service is omitted from `favouriteListById` rather than erroring.
 - **Accessibility** — one tab stop per card for the destination plus the two
   controls; facet links carry `aria-pressed` and their decorative box is
   `aria-hidden`; the sticky mobile bar does not cover the last result.
@@ -350,11 +460,14 @@ an API that does not exist yet.
    provider rating fields. Backend tests pass before a page reads them.
 3. **The two pages** — compose the shells, delete `FilterPanelCard`, numbered
    paging, active filter chips, mobile.
-4. **Favourites** — schema, bounded context, write and read slices, then the
-   heart on the cards and the `/favourites` page.
+4. **Favourites and lists** — two tables, the bounded context, five mutations
+   and four queries, then the heart, the save-to-a-list dialog, and the two
+   `/favourites` screens.
 
 Group 4 is the only one that can be cut without leaving the product
 half-redesigned: until it lands, `ListingMedia` renders no favourite button.
+It is large enough to be its own plan, and is —
+`docs/superpowers/plans/2026-08-27-favourites.md`.
 
 ## Out of scope
 

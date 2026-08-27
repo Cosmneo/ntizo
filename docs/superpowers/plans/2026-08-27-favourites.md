@@ -1,25 +1,27 @@
-# Favourites Implementation Plan
+# Favourites and Lists Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** a signed-in customer can save a service or a provider from a listing card, and find everything they saved at `/favourites`. Today `/favourites` renders a hardcoded empty state from `features/account/ui/placeholder-pages.tsx` and nothing in the backend knows the word.
+**Goal:** a signed-in customer presses the heart on a listing, it is saved immediately, and a dialog then lets them file it into any of their own named lists — or a new one they make on the spot. `/favourites` shows their lists; `/favourites/$listId` shows what is in one. Today `/favourites` renders a hardcoded empty state from `features/account/ui/placeholder-pages.tsx` and nothing in the backend knows the word.
 
-**Architecture:** a new `favourite` bounded context with its own Postgres schema, shaped after `activity` — the project's small-context precedent: domain and app under `bounded-contexts/favourite/`, a mutation slice under `write/favourite/`, two queries under `read/favourite/`. One table with a target type, because a favourite is the same act whichever listing it lands on and `/favourites` shows both in one list.
+**Architecture:** a new `favourite` bounded context with its own Postgres schema, shaped after `activity` — the project's small-context precedent. Two tables: `favourite_list` and `favourite`, joined by a **composite foreign key on `(list_id, user_id)`** so the denormalised owner on the hot read cannot disagree with the list's. One listing can sit in several lists; the heart means "in at least one".
 
 **Tech Stack:** Drizzle + Postgres (named schemas), zod, `@cosmneo/onion-lasagna` field kit, `bun test`; React 19, TanStack Query, vitest + @testing-library/react.
 
-**Spec:** `docs/superpowers/specs/2026-08-27-customer-listings-redesign-design.md` — the "Favourites" section.
+**Spec:** `docs/superpowers/specs/2026-08-27-customer-listings-redesign-design.md` — the "Favourites, and the lists they go into" section.
 
-**Depends on:** `docs/superpowers/plans/2026-08-27-customer-listings-redesign.md`. Task 7 below fills the `favourite` slot that plan's `ListingMedia` leaves empty, and Task 8 reuses its `ListingCard`. Tasks 1–6 have no dependency on it and can run alongside.
+**Depends on:** `docs/superpowers/plans/2026-08-27-customer-listings-redesign.md`. Task 10 fills the `favourite` slot that plan's `ListingMedia` leaves empty; Tasks 11–13 reuse its `ListingCard` and `ListingMedia`. **Tasks 1–9 have no dependency on it and can run alongside.**
 
 ## Global Constraints
 
-- **Identity always comes from the session, never from the input.** No field here declares a `userId` argument; every one stamps it from `requireUser(ctx)`. A caller must not be able to read or change anybody's favourites but their own.
+- **Identity always comes from the session, never from the input.** No field here declares a `userId` argument; every one stamps it from `requireUser(ctx)`. A caller must not be able to read or change anybody's lists but their own — and every command that takes a `listId` must verify that list belongs to the caller before touching it.
+- **Save first, ask afterwards.** The heart saves on press. The dialog is how somebody files it elsewhere, never a gate in front of saving.
 - **`.optional()` on GraphQL inputs, never `.default()`.** A zod default does not survive into the emitted schema. Defaults and clamps live in the projection.
-- **Field names are flattened by the kit.** `{ favourite: { toggle } }` emits as `favouriteToggle`, input type `FavouriteToggleInput!`. Confirm every name against a running server's introspection before writing the frontend query — `activity` and `messaging` each lost a round to guessing.
-- **A field merged into a schema barrel but not spread into `buildPrivateGraphQLFields` resolves to `null` at request time with no error anywhere.** `apps/backend/api/src/graphql/__tests__/schema-mount.test.ts` is what turns that into a red test. Task 5 must leave it green.
+- **Field names are flattened by the kit.** `{ favourite: { quickSave } }` emits as `favouriteQuickSave`, input type `FavouriteQuickSaveInput!`. Confirm every name against a running server's introspection before writing frontend queries — `activity` and `messaging` each lost a round to guessing.
+- **A field merged into a schema barrel but not spread into `buildPrivateGraphQLFields` resolves to `null` at request time with no error anywhere.** `apps/backend/api/src/graphql/__tests__/schema-mount.test.ts` is what turns that into a red test. Task 8 must leave it green.
 - **New copy exists in all 8 locales** (`de-DE`, `en-US`, `es-ES`, `fr-FR`, `it-IT`, `nl-NL`, `pt-MZ`, `pt-PT`). `shared/lib/__tests__/i18n-parity.test.ts` compares keys *and* interpolation placeholders.
 - **Tests assert English copy.** `test/setup.ts` resolves i18n to `en` under jsdom.
+- **The default list is `name IS NULL`.** Never a magic string. Its displayed name is a translated key, so the same list reads *Favoritos* to one person and *Favourites* to another.
 
 ---
 
@@ -29,104 +31,155 @@
 
 | File | Responsibility |
 |---|---|
-| `packages/backend/src/modules/ntizo/shared/infrastructure/database/favourite/schemas/favourite.schema.ts` | the `ntizo_favourite.favourite` table |
-| `packages/backend/src/modules/ntizo/shared/infrastructure/database/favourite/schemas/index.ts` | barrel |
-| `packages/backend/src/modules/ntizo/shared/infrastructure/database/favourite/index.ts` | barrel |
-| `packages/backend/src/modules/ntizo/shared/infrastructure/migrations/NNNN_*.sql` | generated by drizzle-kit; never hand-written |
+| `.../shared/infrastructure/database/favourite/schemas/favourite-list.schema.ts` | `ntizo_favourite.favourite_list` |
+| `.../shared/infrastructure/database/favourite/schemas/favourite.schema.ts` | `ntizo_favourite.favourite` |
+| `.../shared/infrastructure/database/favourite/schemas/index.ts`, `.../favourite/index.ts` | barrels |
+| `.../shared/infrastructure/migrations/NNNN_*.sql` | generated by drizzle-kit; never hand-written |
 
 **Created — bounded context** (`packages/backend/src/modules/ntizo/bounded-contexts/favourite/`)
 
 | File | Responsibility |
 |---|---|
 | `domain/favourite-target.ts` | `FAVOURITE_TARGETS`, `isFavouriteTarget` |
-| `domain/aggregates/favourite.aggregate.ts` | `Favourite.save` / `Favourite.rehydrate` |
-| `domain/exceptions.ts` | `UnknownFavouriteTargetError` |
-| `app/ports/outbound/favourite.repository.port.ts` | the port |
-| `app/ports/inbound/index.ts` | inbound port barrel |
-| `app/use-cases/toggle-favourite.command.ts` | the one command |
-| `infrastructure/repositories/drizzle/favourite.repository.ts` | the adapter |
+| `domain/aggregates/favourite-list.aggregate.ts` | `FavouriteList.create` / `.rename` / `.rehydrate`, `LIST_NAME_MAX` |
+| `domain/aggregates/favourite.aggregate.ts` | `Favourite.file` / `.rehydrate` |
+| `domain/exceptions.ts` | `UnknownFavouriteTargetError`, `ListNameTakenError`, `DefaultListNotRemovableError`, `ListNotYoursError` |
+| `app/ports/outbound/favourite-list.repository.port.ts` | list reads and writes |
+| `app/ports/outbound/favourite.repository.port.ts` | entry reads and writes |
+| `app/use-cases/quick-save.command.ts` | the heart |
+| `app/use-cases/set-lists.command.ts` | the dialog |
+| `app/use-cases/create-list.command.ts`, `rename-list.command.ts`, `remove-list.command.ts` | list management |
+| `infrastructure/repositories/drizzle/{favourite-list,favourite}.repository.ts` | the adapters |
 | `bootstrap/index.ts`, `index.ts` | wiring and barrel |
 
 **Created — slices**
 
 | File | Responsibility |
 |---|---|
-| `write/favourite/graphql/schema/mutations.ts` + `handlers/mutations.handlers.ts` + `index.ts` | `favouriteToggle` |
-| `read/favourite/graphql/schema/queries.ts` + `handlers/queries.handlers.ts` + `index.ts` | `favouriteMine`, `favouriteMarked` |
-| `read/favourite/app/use-cases/list-favourites.projection.ts` | resolves targets into DTOs |
-| `read/favourite/app/use-cases/mark-favourites.projection.ts` | which of these ids are saved |
+| `write/favourite/graphql/schema/mutations.ts` + handlers + `index.ts` | the five mutations |
+| `read/favourite/graphql/schema/queries.ts` + handlers + `index.ts` | the four queries |
+| `read/favourite/app/use-cases/{list-my-lists,list-list-entries,mark-favourites,lists-for-target}.projection.ts` | the four projections |
 | `read/favourite/bootstrap/index.ts` | wiring |
-| `packages/shared/src/read-models/system/favourite/favourite.schema.ts` | `favouritePageReadModel`, `favouriteEntryReadModel` |
+| `packages/shared/src/read-models/system/favourite/favourite.schema.ts` | the read models |
 
 **Created — frontend** (`apps/frontend/web/src/features/favourites/`)
 
 | File | Responsibility |
 |---|---|
-| `data/favourites.repository.ts` | the three GraphQL calls |
-| `domain/types.ts` | `FavouriteTarget`, page size |
-| `viewmodel/use-favourite-marks.ts` | one call per page of cards |
-| `viewmodel/use-toggle-favourite.ts` | optimistic toggle |
+| `data/favourites.repository.ts` | every GraphQL call |
+| `domain/types.ts` | `FavouriteTarget`, page sizes, `SEARCH_VISIBLE_ABOVE` |
+| `domain/list-name.ts` | `listDisplayName(list, t)` — the null-means-translated rule |
+| `viewmodel/use-favourite-marks.ts`, `use-quick-save.ts`, `use-set-lists.ts`, `use-my-lists.ts` | hooks |
 | `ui/favourite-button.tsx` | the heart |
-| `ui/favourites-page.tsx` | `/favourites` |
+| `ui/save-to-list-dialog.tsx` | the dialog |
+| `ui/list-cover.tsx` | the 2×2 mosaic |
+| `ui/favourites-page.tsx`, `ui/favourite-list-page.tsx` | the two screens |
 
 **Modified**
 
-- `packages/backend/src/modules/ntizo/drizzle.config.ts` — `ntizo_favourite` in `schemaFilter`
-- `.../shared/infrastructure/database/schemas.ts` — re-export
-- `.../read/schema.ts`, `.../write/schema.ts` — merge the two new schemas
-- `apps/backend/api/src/graphql/private.ts` — bootstrap and spread the handlers
-- `apps/frontend/web/src/routes/_customer/favourites.tsx` — point at the real page
-- the two listing cards from the redesign plan — pass a `favourite` slot
-- `apps/frontend/web/src/shared/locales/*/directory.json` and `account.json`
+- `packages/backend/src/modules/ntizo/drizzle.config.ts`, `.../database/schemas.ts`
+- `.../read/schema.ts`, `.../write/schema.ts`, `apps/backend/api/src/graphql/private.ts`
+- `apps/frontend/web/src/routes/_customer/favourites.tsx` + a new `favourites.$listId.tsx`
+- the two listing cards from the redesign plan — a `favourite` slot
+- `packages/frontend/src/styles/globals.css` — `--color-favourite`
+- `apps/frontend/web/src/shared/locales/*/{directory,account}.json`
 
 ---
 
-### Task 1: The table
+### Task 1: The two tables
 
 **Files:**
-- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/favourite/schemas/favourite.schema.ts` (+ two barrels)
-- Modify: `packages/backend/src/modules/ntizo/drizzle.config.ts`
-- Modify: `packages/backend/src/modules/ntizo/shared/infrastructure/database/schemas.ts`
+- Create: `.../database/favourite/schemas/favourite-list.schema.ts`, `favourite.schema.ts`, two barrels
+- Modify: `packages/backend/src/modules/ntizo/drizzle.config.ts`, `.../database/schemas.ts`
 - Test: `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/favourite-schema.test.ts`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: the `favourite` table export, with columns `id`, `userId`, `targetType`, `targetId`, `createdAt`.
+- Produces: the `favouriteList` and `favourite` table exports.
 
 - [ ] **Step 1: Write the failing test**
 
-Follow whatever the sibling tests in `database/__tests__/` already assert about a table — read one first. If they assert on `getTableConfig`, write:
+Read a sibling test in `database/__tests__/` first and follow whatever it asserts on. If it uses `getTableConfig`:
 
 ```ts
 import { describe, expect, it } from "bun:test";
 import { getTableConfig } from "drizzle-orm/pg-core";
-import { favourite } from "../favourite/schemas";
+import { favourite, favouriteList } from "../favourite/schemas";
 
-describe("favourite table", () => {
+const names = (cols: readonly { name: string }[]) => cols.map((c) => c.name).join(",");
+
+describe("favourite_list", () => {
   it("lives in its own named schema", () => {
-    expect(getTableConfig(favourite).schema).toBe("ntizo_favourite");
+    expect(getTableConfig(favouriteList).schema).toBe("ntizo_favourite");
   });
 
-  it("cannot hold the same listing twice for one person", () => {
-    // Without this the toggle is not idempotent: a double-tap, or two tabs,
-    // writes two rows and the heart's state becomes a question of which one
-    // the read finds first.
+  it("lets exactly one list per person be the default", () => {
+    // Two defaults and the heart has two destinations; zero and it has none.
+    // A partial unique index is the only thing that makes this true under
+    // concurrency — two tabs both creating a first list would otherwise both
+    // succeed.
+    const uniques = getTableConfig(favouriteList).uniqueConstraints;
+    const indexes = getTableConfig(favouriteList).indexes;
+    const hasPartial =
+      indexes.some((i) => i.config.unique && i.config.where !== undefined) ||
+      uniques.some((u) => names(u.columns) === "user_id");
+    expect(hasPartial).toBe(true);
+  });
+
+  it("refuses two lists with the same name for one person", () => {
+    // Two lists called "Casa nova" are unusable: the dialog shows them as
+    // identical rows and nobody can tell which one they ticked.
+    const indexes = getTableConfig(favouriteList).indexes;
+    expect(indexes.some((i) => i.config.unique && names(i.config.columns as never) !== "user_id")).toBe(true);
+  });
+
+  it("carries a unique on (id, user_id) that looks redundant and is not", () => {
+    // A primary key on `id` alone cannot be the target of the composite
+    // foreign key `favourite` needs. This is what makes the denormalised
+    // owner on the hot read impossible to get wrong.
+    const uniques = getTableConfig(favouriteList).uniqueConstraints;
+    expect(uniques.some((u) => names(u.columns) === "id,user_id")).toBe(true);
+  });
+});
+
+describe("favourite", () => {
+  it("keys its owner to its list's owner, not merely alongside it", () => {
+    // The composite FK is the whole reason `user_id` may be denormalised
+    // here. Without it these are two sources of truth that will one day
+    // disagree, and the disagreement is a person seeing somebody else's
+    // saved listing.
+    const fks = getTableConfig(favourite).foreignKeys;
+    expect(fks).toHaveLength(1);
+    const ref = fks[0]!.reference();
+    expect(names(ref.columns)).toBe("list_id,user_id");
+    expect(names(ref.foreignColumns)).toBe("id,user_id");
+  });
+
+  it("cannot hold the same listing twice in one list", () => {
+    // Without it a double-tap writes two rows and the count is wrong forever.
     const uniques = getTableConfig(favourite).uniqueConstraints;
-    expect(uniques.some((u) => u.columns.map((c) => c.name).join(",") === "user_id,target_type,target_id")).toBe(true);
+    expect(uniques.some((u) => names(u.columns) === "list_id,target_type,target_id")).toBe(true);
   });
 
-  it("indexes a person's own list, newest first", () => {
-    // The only query this table serves at any size.
+  it("can hold the same listing in two different lists", () => {
+    // "Casa nova" and "Urgente" are both true about one electrician. The
+    // unique is scoped to the list, never to the person.
+    const uniques = getTableConfig(favourite).uniqueConstraints;
+    expect(uniques.some((u) => names(u.columns) === "user_id,target_type,target_id")).toBe(false);
+  });
+
+  it("indexes the hearts query", () => {
+    // "Which of these 24 listings has this person saved anywhere" runs on
+    // every render of a listing page for a signed-in reader.
     const indexes = getTableConfig(favourite).indexes;
-    expect(indexes.some((i) => i.config.columns.map((c) => (c as { name: string }).name).join(",") === "user_id,created_at")).toBe(true);
+    expect(indexes.some((i) => names(i.config.columns as never) === "user_id,target_type,target_id")).toBe(true);
   });
 
   it("holds no foreign key to what was favourited", () => {
-    // The two targets live in different bounded contexts, and a favourite
-    // must not reach across a context boundary at the database level. A row
-    // pointing at a deleted or unpublished listing is resolved away on read —
-    // the same rule the listings already apply.
-    expect(getTableConfig(favourite).foreignKeys).toHaveLength(0);
+    // The two targets live in different bounded contexts. The one FK above
+    // points inside this schema, not out of it.
+    const fks = getTableConfig(favourite).foreignKeys;
+    expect(fks.every((f) => f.reference().foreignTable === favouriteList)).toBe(true);
   });
 });
 ```
@@ -139,37 +192,104 @@ cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database
 
 Expected: FAIL — cannot resolve `../favourite/schemas`.
 
-- [ ] **Step 3: Write the schema**
+- [ ] **Step 3: Write `favourite-list.schema.ts`**
 
 ```ts
-import { index, pgSchema, text, timestamp, unique, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, pgSchema, sql, text, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const favouriteSchema = pgSchema("ntizo_favourite");
 
 /**
- * One listing somebody saved.
+ * A named collection of saved listings.
  *
- * One table with a target type rather than two tables. A favourite is the same
- * act whichever listing it lands on, `/favourites` shows both kinds in one list
- * ordered by when they were saved, and two tables would make that a union with
- * two paging cursors to keep in step.
+ * Everybody gets one to begin with and can make more, and one listing can sit
+ * in several at once — "Casa nova" and "Urgente" are both true about the same
+ * electrician, and making somebody choose between them is making them lose one
+ * of the two facts.
+ */
+export const favouriteList = favouriteSchema.table(
+  "favourite_list",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /**
+     * `text`, matching `activity.actor_user_id`: these ids come from
+     * better-auth's own tables in a separate migration chain, and typing them
+     * as `uuid` here would be this schema asserting something about a table it
+     * does not own.
+     */
+    userId: text("user_id").notNull(),
+    /**
+     * NULL on the default list, and that is the whole mechanism.
+     *
+     * A null name means "render the translated default", so the same list
+     * reads *Favoritos* to one person and *Favourites* to another. A stored
+     * name would freeze it in whatever language the account was created in.
+     * Renaming the default writes a name here and it stops being translated,
+     * which is right: a list somebody named is theirs, not the platform's.
+     */
+    name: varchar("name", { length: 60 }),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /*
+     * Looks redundant beside the primary key and is not: a primary key on
+     * `id` alone cannot be the target of the composite foreign key
+     * `favourite` declares. This is what makes the denormalised owner over
+     * there impossible to get wrong.
+     */
+    unique("favourite_list_id_user_uq").on(t.id, t.userId),
+    /*
+     * Case-insensitive, because "Casa nova" and "casa nova" are the same list
+     * to the person who typed them and two identical rows in the dialog to
+     * everybody else. A plain unique on `(user_id, name)` would let both
+     * through.
+     */
+    uniqueIndex("favourite_list_user_name_uq").on(t.userId, sql`lower(${t.name})`),
+    /*
+     * Exactly one default per person. A partial unique index rather than a
+     * check somewhere in the application: two tabs both creating a first list
+     * would otherwise both succeed, and the heart would have two destinations.
+     */
+    uniqueIndex("favourite_list_one_default_uq")
+      .on(t.userId)
+      .where(sql`${t.isDefault}`),
+    index("favourite_list_user_created_idx").on(t.userId, t.createdAt.desc()),
+  ],
+);
+```
+
+`uniqueIndex(...).on(userId, lower(name))` leaves rows with a null name unconstrained by it, which is correct — Postgres treats nulls as distinct in a unique index, and the one-default index already limits a person to a single null-named list.
+
+- [ ] **Step 4: Write `favourite.schema.ts`**
+
+```ts
+import { foreignKey, index, timestamp, text, unique, uuid, varchar } from "drizzle-orm/pg-core";
+import { favouriteList, favouriteSchema } from "./favourite-list.schema";
+
+/**
+ * One listing filed into one list.
  *
  * **No foreign key to the target.** A service belongs to Catalog and a provider
  * to Provider; a favourite must not reach across a bounded-context boundary at
  * the database level. A row pointing at something deleted, unpublished, or
- * belonging to a suspended provider is resolved away on read — which is the
- * same rule both listings already apply to their own rows, so this adds no new
- * behaviour to reason about.
+ * belonging to a suspended provider is resolved away on read — the same rule
+ * both listings already apply to their own rows, so this adds no new behaviour
+ * to reason about.
  *
- * `userId` is `text`, matching `activity.actor_user_id`: these ids come from
- * better-auth's own tables in a separate migration chain, and typing them as
- * `uuid` here would be this schema asserting something about a table it does
- * not own.
+ * `user_id` is here as well as on the list, and the composite foreign key
+ * below is why that is safe. The hearts query — "which of these twenty-four
+ * listings has this person saved anywhere" — runs on every render of a listing
+ * page for a signed-in reader, and routing it through `favourite_list` puts a
+ * join on the hottest read in the feature. Denormalising is normally two
+ * sources of truth that will one day disagree; this one cannot, because the
+ * database refuses a row whose owner is not its list's owner.
  */
 export const favourite = favouriteSchema.table(
   "favourite",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id").notNull(),
     userId: text("user_id").notNull(),
     /** `service` or `provider`. Kept short — see `FAVOURITE_TARGETS`. */
     targetType: varchar("target_type", { length: 16 }).notNull(),
@@ -177,86 +297,86 @@ export const favourite = favouriteSchema.table(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    foreignKey({
+      columns: [t.listId, t.userId],
+      foreignColumns: [favouriteList.id, favouriteList.userId],
+      name: "favourite_list_owner_fk",
+    }).onDelete("cascade"),
     /*
-     * What makes the toggle idempotent. Without it a double-tap, or the same
-     * person in two tabs, writes two rows, and the heart's state becomes a
-     * question of which row the read happens to find first.
+     * Scoped to the list, never to the person: the same listing in two lists
+     * is the feature. What this forbids is the same listing twice in ONE
+     * list, which a double-tap would otherwise write and no count would ever
+     * recover from.
      */
-    unique("favourite_user_target_uq").on(t.userId, t.targetType, t.targetId),
-    /*
-     * The only query this table serves at any size: one person's own list,
-     * newest first. `targetType` is deliberately not in it — nothing filters
-     * the list by kind, and an index nobody uses is a write cost with no read
-     * behind it.
-     */
-    index("favourite_user_created_idx").on(t.userId, t.createdAt.desc()),
+    unique("favourite_list_target_uq").on(t.listId, t.targetType, t.targetId),
+    index("favourite_list_created_idx").on(t.listId, t.createdAt.desc()),
+    index("favourite_user_target_idx").on(t.userId, t.targetType, t.targetId),
   ],
 );
 ```
 
-- [ ] **Step 4: Register the schema in both places**
+- [ ] **Step 5: Register the schema in both places**
 
-In `drizzle.config.ts`, add `"ntizo_favourite"` to `schemaFilter`. **Without this the generator emits nothing for the table and the migration is silently empty** — no error, no warning.
+In `drizzle.config.ts`, add `"ntizo_favourite"` to `schemaFilter`. **Without this the generator emits nothing and the migration is silently empty** — no error, no warning. In `database/schemas.ts`, add `export * from "./favourite";`.
 
-In `database/schemas.ts`, add `export * from "./favourite";` beside the other contexts.
-
-- [ ] **Step 5: Generate the migration**
+- [ ] **Step 6: Generate and read the migration**
 
 ```bash
 cd packages/backend && bun run db:ntizo:generate
 ```
 
-Read the generated SQL before doing anything else. It must `CREATE SCHEMA "ntizo_favourite"`, create one table, one unique constraint and one index — and touch nothing else. If it proposes a change to any other table, stop: something in this working tree has drifted from the applied migrations, and applying it would take that drift with it.
+Read the SQL before applying it. It must `CREATE SCHEMA "ntizo_favourite"`, create two tables, the composite foreign key, three unique constraints/indexes and three plain indexes — and touch nothing else. If it proposes a change to any other table, stop: this tree has drifted from the applied migrations and applying it would carry the drift along.
 
-- [ ] **Step 6: Apply it to dev and run the test**
+- [ ] **Step 7: Apply and run**
 
 ```bash
 cd packages/backend && bun run db:ntizo:dev:migrate && bun test src/modules/ntizo/shared/infrastructure/database
 ```
 
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add packages/backend/src/modules/ntizo
-git commit -m "feat(favourite): one table, a target type, and no foreign key to the target
+git commit -m "feat(favourite): two tables, and a composite FK that makes the hot read safe
 
-A favourite is the same act whichever listing it lands on, and /favourites
-shows both kinds in one list — two tables would make that a union with two
-cursors. No FK because the two targets live in different bounded contexts; a
-row pointing at something unpublished is resolved away on read."
+The hearts query runs on every listing render for a signed-in reader, so the
+owner is denormalised onto the entry. That is normally two sources of truth
+that will one day disagree — foreign key (list_id, user_id) references
+favourite_list (id, user_id) makes disagreeing impossible instead.
+
+A null name means the default list, rendered from a translated key, so the same
+list reads Favoritos to one person and Favourites to another."
 ```
 
 ---
 
-### Task 2: The aggregate and the repository
+### Task 2: The two aggregates
 
 **Files:**
-- Create: `bounded-contexts/favourite/domain/favourite-target.ts`, `domain/aggregates/favourite.aggregate.ts`, `domain/exceptions.ts`
-- Create: `bounded-contexts/favourite/app/ports/outbound/favourite.repository.port.ts`
-- Create: `bounded-contexts/favourite/infrastructure/repositories/drizzle/favourite.repository.ts`
-- Test: `bounded-contexts/favourite/__tests__/favourite.aggregate.test.ts`
+- Create: `bounded-contexts/favourite/domain/favourite-target.ts`, `domain/aggregates/favourite-list.aggregate.ts`, `domain/aggregates/favourite.aggregate.ts`, `domain/exceptions.ts`
+- Test: `bounded-contexts/favourite/__tests__/aggregates.test.ts`
 
 **Interfaces:**
-- Consumes: the `favourite` table (Task 1).
+- Consumes: nothing.
 - Produces:
 
 ```ts
 export const FAVOURITE_TARGETS = ["service", "provider"] as const;
 export type FavouriteTarget = (typeof FAVOURITE_TARGETS)[number];
+export const LIST_NAME_MAX = 60;
 
-export class Favourite {
-  static save(p: { id?: string; userId: string; targetType: FavouriteTarget; targetId: string; createdAt: Date }): Favourite;
-  static rehydrate(p: FavouriteProps): Favourite;
+export class FavouriteList {
+  static createDefault(p: { id?: string; userId: string; createdAt: Date }): FavouriteList;
+  static create(p: { id?: string; userId: string; name: string; createdAt: Date }): FavouriteList;
+  static rehydrate(p: FavouriteListProps): FavouriteList;
+  rename(name: string): FavouriteList;   // returns a new instance; refuses blank/over-length
+  readonly isDefault: boolean;
+  readonly name: string | null;
 }
 
-export interface FavouriteRepositoryPort {
-  /** Inserts, or removes if it is already there. Returns the state afterwards. */
-  toggle(entity: Favourite): Promise<{ favourited: boolean }>;
-  listForUser(p: { userId: string; limit: number; cursor?: string | null }): Promise<{ items: Favourite[]; nextCursor: string | null }>;
-  /** Which of `targetIds` this user has saved, for one target type. */
-  markedFor(p: { userId: string; targetType: FavouriteTarget; targetIds: string[] }): Promise<string[]>;
+export class Favourite {
+  static file(p: { id?: string; listId: string; userId: string; targetType: FavouriteTarget; targetId: string; createdAt: Date }): Favourite;
+  static rehydrate(p: FavouriteProps): Favourite;
 }
 ```
 
@@ -265,105 +385,86 @@ export interface FavouriteRepositoryPort {
 ```ts
 import { describe, expect, it } from "bun:test";
 import { Favourite } from "../domain/aggregates/favourite.aggregate";
+import { FavouriteList } from "../domain/aggregates/favourite-list.aggregate";
 import { UnknownFavouriteTargetError } from "../domain/exceptions";
 
-describe("Favourite", () => {
-  it("refuses a target kind nothing can render", () => {
-    // A row with targetType 'booking' is unreadable by every projection, and
-    // it would sit in somebody's list forever as a gap.
-    expect(() =>
-      Favourite.save({ userId: "u1", targetType: "booking" as never, targetId: "t1", createdAt: new Date(0) }),
-    ).toThrow(UnknownFavouriteTargetError);
+describe("FavouriteList", () => {
+  it("makes the default list nameless", () => {
+    // Null is the mechanism, not an oversight: the name is rendered from a
+    // translated key so the same list reads Favoritos or Favourites.
+    const l = FavouriteList.createDefault({ userId: "u1", createdAt: new Date(0) });
+    expect(l.name).toBeNull();
+    expect(l.isDefault).toBe(true);
   });
 
-  it("refuses a blank owner", () => {
-    expect(() =>
-      Favourite.save({ userId: "  ", targetType: "service", targetId: "t1", createdAt: new Date(0) }),
-    ).toThrow();
+  it("refuses a blank name on a list somebody named", () => {
+    // A list called "   " is a row nobody can identify in the dialog.
+    expect(() => FavouriteList.create({ userId: "u1", name: "   ", createdAt: new Date(0) })).toThrow();
   });
 
-  it("refuses a blank target", () => {
-    expect(() =>
-      Favourite.save({ userId: "u1", targetType: "service", targetId: "  ", createdAt: new Date(0) }),
-    ).toThrow();
+  it("trims the name, so two lists do not differ by a trailing space", () => {
+    expect(FavouriteList.create({ userId: "u1", name: "  Casa nova ", createdAt: new Date(0) }).name).toBe("Casa nova");
   });
 
-  it("keeps what it was given", () => {
-    const f = Favourite.save({ userId: "u1", targetType: "provider", targetId: "p1", createdAt: new Date(5) });
-    expect({ userId: f.userId, targetType: f.targetType, targetId: f.targetId }).toEqual({
-      userId: "u1",
-      targetType: "provider",
-      targetId: "p1",
-    });
+  it("refuses a name longer than the column", () => {
+    // 61 characters is a silent truncation at the database or an error the
+    // person reads as "saving is broken". Refused here, where the message can
+    // say what the limit is.
+    expect(() => FavouriteList.create({ userId: "u1", name: "x".repeat(61), createdAt: new Date(0) })).toThrow();
+  });
+
+  it("lets the default list be renamed, and it stops being nameless", () => {
+    // Renaming it is allowed — a list somebody named is theirs. Deleting it
+    // is not; that rule lives in RemoveListCommand, where the repository is.
+    const l = FavouriteList.createDefault({ userId: "u1", createdAt: new Date(0) }).rename("A minha lista");
+    expect(l.name).toBe("A minha lista");
+    expect(l.isDefault).toBe(true);
   });
 
   it("rehydrates without re-validating", () => {
-    // Validation belongs on the way in. Routing reads through `save` means a
-    // target kind later dropped from FAVOURITE_TARGETS throws on *read* — and
-    // because the repository maps a whole page in one pass, one such row
-    // would fail the entire page instead of only itself. The same split
-    // `Activity.rehydrate` makes, for the same reason.
+    // Validation belongs on the way in. Routing reads through `create` means a
+    // rule tightened later throws on *read* — and because the repository maps
+    // a whole page in one pass, one such row would fail the entire page
+    // instead of only itself. The same split `Activity.rehydrate` makes.
     expect(() =>
-      Favourite.rehydrate({ userId: "u1", targetType: "booking" as never, targetId: "t1", createdAt: new Date(0) }),
+      FavouriteList.rehydrate({ id: "l1", userId: "u1", name: "x".repeat(200), isDefault: false, createdAt: new Date(0) }),
     ).not.toThrow();
+  });
+});
+
+describe("Favourite", () => {
+  it("refuses a target kind nothing can render", () => {
+    // A row with targetType 'booking' is unreadable by every projection and
+    // would sit in a list forever as a gap.
+    expect(() =>
+      Favourite.file({ listId: "l1", userId: "u1", targetType: "booking" as never, targetId: "t1", createdAt: new Date(0) }),
+    ).toThrow(UnknownFavouriteTargetError);
+  });
+
+  it("refuses a blank owner, list or target", () => {
+    for (const over of [{ userId: "  " }, { listId: "  " }, { targetId: "  " }]) {
+      expect(() =>
+        Favourite.file({ listId: "l1", userId: "u1", targetType: "service", targetId: "t1", createdAt: new Date(0), ...over }),
+      ).toThrow();
+    }
+  });
+
+  it("keeps what it was given", () => {
+    const f = Favourite.file({ listId: "l1", userId: "u1", targetType: "provider", targetId: "p1", createdAt: new Date(5) });
+    expect({ listId: f.listId, targetType: f.targetType, targetId: f.targetId }).toEqual({
+      listId: "l1",
+      targetType: "provider",
+      targetId: "p1",
+    });
   });
 });
 ```
 
 - [ ] **Step 2: Run it, watch it fail, then write the domain**
 
-`favourite-target.ts` holds `FAVOURITE_TARGETS` and an `isFavouriteTarget` guard. `favourite.aggregate.ts` mirrors `Activity`'s shape exactly — a private constructor, a validating `save`, a non-validating `rehydrate`, and getters. Read `bounded-contexts/activity/domain/aggregates/activity.aggregate.ts` first and follow it; the two are siblings and should read as such.
+Read `bounded-contexts/activity/domain/aggregates/activity.aggregate.ts` first and follow it exactly: a private constructor, a validating factory, a non-validating `rehydrate`, and getters. The two are siblings and should read as such. `rename` returns a new instance rather than mutating — nothing else in this codebase mutates an aggregate in place.
 
-- [ ] **Step 3: Write the repository**
-
-`toggle` is one statement, not a read then a write:
-
-```ts
-  /**
-   * One `INSERT … ON CONFLICT DO NOTHING`, then a `DELETE` only if it did
-   * nothing — never a `SELECT` followed by a decision.
-   *
-   * Read-then-write loses a race with the same person in two tabs, or with a
-   * double-tap on a slow connection: both reads see "not saved", both insert,
-   * and the unique constraint turns the second into a 500 the user reads as
-   * "the heart is broken". Letting the constraint decide makes the race
-   * unobservable — one of the two inserts wins, the other reports "already
-   * there" and removes it, and the final state is a toggle either way.
-   */
-  async toggle(entity: Favourite): Promise<{ favourited: boolean }> {
-    const inserted = await getDb()
-      .insert(favourite)
-      .values({
-        userId: entity.userId,
-        targetType: entity.targetType,
-        targetId: entity.targetId,
-        createdAt: entity.createdAt,
-      })
-      .onConflictDoNothing({
-        target: [favourite.userId, favourite.targetType, favourite.targetId],
-      })
-      .returning({ id: favourite.id });
-
-    if (inserted.length > 0) return { favourited: true };
-
-    await getDb()
-      .delete(favourite)
-      .where(
-        and(
-          eq(favourite.userId, entity.userId),
-          eq(favourite.targetType, entity.targetType),
-          eq(favourite.targetId, entity.targetId),
-        ),
-      );
-    return { favourited: false };
-  }
-```
-
-`listForUser` is cursor-paged on `<createdAt ISO>|<id>`, copied from `DrizzleActivityRepository` — this table is appended to at the top, which is exactly where offset breaks: a row saved between two page fetches shifts every offset by one, so the reader sees an entry twice or never. Copy `encodeCursor`/`decodeCursor` and the "reject an undecodable cursor rather than silently restarting" rule with them.
-
-`markedFor` is a single `SELECT target_id … WHERE user_id = ? AND target_type = ? AND target_id = ANY(?)`, returning the ids. Guard `targetIds.length === 0` with an early `return []` — `IN ()` is a syntax error, and an empty page of cards is a real case.
-
-- [ ] **Step 4: Run the tests and commit**
+- [ ] **Step 3: Run and commit**
 
 ```bash
 cd packages/backend && bun test src/modules/ntizo/bounded-contexts/favourite
@@ -371,125 +472,505 @@ cd packages/backend && bun test src/modules/ntizo/bounded-contexts/favourite
 
 ```bash
 git add packages/backend/src/modules/ntizo/bounded-contexts/favourite
-git commit -m "feat(favourite): the aggregate, and a toggle that cannot lose a race
+git commit -m "feat(favourite): the list and the entry, with the default list nameless
 
-INSERT … ON CONFLICT DO NOTHING, then DELETE if it did nothing — never a SELECT
-and a decision. Read-then-write loses to a double-tap and turns the unique
-constraint into a 500 the user reads as a broken heart."
+Null is the mechanism: the default list's name is rendered from a translated
+key, so one list reads Favoritos to one person and Favourites to another.
+Renaming it writes a name and it stops being translated."
 ```
 
 ---
 
-### Task 3: The toggle mutation
+### Task 3: The repositories
 
 **Files:**
-- Create: `bounded-contexts/favourite/app/use-cases/toggle-favourite.command.ts`, `app/ports/inbound/index.ts`, `bootstrap/index.ts`, `index.ts`
-- Create: `write/favourite/graphql/schema/mutations.ts`, `graphql/handlers/mutations.handlers.ts`, `index.ts`
-- Modify: `write/schema.ts`
-- Test: `write/favourite/__tests__/toggle-favourite.test.ts`
+- Create: `app/ports/outbound/favourite-list.repository.port.ts`, `favourite.repository.port.ts`
+- Create: `infrastructure/repositories/drizzle/favourite-list.repository.ts`, `favourite.repository.ts`
+- Test: `bounded-contexts/favourite/__tests__/repositories.test.ts` (SQL-shape assertions via `.toSQL()`, following `communication/__tests__/repositories.test.ts`)
 
 **Interfaces:**
-- Consumes: `FavouriteRepositoryPort` (Task 2).
-- Produces: `favouriteToggle(input: { targetType, targetId }) → { favourited: Boolean! }`.
+- Consumes: the tables (1), the aggregates (2).
+- Produces:
+
+```ts
+export interface FavouriteListRepositoryPort {
+  /** Creates the default list if this person has none, and returns it either way. Idempotent under concurrency. */
+  ensureDefault(userId: string, now: Date): Promise<FavouriteList>;
+  save(entity: FavouriteList): Promise<string>;
+  rename(p: { id: string; userId: string; name: string }): Promise<void>;
+  /** Deletes the list and, by cascade, its entries. Returns false when the id is not this user's. */
+  remove(p: { id: string; userId: string }): Promise<boolean>;
+  listForUser(userId: string): Promise<FavouriteList[]>;
+  /** Every id in `listIds` that belongs to this user. The authorisation check every command runs. */
+  ownedBy(p: { userId: string; listIds: string[] }): Promise<string[]>;
+}
+
+export interface FavouriteRepositoryPort {
+  /** Files a listing into one list; already there is not an error. */
+  add(entity: Favourite): Promise<void>;
+  /** Sets exactly which of this user's lists hold this listing, in one transaction. */
+  setLists(p: { userId: string; targetType: FavouriteTarget; targetId: string; listIds: string[]; now: Date }): Promise<void>;
+  listsFor(p: { userId: string; targetType: FavouriteTarget; targetId: string }): Promise<string[]>;
+  markedFor(p: { userId: string; targetType: FavouriteTarget; targetIds: string[] }): Promise<string[]>;
+  countsFor(listIds: string[]): Promise<Map<string, number>>;
+  /** Up to `limit` most recent target ids per list, for the cover mosaics. */
+  coverTargetsFor(p: { listIds: string[]; perList: number }): Promise<Map<string, { targetType: FavouriteTarget; targetId: string }[]>>;
+  entriesIn(p: { listId: string; limit: number; cursor?: string | null }): Promise<{ items: Favourite[]; nextCursor: string | null }>;
+}
+```
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+describe("ensureDefault", () => {
+  it("does not lose a race with the same person in two tabs", () => {
+    // INSERT … ON CONFLICT DO NOTHING against the partial unique index, then
+    // read. A SELECT-then-INSERT would let both tabs see "no default", both
+    // insert, and one get a constraint violation the person reads as "saving
+    // is broken" on their very first save.
+    const { sql } = buildEnsureDefault("u1").toSQL();
+    expect(sql.toLowerCase()).toContain("on conflict");
+    expect(sql.toLowerCase()).toContain("do nothing");
+  });
+});
+
+describe("setLists", () => {
+  it("runs as one transaction", () => {
+    // Half-applied, it leaves the listing in lists nobody chose. The dialog
+    // would then show one thing and the lists another, with no way to tell
+    // which is right.
+    expect(repo.setListsRanInTransaction).toBe(true);
+  });
+
+  it("adds and removes in one statement each, not one per list", () => {
+    // Somebody with twelve lists ticking three should cost two statements,
+    // not fifteen.
+  });
+
+  it("touches no list belonging to somebody else", () => {
+    // The command checks ownership, and this checks it again: `where user_id
+    // = ?` on both statements, so a listId that slipped through is a no-op
+    // rather than a write into a stranger's list.
+    const { sql } = buildSetLists({ userId: "u1", listIds: ["l1"] }).toSQL();
+    expect(sql).toContain("user_id");
+  });
+
+  it("does not rewrite rows that are already right", () => {
+    // A DELETE-everything-then-INSERT loses the original createdAt, and the
+    // list reorders itself every time the dialog is opened and closed.
+  });
+});
+
+describe("markedFor", () => {
+  it("answers an empty page without touching the database", () => {
+    // `IN ()` is a syntax error, and an empty page of cards is a real case.
+  });
+
+  it("returns each id once even when it is in three lists", () => {
+    // The heart is "saved anywhere", not "saved three times". A duplicate here
+    // becomes a Set on the client and hides nothing — but the payload is three
+    // times the size for no reason.
+  });
+});
+
+describe("entriesIn", () => {
+  it("pages by cursor, not offset", () => {
+    // A list is appended to at the top, which is exactly where offset breaks:
+    // a row saved between two page fetches shifts every offset by one, so the
+    // reader sees an entry twice or never.
+  });
+
+  it("rejects a cursor that does not decode rather than restarting at page one", () => {
+    // A client looping on "cursor in, cursor out" until null would otherwise
+    // loop forever on a truncated token instead of ever finding out.
+  });
+});
+```
+
+- [ ] **Step 2: Run them, watch them fail, then write the adapters**
+
+`ensureDefault`:
+
+```ts
+  /**
+   * The default list, created on first use.
+   *
+   * `INSERT … ON CONFLICT DO NOTHING` against the one-default partial unique
+   * index, then read — never a SELECT and a decision. Read-then-write loses to
+   * the same person in two tabs: both see "no default", both insert, and one
+   * gets a constraint violation on their very first save, which reads as the
+   * heart being broken.
+   */
+  async ensureDefault(userId: string, now: Date): Promise<FavouriteList> {
+    await getDb()
+      .insert(favouriteList)
+      .values({ userId, name: null, isDefault: true, createdAt: now })
+      .onConflictDoNothing();
+    const [row] = await getDb()
+      .select()
+      .from(favouriteList)
+      .where(and(eq(favouriteList.userId, userId), eq(favouriteList.isDefault, true)))
+      .limit(1);
+    return FavouriteList.rehydrate(row!);
+  }
+```
+
+`setLists` runs inside `db.transaction`, and inside it: one `DELETE … WHERE user_id = ? AND target_type = ? AND target_id = ? AND list_id <> ALL(?)`, then one `INSERT … VALUES (…), (…) ON CONFLICT DO NOTHING`. Two statements whatever the number of lists, and **`ON CONFLICT DO NOTHING` rather than delete-all-then-insert** — the latter loses every row's `createdAt` and the list reorders itself each time the dialog is opened and closed.
+
+`coverTargetsFor` uses a window function (`row_number() over (partition by list_id order by created_at desc)`) filtered to `<= perList`, so four covers for twelve lists is one query rather than twelve.
+
+`entriesIn` copies `DrizzleActivityRepository`'s cursor handling verbatim — `<createdAt ISO>|<id>`, and an undecodable cursor throws rather than silently restarting.
+
+- [ ] **Step 3: Run and commit**
+
+```bash
+cd packages/backend && bun test src/modules/ntizo/bounded-contexts/favourite
+```
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/favourite
+git commit -m "feat(favourite): repositories that do not lose races or rewrite good rows
+
+ensureDefault is INSERT … ON CONFLICT DO NOTHING, not SELECT-then-decide: two
+tabs on a first save would both see no default and one would get a constraint
+violation it reads as a broken heart.
+
+setLists is two statements in a transaction, and ON CONFLICT DO NOTHING rather
+than delete-all-then-insert — the latter loses every createdAt and the list
+reorders itself each time the dialog opens and closes."
+```
+
+---
+
+### Task 4: `quickSave` — the heart
+
+**Files:**
+- Create: `app/use-cases/quick-save.command.ts`, `app/ports/inbound/index.ts`, `bootstrap/index.ts`, `index.ts`
+- Test: `bounded-contexts/favourite/__tests__/quick-save.test.ts`
+
+**Interfaces:**
+- Consumes: both repositories (3).
+- Produces: `QuickSaveCommand.execute({ requesterUserId, targetType, targetId }) → { listIds: string[] }`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-describe("ToggleFavouriteCommand", () => {
-  it("saves a listing that was not saved", async () => {
-    const repo = new FakeRepo({ favourited: true });
-    const out = await new ToggleFavouriteCommand(repo).execute({
-      requesterUserId: "u1",
-      targetType: "service",
-      targetId: "s1",
-    });
-    expect(out).toEqual({ favourited: true });
+describe("QuickSaveCommand", () => {
+  it("creates the default list on the very first save", () => {
+    // Lazily, not at sign-up: a row for every account that never saves
+    // anything is a table full of nothing.
+    expect(lists.ensuredFor).toBe("u1");
+  });
+
+  it("files the listing into the default list", async () => {
+    const out = await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1" });
+    expect(out.listIds).toEqual(["default-list"]);
+  });
+
+  it("is idempotent — a second press changes nothing", async () => {
+    // A double-tap on a slow connection, or the same card in two tabs. Neither
+    // may create a second row, a second list, or an error.
+    await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1" });
+    const out = await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1" });
+    expect(out.listIds).toEqual(["default-list"]);
+    expect(entries.rows).toHaveLength(1);
+  });
+
+  it("leaves a listing already filed elsewhere where it is, and adds the default", async () => {
+    // Pressing the heart on a card whose listing lives in "Casa nova" must not
+    // move it out of "Casa nova".
+    entries.seed({ listId: "casa-nova", targetId: "s1" });
+    const out = await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1" });
+    expect(out.listIds.sort()).toEqual(["casa-nova", "default-list"]);
   });
 
   it("stamps the owner from the caller, never from the input", async () => {
-    // The command takes `requesterUserId` and nothing else that names a
-    // person. There is no argument a caller could send to save something
-    // into somebody else's list.
-    const repo = new FakeRepo({ favourited: true });
-    await new ToggleFavouriteCommand(repo).execute({
-      requesterUserId: "u1",
-      targetType: "service",
-      targetId: "s1",
-    });
-    expect(repo.toggled!.userId).toBe("u1");
+    // The command takes `requesterUserId` and nothing else naming a person.
+    // There is no argument a caller could send to save into somebody else's
+    // list.
+    await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1" });
+    expect(entries.added!.userId).toBe("u1");
   });
 
   it("refuses a target kind the product cannot render", async () => {
-    const repo = new FakeRepo({ favourited: true });
     await expect(
-      new ToggleFavouriteCommand(repo).execute({
-        requesterUserId: "u1",
-        targetType: "booking" as never,
-        targetId: "b1",
-      }),
+      command.execute({ requesterUserId: "u1", targetType: "booking" as never, targetId: "b1" }),
     ).rejects.toThrow();
   });
 
   it("does not check that the target exists", async () => {
     // Deliberate, and worth stating: verifying it would mean this context
-    // querying Catalog and Provider, which is the boundary the missing
-    // foreign key exists to keep. A favourite pointing at nothing is dropped
-    // on read, where those two contexts are already being consulted anyway.
-    const repo = new FakeRepo({ favourited: true });
+    // querying Catalog and Provider, which is the boundary the missing foreign
+    // key exists to keep. A favourite pointing at nothing is dropped on read,
+    // where those two contexts are already being consulted anyway.
     await expect(
-      new ToggleFavouriteCommand(repo).execute({
-        requesterUserId: "u1",
-        targetType: "service",
-        targetId: "00000000-0000-0000-0000-000000000000",
-      }),
-    ).resolves.toEqual({ favourited: true });
+      command.execute({ requesterUserId: "u1", targetType: "service", targetId: "00000000-0000-0000-0000-000000000000" }),
+    ).resolves.toBeDefined();
   });
 });
 ```
 
 - [ ] **Step 2: Run it, watch it fail, then write the command**
 
-Four lines: build the aggregate with `Favourite.save` (which validates the target kind), call `repo.toggle`, return its result. `createdAt` is `new Date()` here rather than in the aggregate, so a test can inject a clock if one is ever needed.
+`ensureDefault`, then `Favourite.file(...)` into it (which validates the target kind), then `add` — which is `ON CONFLICT DO NOTHING`, so a second press is a no-op rather than an error. Return `listsFor(...)` so the dialog opens already knowing the answer and does not need a second round trip.
 
-- [ ] **Step 3: Write the mutation slice**
+- [ ] **Step 3: Run and commit**
+
+```bash
+cd packages/backend && bun test src/modules/ntizo/bounded-contexts/favourite
+```
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/favourite
+git commit -m "feat(favourite): the heart saves first and asks afterwards
+
+quickSave creates the default list lazily, files the listing into it, and
+returns every list the listing is now in — so the dialog opens already knowing
+the answer instead of asking again. Idempotent: a double-tap is a no-op."
+```
+
+---
+
+### Task 5: `setLists`, and the three list commands
+
+**Files:**
+- Create: `app/use-cases/set-lists.command.ts`, `create-list.command.ts`, `rename-list.command.ts`, `remove-list.command.ts`
+- Test: `bounded-contexts/favourite/__tests__/list-commands.test.ts`
+
+**Interfaces:**
+- Consumes: both repositories (3), both aggregates (2).
+- Produces: four commands, each taking `requesterUserId` and nothing else naming a person.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+describe("SetListsCommand", () => {
+  it("sets exactly the lists it was given", async () => {
+    entries.seed({ listId: "a", targetId: "s1" }, { listId: "b", targetId: "s1" });
+    await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1", listIds: ["b", "c"] });
+    expect(await entries.listsFor("s1")).toEqual(["b", "c"]);
+  });
+
+  it("unsaves the listing entirely when given no lists", async () => {
+    // Unticking every row in the dialog is how somebody removes a favourite.
+    // The heart empties, and there is no separate delete to find.
+    await command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1", listIds: [] });
+    expect(await entries.listsFor("s1")).toEqual([]);
+  });
+
+  it("refuses a list that is not the caller's", async () => {
+    // The one authorisation rule in this feature. Without it a caller can file
+    // a listing into a stranger's list by sending its id.
+    lists.owned = ["mine"];
+    await expect(
+      command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1", listIds: ["mine", "somebody-elses"] }),
+    ).rejects.toThrow(ListNotYoursError);
+  });
+
+  it("refuses before writing anything, not halfway through", async () => {
+    // A partial write leaves the listing in some of the lists asked for, and
+    // the dialog and the lists then disagree with no way to tell which is
+    // right.
+    lists.owned = ["mine"];
+    await expect(
+      command.execute({ requesterUserId: "u1", targetType: "service", targetId: "s1", listIds: ["mine", "theirs"] }),
+    ).rejects.toThrow();
+    expect(entries.setCalled).toBe(false);
+  });
+});
+
+describe("CreateListCommand", () => {
+  it("refuses a name this person already has, ignoring case", async () => {
+    // "Casa nova" and "casa nova" are the same list to whoever typed them and
+    // two identical rows in the dialog to everybody else.
+    lists.seed({ name: "Casa nova" });
+    await expect(command.execute({ requesterUserId: "u1", name: "casa nova" })).rejects.toThrow(ListNameTakenError);
+  });
+
+  it("lets two different people use the same name", async () => {
+    // Names are unique within a person, never across the platform.
+  });
+
+  it("never creates a second default", async () => {
+    // Only ensureDefault does that.
+    const out = await command.execute({ requesterUserId: "u1", name: "Casa nova" });
+    expect(lists.saved!.isDefault).toBe(false);
+  });
+});
+
+describe("RemoveListCommand", () => {
+  it("refuses the default list", async () => {
+    // Deleting it would leave the heart with nowhere to save to.
+    lists.seed({ id: "d", isDefault: true });
+    await expect(command.execute({ requesterUserId: "u1", listId: "d" })).rejects.toThrow(DefaultListNotRemovableError);
+  });
+
+  it("refuses a list that is not the caller's", async () => {
+    await expect(command.execute({ requesterUserId: "u1", listId: "theirs" })).rejects.toThrow(ListNotYoursError);
+  });
+
+  it("takes the list's entries with it and no others", async () => {
+    // By cascade, which is the database's job — this asserts the cascade is
+    // actually declared, not that the command deletes rows itself.
+  });
+});
+
+describe("RenameListCommand", () => {
+  it("allows renaming the default, which then stops being nameless", async () => {
+    lists.seed({ id: "d", isDefault: true, name: null });
+    await command.execute({ requesterUserId: "u1", listId: "d", name: "A minha lista" });
+    expect(lists.renamedTo).toBe("A minha lista");
+  });
+
+  it("refuses a name another of this person's lists already has", async () => {
+    lists.seed({ id: "a", name: "Casa nova" }, { id: "b", name: "Urgente" });
+    await expect(command.execute({ requesterUserId: "u1", listId: "b", name: "Casa nova" })).rejects.toThrow(ListNameTakenError);
+  });
+
+  it("lets a list keep its own name", async () => {
+    // Renaming "Casa nova" to "Casa nova" is a no-op, not a conflict with
+    // itself.
+    lists.seed({ id: "a", name: "Casa nova" });
+    await expect(command.execute({ requesterUserId: "u1", listId: "a", name: "Casa nova" })).resolves.toBeUndefined();
+  });
+});
+```
+
+- [ ] **Step 2: Run them, watch them fail, then write the four commands**
+
+Each begins by resolving ownership through `lists.ownedBy` and throws `ListNotYoursError` **before** any write. The name-taken check is a read against this person's lists, and the database's case-insensitive unique index is the backstop — the check is for the message, the index is for the truth.
+
+- [ ] **Step 3: Run and commit**
+
+```bash
+cd packages/backend && bun test src/modules/ntizo/bounded-contexts/favourite
+```
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/favourite
+git commit -m "feat(favourite): setLists, and creating, renaming and removing a list
+
+setLists replaces an add/remove pair: the dialog's natural output is 'these are
+the lists it should be in', and a pair would make the client diff two states —
+which is where a stale card sends add for something already added.
+
+Ownership is checked before any write, never halfway: a partial write leaves
+the dialog and the lists disagreeing with no way to tell which is right."
+```
+
+---
+
+### Task 6: The mutation slice
+
+**Files:**
+- Create: `write/favourite/graphql/schema/mutations.ts`, `graphql/handlers/mutations.handlers.ts`, `index.ts`
+- Modify: `write/schema.ts`
+- Test: `write/favourite/__tests__/mutations.test.ts`
+
+**Interfaces:**
+- Consumes: the five commands (4, 5).
+- Produces: `favouriteQuickSave`, `favouriteSetLists`, `favouriteListCreate`, `favouriteListRename`, `favouriteListRemove`.
+
+- [ ] **Step 1: Write the schema**
 
 ```ts
 /**
- * One toggle, not an add and a remove.
+ * Two mutations for saving, one per gesture, rather than one with a mode.
  *
- * The button has one meaning to the person pressing it — "save this" /
- * "unsave this" — and two mutations would let the client and the server
- * disagree about which one to send: a stale card sends `add` for something
- * already saved, gets a conflict, and the heart flickers. The server owns the
- * decision and reports the state afterwards, so an optimistic update can be
- * reconciled rather than guessed.
+ * `quickSave` is the heart: it saves immediately, into the default list, and
+ * returns every list the listing is now in — so the dialog it opens already
+ * knows the answer. `setLists` is the dialog: it states the whole desired
+ * membership at once.
+ *
+ * `setLists` replaces an add/remove pair on purpose. The dialog's natural
+ * output is "these are the lists it should be in", and a pair would make the
+ * client diff two states and send the difference — which is where a stale card
+ * sends `add` for something already added, gets a conflict, and the row
+ * flickers.
  */
-export const toggleFavourite = defineMutation({
+export const quickSave = defineMutation({
   input: zodSchema(
     z.object({
       // The literals are repeated here rather than imported from the bounded
       // context's `FAVOURITE_TARGETS` — the same trade `write/review`'s 1..5
       // rating bound makes, so a schema file never imports a domain module.
-      // `Favourite.save` refuses the same set again, on purpose.
+      // `Favourite.file` refuses the same set again, on purpose.
       targetType: z.enum(["service", "provider"]),
       targetId: z.string().min(1).max(64),
     }),
   ),
-  output: zodSchema(z.object({ favourited: z.boolean() })),
-  docs: { summary: "Save a listing, or remove it if already saved", tags: ["Favourite"] },
+  output: zodSchema(z.object({ listIds: z.array(z.string()) })),
+  docs: { summary: "Save a listing into your default list", tags: ["Favourite"] },
+});
+
+export const setLists = defineMutation({
+  input: zodSchema(
+    z.object({
+      targetType: z.enum(["service", "provider"]),
+      targetId: z.string().min(1).max(64),
+      // Bounded so a caller cannot send an unbounded array. Nobody has 64
+      // lists, and an empty array is meaningful: it unsaves the listing.
+      listIds: z.array(z.string().min(1).max(64)).max(64),
+    }),
+  ),
+  output: zodSchema(z.object({ listIds: z.array(z.string()) })),
+  docs: { summary: "Set exactly which of your lists hold this listing", tags: ["Favourite"] },
+});
+
+export const createList = defineMutation({
+  // 60, matching `favourite_list.name`'s column width and `LIST_NAME_MAX`.
+  input: zodSchema(z.object({ name: z.string().trim().min(1).max(60) })),
+  output: zodSchema(z.object({ id: z.string().min(1) })),
+  docs: { summary: "Create a list", tags: ["Favourite"] },
+});
+
+export const renameList = defineMutation({
+  input: zodSchema(z.object({ id: z.string().min(1), name: z.string().trim().min(1).max(60) })),
+  output: zodSchema(z.object({ id: z.string().min(1) })),
+  docs: { summary: "Rename a list", tags: ["Favourite"] },
+});
+
+export const removeList = defineMutation({
+  input: zodSchema(z.object({ id: z.string().min(1) })),
+  output: zodSchema(z.object({ removed: z.boolean() })),
+  docs: { summary: "Delete a list and everything in it", tags: ["Favourite"] },
 });
 
 export const favouriteWriteSchema = defineGraphQLSchema(
-  { favourite: { toggle: toggleFavourite } },
+  {
+    favourite: { quickSave, setLists },
+    favouriteList: { create: createList, rename: renameList, remove: removeList },
+  },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );
 ```
 
+- [ ] **Step 2: Write the handlers and the failing test**
+
 The handler copies `write/communication`'s `requireUser(ctx)` verbatim — tiers do not import each other here, and six lines is not worth a shared helper. Its message is `"Sign in to save a listing"`, code `UNAUTHENTICATED`.
 
-Merge `favouriteWriteSchema` into `write/schema.ts`.
+```ts
+describe("favourite write handlers", () => {
+  it("refuses an anonymous caller on every field", () => {
+    // Five fields, five chances to forget. The test enumerates them from the
+    // schema rather than listing them, so a sixth added later is covered
+    // without anybody remembering this file.
+    for (const field of leafFields(favouriteWriteSchema)) {
+      expect(() => handlerFor(field)({ input: {} }, anonymousCtx)).toThrow(ForbiddenError);
+    }
+  });
 
-- [ ] **Step 4: Run and commit**
+  it("declares no user id on any input", () => {
+    // Identity comes from the session. An argument naming a person is a way to
+    // act as them.
+    for (const field of leafFields(favouriteWriteSchema)) {
+      expect(Object.keys(inputShapeOf(field))).not.toContain("userId");
+    }
+  });
+});
+```
+
+- [ ] **Step 3: Merge into `write/schema.ts`, run, commit**
 
 ```bash
 cd packages/backend && bun test src/modules/ntizo
@@ -497,95 +978,57 @@ cd packages/backend && bun test src/modules/ntizo
 
 ```bash
 git add packages/backend/src/modules/ntizo
-git commit -m "feat(favourite): one toggle mutation, returning the state afterwards
+git commit -m "feat(favourite): five mutations, none of them naming a person
 
-Two mutations let a stale card send 'add' for something already saved and get
-a conflict back, which the user sees as a flickering heart. The server decides
-and reports, so an optimistic update is reconciled rather than guessed."
+Identity comes from the session on every one, and the test enumerates the
+schema's leaves rather than listing them — a sixth field added later is covered
+without anybody remembering that file."
 ```
 
 ---
 
-### Task 4: Reading a list, and marking a page
+### Task 7: The four queries
 
 **Files:**
-- Create: `packages/shared/src/read-models/system/favourite/favourite.schema.ts` (+ index barrel entry)
-- Create: `read/favourite/app/use-cases/list-favourites.projection.ts`, `mark-favourites.projection.ts`
-- Create: `read/favourite/graphql/schema/queries.ts`, `graphql/handlers/queries.handlers.ts`, `bootstrap/index.ts`, `index.ts`
+- Create: `packages/shared/src/read-models/system/favourite/favourite.schema.ts` (+ barrel entry)
+- Create: `read/favourite/app/use-cases/{list-my-lists,list-list-entries,mark-favourites,lists-for-target}.projection.ts`
+- Create: `read/favourite/graphql/schema/queries.ts`, `handlers/queries.handlers.ts`, `bootstrap/index.ts`, `index.ts`
 - Modify: `read/schema.ts`
-- Test: `read/favourite/__tests__/list-favourites.test.ts`, `__tests__/mark-favourites.test.ts`
+- Test: `read/favourite/__tests__/projections.test.ts`
 
 **Interfaces:**
-- Consumes: `FavouriteRepositoryPort` (2); `ServiceReadRepositoryPort` and `ProviderPublicRepositoryPort` for resolving targets.
-- Produces:
-  - `favouriteMine(input: { limit?, cursor? }) → FavouritePageDTO`
-  - `favouriteMarked(input: { targetType, targetIds: [String!]! }) → [String!]!`
+- Consumes: both repositories (3); `ServiceReadRepositoryPort` and `ProviderPublicRepositoryPort` for resolving targets.
+- Produces: `favouriteListMine`, `favouriteListById`, `favouriteMarked`, `favouriteListsFor`.
 
-- [ ] **Step 1: Write the failing tests**
-
-```ts
-describe("ListFavouritesProjection", () => {
-  it("returns both kinds in one list, newest saved first", async () => {
-    // Two tables would have made this a union with two cursors. It is one
-    // list because saving is one act.
-    const out = await projection.execute({ requesterUserId: "u1", limit: 20 });
-    expect(out.items.map((i) => i.kind)).toEqual(["provider", "service"]);
-  });
-
-  it("drops a favourite whose listing is gone or unpublished", async () => {
-    // There is no foreign key, on purpose. This is where that decision is
-    // paid for — and it is the same rule both listings already apply.
-    const out = await projection.execute({ requesterUserId: "u1", limit: 20 });
-    expect(out.items.map((i) => i.id)).not.toContain("deleted-service");
-  });
-
-  it("still advances the cursor past a dropped row", async () => {
-    // Paging by items.length would fetch the dropped row's position forever.
-    // The cursor comes from the last row the *repository* returned, not from
-    // the last row that survived.
-    const out = await projection.execute({ requesterUserId: "u1", limit: 1 });
-    expect(out.nextCursor).not.toBeNull();
-  });
-
-  it("clamps a limit nobody should be able to ask for", async () => {
-    const out = await projection.execute({ requesterUserId: "u1", limit: 5000 });
-    expect(repo.listedWith.limit).toBeLessThanOrEqual(50);
-  });
-
-  it("resolves each listing in the reader's language", async () => {
-    await projection.execute({ requesterUserId: "u1", limit: 20, locale: "pt-MZ" });
-    expect(serviceRepo.askedLocale).toBe("pt-MZ");
-  });
-});
-
-describe("MarkFavouritesProjection", () => {
-  it("returns only the ids this person saved", async () => {
-    const out = await projection.execute({ requesterUserId: "u1", targetType: "service", targetIds: ["a", "b", "c"] });
-    expect(out).toEqual(["a", "c"]);
-  });
-
-  it("answers an empty page without touching the database", async () => {
-    // `IN ()` is a syntax error, and an empty page of cards is a real case.
-    const out = await projection.execute({ requesterUserId: "u1", targetType: "service", targetIds: [] });
-    expect(out).toEqual([]);
-    expect(repo.marked).toBeUndefined();
-  });
-
-  it("never returns an id it was not asked about", async () => {
-    // The whole reason this takes the ids on screen rather than returning
-    // everything the reader ever saved: a person with two thousand
-    // favourites must not ship two thousand ids to draw twenty-four hearts.
-    const out = await projection.execute({ requesterUserId: "u1", targetType: "service", targetIds: ["a"] });
-    expect(out.every((id) => id === "a")).toBe(true);
-  });
-});
-```
-
-- [ ] **Step 2: Run them, watch them fail, then write the read model**
+- [ ] **Step 1: Write the read models**
 
 ```ts
 /**
- * One saved listing, already resolved into what a card needs.
+ * One of somebody's lists, as the dialog and the index page meet it.
+ *
+ * `name` is null on the default list — the client renders a translated string
+ * for it. Resolving it here would need a locale on a query the dialog calls
+ * once per open, and would bake the reader's language into a cache entry
+ * keyed on nothing else.
+ */
+export const favouriteListReadModel = z.object({
+  id: z.string().min(1),
+  name: z.string().nullable(),
+  isDefault: z.boolean(),
+  itemCount: z.number().int().min(0),
+  /**
+   * Up to four images from the list's most recent items, for the cover mosaic.
+   *
+   * Fewer than four — often zero — is normal and the client draws the gaps.
+   * These are the same resolved URLs the listings use, so a list of listings
+   * with no photographs comes back empty and the client falls back to a mark,
+   * rather than to four broken images.
+   */
+  coverUrls: z.array(z.string()).max(4),
+});
+
+/**
+ * One saved listing, resolved into what a card needs.
  *
  * A discriminated union rather than two nullable fields: a row is a service or
  * a provider, never both and never neither, and two nullable fields would let
@@ -596,57 +1039,129 @@ export const favouriteEntryReadModel = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("provider"), savedAt: z.string(), provider: providerPublicReadModel }),
 ]);
 
-export const favouritePageReadModel = z.object({
+export const favouriteListPageReadModel = z.object({
+  list: favouriteListReadModel,
   items: z.array(favouriteEntryReadModel),
   nextCursor: z.string().nullable(),
 });
 ```
 
-- [ ] **Step 3: Write the two projections**
-
-`ListFavouritesProjection` takes the favourite repository plus the two read repositories. It fetches one page of rows, groups the ids by target type, resolves each group in **one** call per type — never one call per row — and maps back in the original order, dropping anything that did not resolve. `DEFAULT_LIMIT = 20`, `MAX_LIMIT = 50`, clamped here rather than in the schema, for the reason `ListActivityProjection` states.
-
-`MarkFavouritesProjection` is thin: early-return `[]` on an empty list, otherwise `repo.markedFor`.
-
-- [ ] **Step 4: Write the query slice**
+- [ ] **Step 2: Write the failing tests**
 
 ```ts
-export const listMyFavourites = defineQuery({
-  input: zodSchema(z.object({
-    locale: localeSchema.optional(),
-    limit: z.number().int().min(1).max(50).optional(),
-    cursor: z.string().optional(),
-  })),
-  output: zodSchema(favouritePageReadModel),
-  docs: { summary: "Everything you have saved", tags: ["Favourite"] },
+describe("ListMyListsProjection", () => {
+  it("returns nothing at all for somebody who has never saved", async () => {
+    // The default list is created on first save, not at sign-up. Inventing one
+    // here would be a query with a side effect, and the page would show an
+    // empty list to somebody who has no lists.
+    expect(await projection.execute({ requesterUserId: "u1" })).toEqual([]);
+  });
+
+  it("puts the default list first", async () => {
+    // It is where the heart saves. Anywhere else in the order and the dialog's
+    // pre-ticked row is somewhere down the scroll.
+    const out = await projection.execute({ requesterUserId: "u1" });
+    expect(out[0]!.isDefault).toBe(true);
+  });
+
+  it("counts each list, and counts zero for an empty one", async () => {
+    const out = await projection.execute({ requesterUserId: "u1" });
+    expect(out.map((l) => l.itemCount)).toEqual([3, 0]);
+  });
+
+  it("asks for the counts and the covers once, not once per list", async () => {
+    // Twelve lists must not be twenty-four queries.
+    await projection.execute({ requesterUserId: "u1" });
+    expect(entries.countCalls).toBe(1);
+    expect(entries.coverCalls).toBe(1);
+  });
+
+  it("returns fewer than four covers rather than padding them", async () => {
+    // A list of two, or of listings with no photographs. The client draws the
+    // gaps; four broken images is worse than two real ones.
+    const out = await projection.execute({ requesterUserId: "u1" });
+    expect(out[0]!.coverUrls.length).toBeLessThanOrEqual(4);
+  });
 });
 
-/**
- * Which of the listings currently on screen this person has saved.
- *
- * Takes the ids rather than returning every id the reader ever saved: a person
- * with two thousand favourites must not ship two thousand ids to draw
- * twenty-four hearts. Bounded at 48 — the server's existing page cap, so a
- * caller cannot ask about more listings than a page can hold.
- */
-export const markMyFavourites = defineQuery({
-  input: zodSchema(z.object({
-    targetType: z.enum(["service", "provider"]),
-    targetIds: z.array(z.string().min(1).max(64)).max(48),
-  })),
-  output: zodSchema(z.array(z.string())),
-  docs: { summary: "Which of these listings you have saved", tags: ["Favourite"] },
+describe("ListListEntriesProjection", () => {
+  it("refuses a list that is not the caller's", async () => {
+    // Lists are private. Without this, an id is a way to read a stranger's.
+    await expect(projection.execute({ requesterUserId: "u1", listId: "theirs", limit: 20 })).rejects.toThrow();
+  });
+
+  it("returns both kinds in one run, newest saved first", async () => {
+    const out = await projection.execute({ requesterUserId: "u1", listId: "mine", limit: 20 });
+    expect(out.items.map((i) => i.kind)).toEqual(["provider", "service"]);
+  });
+
+  it("drops an entry whose listing is gone or unpublished", async () => {
+    // There is no foreign key, on purpose. This is where that is paid for —
+    // and it is the same rule both listings already apply.
+    const out = await projection.execute({ requesterUserId: "u1", listId: "mine", limit: 20 });
+    expect(out.items.map((i) => (i.kind === "service" ? i.service.id : i.provider.id))).not.toContain("deleted");
+  });
+
+  it("still advances the cursor past a dropped row", async () => {
+    // The cursor comes from the last row the repository returned, not from the
+    // last row that survived — otherwise the dropped row's position is fetched
+    // forever.
+    const out = await projection.execute({ requesterUserId: "u1", listId: "mine", limit: 1 });
+    expect(out.nextCursor).not.toBeNull();
+  });
+
+  it("resolves each listing in the reader's language", async () => {
+    await projection.execute({ requesterUserId: "u1", listId: "mine", limit: 20, locale: "pt-MZ" });
+    expect(services.askedLocale).toBe("pt-MZ");
+  });
+
+  it("resolves each kind in one call, not one per entry", async () => {
+    expect(services.calls).toBe(1);
+    expect(providers.calls).toBe(1);
+  });
+
+  it("clamps a limit nobody should be able to ask for", async () => {
+    await projection.execute({ requesterUserId: "u1", listId: "mine", limit: 5000 });
+    expect(entries.limit).toBeLessThanOrEqual(50);
+  });
 });
 
+describe("MarkFavouritesProjection", () => {
+  it("returns only the ids this person saved", async () => {
+    expect(await projection.execute({ requesterUserId: "u1", targetType: "service", targetIds: ["a", "b", "c"] })).toEqual(["a", "c"]);
+  });
+
+  it("answers an empty page without touching the database", async () => {
+    expect(await projection.execute({ requesterUserId: "u1", targetType: "service", targetIds: [] })).toEqual([]);
+    expect(entries.marked).toBeUndefined();
+  });
+
+  it("returns an id once even when it is in three lists", async () => {
+    // The heart is "saved anywhere", not "saved three times".
+    expect(await projection.execute({ requesterUserId: "u1", targetType: "service", targetIds: ["a"] })).toEqual(["a"]);
+  });
+});
+```
+
+- [ ] **Step 3: Write the projections and the query slice**
+
+`ListListEntriesProjection` fetches one page of rows, groups ids by target type, resolves **one call per type**, and maps back in the original order, dropping anything that did not resolve. `DEFAULT_LIMIT = 24`, `MAX_LIMIT = 50`, clamped here rather than in the schema, for the reason `ListActivityProjection` states.
+
+```ts
 export const favouriteReadSchema = defineGraphQLSchema(
-  { favourite: { mine: listMyFavourites, marked: markMyFavourites } },
+  {
+    favourite: { marked: markMyFavourites, listsFor: listsForTarget },
+    favouriteList: { mine: listMyLists, byId: listEntries },
+  },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );
 ```
 
-Handlers copy `read/activity`'s `requireUser`, message `"Sign in to see what you saved"`. Merge into `read/schema.ts`.
+`markMyFavourites` takes `targetIds: z.array(...).max(48)` — the server's existing page cap, so a caller cannot ask about more listings than a page can hold. Its doc comment says why it takes the ids rather than returning everything saved: a reader with two thousand favourites must not ship two thousand ids to draw twenty-four hearts.
 
-- [ ] **Step 5: Run and commit**
+Handlers copy `read/activity`'s `requireUser`, message `"Sign in to see what you saved"`.
+
+- [ ] **Step 4: Run and commit**
 
 ```bash
 cd packages/backend && bun test src/modules/ntizo && cd ../shared && bun test
@@ -654,25 +1169,22 @@ cd packages/backend && bun test src/modules/ntizo && cd ../shared && bun test
 
 ```bash
 git add packages/backend packages/shared
-git commit -m "feat(favourite): one list of both kinds, and a marked-set for a page of cards
+git commit -m "feat(favourite): lists with counts and covers, and a marked-set for a page
 
 favouriteMarked takes the ids on screen rather than returning everything ever
-saved — two thousand ids to draw twenty-four hearts is not a payload. Rows
-whose listing is gone are dropped on read, which is what the missing foreign
-key buys and where it is paid for."
+saved — two thousand ids to draw twenty-four hearts is not a payload. Counts
+and covers are one query each for every list, not one per list. Entries whose
+listing is gone are dropped on read, which is what the missing foreign key buys
+and where it is paid for."
 ```
 
 ---
 
-### Task 5: Mounting the fields
+### Task 8: Mounting the nine fields
 
 **Files:**
 - Modify: `apps/backend/api/src/graphql/private.ts`
 - Test: `apps/backend/api/src/graphql/__tests__/schema-mount.test.ts` (runs unchanged)
-
-**Interfaces:**
-- Consumes: `bootstrapFavourite`, `createFavouriteWriteHandlers` (3); `bootstrapFavouriteRead`, `createFavouriteReadHandlers` (4).
-- Produces: three live fields.
 
 - [ ] **Step 1: Run the mount test and watch it fail**
 
@@ -680,43 +1192,33 @@ key buys and where it is paid for."
 cd apps/backend/api && bun test src/graphql/__tests__/schema-mount.test.ts
 ```
 
-Expected: FAIL — it walks `privateGraphqlSchema`'s leaves and finds `favouriteToggle`, `favouriteMine` and `favouriteMarked` with no handler. **This failure is the point of the task.** A field merged into a barrel but never spread into `buildPrivateGraphQLFields` resolves to `null` at request time with no error, no test failure and no boot failure — which is exactly how the notification phase shipped eight dead fields.
+Expected: FAIL — it walks `privateGraphqlSchema`'s leaves and finds nine fields with no handler. **This failure is the point of the task.** A field merged into a barrel but never spread into `buildPrivateGraphQLFields` resolves to `null` at request time with no error, no test failure and no boot failure — which is exactly how the notification phase shipped eight dead fields.
 
 - [ ] **Step 2: Bootstrap and spread**
-
-In `buildPrivateGraphQLFields`, beside the others:
 
 ```ts
   const favourite = bootstrapFavourite();
   const favouriteRead = bootstrapFavouriteRead();
 ```
 
-and in the `fields` array:
-
 ```ts
       ...createFavouriteReadHandlers({ favouriteRead }),
       ...createFavouriteWriteHandlers({ favourite }),
 ```
 
-- [ ] **Step 3: Run it and watch it pass**
+- [ ] **Step 3: Confirm every wire name against a running server**
+
+Bring the API up and query `__schema { queryType { fields { name } } mutationType { fields { name } } }`. Confirm all nine, and their input type names. **Write down exactly what you find** — Task 9 uses these strings verbatim, and every previous phase that guessed them lost a round. Expect `favouriteQuickSave`, `favouriteSetLists`, `favouriteListCreate`, `favouriteListRename`, `favouriteListRemove`, `favouriteMarked`, `favouriteListsFor`, `favouriteListMine`, `favouriteListById`.
+
+- [ ] **Step 4: Run and commit**
 
 ```bash
 cd apps/backend/api && bun test
 ```
 
-- [ ] **Step 4: Confirm the wire names against a running server**
-
-```bash
-cd apps/frontend/web && bun run dev   # or whatever brings the API up locally
-```
-
-Query the API's introspection for `__schema { queryType { fields { name } } mutationType { fields { name } } }` and confirm `favouriteMine`, `favouriteMarked`, `favouriteToggle` and the input type names. Write down exactly what you find; Task 6 uses these strings verbatim, and every previous phase that guessed them lost a round.
-
-- [ ] **Step 5: Commit**
-
 ```bash
 git add apps/backend/api/src/graphql/private.ts
-git commit -m "feat(favourite): mount the three fields
+git commit -m "feat(favourite): mount the nine fields
 
 Merged into a schema barrel but not spread here, a field resolves to null at
 request time with no error anywhere — the failure schema-mount.test.ts exists
@@ -725,26 +1227,46 @@ to catch."
 
 ---
 
-### Task 6: The client
+### Task 9: The client
 
 **Files:**
-- Create: `apps/frontend/web/src/features/favourites/{data/favourites.repository.ts,domain/types.ts,viewmodel/use-favourite-marks.ts,viewmodel/use-toggle-favourite.ts}`
-- Test: `apps/frontend/web/src/features/favourites/viewmodel/__tests__/use-toggle-favourite.test.tsx`
+- Create: `features/favourites/{data/favourites.repository.ts,domain/types.ts,domain/list-name.ts,viewmodel/*.ts}`
+- Test: `features/favourites/domain/__tests__/list-name.test.ts`, `viewmodel/__tests__/use-quick-save.test.tsx`
 
 **Interfaces:**
-- Consumes: the field names confirmed in Task 5.
-- Produces:
-  - `useFavouriteMarks(targetType, ids): Set<string>`
-  - `useToggleFavourite(): { toggle(targetType, id): void; pending: boolean }`
+- Consumes: the field names confirmed in Task 8.
+- Produces: `listDisplayName`, `useFavouriteMarks`, `useMyLists`, `useQuickSave`, `useSetLists`, `useCreateList`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+describe("listDisplayName", () => {
+  it("translates the default list's name rather than storing it", () => {
+    // The same list reads Favoritos to one person and Favourites to another.
+    expect(listDisplayName({ name: null, isDefault: true }, t)).toBe("Favourites");
+  });
+
+  it("uses the stored name once somebody has renamed the default", () => {
+    expect(listDisplayName({ name: "A minha lista", isDefault: true }, t)).toBe("A minha lista");
+  });
+
+  it("uses the stored name on every other list", () => {
+    expect(listDisplayName({ name: "Casa nova", isDefault: false }, t)).toBe("Casa nova");
+  });
+
+  it("does not fall back to the default's name for a nameless non-default list", () => {
+    // Unreachable through the API, but a defensive read must not label a
+    // stranger row "Favourites" and put it beside the real one.
+    expect(listDisplayName({ name: null, isDefault: false }, t)).not.toBe("Favourites");
+  });
+});
+```
 
 ```tsx
-describe("useToggleFavourite", () => {
+describe("useQuickSave", () => {
   it("fills the heart before the server answers", async () => {
-    // A heart that waits for a round trip on a patchy connection feels
-    // broken, and the reader taps it again.
-    // Assert the marks cache contains the id immediately after `toggle`.
+    // A heart that waits for a round trip on a patchy connection feels broken,
+    // and the reader taps it again.
   });
 
   it("puts the heart back when the server refuses", async () => {
@@ -753,7 +1275,6 @@ describe("useToggleFavourite", () => {
   });
 
   it("reads the marks once for a page of cards, not once per card", async () => {
-    // 24 cards, one request. A hook per card is 24.
     render(<TwentyFourCards />);
     expect(graphqlSpy.mock.calls.filter(isMarkedQuery)).toHaveLength(1);
   });
@@ -764,34 +1285,23 @@ describe("useToggleFavourite", () => {
     renderSignedOut(<TwentyFourCards />);
     expect(graphqlSpy).not.toHaveBeenCalled();
   });
+
+  it("empties the heart when the dialog unticks every list", async () => {
+    // setLists([]) is how somebody removes a favourite. The marks cache has to
+    // follow, or the card keeps a filled heart until a reload.
+  });
 });
 ```
 
-- [ ] **Step 2: Run it, watch it fail, then write the repository**
+- [ ] **Step 2: Run them, watch them fail, then write the repository and hooks**
 
-Follow `features/messaging/data/messaging.repository.ts`: export the plain network functions separately from the hooks so a test can assert the real query string, and put the field-name reasoning in a doc comment at the top of the file.
+Follow `features/messaging/data/messaging.repository.ts`: export the plain network functions separately from the hooks so a test can assert the real query string, and put the field-name reasoning in a doc comment at the top.
 
-```ts
-const MARKED = `
-  query FavouriteMarked($input: FavouriteMarkedInput!) {
-    favouriteMarked(input: $input)
-  }`;
+`useFavouriteMarks(targetType, ids)` is a plain `useQuery` — **not** `useSuspenseQuery`, and this is the one place on these pages that differs. The hearts are decoration on a server-rendered page: suspending on them would hold the whole listing back from a crawler that has no session to read them with. `enabled: ids.length > 0 && Boolean(session)`. The query key includes the **sorted** ids, so two pages of cards are two cache entries and the same page in a different order is one.
 
-const TOGGLE = `
-  mutation FavouriteToggle($input: FavouriteToggleInput!) {
-    favouriteToggle(input: $input) { favourited }
-  }`;
-```
+`useQuickSave` and `useSetLists` mutate optimistically against that cache and invalidate `["favourites"]` on settle. Signed out, they navigate to `/sign-in` with the current path as the return target rather than firing a mutation that can only fail.
 
-- [ ] **Step 3: Write the two hooks**
-
-`useFavouriteMarks(targetType, ids)` is a plain `useQuery` — **not** `useSuspenseQuery`, and this is the one place on these pages that differs. The hearts are decoration on a server-rendered page: suspending on them would hold the whole listing back from the crawler for data a crawler has no session to read. `enabled: ids.length > 0 && Boolean(session)`. The query key includes the sorted ids, so two pages of cards are two cache entries.
-
-`useToggleFavourite` mutates optimistically against that cache: `onMutate` flips the id in place and returns the previous set; `onError` restores it; `onSettled` invalidates both `["favourites"]` keys.
-
-Signed out, `toggle` navigates to `/sign-in` with the current path as the return target rather than firing a mutation that can only fail.
-
-- [ ] **Step 4: Run and commit**
+- [ ] **Step 3: Run and commit**
 
 ```bash
 cd apps/frontend/web && bun run vitest run src/features/favourites
@@ -802,23 +1312,24 @@ git add apps/frontend/web/src/features/favourites
 git commit -m "feat(favourites): optimistic hearts, one marks query per page of cards
 
 useQuery and not useSuspenseQuery — the one place on these pages that differs.
-Hearts are decoration on a server-rendered page, and suspending on them would
-hold the listing back from a crawler that has no session to read them with."
+Hearts are decoration on a page built to be crawled, and suspending on them
+would hold the listing back from a crawler with no session to read them with."
 ```
 
 ---
 
-### Task 7: The heart on the cards
+### Task 10: The heart
 
 **Files:**
-- Create: `apps/frontend/web/src/features/favourites/ui/favourite-button.tsx`
+- Create: `features/favourites/ui/favourite-button.tsx`
 - Modify: `features/directory/services/ui/service-listing-card.tsx`, `features/directory/ui/provider-listing-card.tsx`
+- Modify: `packages/frontend/src/styles/globals.css` — `--color-favourite`
 - Modify: the eight `directory.json` files
-- Test: `apps/frontend/web/src/features/favourites/ui/__tests__/favourite-button.test.tsx`
+- Test: `features/favourites/ui/__tests__/favourite-button.test.tsx`
 
 **Interfaces:**
-- Consumes: `useToggleFavourite` (6); `ListingMedia`'s `favourite` slot (redesign plan, Task 5).
-- Produces: `FavouriteButton({ targetType, targetId, saved })`.
+- Consumes: `useQuickSave` (9); `ListingMedia`'s `favourite` slot (redesign plan, Task 5).
+- Produces: `FavouriteButton({ targetType, targetId, saved, onSaved })`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -829,8 +1340,8 @@ it("says what pressing it will do, not what the icon looks like", () => {
 });
 
 it("changes its own name once it is saved", () => {
-  // One control with two meanings. A label that stays "Save" on a filled
-  // heart tells a screen-reader user the opposite of the truth.
+  // One control with two meanings. A label that stays "Save" on a filled heart
+  // tells a screen-reader user the opposite of the truth.
   render(<FavouriteButton targetType="service" targetId="s1" saved />);
   expect(screen.getByRole("button", { name: "Saved" })).toBeInTheDocument();
 });
@@ -841,7 +1352,7 @@ it("carries aria-pressed, so the state is not only a colour", () => {
 });
 
 it("is still rendered when signed out", () => {
-  // Hiding it teaches nobody that the feature exists. Pressing it routes to
+  // Hiding it teaches nobody the feature exists. Pressing it routes to
   // sign-in with a way back.
   renderSignedOut(<FavouriteButton targetType="service" targetId="s1" saved={false} />);
   expect(screen.getByRole("button")).toBeInTheDocument();
@@ -849,33 +1360,56 @@ it("is still rendered when signed out", () => {
 
 it("does not open the card it sits on", () => {
   // The card's title link covers the whole surface. Without stopping
-  // propagation the heart navigates instead of saving — and the reader
-  // cannot tell it apart from a misclick.
+  // propagation the heart navigates instead of saving, and the reader cannot
+  // tell it apart from a misclick.
   const onNavigate = vi.fn();
   render(<CardWithHeart onNavigate={onNavigate} />);
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(onNavigate).not.toHaveBeenCalled();
 });
+
+it("hands the dialog its lists so it does not have to ask again", () => {
+  // quickSave already returned them. A second round trip to open a dialog the
+  // person is already looking at is a spinner for nothing.
+  const onSaved = vi.fn();
+  render(<FavouriteButton targetType="service" targetId="s1" saved={false} onSaved={onSaved} />);
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ listIds: expect.any(Array) }));
+});
+
+it("does not re-save a listing that is already saved", () => {
+  // Pressing a filled heart opens the dialog. Removing is unticking every
+  // list there, not a second meaning for the same button.
+  render(<FavouriteButton targetType="service" targetId="s1" saved />);
+  fireEvent.click(screen.getByRole("button", { name: "Saved" }));
+  expect(quickSaveSpy).not.toHaveBeenCalled();
+});
 ```
 
 - [ ] **Step 2: Run it, watch it fail, then write the button**
 
-A round white button on a translucent blur, `position: relative` so it sits above the card's title-link overlay, `onClick` calling `e.preventDefault(); e.stopPropagation();` before the toggle — both, because the overlay is an anchor and a click on a child still activates it.
+A round white button on a translucent blur, `position: relative` so it sits above the card's title-link overlay, and `onClick` calling `e.preventDefault(); e.stopPropagation();` before anything else — both, because the overlay is an anchor and a click on a child still activates it.
 
-The icon is `Heart` from lucide, `fill-current` when saved, in `#e5397a`. **This is the one place a colour outside the palette is justified** — a saved heart is red everywhere on the web, and rendering it in the brand blue reads as a second CTA. Add it as `--color-favourite` in `globals.css` with both themes and a comment saying exactly this, rather than inlining a hex.
+Unsaved: quick-save, then `onSaved({ listIds })` so the page opens the dialog. Saved: `onSaved` only — the dialog is where removing happens.
+
+Add to `globals.css`, both themes:
+
+```css
+  /*
+   * A saved heart is red everywhere on the web, and this is the one place the
+   * palette is deliberately left. In the brand blue it reads as a second call
+   * to action sitting on top of the picture, competing with the CTA below it.
+   */
+  --color-favourite: #e5397a;
+```
 
 - [ ] **Step 3: Pass it into both cards**
 
-```tsx
-<ListingMedia … favourite={<FavouriteButton targetType="service" targetId={service.id} saved={marks.has(service.id)} />} />
-```
+The `marks` set comes from one `useFavouriteMarks` call in the **page**, threaded down as a prop — never a hook inside the card, which is one request per card.
 
-The `marks` set comes from one `useFavouriteMarks` call in the *page*, threaded down as a prop — never a hook inside the card, which is one request per card.
+- [ ] **Step 4: Copy, in all eight locales**
 
-- [ ] **Step 4: Add the copy to all eight locales**
-
-`en-US`: `"favouriteSave": "Save"`, `"favouriteSaved": "Saved"`.
-`pt-MZ`/`pt-PT`: `"Guardar"`, `"Guardado"`. `es-ES`: `"Guardar"`, `"Guardado"`. `fr-FR`: `"Enregistrer"`, `"Enregistré"`. `it-IT`: `"Salva"`, `"Salvato"`. `de-DE`: `"Merken"`, `"Gemerkt"`. `nl-NL`: `"Bewaren"`, `"Bewaard"`.
+`favouriteSave` / `favouriteSaved`: `Save`/`Saved` · `Guardar`/`Guardado` (pt-MZ, pt-PT, es-ES) · `Enregistrer`/`Enregistré` · `Salva`/`Salvato` · `Merken`/`Gemerkt` · `Bewaren`/`Bewaard`.
 
 - [ ] **Step 5: Run and commit**
 
@@ -889,87 +1423,264 @@ git commit -m "feat(favourites): the heart, above the card's overlay and off its
 
 preventDefault and stopPropagation both — the overlay is an anchor, and a click
 on a child still activates it. The saved colour is red and not the brand blue:
-a blue filled heart reads as a second call to action."
+a blue filled heart reads as a second call to action on top of the picture."
 ```
 
 ---
 
-### Task 8: `/favourites`
+### Task 11: The save-to-a-list dialog
 
 **Files:**
-- Create: `apps/frontend/web/src/features/favourites/ui/favourites-page.tsx`
-- Modify: `apps/frontend/web/src/routes/_customer/favourites.tsx`
-- Modify: `apps/frontend/web/src/features/account/ui/placeholder-pages.tsx` (remove `FavouritesPage`)
-- Modify: the eight `account.json` files
-- Test: `apps/frontend/web/src/features/favourites/ui/__tests__/favourites-page.test.tsx`
+- Create: `features/favourites/ui/save-to-list-dialog.tsx`, `features/favourites/ui/list-cover.tsx`
+- Modify: both listing pages — hold the dialog's state
+- Modify: the eight `directory.json` files
+- Test: `features/favourites/ui/__tests__/save-to-list-dialog.test.tsx`, `list-cover.test.tsx`
 
 **Interfaces:**
-- Consumes: `favouriteMine` (4); `ListingCard` and both listing cards from the redesign plan.
-- Produces: nothing.
+- Consumes: `useMyLists`, `useSetLists`, `useCreateList` (9); `ListingMedia` (redesign plan).
+- Produces: `SaveToListDialog`, `ListCover`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("shows both kinds in one list, in the order they were saved", () => {});
+describe("ListCover", () => {
+  it("draws a 2×2 mosaic from the list's own items", () => {
+    // What makes a column of lists scannable when the names are similar.
+    render(<ListCover urls={["a", "b", "c", "d"]} empty={false} />);
+    expect(screen.getAllByRole("presentation")).toHaveLength(4);
+  });
 
-it("invites the reader somewhere when they have saved nothing", () => {
-  // An empty screen is an invitation to act, not a mood. It links to
-  // /services, which is where saving happens.
-  expect(screen.getByRole("link", { name: "Browse services" })).toHaveAttribute("href", "/services");
+  it("draws what it has rather than padding to four", () => {
+    render(<ListCover urls={["a", "b"]} empty={false} />);
+    expect(screen.getAllByRole("presentation")).toHaveLength(2);
+  });
+
+  it("marks an empty list as empty rather than drawing an empty box", () => {
+    // A grey square beside three mosaics reads as a failed image.
+    const { container } = render(<ListCover urls={[]} empty />);
+    expect(container.querySelector("[data-testid='cover-empty']")).not.toBeNull();
+  });
+
+  it("distinguishes a list with items but no photographs from an empty one", () => {
+    // Eight listings that all lack photos is not the same as no listings, and
+    // showing the empty mark for it is a lie about the list's contents.
+    const { container } = render(<ListCover urls={[]} empty={false} />);
+    expect(container.querySelector("[data-testid='cover-empty']")).toBeNull();
+  });
 });
 
-it("removes a card from the list when its heart is pressed", () => {
-  // On this page the heart is a delete. Leaving the card behind until a
-  // reload makes the button look broken.
-});
+describe("SaveToListDialog", () => {
+  it("says the listing is already saved, rather than asking permission", () => {
+    // Save first, ask afterwards. The dialog's job is filing, not consent.
+    render(<Dialog />);
+    expect(screen.getByText("Saved automatically")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+  });
 
-it("does not claim the list is empty while it is still loading", () => {
-  // The empty state and the loading state are different sentences, and
-  // showing the first for the second tells the reader their favourites are
-  // gone.
+  it("ticks the lists the listing is already in", () => {
+    render(<Dialog listIds={["default", "casa"]} />);
+    expect(screen.getByRole("checkbox", { name: /Favourites/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Casa nova/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Urgente/ })).not.toBeChecked();
+  });
+
+  it("lets one listing be in two lists at once", () => {
+    // Checkboxes, not radios: 'Casa nova' and 'Urgente' are both true about
+    // the same electrician.
+    render(<Dialog />);
+    expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(1);
+  });
+
+  it("hides the search field until there are enough lists to search", () => {
+    // A search box over three rows is a control with nothing to do.
+    render(<Dialog lists={threeLists} />);
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+    cleanup();
+    render(<Dialog lists={sevenLists} />);
+    expect(screen.getByRole("searchbox")).toBeInTheDocument();
+  });
+
+  it("creates a list inline rather than opening a second dialog", () => {
+    // A modal over a modal hides the thing being saved behind the thing
+    // deciding where to put it.
+    render(<Dialog />);
+    fireEvent.click(screen.getByRole("button", { name: "Create new list" }));
+    expect(screen.getByRole("textbox", { name: /list name/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("ticks a list it has just created, because that is why it was created", () => {
+    render(<Dialog />);
+    createList("Casa nova");
+    expect(screen.getByRole("checkbox", { name: /Casa nova/ })).toBeChecked();
+  });
+
+  it("names the default list in the reader's language", () => {
+    render(<Dialog />);
+    expect(screen.getByRole("checkbox", { name: /Favourites/ })).toBeInTheDocument();
+  });
+
+  it("says which listing is being saved", () => {
+    // The dialog can be opened from a grid of twenty-four cards. Without the
+    // name, nothing on screen says which one it is about.
+    render(<Dialog targetName="Urgent electrical fault" />);
+    expect(screen.getByText(/Urgent electrical fault/)).toBeInTheDocument();
+  });
+
+  it("warns before unticking the last list, because that unsaves it", () => {
+    // Unticking everything is the delete, and it does not look like one.
+    render(<Dialog listIds={["default"]} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: /Favourites/ }));
+    expect(screen.getByText(/no longer saved/i)).toBeInTheDocument();
+  });
+
+  it("closes on Escape and returns focus to the heart", () => {
+    // Standard dialog behaviour, and the heart is where the reader was.
+  });
 });
 ```
 
-- [ ] **Step 2: Run it, watch it fail, then write the page**
+- [ ] **Step 2: Run them, watch them fail, then build the dialog**
 
-Reuses `ListingCard` through the two existing listing cards, switching on `entry.kind`. `useSuspenseQuery` here — unlike the marks query, this *is* the page's content, and there is nothing to render without it. Cursor paging with a "load more" button rather than numbered pages: the list is appended to at the top and has no total.
+Two panels above `md`, one below — see the spec's diagram and the mockup for the listings. The left panel reuses `ListingMedia` so a listing with no photograph looks deliberate here too; below `md` it drops and the listing is named in the subtitle instead.
 
-Point `routes/_customer/favourites.tsx` at the new component and delete `FavouritesPage` from `placeholder-pages.tsx`, leaving the other placeholders alone.
+Use `Dialog` from `@ntizo/frontend-ui` — it already handles the focus trap, Escape and the return of focus, and hand-rolling those is how a dialog ends up leaving focus behind it.
 
-- [ ] **Step 3: Copy for the empty state, in all eight locales**
+Rows are real `<input type="checkbox">` visually restyled, not divs with `role`: the browser gives keyboard operation, the label association and the announced state for free.
 
-Reuse the existing `favouritesTitle` / `favouritesEmptyTitle` / `favouritesEmptyBody` keys in `account.json` if their wording still fits; add `favouritesEmptyAction` (`"Browse services"` / `"Ver serviços"` / `"Ver servicios"` / `"Parcourir les services"` / `"Sfoglia i servizi"` / `"Leistungen ansehen"` / `"Diensten bekijken"`).
+- [ ] **Step 3: Copy, in all eight locales**
 
-- [ ] **Step 4: Full sweep**
+`saveToListTitle` ("Save to a list"), `saveToListSubtitle` ("Saving {{name}}"), `saveToListSearch` ("Find a list…"), `saveToListCreate` ("Create new list"), `saveToListNameLabel` ("List name"), `saveToListAuto` ("Saved automatically"), `saveToListDone` ("Done"), `saveToListUnsaveWarning` ("Unticking the last list will remove it from your favourites"), `listItemCount` / `listItemCount_other` ("{{count}} item"/"{{count}} items"), `listDefaultName` ("Favourites" / "Favoritos" / "Favoritos" / "Favoris" / "Preferiti" / "Favoriten" / "Favorieten"), `listEmpty` ("Empty").
+
+Write all eight files. `listItemCount` needs its `_other` plural in every locale — the parity gate compares placeholders, and a missing plural renders the singular for every count.
+
+- [ ] **Step 4: Run and commit**
+
+```bash
+cd apps/frontend/web && bun run vitest run && bun run typecheck
+```
+
+```bash
+git add apps/frontend/web/src packages/frontend/src/styles/globals.css apps/frontend/web/src/shared/locales
+git commit -m "feat(favourites): save to a list, with the listing still on screen
+
+Checkboxes, not radios: 'Casa nova' and 'Urgente' are both true about the same
+electrician. Creating a list happens inline — a modal over a modal hides the
+thing being saved behind the thing deciding where to put it. Unticking the last
+list is the delete, so it warns."
+```
+
+---
+
+### Task 12: `/favourites` and `/favourites/$listId`
+
+**Files:**
+- Create: `features/favourites/ui/favourites-page.tsx`, `favourite-list-page.tsx`
+- Create: `apps/frontend/web/src/routes/_customer/favourites.$listId.tsx`
+- Modify: `apps/frontend/web/src/routes/_customer/favourites.tsx`
+- Modify: `features/account/ui/placeholder-pages.tsx` — remove `FavouritesPage`
+- Modify: the eight `account.json` files
+- Test: `features/favourites/ui/__tests__/favourites-page.test.tsx`, `favourite-list-page.test.tsx`
+
+- [ ] **Step 1: Write the failing tests**
+
+```tsx
+describe("FavouritesPage", () => {
+  it("shows one card per list, with its cover and its count", () => {});
+
+  it("invites the reader somewhere when they have saved nothing", () => {
+    // An empty screen is an invitation to act, not a mood. It links to
+    // /services, which is where saving happens.
+    expect(screen.getByRole("link", { name: "Browse services" })).toHaveAttribute("href", "/services");
+  });
+
+  it("does not claim the list is empty while it is still loading", () => {
+    // The empty state and the loading state are different sentences, and
+    // showing the first for the second tells the reader their favourites are
+    // gone.
+  });
+
+  it("offers no delete on the default list", () => {
+    // Deleting it would leave the heart with nowhere to save to. It can still
+    // be renamed.
+    expect(within(defaultCard()).queryByRole("button", { name: "Delete list" })).toBeNull();
+    expect(within(defaultCard()).getByRole("button", { name: "Rename list" })).toBeInTheDocument();
+  });
+
+  it("says what deleting a list takes with it", () => {
+    // The cascade removes its entries. A confirm that says only "are you
+    // sure" does not tell the person what they are agreeing to.
+    fireEvent.click(within(otherCard()).getByRole("button", { name: "Delete list" }));
+    expect(screen.getByText(/8 items/)).toBeInTheDocument();
+  });
+});
+
+describe("FavouriteListPage", () => {
+  it("shows both kinds in one run, newest saved first", () => {});
+
+  it("names the default list in the reader's language, not from the server", () => {});
+
+  it("removes a card when its heart empties the last list", () => {
+    // On this page the heart is a delete. Leaving the card behind until a
+    // reload makes the button look broken.
+  });
+
+  it("keeps a card whose listing is still in another list", () => {
+    // The mirror of the case above, and the one a naive implementation gets
+    // wrong: this page shows ONE list, so the card leaves when it leaves THIS
+    // list — not when it stops being saved anywhere.
+  });
+
+  it("says an empty list is empty rather than showing nothing", () => {});
+});
+```
+
+- [ ] **Step 2: Run them, watch them fail, then build both pages**
+
+`/favourites` is a grid of list cards: `ListCover`, the display name, the count, and a small menu with rename and (except on the default) delete. `useSuspenseQuery` — unlike the marks query this *is* the page's content and there is nothing to render without it.
+
+`/favourites/$listId` reuses the two listing cards from the redesign plan, switching on `entry.kind`. Cursor paging with a "load more" button rather than numbered pages: the list is appended to at the top and has no total.
+
+Point `routes/_customer/favourites.tsx` at the new component, add `favourites.$listId.tsx`, and delete `FavouritesPage` from `placeholder-pages.tsx`, leaving the other placeholders alone.
+
+- [ ] **Step 3: Copy, in all eight locales**
+
+Reuse `favouritesTitle`, `favouritesEmptyTitle`, `favouritesEmptyBody` in `account.json` if their wording still fits. Add `favouritesEmptyAction` ("Browse services" / "Ver serviços" / "Ver servicios" / "Parcourir les services" / "Sfoglia i servizi" / "Leistungen ansehen" / "Diensten bekijken"), `listRename`, `listDelete`, `listDeleteConfirm` ("Delete “{{name}}” and the {{count}} items in it?"), `listEmptyTitle`, `listEmptyBody`.
+
+- [ ] **Step 4: Full sweep, then use it**
 
 ```bash
 cd apps/frontend/web && bun run vitest run && bun run typecheck && bun run lint
 cd ../../.. && bun run test && bun run check-types
 ```
 
-Then run it and press a heart on `/services`, reload, and confirm it is still filled and the listing is on `/favourites`.
+Then run the app and do the whole loop by hand: press a heart on `/services`, watch the dialog open with the default ticked, create a list from inside it, tick it, close, reload, and confirm the heart is still filled and the listing is in both lists. Then untick both and confirm the heart empties.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "feat(favourites): the page, replacing a hardcoded empty state
+git commit -m "feat(favourites): the two screens, replacing a hardcoded empty state
 
-Both kinds in one list, newest saved first. On this page the heart is a delete,
-so the card leaves immediately — waiting for a reload makes the button look
-broken."
+On a list's own page the heart removes it from THAT list, not from everywhere —
+the case a naive implementation gets backwards. The default list can be renamed
+but offers no delete: deleting it would leave the heart with nowhere to save."
 ```
 
 ---
 
 ## Self-Review
 
-**Spec coverage.** The schema is Task 1; the aggregate, the port and the race-proof toggle are 2; the mutation slice 3; the two read queries 4; mounting 5; the client 6; the heart 7; the page 8. Every line of the spec's "Favourites" section has a task, including `favouriteMarked` taking the ids on screen rather than returning everything saved.
+**Spec coverage.** The two tables are Task 1; the aggregates 2; the repositories 3; `quickSave` 4; `setLists` and the three list commands 5; the mutation slice 6; the four queries 7; mounting 8; the client 9; the heart 10; the dialog 11; the two screens 12. Every element of the spec's favourites section has a task, including the 2×2 cover mosaic, the inline list creation, the six-list threshold for the search field, and the default list being renameable but not deletable.
 
-**Type consistency.** `FavouriteTarget` (2) is the same union the mutation's `z.enum` and the frontend's `domain/types.ts` spell — three copies, deliberately, so no schema file imports a domain module and no frontend file imports a backend one; a test in Task 3 asserts the mutation rejects a value outside it. `Favourite` (2) is what `ToggleFavouriteCommand` (3) builds and `FavouriteRepositoryPort` (2) consumes. `favouritePageReadModel` (4) is what `favourites-page.tsx` (8) renders.
+**Type consistency.** `FavouriteTarget` (2) is the same union the mutations' `z.enum` and the frontend's `domain/types.ts` spell — three copies, deliberately, so no schema file imports a domain module and no frontend file imports a backend one; Task 6's test asserts the mutation rejects anything outside it. `FavouriteList`/`Favourite` (2) are what the repositories (3) and every command (4, 5) build and consume. `favouriteListReadModel` (7) is what `ListCover` and both screens (11, 12) render. `listDisplayName` (9) is the single place the null-name rule lives, and both the dialog and the pages call it rather than re-deriving it.
 
-**Two things this plan deliberately does not do.**
-- *It does not verify the target exists on write.* Doing so would mean this context querying Catalog and Provider — the boundary the missing foreign key exists to keep. A favourite pointing at nothing is dropped on read, where both contexts are already being consulted. Stated in Task 3's tests rather than left to be discovered.
-- *It does not notify anybody.* Saving a listing raises no notification and writes no activity row: "somebody saved you" is a signal the provider has not asked for and a fact the customer may not want shared. If that changes it is a decision, not an oversight.
+**Three things this plan deliberately does not do.**
+- *It does not verify the target exists on write.* That would mean this context querying Catalog and Provider — the boundary the missing foreign key exists to keep. A favourite pointing at nothing is dropped on read, where both contexts are already consulted. Stated in Task 4's tests rather than left to be discovered.
+- *It does not notify anybody.* Saving raises no notification and writes no activity row: "somebody saved you" is a signal the provider has not asked for and a fact the customer may not want shared. If that changes it is a decision, not an oversight.
+- *Lists are private and cannot be shared.* No `is_public`, no share link. Adding one later is a column and a route; adding one now is a permissions model nobody has asked for.
 
-**The one ordering constraint.** Task 7 needs `ListingMedia`'s `favourite` slot, which the redesign plan's Task 5 creates. Tasks 1–6 here have no such dependency and can run alongside it.
+**The one ordering constraint.** Task 10 needs `ListingMedia`'s `favourite` slot and Tasks 11–12 need `ListingCard`, all from the redesign plan. **Tasks 1–9 have no such dependency and can run alongside it.**
+
+**One risk worth naming.** `favouriteMarked` answers "saved anywhere", which is right for a listing page's heart and wrong for a list's own page — there, a card must leave when it leaves *that* list. Task 12 has a test for each side of that, because getting it backwards is the natural mistake and neither failure is visible until somebody has two lists.
