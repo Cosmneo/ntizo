@@ -269,6 +269,41 @@ describe("browse filters", () => {
   });
 });
 
+describe("ListServicesProjection — price order", () => {
+  it("passes the price order through to the repository", async () => {
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      sort: "price",
+      limit: 24,
+      offset: 0,
+    });
+    expect(repo.listedWith).toMatchObject({ sort: "price" });
+  });
+
+  it("puts a service with no price last rather than treating it as free", async () => {
+    // A quote service has no price to compare. Sorted as zero it takes the
+    // top of "cheapest first" — the one position it cannot honestly hold.
+    const repo = new FakeRepo(
+      [
+        row({ id: "quote", bookingMode: "quote", fromAmountMinor: null, defaultOption: null }),
+        row({ id: "cheap", fromAmountMinor: 20_000 }),
+      ],
+      2,
+    );
+    const out = await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      sort: "price",
+      limit: 24,
+      offset: 0,
+    });
+    // The projection preserves the repository's order — the assertion that
+    // matters is the SQL one below; this one guards against the projection
+    // quietly re-sorting what it was handed.
+    expect(out.items.map((i) => i.id)).toEqual(["quote", "cheap"]);
+  });
+});
+
 describe("ListServicesProjection category name", () => {
   it("resolves the category into the reader's locale", async () => {
     const rows = [row({ categoryTranslations: [

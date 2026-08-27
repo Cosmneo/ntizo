@@ -71,7 +71,7 @@ export const listServices = defineQuery({
        * is one more the database scans with no index to help it.
        */
       q: z.string().min(1).max(100).optional(),
-      sort: z.enum(["default", "newest"]).optional(),
+      sort: z.enum(["default", "newest", "price"]).optional(),
       // Optional, not `.default()`: a zod default does not survive into the
       // GraphQL schema, so the fallback belongs in the handler where it can
       // actually run.

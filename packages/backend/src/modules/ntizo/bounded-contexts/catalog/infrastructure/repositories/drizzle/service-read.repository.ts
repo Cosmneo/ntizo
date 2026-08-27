@@ -148,6 +148,47 @@ export function conditionsFor(
 }
 
 /**
+ * The cheapest active option of the service in the surrounding row.
+ *
+ * The same rows `priceAgg` groups over further down `listPublished` —
+ * `isActive`, and `min(amountMinor)` — written again as a correlated subselect
+ * because ordering happens in the query that *pages* the services, and
+ * `priceAgg` only runs once that page is already chosen.
+ *
+ * These two must agree. If they diverge, the browse sorts on one number and
+ * prints another, which reads as a sort that does not work and is close to
+ * undiagnosable from the page. Changing either means changing both.
+ */
+const cheapestActiveOption = sql`
+  select min(${serviceOption.amountMinor})
+  from ${serviceOption}
+  where ${serviceOption.serviceId} = ${service.id}
+    and ${serviceOption.isActive} = true`;
+
+/**
+ * The `ORDER BY` `listPublished` pages on.
+ *
+ * A module-level export, not inlined: the same reason `conditionsFor` is
+ * exported above — a test asserting `nulls last` needs a seam to call this
+ * from, and `listPublished`'s `orderBy` is not one.
+ */
+export function orderByFor(sort: ListPublishedServicesFilter["sort"]) {
+  return sort === "newest"
+    ? [desc(service.createdAt)]
+    : sort === "price"
+      ? [
+          // NULLS LAST, spelled out. Postgres sorts nulls FIRST under ASC by
+          // default, which would put every quote service — the ones with no
+          // price at all — at the top of "cheapest first".
+          sql`(${cheapestActiveOption}) asc nulls last`,
+          // Breaks ties, so two services at 800 MZN do not swap places
+          // between requests and reappear on the next page.
+          asc(service.createdAt),
+        ]
+      : [asc(service.sortOrder), asc(service.createdAt)];
+}
+
+/**
  * A provider's own services, every option and every translation.
  *
  * Options, translations and option translations are fetched in three further
@@ -310,15 +351,12 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .innerJoin(category, eq(category.id, service.categoryId))
       .innerJoin(provider, eq(provider.id, service.providerId))
       .where(and(...conditions))
-      // `newest` ignores `sortOrder` rather than ordering within it: the
-      // provider's own arrangement is an answer to "what do I want shown
-      // first", and a reader who asked for the newest is asking a different
-      // question that their arrangement should not override.
-      .orderBy(
-        ...(filter.sort === "newest"
-          ? [desc(service.createdAt)]
-          : [asc(service.sortOrder), asc(service.createdAt)]),
-      )
+      // `newest` and `price` each ignore `sortOrder` rather than ordering
+      // within it: the provider's own arrangement is an answer to "what do I
+      // want shown first", and a reader who asked for the newest or the
+      // cheapest is asking a different question that their arrangement
+      // should not override.
+      .orderBy(...orderByFor(filter.sort))
       .limit(filter.limit)
       .offset(filter.offset);
 

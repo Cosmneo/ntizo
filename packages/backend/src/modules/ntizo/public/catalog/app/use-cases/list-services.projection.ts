@@ -36,8 +36,13 @@ export interface ListServicesInput {
    * here; blank means no search.
    */
   q?: string | undefined;
-  /** `default` is the provider's own order; `newest` is most recently added first. */
-  sort?: "default" | "newest" | undefined;
+  /**
+   * `default` is the provider's own order; `newest` is most recently added
+   * first; `price` is cheapest first, on the same `fromAmountMinor` the card
+   * prints and the price filter matches — so a service can never sort into a
+   * position its own visible price contradicts.
+   */
+  sort?: "default" | "newest" | "price" | undefined;
   limit: number;
   offset: number;
 }

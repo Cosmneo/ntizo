@@ -159,7 +159,7 @@ export interface ListPublishedServicesFilter {
    * means no text search — an empty or blank string never reaches here.
    */
   q?: string | undefined;
-  sort?: "default" | "newest" | undefined;
+  sort?: "default" | "newest" | "price" | undefined;
   limit: number;
   offset: number;
 }

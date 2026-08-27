@@ -31,7 +31,7 @@ export function mapListServicesInput(input: {
   minPriceMinor?: number | undefined;
   maxPriceMinor?: number | undefined;
   q?: string | undefined;
-  sort?: "default" | "newest" | undefined;
+  sort?: "default" | "newest" | "price" | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }): ListServicesInput {

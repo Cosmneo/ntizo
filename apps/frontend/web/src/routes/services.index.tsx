@@ -35,7 +35,7 @@ export const Route = createFileRoute("/services/")({
     minPrice?: number;
     maxPrice?: number;
     q?: string;
-    sort?: "newest";
+    sort?: "newest" | "price";
     offset?: number;
   } => {
     const category =
@@ -87,7 +87,8 @@ export const Route = createFileRoute("/services/")({
     };
     const minPrice = price("minPrice");
     const maxPrice = price("maxPrice");
-    const sort = search["sort"] === "newest" ? ("newest" as const) : undefined;
+    const rawSort = search["sort"];
+    const sort = rawSort === "newest" || rawSort === "price" ? rawSort : undefined;
     const raw = Number(search["offset"]);
     // A negative or non-numeric offset is dropped rather than clamped to 0 and
     // written back — the URL a person typed is not this route's to rewrite.
