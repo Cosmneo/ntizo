@@ -41,6 +41,7 @@ export function ListingCard({
   subtitle,
   description,
   tags,
+  action,
   stub,
 }: {
   media: ReactNode;
@@ -51,7 +52,22 @@ export function ListingCard({
   subtitle?: ReactNode;
   description?: string | undefined;
   tags?: ReactNode;
-  stub: ReactNode;
+  /**
+   * The CTA, when there is no stub to carry it.
+   *
+   * A listing with nothing priced has no price rail — see `stub` — and its
+   * only remaining action has to live somewhere. At the foot of the body is
+   * where it lands, because that is the column that still exists.
+   */
+  action?: ReactNode;
+  /**
+   * The price rail. Absent for a listing with no price at all, in which case
+   * the card is two columns rather than three: an empty third track is a
+   * dashed rule with a hole punched in it and nothing beside it, and 196px of
+   * white where a price should be reads as a card that failed to finish
+   * loading.
+   */
+  stub?: ReactNode;
 }) {
   return (
     <li
@@ -66,7 +82,8 @@ export function ListingCard({
         // them the body gets whatever is left and never less than zero —
         // `minmax(0,1fr)`, because a bare `1fr` is `minmax(auto,1fr)` and one
         // long unbroken word would push the stub off the card.
-        "md:grid-cols-[238px_minmax(0,1fr)_196px] md:gap-5",
+        "md:gap-5",
+        stub ? "md:grid-cols-[238px_minmax(0,1fr)_196px]" : "md:grid-cols-[238px_minmax(0,1fr)]",
       ].join(" ")}
     >
       {media}
@@ -109,6 +126,15 @@ export function ListingCard({
             {tags}
           </p>
         )}
+
+        {/* `relative` so it sits above the card's whole-surface title link, for
+            the same reason `PriceStub` gives its own action wrapper: a CTA
+            underneath that overlay is a button nobody can press. */}
+        {action && (
+          <div data-testid="listing-action" className="relative pt-2.5">
+            {action}
+          </div>
+        )}
       </div>
 
       {stub}
@@ -126,9 +152,19 @@ export function ListingCard({
  */
 export function ListingTag({
   tone = "plain",
+  testId,
   children,
 }: {
   tone?: "plain" | "category" | "good";
+  /**
+   * Names one kind of chip apart from the others sharing the row.
+   *
+   * The provider card caps its trades at three and prints a service count and
+   * a verification chip beside them; `listing-tags` holds all of them and
+   * cannot say which is which, so the cap could only be asserted by counting
+   * the whole row and subtracting.
+   */
+  testId?: string;
   children: ReactNode;
 }) {
   const styles = {
@@ -138,6 +174,8 @@ export function ListingTag({
     good: "inline-flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--color-success)_12%,transparent)] font-semibold text-[color-mix(in_srgb,var(--color-success)_78%,var(--color-foreground))]",
   } as const;
   return (
-    <span className={`type-caption rounded-[7px] px-2.5 py-1 ${styles[tone]}`}>{children}</span>
+    <span data-testid={testId} className={`type-caption rounded-[7px] px-2.5 py-1 ${styles[tone]}`}>
+      {children}
+    </span>
   );
 }

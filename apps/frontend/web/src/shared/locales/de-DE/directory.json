@@ -50,8 +50,6 @@
   "filtersTitle": "Filters",
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
-  "sortDefault": "Suggested",
-  "sortNewest": "Newest",
   "searchSubmit": "Suchen",
   "searchClear": "Suche löschen",
   "servicesNoMatch": "Nichts entspricht Ihrer Suche.",
@@ -73,13 +71,6 @@
   "providersPrevious": "Zurück",
   "providersNext": "Weiter",
   "providerSearchPlaceholder": "Name des Betriebs oder der Leistung",
-  "providerSort": {
-    "relevance": "Vorgeschlagen",
-    "rating": "Beste Bewertung",
-    "reviews": "Meiste Bewertungen",
-    "price": "Niedrigster Preis",
-    "name": "Name (A–Z)"
-  },
   "providerVerified": "Verifiziert",
   "providerNoReviews": "Noch keine Bewertungen",
   "providerRatingLabel": "{{score}} von 5, aus {{count}} Bewertung",

@@ -50,8 +50,6 @@
   "filtersTitle": "Filters",
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
-  "sortDefault": "Suggested",
-  "sortNewest": "Newest",
   "searchSubmit": "Rechercher",
   "searchClear": "Effacer la recherche",
   "servicesNoMatch": "Rien ne correspond à votre recherche.",
@@ -73,13 +71,6 @@
   "providersPrevious": "Précédent",
   "providersNext": "Suivant",
   "providerSearchPlaceholder": "Nom de l'établissement ou du service",
-  "providerSort": {
-    "relevance": "Suggérés",
-    "rating": "Mieux notés",
-    "reviews": "Les plus évalués",
-    "price": "Prix le plus bas",
-    "name": "Nom (A–Z)"
-  },
   "providerVerified": "Vérifié",
   "providerNoReviews": "Pas encore d'avis",
   "providerRatingLabel": "{{score}} sur 5, sur {{count}} avis",

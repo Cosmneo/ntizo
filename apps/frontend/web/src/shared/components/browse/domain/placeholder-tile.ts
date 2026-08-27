@@ -31,12 +31,12 @@ export function placeholderHue(seed: string): number {
 /**
  * Up to two initials from a name.
  *
- * `Intl.Segmenter` rather than `name[0]`, and the same reasoning
- * `provider-card.tsx` documented before this file existed: a name beginning
- * with an emoji, an accented letter formed from two code points, or a script
- * outside the BMP is cut mid-character by an index and renders as a
- * replacement box — on the very tiles that exist to stop a listing looking
- * broken.
+ * `Intl.Segmenter` rather than `name[0]`, and the same reasoning the directory's
+ * first provider card documented before this file existed (and inherited it
+ * when that card was replaced): a name beginning with an emoji, an accented
+ * letter formed from two code points, or a script outside the BMP is cut
+ * mid-character by an index and renders as a replacement box — on the very
+ * tiles that exist to stop a listing looking broken.
  */
 export function initialsOf(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);

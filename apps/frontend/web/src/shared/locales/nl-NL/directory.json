@@ -50,8 +50,6 @@
   "filtersTitle": "Filters",
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
-  "sortDefault": "Suggested",
-  "sortNewest": "Newest",
   "searchSubmit": "Zoeken",
   "searchClear": "Zoekopdracht wissen",
   "servicesNoMatch": "Niets komt overeen met je zoekopdracht.",
@@ -73,13 +71,6 @@
   "providersPrevious": "Vorige",
   "providersNext": "Volgende",
   "providerSearchPlaceholder": "Naam van bedrijf of dienst",
-  "providerSort": {
-    "relevance": "Voorgesteld",
-    "rating": "Best beoordeeld",
-    "reviews": "Meest beoordeeld",
-    "price": "Laagste prijs",
-    "name": "Naam (A–Z)"
-  },
   "providerVerified": "Geverifieerd",
   "providerNoReviews": "Nog geen beoordelingen",
   "providerRatingLabel": "{{score}} van 5, uit {{count}} beoordeling",
