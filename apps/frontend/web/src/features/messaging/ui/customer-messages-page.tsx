@@ -43,6 +43,7 @@ export function CustomerMessagesPage() {
     loading: threadsLoading,
     hasMore: threadsHaveMore,
     loadMore: loadMoreThreads,
+    errorCode: threadsErrorCode,
   } = useThreads();
   const {
     messages,
@@ -53,15 +54,30 @@ export function CustomerMessagesPage() {
   const { send, sending, errorCode: sendErrorCode } = useSendMessage();
   const { markRead } = useMarkRead();
 
-  // Marking a thread read is a side effect of opening it, not of every
-  // render this page happens to do — `markRead` is a fresh function
-  // identity each render (`useMarkRead` does not memoise it), so it stays
-  // out of the dependency array on purpose. Same trade `page-header.tsx`'s
+  // The newest message the other side sent, if any — `messages` is
+  // newest-first (see `useThread`'s doc comment), so the first entry whose
+  // sender is not the viewer is it. Bringing this into the effect below is
+  // what makes an already-open thread mark a message read when it *arrives*
+  // (the 5s poll lands it), not only when the thread is first opened: without
+  // it, a reply that shows up while the customer is sitting on this exact
+  // thread sits `read_at IS NULL` until they navigate away and back, and the
+  // sweep two minutes later emails them about a message already on their
+  // screen — see the spec's "a fast back-and-forth produces no email at all"
+  // guarantee.
+  const newestInboundMessageId = messages.find(
+    (message) => message.senderUserId !== me?.id,
+  )?.id;
+
+  // Marking a thread read is a side effect of opening it, or of a new
+  // message from the other side landing while it is open — not of every
+  // render this page happens to do. `markRead` is a fresh function identity
+  // each render (`useMarkRead` does not memoise it), so it stays out of the
+  // dependency array on purpose. Same trade `page-header.tsx`'s
   // `usePageAction` documents for the same reason.
   useEffect(() => {
     if (selectedThreadId) markRead(selectedThreadId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedThreadId]);
+  }, [selectedThreadId, newestInboundMessageId]);
 
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) ?? null;
 
@@ -75,15 +91,19 @@ export function CustomerMessagesPage() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
         <div className={cn(selectedThreadId ? "hidden lg:block" : "block")}>
-          <ThreadList
-            threads={threads}
-            loading={threadsLoading}
-            selectedThreadId={selectedThreadId}
-            onSelect={selectThread}
-            hasMore={threadsHaveMore}
-            onLoadMore={loadMoreThreads}
-            locale={locale}
-          />
+          {threadsErrorCode ? (
+            <p className="type-body text-[var(--color-destructive)]">{t("loadError")}</p>
+          ) : (
+            <ThreadList
+              threads={threads}
+              loading={threadsLoading}
+              selectedThreadId={selectedThreadId}
+              onSelect={selectThread}
+              hasMore={threadsHaveMore}
+              onLoadMore={loadMoreThreads}
+              locale={locale}
+            />
+          )}
         </div>
 
         <div

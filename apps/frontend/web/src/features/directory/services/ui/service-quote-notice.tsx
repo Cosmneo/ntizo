@@ -22,9 +22,12 @@ import { Button } from "@ntizo/frontend-ui";
  * card, too terse to stand alone as the only content in this slot.
  *
  * The "Falar com o prestador" button gets the same disabled, unlinked
- * treatment `PackageChooser` gives "Reservar": there is no Communication
- * context in this product either, so a button that looked live would promise
- * a conversation nothing here can start.
+ * treatment `PackageChooser` gives "Reservar" — not because there is nothing
+ * to wire it to any more (`features/messaging` exists now, and
+ * `provider-hero.tsx`'s `MessageProviderButton` already wires the identical
+ * CTA to `useStartThread` a few features over), but because nobody has come
+ * back to wire this one now that the reason it was disabled no longer
+ * holds. See follow-up #69.
  */
 export function ServiceQuoteNotice() {
   const { t } = useTranslation("directory");

@@ -82,6 +82,18 @@ let providerThreadsResult: {
   errorCode?: string;
 } = { threads, loading: false, hasMore: false, loadMore: loadMoreThreads, errorCode: undefined };
 
+// A mutable `let`, not the bare `messages` constant — the "marks read again
+// on arrival" test below needs to change what `useThread` hands back
+// mid-test (a new inbound message landing, the way the 5s poll would deliver
+// one) without touching `?thread=`, which a frozen fixture cannot do. Same
+// shape `customer-messages-page.test.tsx` uses for the identical reason.
+let threadResult: {
+  messages: Message[];
+  loading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+} = { messages, loading: false, hasMore: false, loadMore: loadMoreMessages };
+
 vi.mock("@/features/user/viewmodel/use-current-user", () => ({
   useCurrentUser: () => ({ data: { id: "staff-1" } }),
 }));
@@ -92,12 +104,7 @@ vi.mock("@/features/messaging/viewmodel/use-provider-threads", () => ({
   useProviderThreads: () => providerThreadsResult,
 }));
 vi.mock("@/features/messaging/viewmodel/use-thread", () => ({
-  useThread: () => ({
-    messages,
-    loading: false,
-    hasMore: false,
-    loadMore: loadMoreMessages,
-  }),
+  useThread: () => threadResult,
 }));
 vi.mock("@/features/messaging/viewmodel/use-send-message", () => ({
   useSendMessage: () => ({ send, sending: false, errorCode: undefined }),
@@ -125,6 +132,7 @@ afterEach(() => {
     loadMore: loadMoreThreads,
     errorCode: undefined,
   };
+  threadResult = { messages, loading: false, hasMore: false, loadMore: loadMoreMessages };
 });
 
 /** Wraps the real page with one control it does not render itself: a button that forces a re-render without touching `?thread=`. */
@@ -273,6 +281,37 @@ describe("ProviderMessagesPage: marking a thread read on open", () => {
     await user.click(screen.getByRole("button", { name: "force re-render" }));
 
     expect(markRead).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the thread read again when a message from the other side arrives while it stays open", async () => {
+    // Same bug, same fix as `customer-messages-page.test.tsx`'s identical
+    // test: the effect used to depend on `selectedThreadId` alone, so a
+    // customer's reply the 5s poll delivers while a staff member is sitting
+    // on this exact thread never re-triggered `markRead`.
+    const user = userEvent.setup();
+    renderPage("/provider/studio-beleza/messages?thread=t1");
+    await waitFor(() => expect(markRead).toHaveBeenCalledTimes(1));
+
+    // A new inbound reply from the customer — same thread, ahead of the
+    // existing two (newest first, per `useThread`'s contract).
+    threadResult = {
+      ...threadResult,
+      messages: [
+        {
+          id: "m3",
+          threadId: "t1",
+          senderUserId: "customer-1",
+          body: "E às 16h, tem?",
+          readAt: null,
+          createdAt: "2026-08-20T09:10:00Z",
+        },
+        ...messages,
+      ],
+    };
+    await user.click(screen.getByRole("button", { name: "force re-render" }));
+
+    await waitFor(() => expect(markRead).toHaveBeenCalledTimes(2));
+    expect(markRead).toHaveBeenLastCalledWith("t1");
   });
 
   it("marks nothing read when no thread is open", () => {

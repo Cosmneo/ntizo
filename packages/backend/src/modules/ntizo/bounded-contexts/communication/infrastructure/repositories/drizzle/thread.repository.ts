@@ -51,9 +51,23 @@ export class DrizzleThreadRepository implements ThreadRepositoryPort {
    * unique constraint matching the plain `(customer_user_id, provider_id)`
    * target and the statement raises instead of resolving.
    *
+   * The conflict branch's `SET` is a deliberate no-op — `last_message_at =
+   * thread.last_message_at`, the existing row's own value, not `now`.
+   * `openOrFind` is only ever called by `StartThreadCommand`, and a customer
+   * can call that by simply opening (or re-opening) a conversation, with no
+   * message sent — `provider-hero.tsx`'s "message this provider" button does
+   * exactly that on every click. Bumping `last_message_at` here would reorder
+   * both inboxes and surface an empty, unread-free row above a real
+   * conversation for nothing more than a click that wrote nothing. The one
+   * place `last_message_at` is meant to move is `touch()`, called from
+   * `SendMessageCommand` in the same transaction as the message that earned
+   * the reorder.
+   *
    * `(xmax = 0)` reports what *this* statement did — zero on a row it
    * inserted, non-zero on one the `DO UPDATE` touched — rather than what some
    * earlier read happened to see. postgres.js marshals it as a real boolean.
+   * This still works with a no-op `SET`: the flag reflects which branch of
+   * `ON CONFLICT` executed, not whether the assignment changed a value.
    */
   async openOrFind(customerUserId: string, providerId: string, now: Date): Promise<ThreadOpenResult> {
     const [row] = await getDb()
@@ -62,7 +76,7 @@ export class DrizzleThreadRepository implements ThreadRepositoryPort {
       .onConflictDoUpdate({
         target: [thread.customerUserId, thread.providerId],
         targetWhere: sql`${thread.type} = 'inquiry'`,
-        set: { lastMessageAt: now },
+        set: { lastMessageAt: sql`${thread.lastMessageAt}` },
       })
       .returning({ id: thread.id, inserted: sql<boolean>`(xmax = 0)` });
     return { id: row!.id, created: row!.inserted };

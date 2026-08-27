@@ -67,24 +67,33 @@ const send = vi.fn();
 const loadMoreThreads = vi.fn();
 const loadMoreMessages = vi.fn();
 
+let threadsResult: {
+  threads: Thread[];
+  loading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  errorCode?: string;
+} = { threads, loading: false, hasMore: false, loadMore: loadMoreThreads, errorCode: undefined };
+
+// A mutable `let`, not the bare `messages` constant — the "marks the newly
+// arrived message read" test below needs to change what `useThread` hands
+// back mid-test (a new inbound message landing, the way the 5s poll would
+// deliver one) without touching `?thread=`, which a frozen fixture cannot do.
+let threadResult: {
+  messages: Message[];
+  loading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+} = { messages, loading: false, hasMore: false, loadMore: loadMoreMessages };
+
 vi.mock("@/features/user/viewmodel/use-current-user", () => ({
   useCurrentUser: () => ({ data: { id: "u1" } }),
 }));
 vi.mock("@/features/messaging/viewmodel/use-threads", () => ({
-  useThreads: () => ({
-    threads,
-    loading: false,
-    hasMore: false,
-    loadMore: loadMoreThreads,
-  }),
+  useThreads: () => threadsResult,
 }));
 vi.mock("@/features/messaging/viewmodel/use-thread", () => ({
-  useThread: () => ({
-    messages,
-    loading: false,
-    hasMore: false,
-    loadMore: loadMoreMessages,
-  }),
+  useThread: () => threadResult,
 }));
 vi.mock("@/features/messaging/viewmodel/use-send-message", () => ({
   useSendMessage: () => ({ send, sending: false, errorCode: undefined }),
@@ -107,7 +116,11 @@ vi.mock("@/features/messaging/viewmodel/use-mark-read", () => ({
 
 const { CustomerMessagesPage } = await import("../customer-messages-page");
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  threadsResult = { threads, loading: false, hasMore: false, loadMore: loadMoreThreads, errorCode: undefined };
+  threadResult = { messages, loading: false, hasMore: false, loadMore: loadMoreMessages };
+});
 
 /**
  * Wraps the real page with one control the page itself does not render: a
@@ -174,6 +187,42 @@ describe("CustomerMessagesPage: marking a thread read on open", () => {
     expect(markRead).toHaveBeenCalledTimes(1);
   });
 
+  it("marks the thread read again when a message from the other side arrives while it stays open", async () => {
+    // The bug this test exists to catch: the effect used to depend on
+    // `selectedThreadId` alone, so a reply the 5s poll delivers while the
+    // customer is sitting on this exact thread never re-triggered
+    // `markRead` — it stayed `read_at IS NULL` until the sweep two minutes
+    // later emailed them about a message already on their screen. See
+    // `customer-messages-page.tsx`'s `newestInboundMessageId` comment.
+    const user = userEvent.setup();
+    renderPage("/messages?thread=t1");
+    await waitFor(() => expect(markRead).toHaveBeenCalledTimes(1));
+
+    // A new inbound reply landing — same thread, one more message from the
+    // provider, ahead of the existing two (newest first, per `useThread`'s
+    // contract). Mutating `threadResult` and forcing a re-render is how a
+    // poll tick is simulated without a real query client — see this file's
+    // top-of-file comment on why the viewmodel seam is mocked instead.
+    threadResult = {
+      ...threadResult,
+      messages: [
+        {
+          id: "m3",
+          threadId: "t1",
+          senderUserId: "provider-1",
+          body: "Ainda tem vaga às 15h?",
+          readAt: null,
+          createdAt: "2026-08-20T09:10:00Z",
+        },
+        ...messages,
+      ],
+    };
+    await user.click(screen.getByRole("button", { name: "force re-render" }));
+
+    await waitFor(() => expect(markRead).toHaveBeenCalledTimes(2));
+    expect(markRead).toHaveBeenLastCalledWith("t1");
+  });
+
   it("marks the newly opened thread read when the selection actually changes", async () => {
     const user = userEvent.setup();
     renderPage("/messages?thread=t1");
@@ -206,5 +255,26 @@ describe("CustomerMessagesPage: composing", () => {
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(send).toHaveBeenCalledWith("t1", "Obrigado!");
+  });
+});
+
+describe("CustomerMessagesPage: listing conversations", () => {
+  it("shows a load error instead of a deceptively empty list when the server refuses the page", async () => {
+    // `communicationMyThreads` can fail the same way `communicationProviderThreads`
+    // can (see `use-threads.ts`'s `errorCode`) — the page must not render that
+    // as an ordinary "no conversations yet", which would look identical to an
+    // inbox that is genuinely empty. `provider-messages-page.test.tsx` carries
+    // the same test for the provider side; this is its customer-side mirror.
+    threadsResult = {
+      threads: [],
+      loading: false,
+      hasMore: false,
+      loadMore: loadMoreThreads,
+      errorCode: "UNAUTHENTICATED",
+    };
+    renderPage("/messages");
+
+    expect(await screen.findByText(/couldn't load your conversations/i)).toBeInTheDocument();
+    expect(screen.queryByText("No conversations yet")).toBeNull();
   });
 });

@@ -5,14 +5,18 @@ import { EmptyCard } from "@/shared/components/empty-card";
 import type { Thread } from "@/features/messaging/domain/types";
 
 /**
- * The customer's own inbox — every provider they have messaged, newest last
- * message first (the order `useThreads` already hands back; this component
- * does not re-sort).
+ * A conversation list — a customer's own inbox (every provider they have
+ * messaged) or a provider's own inbox (every customer who has messaged
+ * them), newest last message first (the order `useThreads`/
+ * `useProviderThreads` already hand back; this component does not re-sort).
+ * Since Task 11 it renders both: `nameOf` decides which of a `Thread`'s two
+ * names each row labels itself with — see that prop's own doc comment below.
  *
  * A dumb list, the same split `ActivityList` and `InboxList` make: this
- * component takes `threads` + `loading` as props rather than calling
- * `useThreads()` itself, so `customer-messages-page.tsx` is the only place
- * that owns the query and `selectedThreadId` can live beside it.
+ * component takes `threads` + `loading` as props rather than calling a query
+ * hook itself, so the page rendering it (`customer-messages-page.tsx` or
+ * `provider-messages-page.tsx`) is the one place that owns the query and
+ * `selectedThreadId` can live beside it.
  */
 export function ThreadList({
   threads,

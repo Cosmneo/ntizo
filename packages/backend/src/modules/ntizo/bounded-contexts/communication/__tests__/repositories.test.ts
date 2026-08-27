@@ -178,17 +178,30 @@ describe("openOrFind", () => {
     });
   });
 
-  test("moves last_message_at forward on the second call", async () => {
+  test("does not move last_message_at on a second call — reopening a conversation is not a message", async () => {
+    // Pinned the opposite behaviour until this fix: `StartThreadCommand` is
+    // the only caller of `openOrFind`, and a customer reaches it just by
+    // opening (or re-opening) a conversation — `provider-hero.tsx`'s
+    // "message this provider" button calls `start()` on every click, with
+    // no message required. If the conflict branch bumped `last_message_at`,
+    // clicking that button five times with nothing typed would carry the
+    // thread to the top of both inboxes, above a real conversation, with an
+    // empty preview and no unread count. `last_message_at` only moves when a
+    // message is actually sent — see `touch()`, called from
+    // `SendMessageCommand`.
     const providerId = await makeProvider(ownerId, "open-or-find-touch");
     const first = new Date("2026-08-20T10:00:00.000Z");
     const second = new Date("2026-08-20T10:05:00.000Z");
 
     await __runWithTransactionContextForTests(db, async () => {
       const opened = await threads.openOrFind(customerId, providerId, first);
-      await threads.openOrFind(customerId, providerId, second);
+      const second_ = await threads.openOrFind(customerId, providerId, second);
+
+      expect(second_.id).toBe(opened.id);
+      expect(second_.created).toBe(false);
 
       const row = await threads.findVisible(opened.id, customerId);
-      expect(row?.lastMessageAt.toISOString()).toBe(second.toISOString());
+      expect(row?.lastMessageAt.toISOString()).toBe(first.toISOString());
     });
   });
 
@@ -548,7 +561,17 @@ describe("claimDueForNotice / markNotified", () => {
       threads.openOrFind(customerId, providerId, new Date("2026-08-10T00:00:00.000Z")),
     );
 
-    const now = new Date("2026-08-10T00:10:00.000Z");
+    // Far in the future, not "now" in the fixture's own 2026-08-10 story —
+    // `notifyDueAt: past` below lands in the *database*, which the deployed
+    // dev worker's real `* * * * *` cron sweeps every minute with its own
+    // real wall-clock `now()`. A `past` computed from an actually-past `now`
+    // would be due for that real sweep too: unread, un-notified, exactly the
+    // shape `claimDueForNotice` claims, which would raise a real
+    // notification and attempt a real Resend send to a synthetic
+    // `@ntizo.test` address. Year 2999 is far enough out that the real sweep
+    // can never reach it while this test's own explicit `now` argument
+    // (also 2999) still claims it correctly.
+    const now = new Date("2999-08-10T00:10:00.000Z");
     const past = new Date(now.getTime() - 60_000);
     const future = new Date(now.getTime() + 60_000);
 
@@ -603,7 +626,11 @@ describe("claimDueForNotice / markNotified", () => {
       threads.openOrFind(customerId, providerId, new Date("2026-08-11T00:00:00.000Z")),
     );
 
-    const now = new Date("2026-08-11T00:10:00.000Z");
+    // See the identical comment in the test above: far enough into the
+    // future that the real, deployed cron's own wall-clock sweep can never
+    // claim this row, while this test's own explicit `now` argument still
+    // does.
+    const now = new Date("2999-08-11T00:10:00.000Z");
     const past = new Date(now.getTime() - 60_000);
     const [inserted] = await db
       .insert(message)

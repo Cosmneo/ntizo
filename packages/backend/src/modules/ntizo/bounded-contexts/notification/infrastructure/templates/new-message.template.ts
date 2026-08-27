@@ -22,7 +22,7 @@ const PT: Copy = {
   heading: "Mensagem nova",
   body: "Recebeu uma mensagem que ainda não foi lida. Responda para continuar a conversa.",
   cta: "Ver mensagens",
-  disclaimer: "Recebe esta mensagem porque tem uma conversa por responder na Ntizo.",
+  disclaimer: "Recebeu esta mensagem porque tem uma conversa por responder na Ntizo.",
 };
 
 const ES: Copy = {

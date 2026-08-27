@@ -93,6 +93,29 @@ describe("messagingQueries.mine", () => {
     expect(result.items.map((i) => i.id)).toEqual(["t1", "t2"]);
   });
 
+  it("selects every field the customer inbox row and unread badge need, not just id and cursor", async () => {
+    // `sessionGraphql` is mocked in every test in this file, so a fixture
+    // (`twoThreadPage`) hands back whatever fields it likes regardless of
+    // what the query text actually asks for — the field-name assertion above
+    // catches a nested-vs-flat rewrite but nothing here previously caught a
+    // field silently dropped from the selection set. Deleting `providerName`
+    // leaves every row of the customer's inbox reading "Prestador" (the
+    // fallback), and deleting `unreadCount` leaves no unread badge ever
+    // rendering — both with 102/102 tests green, because the fixture still
+    // returns them. Asserting the literal selection set is what reds on that.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationMyThreads: twoThreadPage } as never);
+
+    const opts = messagingQueries.mine();
+    await queryFnOf<ThreadPageDTO>(opts)({ pageParam: undefined });
+
+    const [query] = spy.mock.calls[0]!;
+    expect(query as string).toContain(
+      "items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }",
+    );
+  });
+
   it("sends the page size and no cursor on the first page", async () => {
     const spy = vi
       .spyOn(client, "sessionGraphql")
@@ -151,6 +174,25 @@ describe("messagingQueries.forProvider", () => {
     expect(result.items.map((i) => i.id)).toEqual(["t1", "t2"]);
   });
 
+  it("selects every field the provider inbox row and unread badge need, not just id and cursor", async () => {
+    // Same reasoning as `messagingQueries.mine`'s identical test: deleting
+    // `customerName` from this selection set leaves every row of a
+    // provider's own inbox reading "Cliente" — the exact bug Task 11's fix
+    // round existed to fix — with every other test still green because the
+    // mocked fixture returns it regardless of what was actually asked for.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationProviderThreads: twoThreadPage } as never);
+
+    const opts = messagingQueries.forProvider("p1");
+    await queryFnOf<ThreadPageDTO>(opts)({ pageParam: undefined });
+
+    const [query] = spy.mock.calls[0]!;
+    expect(query as string).toContain(
+      "items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }",
+    );
+  });
+
   it("is disabled for an empty provider id, the same guard notificationQueries.forProvider needs", () => {
     expect(messagingQueries.forProvider("").enabled).toBe(false);
     expect(messagingQueries.forProvider("p1").enabled).toBe(true);
@@ -179,6 +221,25 @@ describe("messagingQueries.thread", () => {
     // the wire sent them (newest first) — a one-row fixture cannot tell a
     // correct list from a truncated or reversed one.
     expect(result.items.map((i) => i.id)).toEqual(["m1", "m2"]);
+  });
+
+  it("selects every field a message bubble needs, not just id and cursor", async () => {
+    // Same reasoning as `messagingQueries.mine`'s identical test: deleting
+    // `body` from this selection set means every message bubble renders
+    // empty, with every other test in this file still green because the
+    // mocked fixture (`twoMessagePage`) hands `body` back regardless of what
+    // the query text actually asked for.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationThreadMessages: twoMessagePage } as never);
+
+    const opts = messagingQueries.thread("t1");
+    await queryFnOf<MessagePageDTO>(opts)({ pageParam: undefined });
+
+    const [query] = spy.mock.calls[0]!;
+    expect(query as string).toContain(
+      "items { id threadId senderUserId body readAt createdAt }",
+    );
   });
 
   it("passes a later cursor through untouched", async () => {

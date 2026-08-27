@@ -83,15 +83,25 @@ export function ProviderMessagesPage() {
   const { send, sending, errorCode: sendErrorCode } = useSendMessage();
   const { markRead } = useMarkRead();
 
-  // Marking a thread read is a side effect of opening it, not of every
-  // render this page happens to do — same trade, same reasoning
-  // `customer-messages-page.tsx`'s identical effect documents: `markRead`
-  // is a fresh function identity every render (`useMarkRead` does not
-  // memoise it), so it stays out of the dependency array on purpose.
+  // The newest message the other side sent, if any — same reasoning
+  // `customer-messages-page.tsx`'s identical constant documents: `messages`
+  // is newest-first, so this is what makes an already-open thread mark a
+  // reply read the moment the 5s poll lands it, not only when the thread is
+  // first opened.
+  const newestInboundMessageId = messages.find(
+    (message) => message.senderUserId !== me?.id,
+  )?.id;
+
+  // Marking a thread read is a side effect of opening it, or of a new
+  // message from the other side landing while it is open — same trade, same
+  // reasoning `customer-messages-page.tsx`'s identical effect documents:
+  // `markRead` is a fresh function identity every render (`useMarkRead`
+  // does not memoise it), so it stays out of the dependency array on
+  // purpose.
   useEffect(() => {
     if (selectedThreadId) markRead(selectedThreadId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedThreadId]);
+  }, [selectedThreadId, newestInboundMessageId]);
 
   if (!activeProvider) return null;
 

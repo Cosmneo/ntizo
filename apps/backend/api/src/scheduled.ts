@@ -25,7 +25,9 @@ export const SWEEP_LIMIT = 200;
  *
  * **A `scheduled` handler is not an HTTP request.** `configMiddleware`
  * establishes the request-scoped `infraStore` AsyncLocalStorage context for
- * every fetch — it is the only place in this codebase that does. Deep inside
+ * every fetch. A cron invocation has no request for that middleware to wrap,
+ * so this function builds the same context by hand (`infraStore.runAsync`
+ * below) — the only other place in this codebase that does. Deep inside
  * the sweep, `DeferredNotificationDelivery.execute()` calls
  * `infraStore.waitUntil(...)` and template rendering reads
  * `infraStore.getEnv()` for `APP_URL`; both throw ("not initialized... Ensure
@@ -33,9 +35,8 @@ export const SWEEP_LIMIT = 200;
  * and `markNotified` happen *before* the deferred email delivery is awaited,
  * so an unwrapped call would still mark every message notified while its
  * email throws inside `DeferredNotificationDelivery`'s own `.catch` and
- * vanishes — permanent, silent email loss with every test green. So this
- * function builds the same request-scoped store the fetch path builds
- * (`infraStore.runAsync`) before touching anything that reads it.
+ * vanishes — permanent, silent email loss with every test green. Hence the
+ * context built below, before anything that reads it runs.
  *
  * The per-request `{ max: 1 }` postgres pool this scope opens has the same
  * problem `configMiddleware` solves for a request: the sweep defers email
