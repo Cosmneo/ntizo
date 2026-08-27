@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { messagingQueries } from "@/features/messaging/data/messaging.repository";
 import type { Thread } from "@/features/messaging/domain/types";
+import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-error";
 
 /**
  * The caller's own inbox — flattened to one list and a "load more" call.
@@ -28,5 +29,12 @@ export function useThreads() {
     loading: query.isPending,
     hasMore: query.hasNextPage,
     loadMore: () => void query.fetchNextPage(),
+    /**
+     * `undefined` when there is nothing wrong. `"UNAUTHENTICATED"` when the
+     * caller is signed out — see `messagingErrorCode`'s own doc comment for
+     * why that requires reading `originalCode`, not the flattened
+     * `"FORBIDDEN"` every `ForbiddenError` wears on the wire.
+     */
+    errorCode: messagingErrorCode(query.error),
   };
 }

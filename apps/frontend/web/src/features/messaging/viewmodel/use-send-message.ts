@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
+import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-error";
 
 /**
  * Field name is flat (`communicationSend`, not `communication { send }`) —
@@ -25,8 +26,10 @@ const SEND = `
  * thread just sent into (`["messaging", "thread", threadId]`) and every
  * loaded inbox page whose `lastMessageAt`/`lastMessagePreview` that message
  * just changed (`["messaging", "threads", ...]`) are both downstream of
- * this — same reasoning `useMarkRead` gives for invalidating the whole
- * `["notifications"]` prefix instead of enumerating query keys here.
+ * this — same reasoning the notifications feature's `useMarkRead` gives
+ * for invalidating the whole `["notifications"]` prefix instead of
+ * enumerating query keys, and this feature's own `use-mark-read.ts` reuses
+ * for the same reason.
  *
  * No optimistic update, for the same reason `useMarkRead` skips one: a
  * message that appeared to send and then silently failed is a lie the
@@ -49,5 +52,12 @@ export function useSendMessage() {
     send: (threadId: string, body: string) =>
       mutation.mutate({ threadId, body }),
     sending: mutation.isPending,
+    /**
+     * `"VALIDATION_ERROR"` for an empty or >4000-character body,
+     * `"UNPROCESSABLE"` for a thread the sender can no longer reach — see
+     * `messagingErrorCode`'s doc comment for why each reads a different
+     * field of the underlying `GraphqlError`.
+     */
+    errorCode: messagingErrorCode(mutation.error),
   };
 }
