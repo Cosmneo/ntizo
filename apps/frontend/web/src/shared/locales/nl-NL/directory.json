@@ -7,6 +7,12 @@
   "notFoundTitle": "Aanbieder niet gevonden",
   "notFoundBody": "Deze aanbieder is mogelijk verwijderd, of de link klopt niet.",
   "backToDirectory": "Terug naar alle aanbieders",
+  "messageProviderCta": "Bericht",
+  "messageProviderStarting": "Starten…",
+  "messageProviderError": {
+    "PROVIDER_NOT_CONTACTABLE": "Je kunt deze aanbieder op dit moment niet berichten.",
+    "GENERIC": "Het gesprek kon niet worden gestart. Probeer het opnieuw."
+  },
   "noDescription": "Deze aanbieder heeft nog geen beschrijving toegevoegd.",
   "searchPlaceholder": "Diensten zoeken…",
   "searchLabel": "Diensten zoeken",

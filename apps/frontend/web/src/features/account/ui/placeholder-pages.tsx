@@ -1,14 +1,16 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Heart, MessageSquare } from "lucide-react";
+import { CalendarDays, Heart } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 
 /**
- * The three customer pages whose features do not exist yet.
+ * The customer pages whose features do not exist yet.
  *
- * Kept in one file because they are the same page three times — separating
- * them into three near-identical files would imply differences that are not
- * there. Each moves out on its own the moment it grows real content.
+ * Used to be three — bookings, messages, favourites — kept in one file
+ * because they were the same page three times over. Messages moved out to
+ * `features/messaging/ui/customer-messages-page.tsx` once the Communication
+ * context shipped; the other two stay here until they get the same
+ * treatment.
  */
 
 function Shell({
@@ -53,20 +55,6 @@ export function BookingsPage() {
         title={t("bookingsEmptyTitle")}
         body={t("bookingsEmptyBody")}
         action={<BrowseLink label={t("browseProviders")} />}
-      />
-    </Shell>
-  );
-}
-
-export function MessagesPage() {
-  const { t } = useTranslation("account");
-  return (
-    <Shell title={t("messagesTitle")}>
-      <EmptyCard
-        framed
-        badge={MessageSquare}
-        title={t("messagesEmptyTitle")}
-        body={t("messagesEmptyBody")}
       />
     </Shell>
   );

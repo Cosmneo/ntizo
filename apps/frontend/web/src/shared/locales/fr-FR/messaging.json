@@ -1,0 +1,28 @@
+{
+  "title": "Messages",
+  "listTitle": "Conversations",
+  "emptyTitle": "Aucune conversation pour l'instant",
+  "emptyBody": "Démarrez-en une depuis la page d'un prestataire et elle apparaîtra ici.",
+  "loadMore": "Charger plus",
+  "unknownProvider": "Prestataire",
+  "noPreview": "Aucun message pour l'instant",
+  "unreadBadge": "{{count}} message non lu",
+  "unreadBadge_other": "{{count}} messages non lus",
+  "back": "Retour aux conversations",
+  "conversationFallbackTitle": "Conversation",
+  "selectPrompt": "Sélectionnez une conversation",
+  "selectPromptBody": "Choisissez une conversation à gauche pour la lire.",
+  "conversationEmptyTitle": "Dites bonjour",
+  "conversationEmptyBody": "C'est le début de votre conversation. Envoyez le premier message quand vous serez prêt.",
+  "loadEarlier": "Charger les messages précédents",
+  "composerPlaceholder": "Écrivez un message…",
+  "charCount": "{{count}}/{{max}}",
+  "send": "Envoyer",
+  "sending": "Envoi en cours…",
+  "sendError": {
+    "VALIDATION_ERROR": "Les messages peuvent compter jusqu'à 4000 caractères.",
+    "THREAD_NOT_VISIBLE": "Cette conversation n'est plus disponible.",
+    "UNAUTHENTICATED": "Reconnectez-vous pour envoyer ce message.",
+    "GENERIC": "Ce message n'a pas pu être envoyé. Veuillez réessayer."
+  }
+}

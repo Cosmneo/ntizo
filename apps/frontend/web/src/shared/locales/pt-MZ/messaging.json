@@ -1,0 +1,28 @@
+{
+  "title": "Mensagens",
+  "listTitle": "Conversas",
+  "emptyTitle": "Ainda sem conversas",
+  "emptyBody": "Inicie uma a partir da página de qualquer prestador e ela aparece aqui.",
+  "loadMore": "Carregar mais",
+  "unknownProvider": "Prestador",
+  "noPreview": "Ainda sem mensagens",
+  "unreadBadge": "{{count}} mensagem por ler",
+  "unreadBadge_other": "{{count}} mensagens por ler",
+  "back": "Voltar às conversas",
+  "conversationFallbackTitle": "Conversa",
+  "selectPrompt": "Selecione uma conversa",
+  "selectPromptBody": "Escolha uma conversa à esquerda para a ler.",
+  "conversationEmptyTitle": "Diga olá",
+  "conversationEmptyBody": "Este é o início da conversa. Envie a primeira mensagem quando estiver pronto.",
+  "loadEarlier": "Carregar mensagens anteriores",
+  "composerPlaceholder": "Escreva uma mensagem…",
+  "charCount": "{{count}}/{{max}}",
+  "send": "Enviar",
+  "sending": "A enviar…",
+  "sendError": {
+    "VALIDATION_ERROR": "As mensagens podem ter até 4000 caracteres.",
+    "THREAD_NOT_VISIBLE": "Esta conversa já não está disponível.",
+    "UNAUTHENTICATED": "Inicie sessão novamente para enviar esta mensagem.",
+    "GENERIC": "Não foi possível enviar a mensagem. Tente novamente."
+  }
+}

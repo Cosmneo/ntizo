@@ -1,0 +1,28 @@
+{
+  "title": "Messages",
+  "listTitle": "Conversations",
+  "emptyTitle": "No conversations yet",
+  "emptyBody": "Start one from any provider's page and it will show up here.",
+  "loadMore": "Load more",
+  "unknownProvider": "Provider",
+  "noPreview": "No messages yet",
+  "unreadBadge": "{{count}} unread message",
+  "unreadBadge_other": "{{count}} unread messages",
+  "back": "Back to conversations",
+  "conversationFallbackTitle": "Conversation",
+  "selectPrompt": "Select a conversation",
+  "selectPromptBody": "Choose a conversation on the left to read it.",
+  "conversationEmptyTitle": "Say hello",
+  "conversationEmptyBody": "This is the start of your conversation. Send the first message whenever you're ready.",
+  "loadEarlier": "Load earlier messages",
+  "composerPlaceholder": "Write a message…",
+  "charCount": "{{count}}/{{max}}",
+  "send": "Send",
+  "sending": "Sending…",
+  "sendError": {
+    "VALIDATION_ERROR": "Messages can be up to 4000 characters.",
+    "THREAD_NOT_VISIBLE": "This conversation is no longer available.",
+    "UNAUTHENTICATED": "Sign in again to send this message.",
+    "GENERIC": "That message didn't send. Please try again."
+  }
+}
