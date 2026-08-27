@@ -1,0 +1,172 @@
+import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { Star } from "lucide-react";
+import { cn } from "@ntizo/frontend-ui";
+
+export interface StubRating {
+  average: number;
+  count: number;
+  /**
+   * Names whose score this is — "provider rating" on a service card.
+   *
+   * Omitted where the score belongs to the listing itself. A provider card
+   * shows its own reviews and needs no explanation; a service card shows its
+   * *business's* reviews, and printing those unlabelled claims the service has
+   * been reviewed six times when it has not been reviewed at all.
+   */
+  attribution?: string | undefined;
+}
+
+/**
+ * The price rail of a listing card, drawn as a ticket stub.
+ *
+ * The dashed rule and the two punched notches are the design's one deliberate
+ * flourish, and they are structural rather than applied: what this platform
+ * sells is a *committed offer* — a price and a duration fixed before you agree,
+ * in a market whose norm is to negotiate on the doorstep — and a stub is what a
+ * committed offer looks like.
+ *
+ * The notch is a circle in the page's ground colour sitting on the rule at each
+ * card edge, half inside the card and half out. It is only legible because the
+ * ground and the card are different colours, which is the same reason the whole
+ * page moved onto `--color-surface-raised`; it carries a 1px ring so the half
+ * lying on white still reads as a hole rather than as a smudge.
+ *
+ * Every optional slot collapses. Most listings carry no rating and no
+ * under-line, and a fixed-height rail would put a band of empty white inside
+ * every card shorter than the tallest in its column.
+ *
+ * `amount` arrives already formatted. `Intl.NumberFormat` needs a locale and a
+ * currency, and a presentational shell that reached for either would be
+ * deciding something the two pages should decide for themselves.
+ */
+export function PriceStub({
+  rating,
+  eyebrow,
+  amount,
+  under,
+  action,
+}: {
+  rating?: StubRating | undefined;
+  /** "Fixed price", "Per hour", "By quote", "from" — above the amount. */
+  eyebrow: string;
+  amount: string;
+  /** One line under the amount: "45 min", "per service". */
+  under?: string | undefined;
+  /** The page's own route-typed CTA `<Link>`. */
+  action: ReactNode;
+}) {
+  const { t } = useTranslation("directory");
+
+  return (
+    <div
+      data-testid="price-stub"
+      className="relative flex flex-col items-end justify-between gap-3 pt-4 md:pt-0 md:pl-5 lg:pl-6"
+    >
+      {/* The perforation. A zero-width span with a left border rather than a
+          dashed border on the container: a dashed border on the flex parent
+          would also dash the three edges nobody asked for.
+
+          Horizontal on a phone, where the stub sits under the body rather than
+          beside it — the same rule, turned. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute border-dashed border-[var(--color-border-strong)]",
+          "inset-x-0 top-0 h-0 border-t-[1.5px]",
+          "md:inset-x-auto md:inset-y-[-2px] md:top-auto md:left-0 md:h-auto md:w-0 md:border-t-0 md:border-l-[1.5px]",
+        )}
+      />
+      <Notch className="top-[-6px] left-[-22px] md:top-[-23px] md:left-[-6px]" />
+      <Notch className="top-[-6px] right-[-22px] md:top-auto md:right-auto md:bottom-[-23px] md:left-[-6px]" />
+
+      {rating && (
+        <p
+          data-testid="stub-rating"
+          className="grid justify-items-end gap-0.5"
+          // One label for the pair. Five icons read out one by one are not a
+          // rating, and the number alone loses the count — 4.9 from two people
+          // and 4.9 from two hundred are different claims.
+          aria-label={t("providerRatingLabel", {
+            score: rating.average.toFixed(1),
+            count: rating.count,
+          })}
+        >
+          <span className="flex items-center gap-1.5">
+            <Star
+              className="h-3.5 w-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]"
+              aria-hidden="true"
+            />
+            <b className="font-rounded text-[0.95rem] font-semibold tabular-nums">
+              {rating.average.toFixed(1)}
+            </b>
+            <span className="type-caption text-[var(--color-muted-foreground)]">
+              ({rating.count})
+            </span>
+          </span>
+          {rating.attribution && (
+            <span className="type-caption text-[var(--color-muted-foreground)]">
+              {rating.attribution}
+            </span>
+          )}
+        </p>
+      )}
+
+      <p className="grid justify-items-end gap-0.5 text-right">
+        <span className="text-[11px] font-medium tracking-[0.09em] text-[var(--color-muted-foreground)] uppercase">
+          {eyebrow}
+        </span>
+        <b className="font-rounded text-[1.45rem] leading-tight font-semibold tracking-[-0.02em] tabular-nums">
+          {amount}
+        </b>
+        {under && (
+          <span
+            data-testid="stub-under"
+            className="type-caption text-[var(--color-muted-foreground)]"
+          >
+            {under}
+          </span>
+        )}
+      </p>
+
+      {/* `relative` so it sits above the card's whole-surface title link. A CTA
+          underneath that overlay is a button nobody can press. */}
+      <div className="relative w-full">{action}</div>
+    </div>
+  );
+}
+
+/** One punched hole where the perforation meets a card edge. */
+function Notch({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "absolute h-3 w-3 rounded-full bg-[var(--color-surface-raised)] shadow-[0_0_0_1px_var(--color-border)]",
+        className,
+      )}
+    />
+  );
+}
+
+/**
+ * The stub's call to action, as a class rather than a component.
+ *
+ * Each page's CTA is a route-typed `<Link>` — `/services/$id` on one,
+ * `/providers/$slug` on the other — and wrapping those in a shared component
+ * would erase the typing that makes a broken link a build failure.
+ *
+ * `quiet` is for a destination that cannot be paid for: a solid brand-blue
+ * button beside a price of "to agree" promises a checkout that does not exist
+ * for that listing.
+ *
+ * `whitespace-nowrap`: "Pedir orçamento" wrapped onto two lines inside a 196px
+ * rail and turned the button into a paragraph with a border.
+ */
+export function stubCtaClass(variant: "primary" | "quiet" = "primary"): string {
+  const base =
+    "font-rounded inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-3 text-sm font-semibold transition-[background-color,transform,border-color]";
+  return variant === "primary"
+    ? `${base} bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:-translate-y-px hover:bg-[var(--color-primary-deep)]`
+    : `${base} border border-[var(--color-border-strong)] bg-[var(--color-background)] text-[var(--color-foreground)] hover:border-[var(--color-foreground)] hover:bg-[var(--color-foreground)] hover:text-[var(--color-background)]`;
+}
