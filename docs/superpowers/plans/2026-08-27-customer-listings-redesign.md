@@ -3583,10 +3583,16 @@ In `service-read.repository.ts`, widen `ListPublishedServicesFilter["sort"]` the
           ? [desc(service.createdAt)]
           : filter.sort === "price"
             ? [
-                // NULLS LAST, spelled out. Postgres sorts nulls FIRST under
-                // ASC by default, which would put every quote service — the
-                // ones with no price at all — at the top of "cheapest first".
-                sql`(${cheapestActiveOption}) asc nulls last`,
+                // `nulls last` spelled out even though ASC already does it.
+                  //
+                  // The default is not the same in both directions: ASC
+                  // defaults to NULLS LAST, DESC to NULLS FIRST. Anyone who
+                  // later adds a "most expensive first" order by flipping this
+                  // to desc() would silently move every unpriced service to the
+                  // very top — the one position it cannot honestly hold — and
+                  // nothing would fail. Written out, the intent survives that
+                  // change.
+                  sql`(${cheapestActiveOption}) asc nulls last`,
                 asc(service.createdAt),
               ]
             : [asc(service.sortOrder), asc(service.createdAt)]),
