@@ -1873,3 +1873,21 @@ across roughly a dozen full-suite runs gives nothing to `git bisect` yet.
 
 **Trigger:** the next time this specific `CancelledError` shape shows up in a CI run, or any other
 spec that hits `/providers/$slug` (or another `ssr: true` route) starts flaking the same way.
+
+---
+
+## 77. `useAllCategories` has no callers left
+
+`features/landing/viewmodel/use-categories.ts` exports two hooks. `useCategoryPreview(limit)` is used
+by the home page and, since the listings redesign, by both browse pages' category rails.
+`useAllCategories` — the `useInfiniteQuery` one — had exactly one caller, the old `/providers`
+directory page, and lost it when that page was rebuilt on the shared browse shells and moved to
+`useCategoryPreview(24)` like its twin. Nothing in `src/` references it now.
+
+Left in place rather than deleted with the page: an unused export is not a lint error here, it was
+outside that task's scope, and `categoryQueries.all` behind it is a real paged query that a
+"browse every category" screen would want back. Deleting it means deleting that query definition too,
+or leaving a repository method with no viewmodel.
+
+**Trigger:** the next time someone touches `use-categories.ts` or `category.repository.ts` — delete it
+then if no such screen has appeared, or wire it up if one has.

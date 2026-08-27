@@ -297,9 +297,18 @@ describe("DirectoryPage", () => {
     // back to `/providers` — an empty search, which is a subset of every one —
     // so both the sidebar and the phone sheet announced it as where you are.
     renderPage("/providers?providerType=individual", { items: [provider()], total: 1 });
-    const options = await screen.findAllByRole("link", { name: "A person" });
-    // Two: the sidebar's, and the phone sheet's — both must be clean.
-    expect(options.length).toBeGreaterThan(0);
+
+    // The sidebar's is the only copy in the document until the bar is opened:
+    // `SheetContent` returns null while closed, so a test that leaves it shut
+    // is checking one link while its comment claims two.
+    const closed = await screen.findAllByRole("link", { name: "A person" });
+    expect(closed).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /Filters/ }));
+
+    // Two now: the sidebar's, and the phone sheet's — both must be clean.
+    const options = screen.getAllByRole("link", { name: "A person" });
+    expect(options).toHaveLength(2);
     for (const option of options) expect(option).not.toHaveAttribute("aria-current");
   });
 

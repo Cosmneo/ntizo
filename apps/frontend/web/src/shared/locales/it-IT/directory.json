@@ -70,7 +70,6 @@
   "providersFound_other": "{{count}} attività trovate",
   "providersPrevious": "Precedente",
   "providersNext": "Successivo",
-  "providerSearchPlaceholder": "Nome dell'attività o del servizio",
   "providerVerified": "Verificato",
   "providerNoReviews": "Ancora nessuna recensione",
   "providerRatingLabel": "{{score}} su 5, da {{count}} recensione",

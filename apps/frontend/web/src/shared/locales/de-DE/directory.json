@@ -70,7 +70,6 @@
   "providersFound_other": "{{count}} Betriebe gefunden",
   "providersPrevious": "Zurück",
   "providersNext": "Weiter",
-  "providerSearchPlaceholder": "Name des Betriebs oder der Leistung",
   "providerVerified": "Verifiziert",
   "providerNoReviews": "Noch keine Bewertungen",
   "providerRatingLabel": "{{score}} von 5, aus {{count}} Bewertung",

@@ -25,6 +25,10 @@ export const LISTING_TITLE_LINK_CLASS =
  * body. See `PriceStub`, whose notches sit on the card's edges and are what
  * make the third column read as a stub rather than as a paragraph pushed right.
  *
+ * Two columns where there is no price to show at all: a listing with nothing
+ * priced drops the third track rather than reserving 196px of white beside it,
+ * and its CTA moves into the body as `action`. See both props below.
+ *
  * White on the page's tinted ground. That single relationship is what makes a
  * result an object: before it, white cards sat on a white page separated only
  * by a hairline, and a column of them read as a wireframe.

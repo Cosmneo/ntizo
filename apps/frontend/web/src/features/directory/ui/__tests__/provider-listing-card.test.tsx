@@ -177,15 +177,23 @@ describe("ProviderListingCard", () => {
   it("names the kind of business and where it is, above the name", async () => {
     // The two facts that rule a business out before its name means anything.
     renderCard(provider());
-    expect(await screen.findByTestId("listing-meta")).toHaveTextContent(
-      "OrganizationMavalane, Maputo",
-    );
+    const meta = await screen.findByTestId("listing-meta");
+    expect(meta).toHaveTextContent("OrganizationMavalane, Maputo");
+    // The kind, the separator dot, the place.
+    expect(meta.children).toHaveLength(3);
   });
 
   it("draws no place at all for a business that has given none", async () => {
     // An unknown value must render nothing, not an empty separator with a dot
     // hanging off it.
+    //
+    // Counted, not read. The separator carries no text of its own and an empty
+    // place renders an empty span, so `toHaveTextContent("Organization")` is
+    // true whether the guard is there or not — a claim of coverage rather than
+    // coverage. Verified by removing the guard and watching this fail.
     renderCard(provider({ city: null, district: null }));
-    expect(await screen.findByTestId("listing-meta")).toHaveTextContent("Organization");
+    const meta = await screen.findByTestId("listing-meta");
+    expect(meta.children).toHaveLength(1);
+    expect(meta).toHaveTextContent("Organization");
   });
 });

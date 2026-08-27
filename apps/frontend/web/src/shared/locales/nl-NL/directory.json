@@ -70,7 +70,6 @@
   "providersFound_other": "{{count}} bedrijven gevonden",
   "providersPrevious": "Vorige",
   "providersNext": "Volgende",
-  "providerSearchPlaceholder": "Naam van bedrijf of dienst",
   "providerVerified": "Geverifieerd",
   "providerNoReviews": "Nog geen beoordelingen",
   "providerRatingLabel": "{{score}} van 5, uit {{count}} beoordeling",

@@ -70,7 +70,6 @@
   "providersFound_other": "{{count}} negocios encontrados",
   "providersPrevious": "Anterior",
   "providersNext": "Siguiente",
-  "providerSearchPlaceholder": "Nombre del negocio o servicio",
   "providerVerified": "Verificado",
   "providerNoReviews": "Todavía sin valoraciones",
   "providerRatingLabel": "{{score}} sobre 5, de {{count}} valoración",
