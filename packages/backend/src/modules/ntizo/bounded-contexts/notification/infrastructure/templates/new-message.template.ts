@@ -84,22 +84,30 @@ export const BY_LOCALE: Record<string, Copy> = {
  * A message sat unread past its window — Task 5's sweep in the Communication
  * context (`NotifyUnreadInternalCommand`) is this template's only producer.
  *
- * Receives `{ threadId }` and does not use it. There is no thread-specific
- * page to deep-link into yet — `/messages` is a placeholder route on the web
- * app — so the CTA goes to the general inbox rather than a URL nothing can
- * resolve. Wire `threadId` into the link the day that route exists; the
- * payload already carries it for exactly that.
+ * Receives `{ threadId, audience, providerId? }` and uses only the last two.
+ * `threadId` still has no thread-specific page to deep-link into — the
+ * inbox routes this links into (`/messages`, `/provider/$slug/messages`)
+ * open on the list, not one open conversation — so it is carried for the
+ * day that changes but unused here, same as before.
  *
- * One template regardless of which side gets it: `NotifyUnreadInternalCommand`
- * raises this for whichever side did not send the message, but the payload it
- * hands over does not say which — only `threadId` — so the copy is written to
- * read correctly whether the recipient is the customer or a provider team
- * member, rather than branching on an audience this template is never told.
+ * **The CTA now depends on who is reading it.** `NotifyUnreadInternalCommand`
+ * raises this for whichever side did not send the message, and until this
+ * task the payload it handed over never said which — only `threadId` — so
+ * every recipient got the same link, `/messages`, the *customer's* inbox.
+ * Harmless while `/provider/$slug/messages` did not exist; the moment it
+ * did, a provider team member clicking their own notification would land on
+ * a screen that is not theirs. `audience`/`providerId` are not new data —
+ * `DeliverNotificationInternalCommand.templatePayload` merges them in from
+ * fields `RaiseNotificationInput` already carried — this template is simply
+ * the first one that needs to read them.
  */
 export const newMessageTemplate: TemplateModule = {
-  render(locale, _payload) {
+  render(locale, payload) {
     const c = pickCopy(BY_LOCALE, locale);
-    const messagesUrl = `${appBaseUrl()}/messages`;
+    const messagesUrl =
+      payload["audience"] === "provider" && typeof payload["providerId"] === "string"
+        ? `${appBaseUrl()}/provider/${payload["providerId"]}/messages`
+        : `${appBaseUrl()}/messages`;
 
     return {
       subject: c.subject,

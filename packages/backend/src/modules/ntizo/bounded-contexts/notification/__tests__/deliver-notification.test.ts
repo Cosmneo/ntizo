@@ -41,11 +41,15 @@ class FakeRecipients {
 
 class FakeRenderer {
   rendered: string[] = [];
+  /** What each render call actually received as its third argument — see the "what the renderer receives" tests below. */
+  payloads: Record<string, unknown>[] = [];
   render(
     type: string,
     locale: string,
+    payload: Record<string, unknown>,
   ): { subject: string; html: string; text: string } | null {
     this.rendered.push(`${type}:${locale}`);
+    this.payloads.push(payload);
     return { subject: "s", html: "h", text: "t" };
   }
 }
@@ -122,6 +126,32 @@ describe("a personal notification", () => {
     sender.fail = true;
     await expect(cmd.execute(personal)).resolves.toBeDefined();
     expect(deliveries.updates[0]!.status).toBe("failed");
+  });
+});
+
+describe("what the renderer receives", () => {
+  // `new-message.template.ts` routes its CTA by reading `audience` and
+  // `providerId` off the third argument `render` gets — see
+  // `templatePayload`'s own doc comment. These two prove that argument
+  // actually carries them, at the one place they get merged in; a
+  // template-level test alone could not tell a template that merges its
+  // own envelope apart from one that gets it handed in.
+  it("hands a workspace notification's audience and providerId to the renderer, alongside its own payload", async () => {
+    await cmd.execute(workspace);
+    expect(renderer.payloads[0]).toEqual({
+      from: "pending",
+      to: "active",
+      audience: "provider",
+      providerId: "p1",
+    });
+  });
+
+  it("hands a personal notification's audience to the renderer, with no providerId to leak", async () => {
+    await cmd.execute(personal);
+    expect(renderer.payloads[0]).toEqual({
+      firstName: "Ana",
+      audience: "user",
+    });
   });
 });
 
