@@ -24,11 +24,22 @@ const row = (over = {}) => ({
 });
 
 class FakeRepo {
-  lastFilter: unknown;
-  constructor(private readonly rows: unknown[]) {}
+  listedWith: unknown;
+  countedWith: unknown;
+  // `total` defaults to `rows.length` so every existing test — none of which
+  // cares about the count — can go on constructing a `FakeRepo` with one
+  // argument.
+  constructor(
+    private readonly rows: unknown[],
+    private readonly total: number = rows.length,
+  ) {}
   async listPublished(filter: unknown) {
-    this.lastFilter = filter;
+    this.listedWith = filter;
     return this.rows;
+  }
+  async countPublished(filter: unknown) {
+    this.countedWith = filter;
+    return this.total;
   }
 }
 
@@ -77,14 +88,14 @@ describe("ListServicesProjection", () => {
     const repo = new FakeRepo([row()]);
     await new ListServicesProjection(repo as never)
       .execute({ locale: "pt-MZ", providerId: "prov-42", limit: 10, offset: 0 });
-    expect(repo.lastFilter).toMatchObject({ providerId: "prov-42" });
+    expect(repo.listedWith).toMatchObject({ providerId: "prov-42" });
   });
 
   it("leaves providerId undefined when no provider was asked for", async () => {
     const repo = new FakeRepo([row()]);
     await new ListServicesProjection(repo as never)
       .execute({ locale: "pt-MZ", limit: 10, offset: 0 });
-    expect(repo.lastFilter).toMatchObject({ providerId: undefined });
+    expect(repo.listedWith).toMatchObject({ providerId: undefined });
   });
 });
 
@@ -125,7 +136,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { locationType?: string }).locationType).toBe("remote");
+    expect((repo.listedWith as { locationType?: string }).locationType).toBe("remote");
   });
 
   it("passes the sort through to the repository", async () => {
@@ -136,7 +147,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { sort?: string }).sort).toBe("newest");
+    expect((repo.listedWith as { sort?: string }).sort).toBe("newest");
   });
 
   it("passes the search term through to the repository", async () => {
@@ -147,7 +158,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { q?: string }).q).toBe("corte");
+    expect((repo.listedWith as { q?: string }).q).toBe("corte");
   });
 
   it("trims the search term before the repository sees it", async () => {
@@ -160,7 +171,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { q?: string }).q).toBe("corte");
+    expect((repo.listedWith as { q?: string }).q).toBe("corte");
   });
 
   it("treats a blank search as no search at all", async () => {
@@ -174,7 +185,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { q?: string }).q).toBeUndefined();
+    expect((repo.listedWith as { q?: string }).q).toBeUndefined();
   });
 
   it("asks for no location type when none was given", async () => {
@@ -187,7 +198,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { locationType?: string }).locationType).toBeUndefined();
+    expect((repo.listedWith as { locationType?: string }).locationType).toBeUndefined();
   });
 
   it("hands the payment mode and the provider type to the repository", async () => {
@@ -201,7 +212,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    const filter = repo.lastFilter as {
+    const filter = repo.listedWith as {
       paymentMode?: string;
       providerType?: string;
     };
@@ -219,7 +230,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    const filter = repo.lastFilter as {
+    const filter = repo.listedWith as {
       language?: string;
       minPriceMinor?: number;
       maxPriceMinor?: number;
@@ -239,7 +250,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    expect((repo.lastFilter as { minPriceMinor?: number }).minPriceMinor).toBe(0);
+    expect((repo.listedWith as { minPriceMinor?: number }).minPriceMinor).toBe(0);
   });
 
   it("asks for neither when neither was given", async () => {
@@ -249,7 +260,7 @@ describe("browse filters", () => {
       limit: 10,
       offset: 0,
     });
-    const filter = repo.lastFilter as {
+    const filter = repo.listedWith as {
       paymentMode?: string;
       providerType?: string;
     };
@@ -384,5 +395,81 @@ describe("mapListServicesInput", () => {
       limit: 24,
       offset: 0,
     });
+  });
+});
+
+describe("ListServicesProjection — total", () => {
+  it("reports how many matched, not how many fit on the page", async () => {
+    // `items.length` told somebody with 40 matches that they had 24, which is
+    // the page size talking rather than the search. It is also what made
+    // numbered paging impossible.
+    const repo = new FakeRepo([row(), row({ id: "svc-2" })], 40);
+    const out = await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      limit: 24,
+      offset: 0,
+    });
+    expect(out.total).toBe(40);
+    expect(out.items).toHaveLength(2);
+  });
+
+  it("counts with the same filters it lists with", async () => {
+    // A count that ignored the filters would say 400 above a page of three.
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      categoryCode: "hair",
+      locationType: "at_customer",
+      minPriceMinor: 50_000,
+      q: "corte",
+      limit: 24,
+      offset: 0,
+    });
+    expect(repo.countedWith).toMatchObject({
+      categoryCode: "hair",
+      locationType: "at_customer",
+      minPriceMinor: 50_000,
+      q: "corte",
+    });
+  });
+
+  it("does not ask the count to page or sort", async () => {
+    // `limit`, `offset` and `sort` cannot change how many rows match, and
+    // passing them invites an implementation that applies them.
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      sort: "newest",
+      limit: 24,
+      offset: 48,
+    });
+    expect(repo.countedWith).not.toHaveProperty("limit");
+    expect(repo.countedWith).not.toHaveProperty("offset");
+    expect(repo.countedWith).not.toHaveProperty("sort");
+  });
+
+  it("trims the search term for the count exactly as it does for the list", async () => {
+    // A phone keyboard leaves a trailing space, and `%  corte %` matches
+    // nothing — a count and a list that disagree about that show "0 services"
+    // above a page of results.
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      q: "  corte  ",
+      limit: 24,
+      offset: 0,
+    });
+    expect(repo.countedWith).toMatchObject({ q: "corte" });
+  });
+
+  it("reports zero rather than omitting the number when nothing matches", async () => {
+    const repo = new FakeRepo([], 0);
+    const out = await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      limit: 24,
+      offset: 0,
+    });
+    expect(out.total).toBe(0);
+    expect(out.nextOffset).toBeNull();
   });
 });

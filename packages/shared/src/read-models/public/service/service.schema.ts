@@ -90,13 +90,23 @@ export type ServiceDTO = z.infer<typeof serviceReadModel>;
 /**
  * One page of services.
  *
- * `nextOffset` rather than a total, matching `categoryPageReadModel`: the
- * page that shows every service loads as it is scrolled, and what it needs to
- * know is "is there more and from where", not how many there are altogether.
+ * Both a cursor and a total, which the doc comment here used to argue against.
+ * The argument was sound while the browse only stepped forward — "is there
+ * more and from where" is all a next link needs. It stopped being sound when
+ * the page began stating how many results there are and offering numbered
+ * pages: `items.length` reports the page size, not the search, and told
+ * somebody with 40 matches that they had 24.
+ *
+ * `total` counts what the *filters* match. The projection then drops rows it
+ * cannot render — a service whose translations resolve to nothing in any
+ * locale — so across every page the rows shown can be very slightly fewer than
+ * `total` claims. That is the honest trade: the alternative is counting by
+ * fetching and mapping the whole result set on every request.
  */
 export const servicePageReadModel = z.object({
   items: z.array(serviceReadModel),
   nextOffset: z.number().int().nullable(),
+  total: z.number().int().min(0),
 });
 
 export type ServicePageDTO = z.infer<typeof servicePageReadModel>;

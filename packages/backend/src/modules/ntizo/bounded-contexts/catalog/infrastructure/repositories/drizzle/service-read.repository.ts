@@ -32,6 +32,122 @@ import type {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
+ * The WHERE both `listPublished` and `countPublished` run.
+ *
+ * Extracted rather than copied: a count built from a second, hand-kept copy
+ * of these conditions is a count that will one day disagree with the list
+ * above it, and the disagreement shows up as "40 services" over a page of
+ * three with no way to tell which number is wrong.
+ *
+ * A module-level export, not a method on `DrizzleServiceReadRepository`: a
+ * later test asserts on the generated SQL via drizzle's `.toSQL()`, and a
+ * private method gives that test no seam to call this from.
+ */
+export function conditionsFor(
+  db: ReturnType<typeof getDb>,
+  filter: Omit<ListPublishedServicesFilter, "limit" | "offset" | "sort">,
+) {
+  const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
+  if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
+  if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
+  if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
+  if (filter.providerType) conditions.push(eq(provider.type, filter.providerType));
+  if (filter.paymentMode === "quote") {
+    conditions.push(eq(service.bookingMode, "quote"));
+  } else if (filter.paymentMode === "fixed" || filter.paymentMode === "hourly") {
+    // Two conditions, not one. `bookingMode` alone would let a `quote`
+    // service through if it somehow carried an option, and the option alone
+    // would match a service whose default was archived out from under it.
+    conditions.push(eq(service.bookingMode, "priced"));
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(serviceOption)
+          .where(
+            and(
+              eq(serviceOption.serviceId, service.id),
+              eq(serviceOption.isDefault, true),
+              eq(serviceOption.pricingMode, filter.paymentMode),
+            ),
+          ),
+      ),
+    );
+  }
+  if (filter.language) {
+    // EXISTS with a non-blank name, not just a row: a translation record can
+    // exist with an empty name while the provider is midway through filling
+    // it in, and offering that service under "readable in French" is the one
+    // thing this filter promises not to do.
+    conditions.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(serviceTranslation)
+          .where(
+            and(
+              eq(serviceTranslation.serviceId, service.id),
+              eq(serviceTranslation.locale, filter.language),
+              sql`length(trim(${serviceTranslation.name})) > 0`,
+            ),
+          ),
+      ),
+    );
+  }
+  if (filter.minPriceMinor !== undefined || filter.maxPriceMinor !== undefined) {
+    // Against the cheapest active option, which is the number the card
+    // prints as "from". A quote service has no options and so matches no
+    // price bound at all — which is correct: it has no price to compare.
+    const bounds = [eq(serviceOption.serviceId, service.id), eq(serviceOption.isActive, true)];
+    if (filter.minPriceMinor !== undefined) {
+      bounds.push(gte(serviceOption.amountMinor, filter.minPriceMinor));
+    }
+    if (filter.maxPriceMinor !== undefined) {
+      bounds.push(lte(serviceOption.amountMinor, filter.maxPriceMinor));
+    }
+    conditions.push(
+      exists(db.select({ one: sql`1` }).from(serviceOption).where(and(...bounds))),
+    );
+  }
+  if (filter.q) {
+    const pattern = `%${escapeLike(filter.q)}%`;
+    // An EXISTS rather than a join, for the same reason the translations are
+    // fetched separately below: `service_translation` is one-to-many, and
+    // joining it would multiply the very rows `limit`/`offset` then page.
+    // EXISTS asks whether any translation matches without producing one.
+    //
+    // Every language, not the reader's: somebody browsing in Portuguese can
+    // still type an English word. The card shows whatever their own locale
+    // resolves to, which may not be the text that matched — a trade this
+    // makes deliberately, because not finding the service is worse.
+    const matchesText = or(
+      // The provider's name too. The card already shows it, so a service
+      // returned for its provider's sake carries its own explanation;
+      // matching on something invisible would read as a bug.
+      ilike(provider.name, pattern),
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(serviceTranslation)
+          .where(
+            and(
+              eq(serviceTranslation.serviceId, service.id),
+              or(
+                ilike(serviceTranslation.name, pattern),
+                ilike(serviceTranslation.description, pattern),
+              ),
+            ),
+          ),
+      ),
+    );
+    // `or` is typed as possibly undefined because it tolerates undefined
+    // arguments; neither of these two is one.
+    if (matchesText) conditions.push(matchesText);
+  }
+  return conditions;
+}
+
+/**
  * A provider's own services, every option and every translation.
  *
  * Options, translations and option translations are fetched in three further
@@ -172,103 +288,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
    */
   async listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]> {
     const db = getDb();
-    const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
-    if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
-    if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
-    if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
-    if (filter.providerType) conditions.push(eq(provider.type, filter.providerType));
-    if (filter.paymentMode === "quote") {
-      conditions.push(eq(service.bookingMode, "quote"));
-    } else if (filter.paymentMode === "fixed" || filter.paymentMode === "hourly") {
-      // Two conditions, not one. `bookingMode` alone would let a `quote`
-      // service through if it somehow carried an option, and the option alone
-      // would match a service whose default was archived out from under it.
-      conditions.push(eq(service.bookingMode, "priced"));
-      conditions.push(
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(serviceOption)
-            .where(
-              and(
-                eq(serviceOption.serviceId, service.id),
-                eq(serviceOption.isDefault, true),
-                eq(serviceOption.pricingMode, filter.paymentMode),
-              ),
-            ),
-        ),
-      );
-    }
-    if (filter.language) {
-      // EXISTS with a non-blank name, not just a row: a translation record can
-      // exist with an empty name while the provider is midway through filling
-      // it in, and offering that service under "readable in French" is the one
-      // thing this filter promises not to do.
-      conditions.push(
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(serviceTranslation)
-            .where(
-              and(
-                eq(serviceTranslation.serviceId, service.id),
-                eq(serviceTranslation.locale, filter.language),
-                sql`length(trim(${serviceTranslation.name})) > 0`,
-              ),
-            ),
-        ),
-      );
-    }
-    if (filter.minPriceMinor !== undefined || filter.maxPriceMinor !== undefined) {
-      // Against the cheapest active option, which is the number the card
-      // prints as "from". A quote service has no options and so matches no
-      // price bound at all — which is correct: it has no price to compare.
-      const bounds = [eq(serviceOption.serviceId, service.id), eq(serviceOption.isActive, true)];
-      if (filter.minPriceMinor !== undefined) {
-        bounds.push(gte(serviceOption.amountMinor, filter.minPriceMinor));
-      }
-      if (filter.maxPriceMinor !== undefined) {
-        bounds.push(lte(serviceOption.amountMinor, filter.maxPriceMinor));
-      }
-      conditions.push(
-        exists(db.select({ one: sql`1` }).from(serviceOption).where(and(...bounds))),
-      );
-    }
-    if (filter.q) {
-      const pattern = `%${escapeLike(filter.q)}%`;
-      // An EXISTS rather than a join, for the same reason the translations are
-      // fetched separately below: `service_translation` is one-to-many, and
-      // joining it would multiply the very rows `limit`/`offset` then page.
-      // EXISTS asks whether any translation matches without producing one.
-      //
-      // Every language, not the reader's: somebody browsing in Portuguese can
-      // still type an English word. The card shows whatever their own locale
-      // resolves to, which may not be the text that matched — a trade this
-      // makes deliberately, because not finding the service is worse.
-      const matchesText = or(
-        // The provider's name too. The card already shows it, so a service
-        // returned for its provider's sake carries its own explanation;
-        // matching on something invisible would read as a bug.
-        ilike(provider.name, pattern),
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(serviceTranslation)
-            .where(
-              and(
-                eq(serviceTranslation.serviceId, service.id),
-                or(
-                  ilike(serviceTranslation.name, pattern),
-                  ilike(serviceTranslation.description, pattern),
-                ),
-              ),
-            ),
-        ),
-      );
-      // `or` is typed as possibly undefined because it tolerates undefined
-      // arguments; neither of these two is one.
-      if (matchesText) conditions.push(matchesText);
-    }
+    const conditions = conditionsFor(db, filter);
 
     const rows = await db
       .select({
@@ -382,6 +402,27 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
           .map((t) => ({ locale: t.locale, name: t.name, description: t.description })),
       };
     });
+  }
+
+  /**
+   * How many rows `listPublished` would page through with this filter,
+   * counted with the same joins and the same `conditionsFor` — see that
+   * function's doc comment for why the two must never diverge.
+   */
+  async countPublished(
+    filter: Omit<ListPublishedServicesFilter, "limit" | "offset" | "sort">,
+  ): Promise<number> {
+    const db = getDb();
+    const [counted] = await db
+      .select({ total: sql<number>`count(*)` })
+      .from(service)
+      .innerJoin(category, eq(category.id, service.categoryId))
+      .innerJoin(provider, eq(provider.id, service.providerId))
+      .where(and(...conditionsFor(db, filter)));
+    // `count(*)` arrives as a string from postgres-js on a bigint; `Number`
+    // here rather than at the call site, so nothing downstream sees a string
+    // where the read model declares an integer.
+    return Number(counted?.total ?? 0);
   }
 
   async getPublishedById(id: string): Promise<ServiceDetailRow | null> {

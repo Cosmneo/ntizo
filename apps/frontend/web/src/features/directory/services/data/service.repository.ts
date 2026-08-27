@@ -28,6 +28,7 @@ const ALL = `
       items {${SERVICE_FIELDS}
       }
       nextOffset
+      total
     }
   }`;
 

@@ -188,6 +188,17 @@ export interface ServiceReadRepositoryPort {
    */
   listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]>;
   /**
+   * How many published services of active providers match — before the page
+   * size cuts in.
+   *
+   * Deliberately takes the filter *without* `limit`, `offset` or `sort`: none
+   * of the three can change how many rows match, and accepting them invites an
+   * implementation that applies one.
+   */
+  countPublished(
+    filter: Omit<ListPublishedServicesFilter, "limit" | "offset" | "sort">,
+  ): Promise<number>;
+  /**
    * One service by id, in full — whatever its own status and whatever its
    * provider's, because this method does not look at either. It answers only
    * "does a service with this id exist", never "may an anonymous reader see

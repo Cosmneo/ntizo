@@ -52,6 +52,21 @@ export interface ListServicesOutput {
    * from where", not how many there are altogether.
    */
   nextOffset: number | null;
+  /**
+   * Both a cursor and a total, which the doc comment here used to argue
+   * against. The argument was sound while the browse only stepped forward —
+   * "is there more and from where" is all a next link needs. It stopped being
+   * sound when the page began stating how many results there are and
+   * offering numbered pages: `items.length` reports the page size, not the
+   * search, and told somebody with 40 matches that they had 24.
+   *
+   * `total` counts what the *filters* match. This projection then drops rows
+   * it cannot render — a service whose translations resolve to nothing in any
+   * locale — so across every page the rows shown can be very slightly fewer
+   * than `total` claims. That is the honest trade: the alternative is
+   * counting by fetching and mapping the whole result set on every request.
+   */
+  total: number;
 }
 
 /**
@@ -83,9 +98,9 @@ export class ListServicesProjection {
     // space.
     const q = input.q?.trim();
 
-    // One more than asked for: whether another page exists is then a length
-    // check rather than a second round trip, and the extra row is discarded.
-    const rows = await this.repo.listPublished({
+    // The same object both calls receive, so a filter added to one can never
+    // be forgotten by the other.
+    const filters = {
       categoryCode: input.categoryCode,
       providerId: input.providerId,
       locationType: input.locationType,
@@ -95,10 +110,17 @@ export class ListServicesProjection {
       minPriceMinor: input.minPriceMinor,
       maxPriceMinor: input.maxPriceMinor,
       q: q ? q : undefined,
-      sort: input.sort,
-      limit: limit + 1,
-      offset,
-    });
+    };
+
+    // Concurrently: the count and the page are independent queries, and
+    // awaiting them in sequence adds a round trip to every browse.
+    //
+    // One more than asked for: whether another page exists is then a length
+    // check rather than a second round trip, and the extra row is discarded.
+    const [rows, total] = await Promise.all([
+      this.repo.listPublished({ ...filters, sort: input.sort, limit: limit + 1, offset }),
+      this.repo.countPublished(filters),
+    ]);
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
@@ -151,6 +173,6 @@ export class ListServicesProjection {
     // being unpublished, for its provider going inactive, or for having no
     // readable name still occupied a position in the underlying order, and
     // paging by the shorter number would fetch it again forever.
-    return { items, nextOffset: hasMore ? offset + limit : null };
+    return { items, nextOffset: hasMore ? offset + limit : null, total };
   }
 }
