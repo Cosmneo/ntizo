@@ -48,6 +48,26 @@ export const serviceReadModel = z.object({
    * business, instead of the card having to fetch each provider to learn it.
    */
   providerType: z.enum(["individual", "organization"]),
+  /**
+   * The business's average review score, to one decimal — null when nobody
+   * has reviewed it.
+   *
+   * The *provider's* score, not the service's. Nothing aggregates reviews per
+   * service yet, and this is deliberately not that: the card labels it as the
+   * business's rating, so it claims nothing false. A per-service score is a
+   * Review→Catalog aggregation and its own piece of work.
+   *
+   * Publishing it here is not a new disclosure — it is already public on
+   * `providerPublicReadModel` — it is the same fact reaching the card that
+   * already names the business, instead of the card fetching each provider to
+   * learn it.
+   *
+   * Null rather than 0, and the distinction is the whole point: zero is a
+   * score a person could have given, and rendering it for an unreviewed
+   * business tells every visitor it is the worst on the platform.
+   */
+  providerRatingAverage: z.number().nullable(),
+  providerReviewCount: z.number().int().min(0),
   categoryCode: z.string(),
   /**
    * The category's name in the reader's language.

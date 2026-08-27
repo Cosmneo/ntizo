@@ -76,6 +76,14 @@ export interface ServicePublicRow {
   providerStatus: string;
   /** `individual` or `organization`, off the same joined row as the status. */
   providerType: string;
+  /**
+   * The business's average review score and how many it has — never the
+   * service's own, because nothing aggregates reviews per service yet. Null
+   * average for a business nobody has reviewed, not zero — see
+   * `serviceReadModel.providerRatingAverage`.
+   */
+  providerRatingAverage: number | null;
+  providerReviewCount: number;
   categoryCode: string;
   /** Every language the category has a name in; the projection picks one. */
   categoryTranslations: ServicePublicTranslationRow[];

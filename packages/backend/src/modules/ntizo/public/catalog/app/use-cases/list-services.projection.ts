@@ -163,6 +163,10 @@ export class ListServicesProjection {
         // Constrained to the two values by the column's own CHECK; narrowed
         // the same way `DrizzleProviderPublicRepository` narrows it.
         providerType: r.providerType as ServiceDTO["providerType"],
+        // Straight from the row: the repository's own mapper has already
+        // turned Postgres's `avg()` string into a number (or null).
+        providerRatingAverage: r.providerRatingAverage,
+        providerReviewCount: r.providerReviewCount,
         categoryCode: r.categoryCode,
         categoryName: c?.name ?? r.categoryCode,
         name: t.name,

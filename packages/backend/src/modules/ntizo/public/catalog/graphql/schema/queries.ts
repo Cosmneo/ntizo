@@ -59,9 +59,10 @@ export const listServices = defineQuery({
       locationType: serviceLocationTypeSchema.optional(),
       paymentMode: servicePaymentModeSchema.optional(),
       providerType: providerTypeSchema.optional(),
-      // 120, matching `provider.address_city`'s own column width. A longer
-      // string is not a city name, and every character is one more the
-      // database compares with no index to help it.
+      // 120, not because the column is bounded — `provider.address_city` is
+      // `text`, with no width limit anywhere. A longer string is not a city
+      // name, and every character is one more the database compares with no
+      // index to help it.
       city: z.string().trim().min(1).max(120).optional(),
       language: localeSchema.optional(),
       // Minor units, and bounded: a price filter is a pair of numbers a person

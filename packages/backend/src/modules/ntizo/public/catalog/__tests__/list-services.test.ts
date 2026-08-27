@@ -558,3 +558,40 @@ describe("ListServicesProjection — city", () => {
     expect(repo.countedWith).toMatchObject({ city: "Maputo" });
   });
 });
+
+describe("ListServicesProjection — the provider's rating", () => {
+  it("carries the business's score onto the card", async () => {
+    const repo = new FakeRepo([row({ providerRatingAverage: 4.7, providerReviewCount: 6 })], 1);
+    const out = await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", limit: 24, offset: 0 });
+    expect(out.items[0]).toMatchObject({ providerRatingAverage: 4.7, providerReviewCount: 6 });
+  });
+
+  it("gives null, never zero, for a business nobody has reviewed", async () => {
+    // Zero is a score a person could have given. Printing it for an
+    // unreviewed business tells every visitor it is the worst on the
+    // platform — the same reason `providerPublicReadModel.ratingAverage` is
+    // nullable, and this field must not undo that decision at the card.
+    const repo = new FakeRepo([row({ providerRatingAverage: null, providerReviewCount: 0 })], 1);
+    const out = await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", limit: 24, offset: 0 });
+    expect(out.items[0]!.providerRatingAverage).toBeNull();
+    expect(out.items[0]!.providerReviewCount).toBe(0);
+  });
+
+  it("carries a number straight through, never Postgres's own string", async () => {
+    // `avg()` comes back as a string on a numeric column, and a string
+    // reaching `serviceReadModel` fails output validation for the WHOLE page,
+    // not one row — so the coercion lives in the repository's row mapper
+    // (`service-read.repository.ts`), the same place `fromAmountMinor`'s
+    // `min()` is coerced. This fixture is already a number for the same
+    // reason `fromAmountMinor: 30000` is above: `FakeRepo` stands in for the
+    // repository's own contract, which promises a number, never a string —
+    // the projection itself does no further coercion, exactly as it does
+    // none for `fromAmountMinor`.
+    const repo = new FakeRepo([row({ providerRatingAverage: 4.7, providerReviewCount: 6 })], 1);
+    const out = await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", limit: 24, offset: 0 });
+    expect(typeof out.items[0]!.providerRatingAverage).toBe("number");
+  });
+});

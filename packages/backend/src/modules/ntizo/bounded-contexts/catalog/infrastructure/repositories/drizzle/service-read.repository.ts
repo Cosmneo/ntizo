@@ -11,6 +11,7 @@ import {
   serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import { provider, providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
+import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import type {
   ListPublishedServicesFilter,
   ServiceDetailRow,
@@ -188,6 +189,32 @@ const cheapestActiveOption = sql`
     and ${serviceOption.isActive} = true`;
 
 /**
+ * The provider's review score and count, grouped to one row per provider.
+ *
+ * A copy of `DrizzleProviderPublicRepository.aggregates().reviews`
+ * (`public/provider/infra/repositories/drizzle/provider-public.repository.ts`),
+ * not an import of it: that repository lives in `public/provider`, this one
+ * in `bounded-contexts/catalog`, and importing across that boundary would be
+ * a bounded-context violation. **The two copies must change together.**
+ *
+ * `status = 'published'` is load-bearing here exactly as it is there: without
+ * it a card counts reviews an administrator has not published, and the
+ * number on the card disagrees with the number on the provider's own page.
+ */
+function reviewAggregate(db: ReturnType<typeof getDb>) {
+  return db
+    .select({
+      providerId: review.providerId,
+      average: sql<string | null>`avg(${review.rating})`.as("review_avg"),
+      count: sql<number>`count(*)`.as("review_count"),
+    })
+    .from(review)
+    .where(eq(review.status, "published"))
+    .groupBy(review.providerId)
+    .as("review_agg");
+}
+
+/**
  * The `ORDER BY` `listPublished` pages on.
  *
  * A module-level export, not inlined: the same reason `conditionsFor` is
@@ -357,6 +384,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
   async listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]> {
     const db = getDb();
     const conditions = conditionsFor(db, filter);
+    const reviewAgg = reviewAggregate(db);
 
     const rows = await db
       .select({
@@ -366,6 +394,8 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         providerSlug: provider.slug,
         providerStatus: provider.status,
         providerType: provider.type,
+        providerRatingAverage: reviewAgg.average,
+        providerReviewCount: reviewAgg.count,
         categoryId: category.id,
         categoryCode: category.code,
         status: service.status,
@@ -377,6 +407,9 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .from(service)
       .innerJoin(category, eq(category.id, service.categoryId))
       .innerJoin(provider, eq(provider.id, service.providerId))
+      // `leftJoin`, never inner: an inner join drops every service whose
+      // provider has no reviews, which is most of them.
+      .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .where(and(...conditions))
       // `newest` and `price` each ignore `sortOrder` rather than ordering
       // within it: the provider's own arrangement is an answer to "what do I
@@ -449,6 +482,16 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
             ? null
             : Number(agg.fromAmountMinor),
         optionCount: agg?.optionCount ?? 0,
+        // `avg()` comes back as a string on a numeric column and null on an
+        // empty group. Neither is a number, and a string reaching
+        // `serviceReadModel` fails output validation for the whole page rather
+        // than for the one row — the failure mode `activityEntryReadModel`
+        // documents.
+        providerRatingAverage:
+          r.providerRatingAverage === null || r.providerRatingAverage === undefined
+            ? null
+            : Number(r.providerRatingAverage),
+        providerReviewCount: Number(r.providerReviewCount ?? 0),
         categoryTranslations: categoryTranslations
           .filter((t) => t.categoryId === categoryId)
           .map((t) => ({ locale: t.locale, name: t.name, description: null })),
@@ -494,6 +537,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     if (!UUID.test(id)) return null;
 
     const db = getDb();
+    const reviewAgg = reviewAggregate(db);
     const [row] = await db
       .select({
         id: service.id,
@@ -502,6 +546,8 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         providerSlug: provider.slug,
         providerStatus: provider.status,
         providerType: provider.type,
+        providerRatingAverage: reviewAgg.average,
+        providerReviewCount: reviewAgg.count,
         providerLogoKey: provider.logoKey,
         providerCity: provider.addressCity,
         providerDistrict: provider.addressDistrict,
@@ -516,6 +562,9 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .from(service)
       .innerJoin(category, eq(category.id, service.categoryId))
       .innerJoin(provider, eq(provider.id, service.providerId))
+      // `leftJoin`, never inner — see `listPublished`'s identical join. A
+      // service whose provider has no reviews yet must still resolve by id.
+      .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .where(eq(service.id, id))
       .limit(1);
 
@@ -548,6 +597,14 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     const { categoryId: _categoryId, ...rest } = row;
     return {
       ...rest,
+      // Same coercion as `listPublished`'s row mapper, and for the same
+      // reason: `avg()` is a string on Postgres, null on an empty group, and
+      // neither is what `ServiceDetailRow` promises.
+      providerRatingAverage:
+        row.providerRatingAverage === null || row.providerRatingAverage === undefined
+          ? null
+          : Number(row.providerRatingAverage),
+      providerReviewCount: Number(row.providerReviewCount ?? 0),
       // The page's own chooser lists cheapest first, which is also the order
       // the "from" price on the browse card is taken from. One order, so the
       // number a reader arrived expecting is the first one they see here.

@@ -23,6 +23,8 @@ const SERVICE: ServiceDTO = {
   providerName: "Studio X",
   providerSlug: "studio-x",
   providerType: "organization",
+  providerRatingAverage: null,
+  providerReviewCount: 0,
   categoryCode: "hair",
   categoryName: "Hair",
   name: "Corte",

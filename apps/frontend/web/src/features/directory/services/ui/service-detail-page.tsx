@@ -33,10 +33,13 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  * show, already resolved server-side to `defaultOption` /`fromAmountMinor` /
  * `optionCount`. `ServiceDetailDTO` is this page's own, fuller model: the
  * complete, cheapest-first `options` list a chooser can offer, not one
- * card's single price. Nothing here is invented — `defaultOption` is derived
- * by the same "marked default, else first" rule `PackageChooser` already
- * applies to the same list, and `fromAmountMinor`/`optionCount` read off the
- * list `AvailabilitySheet` never sees in full.
+ * card's single price. Nothing priced here is invented — `defaultOption` is
+ * derived by the same "marked default, else first" rule `PackageChooser`
+ * already applies to the same list, and `fromAmountMinor`/`optionCount` read
+ * off the list `AvailabilitySheet` never sees in full. `providerRatingAverage`
+ * /`providerReviewCount` are the one exception: `ServiceDetailDTO` carries no
+ * such fact at all, and `AvailabilitySheet` never renders one, so there is
+ * nothing truthful to derive them from and nothing depending on the result.
  *
  * Kept as a local, unexported function in the one page that needs it rather
  * than moved into `domain/`, since nothing else in this feature converts
@@ -53,6 +56,9 @@ function toAvailabilityService(service: ServiceDetailDTO): ServiceDTO {
     providerName: service.providerName,
     providerSlug: service.providerSlug,
     providerType: service.providerType,
+    // See the exception in this function's own doc comment above.
+    providerRatingAverage: null,
+    providerReviewCount: 0,
     categoryCode: service.categoryCode,
     categoryName: service.categoryName,
     name: service.name,

@@ -18,7 +18,8 @@ import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services
  * browse linked to `/providers/undefined` while the suite stayed green.
  */
 export const SERVICE_FIELDS = `
-  id providerId providerSlug providerName providerType categoryCode categoryName name description
+  id providerId providerSlug providerName providerType providerRatingAverage providerReviewCount
+  categoryCode categoryName name description
   locationType bookingMode imageUrls isFallback fromAmountMinor optionCount
   defaultOption { amountMinor currency durationMinutes minMinutes stepMinutes pricingMode }`;
 
