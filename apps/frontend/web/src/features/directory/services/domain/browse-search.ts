@@ -7,6 +7,7 @@ export interface BrowseSearch {
   paymentMode?: string | undefined;
   providerType?: string | undefined;
   language?: string | undefined;
+  city?: string | undefined;
   minPrice?: number | undefined;
   maxPrice?: number | undefined;
   q?: string | undefined;
@@ -44,6 +45,7 @@ export function browseSearch(current: BrowseSearch, change: BrowseSearch): Brows
     ...(next.paymentMode ? { paymentMode: next.paymentMode } : {}),
     ...(next.providerType ? { providerType: next.providerType } : {}),
     ...(next.language ? { language: next.language } : {}),
+    ...(next.city ? { city: next.city } : {}),
     // `!= null` rather than truthy: a minimum of 0 is a bound the reader set,
     // and dropping it would quietly widen their search back out.
     ...(next.minPrice != null ? { minPrice: next.minPrice } : {}),

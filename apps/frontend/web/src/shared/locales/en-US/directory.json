@@ -168,5 +168,15 @@
   "titleProviders": "Verified providers",
   "titleProvidersCategory": "{{category}} providers",
   "titleProvidersCity": "Providers in {{city}}",
-  "titleProvidersCategoryCity": "{{category}} providers in {{city}}"
+  "titleProvidersCategoryCity": "{{category}} providers in {{city}}",
+  "chipCity": "in {{city}}",
+  "chipSearch": "“{{term}}”",
+  "chipPriceRange": "{{min}} – {{max}}",
+  "chipPriceMin": "from {{min}}",
+  "chipPriceMax": "up to {{max}}",
+  "chipRating": "{{score}}+ stars",
+  "chipVerified": "Verified only",
+  "chipRemove": "Remove filter",
+  "activeFiltersLabel": "Active filters",
+  "filtersClearAll": "Clear all"
 }

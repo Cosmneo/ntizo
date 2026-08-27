@@ -168,5 +168,15 @@
   "titleProviders": "Geverifieerde aanbieders",
   "titleProvidersCategory": "Aanbieders voor {{category}}",
   "titleProvidersCity": "Aanbieders in {{city}}",
-  "titleProvidersCategoryCity": "Aanbieders voor {{category}} in {{city}}"
+  "titleProvidersCategoryCity": "Aanbieders voor {{category}} in {{city}}",
+  "chipCity": "in {{city}}",
+  "chipSearch": "‘{{term}}’",
+  "chipPriceRange": "{{min}} – {{max}}",
+  "chipPriceMin": "vanaf {{min}}",
+  "chipPriceMax": "tot {{max}}",
+  "chipRating": "{{score}}+ sterren",
+  "chipVerified": "Alleen geverifieerd",
+  "chipRemove": "Filter verwijderen",
+  "activeFiltersLabel": "Actieve filters",
+  "filtersClearAll": "Alles wissen"
 }

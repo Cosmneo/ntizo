@@ -95,4 +95,13 @@ describe("browseSearch", () => {
       browseSearch({ offset: 48 }, { providerType: "individual" }),
     ).toEqual({ providerType: "individual" });
   });
+
+  it("carries the city past a change to the category", () => {
+    // A city chip and a category link are two different controls on the same
+    // page — one should not clear the other.
+    expect(browseSearch({ city: "Maputo", category: "hair" }, { category: "beauty" })).toEqual({
+      city: "Maputo",
+      category: "beauty",
+    });
+  });
 });

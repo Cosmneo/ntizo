@@ -168,5 +168,15 @@
   "titleProviders": "Profesionales verificados",
   "titleProvidersCategory": "Profesionales de {{category}}",
   "titleProvidersCity": "Profesionales en {{city}}",
-  "titleProvidersCategoryCity": "Profesionales de {{category}} en {{city}}"
+  "titleProvidersCategoryCity": "Profesionales de {{category}} en {{city}}",
+  "chipCity": "en {{city}}",
+  "chipSearch": "“{{term}}”",
+  "chipPriceRange": "{{min}} – {{max}}",
+  "chipPriceMin": "desde {{min}}",
+  "chipPriceMax": "hasta {{max}}",
+  "chipRating": "{{score}}+ estrellas",
+  "chipVerified": "Solo verificados",
+  "chipRemove": "Quitar filtro",
+  "activeFiltersLabel": "Filtros activos",
+  "filtersClearAll": "Borrar todo"
 }
