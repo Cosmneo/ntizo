@@ -160,5 +160,13 @@
   "factsAreaValue": "{{city}} + {{radius}} km",
   "factsCancellationValue": "Kostenlos bis {{hours}} Std. vorher",
   "packageDuration": "Dauer",
-  "packagesUnavailableNotice": "Für diesen Dienst ist derzeit kein buchbares Paket verfügbar. Bitte schauen Sie bald wieder vorbei."
+  "packagesUnavailableNotice": "Für diesen Dienst ist derzeit kein buchbares Paket verfügbar. Bitte schauen Sie bald wieder vorbei.",
+  "titleServices": "Sofort buchbare Leistungen",
+  "titleServicesCategory": "Leistungen für {{category}}",
+  "titleServicesCity": "Sofort buchbare Leistungen in {{city}}",
+  "titleServicesCategoryCity": "Leistungen für {{category}} in {{city}}",
+  "titleProviders": "Geprüfte Anbieter",
+  "titleProvidersCategory": "Anbieter für {{category}}",
+  "titleProvidersCity": "Anbieter in {{city}}",
+  "titleProvidersCategoryCity": "Anbieter für {{category}} in {{city}}"
 }

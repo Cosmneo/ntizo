@@ -160,5 +160,13 @@
   "factsAreaValue": "{{city}} + {{radius}} km",
   "factsCancellationValue": "Free up to {{hours}}h before",
   "packageDuration": "Duration",
-  "packagesUnavailableNotice": "This service doesn't currently have a bookable package. Please check back soon."
+  "packagesUnavailableNotice": "This service doesn't currently have a bookable package. Please check back soon.",
+  "titleServices": "Services ready to book",
+  "titleServicesCategory": "{{category}} services",
+  "titleServicesCity": "Services ready to book in {{city}}",
+  "titleServicesCategoryCity": "{{category}} services in {{city}}",
+  "titleProviders": "Verified providers",
+  "titleProvidersCategory": "{{category}} providers",
+  "titleProvidersCity": "Providers in {{city}}",
+  "titleProvidersCategoryCity": "{{category}} providers in {{city}}"
 }

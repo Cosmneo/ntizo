@@ -160,5 +160,13 @@
   "factsAreaValue": "{{city}} + {{radius}} km",
   "factsCancellationValue": "Gratis tot {{hours}} uur van tevoren",
   "packageDuration": "Duur",
-  "packagesUnavailableNotice": "Deze dienst heeft momenteel geen boekbaar pakket. Kom binnenkort terug."
+  "packagesUnavailableNotice": "Deze dienst heeft momenteel geen boekbaar pakket. Kom binnenkort terug.",
+  "titleServices": "Direct boekbare diensten",
+  "titleServicesCategory": "Diensten voor {{category}}",
+  "titleServicesCity": "Direct boekbare diensten in {{city}}",
+  "titleServicesCategoryCity": "Diensten voor {{category}} in {{city}}",
+  "titleProviders": "Geverifieerde aanbieders",
+  "titleProvidersCategory": "Aanbieders voor {{category}}",
+  "titleProvidersCity": "Aanbieders in {{city}}",
+  "titleProvidersCategoryCity": "Aanbieders voor {{category}} in {{city}}"
 }

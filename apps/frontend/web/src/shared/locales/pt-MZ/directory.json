@@ -160,5 +160,13 @@
   "factsAreaValue": "{{city}} + {{radius}} km",
   "factsCancellationValue": "Grátis até {{hours}}h antes",
   "packageDuration": "Duração",
-  "packagesUnavailableNotice": "Este serviço não tem atualmente nenhum pacote disponível para reserva. Volte a verificar em breve."
+  "packagesUnavailableNotice": "Este serviço não tem atualmente nenhum pacote disponível para reserva. Volte a verificar em breve.",
+  "titleServices": "Serviços prontos a reservar",
+  "titleServicesCategory": "Serviços de {{category}}",
+  "titleServicesCity": "Serviços prontos a reservar em {{city}}",
+  "titleServicesCategoryCity": "Serviços de {{category}} em {{city}}",
+  "titleProviders": "Prestadores verificados",
+  "titleProvidersCategory": "Prestadores de {{category}}",
+  "titleProvidersCity": "Prestadores em {{city}}",
+  "titleProvidersCategoryCity": "Prestadores de {{category}} em {{city}}"
 }
