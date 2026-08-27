@@ -53,9 +53,10 @@ export function useStartThread() {
     start: (providerId: string) => mutation.mutateAsync(providerId),
     starting: mutation.isPending,
     /**
-     * `"UNAUTHENTICATED"` for a signed-out caller, `"UNPROCESSABLE"` for
-     * `ProviderNotContactableError` — see `messagingErrorCode`'s doc
-     * comment.
+     * `"UNAUTHENTICATED"` for a signed-out caller, `"PROVIDER_NOT_CONTACTABLE"`
+     * for `ProviderNotContactableError` (the specific domain code, not the
+     * coarse `"UNPROCESSABLE"` it wears on the wire) — see
+     * `messagingErrorCode`'s doc comment.
      */
     errorCode: messagingErrorCode(mutation.error),
   };

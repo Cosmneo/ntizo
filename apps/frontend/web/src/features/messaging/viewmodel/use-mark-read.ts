@@ -46,7 +46,7 @@ export function useMarkRead() {
   return {
     markRead: (threadId: string) => mutation.mutate(threadId),
     marking: mutation.isPending,
-    /** `"UNPROCESSABLE"` for a thread the caller cannot see; `"UNAUTHENTICATED"` for a signed-out caller. */
+    /** `"THREAD_NOT_VISIBLE"` for a thread the caller cannot see (or that does not exist); `"UNAUTHENTICATED"` for a signed-out caller. */
     errorCode: messagingErrorCode(mutation.error),
   };
 }

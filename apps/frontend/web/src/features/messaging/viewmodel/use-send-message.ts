@@ -20,6 +20,22 @@ const SEND = `
   }`;
 
 /**
+ * The plain network call, exported separately from the hook so it can be
+ * tested against the real, unmocked query string (`spy.mock.calls[0][0]`)
+ * without rendering a component — the same split `startThread`
+ * (`use-start-thread.ts`) and `markThreadRead` (`use-mark-read.ts`) make.
+ * This one field went a whole review round with no such test at all — a
+ * nested `communication { send(...) } }` rewrite passed `vitest` and
+ * `tsc` clean, the exact regression this project has already lost a round
+ * to twice elsewhere. See `__tests__/use-send-message.test.ts`.
+ */
+export function sendMessage(threadId: string, body: string): Promise<string> {
+  return sessionGraphql<{ communicationSend: { id: string } }>(SEND, {
+    input: { threadId, body },
+  }).then((d) => d.communicationSend.id);
+}
+
+/**
  * Sending into an existing conversation.
  *
  * Invalidates the whole `["messaging"]` prefix rather than one query: the
@@ -42,9 +58,7 @@ export function useSendMessage() {
 
   const mutation = useMutation({
     mutationFn: ({ threadId, body }: { threadId: string; body: string }) =>
-      sessionGraphql<{ communicationSend: { id: string } }>(SEND, {
-        input: { threadId, body },
-      }),
+      sendMessage(threadId, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["messaging"] }),
   });
 
@@ -54,9 +68,10 @@ export function useSendMessage() {
     sending: mutation.isPending,
     /**
      * `"VALIDATION_ERROR"` for an empty or >4000-character body,
-     * `"UNPROCESSABLE"` for a thread the sender can no longer reach — see
-     * `messagingErrorCode`'s doc comment for why each reads a different
-     * field of the underlying `GraphqlError`.
+     * `"THREAD_NOT_VISIBLE"` for a thread the sender can no longer reach
+     * (the specific domain code, not the coarse `"UNPROCESSABLE"` it wears
+     * on the wire) — see `messagingErrorCode`'s doc comment for why each
+     * reads a different field of the underlying `GraphqlError`.
      */
     errorCode: messagingErrorCode(mutation.error),
   };

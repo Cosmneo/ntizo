@@ -1,8 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { startThread } from "../use-start-thread";
+import { createElement } from "react";
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook } from "@testing-library/react";
+import { startThread, useStartThread } from "../use-start-thread";
 import * as client from "@/shared/lib/graphql/session-graphql";
 
 afterEach(() => vi.restoreAllMocks());
+
+/** `useStartThread` needs a live `QueryClient` in the tree to call `useMutation`. */
+function withQueryClient(qc: QueryClient) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client: qc }, children);
+  };
+}
 
 describe("startThread", () => {
   it("calls the flattened field `communicationStartThread`, never nested `communication { startThread }`", async () => {
@@ -35,5 +46,29 @@ describe("startThread", () => {
     expect(first).toBe("t9");
     expect(second).toBe("t9");
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+});
+
+
+describe("useStartThread", () => {
+  it('invalidates ["messaging", "threads", "mine"] on success, so the new-or-resumed thread appears at the top of the caller\'s own inbox', async () => {
+    vi.spyOn(client, "sessionGraphql").mockResolvedValue({
+      communicationStartThread: { id: "t9" },
+    } as never);
+
+    const qc = new QueryClient();
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+
+    const { result } = renderHook(() => useStartThread(), {
+      wrapper: withQueryClient(qc),
+    });
+
+    await act(async () => {
+      await result.current.start("p1");
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["messaging", "threads", "mine"],
+    });
   });
 });

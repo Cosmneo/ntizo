@@ -5,7 +5,7 @@ import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
  * never the bare coarse `code` a `GraphqlError` carries.
  *
  * Every failure this feature's hooks need to tell apart resolves to one of
- * three codes, and they need *different* fields of `GraphqlError` to reach
+ * three shapes, and they need *different* fields of `GraphqlError` to reach
  * the right one:
  *
  * - **Not signed in.** `requireUser` throws a `ForbiddenError` with
@@ -16,13 +16,27 @@ import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
  *   only as `extensions.originalCode`. Reading `GraphqlError.kitCode`
  *   (or the raw wire `code`) here would collapse "sign in" and a genuine
  *   refusal into the same string. `GraphqlError.code` already prefers
- *   `originalCode`, so it reads through this one correctly.
- * - **A genuine refusal — "no such conversation".** `ThreadNotVisibleError`
- *   and `ProviderNotContactableError` both map to `"UNPROCESSABLE"`, on
- *   purpose the same for a thread that does not exist and one that exists
- *   but is not the caller's — see `ThreadNotVisibleError`'s own doc
- *   comment. `GraphqlError.code` reads this correctly too: with no
- *   `originalCode` supplied, it falls back to the coarse `"UNPROCESSABLE"`.
+ *   `originalCode`, so it reads through this one correctly:
+ *   `messagingErrorCode(...) === "UNAUTHENTICATED"`.
+ * - **A genuine refusal.** `ThreadNotVisibleError` and
+ *   `ProviderNotContactableError` both extend the kit's `UnprocessableError`
+ *   and both construct it with an **explicit** domain code —
+ *   `"THREAD_NOT_VISIBLE"` / `"PROVIDER_NOT_CONTACTABLE"` (see
+ *   `communication/domain/exceptions.ts`). The kit's `mapErrorToGraphQLError`
+ *   emits `originalCode: error.code` **unconditionally** for any
+ *   `CodedError` — confirmed reading the compiled source
+ *   (`dist/graphql/shared/index.cjs`), there is no branch that omits it —
+ *   so the wire always carries both the coarse `code: "UNPROCESSABLE"` and
+ *   the specific `originalCode`. An earlier version of this comment (and
+ *   this function's test) claimed `originalCode` could be absent here and
+ *   that `.code` would fall back to the coarse `"UNPROCESSABLE"` — that was
+ *   never true; a review round caught it by mutation before it shipped.
+ *   `GraphqlError.code` still reads through correctly (it already prefers
+ *   `originalCode`), so this function returns the *specific* domain code —
+ *   `"THREAD_NOT_VISIBLE"` or `"PROVIDER_NOT_CONTACTABLE"` — which is more
+ *   useful than the coarse one anyway: a caller can render "no such
+ *   conversation" for one and "this provider cannot be messaged" for the
+ *   other, different sentences the coarse code alone couldn't tell apart.
  * - **A rejected `send` body.** The kit's own schema-level validation
  *   (an empty or >4000-character body, a `limit` outside 1..50) always
  *   carries the coarse `code: "VALIDATION_ERROR"` with
@@ -30,10 +44,10 @@ import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
  *   *both* `communicationSend`'s body bound and `communicationMyThreads`'s
  *   `limit` bound in Task 7's and Task 8's live-server introspection.
  *   `OBJECT_VALIDATION_ERROR` is the kit's own internal validation-error
- *   subtype, not a domain-supplied string the way `ForbiddenError`'s is —
- *   there is nothing case-specific to recover by preferring it. Preferring
- *   `originalCode` here (i.e. just returning `GraphqlError.code`) would
- *   hand a caller `"OBJECT_VALIDATION_ERROR"` instead of the stable
+ *   subtype, not a domain-supplied string the way `ThreadNotVisibleError`'s
+ *   is — there is nothing case-specific to recover by preferring it.
+ *   Preferring `originalCode` here (i.e. just returning `GraphqlError.code`)
+ *   would hand a caller `"OBJECT_VALIDATION_ERROR"` instead of the stable
  *   `"VALIDATION_ERROR"` string the rest of this codebase (and any caller
  *   checking `=== "VALIDATION_ERROR"`) expects, so this one case is the
  *   exception: read the *coarse* code.
