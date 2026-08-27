@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { getGraphQLErrorCode } from "@cosmneo/onion-lasagna";
 import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -70,6 +71,12 @@ let staffId2: string;
 // describe's fixture the only thing `listForCustomer(listCustomerId, ...)`
 // can possibly see.
 let listCustomerId: string;
+// A customer used only by the tie-break test below, isolated from
+// `listCustomerId`'s fixture for the same reason `listCustomerId` is
+// isolated from `customerId`: that test seeds two threads at an IDENTICAL
+// `last_message_at`, and sharing a customer with an ordering test that
+// asserts a specific top-two would make the two fixtures interfere.
+let tieCustomerId: string;
 // Never inserted as a user row on purpose: `findVisible` compares plain
 // strings, and a caller who guessed a thread id was never necessarily
 // registered either. Proves the negative case needs no fixture beyond the id
@@ -99,6 +106,7 @@ beforeAll(async () => {
   staffId = newUser();
   staffId2 = newUser();
   listCustomerId = newUser();
+  tieCustomerId = newUser();
 
   await db.insert(user).values(
     userIds.map((id) => ({
@@ -318,10 +326,59 @@ describe("listForCustomer", () => {
     });
   });
 
+  test("CursorInvalidError maps to UNPROCESSABLE, not masked to INTERNAL_ERROR", () => {
+    // The `rejects.toThrow(CursorInvalidError)` check above is
+    // `instanceof`-based and would stay green even if the class stopped
+    // extending `UnprocessableError` — it only proves the right class was
+    // thrown, not that the GraphQL kit still recognises it. This is the
+    // assertion that actually catches that regression, the same split
+    // activity's `cursor-invalid.graphql-code.test.ts` makes for its own
+    // `CursorInvalidError`.
+    const error = new CursorInvalidError("not-a-real-cursor");
+    expect(getGraphQLErrorCode(error)).toBe("UNPROCESSABLE");
+  });
+
   test("does not leak another customer's threads", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const page = await threads.listForCustomer(customer2Id, 10, null);
       expect(page.items.map((t) => t.id)).not.toContain(newest.id);
+    });
+  });
+});
+
+describe("listForCustomer — a shared last_message_at", () => {
+  test("two threads at the identical instant are neither skipped nor repeated across the page boundary", async () => {
+    // The `|<id>` half of the cursor exists for exactly this: two rows can
+    // share a `last_message_at` (two conversations touched by the same
+    // event, or simply the same millisecond), and a cursor keyed on time
+    // alone would let a page boundary drop one of them or return it twice.
+    // The ordering test above never creates this case — its three threads
+    // all have distinct timestamps, which is the easy case the id tie-break
+    // is not needed for.
+    const providerA = await makeProvider(ownerId, "tie-a");
+    const providerB = await makeProvider(ownerId, "tie-b");
+    const tiedAt = new Date("2026-08-15T00:00:00.000Z");
+
+    const [a, b] = await __runWithTransactionContextForTests(db, async () => [
+      await threads.openOrFind(tieCustomerId, providerA, tiedAt),
+      await threads.openOrFind(tieCustomerId, providerB, tiedAt),
+    ]);
+
+    await __runWithTransactionContextForTests(db, async () => {
+      const page1 = await threads.listForCustomer(tieCustomerId, 1, null);
+      expect(page1.items).toHaveLength(1);
+      expect(page1.nextCursor).not.toBeNull();
+
+      const page2 = await threads.listForCustomer(tieCustomerId, 1, page1.nextCursor);
+      expect(page2.items).toHaveLength(1);
+      expect(page2.nextCursor).toBeNull();
+
+      // The defect a timestamp-only cursor would produce: the second page
+      // either repeats the first row or comes back empty. Neither happens
+      // here — both ids appear, each exactly once.
+      const seen = [page1.items[0]!.id, page2.items[0]!.id];
+      expect(seen[0]).not.toBe(seen[1]);
+      expect(new Set(seen)).toEqual(new Set([a.id, b.id]));
     });
   });
 });
@@ -371,6 +428,54 @@ describe("insert and listForThread", () => {
       expect(rest.items).toHaveLength(1);
       expect(rest.items[0]!.body).toBe("first");
       expect(rest.nextCursor).toBeNull();
+    });
+  });
+});
+
+describe("listForThread — a shared created_at", () => {
+  test("two messages at the identical instant are neither skipped nor repeated across the page boundary", async () => {
+    // The tie is forced through `Message.compose` + `insert`, the same path
+    // production sends through, with one explicit `now` handed to both —
+    // NOT a raw multi-row INSERT relying on the column's `defaultNow()`.
+    // That was tried first and looked equivalent, but it is not: Postgres's
+    // `now()` carries microsecond precision, a JS `Date` cannot represent
+    // more than milliseconds, and a cursor built from a `SELECT`-truncated
+    // Date no longer compares equal to the full-precision value still sitting
+    // in the column — so `eq(message.createdAt, after.createdAt)` on the
+    // second page's WHERE clause silently fails and the tied row vanishes
+    // instead of appearing. That failure mode cannot happen in production
+    // because `insert()` always writes an app-generated `Date` explicitly
+    // (see `message.repository.ts`'s `insert`) and a JS `Date` is
+    // millisecond-precision on both sides of the round trip by construction
+    // — so this test reproduces the *real* tie (two composed messages
+    // sharing a millisecond), not an artifact of how the fixture was built.
+    const providerId = await makeProvider(ownerId, "tie-thread");
+    const opened = await __runWithTransactionContextForTests(db, () =>
+      threads.openOrFind(customerId, providerId, new Date("2026-08-16T00:00:00.000Z")),
+    );
+
+    const tiedAt = new Date("2026-08-16T00:05:00.000Z");
+    const [tiedA, tiedB] = await __runWithTransactionContextForTests(db, async () => [
+      await messages.insert(
+        Message.compose({ threadId: opened.id, senderUserId: customerId, body: "tied a", now: tiedAt }),
+      ),
+      await messages.insert(
+        Message.compose({ threadId: opened.id, senderUserId: customerId, body: "tied b", now: tiedAt }),
+      ),
+    ]);
+
+    await __runWithTransactionContextForTests(db, async () => {
+      const page1 = await messages.listForThread(opened.id, 1, null);
+      expect(page1.items).toHaveLength(1);
+      expect(page1.nextCursor).not.toBeNull();
+
+      const page2 = await messages.listForThread(opened.id, 1, page1.nextCursor);
+      expect(page2.items).toHaveLength(1);
+      expect(page2.nextCursor).toBeNull();
+
+      const seen = [page1.items[0]!.id, page2.items[0]!.id];
+      expect(seen[0]).not.toBe(seen[1]);
+      expect(new Set(seen)).toEqual(new Set([tiedA, tiedB]));
     });
   });
 });
