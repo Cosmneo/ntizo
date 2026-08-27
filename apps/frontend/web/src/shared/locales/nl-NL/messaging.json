@@ -1,0 +1,32 @@
+{
+  "title": "Berichten",
+  "listTitle": "Gesprekken",
+  "emptyTitle": "Nog geen gesprekken",
+  "emptyBody": "Begin er een vanaf de pagina van een aanbieder en het verschijnt hier.",
+  "providerEmptyBody": "Zodra een klant je een bericht stuurt, verschijnt het gesprek hier.",
+  "loadMore": "Meer laden",
+  "unknownProvider": "Aanbieder",
+  "unknownCustomer": "Klant",
+  "noPreview": "Nog geen berichten",
+  "unreadBadge": "{{count}} ongelezen bericht",
+  "unreadBadge_other": "{{count}} ongelezen berichten",
+  "back": "Terug naar gesprekken",
+  "conversationFallbackTitle": "Gesprek",
+  "selectPrompt": "Kies een gesprek",
+  "selectPromptBody": "Kies links een gesprek om het te lezen.",
+  "conversationEmptyTitle": "Zeg hallo",
+  "conversationEmptyBody": "Dit is het begin van je gesprek. Stuur het eerste bericht wanneer je zover bent.",
+  "loadEarlier": "Eerdere berichten laden",
+  "composerPlaceholder": "Schrijf een bericht…",
+  "composerLabel": "Berichttekst",
+  "charCount": "{{count}}/{{max}}",
+  "send": "Versturen",
+  "sending": "Bezig met versturen…",
+  "loadError": "Je gesprekken konden niet worden geladen. Probeer het opnieuw.",
+  "sendError": {
+    "VALIDATION_ERROR": "Berichten mogen maximaal 4000 tekens bevatten.",
+    "THREAD_NOT_VISIBLE": "Dit gesprek is niet meer beschikbaar.",
+    "UNAUTHENTICATED": "Log opnieuw in om dit bericht te versturen.",
+    "GENERIC": "Dit bericht kon niet worden verstuurd. Probeer het opnieuw."
+  }
+}

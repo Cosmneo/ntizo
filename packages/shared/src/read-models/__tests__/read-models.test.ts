@@ -7,6 +7,12 @@ import { currentUserReadModel } from "../system/user";
 import { availabilityConfigReadModel } from "../system/availability";
 import { inboxPageReadModel, notificationReadModel } from "../system/notification";
 import { activityEntryReadModel, activityPageReadModel } from "../system/activity";
+import {
+  threadSummaryReadModel,
+  threadPageReadModel,
+  messageReadModel,
+  messagePageReadModel,
+} from "../system/communication";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -284,5 +290,120 @@ describe("activityPageReadModel", () => {
     expect(parsed.items).toHaveLength(2);
     expect(parsed.items[0]?.payload).toEqual({});
     expect(parsed.items[1]?.payload).toEqual({ serviceId: "s1" });
+  });
+});
+
+describe("threadSummaryReadModel", () => {
+  const row = {
+    id: "t1",
+    providerId: "p1",
+    providerName: "Salão X",
+    customerName: "Ana Silva",
+    lastMessageAt: "2026-08-24T09:00:00.000Z",
+    lastMessagePreview: "See you tomorrow",
+    unreadCount: 2,
+  };
+
+  it("accepts a row as the projection returns it", () => {
+    const parsed = threadSummaryReadModel.parse(row);
+    expect(parsed.unreadCount).toBe(2);
+    // Both names, on the one row — see this model's own doc comment on why
+    // both are always resolved regardless of which inbox is asking.
+    expect(parsed.providerName).toBe("Salão X");
+    expect(parsed.customerName).toBe("Ana Silva");
+  });
+
+  it("rejects a negative unreadCount rather than clamping it", () => {
+    expect(() => threadSummaryReadModel.parse({ ...row, unreadCount: -1 })).toThrow();
+  });
+
+  // `providerName`/`customerName`/`lastMessagePreview` are filled in by a
+  // lookup the projection runs beside the thread page, not a column
+  // `thread` itself carries — a row that lookup missed for (a deactivated
+  // provider, a customer with no profile row yet, a thread with no
+  // messages) must degrade, not fail the whole page.
+  it("degrades a non-string providerName to empty rather than throwing", () => {
+    const parsed = threadSummaryReadModel.parse({ ...row, providerName: null });
+    expect(parsed.providerName).toBe("");
+  });
+
+  it("degrades a non-string customerName to empty rather than throwing", () => {
+    const parsed = threadSummaryReadModel.parse({ ...row, customerName: null });
+    expect(parsed.customerName).toBe("");
+  });
+
+  it("degrades a non-string lastMessagePreview to empty rather than throwing", () => {
+    const parsed = threadSummaryReadModel.parse({ ...row, lastMessagePreview: undefined });
+    expect(parsed.lastMessagePreview).toBe("");
+  });
+});
+
+describe("threadPageReadModel", () => {
+  it("does not let one degraded row sink the rest of the page", () => {
+    const good = {
+      id: "t1",
+      providerId: "p1",
+      providerName: "Salão X",
+      customerName: "Ana Silva",
+      lastMessageAt: "2026-08-24T09:00:00.000Z",
+      lastMessagePreview: "See you tomorrow",
+      unreadCount: 0,
+    };
+    const degraded = { ...good, id: "t2", providerName: null };
+    const parsed = threadPageReadModel.parse({ items: [good, degraded], nextCursor: null });
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items[0]?.providerName).toBe("Salão X");
+    expect(parsed.items[1]?.providerName).toBe("");
+  });
+
+  it("accepts a null cursor for the last page", () => {
+    const parsed = threadPageReadModel.parse({ items: [], nextCursor: null });
+    expect(parsed.nextCursor).toBeNull();
+  });
+});
+
+describe("messageReadModel", () => {
+  it("accepts a row as the projection returns it", () => {
+    const parsed = messageReadModel.parse({
+      id: "m1",
+      threadId: "t1",
+      senderUserId: "u1",
+      body: "Olá!",
+      readAt: null,
+      createdAt: "2026-08-24T09:00:00.000Z",
+    });
+    expect(parsed.readAt).toBeNull();
+  });
+
+  it("has no `.catch()` on body — a row with a missing body is a real error, not something to hide", () => {
+    expect(() =>
+      messageReadModel.parse({
+        id: "m1",
+        threadId: "t1",
+        senderUserId: "u1",
+        body: undefined,
+        readAt: null,
+        createdAt: "2026-08-24T09:00:00.000Z",
+      }),
+    ).toThrow();
+  });
+});
+
+describe("messagePageReadModel", () => {
+  it("carries items and an opaque, nullable cursor", () => {
+    const parsed = messagePageReadModel.parse({
+      items: [
+        {
+          id: "m1",
+          threadId: "t1",
+          senderUserId: "u1",
+          body: "Olá!",
+          readAt: null,
+          createdAt: "2026-08-24T09:00:00.000Z",
+        },
+      ],
+      nextCursor: "2026-08-24T09:00:00.000Z|m1",
+    });
+    expect(parsed.nextCursor).toBe("2026-08-24T09:00:00.000Z|m1");
   });
 });

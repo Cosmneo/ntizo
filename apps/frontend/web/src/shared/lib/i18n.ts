@@ -12,6 +12,7 @@ import enUSAccount from "@/shared/locales/en-US/account.json";
 import enUSBecomeProvider from "@/shared/locales/en-US/become-provider.json";
 import enUSOnboarding from "@/shared/locales/en-US/onboarding.json";
 import enUSNotifications from "@/shared/locales/en-US/notifications.json";
+import enUSMessaging from "@/shared/locales/en-US/messaging.json";
 import enUSLegal from "@/shared/locales/en-US/legal.json";
 import ptPTCommon from "@/shared/locales/pt-PT/common.json";
 import ptPTAuth from "@/shared/locales/pt-PT/auth.json";
@@ -23,6 +24,7 @@ import ptPTAccount from "@/shared/locales/pt-PT/account.json";
 import ptPTBecomeProvider from "@/shared/locales/pt-PT/become-provider.json";
 import ptPTOnboarding from "@/shared/locales/pt-PT/onboarding.json";
 import ptPTNotifications from "@/shared/locales/pt-PT/notifications.json";
+import ptPTMessaging from "@/shared/locales/pt-PT/messaging.json";
 import ptPTLegal from "@/shared/locales/pt-PT/legal.json";
 import ptMZCommon from "@/shared/locales/pt-MZ/common.json";
 import ptMZAuth from "@/shared/locales/pt-MZ/auth.json";
@@ -34,6 +36,7 @@ import ptMZAccount from "@/shared/locales/pt-MZ/account.json";
 import ptMZBecomeProvider from "@/shared/locales/pt-MZ/become-provider.json";
 import ptMZOnboarding from "@/shared/locales/pt-MZ/onboarding.json";
 import ptMZNotifications from "@/shared/locales/pt-MZ/notifications.json";
+import ptMZMessaging from "@/shared/locales/pt-MZ/messaging.json";
 import ptMZLegal from "@/shared/locales/pt-MZ/legal.json";
 import esESCommon from "@/shared/locales/es-ES/common.json";
 import esESAuth from "@/shared/locales/es-ES/auth.json";
@@ -45,6 +48,7 @@ import esESAccount from "@/shared/locales/es-ES/account.json";
 import esESBecomeProvider from "@/shared/locales/es-ES/become-provider.json";
 import esESOnboarding from "@/shared/locales/es-ES/onboarding.json";
 import esESNotifications from "@/shared/locales/es-ES/notifications.json";
+import esESMessaging from "@/shared/locales/es-ES/messaging.json";
 import esESLegal from "@/shared/locales/es-ES/legal.json";
 import deDECommon from "@/shared/locales/de-DE/common.json";
 import deDEAuth from "@/shared/locales/de-DE/auth.json";
@@ -56,6 +60,7 @@ import deDEAccount from "@/shared/locales/de-DE/account.json";
 import deDEBecomeProvider from "@/shared/locales/de-DE/become-provider.json";
 import deDEOnboarding from "@/shared/locales/de-DE/onboarding.json";
 import deDENotifications from "@/shared/locales/de-DE/notifications.json";
+import deDEMessaging from "@/shared/locales/de-DE/messaging.json";
 import deDELegal from "@/shared/locales/de-DE/legal.json";
 import frFRCommon from "@/shared/locales/fr-FR/common.json";
 import frFRAuth from "@/shared/locales/fr-FR/auth.json";
@@ -67,6 +72,7 @@ import frFRAccount from "@/shared/locales/fr-FR/account.json";
 import frFRBecomeProvider from "@/shared/locales/fr-FR/become-provider.json";
 import frFROnboarding from "@/shared/locales/fr-FR/onboarding.json";
 import frFRNotifications from "@/shared/locales/fr-FR/notifications.json";
+import frFRMessaging from "@/shared/locales/fr-FR/messaging.json";
 import frFRLegal from "@/shared/locales/fr-FR/legal.json";
 import itITCommon from "@/shared/locales/it-IT/common.json";
 import itITAuth from "@/shared/locales/it-IT/auth.json";
@@ -78,6 +84,7 @@ import itITAccount from "@/shared/locales/it-IT/account.json";
 import itITBecomeProvider from "@/shared/locales/it-IT/become-provider.json";
 import itITOnboarding from "@/shared/locales/it-IT/onboarding.json";
 import itITNotifications from "@/shared/locales/it-IT/notifications.json";
+import itITMessaging from "@/shared/locales/it-IT/messaging.json";
 import itITLegal from "@/shared/locales/it-IT/legal.json";
 import nlNLCommon from "@/shared/locales/nl-NL/common.json";
 import nlNLAuth from "@/shared/locales/nl-NL/auth.json";
@@ -89,6 +96,7 @@ import nlNLAccount from "@/shared/locales/nl-NL/account.json";
 import nlNLBecomeProvider from "@/shared/locales/nl-NL/become-provider.json";
 import nlNLOnboarding from "@/shared/locales/nl-NL/onboarding.json";
 import nlNLNotifications from "@/shared/locales/nl-NL/notifications.json";
+import nlNLMessaging from "@/shared/locales/nl-NL/messaging.json";
 import nlNLLegal from "@/shared/locales/nl-NL/legal.json";
 
 /**
@@ -106,14 +114,14 @@ import nlNLLegal from "@/shared/locales/nl-NL/legal.json";
  * Portuguese, not Portugal"s, because that is who this launches for.
  */
 const resources = {
-  "en-US": { common: enUSCommon, auth: enUSAuth, provider: enUSProvider, admin: enUSAdmin, directory: enUSDirectory, landing: enUSLanding, account: enUSAccount, becomeProvider: enUSBecomeProvider, onboarding: enUSOnboarding, notifications: enUSNotifications, legal: enUSLegal },
-  "pt-PT": { common: ptPTCommon, auth: ptPTAuth, provider: ptPTProvider, admin: ptPTAdmin, directory: ptPTDirectory, landing: ptPTLanding, account: ptPTAccount, becomeProvider: ptPTBecomeProvider, onboarding: ptPTOnboarding, notifications: ptPTNotifications, legal: ptPTLegal },
-  "pt-MZ": { common: ptMZCommon, auth: ptMZAuth, provider: ptMZProvider, admin: ptMZAdmin, directory: ptMZDirectory, landing: ptMZLanding, account: ptMZAccount, becomeProvider: ptMZBecomeProvider, onboarding: ptMZOnboarding, notifications: ptMZNotifications, legal: ptMZLegal },
-  "es-ES": { common: esESCommon, auth: esESAuth, provider: esESProvider, admin: esESAdmin, directory: esESDirectory, landing: esESLanding, account: esESAccount, becomeProvider: esESBecomeProvider, onboarding: esESOnboarding, notifications: esESNotifications, legal: esESLegal },
-  "de-DE": { common: deDECommon, auth: deDEAuth, provider: deDEProvider, admin: deDEAdmin, directory: deDEDirectory, landing: deDELanding, account: deDEAccount, becomeProvider: deDEBecomeProvider, onboarding: deDEOnboarding, notifications: deDENotifications, legal: deDELegal },
-  "fr-FR": { common: frFRCommon, auth: frFRAuth, provider: frFRProvider, admin: frFRAdmin, directory: frFRDirectory, landing: frFRLanding, account: frFRAccount, becomeProvider: frFRBecomeProvider, onboarding: frFROnboarding, notifications: frFRNotifications, legal: frFRLegal },
-  "it-IT": { common: itITCommon, auth: itITAuth, provider: itITProvider, admin: itITAdmin, directory: itITDirectory, landing: itITLanding, account: itITAccount, becomeProvider: itITBecomeProvider, onboarding: itITOnboarding, notifications: itITNotifications, legal: itITLegal },
-  "nl-NL": { common: nlNLCommon, auth: nlNLAuth, provider: nlNLProvider, admin: nlNLAdmin, directory: nlNLDirectory, landing: nlNLLanding, account: nlNLAccount, becomeProvider: nlNLBecomeProvider, onboarding: nlNLOnboarding, notifications: nlNLNotifications, legal: nlNLLegal }
+  "en-US": { common: enUSCommon, auth: enUSAuth, provider: enUSProvider, admin: enUSAdmin, directory: enUSDirectory, landing: enUSLanding, account: enUSAccount, becomeProvider: enUSBecomeProvider, onboarding: enUSOnboarding, notifications: enUSNotifications, messaging: enUSMessaging, legal: enUSLegal },
+  "pt-PT": { common: ptPTCommon, auth: ptPTAuth, provider: ptPTProvider, admin: ptPTAdmin, directory: ptPTDirectory, landing: ptPTLanding, account: ptPTAccount, becomeProvider: ptPTBecomeProvider, onboarding: ptPTOnboarding, notifications: ptPTNotifications, messaging: ptPTMessaging, legal: ptPTLegal },
+  "pt-MZ": { common: ptMZCommon, auth: ptMZAuth, provider: ptMZProvider, admin: ptMZAdmin, directory: ptMZDirectory, landing: ptMZLanding, account: ptMZAccount, becomeProvider: ptMZBecomeProvider, onboarding: ptMZOnboarding, notifications: ptMZNotifications, messaging: ptMZMessaging, legal: ptMZLegal },
+  "es-ES": { common: esESCommon, auth: esESAuth, provider: esESProvider, admin: esESAdmin, directory: esESDirectory, landing: esESLanding, account: esESAccount, becomeProvider: esESBecomeProvider, onboarding: esESOnboarding, notifications: esESNotifications, messaging: esESMessaging, legal: esESLegal },
+  "de-DE": { common: deDECommon, auth: deDEAuth, provider: deDEProvider, admin: deDEAdmin, directory: deDEDirectory, landing: deDELanding, account: deDEAccount, becomeProvider: deDEBecomeProvider, onboarding: deDEOnboarding, notifications: deDENotifications, messaging: deDEMessaging, legal: deDELegal },
+  "fr-FR": { common: frFRCommon, auth: frFRAuth, provider: frFRProvider, admin: frFRAdmin, directory: frFRDirectory, landing: frFRLanding, account: frFRAccount, becomeProvider: frFRBecomeProvider, onboarding: frFROnboarding, notifications: frFRNotifications, messaging: frFRMessaging, legal: frFRLegal },
+  "it-IT": { common: itITCommon, auth: itITAuth, provider: itITProvider, admin: itITAdmin, directory: itITDirectory, landing: itITLanding, account: itITAccount, becomeProvider: itITBecomeProvider, onboarding: itITOnboarding, notifications: itITNotifications, messaging: itITMessaging, legal: itITLegal },
+  "nl-NL": { common: nlNLCommon, auth: nlNLAuth, provider: nlNLProvider, admin: nlNLAdmin, directory: nlNLDirectory, landing: nlNLLanding, account: nlNLAccount, becomeProvider: nlNLBecomeProvider, onboarding: nlNLOnboarding, notifications: nlNLNotifications, messaging: nlNLMessaging, legal: nlNLLegal }
 };
 
 export const SUPPORTED_LOCALES = Object.keys(resources) as (keyof typeof resources)[];
@@ -132,7 +140,7 @@ void i18n
       nl: ["nl-NL", "en-US"],
       default: ["en-US"],
     },
-    ns: ["common", "auth", "provider", "admin", "directory", "landing", "account", "notifications", "legal"],
+    ns: ["common", "auth", "provider", "admin", "directory", "landing", "account", "notifications", "messaging", "legal"],
     defaultNS: "common",
     interpolation: { escapeValue: false },
     resources,

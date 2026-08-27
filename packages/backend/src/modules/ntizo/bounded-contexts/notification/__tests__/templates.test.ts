@@ -9,6 +9,7 @@ import { BY_LOCALE as PROVIDER_WORKSPACE_WELCOME_BY_LOCALE } from "../infrastruc
 import { BY_LOCALE as PROVIDER_VERIFIED_BY_LOCALE } from "../infrastructure/templates/provider-verified.template";
 import { BY_LOCALE as PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE } from "../infrastructure/templates/provider-documents-required.template";
 import { BY_LOCALE as TEAM_INVITATION_BY_LOCALE } from "../infrastructure/templates/team-invitation.template";
+import { BY_LOCALE as NEW_MESSAGE_BY_LOCALE, newMessageTemplate } from "../infrastructure/templates/new-message.template";
 
 const renderer = new LocalTemplateRenderer();
 
@@ -48,6 +49,7 @@ const PAYLOADS: Record<string, Record<string, unknown>> = {
     providerName: "Salão X",
     role: "staff",
   },
+  [NotificationType.NewMessage]: { threadId: "thread-1" },
 };
 
 describe("every template renders in every locale", () => {
@@ -88,6 +90,47 @@ describe("the locale fallback", () => {
       renderer.render(NotificationType.Welcome, "en-US", { firstName: "Ana" }),
     ))!;
     expect(ja.subject).toBe(en.subject);
+  });
+});
+
+describe("newMessageTemplate routes its CTA by audience", () => {
+  // `DeliverNotificationInternalCommand.templatePayload` is what actually
+  // merges `audience`/`providerId` in (see `deliver-notification.test.ts`'s
+  // "what the renderer receives" block); this half proves the template
+  // itself reads them correctly once they arrive.
+  it("links a provider-audience notification into that provider's own messages page, not the customer inbox", async () => {
+    const out = await withInfra(() =>
+      newMessageTemplate.render("en-US", {
+        threadId: "thread-1",
+        audience: "provider",
+        providerId: "prov-1",
+      }),
+    );
+    expect(out.html).toContain("https://ntizo.test/provider/prov-1/messages");
+    expect(out.text).toContain("https://ntizo.test/provider/prov-1/messages");
+    expect(out.html).not.toContain("https://ntizo.test/messages");
+  });
+
+  it("links a user-audience notification into the customer's own inbox, never the provider zone", async () => {
+    const out = await withInfra(() =>
+      newMessageTemplate.render("en-US", {
+        threadId: "thread-1",
+        audience: "user",
+      }),
+    );
+    expect(out.html).toContain("https://ntizo.test/messages");
+    expect(out.text).toContain("https://ntizo.test/messages");
+    expect(out.html).not.toContain("/provider/");
+  });
+
+  it("falls back to the customer inbox for a payload with no audience at all", async () => {
+    // The shape every other template's payload still has, and the shape
+    // `PAYLOADS[NotificationType.NewMessage]` above uses — a caller that
+    // never says who it's for must not accidentally end up in the
+    // provider zone.
+    const out = await withInfra(() => newMessageTemplate.render("en-US", { threadId: "thread-1" }));
+    expect(out.html).toContain("https://ntizo.test/messages");
+    expect(out.html).not.toContain("/provider/");
   });
 });
 
@@ -160,6 +203,7 @@ describe("every template's locale table actually has all eight keys", () => {
     [NotificationType.ProviderVerified]: PROVIDER_VERIFIED_BY_LOCALE,
     [NotificationType.ProviderDocumentsRequired]: PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE,
     [NotificationType.TeamInvitation]: TEAM_INVITATION_BY_LOCALE,
+    [NotificationType.NewMessage]: NEW_MESSAGE_BY_LOCALE,
   };
 
   for (const [type, table] of Object.entries(TABLES)) {

@@ -1691,3 +1691,185 @@ The avatar test is a working template: `mock.module` on the auth module, a fake 
 
 **Trigger:** the next change to either guard, or to the shared type and size checks all three
 routes rely on.
+
+---
+
+## 65. A teammate's message cannot be named
+
+`messageReadModel` (`packages/shared/src/read-models/system/communication/message.schema.ts`)
+carries `senderUserId` and no name, so `ThreadView` (`thread-view.tsx`) can only distinguish "mine"
+from "not mine" by an exact id match against the signed-in viewer — it has nothing to label a
+colleague's bubble with. `provider-messages-page.tsx`'s own doc comment already names this: a second
+staff member's earlier reply in the same thread renders as if it came from the customer rather than a
+colleague. Invisible for a single-owner provider — the only shape this phase's e2e exercises — and
+genuinely confusing the moment a workspace has more than one active member replying.
+
+**Trigger:** the first provider with two active members using messaging.
+
+---
+
+## 66. The provider-audience new-message email links by provider id while the route matches on slug
+
+`new-message.template.ts` builds its CTA as `` `${appBaseUrl()}/provider/${payload["providerId"]}/messages` ``
+for a provider-audience recipient, but `/provider/$slug/messages` matches on `slug`, not `id`
+(`routes/provider/$slug/route.tsx`). `useActiveProvider` (`use-active-provider.ts`) falls back to the
+last-active provider in local storage, or the first one, whenever the URL's slug segment matches no
+provider it knows about — which a raw provider id always does. So the link does not 404; it silently
+lands a team member in *some* workspace, not necessarily the one the notification was about.
+
+The two pre-existing provider-audience templates (`provider-verified.template.ts`,
+`provider-documents-required.template.ts`) already share the weaker form of this problem — they link
+to the generic `/provider` index, which resolves the same way, to whichever provider is "preferred,"
+not necessarily the one the decision concerned — so fixing the new-message template's own sharper
+bug properly means giving all three a real deep link, not patching one in isolation.
+
+**Trigger:** the first owner of two or more providers who reports a notification email landing them
+in the wrong workspace, or the next time any of the three provider-audience templates is touched.
+
+---
+
+## 67. `markNotified` commits before the deferred Resend call is confirmed
+
+`NotifyUnreadInternalCommand` awaits `raiseNotification.execute(...)` and then calls
+`this.messages.markNotified(...)` — but in production `raiseNotification`'s deliverer is a decorator
+that *defers* the actual `DeliverNotificationInternalCommand` (and its Resend call) past that await,
+per `RaiseNotificationInternalCommand`'s own doc comment ("this is a decorator that defers the real
+work past the response"). `ResendEmailServiceAdapter.sendEmail` passes no `AbortSignal` to
+`client.emails.send(...)`, so a send that hangs — an outage, a dropped connection — has nothing
+bounding it. Because `markNotified` already ran, `claimDueForNotice`'s partial index
+(`notify_due_at IS NOT NULL AND read_at IS NULL AND notified_at IS NULL`) will never select that
+message again: the bell notification itself is safe (its row is written synchronously, before the
+deferred part), but the *email* can be silently dropped with no retry. Inherited from the
+notification context's existing deferred-delivery design, not introduced by messaging, and present
+today on any path that raises a notification, cron-triggered or not.
+
+**Trigger:** the first missing-email bug report for a delayed message notice, or the day this
+delivery path is audited for retry guarantees.
+
+---
+
+## 68. `notifications/viewmodel/use-mark-read.ts` has no test at all
+
+Unlike messaging's own `use-mark-read.ts` — which this same phase gave three assertions, including
+one that spies on `invalidateQueries` and would fail if that call were deleted (see
+`messaging/viewmodel/__tests__/use-mark-read.test.ts`) — the notifications feature's
+`use-mark-read.ts` has no `__tests__` file at all. The page-level tests
+(`notifications-page*.test.tsx`) exercise the UI around it but mock the hook away, so nothing asserts
+that marking read actually calls `notificationMarkRead`/`notificationMarkProviderRead` with the right
+field, or that it invalidates the `["notifications"]` prefix afterwards. Deleting the `invalidate`
+call in that file would leave every existing test green.
+
+**Trigger:** the next bug report about a notification's unread badge not clearing, or the next time
+this file is touched for an unrelated reason.
+
+---
+
+## 69. `PackageChooser` and `ServiceQuoteNotice` still disable "contact provider" behind a stale comment
+
+Both render their "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
+comment explaining why: "there is no Communication context in this product either" (`package-chooser.tsx`,
+`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
+context, and `provider-hero.tsx`'s `MessageProviderButton` already wires the identical CTA to
+`useStartThread` a few features over. The button in these two files could work today; nobody has
+gone back to wire it up now that the reason it was disabled no longer holds.
+
+**Trigger:** the next time `PackageChooser` or `ServiceQuoteNotice` is touched — wire the button the
+way `provider-hero.tsx` already does, or explain why a package/quote page shouldn't offer it.
+
+---
+
+## 70. No dedicated malformed-cursor boundary test under `read/communication`
+
+`read/activity` has `cursor-invalid.graphql-code.test.ts`, a dedicated test proving
+`CursorInvalidError` survives the GraphQL boundary with its own client-facing code, "created for
+exactly this reason" per its own doc comment. `read/communication` throws the identical
+`CursorInvalidError` from the identical shape of cursor decode (`thread.repository.ts`,
+`message.repository.ts`) but has no equivalent file under `read/communication/__tests__/` — only
+`projections.test.ts` and `queries.handlers.test.ts`, neither of which targets a malformed cursor at
+the GraphQL-code boundary specifically.
+
+**Trigger:** the next time `read/communication`'s handlers are touched, or the next regression a
+malformed cursor would have caught.
+
+---
+
+## 71. Support threads, admin oversight and moderation are phases 2 and 3
+
+Messaging today knows exactly one thread shape: a customer-to-provider `inquiry`
+(`thread.schema.ts`'s partial unique index is scoped `where type = 'inquiry'`, anticipating others).
+There is no support-thread type, no admin read path at all — `findVisible` admits only the customer
+on the thread or a member of its provider, with no admin bypass — and so no moderation surface. Phase
+3, whenever it arrives, owes an explicit decision this phase deliberately did not make: whether an
+admin reading a private conversation for support or moderation purposes is logged, and whether the
+participants are told.
+
+**Trigger:** the start of phase 2 (support threads) or phase 3 (admin oversight and moderation)
+design work.
+
+---
+
+## 72. Read receipts are not shown to the sender
+
+`message.read_at` exists, reaches the wire (`messageReadModel.readAt`, `Message.readAt` in the
+frontend's own domain type), and is what `countUnreadForViewer` uses to drive the unread badge — but
+nothing renders it back to the person who *sent* the message. `ThreadView`'s `MessageBubble`
+(`thread-view.tsx`) draws a body and a timestamp only; a sender has no way to tell whether the other
+side has seen what they wrote.
+
+**Trigger:** the first customer or provider who asks whether their message was read.
+
+---
+
+## 73. Attachments are not supported
+
+`message.body` is `text` and nothing else — no column, no upload path, no rendering for anything but
+plain text. A conversation that would be answered fastest with a photo (a leaking pipe, a haircut
+reference, a broken part) has no way to include one.
+
+**Trigger:** the first request to send a photo or document through a conversation.
+
+---
+
+## 74. The bell waits up to two minutes along with the email, because one rule covers both channels
+
+`NOTIFY_AFTER_MS = 120_000` (`message.aggregate.ts`) delays the *entire* notice — `NotifyUnreadInternalCommand`
+raises one `NotificationType.NewMessage` per unread message past the window, and that single raise is
+what produces both the in-app bell row and the deferred email. There is no separate, faster path for
+the bell alone; a recipient with the tab open still waits out the same two minutes a recipient who
+only checks email would need.
+
+**Trigger:** the first request to make the in-app bell notify sooner than the email does.
+
+---
+
+## 75. Per-person unread counts for a multi-staff provider would need a participant table
+
+`MessageRepositoryPort.markReadForViewer` marks every unread message in a thread read for the whole
+provider team, not just the signed-in viewer who opened it — reading is a shared act, by design, per
+that port's own doc comment. A provider with several active members therefore cannot tell which of
+them has actually seen a given conversation; the unread count `ThreadList` renders is the workspace's,
+not any one person's. Getting a per-person count would mean a participant/read-cursor table this
+phase's schema does not have.
+
+**Trigger:** the first multi-staff provider workspace that asks who on the team has already read a
+message.
+
+---
+
+## 76. The `/providers/$slug` SSR loader occasionally cancels under full-suite concurrent load
+
+Once while developing this task's own e2e spec, a full `bun run e2e` (21 tests, 7 workers) failed
+`messaging.spec.ts`'s stranger test with the app's own error boundary — "Something went wrong! /
+CancelledError" — where the "Send message" button should have been. The web server's own log
+explained it: `` A query that was dehydrated as pending ended up rejecting. [["public","provider","msg-e2e-stranger-…","en-US"]]: Error: CancelledError ``.
+`prefetchProviderDetail`'s dehydrated query was cancelled server-side before the page could render —
+not a bug in this test's own logic (the identical navigation passed cleanly in two other full runs
+and every solo run of the same file), and not reproduced by any other spec that also visits
+`/providers/$slug` (`public-directory.spec.ts` seeds its rows in a serial `beforeAll`, so it never
+hits that route at the same moment 7 workers all start cold). This is the same shape of thing
+`playwright.config.ts`'s `retries: process.env.CI ? 2 : 0` already exists to absorb, and did not
+reproduce on a retry in this investigation — filed rather than chased, since a single occurrence
+across roughly a dozen full-suite runs gives nothing to `git bisect` yet.
+
+**Trigger:** the next time this specific `CancelledError` shape shows up in a CI run, or any other
+spec that hits `/providers/$slug` (or another `ssr: true` route) starts flaking the same way.

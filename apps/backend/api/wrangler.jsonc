@@ -68,7 +68,14 @@
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" },
         { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-dev" }
       ],
-      "routes": [{ "pattern": "dev.api.ntizo.co.mz", "custom_domain": true }]
+      "routes": [{ "pattern": "dev.api.ntizo.co.mz", "custom_domain": true }],
+      // Wakes `scheduled` (src/scheduled.ts) to sweep for messages still
+      // unread after the 2-minute notify window. Every minute is Cloudflare's
+      // finest granularity and is the right interval against that window: a
+      // message waits at most three minutes, usually two. NOT inherited from
+      // the top level — same as `r2_buckets` above, every named env needs its
+      // own `triggers` block or it gets none.
+      "triggers": { "crons": ["* * * * *"] }
     },
     "qa": {
       "vars": {
@@ -81,7 +88,8 @@
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" },
         { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-qa" }
       ],
-      "routes": [{ "pattern": "qa.api.ntizo.co.mz", "custom_domain": true }]
+      "routes": [{ "pattern": "qa.api.ntizo.co.mz", "custom_domain": true }],
+      "triggers": { "crons": ["* * * * *"] }
     },
     "prod": {
       "vars": {
@@ -94,7 +102,8 @@
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" },
         { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-prod" }
       ],
-      "routes": [{ "pattern": "api.ntizo.co.mz", "custom_domain": true }]
+      "routes": [{ "pattern": "api.ntizo.co.mz", "custom_domain": true }],
+      "triggers": { "crons": ["* * * * *"] }
     }
   }
 }

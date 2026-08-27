@@ -16,6 +16,7 @@
     "wallet": "Wallet",
     "notifications": "Notifications",
     "services": "Services",
+    "messages": "Messages",
     "availability": "Availability",
     "activity": "Activity"
   },

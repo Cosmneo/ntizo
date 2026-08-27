@@ -7,6 +7,12 @@
   "notFoundTitle": "Proveedor no encontrado",
   "notFoundBody": "Es posible que este proveedor haya sido eliminado, o que el enlace sea incorrecto.",
   "backToDirectory": "Volver a todos los proveedores",
+  "messageProviderCta": "Enviar mensaje",
+  "messageProviderStarting": "Iniciando…",
+  "messageProviderError": {
+    "PROVIDER_NOT_CONTACTABLE": "Ahora mismo no puedes contactar con este proveedor.",
+    "GENERIC": "No se pudo iniciar la conversación. Inténtalo de nuevo."
+  },
   "noDescription": "Este proveedor todavía no ha añadido una descripción.",
   "searchPlaceholder": "Buscar servicios…",
   "searchLabel": "Buscar servicios",

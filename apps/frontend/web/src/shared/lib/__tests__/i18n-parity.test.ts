@@ -93,4 +93,53 @@ describe("locale parity", () => {
       });
     }
   }
+
+  /**
+   * Every check above only ever compares one locale's shape to another's —
+   * never a locale's own content against itself. Two failures that
+   * agreement can never see:
+   *
+   * - Two different keys landing on the exact same sentence by copy-paste.
+   *   Every locale still agrees with every other locale on which sentence
+   *   goes with which key, so nothing above would ever notice.
+   * - A `{{placeholder}}` whose name nobody actually supplies at the call
+   *   site. See `features/messaging/viewmodel/__tests__/messaging-payload-interpolation.test.ts`
+   *   for that half — proving it needs a real render, the same technique
+   *   `activity-payload-interpolation.test.ts` already established for a
+   *   different namespace, not another round of comparing JSON to JSON.
+   *
+   * Scoped to `messaging` — the one namespace this task wrote — rather than
+   * every namespace the app ships. Turning the first check loose on the
+   * existing namespaces reds immediately on legitimate reuse that predates
+   * this task: `account.json`'s top-level `cancel` and its `crop.cancel`
+   * both render "Cancel", correctly — a crop dialog's cancel button says the
+   * same word as every other cancel button on the site. Auditing the
+   * existing namespaces for that is a different task's call to make.
+   */
+  describe("messaging: a locale's own content, checked against itself", () => {
+    const NS = "messaging";
+
+    for (const locale of locales) {
+      it(`${locale}/${NS}: no two keys share a value`, () => {
+        const data = find(locale, NS);
+        expect(data, `${locale}/${NS} is missing`).toBeDefined();
+
+        const keysByValue = new Map<string, string[]>();
+        const walk = (node: unknown, prefix: string): void => {
+          if (typeof node === "string") {
+            keysByValue.set(node, [...(keysByValue.get(node) ?? []), prefix]);
+            return;
+          }
+          if (typeof node !== "object" || node === null) return;
+          for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+            walk(v, prefix ? `${prefix}.${k}` : k);
+          }
+        };
+        walk(data, "");
+
+        const duplicates = [...keysByValue.entries()].filter(([, keys]) => keys.length > 1);
+        expect(duplicates, `duplicate values in ${locale}/${NS}: ${JSON.stringify(duplicates)}`).toEqual([]);
+      });
+    }
+  });
 });

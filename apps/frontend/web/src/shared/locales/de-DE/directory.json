@@ -7,6 +7,12 @@
   "notFoundTitle": "Anbieter nicht gefunden",
   "notFoundBody": "Dieser Anbieter wurde möglicherweise entfernt, oder der Link ist falsch.",
   "backToDirectory": "Zurück zu allen Anbietern",
+  "messageProviderCta": "Nachricht senden",
+  "messageProviderStarting": "Wird gestartet…",
+  "messageProviderError": {
+    "PROVIDER_NOT_CONTACTABLE": "Sie können diesen Anbieter im Moment nicht kontaktieren.",
+    "GENERIC": "Die Unterhaltung konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
+  },
   "noDescription": "Dieser Anbieter hat noch keine Beschreibung hinzugefügt.",
   "searchPlaceholder": "Dienste suchen…",
   "searchLabel": "Leistungen suchen",

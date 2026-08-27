@@ -25,6 +25,12 @@ import {
   bootstrapActivityRead,
   createActivityReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/activity";
+import {
+  bootstrapCommunicationRead,
+  createCommunicationReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/communication";
+import { createCommunicationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/communication";
+import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import { createNotificationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/notification";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { createProviderWriteHandlers } from "@ntizo/backend/modules/ntizo/write/provider";
@@ -86,6 +92,10 @@ export function buildPrivateGraphQLFields(): {
   const notificationRead = bootstrapNotificationRead();
   const notification = bootstrapNotification();
   const activityRead = bootstrapActivityRead();
+  const communicationRead = bootstrapCommunicationRead();
+  const communication = bootstrapCommunication({
+    raiseNotification: notification.useCases.internal.raiseNotification,
+  });
   const workflows = bootstrapProviderWorkflows({
     userInternal: {
       upgradeProfileToProvider: user.useCases.internal.upgradeProfileToProvider,
@@ -107,6 +117,8 @@ export function buildPrivateGraphQLFields(): {
       ...createSchedulingReadHandlers({ scheduling }),
       ...createNotificationReadHandlers({ notificationRead }),
       ...createActivityReadHandlers({ activityRead }),
+      ...createCommunicationReadHandlers({ communicationRead }),
+      ...createCommunicationWriteHandlers({ communication }),
       ...createProviderWriteHandlers({ provider, workflows }),
       ...createCatalogWriteHandlers({ catalog }),
       ...createSchedulingWriteHandlers({ scheduling }),

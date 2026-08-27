@@ -95,6 +95,31 @@ export class DeliverNotificationInternalCommand implements DeliverNotificationIn
     return r ? [r] : [];
   }
 
+  /**
+   * What a template actually receives — the raised payload plus enough of
+   * the envelope to route a CTA correctly.
+   *
+   * `DeliverNotificationInternalInput` already carries `audience` and, for a
+   * workspace notification, `providerId` as fields of its own — the same
+   * ones `RaiseNotificationInput` carries on the way in (see that port's
+   * doc comment) — but until now only `input.payload` ever reached a
+   * template, and neither lives there. Most templates have no reason to
+   * route by audience and simply ignore the two extra keys; the one that
+   * does (`new-message.template.ts`) needs them to link a provider
+   * recipient into `/provider/...` rather than the customer's own
+   * `/messages` — the wrong inbox entirely for a provider team member.
+   *
+   * Not merged onto `RaiseNotificationInput`/`RaiseNotificationInternalPort`
+   * itself: both already carry this data at the top level, one layer closer
+   * to where it is raised. The gap was only ever here, in what got handed
+   * to the renderer.
+   */
+  private templatePayload(input: DeliverNotificationInput): Record<string, unknown> {
+    return input.audience === "provider"
+      ? { ...input.payload, audience: input.audience, providerId: input.providerId }
+      : { ...input.payload, audience: input.audience };
+  }
+
   private async deliverOne(
     input: DeliverNotificationInput,
     recipient: Recipient,
@@ -103,7 +128,7 @@ export class DeliverNotificationInternalCommand implements DeliverNotificationIn
       // Rendered first, because a type with no template should cost nothing —
       // no row, no suppression lookup, no network. A type can reach an inbox
       // before anybody writes its email.
-      const rendered = this.renderer.render(input.type, recipient.locale, input.payload);
+      const rendered = this.renderer.render(input.type, recipient.locale, this.templatePayload(input));
       if (!rendered) return null;
 
       if (await this.suppressions.isSuppressed(recipient.email)) {

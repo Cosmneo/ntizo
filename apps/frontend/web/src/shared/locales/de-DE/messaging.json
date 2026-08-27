@@ -1,0 +1,32 @@
+{
+  "title": "Nachrichten",
+  "listTitle": "Unterhaltungen",
+  "emptyTitle": "Noch keine Unterhaltungen",
+  "emptyBody": "Starte eine über die Seite eines Anbieters, und sie erscheint hier.",
+  "providerEmptyBody": "Sobald dir ein Kunde schreibt, erscheint das Gespräch hier.",
+  "loadMore": "Mehr laden",
+  "unknownProvider": "Anbieter",
+  "unknownCustomer": "Kunde",
+  "noPreview": "Noch keine Nachrichten",
+  "unreadBadge": "{{count}} ungelesene Nachricht",
+  "unreadBadge_other": "{{count}} ungelesene Nachrichten",
+  "back": "Zurück zu den Unterhaltungen",
+  "conversationFallbackTitle": "Unterhaltung",
+  "selectPrompt": "Wähle eine Unterhaltung",
+  "selectPromptBody": "Wähle links eine Unterhaltung aus, um sie zu lesen.",
+  "conversationEmptyTitle": "Sag Hallo",
+  "conversationEmptyBody": "Das ist der Anfang eurer Unterhaltung. Schick die erste Nachricht, wenn du bereit bist.",
+  "loadEarlier": "Frühere Nachrichten laden",
+  "composerPlaceholder": "Schreib eine Nachricht…",
+  "composerLabel": "Nachrichtentext",
+  "charCount": "{{count}}/{{max}}",
+  "send": "Senden",
+  "sending": "Wird gesendet…",
+  "loadError": "Deine Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
+  "sendError": {
+    "VALIDATION_ERROR": "Nachrichten dürfen bis zu 4000 Zeichen lang sein.",
+    "THREAD_NOT_VISIBLE": "Diese Unterhaltung ist nicht mehr verfügbar.",
+    "UNAUTHENTICATED": "Melde dich erneut an, um diese Nachricht zu senden.",
+    "GENERIC": "Diese Nachricht konnte nicht gesendet werden. Bitte versuche es erneut."
+  }
+}

@@ -7,6 +7,12 @@
   "notFoundTitle": "Prestataire introuvable",
   "notFoundBody": "Ce prestataire a peut-être été supprimé, ou le lien est incorrect.",
   "backToDirectory": "Retour à tous les prestataires",
+  "messageProviderCta": "Envoyer un message",
+  "messageProviderStarting": "Démarrage…",
+  "messageProviderError": {
+    "PROVIDER_NOT_CONTACTABLE": "Ce prestataire ne peut pas être contacté pour le moment.",
+    "GENERIC": "Impossible de démarrer la conversation. Veuillez réessayer."
+  },
   "noDescription": "Ce prestataire n'a pas encore ajouté de description.",
   "searchPlaceholder": "Rechercher des services…",
   "searchLabel": "Rechercher des services",
