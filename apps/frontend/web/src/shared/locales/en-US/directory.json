@@ -178,5 +178,38 @@
   "chipVerified": "Verified only",
   "chipRemove": "Remove filter",
   "activeFiltersLabel": "Active filters",
-  "filtersClearAll": "Clear all"
+  "filtersClearAll": "Clear all",
+  "sortOption": {
+    "default": "Suggested",
+    "newest": "Newest",
+    "price": "Price",
+    "rating": "Best rated",
+    "reviews": "Most reviewed",
+    "name": "Name (A–Z)"
+  },
+  "resultsScope": {
+    "all": "in all categories",
+    "category": "in {{category}}",
+    "city": "in {{city}}",
+    "categoryCity": "in {{category}}, {{city}}"
+  },
+  "heroBadgeServices": "No haggling",
+  "heroBadgeServicesBody": "price and duration settled before you book",
+  "heroSubtitleServices": "Pick the job, see what it costs and how long it takes, and agree a time.",
+  "heroBadgeProviders": "Verified",
+  "heroBadgeProvidersBody": "documents checked by Ntizo, one by one",
+  "heroSubtitleProviders": "People and businesses with prices in the open and reviews written by the customers who hired them.",
+  "searchFieldService": "Service",
+  "searchFieldServiceEmpty": "What do you need done?",
+  "searchFieldProvider": "Provider",
+  "searchFieldProviderEmpty": "Business or professional name",
+  "searchFieldCity": "City",
+  "searchFieldCityEmpty": "Anywhere",
+  "pagerLabel": "Pages",
+  "stubProviderRating": "provider rating",
+  "stubQuoteAmount": "To agree",
+  "stubPerService": "per service",
+  "mobileSearchOpen": "Search",
+  "mobileSearchTitle": "What are you looking for?",
+  "mobileSearchApply": "Show results"
 }

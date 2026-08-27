@@ -178,5 +178,38 @@
   "chipVerified": "Só verificados",
   "chipRemove": "Remover filtro",
   "activeFiltersLabel": "Filtros activos",
-  "filtersClearAll": "Limpar tudo"
+  "filtersClearAll": "Limpar tudo",
+  "sortOption": {
+    "default": "Sugeridos",
+    "newest": "Mais recentes",
+    "price": "Preço",
+    "rating": "Melhor avaliados",
+    "reviews": "Mais avaliados",
+    "name": "Nome (A–Z)"
+  },
+  "resultsScope": {
+    "all": "em todas as categorias",
+    "category": "em {{category}}",
+    "city": "em {{city}}",
+    "categoryCity": "em {{category}}, {{city}}"
+  },
+  "heroBadgeServices": "Sem regateio",
+  "heroBadgeServicesBody": "preço e duração fechados antes de reservar",
+  "heroSubtitleServices": "Escolha o trabalho, veja quanto custa e quanto demora, e combine a hora.",
+  "heroBadgeProviders": "Verificados",
+  "heroBadgeProvidersBody": "documentos conferidos pela Ntizo, um a um",
+  "heroSubtitleProviders": "Pessoas e negócios com preços à vista e avaliações escritas por quem já os contratou.",
+  "searchFieldService": "Serviço",
+  "searchFieldServiceEmpty": "O que precisa de fazer?",
+  "searchFieldProvider": "Prestador",
+  "searchFieldProviderEmpty": "Nome do negócio ou profissional",
+  "searchFieldCity": "Cidade",
+  "searchFieldCityEmpty": "Em qualquer cidade",
+  "pagerLabel": "Páginas",
+  "stubProviderRating": "nota do prestador",
+  "stubQuoteAmount": "A combinar",
+  "stubPerService": "por serviço",
+  "mobileSearchOpen": "Procurar",
+  "mobileSearchTitle": "O que procura?",
+  "mobileSearchApply": "Ver resultados"
 }
