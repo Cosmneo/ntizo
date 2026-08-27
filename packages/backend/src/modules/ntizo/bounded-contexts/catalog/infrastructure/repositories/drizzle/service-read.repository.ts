@@ -177,9 +177,14 @@ export function orderByFor(sort: ListPublishedServicesFilter["sort"]) {
     ? [desc(service.createdAt)]
     : sort === "price"
       ? [
-          // NULLS LAST, spelled out. Postgres sorts nulls FIRST under ASC by
-          // default, which would put every quote service — the ones with no
-          // price at all — at the top of "cheapest first".
+          // NULLS LAST, spelled out even though ASC already defaults to it:
+          // ASC and DESC do not share a default. DESC defaults to NULLS
+          // FIRST, so a later "most expensive first" order added by flipping
+          // this to desc() would silently move every quote service — the
+          // ones with no price at all — to the very top, the one position
+          // they cannot honestly hold. Spelling it out here means that
+          // change has to touch this clause, not rely on a default that
+          // flips with the direction.
           sql`(${cheapestActiveOption}) asc nulls last`,
           // Breaks ties, so two services at 800 MZN do not swap places
           // between requests and reappear on the next page.

@@ -14,11 +14,14 @@ import { orderByFor } from "../infrastructure/repositories/drizzle/service-read.
 const db = drizzle(postgres("postgres://user:pass@localhost:5999/nonexistent", { prepare: false, max: 1 }));
 
 describe("orderByFor", () => {
-  it("sorts by price with nulls last, so a quote service does not read as free", () => {
-    // Postgres sorts nulls FIRST under ASC by default, which would put every
-    // quote service — the ones with no price at all — at the top of
-    // "cheapest first". `nulls last` is the one thing this test exists to
-    // guard.
+  it("sorts by price with an explicit nulls last, not a default it happens to share", () => {
+    // ASC already defaults to NULLS LAST — this assertion is not guarding
+    // against Postgres's default, it is guarding against the clause being
+    // "simplified" away. DESC defaults the other way, to NULLS FIRST, so a
+    // later "most expensive first" order built by flipping this to desc()
+    // would silently move every quote service — the ones with no price at
+    // all — to the top, and nothing would fail to say so. `nulls last`
+    // spelled out here is what a direction change has to touch.
     const { sql } = db.select().from(service).orderBy(...orderByFor("price")).toSQL();
     expect(sql.toLowerCase()).toContain("nulls last");
   });
