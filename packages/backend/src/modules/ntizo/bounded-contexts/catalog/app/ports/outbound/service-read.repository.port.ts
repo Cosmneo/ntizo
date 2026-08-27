@@ -134,6 +134,8 @@ export interface ListPublishedServicesFilter {
   paymentMode?: string | undefined;
   /** `individual` or `organization`. Absent means both. */
   providerType?: string | undefined;
+  /** The provider's city. A `remote` service matches every city — it has none. */
+  city?: string | undefined;
   /**
    * A locale the service is *written in* — matched against
    * `service_translation`, not against anything the provider speaks.
@@ -213,6 +215,19 @@ export interface ServiceReadRepositoryPort {
    * forget.
    */
   getPublishedById(id: string): Promise<ServiceDetailRow | null>;
+  /**
+   * The cities that currently have a published service, with how many.
+   *
+   * Read from the data rather than from the reference `city` table, so the
+   * filter never offers a place that returns nothing — a chip reading
+   * "Nampula 0" is a control whose only outcome is an empty page. The same
+   * rule `DrizzleProviderPublicRepository.listCityFacets` follows.
+   *
+   * Unfiltered on purpose: the options a filter offers must not shrink as that
+   * filter is used, or somebody who picked Matola is stranded with no way back
+   * to Maputo.
+   */
+  listCityFacets(): Promise<{ city: string; count: number }[]>;
 }
 
 export type { ServiceOwnerDTO };

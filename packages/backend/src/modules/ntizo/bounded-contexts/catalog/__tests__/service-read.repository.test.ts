@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { and } from "drizzle-orm";
 import { service } from "../../../shared/infrastructure/database/catalog/schemas";
-import { orderByFor } from "../infrastructure/repositories/drizzle/service-read.repository";
+import { conditionsFor, orderByFor } from "../infrastructure/repositories/drizzle/service-read.repository";
 
 /**
  * `orderByFor`'s generated SQL, not a live database.
@@ -37,5 +38,20 @@ describe("orderByFor", () => {
       const { sql } = db.select().from(service).orderBy(...orderByFor(sort)).toSQL();
       expect(sql.toLowerCase()).toContain("sort_order");
     }
+  });
+});
+
+describe("conditionsFor — city", () => {
+  it("never hides a remote service behind a city filter", () => {
+    // A remote service has no geography at all. Excluding it from "Maputo"
+    // silently removes every online listing from a filter the reader thinks
+    // narrows by where the *work* happens.
+    const { sql } = db
+      .select()
+      .from(service)
+      .where(and(...conditionsFor(db as never, { city: "Maputo" })))
+      .toSQL();
+    expect(sql).toContain("location_type");
+    expect(sql.toLowerCase()).toContain("or");
   });
 });

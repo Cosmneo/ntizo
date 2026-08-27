@@ -65,6 +65,11 @@ class FakeServiceReadRepository implements ServiceReadRepositoryPort {
   async getPublishedById(): Promise<null> {
     return null;
   }
+
+  // Present only to satisfy the port; this suite never calls it.
+  async listCityFacets(): Promise<{ city: string; count: number }[]> {
+    return [];
+  }
 }
 
 function makeModule(repo: FakeServiceReadRepository) {
@@ -235,6 +240,11 @@ class FixedServiceReadRepository implements ServiceReadRepositoryPort {
   async getPublishedById(): Promise<null> {
     return null;
   }
+
+  // Present only to satisfy the port; this suite never calls it.
+  async listCityFacets(): Promise<{ city: string; count: number }[]> {
+    return [];
+  }
 }
 
 /**
@@ -267,6 +277,11 @@ describe("ListMyServicesProjection images", () => {
     // assert against data no repository produces.
     async getPublishedById(): Promise<null> {
       return null;
+    }
+
+    // Present only to satisfy the port; this suite never calls it.
+    async listCityFacets(): Promise<{ city: string; count: number }[]> {
+      return [];
     }
   }
 

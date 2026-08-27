@@ -32,6 +32,7 @@ export const Route = createFileRoute("/services/")({
     paymentMode?: string;
     providerType?: string;
     language?: string;
+    city?: string;
     minPrice?: number;
     maxPrice?: number;
     q?: string;
@@ -75,6 +76,10 @@ export const Route = createFileRoute("/services/")({
       typeof rawLanguage === "string" && (LOCALES as readonly string[]).includes(rawLanguage)
         ? rawLanguage
         : undefined;
+    // Capped at the 120 the schema accepts. A longer string would fail
+    // validation at the server and blank the page, with no way for the reader
+    // to see why.
+    const city = typeof search["city"] === "string" ? search["city"].trim().slice(0, 120) : "";
     // Whole units of currency, as a person would type them — the URL is a link
     // somebody reads and sends, and `minPrice=350` is that; `minPrice=35000`
     // is an implementation detail leaking into it. The conversion to minor
@@ -99,6 +104,7 @@ export const Route = createFileRoute("/services/")({
       ...(paymentMode ? { paymentMode } : {}),
       ...(providerType ? { providerType } : {}),
       ...(language ? { language } : {}),
+      ...(city ? { city } : {}),
       ...(minPrice != null ? { minPrice } : {}),
       ...(maxPrice != null ? { maxPrice } : {}),
       ...(q ? { q } : {}),
@@ -112,6 +118,7 @@ export const Route = createFileRoute("/services/")({
     paymentMode: search.paymentMode,
     providerType: search.providerType,
     language: search.language,
+    city: search.city,
     minPrice: search.minPrice,
     maxPrice: search.maxPrice,
     q: search.q,

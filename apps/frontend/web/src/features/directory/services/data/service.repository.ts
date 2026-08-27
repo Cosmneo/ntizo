@@ -32,6 +32,16 @@ const ALL = `
     }
   }`;
 
+const CITIES = `
+  query ServiceCities {
+    serviceCities(input: {}) { city count }
+  }`;
+
+export interface ServiceCityFacet {
+  city: string;
+  count: number;
+}
+
 /**
  * How many of a provider's own services the public page asks for at once.
  *
@@ -71,6 +81,7 @@ export const browseServicesQueries = {
     paymentMode?: string | undefined;
     providerType?: string | undefined;
     language?: string | undefined;
+    city?: string | undefined;
     minPriceMinor?: number | undefined;
     maxPriceMinor?: number | undefined;
     q?: string | undefined;
@@ -90,6 +101,7 @@ export const browseServicesQueries = {
         input.paymentMode ?? null,
         input.providerType ?? null,
         input.language ?? null,
+        input.city ?? null,
         input.minPriceMinor ?? null,
         input.maxPriceMinor ?? null,
         input.q ?? null,
@@ -105,6 +117,7 @@ export const browseServicesQueries = {
             ...(input.paymentMode ? { paymentMode: input.paymentMode } : {}),
             ...(input.providerType ? { providerType: input.providerType } : {}),
             ...(input.language ? { language: input.language } : {}),
+            ...(input.city ? { city: input.city } : {}),
             // `!== undefined`, not truthiness: a lower bound of 0 is a bound
             // somebody set, and `if (min)` would silently drop "from free".
             ...(input.minPriceMinor !== undefined ? { minPriceMinor: input.minPriceMinor } : {}),
@@ -116,6 +129,23 @@ export const browseServicesQueries = {
           },
         });
         return d.serviceAll;
+      },
+    }),
+
+  /**
+   * The cities the filter may offer.
+   *
+   * Its own query, and deliberately not keyed on the current filters — the
+   * same reason `directoryQueries.cities` isn't: a city list that shrank as
+   * you filtered would strand somebody who picked Matola with no way back to
+   * Maputo.
+   */
+  cities: () =>
+    queryOptions({
+      queryKey: ["public", "service-cities"] as const,
+      queryFn: async (): Promise<ServiceCityFacet[]> => {
+        const d = await publicGraphql<{ serviceCities: ServiceCityFacet[] }>(CITIES, {});
+        return d.serviceCities;
       },
     }),
 };

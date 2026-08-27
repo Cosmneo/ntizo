@@ -399,6 +399,7 @@ describe("mapListServicesInput", () => {
         categoryCode: "hair",
         providerId: "prov-1",
         locationType: "remote",
+        city: "Maputo",
         q: "corte",
         sort: "newest",
         limit: 12,
@@ -409,6 +410,7 @@ describe("mapListServicesInput", () => {
       categoryCode: "hair",
       providerId: "prov-1",
       locationType: "remote",
+      city: "Maputo",
       q: "corte",
       sort: "newest",
       limit: 12,
@@ -425,6 +427,7 @@ describe("mapListServicesInput", () => {
       categoryCode: undefined,
       providerId: undefined,
       locationType: undefined,
+      city: undefined,
       q: undefined,
       sort: undefined,
       limit: 24,
@@ -506,5 +509,52 @@ describe("ListServicesProjection — total", () => {
     });
     expect(out.total).toBe(0);
     expect(out.nextOffset).toBeNull();
+  });
+});
+
+describe("ListServicesProjection — city", () => {
+  it("passes the city through to the repository", async () => {
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      city: "Maputo",
+      limit: 24,
+      offset: 0,
+    });
+    expect(repo.listedWith).toMatchObject({ city: "Maputo" });
+  });
+
+  it("trims the city, so a trailing space from a picker is not a different place", async () => {
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      city: "  Maputo  ",
+      limit: 24,
+      offset: 0,
+    });
+    expect(repo.listedWith).toMatchObject({ city: "Maputo" });
+  });
+
+  it("treats a blank city as no filter at all", async () => {
+    // `?city=` is a URL somebody can produce by clearing the field.
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      city: "   ",
+      limit: 24,
+      offset: 0,
+    });
+    expect((repo.listedWith as { city?: string }).city).toBeUndefined();
+  });
+
+  it("counts with the city too", async () => {
+    const repo = new FakeRepo([row()], 1);
+    await new ListServicesProjection(repo as never).execute({
+      locale: "pt-MZ",
+      city: "Maputo",
+      limit: 24,
+      offset: 0,
+    });
+    expect(repo.countedWith).toMatchObject({ city: "Maputo" });
   });
 });

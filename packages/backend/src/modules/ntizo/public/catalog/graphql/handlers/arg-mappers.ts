@@ -27,6 +27,7 @@ export function mapListServicesInput(input: {
   locationType?: string | undefined;
   paymentMode?: string | undefined;
   providerType?: string | undefined;
+  city?: string | undefined;
   language?: string | undefined;
   minPriceMinor?: number | undefined;
   maxPriceMinor?: number | undefined;
@@ -42,6 +43,7 @@ export function mapListServicesInput(input: {
     locationType: input.locationType,
     paymentMode: input.paymentMode,
     providerType: input.providerType,
+    city: input.city,
     language: input.language,
     minPriceMinor: input.minPriceMinor,
     maxPriceMinor: input.maxPriceMinor,

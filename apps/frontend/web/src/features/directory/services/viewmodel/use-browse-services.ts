@@ -22,6 +22,8 @@ export interface BrowseNarrowing {
   providerType?: string | undefined;
   /** A locale the listing is written in — not a language anybody speaks. */
   language?: string | undefined;
+  /** The provider's city. A `remote` service matches every city — it has none. */
+  city?: string | undefined;
   /**
    * Inclusive bounds on the cheapest option, in *whole* units of currency.
    *
@@ -60,6 +62,7 @@ export function useBrowseServices(narrowing: BrowseNarrowing): ServicePageDTO {
       paymentMode: narrowing.paymentMode,
       providerType: narrowing.providerType,
       language: narrowing.language,
+      city: narrowing.city,
       minPriceMinor: toMinor(narrowing.minPrice),
       maxPriceMinor: toMinor(narrowing.maxPrice),
       q: narrowing.q,
@@ -93,6 +96,7 @@ export function prefetchBrowseServices(
       paymentMode: narrowing.paymentMode,
       providerType: narrowing.providerType,
       language: narrowing.language,
+      city: narrowing.city,
       minPriceMinor: toMinor(narrowing.minPrice),
       maxPriceMinor: toMinor(narrowing.maxPrice),
       q: narrowing.q,

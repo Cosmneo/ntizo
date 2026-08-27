@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, exists, gte, ilike, inArray, lte, min, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, gte, ilike, inArray, isNotNull, lte, min, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   category,
@@ -52,6 +52,28 @@ export function conditionsFor(
   if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
   if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
   if (filter.providerType) conditions.push(eq(provider.type, filter.providerType));
+  if (filter.city) {
+    // A service has no city of its own — it has a `locationType`. The place
+    // is the *provider's*, which is right for `at_provider` and
+    // `at_customer` work: "in Maputo" means the business is there.
+    //
+    // It is wrong for `remote`, which has no geography at all, so a remote
+    // service matches every city rather than none. Excluding them would
+    // silently drop every online listing from a filter the reader believes
+    // narrows by where the work happens — and they would have no way to
+    // discover it, because the filter's label says "city", not "excludes
+    // anything without one".
+    conditions.push(
+      or(
+        eq(service.locationType, "remote"),
+        // `ilike` and not `eq`: the city arrives from a free-text combobox
+        // (`CitySelect` lets people type their own), so "maputo" and
+        // "Maputo" are one place. No wildcards — this is an exact match
+        // that ignores case, not a prefix search.
+        ilike(provider.addressCity, filter.city),
+      )!,
+    );
+  }
   if (filter.paymentMode === "quote") {
     conditions.push(eq(service.bookingMode, "quote"));
   } else if (filter.paymentMode === "fixed" || filter.paymentMode === "hourly") {
@@ -572,6 +594,35 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       fromAmountMinor: options.length ? (options[0]?.amountMinor ?? null) : null,
       optionCount: options.length,
     };
+  }
+
+  /**
+   * The cities that currently have a published service, with how many.
+   *
+   * Mirrors `DrizzleProviderPublicRepository.listCityFacets` field for field,
+   * including its blank-string guard: a provider row can carry `''` for a
+   * city nobody filled in, and it would reach the filter as a chip with no
+   * label whose only outcome is an empty page.
+   */
+  async listCityFacets(): Promise<{ city: string; count: number }[]> {
+    const rows = await getDb()
+      .select({ city: provider.addressCity, count: sql<number>`count(*)` })
+      .from(service)
+      .innerJoin(provider, eq(provider.id, service.providerId))
+      .where(
+        and(
+          eq(service.status, "published"),
+          eq(provider.status, "active"),
+          isNotNull(provider.addressCity),
+          sql`btrim(${provider.addressCity}) <> ''`,
+        ),
+      )
+      .groupBy(provider.addressCity)
+      .orderBy(asc(provider.addressCity));
+
+    return rows
+      .filter((r): r is { city: string; count: number } => r.city !== null)
+      .map((r) => ({ city: r.city, count: Number(r.count) }));
   }
 }
 

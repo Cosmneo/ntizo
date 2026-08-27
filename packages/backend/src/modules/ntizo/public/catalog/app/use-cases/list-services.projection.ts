@@ -25,6 +25,8 @@ export interface ListServicesInput {
   paymentMode?: string | undefined;
   /** `individual` or `organization`. Absent means both. */
   providerType?: string | undefined;
+  /** The provider's city. A `remote` service matches every city — it has none. */
+  city?: string | undefined;
   /** A locale the listing is written in — not a language anyone speaks. */
   language?: string | undefined;
   /** Inclusive bounds on the cheapest active option, in minor units. */
@@ -103,6 +105,10 @@ export class ListServicesProjection {
     // spaces is truthy, and would narrow the browse to names containing a
     // space.
     const q = input.q?.trim();
+    // Trimmed and blank-normalised for the same reason `q` is: a picker leaves
+    // a trailing space, and a string of spaces is truthy — it would narrow the
+    // browse to a city nobody is in.
+    const city = input.city?.trim() || undefined;
 
     // The same object both calls receive, so a filter added to one can never
     // be forgotten by the other.
@@ -112,6 +118,7 @@ export class ListServicesProjection {
       locationType: input.locationType,
       paymentMode: input.paymentMode,
       providerType: input.providerType,
+      city,
       language: input.language,
       minPriceMinor: input.minPriceMinor,
       maxPriceMinor: input.maxPriceMinor,
