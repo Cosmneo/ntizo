@@ -47,9 +47,10 @@ export interface ListServicesOutput {
   /**
    * Where the next page starts, or null at the end.
    *
-   * A cursor rather than a total, matching `ListCategoriesOutput`: the page
-   * loads as it is scrolled, and what it needs to know is "is there more and
-   * from where", not how many there are altogether.
+   * A cursor, the same shape `ListCategoriesOutput` uses: it lets a caller
+   * page forward by handing this straight back as the next request's
+   * `offset`, without recomputing one from `total`. See `total`'s own
+   * comment for why this projection reports both now.
    */
   nextOffset: number | null;
   /**
