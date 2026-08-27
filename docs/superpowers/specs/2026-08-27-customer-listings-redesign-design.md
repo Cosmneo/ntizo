@@ -215,9 +215,11 @@ Following the `activity` precedent, which is the project's small-context shape:
   disagree about which one to send. It returns the resulting state so an
   optimistic update can be reconciled rather than guessed.
 - `read/favourite/` — two queries:
-  - `favouriteAll` — the `/favourites` page. Paged, ordered by `created_at`
+  - `favouriteMine` — the `/favourites` page. Paged, ordered by `created_at`
     descending, resolving each target into the same `ServiceDTO` /
-    `ProviderPublicDTO` the listings already use.
+    `ProviderPublicDTO` the listings already use. Named `mine` rather than
+    `all` to match `activity.mine` and `communication.myThreads`: the word is
+    how this codebase says "the caller's own, and nobody else's".
   - `favouriteMarked` — **takes the ids currently on screen and returns which
     of them are saved**, rather than returning every id the reader has ever
     saved. A reader with two thousand favourites must not ship two thousand
@@ -330,7 +332,7 @@ Behaviour, not markup. The existing suites under
   puts unpriced services last and never before a cheaper priced one;
   `serviceCities` counts are unaffected by the current city filter; the
   favourite unique constraint makes a double toggle idempotent, and a
-  favourite pointing at an unpublished service is omitted from `favouriteAll`
+  favourite pointing at an unpublished service is omitted from `favouriteMine`
   rather than erroring.
 - **Accessibility** — one tab stop per card for the destination plus the two
   controls; facet links carry `aria-pressed` and their decorative box is

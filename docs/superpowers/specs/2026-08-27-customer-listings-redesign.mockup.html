@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ntizo — listas de serviços e prestadores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* --- design system existente --- */
+  --primary:#006ffd;
+  --primary-fg:#ffffff;
+  --fg:#13171b;
+  --muted-fg:#71727a;
+  --border:#e5e5e5;
+  --tint:#f2f8fe;
+  --bg:#ffffff;
+  --success:#21b872;
+  --warning:#ffb020;
+  --r-field:8px;
+  --r-card-sm:12px;
+  --r-card:16px;
+
+  /* --- tokens NOVOS propostos --- */
+  --ground:#eef2f9;          /* fundo da página; cartões brancos passam a ler-se como objectos */
+  --border-strong:#d7dbe3;   /* separadores com peso — a perfuração do canhoto */
+  --primary-deep:#0a4fbd;    /* hover do CTA, halo do hero */
+  --shadow-xs:0 1px 2px rgba(19,23,27,.05);
+  --shadow-sm:0 1px 3px rgba(19,23,27,.06),0 6px 16px -10px rgba(19,23,27,.14);
+  --shadow-lift:0 2px 4px rgba(19,23,27,.06),0 16px 34px -18px rgba(19,23,27,.24);
+  --shadow-float:0 10px 34px -14px rgba(13,32,64,.22),0 2px 6px rgba(19,23,27,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#eef1f6;color:var(--fg);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+
+/* ---------- escala tipográfica (existente + .t-display novo) ---------- */
+.t-display{font-family:Poppins,sans-serif;font-weight:600;font-size:clamp(30px,3.6vw,42px);line-height:1.1;letter-spacing:-.025em}
+.t-h1{font-family:Poppins,sans-serif;font-weight:600;font-size:28px;line-height:1.25;letter-spacing:-.01em}
+.t-h2{font-family:Poppins,sans-serif;font-weight:600;font-size:22px;line-height:1.3;letter-spacing:-.01em}
+.t-h3{font-family:Poppins,sans-serif;font-weight:500;font-size:18px;line-height:1.35}
+.t-body{font-size:15px;line-height:1.55}
+.t-bodym{font-size:14px;font-weight:500;line-height:1.5}
+.t-cap{font-size:12px;line-height:1.45}
+.eyebrow{font-size:11px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-fg)}
+.num{font-family:Poppins,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+/* ================= chrome do documento de apresentação ================= */
+.doc-bar{position:sticky;top:0;z-index:100;background:#0f1523;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.doc-bar strong{font-family:Poppins,sans-serif;font-weight:600;font-size:14px;letter-spacing:-.01em}
+.doc-bar span{font-size:12px;color:#9aa4b8}
+.doc-bar nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.doc-bar nav a{font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;background:#1c2436;color:#c7d0e2}
+.doc-bar nav a:hover{background:#2a3549;color:#fff}
+.doc-h{max-width:1080px;margin:56px auto 20px;padding:0 24px}
+.doc-h h2{font-family:Poppins,sans-serif;font-weight:600;font-size:26px;letter-spacing:-.02em}
+.doc-h p{color:#5a6376;font-size:14px;margin-top:6px;max-width:62ch}
+.frame{max-width:1480px;margin:0 auto 8px;padding:0 24px}
+.frame-inner{border-radius:20px;overflow:hidden;box-shadow:0 24px 60px -30px rgba(13,32,64,.4);border:1px solid #dfe4ec}
+.scroller{overflow-x:auto;background:var(--ground)}
+.viewport{min-width:1360px}
+.note{max-width:1080px;margin:16px auto 0;padding:0 24px;display:grid;gap:8px}
+.note p{font-size:13px;color:#5a6376;padding-left:22px;position:relative}
+.note p::before{content:"";position:absolute;left:6px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--primary)}
+.note b{color:#1b2330;font-weight:600}
+
+/* ================= a aplicação ================= */
+.app{background:var(--ground);font-family:Inter,sans-serif}
+.shell{width:min(1320px,100% - 3rem);margin-inline:auto}
+
+/* --- cabeçalho --- */
+.site-header{background:var(--bg);border-bottom:1px solid var(--border)}
+.site-header .shell{height:76px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px}
+.logo{font-family:Poppins,sans-serif;font-weight:600;font-size:22px;letter-spacing:-.03em;color:var(--primary)}
+.logo i{font-style:normal;color:var(--fg)}
+.nav-pill{justify-self:center;display:flex;gap:2px;background:var(--tint);padding:4px;border-radius:999px}
+.nav-pill a{display:flex;align-items:center;gap:7px;padding:9px 17px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted-fg)}
+.nav-pill a:hover{color:var(--fg)}
+.nav-pill a.on{background:var(--primary);color:#fff}
+.header-right{justify-self:end;display:flex;align-items:center;gap:14px}
+.lang{font-size:13px;font-weight:600;color:var(--muted-fg)}
+.btn-ghost{border:1px solid var(--border);background:var(--bg);border-radius:999px;padding:10px 18px;font-size:14px;font-weight:700;font-family:Poppins,sans-serif}
+.btn-ghost:hover{border-color:var(--muted-fg)}
+.avatar{width:38px;height:38px;border-radius:999px;background:var(--fg);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:.04em}
+
+/* --- hero --- */
+.hero{position:relative;padding:56px 0 0}
+.hero::before{content:"";position:absolute;inset:0 0 auto;height:300px;
+  background:radial-gradient(58% 100% at 50% 0%,color-mix(in srgb,var(--primary) 16%,transparent) 0%,transparent 72%);
+  pointer-events:none}
+.hero-copy{position:relative;text-align:center;max-width:44rem;margin-inline:auto}
+.hero-copy .t-display{max-width:20ch;margin-inline:auto}
+.hero-copy p{color:var(--muted-fg);margin-top:12px;font-size:16px}
+.hero-copy .kicker{display:inline-flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);
+  border-radius:999px;padding:6px 14px 6px 8px;margin-bottom:18px;box-shadow:var(--shadow-xs)}
+.hero-copy .kicker b{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);
+  background:color-mix(in srgb,var(--primary) 10%,transparent);border-radius:999px;padding:3px 9px}
+.hero-copy .kicker span{font-size:13px;color:var(--muted-fg)}
+
+/* barra de busca — sobrepõe a base do hero */
+.searchbar{position:relative;margin:34px auto -42px;max-width:1000px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r-card);box-shadow:var(--shadow-float);display:grid;grid-template-columns:1fr 1fr auto;align-items:stretch;padding:8px}
+.sfield{display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:var(--r-card-sm);position:relative;text-align:left}
+.sfield + .sfield::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:1px;background:var(--border)}
+.sfield:hover{background:var(--ground)}
+.sfield .ic{width:34px;height:34px;border-radius:10px;background:var(--tint);display:grid;place-items:center;flex:none;color:var(--primary)}
+.sfield .lbl{display:grid;gap:1px}
+.sfield .lbl b{font-size:12.5px;font-weight:600}
+.sfield .lbl span{font-size:13.5px;color:var(--muted-fg)}
+.btn-primary{background:var(--primary);color:#fff;border-radius:var(--r-card-sm);padding:0 40px;font-family:Poppins,sans-serif;
+  font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:9px;transition:background .15s}
+.btn-primary:hover{background:var(--primary-deep)}
+.hero-rule{height:26px}
+
+/* --- rail de categorias --- */
+.rail{background:var(--ground);border-bottom:1px solid var(--border)}
+.rail-wrap{position:relative}
+.rail-wrap::before,.rail-wrap::after{content:"";position:absolute;top:0;bottom:0;width:56px;z-index:2;pointer-events:none}
+.rail-wrap::before{left:0;background:linear-gradient(90deg,var(--ground),transparent)}
+.rail-wrap::after{right:0;background:linear-gradient(270deg,var(--ground),transparent)}
+.rail .shell{display:flex;gap:8px;overflow-x:auto;padding:16px 0 15px;scrollbar-width:none}
+.rail .shell::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--border);background:var(--bg);border-radius:999px;padding:9px 17px;font-size:13.5px;
+  font-weight:500;color:var(--fg);white-space:nowrap;transition:border-color .15s,background .15s}
+.chip:hover{border-color:var(--muted-fg)}
+.chip.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);color:var(--primary);font-weight:600}
+.rail-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:34px;height:34px;border-radius:999px;
+  background:var(--bg);border:1px solid var(--border);box-shadow:var(--shadow-sm);display:grid;place-items:center;color:var(--fg)}
+.rail-arrow.r{right:12px}
+.rail-arrow.l{left:12px;opacity:.35}
+
+/* --- corpo --- */
+.body-grid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:44px;align-items:start;padding:30px 0 64px}
+
+/* facetas */
+.facets{position:sticky;top:20px;display:grid}
+.facets-head{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:14px}
+.facets-head h2{font-family:Poppins,sans-serif;font-weight:600;font-size:16px}
+.facets-head a{font-size:12.5px;font-weight:600;color:var(--primary)}
+.fgroup{border-top:1px solid var(--border);padding:16px 0}
+.fgroup > h3{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px}
+.fopt{display:flex;align-items:center;gap:11px;padding:6px 0;font-size:14px;color:var(--fg)}
+.fopt:hover .box{border-color:var(--primary)}
+.box{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border-strong);background:var(--bg);flex:none;
+  display:grid;place-items:center;transition:border-color .15s,background .15s}
+.fopt.on .box{background:var(--primary);border-color:var(--primary)}
+.fopt.on{font-weight:600}
+.box svg{opacity:0}
+.fopt.on .box svg{opacity:1}
+.fopt .n{margin-left:auto;font-size:12.5px;color:var(--muted-fg);font-variant-numeric:tabular-nums}
+.range{display:flex;align-items:center;gap:8px;margin-top:4px}
+.range input{width:100%;border:1px solid var(--border);background:var(--bg);border-radius:var(--r-field);padding:9px 11px;font:inherit;font-size:13.5px}
+.range span{color:var(--muted-fg);font-size:13px}
+
+/* barra de resultados */
+.rbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-bottom:6px}
+.rcount{font-size:15px;color:var(--muted-fg)}
+.rcount b{color:var(--fg);font-weight:600}
+.segmented{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:4px}
+.segmented a{padding:7px 15px;border-radius:999px;font-size:13px;font-weight:500;color:var(--muted-fg);white-space:nowrap}
+.segmented a:hover{color:var(--fg)}
+.segmented a.on{background:var(--fg);color:#fff;font-weight:600}
+.active-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 0 4px}
+.afchip{display:inline-flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);
+  border-radius:999px;padding:6px 8px 6px 13px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-xs)}
+.afchip button{width:18px;height:18px;border-radius:999px;background:var(--ground);display:grid;place-items:center;color:var(--muted-fg)}
+.afchip button:hover{background:var(--fg);color:#fff}
+.af-clear{font-size:12.5px;font-weight:600;color:var(--primary);margin-left:2px}
+
+/* ---------- O CARTÃO ---------- */
+.results{display:grid;gap:14px;margin-top:16px}
+.rcard{position:relative;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-card);
+  padding:16px;display:grid;grid-template-columns:238px minmax(0,1fr) 196px;gap:22px;
+  box-shadow:var(--shadow-xs);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.rcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift);border-color:color-mix(in srgb,var(--primary) 34%,var(--border))}
+
+.media{position:relative;aspect-ratio:4/3;border-radius:var(--r-card-sm);overflow:hidden;background:var(--tint)}
+.media img{width:100%;height:100%;object-fit:cover}
+/* mosaico gerado quando não há fotografia: matiz derivado da categoria + ícone + iniciais */
+.ph{width:100%;height:100%;display:grid;place-items:center;position:relative}
+.ph::after{content:attr(data-i);font-family:Poppins,sans-serif;font-weight:600;font-size:26px;letter-spacing:.02em;
+  color:rgba(255,255,255,.92);position:relative;z-index:2}
+.ph svg{position:absolute;width:64%;height:64%;opacity:.22;color:#fff;z-index:1}
+.ph.c-hair{background:linear-gradient(140deg,#8a6bd6,#5b3fb0)}
+.ph.c-elec{background:linear-gradient(140deg,#f0a63c,#d4711c)}
+.ph.c-clean{background:linear-gradient(140deg,#3fb6c9,#1c7f96)}
+.ph.c-music{background:linear-gradient(140deg,#e2698d,#b23b68)}
+.ph.c-plumb{background:linear-gradient(140deg,#4f8ff5,#1f57c4)}
+.heart{position:absolute;top:10px;right:10px;z-index:3;width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.93);
+  backdrop-filter:blur(6px);display:grid;place-items:center;color:var(--fg);box-shadow:var(--shadow-xs);transition:transform .15s}
+.heart:hover{transform:scale(1.08)}
+.heart.on{color:#e5397a}
+.badge{position:absolute;top:10px;left:10px;z-index:3;background:var(--fg);color:#fff;border-radius:999px;
+  padding:5px 11px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.badge.gold{background:var(--warning);color:var(--fg)}
+
+.body{min-width:0;display:flex;flex-direction:column;gap:7px;padding-top:2px}
+.metaline{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted-fg)}
+.metaline .dot{width:3px;height:3px;border-radius:999px;background:var(--border-strong)}
+.metaline .dur{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--fg)}
+.rcard h3{font-family:Poppins,sans-serif;font-weight:600;font-size:19px;line-height:1.28;letter-spacing:-.015em}
+.rcard h3 a::after{content:"";position:absolute;inset:0;border-radius:var(--r-card)}
+.by{font-size:13.5px;color:var(--muted-fg)}
+.by b{color:var(--fg);font-weight:600}
+.desc{font-size:13.5px;color:var(--muted-fg);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto;padding-top:6px}
+.tag{font-size:12px;border-radius:7px;padding:4px 9px;background:var(--ground);color:var(--muted-fg);border:1px solid transparent}
+.tag.cat{background:color-mix(in srgb,var(--primary) 8%,transparent);color:var(--primary);font-weight:600}
+.tag.ok{background:color-mix(in srgb,var(--success) 11%,transparent);color:#177a4c;font-weight:600;
+  display:inline-flex;align-items:center;gap:5px}
+
+/* ---- A ASSINATURA: a calha de preço como canhoto de bilhete ---- */
+.stub{position:relative;padding-left:22px;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:12px}
+.stub::before{content:"";position:absolute;left:0;top:-2px;bottom:-2px;width:0;
+  border-left:1.5px dashed var(--border-strong)}
+.stub .notch{position:absolute;left:-6px;width:12px;height:12px;border-radius:999px;background:var(--ground);box-shadow:0 0 0 1px var(--border)}
+.stub .notch.t{top:-23px}
+.stub .notch.b{bottom:-23px}
+.rating{display:flex;align-items:center;gap:6px;font-size:13px}
+.rating .star{color:var(--warning)}
+.rating b{font-family:Poppins,sans-serif;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.rating span{color:var(--muted-fg);font-size:12.5px}
+.rating .who{display:block;text-align:right;color:var(--muted-fg);font-size:11px;margin-top:1px}
+.price-block{text-align:right;display:grid;gap:1px}
+.price-block .eyebrow{display:block}
+.price-block .amount{font-family:Poppins,sans-serif;font-weight:600;font-size:24px;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;line-height:1.15}
+.price-block .amount small{font-size:13px;font-weight:500;color:var(--muted-fg);letter-spacing:0}
+.price-block .under{font-size:12px;color:var(--muted-fg)}
+.cta{position:relative;z-index:2;width:100%;white-space:nowrap;background:var(--primary);color:#fff;border-radius:var(--r-field);padding:12px 14px;
+  font-family:Poppins,sans-serif;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:background .15s,transform .15s}
+.cta:hover{background:var(--primary-deep);transform:translateY(-1px)}
+.cta.quiet{background:var(--bg);color:var(--fg);border:1px solid var(--border-strong)}
+.cta.quiet:hover{background:var(--fg);color:#fff;border-color:var(--fg)}
+
+/* paginação */
+.pager{display:flex;align-items:center;justify-content:center;gap:6px;padding-top:34px}
+.pager a{min-width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:14px;font-weight:500;
+  color:var(--muted-fg);border:1px solid transparent}
+.pager a:hover{background:var(--bg);border-color:var(--border);color:var(--fg)}
+.pager a.on{background:var(--fg);color:#fff;font-weight:600}
+.pager .edge{border:1px solid var(--border);background:var(--bg);padding:0 15px;color:var(--fg)}
+
+/* ================= MÓVEL ================= */
+.phones{max-width:1080px;margin:0 auto;padding:0 24px;display:flex;gap:36px;flex-wrap:wrap;justify-content:center}
+.phone{width:390px;flex:none}
+.phone-label{text-align:center;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:#5a6376;margin-bottom:12px}
+.phone-shell{border-radius:38px;border:9px solid #10141d;overflow:hidden;box-shadow:0 26px 60px -26px rgba(13,32,64,.45);background:var(--ground)}
+.phone-scroll{height:760px;overflow-y:auto;background:var(--ground);scrollbar-width:thin}
+.m-header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
+.m-hero{padding:26px 16px 0;text-align:center;position:relative}
+.m-hero::before{content:"";position:absolute;inset:0 0 auto;height:190px;
+  background:radial-gradient(60% 100% at 50% 0%,color-mix(in srgb,var(--primary) 15%,transparent),transparent 72%)}
+.m-hero h1{position:relative;font-family:Poppins,sans-serif;font-weight:600;font-size:29px;line-height:1.13;letter-spacing:-.025em}
+.m-hero p{position:relative;color:var(--muted-fg);font-size:14px;margin-top:9px}
+.m-search{position:relative;margin:20px 0 -26px;background:var(--bg);border:1px solid var(--border);border-radius:14px;
+  box-shadow:var(--shadow-float);display:flex;align-items:center;gap:11px;padding:13px 14px;text-align:left}
+.m-search .ic{width:32px;height:32px;border-radius:9px;background:var(--tint);display:grid;place-items:center;color:var(--primary);flex:none}
+.m-search .lbl{display:grid;gap:1px;min-width:0}
+.m-search .lbl b{font-size:13px;font-weight:600}
+.m-search .lbl span{font-size:12.5px;color:var(--muted-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-search .go{margin-left:auto;width:36px;height:36px;border-radius:10px;background:var(--primary);color:#fff;display:grid;place-items:center;flex:none}
+.m-rail{margin-top:40px;background:var(--ground);border-bottom:1px solid var(--border);
+  display:flex;gap:7px;overflow-x:auto;padding:11px 16px;scrollbar-width:none}
+.m-rail::-webkit-scrollbar{display:none}
+.m-rail-wrap{position:relative}
+.m-rail-wrap::after{content:"";position:absolute;top:0;bottom:0;right:0;width:44px;z-index:2;pointer-events:none;background:linear-gradient(270deg,var(--ground),transparent)}
+.m-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 16px 0}
+.m-bar .rcount{font-size:13.5px}
+.m-sorts{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 2px;scrollbar-width:none}
+.m-sorts::-webkit-scrollbar{display:none}
+.m-sorts a{flex:none;padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:500;background:var(--bg);
+  border:1px solid var(--border);color:var(--muted-fg)}
+.m-sorts a.on{background:var(--fg);border-color:var(--fg);color:#fff;font-weight:600}
+.m-results{display:grid;gap:14px;padding:14px 16px 96px}
+
+/* cartão empilhado */
+.mcard{position:relative;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-card);
+  overflow:hidden;box-shadow:var(--shadow-xs)}
+.mcard .media{aspect-ratio:16/10;border-radius:0}
+.mcard .mbody{padding:14px 15px 12px;display:grid;gap:7px}
+.mcard h3{font-family:Poppins,sans-serif;font-weight:600;font-size:17.5px;line-height:1.3;letter-spacing:-.015em}
+.mcard .tags{margin-top:2px;padding-top:0}
+/* o canhoto, na horizontal */
+.mstub{position:relative;margin-top:4px;padding:13px 15px 15px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.mstub::before{content:"";position:absolute;top:0;left:15px;right:15px;height:0;border-top:1.5px dashed var(--border-strong)}
+.mstub .notch{position:absolute;top:-6px;width:12px;height:12px;border-radius:999px;background:var(--ground);box-shadow:0 0 0 1px var(--border)}
+.mstub .notch.l{left:-21px}
+.mstub .notch.r{right:-21px}
+.mstub .cta{width:auto;padding:11px 20px}
+.m-filterbar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:11px 16px;
+  display:flex;gap:9px}
+.m-filterbar button{flex:1;border:1px solid var(--border-strong);border-radius:var(--r-field);padding:12px;
+  font-family:Poppins,sans-serif;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.m-filterbar .count{background:var(--primary);color:#fff;border-radius:999px;min-width:20px;height:20px;
+  display:grid;place-items:center;font-size:11px;font-family:Inter,sans-serif;font-weight:700}
+
+@media (max-width:900px){
+  .doc-h,.note,.phones{padding-inline:16px}
+  .phone{width:100%;max-width:390px}
+}
+</style>
+</head>
+<body>
+
+<div class="doc-bar">
+  <strong>Ntizo — proposta de redesenho</strong>
+  <span>listas de serviços e prestadores · desktop e móvel</span>
+  <nav>
+    <a href="#servicos">Serviços</a>
+    <a href="#prestadores">Prestadores</a>
+    <a href="#movel">Móvel</a>
+  </nav>
+</div>
+
+<!-- ============================ SERVIÇOS ============================ -->
+<div class="doc-h" id="servicos">
+  <h2>Serviços — desktop</h2>
+  <p>Fundo tintado com cartões brancos, barra de busca a sobrepor a base do hero, e a calha de preço desenhada como canhoto de bilhete: filete tracejado e dois entalhes. Diz que aquilo é uma oferta fechada, não um convite a regatear.</p>
+</div>
+
+<div class="frame"><div class="frame-inner"><div class="scroller"><div class="viewport">
+<div class="app">
+
+  <header class="site-header"><div class="shell">
+    <a class="logo" href="#">ntizo</a>
+    <nav class="nav-pill">
+      <a href="#">Explorar</a>
+      <a href="#" class="on">Serviços</a>
+      <a href="#">Prestadores</a>
+    </nav>
+    <div class="header-right">
+      <span class="lang">PT</span>
+      <button class="btn-ghost">Oferecer serviços</button>
+      <span class="avatar">NTC</span>
+    </div>
+  </div></header>
+
+  <section class="hero"><div class="shell">
+    <div class="hero-copy">
+      <span class="kicker"><b>Sem regateio</b><span>preço e duração fechados antes de reservar</span></span>
+      <h1 class="t-display">Serviços prontos a reservar</h1>
+      <p>Escolha o trabalho, veja quanto custa e quanto demora, e combine a hora.</p>
+    </div>
+    <form class="searchbar">
+      <button type="button" class="sfield">
+        <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+        <span class="lbl"><b>Serviço</b><span>O que precisa de fazer?</span></span>
+      </button>
+      <button type="button" class="sfield">
+        <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <span class="lbl"><b>Cidade</b><span>Maputo, Matola, Beira…</span></span>
+      </button>
+      <button type="button" class="btn-primary">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        Procurar
+      </button>
+    </form>
+    <div class="hero-rule"></div>
+  </div></section>
+
+  <nav class="rail"><div class="rail-wrap">
+    <button class="rail-arrow l" aria-label="Anterior"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <div class="shell">
+      <a class="chip on" href="#">Todas</a>
+      <a class="chip" href="#">Canalização</a>
+      <a class="chip" href="#">Electricidade</a>
+      <a class="chip" href="#">Limpeza de casa</a>
+      <a class="chip" href="#">Beleza e cabelo</a>
+      <a class="chip" href="#">Mecânico</a>
+      <a class="chip" href="#">Cozinheiro</a>
+      <a class="chip" href="#">Entregas</a>
+      <a class="chip" href="#">Pedreiro</a>
+      <a class="chip" href="#">Motoristas</a>
+      <a class="chip" href="#">Aulas de música</a>
+      <a class="chip" href="#">Jardinagem</a>
+      <a class="chip" href="#">Costura</a>
+    </div>
+    <button class="rail-arrow r" aria-label="Seguinte"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div></nav>
+
+  <main class="shell"><div class="body-grid">
+
+    <aside class="facets">
+      <div class="facets-head"><h2>Filtros</h2><a href="#">Limpar tudo</a></div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> Onde acontece</h3>
+        <a class="fopt on" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Em sua casa <span class="n">5</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> No espaço dele <span class="n">2</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> À distância <span class="n">1</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Depende <span class="n">1</span></a>
+      </div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M2 10.5h20"/></svg> Como paga</h3>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Preço fixo <span class="n">6</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Por hora <span class="n">1</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Sob orçamento <span class="n">1</span></a>
+      </div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M8 2v4M16 2v4M3 10h18"/></svg> Quem presta</h3>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Uma pessoa <span class="n">3</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Um estabelecimento <span class="n">5</span></a>
+      </div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 12 22l-9-9V4a1 1 0 0 1 1-1h9l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg> Preço</h3>
+        <div class="range"><input value="500" aria-label="Mínimo"><span>até</span><input value="5000" aria-label="Máximo"></div>
+      </div>
+    </aside>
+
+    <div>
+      <div class="rbar">
+        <p class="rcount"><b>8 serviços</b> em todas as categorias</p>
+        <nav class="segmented">
+          <a href="#" class="on">Sugeridos</a>
+          <a href="#">Mais recentes</a>
+          <a href="#">Preço</a>
+        </nav>
+      </div>
+
+      <div class="active-filters">
+        <span class="afchip">Em sua casa <button aria-label="Remover"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        <span class="afchip">500 – 5000 MZN <button aria-label="Remover"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        <a href="#" class="af-clear">Limpar tudo</a>
+      </div>
+
+      <ul class="results">
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart on" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="badge gold">Mais reservado</span>
+            <span class="ph c-hair" data-i="EM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 16M8.1 8 20 20"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span class="dur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg> 45 min</span><span class="dot"></span><span>Vaga hoje às 15:30</span></p>
+            <h3><a href="#">Corte de cabelo com barba</a></h3>
+            <p class="by">por <b>Estúdio Mavalane</b> · Sommerschield, Maputo</p>
+            <p class="desc">Corte à máquina ou tesoura, lavagem e acabamento de barba. Toalha quente incluída.</p>
+            <p class="tags">
+              <span class="tag cat">Beleza e cabelo</span>
+              <span class="tag">No espaço dele</span>
+              <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 14.3 5l3.3-.2.2 3.3 2.4 2.3-2.4 2.3-.2 3.3-3.3-.2L12 18.1 9.7 15.8l-3.3.2-.2-3.3L3.8 10.4 6.2 8.1l.2-3.3L9.7 5Z"/><path d="m9.2 10.4 2 2 3.6-3.6"/></svg> Verificado</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>4,7</b><span>(6)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">Preço fixo</span>
+              <span class="amount">800 <small>MZN</small></span>
+              <span class="under">tudo incluído</span>
+            </div>
+            <a class="cta" href="#">Reservar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="badge">Urgências</span>
+            <span class="ph c-elec" data-i="HC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span class="dur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg> 60 min</span><span class="dot"></span><span>Resposta em ~20 min</span></p>
+            <h3><a href="#">Avaria eléctrica urgente</a></h3>
+            <p class="by">por <b>Hélder Cossa</b> · Sommerschield, Maputo</p>
+            <p class="desc">Diagnóstico e reparação de quadros, tomadas e curto-circuitos ao domicílio.</p>
+            <p class="tags">
+              <span class="tag cat">Electricidade</span>
+              <span class="tag">Em sua casa</span>
+              <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 14.3 5l3.3-.2.2 3.3 2.4 2.3-2.4 2.3-.2 3.3-3.3-.2L12 18.1 9.7 15.8l-3.3.2-.2-3.3L3.8 10.4 6.2 8.1l.2-3.3L9.7 5Z"/><path d="m9.2 10.4 2 2 3.6-3.6"/></svg> Verificado</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>4,8</b><span>(4)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">Preço fixo</span>
+              <span class="amount">1 200 <small>MZN</small></span>
+              <span class="under">deslocação incluída</span>
+            </div>
+            <a class="cta" href="#">Reservar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="ph c-music" data-i="NM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span class="dur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg> 60 min</span><span class="dot"></span><span>Mínimo 2 horas</span></p>
+            <h3><a href="#">Aula de guitarra para principiantes</a></h3>
+            <p class="by">por <b>Nelson Machava</b> · Beira</p>
+            <p class="desc">Acordes, ritmo e primeiras músicas. Por videochamada, com plano de estudo semanal.</p>
+            <p class="tags">
+              <span class="tag cat">Aulas de música</span>
+              <span class="tag">À distância</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>5,0</b><span>(3)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">Por hora</span>
+              <span class="amount">600 <small>MZN</small></span>
+              <span class="under">mínimo 2 horas</span>
+            </div>
+            <a class="cta" href="#">Reservar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="ph c-plumb" data-i="CB"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 8h6v6a4 4 0 0 0 4 4h6"/><rect x="2" y="5" width="4" height="6" rx="1"/><rect x="18" y="15" width="4" height="6" rx="1"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span>Duração após visita</span><span class="dot"></span><span>Orçamento em 24 h</span></p>
+            <h3><a href="#">Desentupimento e reparação de canos</a></h3>
+            <p class="by">por <b>Canalizações Beira</b> · Ponta-Gêa, Beira</p>
+            <p class="desc">Visita de diagnóstico e orçamento fechado antes de qualquer trabalho começar.</p>
+            <p class="tags">
+              <span class="tag cat">Canalização</span>
+              <span class="tag">Em sua casa</span>
+              <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 14.3 5l3.3-.2.2 3.3 2.4 2.3-2.4 2.3-.2 3.3-3.3-.2L12 18.1 9.7 15.8l-3.3.2-.2-3.3L3.8 10.4 6.2 8.1l.2-3.3L9.7 5Z"/><path d="m9.2 10.4 2 2 3.6-3.6"/></svg> Verificado</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>4,6</b><span>(9)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">Sob orçamento</span>
+              <span class="amount">A combinar</span>
+              <span class="under">visita grátis</span>
+            </div>
+            <a class="cta quiet" href="#">Pedir orçamento <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+      </ul>
+
+      <nav class="pager">
+        <a class="edge" href="#">Anterior</a>
+        <a class="on" href="#">1</a><a href="#">2</a><a href="#">3</a><a href="#">…</a><a href="#">8</a>
+        <a class="edge" href="#">Seguinte</a>
+      </nav>
+    </div>
+  </div></main>
+</div>
+</div></div></div></div>
+
+<div class="note">
+  <p><b>A calha de preço é a assinatura.</b> Filete tracejado + entalhes redondos nas bordas do cartão: um canhoto de bilhete. É o único sítio onde há ousadia — tudo o resto é sóbrio de propósito.</p>
+  <p><b>Fundo tintado, cartões brancos.</b> Hoje a página é branca com cartões brancos delimitados só por borda, e lê-se como wireframe. Esta única troca é o que faz cada resultado parecer um objeto.</p>
+  <p><b>O placeholder deixa de ser uma caixa cinzenta.</b> Mosaico com matiz derivado da categoria, ícone dela e iniciais do prestador. Uma lista sem fotografias passa a parecer variada em vez de partida.</p>
+  <p><b>Chips de filtros ativos com ✕ e "Limpar tudo".</b> Os teus mockups não têm forma de ver nem tirar o que está ligado.</p>
+  <p><b>Paginação com números</b> em vez de só Anterior/Seguinte, agora que a API passa a devolver o total.</p>
+</div>
+
+<!-- ============================ PRESTADORES ============================ -->
+<div class="doc-h" id="prestadores">
+  <h2>Prestadores — desktop</h2>
+  <p>A mesma casca, para as duas páginas serem gémeas. Muda o que o cartão diz: um serviço vende um trabalho, um prestador é um negócio que alguém está a decidir se merece confiança — por isso ganha descrição, categorias e a nota em destaque.</p>
+</div>
+
+<div class="frame"><div class="frame-inner"><div class="scroller"><div class="viewport">
+<div class="app">
+
+  <header class="site-header"><div class="shell">
+    <a class="logo" href="#">ntizo</a>
+    <nav class="nav-pill">
+      <a href="#">Explorar</a>
+      <a href="#">Serviços</a>
+      <a href="#" class="on">Prestadores</a>
+    </nav>
+    <div class="header-right">
+      <span class="lang">PT</span>
+      <button class="btn-ghost">Oferecer serviços</button>
+      <span class="avatar">NTC</span>
+    </div>
+  </div></header>
+
+  <section class="hero"><div class="shell">
+    <div class="hero-copy">
+      <span class="kicker"><b>Verificados</b><span>documentos conferidos pela Ntizo, um a um</span></span>
+      <h1 class="t-display">Electricistas em Maputo</h1>
+      <p>Pessoas e negócios com preços à vista e avaliações escritas por quem já os contratou.</p>
+    </div>
+    <form class="searchbar">
+      <button type="button" class="sfield">
+        <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+        <span class="lbl"><b>Prestador</b><span>Nome do negócio ou profissional</span></span>
+      </button>
+      <button type="button" class="sfield">
+        <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <span class="lbl"><b>Cidade</b><span>Maputo</span></span>
+      </button>
+      <button type="button" class="btn-primary">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        Procurar
+      </button>
+    </form>
+    <div class="hero-rule"></div>
+  </div></section>
+
+  <nav class="rail"><div class="rail-wrap">
+    <button class="rail-arrow l" aria-label="Anterior"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <div class="shell">
+      <a class="chip" href="#">Todas</a>
+      <a class="chip" href="#">Canalização</a>
+      <a class="chip on" href="#">Electricidade</a>
+      <a class="chip" href="#">Limpeza de casa</a>
+      <a class="chip" href="#">Beleza e cabelo</a>
+      <a class="chip" href="#">Mecânico</a>
+      <a class="chip" href="#">Cozinheiro</a>
+      <a class="chip" href="#">Entregas</a>
+      <a class="chip" href="#">Pedreiro</a>
+      <a class="chip" href="#">Motoristas</a>
+      <a class="chip" href="#">Aulas de música</a>
+      <a class="chip" href="#">Jardinagem</a>
+    </div>
+    <button class="rail-arrow r" aria-label="Seguinte"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div></nav>
+
+  <main class="shell"><div class="body-grid">
+
+    <aside class="facets">
+      <div class="facets-head"><h2>Filtros</h2><a href="#">Limpar tudo</a></div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> Cidade</h3>
+        <a class="fopt on" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Maputo <span class="n">7</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Matola <span class="n">1</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Beira <span class="n">1</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Nampula <span class="n">1</span></a>
+      </div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M8 2v4M16 2v4M3 10h18"/></svg> Quem presta</h3>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Uma pessoa <span class="n">3</span></a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Um estabelecimento <span class="n">5</span></a>
+      </div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg> Avaliação</h3>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> 4,5 ou mais</a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> 4,0 ou mais</a>
+        <a class="fopt" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> 3,0 ou mais</a>
+      </div>
+
+      <div class="fgroup">
+        <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 14.6 8l6 .9-4.3 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.4 8.9 9.4 8Z"/></svg> Verificação</h3>
+        <a class="fopt on" href="#"><span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg></span> Só documentos verificados <span class="n">6</span></a>
+      </div>
+    </aside>
+
+    <div>
+      <div class="rbar">
+        <p class="rcount"><b>8 negócios</b> em Electricidade</p>
+        <nav class="segmented">
+          <a href="#" class="on">Sugeridos</a>
+          <a href="#">Melhor avaliados</a>
+          <a href="#">Mais avaliados</a>
+          <a href="#">Preço</a>
+        </nav>
+      </div>
+
+      <div class="active-filters">
+        <span class="afchip">Electricidade <button aria-label="Remover"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        <span class="afchip">Maputo <button aria-label="Remover"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        <span class="afchip">Verificados <button aria-label="Remover"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        <a href="#" class="af-clear">Limpar tudo</a>
+      </div>
+
+      <ul class="results">
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="ph c-elec" data-i="HC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span class="dur">Individual</span><span class="dot"></span><span>Sommerschield, Maputo</span></p>
+            <h3><a href="#">Hélder Cossa</a></h3>
+            <p class="desc">Electricista certificado com 11 anos de obra. Instalações, quadros e avarias urgentes ao domicílio, em Maputo e Matola.</p>
+            <p class="tags">
+              <span class="tag cat">Electricidade</span>
+              <span class="tag">2 serviços</span>
+              <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg> Documentos verificados</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>4,8</b><span>(4)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">A partir de</span>
+              <span class="amount">1 200 <small>MZN</small></span>
+              <span class="under">por serviço</span>
+            </div>
+            <a class="cta" href="#">Ver negócio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart on" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="ph c-hair" data-i="EM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 16M8.1 8 20 20"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span class="dur">Organização</span><span class="dot"></span><span>Mavalane, Maputo</span><span class="dot"></span><span>4 profissionais</span></p>
+            <h3><a href="#">Estúdio Mavalane</a></h3>
+            <p class="desc">Barbearia e cabeleireiro com quatro cadeiras. Marcação por hora, sem fila, de terça a domingo.</p>
+            <p class="tags">
+              <span class="tag cat">Beleza e cabelo</span>
+              <span class="tag">6 serviços</span>
+              <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg> Documentos verificados</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>4,7</b><span>(6)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">A partir de</span>
+              <span class="amount">800 <small>MZN</small></span>
+              <span class="under">por serviço</span>
+            </div>
+            <a class="cta" href="#">Ver negócio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+        <li class="rcard">
+          <div class="media">
+            <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+            <span class="ph c-clean" data-i="CL"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 3h6l1 6H8Z"/><path d="M8 9h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1Z"/></svg></span>
+          </div>
+          <div class="body">
+            <p class="metaline"><span class="dur">Organização</span><span class="dot"></span><span>Machava, Matola</span><span class="dot"></span><span>9 profissionais</span></p>
+            <h3><a href="#">Casa Limpa Lda</a></h3>
+            <p class="desc">Limpezas domésticas e de escritório com equipa fixa. Produtos incluídos e seguro de responsabilidade civil.</p>
+            <p class="tags">
+              <span class="tag cat">Limpeza de casa</span>
+              <span class="tag">4 serviços</span>
+              <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg> Documentos verificados</span>
+            </p>
+          </div>
+          <div class="stub">
+            <span class="notch t"></span><span class="notch b"></span>
+            <p class="rating">
+              <span class="star"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+              <b>4,9</b><span>(12)</span>
+            </p>
+            <div class="price-block">
+              <span class="eyebrow">A partir de</span>
+              <span class="amount">2 500 <small>MZN</small></span>
+              <span class="under">por serviço</span>
+            </div>
+            <a class="cta" href="#">Ver negócio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          </div>
+        </li>
+
+      </ul>
+
+      <nav class="pager">
+        <a class="edge" href="#">Anterior</a>
+        <a class="on" href="#">1</a><a href="#">2</a><a href="#">3</a>
+        <a class="edge" href="#">Seguinte</a>
+      </nav>
+    </div>
+  </div></main>
+</div>
+</div></div></div></div>
+
+<div class="note">
+  <p><b>O H1 responde aos filtros.</b> "Electricistas em Maputo" em vez de "Prestadores em Moçambique" fixo — melhor para SEO e deixa de cravar o país no código, que é o que querias evitar.</p>
+  <p><b>Mesma casca, conteúdo diferente.</b> A calha diz "a partir de … por serviço" e o CTA é "Ver negócio", porque não se reserva um negócio — abre-se.</p>
+</div>
+
+<!-- ============================ MÓVEL ============================ -->
+<div class="doc-h" id="movel">
+  <h2>Móvel</h2>
+  <p>A linha parte-se no cartão empilhado que escolheste. A barra de busca de três campos vira uma linha tocável que abre uma folha em ecrã inteiro — três campos espremidos em 390px não se usam. O canhoto passa a horizontal, com os entalhes nas pontas.</p>
+</div>
+
+<div class="phones">
+
+  <div class="phone">
+    <p class="phone-label">Serviços</p>
+    <div class="phone-shell"><div class="phone-scroll">
+      <div class="app">
+        <div class="m-header">
+          <a class="logo" href="#">ntizo</a>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="lang">PT</span>
+            <span class="avatar" style="width:32px;height:32px;font-size:10px">NTC</span>
+          </div>
+        </div>
+
+        <div class="m-hero">
+          <h1>Serviços prontos a reservar</h1>
+          <p>Preço e duração fechados antes de reservar.</p>
+          <button class="m-search">
+            <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+            <span class="lbl"><b>O que precisa de fazer?</b><span>Em qualquer cidade</span></span>
+            <span class="go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+          </button>
+        </div>
+
+        <div class="m-rail-wrap"><div class="m-rail">
+          <a class="chip on" href="#">Todas</a>
+          <a class="chip" href="#">Canalização</a>
+          <a class="chip" href="#">Electricidade</a>
+          <a class="chip" href="#">Limpeza</a>
+          <a class="chip" href="#">Beleza</a>
+        </div></div>
+
+        <div class="m-bar"><p class="rcount"><b>8 serviços</b> em todas</p></div>
+        <div class="m-sorts">
+          <a class="on" href="#">Sugeridos</a><a href="#">Mais recentes</a><a href="#">Preço</a>
+        </div>
+
+        <div class="active-filters" style="padding:12px 16px 0">
+          <span class="afchip">Em sua casa <button aria-label="Remover"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+          <a href="#" class="af-clear">Limpar</a>
+        </div>
+
+        <ul class="m-results">
+
+          <li class="mcard">
+            <div class="media">
+              <button class="heart on" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+              <span class="badge gold">Mais reservado</span>
+              <span class="ph c-hair" data-i="EM"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 16M8.1 8 20 20"/></svg></span>
+            </div>
+            <div class="mbody">
+              <p class="metaline">
+                <span class="dur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg> 45 min</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px">
+                  <span class="star" style="color:var(--warning)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+                  <b style="font-family:Poppins,sans-serif;font-size:13.5px;color:var(--fg)">4,7</b><span>(6)</span>
+                </span>
+              </p>
+              <h3><a href="#">Corte de cabelo com barba</a></h3>
+              <p class="by">por <b>Estúdio Mavalane</b> · Sommerschield</p>
+              <p class="tags">
+                <span class="tag cat">Beleza e cabelo</span>
+                <span class="tag">No espaço dele</span>
+              </p>
+            </div>
+            <div class="mstub">
+              <span class="notch l"></span><span class="notch r"></span>
+              <div class="price-block" style="text-align:left">
+                <span class="eyebrow">Preço fixo</span>
+                <span class="amount">800 <small>MZN</small></span>
+              </div>
+              <a class="cta" href="#">Reservar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+            </div>
+          </li>
+
+          <li class="mcard">
+            <div class="media">
+              <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+              <span class="badge">Urgências</span>
+              <span class="ph c-elec" data-i="HC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg></span>
+            </div>
+            <div class="mbody">
+              <p class="metaline">
+                <span class="dur"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg> 60 min</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px">
+                  <span class="star" style="color:var(--warning)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+                  <b style="font-family:Poppins,sans-serif;font-size:13.5px;color:var(--fg)">4,8</b><span>(4)</span>
+                </span>
+              </p>
+              <h3><a href="#">Avaria eléctrica urgente</a></h3>
+              <p class="by">por <b>Hélder Cossa</b> · Sommerschield</p>
+              <p class="tags">
+                <span class="tag cat">Electricidade</span>
+                <span class="tag">Em sua casa</span>
+              </p>
+            </div>
+            <div class="mstub">
+              <span class="notch l"></span><span class="notch r"></span>
+              <div class="price-block" style="text-align:left">
+                <span class="eyebrow">Preço fixo</span>
+                <span class="amount">1 200 <small>MZN</small></span>
+              </div>
+              <a class="cta" href="#">Reservar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+            </div>
+          </li>
+
+        </ul>
+
+        <div class="m-filterbar">
+          <button><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Filtros <span class="count">2</span></button>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="phone">
+    <p class="phone-label">Prestadores</p>
+    <div class="phone-shell"><div class="phone-scroll">
+      <div class="app">
+        <div class="m-header">
+          <a class="logo" href="#">ntizo</a>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="lang">PT</span>
+            <span class="avatar" style="width:32px;height:32px;font-size:10px">NTC</span>
+          </div>
+        </div>
+
+        <div class="m-hero">
+          <h1>Electricistas em Maputo</h1>
+          <p>Documentos conferidos, um a um.</p>
+          <button class="m-search">
+            <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+            <span class="lbl"><b>Nome do negócio</b><span>Maputo</span></span>
+            <span class="go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+          </button>
+        </div>
+
+        <div class="m-rail-wrap"><div class="m-rail">
+          <a class="chip" href="#">Todas</a>
+          <a class="chip on" href="#">Electricidade</a>
+          <a class="chip" href="#">Canalização</a>
+          <a class="chip" href="#">Limpeza</a>
+          <a class="chip" href="#">Beleza</a>
+        </div></div>
+
+        <div class="m-bar"><p class="rcount"><b>8 negócios</b> em Electricidade</p></div>
+        <div class="m-sorts">
+          <a class="on" href="#">Sugeridos</a><a href="#">Melhor avaliados</a><a href="#">Preço</a>
+        </div>
+
+        <ul class="m-results">
+
+          <li class="mcard">
+            <div class="media">
+              <button class="heart" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+              <span class="ph c-elec" data-i="HC"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg></span>
+            </div>
+            <div class="mbody">
+              <p class="metaline">
+                <span class="dur">Individual</span><span class="dot"></span><span>Sommerschield</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px">
+                  <span class="star" style="color:var(--warning)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+                  <b style="font-family:Poppins,sans-serif;font-size:13.5px;color:var(--fg)">4,8</b>
+                </span>
+              </p>
+              <h3><a href="#">Hélder Cossa</a></h3>
+              <p class="desc">Electricista certificado com 11 anos de obra. Instalações, quadros e avarias urgentes ao domicílio.</p>
+              <p class="tags">
+                <span class="tag cat">Electricidade</span>
+                <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg> Verificado</span>
+              </p>
+            </div>
+            <div class="mstub">
+              <span class="notch l"></span><span class="notch r"></span>
+              <div class="price-block" style="text-align:left">
+                <span class="eyebrow">A partir de</span>
+                <span class="amount">1 200 <small>MZN</small></span>
+              </div>
+              <a class="cta" href="#">Ver negócio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+            </div>
+          </li>
+
+          <li class="mcard">
+            <div class="media">
+              <button class="heart on" aria-label="Guardar"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.7 4.3 13a4.9 4.9 0 0 1 7-6.9l.7.7.7-.7a4.9 4.9 0 0 1 7 6.9Z"/></svg></button>
+              <span class="ph c-clean" data-i="CL"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 3h6l1 6H8Z"/><path d="M8 9h8v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1Z"/></svg></span>
+            </div>
+            <div class="mbody">
+              <p class="metaline">
+                <span class="dur">Organização</span><span class="dot"></span><span>Matola</span>
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px">
+                  <span class="star" style="color:var(--warning)"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 14.9 8.4l6.6.9-4.8 4.6 1.2 6.6L12 17.4 6.1 20.5l1.2-6.6L2.5 9.3l6.6-.9Z"/></svg></span>
+                  <b style="font-family:Poppins,sans-serif;font-size:13.5px;color:var(--fg)">4,9</b>
+                </span>
+              </p>
+              <h3><a href="#">Casa Limpa Lda</a></h3>
+              <p class="desc">Limpezas domésticas e de escritório com equipa fixa. Produtos incluídos e seguro.</p>
+              <p class="tags">
+                <span class="tag cat">Limpeza de casa</span>
+                <span class="tag ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5.5 5.5L20 7"/></svg> Verificado</span>
+              </p>
+            </div>
+            <div class="mstub">
+              <span class="notch l"></span><span class="notch r"></span>
+              <div class="price-block" style="text-align:left">
+                <span class="eyebrow">A partir de</span>
+                <span class="amount">2 500 <small>MZN</small></span>
+              </div>
+              <a class="cta" href="#">Ver negócio <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+            </div>
+          </li>
+
+        </ul>
+
+        <div class="m-filterbar">
+          <button><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Filtros <span class="count">3</span></button>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+</div>
+
+<div class="note" style="margin-bottom:80px">
+  <p><b>Alguns elementos do mockup são propostas, não dados que existem hoje:</b> "Vaga hoje às 15:30", "Mais reservado", "Urgências" e o número de profissionais precisariam de API nova. Se não os quiseres agora, saem sem mexer no layout — mas mostro-os para veres onde encaixariam.</p>
+  <p><b>"Cancelamento gratuito" saiu</b> (não existe política de cancelamento no produto) e no lugar entrou <b>"Verificado"</b>, que é real.</p>
+</div>
+
+</body>
+</html>
