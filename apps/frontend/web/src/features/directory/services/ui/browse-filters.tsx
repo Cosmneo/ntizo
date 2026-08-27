@@ -17,6 +17,7 @@ import {
 import { PriceRangeFilter } from "@/features/directory/services/ui/price-range-filter";
 import { SearchBox } from "@/features/directory/services/ui/search-box";
 import { FilterPanelCard, FilterSection } from "@/shared/components/filter-panel";
+import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 
 /**
  * The closed sets the four link groups offer.
@@ -235,6 +236,10 @@ function FilterGroup({
             <Link
               key={value}
               to="/services"
+              // Exact matching, or TanStack marks every option whose search is
+              // a *subset* of the current one — which is every option that only
+              // removes a filter — as `aria-current="page"`. See `EXACT_MATCH`.
+              activeOptions={EXACT_MATCH}
               // Clicking the active one clears it: a filter you set by
               // clicking should come off the same way, without hunting for
               // a separate "clear" the sidebar would otherwise need.

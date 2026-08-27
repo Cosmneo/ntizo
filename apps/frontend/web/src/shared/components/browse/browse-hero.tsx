@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, FormEvent, ReactNode, Ref } from "react";
 
 /**
  * The head of a browse page.
@@ -67,21 +67,34 @@ export function BrowseHero({
  * A `role="search"` form, not a row of buttons: it is the page's primary
  * control and a screen-reader user should be able to jump straight to it.
  *
+ * A **real** form, submitted by a real submit button. The first version of this
+ * took no `onSubmit`, which forced its one caller into a `type="button"` and a
+ * hand-rolled Enter handler — and left the card the only control on a page of
+ * links that did nothing at all before JavaScript ran. Enter inside a text
+ * field is a browser behaviour, not a feature to reimplement.
+ *
  * One column on a phone. Two fields and a button squeezed into 360px is a
  * control nobody completes; below `md` each page renders a single collapsed
  * field that opens a full-screen sheet instead.
  */
 export function BrowseSearchCard({
   action,
+  onSubmit,
   children,
 }: {
-  /** The submit button. */
+  /** The submit button — `type="submit"`, so Enter in any field reaches it. */
   action: ReactNode;
+  /**
+   * What submitting means. Optional only so the shell can be rendered in
+   * isolation; a page that omits it is a search that does nothing.
+   */
+  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
   children: ReactNode;
 }) {
   return (
     <form
       role="search"
+      {...(onSubmit ? { onSubmit } : {})}
       className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-2 shadow-[var(--shadow-float)]"
     >
       <div
@@ -107,16 +120,28 @@ export function BrowseSearchField({
   label,
   value,
   onClick,
+  ref,
 }: {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   label: string;
   /** What is chosen, or the placeholder when nothing is. */
   value: string;
   onClick?: () => void;
+  /**
+   * So the page can put focus back here after the control this opened has
+   * gone. Without it, closing a field drops focus onto `<body>` and a keyboard
+   * or screen-reader user is thrown to the top of the document — which is what
+   * happened on every Enter in the first version.
+   *
+   * A plain prop, not `forwardRef`: React 19 passes `ref` through like any
+   * other, and the wrapper exists only to be unwrapped again.
+   */
+  ref?: Ref<HTMLButtonElement>;
 }) {
   return (
     <button
       type="button"
+      ref={ref}
       onClick={onClick}
       className="flex items-center gap-3 rounded-[var(--radius-card-sm)] px-4 py-3 text-left transition-colors hover:bg-[var(--color-surface-raised)] md:border-l md:border-[var(--color-border)] md:first:border-l-0"
     >

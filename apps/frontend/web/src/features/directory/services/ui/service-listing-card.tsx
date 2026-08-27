@@ -51,6 +51,7 @@ export function ServiceListingCard({
 }) {
   const { t } = useTranslation("directory");
   const parts = serviceStubParts(service);
+  const where = t(`filterWhereOption.${service.locationType}`, { defaultValue: "" });
 
   return (
     <ListingCard
@@ -82,21 +83,22 @@ export function ServiceListingCard({
           </Link>
         </h3>
       }
-      subtitle={service.providerName}
+      // Named as the service's author. "Estúdio Mavalane" alone under
+      // "Corte de cabelo" reads as a subtitle of the service rather than as
+      // whose service it is — and the preposition is a word each language
+      // places and inflects for itself, so it is a key, not a prefix.
+      subtitle={t("listingByProvider", { name: service.providerName })}
       description={service.description ?? undefined}
       tags={
         <>
           {/* The trade leads: "plumbing" rules a card out faster than "at your
               place" does. */}
           <ListingTag tone="category">{service.categoryName}</ListingTag>
-          <ListingTag>
-            {t(`filterWhereOption.${service.locationType}`, {
-              // A location type the client does not know is a value added to
-              // the database after this build shipped. Showing the raw code is
-              // worse than showing nothing at all on a public card.
-              defaultValue: "",
-            })}
-          </ListingTag>
+          {/* A location type the client does not know is a value added to the
+              database after this build shipped. Showing the raw code is worse
+              than showing nothing — and so is an empty pill, which is what an
+              unguarded `ListingTag` around an empty string draws. */}
+          {where && <ListingTag>{where}</ListingTag>}
         </>
       }
       stub={

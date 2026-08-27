@@ -195,6 +195,7 @@
   "searchFieldCityEmpty": "En cualquier ciudad",
   "pagerLabel": "Páginas",
   "stubProviderRating": "valoración del profesional",
+  "listingByProvider": "por {{name}}",
   "stubQuoteAmount": "A convenir",
   "stubPerService": "por servicio",
   "mobileSearchOpen": "Buscar",

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -100,11 +100,17 @@ function renderPage(url: string, page: ServicePageDTO) {
     history: createMemoryHistory({ initialEntries: [url] }),
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    ),
+    // Handed back so a test can read where a submission actually went. The
+    // URL is the whole contract of this page; asserting on it is the only way
+    // to catch a control that quietly drops a parameter.
+    router,
+  };
 }
 
 describe("ServicesBrowsePage", () => {
@@ -204,6 +210,110 @@ describe("ServicesBrowsePage", () => {
     const picker = screen.getByRole("combobox", { name: "City" });
     expect(within(picker).getByRole("option", { name: "Maputo" })).toBeInTheDocument();
     expect(within(picker).getByRole("option", { name: "Beira" })).toBeInTheDocument();
+  });
+
+  it("carries a typed term through a change to the other field", async () => {
+    // The card composed its URL from what the URL already said, so a term that
+    // had not been submitted first was dropped the moment the city changed:
+    // type "corte", pick Beira, get `?city=Beira` and no word at all.
+    const { router } = renderPage("/services", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /Service/ }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Service" }), {
+      target: { value: "corte" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /City/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: "City" }), {
+      target: { value: "Beira" },
+    });
+    fireEvent.submit(screen.getByRole("search"));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ q: "corte", city: "Beira" });
+    });
+  });
+
+  it("searches on a real submit, not on a hand-rolled key handler", async () => {
+    // Enter inside a text field reaching the submit button is a browser
+    // behaviour. Reimplementing it is how the card ended up the only control
+    // on a page of links that did nothing before JavaScript ran.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    const form = await screen.findByRole("search");
+    expect(within(form).getByRole("button", { name: /Search/ })).toHaveAttribute(
+      "type",
+      "submit",
+    );
+  });
+
+  it("does not run a search while the reader is still arrowing through cities", async () => {
+    // A native select fires `change` on every arrow key on Windows and
+    // Firefox. Navigating from it would have run a search per city passed.
+    const { router } = renderPage("/services", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /City/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: "City" }), {
+      target: { value: "Maputo" },
+    });
+    expect(router.state.location.search).toEqual({});
+  });
+
+  it("closes an open field on Escape and hands focus back to its button", async () => {
+    // The control the reader is standing on stops existing. Without this,
+    // focus lands on <body> and a keyboard user is at the top of the document.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: /Service/ }));
+    const box = screen.getByRole("searchbox", { name: "Service" });
+    fireEvent.keyDown(box, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByRole("searchbox", { name: "Service" })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: /Service/ }));
+    });
+  });
+
+  it("marks only the order and the category actually in force as the current page", async () => {
+    // TanStack matches a link's search as a *subset* of the current one, so
+    // "Suggested" and "All" — whose search is empty — were both announced as
+    // the page you are on the moment anything was set. `EXACT_MATCH` makes it
+    // an equality test.
+    renderPage("/services?sort=newest&category=hair", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    expect(await screen.findByRole("link", { name: "Suggested" })).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(screen.getByRole("link", { name: /All/ })).not.toHaveAttribute("aria-current");
+    // And the site header's own /services link, which genuinely *is* this
+    // page, still says so — the fix must not silence a true one.
+    expect(screen.getByRole("link", { name: "Services" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("marks no facet or filter link as the current page just for removing a filter", async () => {
+    // The same subset trap, in the two panels. A facet's *active* option links
+    // back to `/services` — an empty search, which is a subset of every one —
+    // so both the sidebar and the phone sheet announced it as where you are.
+    renderPage("/services?locationType=at_customer", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    const options = await screen.findAllByRole("link", { name: "At your place" });
+    // Two: the sidebar's, and the phone sheet's — both must be clean.
+    expect(options.length).toBeGreaterThan(0);
+    for (const option of options) expect(option).not.toHaveAttribute("aria-current");
   });
 
   it("offers no numbered pages when everything matched fits on one", async () => {

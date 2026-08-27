@@ -195,6 +195,7 @@
   "searchFieldCityEmpty": "Ovunque",
   "pagerLabel": "Pagine",
   "stubProviderRating": "voto del professionista",
+  "listingByProvider": "di {{name}}",
   "stubQuoteAmount": "Da concordare",
   "stubPerService": "a servizio",
   "mobileSearchOpen": "Cerca",

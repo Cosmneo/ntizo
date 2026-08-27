@@ -195,6 +195,7 @@
   "searchFieldCityEmpty": "Partout",
   "pagerLabel": "Pages",
   "stubProviderRating": "note du prestataire",
+  "listingByProvider": "par {{name}}",
   "stubQuoteAmount": "À convenir",
   "stubPerService": "par prestation",
   "mobileSearchOpen": "Rechercher",

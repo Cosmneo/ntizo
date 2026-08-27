@@ -207,6 +207,7 @@
   "searchFieldCityEmpty": "Em qualquer cidade",
   "pagerLabel": "Páginas",
   "stubProviderRating": "nota do prestador",
+  "listingByProvider": "por {{name}}",
   "stubQuoteAmount": "A combinar",
   "stubPerService": "por serviço",
   "mobileSearchOpen": "Procurar",

@@ -131,6 +131,26 @@ describe("ServiceListingCard", () => {
     expect(screen.getByRole("link", { name: "Book" })).toBeInTheDocument();
   });
 
+  it("names the provider as the service's author, not as a second title", async () => {
+    // "Estúdio Mavalane" alone under "Corte de cabelo" reads as a subtitle of
+    // the service. The preposition is a word each language places and inflects
+    // for itself, so it is a key rather than a prefix glued on here.
+    renderCard(service());
+    expect(await screen.findByTestId("listing-subtitle")).toHaveTextContent(
+      "by Estúdio Mavalane",
+    );
+  });
+
+  it("draws no pill at all for a location type this build has never heard of", async () => {
+    // A value added to the database after this build shipped translates to an
+    // empty string, and an unguarded tag around it is an empty grey pill —
+    // which is not the "nothing at all" the fallback promises.
+    renderCard(service({ locationType: "in_orbit" }));
+    const tags = await screen.findByTestId("listing-tags");
+    expect(tags.children).toHaveLength(1);
+    expect(tags).toHaveTextContent("Hair & beauty");
+  });
+
   it("names the trade and where the work happens, the two facts that rule a card out", async () => {
     renderCard(service());
     const tags = await screen.findByTestId("listing-tags");

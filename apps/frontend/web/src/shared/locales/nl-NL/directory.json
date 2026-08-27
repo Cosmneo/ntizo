@@ -195,6 +195,7 @@
   "searchFieldCityEmpty": "Overal",
   "pagerLabel": "Pagina's",
   "stubProviderRating": "beoordeling van de aanbieder",
+  "listingByProvider": "door {{name}}",
   "stubQuoteAmount": "In overleg",
   "stubPerService": "per dienst",
   "mobileSearchOpen": "Zoeken",

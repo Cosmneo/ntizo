@@ -207,6 +207,7 @@
   "searchFieldCityEmpty": "Anywhere",
   "pagerLabel": "Pages",
   "stubProviderRating": "provider rating",
+  "listingByProvider": "by {{name}}",
   "stubQuoteAmount": "To agree",
   "stubPerService": "per service",
   "mobileSearchOpen": "Search",

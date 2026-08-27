@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Compass, LayoutGrid, MapPin, Search, SearchX, Tag, X, icons } from "lucide-react";
@@ -157,12 +158,13 @@ export function ServicesBrowsePage() {
             <div className="min-w-0">
               <ResultsBar
                 summary={
-                  // Two translated pieces, not one. A language that puts the
-                  // place before the count cannot be served by joining
-                  // fragments, and `resultsScope` is a whole clause per case
-                  // for exactly that reason. The values are `browseTitle`'s
-                  // own, so the heading and this line agree about whether the
-                  // category name has resolved yet.
+                  // Two translated pieces, and the second is a whole clause
+                  // per scope — never "in" plus a name. That is what lets a
+                  // language order, inflect or case the category and the city
+                  // as its own grammar needs, instead of receiving them in the
+                  // order English happened to put them. The values are
+                  // `browseTitle`'s own, so the heading and this line agree
+                  // about whether the category name has resolved yet.
                   <>
                     <b className="font-semibold text-[var(--color-foreground)]">
                       {t("servicesFound", { count: page.total })}
@@ -361,14 +363,24 @@ function resultsScope(values: { category?: string; city?: string }): string {
  * searched, and choosing one swaps a real control into the same grid cell so
  * nothing on the card moves.
  *
+ * **One form, one submission.** Both fields are drafts until the button is
+ * pressed, and the URL is written from the drafts, not from what the URL
+ * already said. Composing from `current` instead threw away a typed term the
+ * moment the other field was touched: type "corte", pick Beira, and you got
+ * `?city=Beira` with the word gone. It is a real `<form>` with a real
+ * `type="submit"`, so Enter in the text field works because browsers make it
+ * work, and the card is not the one control on a page of links that needs
+ * JavaScript to do anything.
+ *
  * The city field opens a `<select>` rather than a text box: the cities are a
  * closed set the server counts, and a typed place that matches none of them is
- * a search that silently returns nothing. Choosing navigates immediately —
- * picking from a list is already the decision.
+ * a search that silently returns nothing. It does **not** navigate on change —
+ * arrowing through a native select fires `change` on every key on Windows and
+ * Firefox, which would have run a search per city passed.
  *
- * The submit is `type="button"` and navigates by hand. `BrowseSearchCard`'s
- * `<form>` takes no `onSubmit` (it is `role="search"` for the landmark, not for
- * a round trip), so a real submit button would reload the page.
+ * Escape closes an open field, and closing puts focus back on the button that
+ * opened it. A control that unmounts under the cursor and drops focus on
+ * `<body>` sends a keyboard user back to the top of the document.
  *
  * Below `md` this stacks to one column. Task 21 replaces it there with a single
  * row that opens a sheet — two fields and a button in 360px is a control nobody
@@ -380,24 +392,57 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
   const cities = useServiceCities();
   const [open, setOpen] = useState<"q" | "city" | null>(null);
   const [term, setTerm] = useState(current.q ?? "");
+  const [city, setCity] = useState(current.city ?? "");
+  const termButton = useRef<HTMLButtonElement>(null);
+  const cityButton = useRef<HTMLButtonElement>(null);
 
   // The URL is the authority. Going back to a previous search has to put that
-  // search back in the box, or it would go on showing a term the results no
-  // longer answer.
+  // search back in both fields, or they would go on offering a question the
+  // results no longer answer.
   useEffect(() => {
     setTerm(current.q ?? "");
+    setCity(current.city ?? "");
     setOpen(null);
   }, [current.q, current.city]);
 
-  const go = (change: BrowseSearch) => {
+  /**
+   * Closing hands focus back to the button that opened the field, because the
+   * control the reader is standing on is about to stop existing.
+   */
+  const close = () => {
+    const back = open === "q" ? termButton : cityButton;
     setOpen(null);
-    void navigate({ to: "/services", search: browseSearch(current, { ...change, offset: undefined }) });
+    // After the swap, not before: the button does not exist yet at this point.
+    queueMicrotask(() => back.current?.focus());
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setOpen(null);
+    void navigate({
+      to: "/services",
+      // Both fields, from the drafts. Either may have been edited without the
+      // other being submitted first.
+      search: browseSearch(current, {
+        q: term.trim() || undefined,
+        city: city.trim() || undefined,
+        offset: undefined,
+      }),
+    });
+  };
+
+  const onEscape = (event: { key: string; preventDefault: () => void }) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    }
   };
 
   return (
     <BrowseSearchCard
+      onSubmit={submit}
       action={
-        <button type="button" onClick={() => go({ q: term.trim() })} className={SEARCH_SUBMIT_CLASS}>
+        <button type="submit" className={SEARCH_SUBMIT_CLASS}>
           <Search className="h-4 w-4" aria-hidden="true" />
           {t("searchSubmit")}
         </button>
@@ -409,23 +454,17 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
           autoFocus
           value={term}
           onChange={(e) => setTerm(e.target.value)}
-          onKeyDown={(e) => {
-            // The card's form cannot submit, so Enter is wired by hand.
-            // Without it the only way to run a typed search is the mouse.
-            if (e.key === "Enter") {
-              e.preventDefault();
-              go({ q: term.trim() });
-            }
-          }}
+          onKeyDown={onEscape}
           aria-label={t("searchFieldService")}
           placeholder={t("searchFieldServiceEmpty")}
           className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
         />
       ) : (
         <BrowseSearchField
+          ref={termButton}
           icon={Search}
           label={t("searchFieldService")}
-          value={current.q ?? t("searchFieldServiceEmpty")}
+          value={term || t("searchFieldServiceEmpty")}
           onClick={() => setOpen("q")}
         />
       )}
@@ -433,8 +472,9 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
       {open === "city" ? (
         <select
           autoFocus
-          value={current.city ?? ""}
-          onChange={(e) => go({ city: e.target.value || undefined })}
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          onKeyDown={onEscape}
           aria-label={t("searchFieldCity")}
           className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
         >
@@ -447,9 +487,10 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
         </select>
       ) : (
         <BrowseSearchField
+          ref={cityButton}
           icon={MapPin}
           label={t("searchFieldCity")}
-          value={current.city ?? t("searchFieldCityEmpty")}
+          value={city || t("searchFieldCityEmpty")}
           onClick={() => setOpen("city")}
         />
       )}
