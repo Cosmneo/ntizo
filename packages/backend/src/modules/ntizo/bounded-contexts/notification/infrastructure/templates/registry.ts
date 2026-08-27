@@ -5,13 +5,14 @@ import { providerWorkspaceWelcomeTemplate } from "./provider-workspace-welcome.t
 import { providerVerifiedTemplate } from "./provider-verified.template";
 import { providerDocumentsRequiredTemplate } from "./provider-documents-required.template";
 import { teamInvitationTemplate } from "./team-invitation.template";
+import { newMessageTemplate } from "./new-message.template";
 
 /**
  * Which types have an email, and which do not.
  *
  * Partial on purpose. `Object.values(NotificationType).length` is
- * thirty-three and five have producers; writing a template for the other
- * twenty-eight would be writing copy for events nothing raises. (Counted by
+ * thirty-three and six have producers; writing a template for the other
+ * twenty-seven would be writing copy for events nothing raises. (Counted by
  * running it, not by re-reading the enum by eye — the two greps this file's
  * count was previously checked with gave 35 and 31.) A type absent here
  * means "no email", not "an error" — see the renderer.
@@ -22,4 +23,5 @@ export const TEMPLATE_REGISTRY: Partial<Record<NotificationType, TemplateModule>
   [NotificationType.ProviderVerified]: providerVerifiedTemplate,
   [NotificationType.ProviderDocumentsRequired]: providerDocumentsRequiredTemplate,
   [NotificationType.TeamInvitation]: teamInvitationTemplate,
+  [NotificationType.NewMessage]: newMessageTemplate,
 };

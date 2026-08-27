@@ -9,6 +9,7 @@ import { BY_LOCALE as PROVIDER_WORKSPACE_WELCOME_BY_LOCALE } from "../infrastruc
 import { BY_LOCALE as PROVIDER_VERIFIED_BY_LOCALE } from "../infrastructure/templates/provider-verified.template";
 import { BY_LOCALE as PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE } from "../infrastructure/templates/provider-documents-required.template";
 import { BY_LOCALE as TEAM_INVITATION_BY_LOCALE } from "../infrastructure/templates/team-invitation.template";
+import { BY_LOCALE as NEW_MESSAGE_BY_LOCALE } from "../infrastructure/templates/new-message.template";
 
 const renderer = new LocalTemplateRenderer();
 
@@ -48,6 +49,7 @@ const PAYLOADS: Record<string, Record<string, unknown>> = {
     providerName: "Salão X",
     role: "staff",
   },
+  [NotificationType.NewMessage]: { threadId: "thread-1" },
 };
 
 describe("every template renders in every locale", () => {
@@ -160,6 +162,7 @@ describe("every template's locale table actually has all eight keys", () => {
     [NotificationType.ProviderVerified]: PROVIDER_VERIFIED_BY_LOCALE,
     [NotificationType.ProviderDocumentsRequired]: PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE,
     [NotificationType.TeamInvitation]: TEAM_INVITATION_BY_LOCALE,
+    [NotificationType.NewMessage]: NEW_MESSAGE_BY_LOCALE,
   };
 
   for (const [type, table] of Object.entries(TABLES)) {

@@ -17,6 +17,7 @@ export {
   MarkThreadReadCommand,
   type MarkThreadReadInput,
 } from "./app/use-cases/mark-thread-read.command";
+export { NotifyUnreadInternalCommand } from "./app/use-cases/notify-unread.internal.command";
 
 export type {
   ThreadOpenResult,
@@ -29,3 +30,11 @@ export type {
   MessageRepositoryPort,
 } from "./app/ports/outbound/message.repository.port";
 export type { ProviderReaderPort } from "./app/ports/outbound/provider-reader.port";
+export type {
+  RaiseNotificationInput,
+  RaiseNotificationInternalPort,
+} from "./app/ports/outbound/raise-notification.port";
+export type {
+  NotifyUnreadInternalInput,
+  NotifyUnreadInternalPort,
+} from "./app/ports/inbound/notify-unread.internal.command.port";
