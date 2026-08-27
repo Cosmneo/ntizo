@@ -18,8 +18,12 @@ export interface CommunicationBootstrapDeps {
    * exists; see the port's own doc comment for why it is declared here
    * rather than imported from the notification context's `app/` tree.
    *
-   * The only caller today is `apps/backend/api/src/scheduled.ts`, which is
-   * also the only place `useCases.internal.notifyUnread` is used.
+   * Two callers today: `apps/backend/api/src/scheduled.ts`'s cron sweep
+   * (the only place `useCases.internal.notifyUnread` is used) and
+   * `apps/backend/api/src/graphql/private.ts` (Task 8's write-tier
+   * mutations — `startThread`/`send`/`markRead` — which never touch
+   * `internal.notifyUnread` at all, only the same `raiseNotification`
+   * dependency this bootstrap already required for the sweep).
    */
   raiseNotification: RaiseNotificationInternalPort;
 }

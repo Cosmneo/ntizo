@@ -2,7 +2,10 @@ import { describe, expect, it } from "bun:test";
 import { getGraphQLErrorCode } from "@cosmneo/onion-lasagna";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
 import type { CommunicationBootstrap } from "../../../bounded-contexts/communication/bootstrap";
-import { ThreadNotVisibleError } from "../../../bounded-contexts/communication/domain/exceptions";
+import {
+  ThreadNotVisibleError,
+  ProviderNotContactableError,
+} from "../../../bounded-contexts/communication/domain/exceptions";
 import {
   createCommunicationWriteHandlers,
   type CommunicationWriteModule,
@@ -256,6 +259,49 @@ describe("createCommunicationWriteHandlers", () => {
   });
 
   /**
+   * The exact boundary `Message.compose` / `MESSAGE_BODY_MAX` defines,
+   * proven at the schema edge rather than only asserted in a doc comment.
+   * `.max(4000)` on a *trimmed* string means the 4000th character is still
+   * accepted — this is the case a coarser "some long string is rejected"
+   * test would not catch, and the one the reviewer found untested: swapping
+   * `.max(4000)` for `.max(40000)` left every existing test green.
+   */
+  it("accepts a body of exactly 4000 characters", async () => {
+    const sendSpy = spyUseCase({ id: "m1" });
+    const handlers = createCommunicationWriteHandlers(makeModule({ sendMessage: sendSpy }));
+    const field = handlers.find((h) => h.key === "communication.send")!;
+
+    const body = "a".repeat(4000);
+    await field.handler({ threadId: "t1", body }, ctx());
+
+    expect(sendSpy.calls).toEqual([{ threadId: "t1", senderUserId: "u-session", body }]);
+  });
+
+  /**
+   * The other side of the same boundary: one character over refuses as
+   * VALIDATION_ERROR at the schema edge, before the use case ever runs —
+   * not as `MessageBodyTooLongError` (UNPROCESSABLE) from `Message.compose`
+   * one layer down. A client branching on the wire code sees a different
+   * kind of error depending on which layer catches an over-long body, so
+   * this pins the schema as the layer that catches it here.
+   */
+  it("rejects a body of 4001 characters as VALIDATION_ERROR (the wire code), before the use case runs", async () => {
+    const sendSpy = spyUseCase({ id: "m1" });
+    const handlers = createCommunicationWriteHandlers(makeModule({ sendMessage: sendSpy }));
+    const field = handlers.find((h) => h.key === "communication.send")!;
+
+    const body = "a".repeat(4001);
+    let caught: unknown;
+    try {
+      await field.handler({ threadId: "t1", body }, ctx());
+    } catch (err) {
+      caught = err;
+    }
+    expect(getGraphQLErrorCode(caught)).toBe("VALIDATION_ERROR");
+    expect(sendSpy.calls).toEqual([]);
+  });
+
+  /**
    * `ThreadNotVisibleError` is the same refusal a nonexistent thread and a
    * thread that is not the caller's both produce — proven here through the
    * whole built handler, asserting the wire CODE
@@ -295,5 +341,38 @@ describe("createCommunicationWriteHandlers", () => {
       caught = err;
     }
     expect(getGraphQLErrorCode(caught)).toBe("UNPROCESSABLE");
+  });
+
+  /**
+   * `startThread`'s equivalent of the two `ThreadNotVisibleError`
+   * propagation tests above: `ProviderNotContactableError`
+   * (`StartThreadCommand`'s refusal for a provider that is missing or not
+   * active — the spec's Errors table lists this case explicitly) must
+   * reach the caller through the built handler, not just the command's own
+   * tests. Asserts the wire CODE, not `instanceof` — `toBeInstanceOf` stays
+   * green even if the emitted code silently dropped to INTERNAL_ERROR
+   * because a base class changed underneath it.
+   * `ProviderNotContactableError` extends the kit's `UnprocessableError`,
+   * which maps to "UNPROCESSABLE" — same code `ThreadNotVisibleError` maps
+   * to, since both are refusals of the shape "this is not something you
+   * may act on", not a validation failure or a missing resource.
+   */
+  it("propagates ProviderNotContactableError from communication.startThread as UNPROCESSABLE on the wire", async () => {
+    const startThreadSpy = spyUseCase(() => {
+      throw new ProviderNotContactableError();
+    });
+    const handlers = createCommunicationWriteHandlers(makeModule({ startThread: startThreadSpy }));
+    const field = handlers.find((h) => h.key === "communication.startThread")!;
+
+    let caught: unknown;
+    try {
+      await field.handler({ providerId: "p-inactive" }, ctx({ requesterUserId: "u-session" }));
+    } catch (err) {
+      caught = err;
+    }
+    expect(getGraphQLErrorCode(caught)).toBe("UNPROCESSABLE");
+    expect(startThreadSpy.calls).toEqual([
+      { customerUserId: "u-session", providerId: "p-inactive" },
+    ]);
   });
 });
