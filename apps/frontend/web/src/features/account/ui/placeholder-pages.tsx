@@ -19,7 +19,12 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-3xl">
+    // No measure of its own: `CustomerShell` already wraps this in
+    // `.page-shell`, the same width the site header uses, so a `max-w-*`
+    // centred in here started the content ~276px right of the logo and ended
+    // nowhere near the avatar. Filling the shell makes both edges line up with
+    // the header instead of floating inside it.
+    <div>
       <h1 className="type-h1">{title}</h1>
       <div className="mt-8">{children}</div>
     </div>

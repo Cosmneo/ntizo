@@ -27,7 +27,10 @@ export function CustomerActivityPage() {
   const renderDescription = (entry: ActivityEntry) => describeActivity(t, entry);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    // Same reasoning as `placeholder-pages.tsx`'s Shell: `CustomerShell`
+    // already provides `.page-shell`, so this fills it rather than centring a
+    // narrower measure inside it and losing the header's alignment.
+    <div>
       <h1 className="type-h1">{t("activityTitle")}</h1>
       <div className="mt-8">
         <ActivityList
