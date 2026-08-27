@@ -1,2 +1,2 @@
-// communication schemas — stub. Entity schema files will be added here.
-export {};
+export * from "./thread.schema";
+export * from "./message.schema";
