@@ -1,0 +1,140 @@
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import type { ServiceDTO } from "@ntizo/shared/read-models";
+import { ServiceListingCard } from "../service-listing-card";
+
+/**
+ * The card rendered inside a router stub, because every claim it makes is
+ * about a `<Link>` — where the title goes, where the CTA goes — and a `<Link>`
+ * outside a router throws rather than rendering an `<a>`.
+ *
+ * No `QueryClient` and no viewmodel mock: this card is handed a `ServiceDTO`
+ * and asks nothing of anybody. The harness is the one
+ * `service-detail-page.test.tsx` documents, minus the seam it does not need.
+ */
+function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
+  return {
+    id: "svc-1",
+    providerId: "prov-1",
+    providerName: "Estúdio Mavalane",
+    providerSlug: "estudio-mavalane",
+    providerType: "organization",
+    providerRatingAverage: 4.7,
+    providerReviewCount: 6,
+    categoryCode: "hair",
+    categoryName: "Hair & beauty",
+    name: "Corte de cabelo",
+    description: null,
+    locationType: "at_provider",
+    bookingMode: "priced",
+    imageUrls: [],
+    defaultOption: {
+      amountMinor: 80_000,
+      currency: "MZN",
+      durationMinutes: 45,
+      minMinutes: null,
+      stepMinutes: null,
+      pricingMode: "fixed",
+    },
+    fromAmountMinor: 80_000,
+    optionCount: 1,
+    isFallback: false,
+    ...over,
+  };
+}
+
+function renderCard(dto: ServiceDTO, categoryIcon: string | null = null) {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <ul>
+        <ServiceListingCard service={dto} locale="en-US" categoryIcon={categoryIcon} />
+      </ul>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  return render(<RouterProvider router={router} />);
+}
+
+describe("ServiceListingCard", () => {
+  it("draws the generated tile for a service with no photograph", async () => {
+    // Most listings on this platform have none. A column of grey rectangles
+    // reads as a page that failed to load; a coloured tile reads as variety.
+    const { container } = renderCard(service({ imageUrls: [] }));
+    await screen.findByRole("listitem");
+    expect(container.querySelector("[data-testid='listing-placeholder']")).not.toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("does not fall back to the provider's own picture", async () => {
+    // On a provider's page a logo is recognisable context. In a mixed browse
+    // it puts the same picture on four unrelated cards.
+    const { container } = renderCard(service({ imageUrls: ["https://cdn/x.jpg"] }));
+    await screen.findByRole("listitem");
+    expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn/x.jpg");
+  });
+
+  it("draws no stars at all for a provider nobody has reviewed", async () => {
+    // Null, not 0 — zero is a score a person could have given, and rendering
+    // it says this is the worst business on the platform.
+    const { container } = renderCard(
+      service({ providerRatingAverage: null, providerReviewCount: 0 }),
+    );
+    await screen.findByRole("listitem");
+    expect(container.querySelector("[data-testid='stub-rating']")).toBeNull();
+  });
+
+  it("says whose rating it is, because it is not the service's", async () => {
+    // Unlabelled, "4.7 (6)" claims this haircut has been reviewed six times.
+    // It has not been reviewed at all; its business has.
+    renderCard(service());
+    expect(await screen.findByText("provider rating")).toBeInTheDocument();
+  });
+
+  it("sends the title to the service, never to the provider", async () => {
+    // A reader who clicked "Corte de cabelo" wanted that service, not a chance
+    // to hunt for it again among everything else the barbershop offers.
+    renderCard(service());
+    const title = await screen.findByRole("link", { name: "Corte de cabelo" });
+    expect(title).toHaveAttribute("href", "/services/svc-1");
+    expect(
+      screen.queryByRole("link", { name: /estudio-mavalane/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("softens the button and prices a quote service 'to agree'", async () => {
+    // A solid brand-blue CTA beside a price of "to agree" promises a checkout
+    // that does not exist for this service.
+    renderCard(service({ bookingMode: "quote", defaultOption: null, fromAmountMinor: null }));
+    expect(await screen.findByText("To agree")).toBeInTheDocument();
+    const cta = screen.getByRole("link", { name: "Contact provider" });
+    expect(cta.className).not.toContain("bg-[var(--color-primary)]");
+    expect(cta).toHaveAttribute("href", "/services/svc-1");
+  });
+
+  it("prices a bookable service in its own currency, with its own length", async () => {
+    renderCard(service());
+    expect(await screen.findByText("Fixed price")).toBeInTheDocument();
+    expect(screen.getByTestId("stub-under")).toHaveTextContent("45 min");
+    expect(screen.getByRole("link", { name: "Book" })).toBeInTheDocument();
+  });
+
+  it("names the trade and where the work happens, the two facts that rule a card out", async () => {
+    renderCard(service());
+    const tags = await screen.findByTestId("listing-tags");
+    expect(tags).toHaveTextContent("Hair & beauty");
+    expect(tags).toHaveTextContent("At their place");
+  });
+});

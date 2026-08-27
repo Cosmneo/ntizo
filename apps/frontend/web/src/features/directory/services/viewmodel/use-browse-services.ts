@@ -1,9 +1,12 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import i18n from "@/shared/lib/i18n";
 import type { BrowseSort, ServicePageDTO } from "@/features/directory/services/domain/types";
-import { browseServicesQueries } from "@/features/directory/services/data/service.repository";
+import {
+  browseServicesQueries,
+  type ServiceCityFacet,
+} from "@/features/directory/services/data/service.repository";
 
 /**
  * Every published service, for the platform-wide browse.
@@ -71,6 +74,24 @@ export function useBrowseServices(narrowing: BrowseNarrowing): ServicePageDTO {
     }),
   );
   return data;
+}
+
+/**
+ * The cities the services filter may offer, with how many services each holds.
+ *
+ * `useQuery`, not `useSuspenseQuery` — the same split `useProviderCities`
+ * documents: this is a control, not the content a crawler came for, and
+ * suspending the whole page on it would hold the listings behind a second
+ * round trip. An empty array while it is in flight renders no city group at
+ * all, which is the same thing a platform with one city renders.
+ *
+ * It exists so `ui/` can reach `browseServicesQueries.cities` at all: the
+ * boundaries lint forbids a `ui` file from importing `data`, and this hook is
+ * the one legal route — the same reason `useBrowseServices` sits here.
+ */
+export function useServiceCities(): ServiceCityFacet[] {
+  const { data } = useQuery(browseServicesQueries.cities());
+  return data ?? [];
 }
 
 /**

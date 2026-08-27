@@ -2,7 +2,6 @@ import { useState, type ComponentType } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Building2, Languages, MapPin, SlidersHorizontal, Tag, Wallet } from "lucide-react";
-import { LOCALES } from "@ntizo/shared";
 import {
   Button,
   Sheet,
@@ -20,39 +19,19 @@ import { SearchBox } from "@/features/directory/services/ui/search-box";
 import { FilterPanelCard, FilterSection } from "@/shared/components/filter-panel";
 
 /**
- * The four places a service can happen.
+ * The closed sets the four link groups offer.
  *
- * Spelled here rather than read from the server: they are a closed set the
- * database's own CHECK enforces, and a filter offering whatever happened to
- * be in the data would quietly lose an option the day nobody had chosen it
- * yet.
+ * Imported from `service-facets.tsx` rather than spelled a second time here:
+ * two copies of "these are the four places a service can happen" is two places
+ * for a fifth one to be missed. That file is the one that outlives this one —
+ * this panel is the phone's until Task 21 moves it onto the same groups.
  */
-const LOCATION_TYPES = ["remote", "at_provider", "at_customer", "flexible"] as const;
-
-/**
- * The three ways a customer can pay, as they experience them.
- *
- * Flattened from two fields — `bookingMode` and the default option's
- * `pricingMode` — because "fixed price, per hour, or ask" is one question to
- * a customer and two columns to the schema. See `SERVICE_PAYMENT_MODES`.
- */
-const PAYMENT_MODES = ["fixed", "hourly", "quote"] as const;
-
-/** A person, or an establishment with staff. */
-const PROVIDER_KINDS = ["individual", "organization"] as const;
-
-/**
- * The languages a listing can be written in.
- *
- * Taken from `LOCALES` rather than spelled again: this is the same closed set
- * the translation step offers a provider, and a language the platform gained
- * must appear here without anybody remembering this file.
- *
- * What it filters is which languages the *listing* is readable in — see
- * `filterLanguageHint`, which says so on screen. It is not a claim about what
- * the provider speaks, because nothing in the product records that yet.
- */
-const LANGUAGES = LOCALES;
+import {
+  LANGUAGES,
+  LOCATION_TYPES,
+  PAYMENT_MODES,
+  PROVIDER_KINDS,
+} from "@/features/directory/services/ui/service-facets";
 
 /**
  * The browse's sidebar: the search box, then the filters.
@@ -152,6 +131,7 @@ export function activeFilterCount(current: BrowseSearch): number {
     current.paymentMode,
     current.providerType,
     current.language,
+    current.city,
     current.q,
     // A price range is one filter however many of its two boxes are filled:
     // counting the bounds separately would show "2" for a single range.
