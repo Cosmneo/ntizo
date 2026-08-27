@@ -21,7 +21,7 @@
 - **Every new copy string exists in all 8 locales** (`de-DE`, `en-US`, `es-ES`, `fr-FR`, `it-IT`, `nl-NL`, `pt-MZ`, `pt-PT`). `shared/lib/__tests__/i18n-parity.test.ts` fails the build otherwise, and it compares interpolation placeholders too.
 - **Tests assert English copy.** `test/setup.ts` resolves i18n to `en` under jsdom.
 - **`useSuspenseQuery`, never `useQuery`,** on anything these pages render. A plain `useQuery` renders its loading state on the server and ships an empty page to a crawler.
-- **GraphQL field names are flattened by the field kit.** `{ catalog: { serviceCities } }` emits as `catalogServiceCities` on the wire, with input type `CatalogServiceCitiesInput!`. Never `catalog { serviceCities }`.
+- **GraphQL field names are flattened by the field kit, and the barrel's name is NOT part of them.** `{ service: { cities } }` emits as `serviceCities`, input type `ServiceCitiesInput!` — never `catalogServiceCities`, and never a nested `service { cities }` selection. Confirmed against the `categoryAll`/`serviceAll` queries this repo already sends.
 - **`.optional()` on GraphQL inputs, never `.default()`.** A zod default does not survive into the emitted schema — the argument still emits as required. Defaults and clamps live in the projection.
 - **Prices and durations carry `tabular-nums`.**
 - **Task order is fixed.** Tasks 1–13 build shells and domain functions and change nothing on screen; 14–17 are the API; 18 is the copy; 19–21 switch the pages over. Do not reorder — Task 13 adds `city` to `BrowseSearch` and Task 16 adds it to the route, and doing 16 first leaves the filter reachable from a URL and silently dropped by every link on the page.
@@ -3691,7 +3691,7 @@ the same fromAmountMinor the card prints, so the sort and the label agree."
 - Consumes: `conditionsFor` (Task 14), `BrowseSearch.city` (added in Task 13).
 - Produces:
   - `listServices` input gains `city: z.string().trim().min(1).max(120).optional()`.
-  - `catalogPublicSchema` gains `service.cities` → `catalogServiceCities` on the wire.
+  - `catalogPublicSchema` gains `service.cities` → `serviceCities` on the wire.
   - `ServiceReadRepositoryPort` gains `listCityFacets(): Promise<{ city: string; count: number }[]>`.
 
 - [ ] **Step 1: Write the failing test**
@@ -3895,11 +3895,17 @@ Add the `CITIES` query and a `serviceCities` entry to `browseServicesQueries`, c
 ```ts
 const CITIES = `
   query ServiceCities {
-    catalogServiceCities(input: {}) { city count }
+    serviceCities(input: {}) { city count }
   }`;
 ```
 
-The field is `catalogServiceCities` — `{ catalog: { service: { cities } } }` flattens through the kit, so confirm the exact name by introspecting the running server (`__schema { queryType { fields { name } } }`) before trusting this line. `activity` and `messaging` each lost a round to guessing it.
+The field is `serviceCities`, input type `ServiceCitiesInput!`. The kit flattens the
+schema's own keys and does NOT prefix the barrel's name — `{ category: { all } }` emits as
+`categoryAll` and `{ service: { all } }` as `serviceAll`, both confirmed against the
+queries this repository already sends. An earlier draft of this plan said
+`catalogServiceCities`; that was wrong. Still confirm against the running server's
+introspection (`__schema { queryType { fields { name } } }`) before trusting any of it —
+`activity` and `messaging` each lost a round to guessing a field name.
 
 - [ ] **Step 7: Run everything**
 
