@@ -115,6 +115,23 @@ describe("public provider repository source", () => {
     expect(source).toContain("eq(memberAvailability.providerId,");
   });
 
+  it("aggregates the location types as json, never as a Postgres array", () => {
+    // `connection.ts` builds its client with `fetch_types: false`, so
+    // postgres-js cannot resolve an array OID and returns the raw literal
+    // `"{at_customer}"` instead of `["at_customer"]`. A declared array column
+    // survives that because Drizzle converts it by schema type; a bare
+    // `sql<string[]>` has no type to convert by, so the annotation is a
+    // promise only TypeScript believes.
+    //
+    // This shipped once as `array_agg` and took `provider.bySlug` down against
+    // the live database with "expected array, received string" while every
+    // unit test stayed green — each one handed `toDTO` an array by hand.
+    // `raw-aggregate-array-parsing.test.ts` pins the driver behaviour itself;
+    // this is the guard that runs without a database.
+    expect(source).toContain("json_agg(distinct ${service.locationType})");
+    expect(source).not.toContain("array_agg(distinct ${service.locationType})");
+  });
+
   it("scopes the location-type aggregate to published services", () => {
     // Isolated to the `locations` aggregate specifically, not just counted
     // across the whole file: `services` and `prices` also filter on

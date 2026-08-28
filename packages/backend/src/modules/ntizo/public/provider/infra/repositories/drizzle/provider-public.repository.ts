@@ -127,15 +127,25 @@ function aggregates() {
     .as("verified_agg");
 
   // Where this business actually works, from what it publishes rather than
-  // from what it declares — the same rule `categories` follows. `array_agg`
+  // from what it declares — the same rule `categories` follows. Aggregated
   // over a distinct set, so a provider with six at-home services contributes
   // "at_customer" once.
+  //
+  // `json_agg`, not `array_agg`, and the difference is not cosmetic. A raw
+  // `sql<string[]>` expression carries no column type for the driver to
+  // dispatch on, so a Postgres `text[]` came back as its own literal —
+  // the string `"{at_customer,remote}"`, not an array. TypeScript believed
+  // the annotation, every unit test handed `toDTO` a real array by hand, and
+  // the whole suite stayed green while `provider.bySlug` answered
+  // INTERNAL_ERROR against a live database: "expected array, received string".
+  // `json` is unambiguous on the wire and every driver parses it into a real
+  // value, so the annotation stops being a promise nobody checks.
   const locations = db
     .select({
       providerId: service.providerId,
       types: sql<
         string[] | null
-      >`array_agg(distinct ${service.locationType})`.as("location_types"),
+      >`json_agg(distinct ${service.locationType})`.as("location_types"),
     })
     .from(service)
     .where(eq(service.status, "published"))
