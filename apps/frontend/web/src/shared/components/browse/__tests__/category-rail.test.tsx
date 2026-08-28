@@ -52,6 +52,57 @@ describe("CategoryRail", () => {
       expect(arrow).toHaveAttribute("tabindex", "-1");
     }
   });
+
+  it("anchors the arrows to the content column, not the full-width band", () => {
+    // `left-3`/`right-3` against the band puts an arrow 12px from the browser
+    // chrome on a wide screen while the chips it scrolls start hundreds of
+    // pixels further in. `page-shell` is the same width utility the chips and
+    // the header use, so an arrow measured against it lands beside the row it
+    // controls at every viewport instead of at the edge of the glass.
+    const { container } = render(rail);
+    const leftArrow = container.querySelector("[data-testid='rail-arrow-left']")!;
+    const rightArrow = container.querySelector("[data-testid='rail-arrow-right']")!;
+    const column = leftArrow.parentElement!;
+    expect(rightArrow.parentElement).toBe(column);
+    expect(column.className).toContain("page-shell");
+    expect(column.className).toContain("absolute");
+    expect(column.className).toContain("inset-0");
+    // Not the scroller itself — a distinct, absolutely positioned layer
+    // measured against the same column width.
+    const scroller = container.querySelector("[data-testid='rail-scroller']")!;
+    expect(column).not.toBe(scroller);
+  });
+
+  it("keeps the edge fades on the same column as the arrows", () => {
+    // A fade starting at the screen edge while its arrow sits at the column
+    // edge would be two different measurements of the same row — the fade
+    // has to move with the arrow or the two disagree about where the row
+    // starts. `span[aria-hidden]` rather than a selector rooted at
+    // `.page-shell`: the fade's own class list is what has to prove it moved,
+    // not a query that already assumes it did.
+    const { container } = render(rail);
+    const fades = container.querySelectorAll("span[aria-hidden='true']");
+    expect(fades.length).toBe(2);
+    const leftArrow = container.querySelector("[data-testid='rail-arrow-left']")!;
+    for (const fade of fades) {
+      expect(fade.parentElement).toBe(leftArrow.parentElement);
+      expect(fade.parentElement!.className).toContain("page-shell");
+    }
+  });
+
+  it("does not let the arrows' box swallow clicks meant for the chips", () => {
+    // The box that carries the arrows now spans the whole centred column
+    // instead of a corner-sized square — without `pointer-events-none` on it,
+    // a transparent layer that size would sit above every chip and eat the
+    // clicks this rail exists to enable. Each arrow opts back in for itself.
+    const { container } = render(rail);
+    const leftArrow = container.querySelector("[data-testid='rail-arrow-left']")!;
+    const column = leftArrow.parentElement!;
+    expect(column.className).toContain("pointer-events-none");
+    for (const arrow of container.querySelectorAll("[data-testid^='rail-arrow']")) {
+      expect(arrow.className).toContain("pointer-events-auto");
+    }
+  });
 });
 
 describe("categoryChipClass", () => {
