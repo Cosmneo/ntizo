@@ -58,14 +58,18 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  * here, which is why it used to re-derive the default itself.
  *
  * `providerVerified`, `providerRatingAverage` and `providerReviewCount` used
- * to be hardcoded to false/null/0 with a comment saying there was nothing
- * truthful to derive them from. That stopped being true when the page began
- * reading the provider behind the service for the rail's weekly hours: all
- * three are fields on `ProviderPublicDetailDTO`, so they are passed through
- * rather than invented. When that second read resolves to `null` — a provider
- * deactivated between the two queries — they fall back to the same three
- * values, which are the conservative ones: no verification claimed, no score
- * asserted, and `RatingStars` renders "no reviews yet" rather than a zero.
+ * to be hardcoded to false/null/0, with a comment saying there was nothing
+ * truthful to derive them from *and* nothing depending on the result. Only
+ * the first half stopped being true: the page now reads the provider behind
+ * the service for the rail's weekly hours, all three are fields on
+ * `ProviderPublicDetailDTO`, so they are passed through rather than invented.
+ * The second half still holds and is the load-bearing one — **nothing
+ * consumes them.** Grep `availability/` for the three names and the only hits
+ * are `availability-sheet.test.tsx`'s own fixture; the sheet queries slots by
+ * service id and derives nothing else from this object but `servicePriceCell`.
+ * They are supplied because `ServiceDTO` demands them, not because anything
+ * reads them, which is also why the `null`-provider fallbacks below need no
+ * defence beyond being the conservative direction.
  *
  * Kept as a local, unexported function in the one page that needs it rather
  * than moved into `domain/`, since nothing else in this feature converts

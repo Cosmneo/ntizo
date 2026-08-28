@@ -285,6 +285,31 @@ describe("ServiceDetailPage's body", () => {
     expect(screen.getByTestId("booking-total")).toHaveTextContent(/990/);
   });
 
+  it("opens on the provider's marked default, not on the cheapest option", async () => {
+    // The one guard on that rule. `getService` returns options cheapest-first,
+    // so "marked default, else first" is precisely what lets a provider say
+    // "start them on the 900 one, not the 500 one" — and every other fixture
+    // in this file puts `isDefault` on `options[0]`, where the rule and "just
+    // take the first" are indistinguishable. Reduce the page's selection to
+    // `service.options[0]` and this is the only test in the suite that reds.
+    //
+    // Two assertions, because the rule has to reach both halves of the split:
+    // the rail's total is what the reader is quoted, the checked radio is what
+    // the body shows them they are being quoted for.
+    renderPage(
+      detailService({
+        options: [
+          detailOption({ amountMinor: 50000, isDefault: false }),
+          detailOption({ id: "opt-2", name: "Longo", amountMinor: 90000, isDefault: true }),
+        ],
+      }),
+    );
+    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/990/);
+    expect(screen.getByTestId("booking-total")).not.toHaveTextContent(/550/);
+    expect(screen.getByRole("radio", { name: /Longo/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /Corte/ })).toHaveAttribute("aria-checked", "false");
+  });
+
   it("states the four facts about the service", async () => {
     renderPage(detailService());
     await screen.findByRole("heading", { level: 1 });
