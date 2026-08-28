@@ -303,8 +303,13 @@ export function MobileDirectoryFilterBar({ current }: { current: DirectorySearch
           {/* A dialog of its own, like `MobileSearchSheet`'s: the `Sheet`
               primitive draws a fixed div and nothing else, so without this a
               screen reader is handed the groups with no boundary around them
-              and no name saying what they are. */}
-          <div role="dialog" aria-modal="true" aria-labelledby={titleId}>
+              and no name saying what they are.
+
+              No `aria-modal`, for the reason that component spells out: the
+              role describes, `aria-modal` asserts the rest of the page is
+              inert, and this primitive traps no focus and handles no Escape.
+              See follow-up #78. */}
+          <div role="dialog" aria-labelledby={titleId}>
             {/* `FacetPanel`'s own heading row is not rendered in here — the
                 sheet's title already says "Filters", and two of them one above
                 the other read as a mistake rather than as structure. The

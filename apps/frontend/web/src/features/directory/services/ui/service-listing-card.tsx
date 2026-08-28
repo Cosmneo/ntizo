@@ -8,7 +8,6 @@ import {
 } from "@/shared/components/browse/listing-card";
 import { ListingMedia } from "@/shared/components/browse/listing-media";
 import { PriceStub, stubCtaClass } from "@/shared/components/browse/price-stub";
-import { formatAmount } from "@/features/directory/services/domain/service-card";
 import { serviceStubParts } from "@/features/directory/services/domain/service-stub";
 import type { ServiceDTO } from "@/features/directory/services/domain/types";
 
@@ -118,7 +117,7 @@ export function ServiceListingCard({
           eyebrow={t(parts.eyebrowKey)}
           amount={
             parts.amount.kind === "money"
-              ? formatAmount(parts.amount.amountMinor, parts.amount.currency, locale)
+              ? formatPrice(parts.amount.amountMinor, parts.amount.currency, locale)
               : t(parts.amount.key)
           }
           {...(parts.under ? { under: t(parts.under.key, parts.under.values) } : {})}
@@ -140,4 +139,30 @@ export function ServiceListingCard({
       }
     />
   );
+}
+
+/**
+ * Minor units as money on a browse card, in the reader's language.
+ *
+ * Whole units, and the twin of `ProviderListingCard`'s own `formatPrice` down
+ * to the option object — the two cards sit in the same column of the same
+ * product, and one writing `800 MZN` beside the other writing `1200,00 MZN` is
+ * the platform disagreeing with itself about how it writes a price. The
+ * approved mockup writes whole units, so both do.
+ *
+ * Here rather than in the services domain's `formatAmount`: that helper also
+ * formats `PackageChooser`'s line items and its total, and a checkout total
+ * rounded to the escudo is a different number from the one the customer pays.
+ * A card is a headline price and can round; a total cannot.
+ *
+ * A private copy rather than an import from the provider card, because these
+ * two files are deliberate twins and making one depend on the other is how a
+ * change to "the directory's price format" silently moves the services page.
+ */
+function formatPrice(amountMinor: number, currency: string, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amountMinor / 100);
 }

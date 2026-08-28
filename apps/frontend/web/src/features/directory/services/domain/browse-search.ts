@@ -66,11 +66,18 @@ export function browseSearch(current: BrowseSearch, change: BrowseSearch): Brows
  * shows "2" for a single range. The same rules `activeDirectoryFilterCount`
  * follows on the directory.
  *
- * Every filter counted here has to be reachable inside the sheet the badge
- * opens. It moved out of `browse-filters.tsx` and down here beside its twin
- * when the count grew a `city` the sheet had no group for: a badge reading 2
- * over a sheet offering one control the reader can act on is a badge that
- * lies about what is on.
+ * Every *facet* counted here is reachable inside the sheet the badge opens.
+ * `q` is the one deliberate exception: it is the hero's search term, the sheet
+ * has no box for it, and what takes it off is its own chip above the results
+ * or "Clear all" beside them. It is counted anyway, because it narrows harder
+ * than any facet does and a badge that ignored it would read 0 over a page
+ * showing three results out of two hundred.
+ *
+ * The facet half of that rule is why this lives here rather than in the
+ * deleted `browse-filters.tsx`: the count once grew a `city` the sheet had no
+ * group for, and a badge reading 2 over a sheet offering one control the
+ * reader can act on lies about what is on. `activeDirectoryFilterCount` says
+ * the same.
  */
 export function activeFilterCount(current: BrowseSearch): number {
   return [

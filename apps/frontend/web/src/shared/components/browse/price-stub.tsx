@@ -61,7 +61,27 @@ export function PriceStub({
   return (
     <div
       data-testid="price-stub"
-      className="relative flex flex-col items-end justify-between gap-3 pt-4 md:pt-0 md:pl-5 lg:pl-6"
+      // One row of two columns on a phone, a column of rows from `md` up — the
+      // mockup's `.mstub` against its `.stub`. Stacked at both widths it drew
+      // six right-aligned lines and about 130px of every card, against the
+      // mockup's 56: on a screen where the whole card is 358px wide, a quarter
+      // of each result spent saying one price.
+      //
+      // `items-end` is unprefixed because it means the right thing in both
+      // directions — the bottoms line up in the row, the contents sit right in
+      // the column — and gating it behind `md:` would leave the phone row on
+      // `stretch`, which is not what the mockup draws.
+      //
+      // `min-w-0` is what keeps the row from taking the whole page sideways. The
+      // card is a one-column grid on a phone and a grid track's automatic
+      // minimum is its item's min-content, so turned into a row this stub's
+      // min-content became the *sum* of its columns rather than the widest of
+      // its stacked rows: on `/providers`, whose CTA reads "Ver negócio" and
+      // cannot wrap, the card grew 22px past its own list and the document
+      // scrolled sideways. The same trap `ListingCard`'s `minmax(0,1fr)`
+      // comment describes, one level down. `flex-wrap` is the floor under it —
+      // a translation long enough to beat both still wraps rather than overlaps.
+      className="relative flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-2 pt-4 md:flex-col md:flex-nowrap md:pt-0 md:pl-5 lg:pl-6"
     >
       {/* The perforation. A zero-width span with a left border rather than a
           dashed border on the container: a dashed border on the flex parent
@@ -80,58 +100,85 @@ export function PriceStub({
       <Notch className="top-[-6px] left-[-22px] md:top-[-23px] md:left-[-6px]" />
       <Notch className="top-[-6px] right-[-22px] md:top-auto md:right-auto md:bottom-[-23px] md:left-[-6px]" />
 
-      {rating && (
-        <p
-          data-testid="stub-rating"
-          className="grid justify-items-end gap-0.5"
-          // One label for the pair. Five icons read out one by one are not a
-          // rating, and the number alone loses the count — 4.9 from two people
-          // and 4.9 from two hundred are different claims.
-          aria-label={t("providerRatingLabel", {
-            score: rating.average.toFixed(1),
-            count: rating.count,
-          })}
-        >
-          <span className="flex items-center gap-1.5">
-            <Star
-              className="h-3.5 w-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]"
-              aria-hidden="true"
-            />
-            <b className="font-rounded text-[0.95rem] font-semibold tabular-nums">
-              {rating.average.toFixed(1)}
-            </b>
-            <span className="type-caption text-[var(--color-muted-foreground)]">
-              ({rating.count})
+      {/* The price column of the phone row, and nothing at all from `md` up:
+          `md:contents` dissolves this wrapper so the desktop column stays the
+          three siblings it has always been.
+
+          It exists because the mockup's `.mstub` is two columns and this has
+          three things to place — the mockup keeps its rating up in the card's
+          meta line, and a service card has no meta line to keep it in. Left as
+          a third column it did not fit: 66 + 105 + 135 and two gaps against the
+          278px a card has at 360, and what does not fit in a flex row overlaps.
+          The "Ver negócio" button sat on top of "1200 MZN". */}
+      <div className="grid min-w-0 gap-0.5 md:contents">
+        {rating && (
+          <p
+            data-testid="stub-rating"
+            className="grid justify-items-start gap-0.5 md:justify-items-end"
+            // One label for the pair. Five icons read out one by one are not a
+            // rating, and the number alone loses the count — 4.9 from two people
+            // and 4.9 from two hundred are different claims.
+            aria-label={t("providerRatingLabel", {
+              score: rating.average.toFixed(1),
+              count: rating.count,
+            })}
+          >
+            <span className="flex items-center gap-1.5">
+              <Star
+                className="h-3.5 w-3.5 fill-[var(--color-warning)] text-[var(--color-warning)]"
+                aria-hidden="true"
+              />
+              <b className="font-rounded text-[0.95rem] font-semibold tabular-nums">
+                {rating.average.toFixed(1)}
+              </b>
+              <span className="type-caption text-[var(--color-muted-foreground)]">
+                ({rating.count})
+              </span>
             </span>
+            {rating.attribution && (
+              <span className="type-caption text-[var(--color-muted-foreground)]">
+                {rating.attribution}
+              </span>
+            )}
+          </p>
+        )}
+
+        {/* Flush left on a phone, flush right in the desktop column — the
+            mockup's `.mstub .price-block { text-align: left }` against its
+            `.stub`. Right-aligned inside a left-hand column, the four lines are
+            ragged against nothing and read as a mistake. */}
+        <p className="grid justify-items-start gap-0.5 text-left md:justify-items-end md:text-right">
+          <span className="text-[11px] font-medium tracking-[0.09em] text-[var(--color-muted-foreground)] uppercase">
+            {eyebrow}
           </span>
-          {rating.attribution && (
-            <span className="type-caption text-[var(--color-muted-foreground)]">
-              {rating.attribution}
+          <b className="font-rounded text-[1.45rem] leading-tight font-semibold tracking-[-0.02em] tabular-nums">
+            {amount}
+          </b>
+          {under && (
+            <span
+              data-testid="stub-under"
+              className="type-caption text-[var(--color-muted-foreground)]"
+            >
+              {under}
             </span>
           )}
         </p>
-      )}
-
-      <p className="grid justify-items-end gap-0.5 text-right">
-        <span className="text-[11px] font-medium tracking-[0.09em] text-[var(--color-muted-foreground)] uppercase">
-          {eyebrow}
-        </span>
-        <b className="font-rounded text-[1.45rem] leading-tight font-semibold tracking-[-0.02em] tabular-nums">
-          {amount}
-        </b>
-        {under && (
-          <span
-            data-testid="stub-under"
-            className="type-caption text-[var(--color-muted-foreground)]"
-          >
-            {under}
-          </span>
-        )}
-      </p>
+      </div>
 
       {/* `relative` so it sits above the card's whole-surface title link. A CTA
-          underneath that overlay is a button nobody can press. */}
-      <div className="relative w-full">{action}</div>
+          underneath that overlay is a button nobody can press.
+
+          Content-width on a phone (`.mstub .cta { width: auto }` in the
+          mockup), because there it is the right-hand column of the stub's one
+          row rather than the last line of a stack. `shrink-0` because its label
+          cannot wrap, so it is the two text blocks beside it that must give way;
+          `ml-auto` keeps it on the right on the wrapped line too. */}
+      <div
+        data-testid="stub-action"
+        className="relative ml-auto w-auto shrink-0 md:ml-0 md:w-full"
+      >
+        {action}
+      </div>
     </div>
   );
 }

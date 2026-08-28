@@ -1891,3 +1891,38 @@ or leaving a repository method with no viewmodel.
 
 **Trigger:** the next time someone touches `use-categories.ts` or `category.repository.ts` — delete it
 then if no such screen has appeared, or wire it up if one has.
+
+---
+
+## 78. `Sheet` is called a dialog but is not modal, and the bottom nav paints over its backdrop
+
+`packages/frontend/src/components/sheet.tsx` is a deliberately minimal primitive: `SheetContent`
+renders a `z-40` backdrop and a `z-50` fixed panel, and that is all. There is **no focus trap, no
+Escape handler, no focus move on open, no focus restore on close and no `inert`/`aria-hidden` on the
+background.** Tab from the last control in a sheet lands on the page underneath it.
+
+The three browse sheets (`MobileSearchSheet`, `MobileFilterBar`, `MobileDirectoryFilterBar`) carry
+`role="dialog"` + `aria-labelledby`, which they earn — the primitive draws a bare div, so without
+them a screen reader gets the fields with no boundary and no name. They deliberately do **not** carry
+`aria-modal="true"`, which was dropped in task 21's review: `aria-modal` asserts that everything
+outside the node is inert, and a false claim of modality is strictly worse than no claim, because it
+tells assistive tech to ignore exactly the controls keyboard focus is about to land on.
+`features/provider/availability/ui/rule-drawer.tsx` still carries `aria-modal="true"` over the same
+primitive and has the same problem.
+
+Second, smaller defect in the same primitive: the backdrop is `z-40`, and `MobileNav`
+(`shared/components/mobile-nav.tsx`) is also `z-40` and later in the DOM — `__root.tsx` renders it
+after the page content. Equal z-index resolves on tree order, so below `md` the bottom nav paints
+**over** the sheet's backdrop and stays tappable behind a sheet short enough not to cover it. A
+reader can navigate away from underneath an open dialog.
+
+The fix is one of two, not both: give `Sheet` real modality (focus trap, Escape, focus restore,
+background `inert`, and a backdrop above every fixed chrome the app has), and then put `aria-modal`
+back everywhere; or accept it as a non-modal disclosure panel and stop the `role="dialog"` too. It
+was left alone here because it is a shared primitive with callers outside this branch, and changing
+its focus behaviour is not a thing to do inside a listings redesign.
+
+**Trigger:** the first keyboard or screen-reader accessibility pass on the customer app, or the first
+report of the bottom nav being tappable behind an open sheet — whichever comes first. Also urgent if
+a fourth caller adopts `Sheet` for anything the user must not be able to escape from mid-flow
+(a payment confirmation, a destructive confirm).

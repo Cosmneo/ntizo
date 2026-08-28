@@ -310,6 +310,15 @@ describe("DirectoryPage", () => {
     const options = screen.getAllByRole("link", { name: "A person" });
     expect(options).toHaveLength(2);
     for (const option of options) expect(option).not.toHaveAttribute("aria-current");
+
+    // The clear-all is the same trap wearing a different label, and the worst
+    // case of it: its search is the *empty* one, a subset of every search
+    // there is, so unguarded it announces "you are already here" on the one
+    // link that changes the page most. Three copies — the chip row's, the
+    // sidebar's and the sheet's — and all three carry `EXACT_MATCH`.
+    const clears = screen.getAllByRole("link", { name: "Clear all" });
+    expect(clears).toHaveLength(3);
+    for (const clear of clears) expect(clear).not.toHaveAttribute("aria-current");
   });
 
   it("collapses the search card to one row on a phone, and opens both fields in a sheet", async () => {
@@ -347,6 +356,23 @@ describe("DirectoryPage", () => {
       expect(router.state.location.search).toEqual({ q: "mavalane", city: "Beira" });
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("sits the phone filter bar above the bottom nav, and back down at md", async () => {
+    // The one defect of this redesign that made a control dead rather than
+    // ugly: `MobileNav` is `fixed bottom-0 z-40 md:hidden` and the bar was
+    // `bottom-0 z-30`, so below `md` the nav painted over it completely — the
+    // badge, the sheet and every filter in it, unreachable on a phone, with
+    // the whole suite green. The offset is `3.5rem` because that is the
+    // `pb-14` the root reserves for the nav, plus the safe-area inset the nav
+    // itself carries; at `md` the nav is gone and the bar goes back down.
+    renderPage("/providers", { items: [provider()], total: 1 });
+    const bar = (await screen.findByRole("button", { name: /Filters/ })).parentElement!;
+    const classes = bar.className.split(/\s+/);
+    expect(classes).toContain("bottom-[calc(3.5rem+env(safe-area-inset-bottom))]");
+    expect(classes).toContain("md:bottom-0");
+    // The one that bites: a bare `bottom-0` is the bar back under the nav.
+    expect(classes).not.toContain("bottom-0");
   });
 
   it("offers every filter its badge counts, and a way to take them all off", async () => {

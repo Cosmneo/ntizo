@@ -179,8 +179,9 @@ export function ProviderListingCard({
  * out.
  *
  * Its own copy rather than the services domain's `formatAmount`, which keeps
- * the decimals on purpose — a service card states an exact price for an exact
- * job, and rounding that one would be rounding what the customer pays.
+ * the decimals because it also formats `PackageChooser`'s checkout total — a
+ * number that is what the customer pays, not a headline, and so cannot round.
+ * `ServiceListingCard` holds the twin of this function for the same reason.
  */
 function formatPrice(amountMinor: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {

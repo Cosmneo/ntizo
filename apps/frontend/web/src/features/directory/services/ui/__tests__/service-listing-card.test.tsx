@@ -131,6 +131,18 @@ describe("ServiceListingCard", () => {
     expect(screen.getByRole("link", { name: "Book" })).toBeInTheDocument();
   });
 
+  it("writes the price in whole units, the way the provider card beside it does", async () => {
+    // Two cards in the same product, in the same 24px slot, disagreeing about
+    // whether this platform writes "800 MZN" or "800.00 MZN" is worse than
+    // either choice on its own. `ProviderListingCard` rounds and the approved
+    // mockup rounds, so this rounds. The decimals stay where a number is what
+    // somebody pays rather than a headline — see `PackageChooser`.
+    renderCard(service({ defaultOption: { ...service().defaultOption!, amountMinor: 80_000 } }));
+    const stub = await screen.findByTestId("price-stub");
+    expect(stub).toHaveTextContent("MZN 800");
+    expect(stub).not.toHaveTextContent("800.00");
+  });
+
   it("names the provider as the service's author, not as a second title", async () => {
     // "Estúdio Mavalane" alone under "Corte de cabelo" reads as a subtitle of
     // the service. The preposition is a word each language places and inflects
