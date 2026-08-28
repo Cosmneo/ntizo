@@ -3,6 +3,7 @@ import { getAuth, registerSignUpHook } from "@ntizo/backend/modules/better-auth"
 import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/user";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { bootstrapActivity } from "@ntizo/backend/modules/ntizo/bounded-contexts/activity";
+import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import {
   registerProviderNotificationHandlers,
   registerUserNotificationHandlers,
@@ -18,6 +19,7 @@ import { mountPrivateGraphql } from "./graphql/private";
 import { mountPublicGraphql } from "./graphql/public";
 import { mountDocuments } from "./documents";
 import { mountMedia } from "./media";
+import { mountAttachments } from "./attachments";
 import { mountWebhooks } from "./webhooks";
 import { configureMediaUrlBase } from "@ntizo/backend/modules/ntizo/media";
 import "./bootstrap";
@@ -50,6 +52,17 @@ app.use("*", async (c, next) => {
 // isolate, shared by both, the same way `userBootstrap` is shared with the
 // sign-up hook.
 const notificationBootstrap = bootstrapNotification();
+
+// Bootstrapped here too, at module scope beside `notificationBootstrap`: the
+// attachment download route below needs `attachmentRepository.findVisible`
+// directly, the same reason `admin-access.ts` and `provider-access.ts` reach
+// other contexts' read repositories rather than a use case — see
+// `bootstrapCommunication`'s own doc comment for why that adapter is exposed
+// at all. `raiseNotification` is required only because the same bootstrap
+// also wires `NotifyUnreadInternalCommand`, which this mount never calls.
+const communicationBootstrap = bootstrapCommunication({
+  raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,
+});
 
 // Bootstrapped here too, at module scope beside `notificationBootstrap`: the
 // activity handlers registered below need `recordActivity` and the two
@@ -159,6 +172,12 @@ mountDocuments(app);
 
 // Logos and portfolio photos. Public-read, unlike documents.
 mountMedia(app);
+
+// Message attachments. Private like documents, never public like media: a
+// file here always arrived from a stranger.
+mountAttachments(app, {
+  attachmentRepository: communicationBootstrap.adapters.attachmentRepository,
+});
 
 // Health check
 app.get("/", (c) => c.json({ status: "ok", service: "ntizo-api" }));

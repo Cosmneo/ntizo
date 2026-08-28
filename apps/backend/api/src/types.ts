@@ -13,6 +13,8 @@ export type AppBindings = InfraEnvBindings & {
   DOCUMENTS_BUCKET?: R2Bucket;
   /** Logos and portfolio photos. Public-read: they exist to be shown. */
   MEDIA_BUCKET?: R2Bucket;
+  /** Files sent inside a conversation. No public URL, ever — same posture as `DOCUMENTS_BUCKET`, and for the same reason: every one of these came from a stranger. */
+  ATTACHMENTS_BUCKET?: R2Bucket;
   /** Where `MEDIA_BUCKET` is served from, so stored keys can become URLs. */
   MEDIA_PUBLIC_URL_BASE?: string;
   /**
