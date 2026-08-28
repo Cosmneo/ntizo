@@ -41,6 +41,11 @@
       "types": "./src/scheduling/index.ts",
       "import": "./src/scheduling/index.ts",
       "default": "./src/scheduling/index.ts"
+    },
+    "./text": {
+      "types": "./src/text/index.ts",
+      "import": "./src/text/index.ts",
+      "default": "./src/text/index.ts"
     }
   },
   "devDependencies": {
