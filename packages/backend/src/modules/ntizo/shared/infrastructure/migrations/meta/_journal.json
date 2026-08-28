@@ -169,6 +169,13 @@
       "when": 1787828701059,
       "tag": "0023_pink_black_bird",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787901892115,
+      "tag": "0024_certain_annihilus",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,10 @@
-import { MessageBodyEmptyError, MessageBodyTooLongError } from "../exceptions";
+import { MessageEmptyError, MessageBodyTooLongError, TooManyAttachmentsError } from "../exceptions";
 
 /** A message body's hard ceiling, trimmed length. Matches the DB CHECK — see Task 1's schema. */
 export const MESSAGE_BODY_MAX = 4000;
+
+/** The most attachments one message may carry. See Task 2's brief. */
+export const MAX_ATTACHMENTS = 5;
 
 /**
  * How long a message waits, unread, before anybody is told about it. One
@@ -47,11 +50,28 @@ export class Message {
    *
    * `id` is always `null` here — the repository assigns it on insert, the
    * same way `Review.create` and `Activity.record` leave theirs unset.
+   *
+   * `attachmentCount` defaults to `0` rather than being a strictly required
+   * argument: `SendMessageCommand` (Task 4's concern, not this task's file
+   * list) and the real-DB repository tests still call `compose` without it,
+   * and a required field would break both to typecheck for a change neither
+   * asked for. The rule this default preserves is the one that matters — a
+   * body-less, attachment-less call still throws `MessageEmptyError`.
    */
-  static compose(params: { threadId: string; senderUserId: string; body: string; now: Date }): Message {
+  static compose(params: {
+    threadId: string;
+    senderUserId: string;
+    body: string;
+    attachmentCount?: number;
+    now: Date;
+  }): Message {
     const body = params.body.trim();
-    if (body.length === 0) throw new MessageBodyEmptyError();
+    const attachmentCount = params.attachmentCount ?? 0;
+    // The rule is that a message carries something, not that it has words.
+    // A photograph with no caption is a message; an empty box is not.
+    if (body.length === 0 && attachmentCount === 0) throw new MessageEmptyError();
     if (body.length > MESSAGE_BODY_MAX) throw new MessageBodyTooLongError(body.length, MESSAGE_BODY_MAX);
+    if (attachmentCount > MAX_ATTACHMENTS) throw new TooManyAttachmentsError(attachmentCount, MAX_ATTACHMENTS);
 
     return new Message({
       id: null,

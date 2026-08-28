@@ -1,10 +1,16 @@
 export { bootstrapCommunication, type CommunicationBootstrap } from "./bootstrap";
 
 export { Thread } from "./domain/aggregates/thread.aggregate";
-export { Message, MESSAGE_BODY_MAX, NOTIFY_AFTER_MS } from "./domain/aggregates/message.aggregate";
 export {
-  MessageBodyEmptyError,
+  Message,
+  MESSAGE_BODY_MAX,
+  MAX_ATTACHMENTS,
+  NOTIFY_AFTER_MS,
+} from "./domain/aggregates/message.aggregate";
+export {
+  MessageEmptyError,
   MessageBodyTooLongError,
+  TooManyAttachmentsError,
   ThreadNotVisibleError,
   ProviderNotContactableError,
   ThreadTypeInvalidError,

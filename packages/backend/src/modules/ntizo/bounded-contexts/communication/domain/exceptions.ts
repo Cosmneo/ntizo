@@ -14,13 +14,20 @@ import { UnprocessableError } from "@cosmneo/onion-lasagna";
  * one is a breaking change to callers, not a refactor.
  */
 
-export class MessageBodyEmptyError extends UnprocessableError {
+/**
+ * Refused because the message carries nothing at all: no text, no
+ * attachment. Named `MessageEmptyError` rather than `MessageBodyEmptyError`
+ * — the rule stopped being about text the moment an attachment could stand
+ * in for a body. A photograph with no caption is a message; an empty box
+ * is not.
+ */
+export class MessageEmptyError extends UnprocessableError {
   constructor() {
     super({
       message: "A message needs something in it.",
-      code: "MESSAGE_BODY_EMPTY",
+      code: "MESSAGE_EMPTY",
     });
-    this.name = "MessageBodyEmptyError";
+    this.name = "MessageEmptyError";
   }
 }
 
@@ -38,6 +45,28 @@ export class MessageBodyTooLongError extends UnprocessableError {
       code: "MESSAGE_BODY_TOO_LONG",
     });
     this.name = "MessageBodyTooLongError";
+  }
+}
+
+/**
+ * Refused because a message carries more attachments than `MAX_ATTACHMENTS`
+ * allows.
+ *
+ * `max` is a constructor argument, not an import of `MAX_ATTACHMENTS` from
+ * `message.aggregate.ts` — that file imports this one to throw it, so
+ * importing back would be a cycle. The thrower already knows the limit;
+ * this just carries it into the message.
+ */
+export class TooManyAttachmentsError extends UnprocessableError {
+  constructor(
+    public readonly count: number,
+    public readonly max: number,
+  ) {
+    super({
+      message: `A message may carry at most ${max} attachments; this one has ${count}.`,
+      code: "TOO_MANY_ATTACHMENTS",
+    });
+    this.name = "TooManyAttachmentsError";
   }
 }
 

@@ -1,13 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import { getGraphQLErrorCode } from "@cosmneo/onion-lasagna";
-import { Message, MESSAGE_BODY_MAX, NOTIFY_AFTER_MS } from "../domain/aggregates/message.aggregate";
+import {
+  MAX_ATTACHMENTS,
+  Message,
+  MESSAGE_BODY_MAX,
+  NOTIFY_AFTER_MS,
+} from "../domain/aggregates/message.aggregate";
 import { Thread } from "../domain/aggregates/thread.aggregate";
 import {
-  MessageBodyEmptyError,
+  MessageEmptyError,
   MessageBodyTooLongError,
   ProviderNotContactableError,
   ThreadNotVisibleError,
   ThreadTypeInvalidError,
+  TooManyAttachmentsError,
 } from "../domain/exceptions";
 
 const now = new Date("2026-08-27T10:00:00.000Z");
@@ -15,7 +21,27 @@ const base = { threadId: "11111111-1111-1111-1111-111111111111", senderUserId: "
 
 describe("Message.compose", () => {
   it("refuses a body that is only whitespace", () => {
-    expect(() => Message.compose({ ...base, body: "   \n\t " })).toThrow(MessageBodyEmptyError);
+    expect(() => Message.compose({ ...base, body: "   \n\t " })).toThrow(MessageEmptyError);
+  });
+
+  it("allows an empty body when an attachment rides with it", () => {
+    const m = Message.compose({ ...base, body: "", attachmentCount: 1 });
+    expect(m.body).toBe("");
+  });
+
+  it("still refuses a message carrying nothing at all", () => {
+    expect(() => Message.compose({ ...base, body: "   ", attachmentCount: 0 })).toThrow(MessageEmptyError);
+  });
+
+  it("refuses more than five attachments", () => {
+    expect(() => Message.compose({ ...base, body: "olá", attachmentCount: 6 })).toThrow(
+      TooManyAttachmentsError,
+    );
+  });
+
+  it("accepts exactly the attachment limit", () => {
+    const m = Message.compose({ ...base, body: "", attachmentCount: MAX_ATTACHMENTS });
+    expect(m.body).toBe("");
   });
 
   it("refuses a body over the limit", () => {
@@ -116,8 +142,9 @@ describe("Thread.rehydrate", () => {
 describe("communication domain exceptions, at the boundary that makes them client-facing", () => {
   it("are not masked to INTERNAL_ERROR by the kit — every one maps to UNPROCESSABLE", () => {
     const errors: Error[] = [
-      new MessageBodyEmptyError(),
+      new MessageEmptyError(),
       new MessageBodyTooLongError(4001, MESSAGE_BODY_MAX),
+      new TooManyAttachmentsError(6, MAX_ATTACHMENTS),
       new ThreadNotVisibleError(),
       new ProviderNotContactableError(),
       new ThreadTypeInvalidError("support"),
@@ -130,15 +157,17 @@ describe("communication domain exceptions, at the boundary that makes them clien
     // Every code below is a PUBLIC CONTRACT a client can branch on; renaming
     // one is a breaking change to callers, not a refactor.
     const codes = {
-      MessageBodyEmptyError: new MessageBodyEmptyError().code,
+      MessageEmptyError: new MessageEmptyError().code,
       MessageBodyTooLongError: new MessageBodyTooLongError(4001, MESSAGE_BODY_MAX).code,
+      TooManyAttachmentsError: new TooManyAttachmentsError(6, MAX_ATTACHMENTS).code,
       ThreadNotVisibleError: new ThreadNotVisibleError().code,
       ProviderNotContactableError: new ProviderNotContactableError().code,
       ThreadTypeInvalidError: new ThreadTypeInvalidError("support").code,
     };
     expect(codes).toEqual({
-      MessageBodyEmptyError: "MESSAGE_BODY_EMPTY",
+      MessageEmptyError: "MESSAGE_EMPTY",
       MessageBodyTooLongError: "MESSAGE_BODY_TOO_LONG",
+      TooManyAttachmentsError: "TOO_MANY_ATTACHMENTS",
       ThreadNotVisibleError: "THREAD_NOT_VISIBLE",
       ProviderNotContactableError: "PROVIDER_NOT_CONTACTABLE",
       ThreadTypeInvalidError: "THREAD_TYPE_INVALID",
