@@ -61,9 +61,17 @@ export function prefetchDirectory(
  * services are what a crawler indexes and what a reader came for, and holding
  * all of it behind a second round trip to fetch verdicts would make the page
  * slower for everyone to render the part nobody scrolled to yet.
+ *
+ * `limit` is optional and forwarded as-is. `directoryQueries.reviews` already
+ * keys its cache on it, so raising it — the only thing `ProviderReviews`'s
+ * "see all" button does — asks for a second, larger cache entry rather than
+ * mutating the first; no pagination state belongs here.
  */
-export function useProviderReviews(providerId: string): ProviderReviewsPublicDTO | undefined {
-  const { data } = useQuery(directoryQueries.reviews(providerId));
+export function useProviderReviews(
+  providerId: string,
+  limit?: number,
+): ProviderReviewsPublicDTO | undefined {
+  const { data } = useQuery(directoryQueries.reviews(providerId, limit));
   return data;
 }
 
