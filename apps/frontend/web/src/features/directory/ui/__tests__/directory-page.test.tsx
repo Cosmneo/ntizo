@@ -155,7 +155,10 @@ describe("DirectoryPage", () => {
     // A dropdown, not five links — the clearest sign the two browse pages had
     // drifted apart, and now the shape both share again.
     renderPage("/providers?sort=rating", { items: [provider()], total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    // The order in force is part of what the trigger is *called*, with this
+    // page's own copy in it — not only part of what it draws.
+    expect(await screen.findByRole("button", { name: "Sort: Best rated" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
 
     expect(screen.getByRole("menuitemradio", { name: "Suggested" })).toHaveAttribute(
       "aria-checked",
@@ -184,7 +187,7 @@ describe("DirectoryPage", () => {
       items: [provider()],
       total: 96,
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Price" }));
 
     await waitFor(() => {
@@ -199,7 +202,7 @@ describe("DirectoryPage", () => {
       items: [provider()],
       total: 1,
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
 
     await waitFor(() => {

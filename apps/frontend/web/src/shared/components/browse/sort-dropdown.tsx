@@ -58,7 +58,13 @@ export function SortDropdown<Sort extends string>({
   active: Sort | undefined;
   /** Every order this page offers, default first. */
   options: ReadonlyArray<SortDropdownOption<Sort>>;
-  /** Names the trigger for assistive technology. */
+  /**
+   * What the trigger is *for* — "Sort" — said in front of the order it is
+   * showing. Not the trigger's whole name: an `aria-label` here would replace
+   * the order with the word "Sort", so the one thing this control exists to
+   * state would be visible and nowhere else. Voice control needs the visible
+   * words to be in the name to act on them (WCAG 2.5.3, Label in Name).
+   */
   sortLabel: string;
   /**
    * Writes the chosen order. Built by the page from `browseSearch` /
@@ -81,9 +87,13 @@ export function SortDropdown<Sort extends string>({
           variant="outline"
           size="sm"
           className="rounded-full"
-          aria-label={sortLabel}
         >
           <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
+          {/* Read, not seen — the icon says this to a sighted reader and says
+              nothing to anyone else. In front of the order rather than
+              replacing it, so the button is named "Sort: Newest" and the word
+              on screen is part of what it is called. */}
+          <span className="sr-only">{sortLabel}: </span>
           {current?.label}
           <ChevronDown className="h-4 w-4 opacity-60" aria-hidden="true" />
         </Button>

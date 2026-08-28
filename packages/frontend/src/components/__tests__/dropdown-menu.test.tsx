@@ -244,6 +244,60 @@ describe("dropdown menu keyboard", () => {
     expect(onRefused).not.toHaveBeenCalled();
   });
 
+  it("carries on from a refused row a pointer left focus on", async () => {
+    // A refused row is a real element and a click focuses it. The next arrow
+    // has to continue from where the reader is standing — filtering the row
+    // out of the list first gave it no position at all, so ArrowDown from
+    // "Move up" went back to the top of the menu instead of on to "Hide".
+    const user = userEvent.setup();
+    render(<Menu />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.click(screen.getByRole("menuitem", { name: "Move up" }));
+    expect(screen.getByRole("menuitem", { name: "Move up" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "Hide" })).toHaveFocus();
+  });
+
+  it("steps backwards from a refused row too", async () => {
+    const user = userEvent.setup();
+    render(<Menu />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.click(screen.getByRole("menuitem", { name: "Move up" }));
+    await user.keyboard("{ArrowUp}");
+
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toHaveFocus();
+  });
+
+  it("opens on the first row that can be chosen, not the first row there is", async () => {
+    // "Move up" on the first row of a list is refused, and it is the row the
+    // menu starts with. Home has the same job.
+    const user = userEvent.setup();
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <button type="button">Open</button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem disabled onSelect={() => undefined}>
+            Move up
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => undefined}>Move down</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => undefined}>Remove</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    screen.getByRole("button", { name: "Open" }).focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("menuitem", { name: "Move down" })).toHaveFocus();
+
+    await user.keyboard("{End}{Home}");
+    expect(screen.getByRole("menuitem", { name: "Move down" })).toHaveFocus();
+  });
+
   it("closes on Escape and hands focus back to the trigger", async () => {
     // The row the reader is standing on stops existing. Without this, focus
     // lands on <body> and a keyboard reader is back at the top of the page.
@@ -251,7 +305,13 @@ describe("dropdown menu keyboard", () => {
     render(<Menu />);
 
     screen.getByRole("button", { name: "Open" }).focus();
-    await user.keyboard("{ArrowDown}{Escape}");
+    await user.keyboard("{ArrowDown}");
+    // Asserted before the Escape, because without it this test passes on a
+    // menu that never opened: "no menuitem exists" and "the trigger has
+    // focus" are both trivially true when ArrowDown did nothing at all.
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("menuitem")).toBeNull();
     await waitFor(() => {
@@ -277,6 +337,10 @@ describe("dropdown menu keyboard", () => {
 
     screen.getByRole("button", { name: "Open" }).focus();
     await user.keyboard("{ArrowDown}");
+    // Same trap as the Escape test: both assertions below hold on a menu that
+    // never opened, so the row has to be shown to be under the reader first.
+    expect(screen.getByRole("menuitem", { name: "Edit" })).toHaveFocus();
+
     fireEvent.keyDown(document.activeElement!, { key: "Tab" });
 
     expect(screen.queryByRole("menuitem")).toBeNull();
@@ -301,6 +365,31 @@ describe("dropdown menu keyboard", () => {
     expect(rows.filter((row) => row.tabIndex === 0).map((r) => r.textContent)).toEqual([
       "Hide",
     ]);
+  });
+
+  it("names the menu with its heading, so the heading is spoken at all", async () => {
+    // A `role="menu"` is read by moving between its items, so the block that
+    // carries the signed-in person's name and email is never reached. Naming
+    // the menu with it is what gets it said.
+    const user = userEvent.setup();
+    render(<Menu />);
+    await user.click(screen.getByRole("button", { name: "Open" }));
+
+    const menu = screen.getByRole("menu");
+    const labelledBy = menu.getAttribute("aria-labelledby");
+    expect(labelledBy).toBeTruthy();
+    expect(document.getElementById(labelledBy!)).toHaveTextContent("Signed in");
+    expect(menu).toHaveAccessibleName("Signed in");
+  });
+
+  it("marks the rule between two groups of rows as a separator", async () => {
+    // The one non-item a `menu` may own. A bare div is a child the role does
+    // not allow, and is skipped without saying anything.
+    const user = userEvent.setup();
+    render(<Menu />);
+    await user.click(screen.getByRole("button", { name: "Open" }));
+
+    expect(screen.getByRole("separator")).toBeInTheDocument();
   });
 
   it("leaves focus in the menu, but on no row, when a pointer opens it", async () => {

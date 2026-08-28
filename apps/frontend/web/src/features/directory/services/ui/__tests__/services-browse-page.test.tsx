@@ -159,7 +159,7 @@ describe("ServicesBrowsePage", () => {
 
   it("offers three orders in the dropdown, with only the one in force checked", async () => {
     renderPage("/services?sort=newest", { items: [service()], nextOffset: null, total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
 
     expect(screen.getByRole("menuitemradio", { name: "Suggested" })).toHaveAttribute(
       "aria-checked",
@@ -181,7 +181,7 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 96,
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Price" }));
 
     await waitFor(() => {
@@ -197,7 +197,7 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 1,
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
 
     await waitFor(() => {

@@ -49,17 +49,26 @@ type ClickableChild = React.ReactElement<
 const Ctx = React.createContext<DropdownCtx | null>(null);
 
 /**
- * What one panel tells its own rows: which of them currently holds focus.
+ * What one panel tells its own contents: which row currently holds focus, and
+ * a way for a label to say it is there.
  *
  * Provided by both the menu and each submenu, so a row reads the level it is
  * actually in rather than the outermost one.
  */
-const PanelContext = React.createContext<{ activeId: string | null } | null>(
-  null,
-);
+interface PanelCtx {
+  activeId: string | null;
+  /**
+   * Announces the panel's heading to it. A `role="menu"` is read by moving
+   * between its items, so loose text inside — the signed-in person's name and
+   * email, in three of these menus — is never spoken. Naming the menu with it
+   * is what gets it said, once, as the menu opens.
+   */
+  setLabelId: (id: string | null) => void;
+}
+const PanelContext = React.createContext<PanelCtx | null>(null);
 
 /**
- * Every row of one panel that can still be chosen, in the order it is drawn.
+ * Every row of one panel, refused ones included, in the order it is drawn.
  *
  * Read off the DOM rather than from rows registering themselves as they
  * mount: the rows are written by whoever uses the menu — some conditional,
@@ -68,14 +77,37 @@ const PanelContext = React.createContext<{ activeId: string | null } | null>(
  * ended up in. A submenu is a portal of its own and so never appears here,
  * which is what keeps each level's arrow keys to its own rows.
  *
- * Disabled rows are left out rather than stepped over at each call site, so
- * "skip the ones that are refused" holds for Home and End as much as for the
- * arrows, and cannot be forgotten in one place.
+ * The refused ones are kept because *position* is what an arrow key moves
+ * through, and a pointer can leave focus on a refused row — it is a real
+ * element. Dropping them from the list first made the row that was standing
+ * on one have no position at all, so the next arrow restarted from the end of
+ * the menu instead of carrying on from where the reader was.
  */
 function rowsIn(panel: HTMLElement): HTMLElement[] {
-  return Array.from(
-    panel.querySelectorAll<HTMLElement>("[data-menu-item]"),
-  ).filter((row) => row.getAttribute("aria-disabled") !== "true");
+  return Array.from(panel.querySelectorAll<HTMLElement>("[data-menu-item]"));
+}
+
+function canChoose(row: HTMLElement): boolean {
+  return row.getAttribute("aria-disabled") !== "true";
+}
+
+/**
+ * The next row that can actually be chosen, walking from `from` in `delta`'s
+ * direction and wrapping. Refused rows are passed over here, in the one place
+ * every movement goes through, so "skip the ones that are refused" holds for
+ * Home and End as much as for the arrows.
+ */
+function stepFrom(
+  rows: HTMLElement[],
+  from: number,
+  delta: 1 | -1,
+): HTMLElement | undefined {
+  const total = rows.length;
+  for (let moved = 1; moved <= total; moved++) {
+    const row = rows[(((from + delta * moved) % total) + total) % total];
+    if (row && canChoose(row)) return row;
+  }
+  return undefined;
 }
 
 /**
@@ -100,7 +132,15 @@ function useRovingFocus(panelRef: React.RefObject<HTMLElement | null>) {
       const panel = panelRef.current;
       if (!panel) return;
       const rows = rowsIn(panel);
-      focusRow(edge === "first" ? rows[0] : rows[rows.length - 1]);
+      // Stepping in from beyond the edge rather than taking `rows[0]`: the
+      // first row of a menu is quite often the refused one — "move up" on the
+      // first of a list — and Home has to land on the first row that can be
+      // chosen, not on the first row there is.
+      focusRow(
+        edge === "first"
+          ? stepFrom(rows, -1, 1)
+          : stepFrom(rows, rows.length, -1),
+      );
     },
     [panelRef, focusRow],
   );
@@ -117,45 +157,43 @@ function useRovingFocus(panelRef: React.RefObject<HTMLElement | null>) {
       if (!panel) return false;
       const rows = rowsIn(panel);
       if (rows.length === 0) return false;
-      const at = rows.indexOf(document.activeElement as HTMLElement);
-      // Off the rows entirely — the panel itself holds focus after a pointer
-      // opened it, or a refused row was clicked — so either arrow starts from
-      // an end rather than from nowhere.
+      const here = rows.indexOf(document.activeElement as HTMLElement);
+      // A step continues from wherever the reader is standing — including a
+      // refused row a pointer put them on, which is why `rows` still holds
+      // those. Only when focus is off the rows altogether, on the panel
+      // itself after a pointer opened it, does an arrow start from an end.
       const step = (delta: 1 | -1) =>
-        at < 0
-          ? delta === 1
-            ? 0
-            : rows.length - 1
-          : (at + delta + rows.length) % rows.length;
+        stepFrom(rows, here >= 0 ? here : delta === 1 ? -1 : 0, delta);
 
       switch (event.key) {
         case "ArrowDown":
           event.preventDefault();
-          focusRow(rows[step(1)]);
+          focusRow(step(1));
           return true;
         case "ArrowUp":
           event.preventDefault();
-          focusRow(rows[step(-1)]);
+          focusRow(step(-1));
           return true;
         case "Home":
           event.preventDefault();
-          focusRow(rows[0]);
+          focusRow(stepFrom(rows, -1, 1));
           return true;
         case "End":
           event.preventDefault();
-          focusRow(rows[rows.length - 1]);
+          focusRow(stepFrom(rows, rows.length, -1));
           return true;
         case "Enter":
         case " ": {
           // Nothing choosable under focus: the panel itself, or a row that is
           // shown but refused. Left unhandled rather than swallowed.
-          if (at < 0) return false;
+          const row = here >= 0 ? rows[here] : undefined;
+          if (!row || !canChoose(row)) return false;
           event.preventDefault();
           // The click a mouse would have made, rather than a second path into
           // the same row. `onSelect`, the close, and whatever the caller hung
           // on the row cannot drift apart from the pointer's behaviour if
           // there is only ever one of them.
-          rows[at]?.click();
+          row.click();
           return true;
         }
         default:
@@ -292,7 +330,11 @@ export function DropdownMenuContent({
   );
   const { activeId, setActiveId, focusEdge, handleRowKeys } =
     useRovingFocus(ref);
-  const panel = React.useMemo(() => ({ activeId }), [activeId]);
+  const [labelId, setLabelId] = React.useState<string | null>(null);
+  const panel = React.useMemo(
+    () => ({ activeId, setLabelId }),
+    [activeId, setLabelId],
+  );
 
   React.useLayoutEffect(() => {
     // Measured afresh on every open, and cleared on close. Keeping the last
@@ -402,6 +444,7 @@ export function DropdownMenuContent({
       <div
         ref={ref}
         role="menu"
+        aria-labelledby={labelId ?? undefined}
         // Focusable only on purpose: a pointer-opened menu parks focus here
         // so it is inside the menu without singling out a row.
         tabIndex={-1}
@@ -484,12 +527,31 @@ export function DropdownMenuItem({
   );
 }
 
+/**
+ * The menu's heading — whose account this is, in three of the four menus that
+ * have one.
+ *
+ * `role="presentation"`, because a `menu` may only own items, groups and
+ * separators, and a bare div among them is a child the role does not allow.
+ * It is not silenced by that: the panel names itself with this element, so
+ * the heading is spoken as the menu opens rather than being walked past.
+ */
 export function DropdownMenuLabel({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
+  const panel = React.useContext(PanelContext);
+  const id = React.useId();
+  const setLabelId = panel?.setLabelId;
+  React.useEffect(() => {
+    if (!setLabelId) return;
+    setLabelId(id);
+    return () => setLabelId(null);
+  }, [setLabelId, id]);
   return (
     <div
+      id={id}
+      role="presentation"
       className={cn(
         "px-3 py-2 text-xs font-semibold text-[var(--color-muted-foreground)]",
         className,
@@ -505,6 +567,9 @@ export function DropdownMenuSeparator({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
+      // The one non-item a `menu` is allowed to own, and it says out loud what
+      // the gap between two groups of rows already says in the drawing.
+      role="separator"
       className={cn("-mx-1.5 my-1.5 h-px bg-[var(--color-border)]", className)}
       {...props}
     />
@@ -618,7 +683,11 @@ export function DropdownMenuSubContent({
     null,
   );
   const { activeId, focusEdge, handleRowKeys } = useRovingFocus(ref);
-  const panel = React.useMemo(() => ({ activeId }), [activeId]);
+  const [labelId, setLabelId] = React.useState<string | null>(null);
+  const panel = React.useMemo(
+    () => ({ activeId, setLabelId }),
+    [activeId, setLabelId],
+  );
 
   React.useLayoutEffect(() => {
     if (!sub.open) {
@@ -701,6 +770,7 @@ export function DropdownMenuSubContent({
       <div
         ref={ref}
         role="menu"
+        aria-labelledby={labelId ?? undefined}
         onMouseLeave={() => sub.setOpen(false)}
         onKeyDown={onKeyDown}
         style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
