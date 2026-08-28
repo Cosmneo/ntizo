@@ -1,7 +1,7 @@
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ProviderPublicDTO } from "@ntizo/shared";
-import type { ProviderPageDTO, ProviderReviewsPublicDTO } from "@ntizo/shared/read-models";
+import type { ProviderPageDTO, ProviderReviewsPublicDTO, ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 import {
   directoryQueries,
   type CityFacet,
@@ -68,7 +68,7 @@ export function useProviderReviews(providerId: string): ProviderReviewsPublicDTO
   return data;
 }
 
-export function useProviderDetail(slug: string, locale: string): ProviderPublicDTO | null {
+export function useProviderDetail(slug: string, locale: string): ProviderPublicDetailDTO | null {
   const { data } = useSuspenseQuery(directoryQueries.bySlug(slug, locale));
   return data;
 }
@@ -77,6 +77,6 @@ export function prefetchProviderDetail(
   queryClient: QueryClient,
   slug: string,
   locale: string,
-): Promise<ProviderPublicDTO | null> {
+): Promise<ProviderPublicDetailDTO | null> {
   return queryClient.ensureQueryData(directoryQueries.bySlug(slug, locale));
 }
