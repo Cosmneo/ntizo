@@ -22,8 +22,10 @@ export interface StoredAttachmentMetadata {
   readonly uploadedByUserId: string | null;
   /**
    * `customMetadata.originalName`, verbatim — the display name the upload
-   * route (Task 5) already ran `hasContact` on and stamped onto the object,
-   * the moment it decided this was a clean upload. This is the ONLY place
+   * route already truncated to 200 characters, ran `hasContact` on, and
+   * stamped onto the object, in that order. The order matters and was wrong
+   * once: `PHONE` is `\b`-anchored, so checking before truncating lets a cut
+   * tail CREATE a number the check never saw. This is the ONLY place
    * `SendMessageCommand.resolveAttachments` takes a file's name from since
    * `AttachmentDescriptor` stopped carrying one: a `fileName` sent back with
    * `sendMessage` was a client-controlled string the upload route's own

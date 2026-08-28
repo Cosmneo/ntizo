@@ -1,5 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import { Hono } from "hono";
+import { hasContact } from "@ntizo/shared/text";
 import * as betterAuth from "@ntizo/backend/modules/better-auth";
 import { MAX_ATTACHMENT_BYTES } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import type { AttachmentRepositoryPort } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
@@ -175,6 +176,52 @@ describe("POST /api/communication/attachments", () => {
     );
 
     const res = await postFile(request, jpegNamed("liga-me-841234567.jpg"));
+
+    expect(res.status).toBe(422);
+    expect(puts).toHaveLength(0);
+  });
+
+  /**
+   * Truncation can CREATE a contact the check never saw. `PHONE` in the
+   * shared detector is `\b`-anchored, so `8412345678` — ten digits — does
+   * not match: there is no word boundary between the ninth digit and the
+   * tenth. Cut the tail at 200 characters and `841234567` is left, which
+   * does match, and that shorter string is what gets stored and shown to
+   * the other side.
+   *
+   * A test that checks the same string the route stores cannot tell these
+   * apart. This one is built so it can: the full name is deliberately clean
+   * and only the stored form is dirty, so it passes only when the route
+   * truncates before it checks.
+   */
+  it("refuses a name that only carries a phone number once truncated to what is stored", async () => {
+    withSession({ id: "u1" });
+    const { bucket, puts } = fakeBucket();
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      noRowRepository(),
+    );
+
+    // 205 characters. Clean whole; dirty at 200.
+    const name = `${"x".repeat(190)}-8412345678.jpg`;
+    expect(hasContact(name)).toBe(false);
+    expect(hasContact(name.slice(0, 200))).toBe(true);
+
+    const res = await postFile(request, jpegNamed(name));
+
+    expect(res.status).toBe(422);
+    expect(puts).toHaveLength(0);
+  });
+
+  it("refuses a file with no name at all", async () => {
+    withSession({ id: "u1" });
+    const { bucket, puts } = fakeBucket();
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      noRowRepository(),
+    );
+
+    const res = await postFile(request, jpegNamed(""));
 
     expect(res.status).toBe(422);
     expect(puts).toHaveLength(0);

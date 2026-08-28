@@ -4,8 +4,9 @@ import type { AttachmentRow } from "../../../../../shared/infrastructure/databas
  * A file already uploaded to storage, ready to be recorded beside a
  * message — the TRUSTED shape `insertMany` accepts, not what a caller sent
  * on the wire. `SendMessageCommand.resolveAttachments` is what builds one:
- * `storageKey` and `fileName` come from the caller's `AttachmentDescriptor`,
- * but `contentType` and `sizeBytes` are read back from
+ * `storageKey` is the one field that comes from the caller's
+ * `AttachmentDescriptor`; `fileName`, `contentType` and `sizeBytes` are all
+ * read back from
  * `AttachmentStoragePort.head` — Task 5's upload route stamped the bytes'
  * SNIFFED type and the object's real size onto the R2 object itself, and
  * that resolution step is what `insertMany` relies on having already

@@ -100,6 +100,22 @@ describe("MessageComposer", () => {
     ).toMatch(/4000 characters/i);
   });
 
+  /**
+   * Pinned to the real sentence for the same reason the generic-fallback
+   * test below is: dropping `MESSAGE_CONTAINS_CONTACT` from
+   * `KNOWN_SEND_ERRORS` makes it fall through to `sendError.GENERIC`, which
+   * still renders *an* alert with *some* text. Only asserting the specific
+   * sentence catches that — and this is the code the server throws when
+   * somebody bypasses the composer's own warning with a `curl`, so it is
+   * the one refusal a person reaches without having been warned first.
+   */
+  it("renders its own sentence when the server refuses a body carrying a contact", () => {
+    render(<MessageComposer onSend={vi.fn()} errorCode="MESSAGE_CONTAINS_CONTACT" />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Messages can't include a phone number, email, or link. Remove it and try again.",
+    );
+  });
+
   it("falls back to the generic sentence for an error code it does not recognise", () => {
     // Pinned to the *actual* generic sentence, not just "some alert
     // appeared" or "the text isn't UNPROCESSABLE" — both of those pass

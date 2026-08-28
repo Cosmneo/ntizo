@@ -53,7 +53,12 @@ function safeFilenameForHeader(fileName: string): string {
   return fileName.replace(/["\\\r\n\x00-\x1f\x7f]/g, "");
 }
 
-/** A v4-shaped UUID — the only kind `attachment.id` (a `uuid` column) can ever hold. */
+/**
+ * UUID-shaped — any version, not just v4, which is all the `uuid` column
+ * needs and all this guard is for: keeping a malformed id from reaching
+ * Postgres as a cast error and answering 500 on a route whose whole design
+ * is that every failure answers the same 403.
+ */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: AttachmentDeps) {
@@ -84,11 +89,30 @@ export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: Att
     // upload is read into an `ArrayBuffer`.
     if (file.size > MAX_ATTACHMENT_BYTES) return c.json({ error: "TOO_LARGE" }, 413);
 
+    // Truncated FIRST, then checked. The stored name is what the other side
+    // reads, so the stored name is what the rule is about — and checking the
+    // untruncated one is not merely redundant, it is wrong in both
+    // directions. `PHONE` in the shared detector is `\b`-anchored, so a
+    // longer digit run deliberately does not match; cutting its tail at 200
+    // can CREATE a match the check never saw. A 205-character name ending
+    // `-8412345678.jpg` passes on the full string and stores
+    // `...-841234567` — a plainly readable Mozambican number. Found by the
+    // whole-branch review after this file already had the check.
+    // Runtimes disagree about a nameless multipart part: workerd gives `""`,
+    // Bun gives `undefined` despite the type saying `string`. Normalised so
+    // both answer 422 rather than 422 in production and a 500 in tests.
+    const fileName = ((file.name ?? "") as string).slice(0, 200);
+    // An empty name has no honest use and reaches a button with no label and
+    // a `filename=""` header. `originalName === null` downstream does not
+    // catch `""`, and the `.min(1)` that used to reject it left with
+    // `fileName` when the send input stopped accepting a client name.
+    if (fileName.length === 0) return c.json({ error: "NO_FILE_NAME" }, 422);
+
     // The exact same detector the browser runs over the message body, run
     // here over the file's NAME. A client-side check on the body is one curl
     // away from irrelevant, and a file name is the obvious way around a rule
     // that only ever looked at the body.
-    if (hasContact(file.name)) return c.json({ error: "CONTACT_IN_FILE_NAME" }, 422);
+    if (hasContact(fileName)) return c.json({ error: "CONTACT_IN_FILE_NAME" }, 422);
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     // Checked again against what was actually read, not only the size the
@@ -101,7 +125,6 @@ export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: Att
     const contentType = sniffContentType(bytes);
     if (!contentType) return c.json({ error: "UNACCEPTED_TYPE" }, 415);
 
-    const fileName = file.name.slice(0, 200);
     const key = `attachment/${session.user.id}/${Date.now()}-${crypto.randomUUID()}`;
 
     // The bytes land in the bucket BEFORE anything is returned. The reverse —
