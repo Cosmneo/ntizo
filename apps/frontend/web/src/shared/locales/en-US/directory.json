@@ -128,6 +128,8 @@
   "viewProviderProfile": "View provider profile",
   "performersTitle": "Who performs this service",
   "breadcrumbHome": "Home",
+  "breadcrumbProviders": "Providers",
+  "breadcrumbLabel": "Breadcrumb",
   "detailDescriptionHeading": "Description",
   "reviewsAboutProvider": "The provider's reviews, across every service they offer.",
   "packagesTitle": "Packages",

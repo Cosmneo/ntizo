@@ -16,20 +16,20 @@ const SIDE_TILES = 2;
  * naming the count on the button says it in the space of one control, and the
  * pictures themselves get a page of their own — a grid meant for looking at
  * them — rather than a strip fighting the collage for room. This is the same
- * reasoning `ProviderPortfolio` used for its own "+N more" tile; the dialog
- * here just replaces the tile with something worth clicking, since a detail
- * page (unlike a listing card) can afford the extra tap.
+ * reasoning the provider portfolio grid this replaced used for its own "+N
+ * more" tile; the dialog here just replaces the tile with something worth
+ * clicking, since a detail page (unlike a listing card) can afford the extra
+ * tap.
  *
  * The side tiles carry `alt=""`. They sit right next to the one photo this
  * component does describe, and "photograph 2 of 8" is not a description of
- * anything — it is decorative filler around the labelled tile, exactly as
- * `ProviderPortfolio`'s own tiles are. Inside the dialog every photo is
- * equally presented, with no single one already described, so there each
- * image is labelled by its position instead.
+ * anything — it is decorative filler around the labelled tile. Inside the
+ * dialog every photo is equally presented, with no single one already
+ * described, so there each image is labelled by its position instead.
  *
- * Renders nothing at all with no photos — the same call `ServiceGallery` and
- * `ProviderPortfolio` already made: an empty frame reads as a page that failed
- * to load, where the plain absence of the section reads as "no photo yet".
+ * Renders nothing at all with no photos — the same call `ServiceGallery`
+ * already makes: an empty frame reads as a page that failed to load, where
+ * the plain absence of the section reads as "no photo yet".
  */
 export function DetailGallery({
   images,

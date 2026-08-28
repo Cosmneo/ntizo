@@ -128,6 +128,8 @@
   "viewProviderProfile": "Ver perfil do prestador",
   "performersTitle": "Quem presta este serviço",
   "breadcrumbHome": "Início",
+  "breadcrumbProviders": "Prestadores",
+  "breadcrumbLabel": "Migalhas",
   "detailDescriptionHeading": "Descrição",
   "reviewsAboutProvider": "Avaliações do prestador, em todos os serviços que oferece.",
   "packagesTitle": "Pacotes",

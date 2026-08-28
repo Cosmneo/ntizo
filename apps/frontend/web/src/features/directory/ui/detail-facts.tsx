@@ -6,8 +6,8 @@
  * A fact whose value is empty is dropped rather than rendered as a labelled
  * blank. A column that reads "On Ntizo since" with nothing under it looks
  * like the page failed to load the field, not like a provider who simply has
- * not filled that in — the same call `ProviderPortfolio` and `DetailGallery`
- * make about a business with no photos yet: absence of the row, not an empty
+ * not filled that in — the same call `DetailGallery` makes about a business
+ * with no photos yet: absence of the row, not an empty
  * row, is what "nothing here" should look like. When every fact is empty the
  * whole component renders nothing, for the same reason.
  *

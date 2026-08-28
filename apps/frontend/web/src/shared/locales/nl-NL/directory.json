@@ -128,6 +128,8 @@
   "viewProviderProfile": "Aanbiedersprofiel bekijken",
   "performersTitle": "Wie deze dienst uitvoert",
   "breadcrumbHome": "Home",
+  "breadcrumbProviders": "Aanbieders",
+  "breadcrumbLabel": "Kruimelpad",
   "detailDescriptionHeading": "Beschrijving",
   "reviewsAboutProvider": "Beoordelingen van de aanbieder, over al hun diensten.",
   "packagesTitle": "Pakketten",

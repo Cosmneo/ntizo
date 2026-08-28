@@ -1,32 +1,25 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  RouterProvider,
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-} from "@tanstack/react-router";
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
 import type { ProviderPublicDTO } from "@ntizo/shared";
-import * as client from "@/shared/lib/graphql/session-graphql";
-import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import { ProviderHero } from "../provider-hero";
 
 /**
- * The way into the Communication context from a provider's public page.
+ * What the title block states, and what it no longer carries.
  *
- * Without this button, `/messages` and `communicationStartThread` are both
- * fully built and reachable by nobody — the same shape of failure as a
- * handler that is written, tested and never mounted. This test renders the
- * real `ProviderHero` (not a stub of it) through a real router and a real
- * `useStartThread()`, mocking only the network boundary
- * (`sessionGraphql`) — so removing the button, or leaving it unwired,
- * reds this test rather than something adjacent to it.
+ * The message button used to live here and now lives in `ProviderRail`,
+ * beside the price; its own tests — the thread it starts, the signed-out
+ * redirect, the two error sentences — moved with it to
+ * `provider-detail-page.test.tsx`, which drives it through the whole
+ * assembled page with a real router and a real `useStartThread()`. That is
+ * strictly more than this file used to prove: it now takes a page that
+ * renders the rail at all, not just a component holding a button. What is
+ * left here is this block's own job: name the business, and say only things
+ * the platform actually checked.
+ *
+ * No router and no `QueryClient` any more, because with the button gone this
+ * component has neither a link nor a query in it. A provider that needed
+ * either would be a provider that had grown a second job.
  */
-
-afterEach(() => vi.restoreAllMocks());
 
 function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
   return {
@@ -34,7 +27,7 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
     name: "Studio Beleza",
     slug: "studio-beleza",
     type: "organization",
-    description: null,
+    description: "Nine years cutting hair in Maputo.",
     city: "Maputo",
     district: null,
     country: "Mozambique",
@@ -51,133 +44,55 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
   };
 }
 
-function renderHero() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-
-  const rootRoute = createRootRoute();
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/",
-    component: () => <ProviderHero provider={provider()} />,
-  });
-  // Both destinations the button can send someone to, so navigation is
-  // asserted against the router's own resolved location rather than a
-  // mocked `navigate` call — the latter would pass even if the `to`/`search`
-  // shape was wrong in a way the mock did not care about.
-  const messagesRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/messages",
-    validateSearch: (search: Record<string, unknown>) =>
-      search as { thread?: string },
-    component: () => <p>messages page</p>,
-  });
-  const signInRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/sign-in",
-    validateSearch: (search: Record<string, unknown>) => search as { next?: string },
-    component: () => <p>sign in page</p>,
+describe("ProviderHero", () => {
+  it("names the business as the page's only h1", () => {
+    render(<ProviderHero provider={provider()} />);
+    expect(screen.getByRole("heading", { level: 1, name: /Studio Beleza/ })).toBeInTheDocument();
   });
 
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, messagesRoute, signInRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
-  });
-
-  render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
-
-  return router;
-}
-
-describe("ProviderHero's message button", () => {
-  // `findByRole` (not `getByRole`) everywhere below: `createRouter`'s
-  // initial match resolves a tick after `render()` returns, the same async
-  // seam `service-detail-page.test.tsx` already works around the same way.
-
-  it("is present on the page at all", async () => {
-    renderHero();
-    expect(await screen.findByRole("button", { name: /message/i })).toBeInTheDocument();
-  });
-
-  it("starts a thread and navigates to it on click", async () => {
-    const spy = vi
-      .spyOn(client, "sessionGraphql")
-      .mockResolvedValue({ communicationStartThread: { id: "t42" } } as never);
-    const user = userEvent.setup();
-
-    const router = renderHero();
-    await user.click(await screen.findByRole("button", { name: /message/i }));
-
-    await waitFor(() => expect(router.state.location.pathname).toBe("/messages"));
-    expect(router.state.location.search).toEqual({ thread: "t42" });
-
-    const [, variables] = spy.mock.calls[0]!;
-    expect(variables).toEqual({ input: { providerId: "prov-1" } });
-  });
-
-  it("sends a signed-out visitor to sign in, carrying the way back", async () => {
-    vi.spyOn(client, "sessionGraphql").mockRejectedValue(
-      new GraphqlError(200, [
-        {
-          message: "Sign in to send a message",
-          extensions: { code: "FORBIDDEN", originalCode: "UNAUTHENTICATED" },
-        },
-      ]),
+  it("reads the kind and the trades into one eyebrow", () => {
+    render(
+      <ProviderHero
+        provider={provider({ categories: [{ code: "hair", name: "Hair & beauty" }] })}
+      />,
     );
-    const user = userEvent.setup();
-
-    const router = renderHero();
-    await user.click(await screen.findByRole("button", { name: /message/i }));
-
-    await waitFor(() => expect(router.state.location.pathname).toBe("/sign-in"));
-    expect(router.state.location.search).toEqual({ next: "/" });
+    expect(screen.getByText("Organization · Hair & beauty")).toBeInTheDocument();
   });
 
-  it("shows this provider's own refusal without redirecting anywhere", async () => {
-    vi.spyOn(client, "sessionGraphql").mockRejectedValue(
-      new GraphqlError(200, [
-        {
-          message: "This provider cannot be messaged.",
-          extensions: { code: "UNPROCESSABLE", originalCode: "PROVIDER_NOT_CONTACTABLE" },
-        },
-      ]),
-    );
-    const user = userEvent.setup();
-
-    const router = renderHero();
-    await user.click(await screen.findByRole("button", { name: /message/i }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(/can't be messaged/i);
-    expect(router.state.location.pathname).toBe("/");
+  it("badges a verified business", () => {
+    render(<ProviderHero provider={provider({ verified: true })} />);
+    expect(screen.getByText("Verified")).toBeInTheDocument();
   });
 
-  it("falls back to the generic sentence for a code it does not recognise", async () => {
-    // Pinned to the real generic sentence, not to "an alert exists" or "the
-    // text isn't PROVIDER_NOT_CONTACTABLE" — both pass just as well against
-    // `const knownError = errorCode === "PROVIDER_NOT_CONTACTABLE" ? errorCode
-    // : errorCode;`, which deletes the allowlist and lets an unrecognised
-    // code flow straight into `t(\`messageProviderError.${errorCode}\`)`, so
-    // i18next renders the raw missing key instead of a sentence. Asserting
-    // the actual sentence is what reds under that mutation.
-    vi.spyOn(client, "sessionGraphql").mockRejectedValue(
-      new GraphqlError(200, [
-        {
-          message: "Something else went wrong.",
-          extensions: { code: "UNPROCESSABLE", originalCode: "SOME_FUTURE_CODE" },
-        },
-      ]),
-    );
-    const user = userEvent.setup();
+  it("makes no verification claim for a business nobody checked", () => {
+    // `verified` means an administrator accepted a document. A badge that is
+    // always lit says nothing.
+    render(<ProviderHero provider={provider({ verified: false })} />);
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+  });
 
-    const router = renderHero();
-    await user.click(await screen.findByRole("button", { name: /message/i }));
+  it("does not carry the message button any more", () => {
+    // It is in the rail now, beside the price, because the two are one
+    // decision. Asserted here rather than left implicit: a button rendered in
+    // both places would be a page offering the same action twice.
+    render(<ProviderHero provider={provider()} />);
+    expect(screen.queryByRole("button", { name: /message/i })).not.toBeInTheDocument();
+  });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Couldn't start that conversation. Please try again.",
+  it("does not carry the description any more", () => {
+    // It moved to the page's own "About" section, under a heading. A
+    // paragraph tucked under a rating line is neither findable nor
+    // indexable as what it is.
+    render(<ProviderHero provider={provider()} />);
+    expect(screen.queryByText("Nine years cutting hair in Maputo.")).not.toBeInTheDocument();
+  });
+
+  it("does not draw a second picture of the business", () => {
+    // The logo tile is gone: the page opens on `DetailGallery`, at full
+    // width, and an 80px avatar under it is the same business twice.
+    const { container } = render(
+      <ProviderHero provider={provider({ logoUrl: "https://cdn.test/logo.png" })} />,
     );
-    expect(router.state.location.pathname).toBe("/");
+    expect(container.querySelector("img")).toBeNull();
   });
 });

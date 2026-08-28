@@ -24,7 +24,7 @@ import { Button } from "@ntizo/frontend-ui";
  * The "Falar com o prestador" button gets the same disabled, unlinked
  * treatment `PackageChooser` gives "Reservar" — not because there is nothing
  * to wire it to any more (`features/messaging` exists now, and
- * `provider-hero.tsx`'s `MessageProviderButton` already wires the identical
+ * `provider-rail.tsx`'s `MessageProviderButton` already wires the identical
  * CTA to `useStartThread` a few features over), but because nobody has come
  * back to wire this one now that the reason it was disabled no longer
  * holds. See follow-up #69.

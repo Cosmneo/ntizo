@@ -128,6 +128,8 @@
   "viewProviderProfile": "Anbieterprofil ansehen",
   "performersTitle": "Wer diese Leistung erbringt",
   "breadcrumbHome": "Start",
+  "breadcrumbProviders": "Anbieter",
+  "breadcrumbLabel": "Brotkrümel",
   "detailDescriptionHeading": "Beschreibung",
   "reviewsAboutProvider": "Bewertungen des Anbieters, über alle angebotenen Dienste hinweg.",
   "packagesTitle": "Pakete",

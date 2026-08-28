@@ -64,7 +64,7 @@ describe("DetailGallery", () => {
 
   it("describes only the main photo, leaving the rest decorative", () => {
     // "photograph 3 of 12" describes nothing. A screen reader gets the one
-    // labelled image and skips the tiles, the same call ProviderPortfolio made.
+    // labelled image and skips the tiles.
     //
     // The decorative tiles are asserted on the DOM, not via
     // `getAllByRole("img", { name: "" })`: an `<img alt="">` is presentation,
