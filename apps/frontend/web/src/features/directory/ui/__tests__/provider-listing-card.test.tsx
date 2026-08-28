@@ -43,14 +43,14 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
   };
 }
 
-function renderCard(dto: ProviderPublicDTO) {
+function renderCard(dto: ProviderPublicDTO, locale = "en-US") {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
       <ul>
-        <ProviderListingCard provider={dto} locale="en-US" categoryIcon={null} />
+        <ProviderListingCard provider={dto} locale={locale} categoryIcon={null} />
       </ul>
     ),
   });
@@ -181,6 +181,15 @@ describe("ProviderListingCard", () => {
     expect(meta).toHaveTextContent("OrganizationMavalane, Maputo");
     // The kind, the separator dot, the place.
     expect(meta.children).toHaveLength(3);
+  });
+
+  it("groups the thousands the way the approved mockup draws them", async () => {
+    // `en-US` already groups a four-digit amount by default, so asserting
+    // there proves nothing about `useGrouping: "always"` — only a locale
+    // whose default omits grouping below five digits can tell the two apart.
+    renderCard(provider({ fromAmountMinor: 120_000, fromCurrency: "MZN" }), "pt-MZ");
+    const stub = await screen.findByTestId("price-stub");
+    expect(stub).toHaveTextContent("1 200");
   });
 
   it("draws no place at all for a business that has given none", async () => {

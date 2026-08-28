@@ -28,6 +28,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
     providerName: "Barbearia Central",
     providerSlug: "barbearia",
     providerType: "organization",
+    providerVerified: false,
     providerRatingAverage: 4.7,
     providerReviewCount: 12,
     categoryCode: "hair",

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Check } from "lucide-react";
 import {
   ListingCard,
   ListingTag,
@@ -98,6 +98,17 @@ export function ServiceListingCard({
               than showing nothing — and so is an empty pill, which is what an
               unguarded `ListingTag` around an empty string draws. */}
           {where && <ListingTag>{where}</ListingTag>}
+          {/* `good`, matching `ProviderListingCard`'s own verified chip icon
+              for icon, tone and copy key: two cards in one product showing
+              the same trust signal two different ways would be the class of
+              defect this whole build has been closing. Absent when false — a
+              chip that is always there is not a signal. */}
+          {service.providerVerified && (
+            <ListingTag tone="good">
+              <Check className="h-3 w-3" aria-hidden="true" />
+              {t("providerVerified")}
+            </ListingTag>
+          )}
         </>
       }
       stub={
@@ -158,11 +169,16 @@ export function ServiceListingCard({
  * A private copy rather than an import from the provider card, because these
  * two files are deliberate twins and making one depend on the other is how a
  * change to "the directory's price format" silently moves the services page.
+ *
+ * `useGrouping: "always"`: `pt-MZ` and `pt-PT` set `minimumGroupingDigits: 2`,
+ * so their default leaves a four-digit price ungrouped — "1200 MZN" against
+ * the approved mockup's "1 200 MZN". Five digits already group either way.
  */
 function formatPrice(amountMinor: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
+    useGrouping: "always",
   }).format(amountMinor / 100);
 }

@@ -49,6 +49,15 @@ export const serviceReadModel = z.object({
    */
   providerType: z.enum(["individual", "organization"]),
   /**
+   * Whether the platform has accepted at least one of this business's documents.
+   *
+   * The same fact `providerPublicReadModel.verified` publishes, reaching the card that
+   * already names the business instead of the card fetching each provider to learn it.
+   * Not `status === "active"`, which every listed provider is by definition — a badge
+   * that is always lit says nothing.
+   */
+  providerVerified: z.boolean(),
+  /**
    * The business's average review score, to one decimal — null when nobody
    * has reviewed it.
    *

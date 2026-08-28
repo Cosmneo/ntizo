@@ -10,7 +10,11 @@ import {
   serviceQuoteForm,
   serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
-import { provider, providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
+import {
+  provider,
+  providerDocument,
+  providerMember,
+} from "../../../../../shared/infrastructure/database/provider/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import type {
   ListPublishedServicesFilter,
@@ -212,6 +216,31 @@ function reviewAggregate(db: ReturnType<typeof getDb>) {
     .where(eq(review.status, "published"))
     .groupBy(review.providerId)
     .as("review_agg");
+}
+
+/**
+ * Which providers have at least one document the platform has accepted,
+ * one row each.
+ *
+ * A copy of `DrizzleProviderPublicRepository.aggregates().verified`
+ * (`public/provider/infra/repositories/drizzle/provider-public.repository.ts`),
+ * not an import of it: that repository lives in `public/provider`, this one
+ * in `bounded-contexts/catalog`, and importing across that boundary would be
+ * a bounded-context violation. **The two copies must change together.**
+ *
+ * `selectDistinct` is load-bearing exactly as it is there: a business with
+ * three accepted documents must not multiply its service rows. So is
+ * `status = "accepted"` — the field means "the platform has accepted at
+ * least one of this business's documents", never "this business registered".
+ */
+function verifiedAggregate(db: ReturnType<typeof getDb>) {
+  return db
+    .selectDistinct({
+      providerId: sql<string>`${providerDocument.providerId}`.as("verified_provider_id"),
+    })
+    .from(providerDocument)
+    .where(eq(providerDocument.status, "accepted"))
+    .as("verified_agg");
 }
 
 /**
@@ -422,6 +451,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     const db = getDb();
     const conditions = conditionsFor(db, filter);
     const reviewAgg = reviewAggregate(db);
+    const verifiedAgg = verifiedAggregate(db);
 
     const rows = await db
       .select({
@@ -433,6 +463,8 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         providerType: provider.type,
         providerRatingAverage: reviewAgg.average,
         providerReviewCount: reviewAgg.count,
+        /** Null when the left join found nothing — see `verifiedAggregate`. */
+        providerVerifiedId: verifiedAgg.providerId,
         categoryId: category.id,
         categoryCode: category.code,
         status: service.status,
@@ -447,6 +479,11 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       // `leftJoin`, never inner: an inner join drops every service whose
       // provider has no reviews, which is most of them.
       .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
+      // `leftJoin` here too, for the same reason: an inner join would drop
+      // every service whose provider has no accepted document, which is
+      // most of them, and the browse would just get shorter with nothing
+      // failing.
+      .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
       .where(and(...conditions))
       // `newest` and `price` each ignore `sortOrder` rather than ordering
       // within it: the provider's own arrangement is an answer to "what do I
@@ -505,9 +542,11 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
 
     return rows.map((r) => {
       const opt = defaults.find((o) => o.serviceId === r.id);
-      // `categoryId` was selected only to key this lookup; it is not part of
-      // the row the port promises, so it is dropped rather than spread.
-      const { categoryId, ...rest } = r;
+      // `categoryId` was selected only to key this lookup, and
+      // `providerVerifiedId` only to derive the boolean below; neither is
+      // part of the row the port promises, so both are dropped rather than
+      // spread.
+      const { categoryId, providerVerifiedId, ...rest } = r;
       const agg = priceAgg.find((a) => a.serviceId === r.id);
       return {
         ...rest,
@@ -519,6 +558,9 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
             ? null
             : Number(agg.fromAmountMinor),
         optionCount: agg?.optionCount ?? 0,
+        // The way `DrizzleProviderPublicRepository.toDTO` derives the same
+        // fact from the same shape of join.
+        providerVerified: providerVerifiedId !== null,
         ...coerceReviewAggregate(r),
         categoryTranslations: categoryTranslations
           .filter((t) => t.categoryId === categoryId)

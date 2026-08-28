@@ -77,6 +77,13 @@ export interface ServicePublicRow {
   /** `individual` or `organization`, off the same joined row as the status. */
   providerType: string;
   /**
+   * Whether the platform has accepted at least one of this business's
+   * documents — the same fact `DrizzleProviderPublicRepository`'s own
+   * verified join publishes, reaching the card that already names the
+   * business.
+   */
+  providerVerified: boolean;
+  /**
    * The business's average review score and how many it has — never the
    * service's own, because nothing aggregates reviews per service yet. Null
    * average for a business nobody has reviewed, not zero — see
@@ -114,16 +121,18 @@ export interface ServiceDetailOptionRow {
 }
 
 /**
- * `Omit`s `providerRatingAverage`/`providerReviewCount` rather than inheriting
- * them as `ServicePublicRow` requires: nothing on the service's own page reads
- * either — `serviceDetailReadModel` has no such field, and
- * `GetServiceProjection` never looks at them — so `getPublishedById` runs no
- * review join to populate them. A query that ran on every single-service page
- * load to satisfy a type relationship, for data nothing renders, would be a
- * real cost paid for nothing. If this page ever wants the score, adding the
- * join back is one line, and it will be wanted for a reason.
+ * `Omit`s `providerRatingAverage`/`providerReviewCount`/`providerVerified`
+ * rather than inheriting them as `ServicePublicRow` requires: nothing on the
+ * service's own page reads any of the three — `serviceDetailReadModel` has no
+ * such fields, and `GetServiceProjection` never looks at them — so
+ * `getPublishedById` runs neither the review join nor the verified join to
+ * populate them. A query that ran on every single-service page load to
+ * satisfy a type relationship, for data nothing renders, would be a real cost
+ * paid for nothing. If this page ever wants any of them, adding the join back
+ * is one line, and it will be wanted for a reason.
  */
-export interface ServiceDetailRow extends Omit<ServicePublicRow, "providerRatingAverage" | "providerReviewCount"> {
+export interface ServiceDetailRow
+  extends Omit<ServicePublicRow, "providerRatingAverage" | "providerReviewCount" | "providerVerified"> {
   providerLogoKey: string | null;
   providerCity: string | null;
   providerDistrict: string | null;

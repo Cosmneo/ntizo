@@ -182,11 +182,16 @@ export function ProviderListingCard({
  * the decimals because it also formats `PackageChooser`'s checkout total — a
  * number that is what the customer pays, not a headline, and so cannot round.
  * `ServiceListingCard` holds the twin of this function for the same reason.
+ *
+ * `useGrouping: "always"`: `pt-MZ` and `pt-PT` set `minimumGroupingDigits: 2`,
+ * so their default leaves a four-digit price ungrouped — "1200 MZN" against
+ * the approved mockup's "1 200 MZN". Five digits already group either way.
  */
 function formatPrice(amountMinor: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
+    useGrouping: "always",
   }).format(amountMinor / 100);
 }

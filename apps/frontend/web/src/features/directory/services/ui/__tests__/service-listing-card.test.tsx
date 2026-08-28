@@ -46,18 +46,19 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
     fromAmountMinor: 80_000,
     optionCount: 1,
     isFallback: false,
+    providerVerified: false,
     ...over,
   };
 }
 
-function renderCard(dto: ServiceDTO, categoryIcon: string | null = null) {
+function renderCard(dto: ServiceDTO, categoryIcon: string | null = null, locale = "en-US") {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
       <ul>
-        <ServiceListingCard service={dto} locale="en-US" categoryIcon={categoryIcon} />
+        <ServiceListingCard service={dto} locale={locale} categoryIcon={categoryIcon} />
       </ul>
     ),
   });
@@ -168,5 +169,33 @@ describe("ServiceListingCard", () => {
     const tags = await screen.findByTestId("listing-tags");
     expect(tags).toHaveTextContent("Hair & beauty");
     expect(tags).toHaveTextContent("At their place");
+  });
+
+  it("shows the same verified chip the provider card shows, for the same business", async () => {
+    // Two cards in one product showing the same trust signal two different
+    // ways is the class of defect this whole branch has been closing.
+    renderCard(service({ providerVerified: true }));
+    const tags = await screen.findByTestId("listing-tags");
+    expect(tags).toHaveTextContent("Verified");
+  });
+
+  it("draws no chip at all for a provider with no accepted document", async () => {
+    // A chip that is always there is not a signal.
+    renderCard(service({ providerVerified: false }));
+    const tags = await screen.findByTestId("listing-tags");
+    expect(tags).not.toHaveTextContent("Verified");
+  });
+
+  it("groups the thousands the way the approved mockup draws them", async () => {
+    // `en-US` already groups a four-digit amount by default, so asserting
+    // there proves nothing about `useGrouping: "always"` — only a locale
+    // whose default omits grouping below five digits can tell the two apart.
+    renderCard(
+      service({ defaultOption: { ...service().defaultOption!, amountMinor: 120_000 } }),
+      null,
+      "pt-MZ",
+    );
+    const stub = await screen.findByTestId("price-stub");
+    expect(stub).toHaveTextContent("1 200");
   });
 });

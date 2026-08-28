@@ -15,6 +15,10 @@ const row = (over = {}) => ({
   sourceLocale: "pt-MZ",
   locationType: "at_provider",
   bookingMode: "priced",
+  // Off by default, the way the join it stands in for behaves for a business
+  // with no accepted document — most of them. Tests that care about the true
+  // case say so explicitly, the same way `providerRatingAverage` fixtures do.
+  providerVerified: false,
   imageKeys: [],
   defaultOption: { amountMinor: 30000, currency: "MZN", durationMinutes: 30, pricingMode: "fixed" },
   fromAmountMinor: 30000,
@@ -433,6 +437,32 @@ describe("mapListServicesInput", () => {
       limit: 24,
       offset: 0,
     });
+  });
+});
+
+/**
+ * The chip a service card shares with its provider card — see
+ * `serviceReadModel.providerVerified`. The projection's own job here is only
+ * to pass the repository's boolean through untouched; whether the underlying
+ * join is a `leftJoin` against `selectDistinct` over `status = "accepted"` is
+ * the repository's fact to get right, not this one's to re-derive.
+ */
+describe("ListServicesProjection — provider verified", () => {
+  it("carries the verified flag onto the card", async () => {
+    const repo = new FakeRepo([row({ providerVerified: true })], 1);
+    const out = await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", limit: 24, offset: 0 });
+    expect(out.items[0]!.providerVerified).toBe(true);
+  });
+
+  it("gives false, not true, for a provider the join found no accepted document for", async () => {
+    // A badge that is always lit says nothing — the failure mode this guards
+    // is the projection defaulting a missing/undefined flag to true instead
+    // of relaying what the repository actually said.
+    const repo = new FakeRepo([row({ providerVerified: false })], 1);
+    const out = await new ListServicesProjection(repo as never)
+      .execute({ locale: "pt-MZ", limit: 24, offset: 0 });
+    expect(out.items[0]!.providerVerified).toBe(false);
   });
 });
 

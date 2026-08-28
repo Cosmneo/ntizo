@@ -37,6 +37,9 @@ const READ_BY_THE_CARDS = [
   // client turns it into a translated phrase.
   "categoryName",
   "locationType",
+  // The chip a service card shares with its provider card — see
+  // `service-listing-card.tsx`'s `service.providerVerified` read.
+  "providerVerified",
 ];
 
 describe("the browse and provider-page service query", () => {

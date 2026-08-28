@@ -57,6 +57,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
     providerName: "Estúdio Mavalane",
     providerSlug: "estudio-mavalane",
     providerType: "organization",
+    providerVerified: false,
     providerRatingAverage: null,
     providerReviewCount: 0,
     categoryCode: "hair",
