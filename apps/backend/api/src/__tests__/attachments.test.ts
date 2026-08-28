@@ -278,11 +278,12 @@ describe("GET /api/communication/attachments/:id", () => {
   });
 
   it("does not let a stored file name inject a header", async () => {
-    // Nothing upstream of the download route guarantees a clean name — a
-    // `NewAttachment.fileName` a caller sent back with `sendMessage` is
-    // whatever string they chose, quotes, CR, LF and all. This is the one
-    // place that string reaches an actual HTTP header, so this is where it
-    // has to be made safe, regardless of what wrote the row.
+    // Nothing upstream of the download route guarantees a clean name.
+    // `NewAttachment.fileName` is `stored.originalName` (Critical 2's fix) —
+    // whatever `file.name` the uploader's OS or API client sent, sliced to
+    // 200 characters by the upload leg above but never otherwise sanitised.
+    // This is the one place that string reaches an actual HTTP header, so
+    // this is where it has to be made safe, regardless of what wrote the row.
     const injected = {
       ...row,
       fileName: 'evil.jpg"\r\nX-Injected: yes',
@@ -307,6 +308,30 @@ describe("GET /api/communication/attachments/:id", () => {
     expect(disposition).toMatch(/^attachment; filename="[^"]*"$/);
   });
 
+  it("strips a backslash from a stored file name — a plain shape-match cannot tell this happened", async () => {
+    // RFC 6266's quoted-string grammar treats `\` as an escape character: a
+    // backslash sitting right before the template's own closing `"` can
+    // leave an RFC-aware parser reading the value as unterminated rather
+    // than closed. The test above's `^attachment; filename="[^"]*"$` regex
+    // is blind to this — `\` is not a `"`, so it satisfies that shape either
+    // way (quotes are already stripped, so no combination of quote-plus-
+    // backslash can appear for that regex to catch). This asserts the
+    // header directly instead: the backslash itself must not survive.
+    const injected = { ...row, fileName: "evil.jpg\\" };
+    withSession(owner);
+    const { bucket } = fakeBucket({ [injected.storageKey]: { body: "pdf-bytes" } });
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      repoWithRow(injected, owner.id),
+    );
+
+    const res = await request(`/api/communication/attachments/${injected.id}`);
+
+    expect(res.status).toBe(200);
+    const disposition = res.headers.get("content-disposition") ?? "";
+    expect(disposition).not.toContain("\\");
+  });
+
   it("answers 404 when the row exists but the bucket object does not", async () => {
     withSession(owner);
     const { bucket } = fakeBucket(); // empty — nothing stored under row.storageKey
@@ -318,5 +343,36 @@ describe("GET /api/communication/attachments/:id", () => {
     const res = await request(`/api/communication/attachments/${row.id}`);
 
     expect(res.status).toBe(404);
+  });
+
+  /**
+   * `attachment.id` is a `uuid` column; a real `DrizzleAttachmentRepository`
+   * throws `invalid input syntax for type uuid` for anything that is not
+   * UUID-shaped, which an unhandled throw turns into a 500 — the one
+   * response this route's whole design says never happens (every failure
+   * answers 403, so a stranger probing ids learns nothing). A fake matching
+   * `row.id` by plain string equality could never reproduce that failure
+   * mode, so this one simulates it directly: it throws exactly what
+   * Postgres throws, for exactly the malformed-id case, and this proves the
+   * route refuses BEFORE the repository is ever called with it.
+   */
+  it("answers 403, not 500, for an id that is not UUID-shaped", async () => {
+    withSession(owner);
+    const repo: AttachmentRepositoryPort = {
+      insertMany: async () => {},
+      listForMessages: async () => new Map(),
+      findVisible: async (id) => {
+        throw new Error(`invalid input syntax for type uuid: "${id}"`);
+      },
+    };
+    const { bucket } = fakeBucket();
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      repo,
+    );
+
+    const res = await request("/api/communication/attachments/not-a-uuid");
+
+    expect(res.status).toBe(403);
   });
 });

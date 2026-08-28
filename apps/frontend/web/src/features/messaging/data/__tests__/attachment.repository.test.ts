@@ -107,4 +107,20 @@ describe("fetchAttachmentBlob", () => {
 
     await expect(fetchAttachmentBlob("a1")).rejects.toBeInstanceOf(AttachmentDownloadError);
   });
+
+  it("percent-encodes the id — a raw slash must not smuggle an extra path segment", async () => {
+    // A real attachment id is a UUID and never needs this, but the id is
+    // interpolated straight into the URL with no encoding today: a value
+    // carrying a `/` reaches a DIFFERENT route entirely, and one carrying a
+    // `?` turns the rest of the id into query parameters. Both are silent —
+    // the request still "succeeds", just against the wrong URL.
+    const spy = vi.fn(async () => new Response("bytes", { status: 200 }));
+    vi.stubGlobal("fetch", spy);
+
+    await fetchAttachmentBlob("a/b c");
+
+    const [url] = spy.mock.calls[0] as unknown as [string];
+    expect(url).toContain("/api/communication/attachments/a%2Fb%20c");
+    expect(url).not.toContain("/api/communication/attachments/a/b c");
+  });
 });

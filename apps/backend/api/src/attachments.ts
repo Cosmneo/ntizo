@@ -35,17 +35,26 @@ export interface AttachmentDeps {
 
 /**
  * Strips what turns a stored file name into a header-injection payload: the
- * quote that would otherwise end the `filename="..."` value early, and every
- * control character — CR and LF included. Nothing upstream of this function
- * guarantees a clean name: `NewAttachment.fileName` is whatever the caller
- * who built the descriptor sent along with `sendMessage`, not necessarily the
- * same string this route's own upload leg produced, and the download leg has
- * to be safe on its own.
+ * quote that would otherwise end the `filename="..."` value early, the
+ * backslash that could escape it instead (RFC 6266's quoted-string grammar
+ * treats `\` as an escape character — a stray one right before the
+ * template's own closing quote can leave an RFC-aware parser reading the
+ * string as unterminated rather than closed), and every control character —
+ * CR and LF included.
+ *
+ * Nothing upstream of this function guarantees a clean name: since Critical
+ * 2's fix, `NewAttachment.fileName` is `stored.originalName` — whatever
+ * `file.name` the uploader's OS or API client sent, sliced to 200 characters
+ * by this route's own upload leg, but never otherwise sanitised for quotes,
+ * backslashes, or control bytes. The download leg has to be safe on its own.
  */
 function safeFilenameForHeader(fileName: string): string {
   // eslint-disable-next-line no-control-regex -- deliberately matching CR/LF and other control bytes, not a typo.
-  return fileName.replace(/["\r\n\x00-\x1f\x7f]/g, "");
+  return fileName.replace(/["\\\r\n\x00-\x1f\x7f]/g, "");
 }
+
+/** A v4-shaped UUID — the only kind `attachment.id` (a `uuid` column) can ever hold. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: AttachmentDeps) {
   /**
@@ -128,6 +137,15 @@ export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: Att
    * both when the id belongs to nobody the caller may see and when the id
    * simply does not exist, so this cannot be used to learn which attachment
    * ids are real. See `AttachmentRepositoryPort.findVisible`'s doc comment.
+   * That design promises every failure this route can produce is a 403 — but
+   * `attachment.id` is a `uuid` column, and `DrizzleAttachmentRepository`
+   * never re-validates the shape of what it is asked to look up: something
+   * that is not even UUID-shaped reaches Postgres and comes back as a thrown
+   * `invalid input syntax for type uuid` error, which is a 500, not the 403
+   * the whole route is designed around. Checked here, before the repository
+   * is ever called, so a malformed id is refused the SAME way an id that is
+   * merely not this caller's is — one more reason nothing can be learned
+   * from the difference.
    *
    * `attachment`, never `inline`. `documents.ts` serves `inline` because its
    * reader is an administrator looking at an identity card on our own
@@ -139,7 +157,10 @@ export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: Att
     const session = await getAuth().api.getSession({ headers: c.req.raw.headers });
     if (!session?.user) return c.json({ error: "UNAUTHENTICATED" }, 401);
 
-    const row = await deps.attachmentRepository.findVisible(c.req.param("id"), session.user.id);
+    const id = c.req.param("id");
+    if (!UUID_RE.test(id)) return c.json({ error: "FORBIDDEN" }, 403);
+
+    const row = await deps.attachmentRepository.findVisible(id, session.user.id);
     if (!row) return c.json({ error: "FORBIDDEN" }, 403);
 
     const bucket = c.env.ATTACHMENTS_BUCKET;

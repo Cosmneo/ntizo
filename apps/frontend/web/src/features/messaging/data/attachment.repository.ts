@@ -94,9 +94,10 @@ export class AttachmentDownloadError extends Error {
  * runs on the failure branch.
  */
 export async function fetchAttachmentBlob(id: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}/api/communication/attachments/${id}`, {
-    credentials: "include",
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/communication/attachments/${encodeURIComponent(id)}`,
+    { credentials: "include" },
+  );
 
   if (!response.ok) {
     let code = `HTTP_${response.status}`;
