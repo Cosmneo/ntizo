@@ -2197,3 +2197,54 @@ is behaviour, not decoration: it changes what Tab does on every one of them.
 **Trigger:** the next accessibility pass, the next keyboard-navigation bug filed against any modal,
 or the next component that needs a dialog — at which point it is a seventh copy of the workaround,
 and the argument for fixing the primitive has beaten the argument against it.
+
+---
+
+## 91. What the detail-pages redesign deferred
+
+The whole-branch review triaged each of these as a follow-up rather than a merge blocker, with
+the reason. Recorded here because the branch's own working notes are deleted once it merges.
+
+**Dead code behind a live export.** `features/directory/services/ui/service-card.tsx` has had no
+consumer for its `ServiceCard` export since the browse moved to `ServiceListingCard` — before this
+branch. The same file still exports `ServicePrice`, which `availability/ui/availability-sheet.tsx`
+imports, so removing it means extracting that first. **Trigger:** the next change to either symbol.
+
+**The browse card still says "Book".** `service-listing-card.tsx` labels its CTA `packageBook` on a
+`<Link>` into a page that states, in words, that bookings are not open. The detail pages were
+scrubbed of that word; the front door was out of scope. It is asserted by name in that card's own
+test, so it is a two-file change. **Trigger:** the next honesty pass, or the first customer who asks
+why "Book" does not book.
+
+**Two prices, two spellings, one click apart.** `rail-price-summary.tsx`'s headline keeps
+`formatAmount`'s decimals while `ProviderRail`'s headline and `ServiceRow`'s price use
+`formatHeadlinePrice`'s whole units. Deliberate — the comment at that line records the trade and its
+cost — because rounding it would show two spellings of one amount inside a single card. **Trigger:**
+a decision that cross-page consistency matters more, or a redesign that separates the headline from
+the breakdown.
+
+**`memberSince` is pinned to UTC.** `provider-public.repository.ts` derives it with
+`toISOString().slice(0, 7)`, so a business registered between midnight and 02:00 on the 1st in Maputo
+publishes the previous month. Wrong by one month, on a fact whose whole purpose is telling a
+five-year business from a five-week one. **Trigger:** the next change to `toDTO`.
+
+**Coverage the redesign did not add.** The rail's fixed-duration label is unasserted (only the hourly
+branch is covered); `ServiceRow`'s `from` and `unavailable` price branches are untested; and the
+spec asked for the e2e provider journey to assert the rail's price and the availability card, which
+was not done. That last one matters more than coverage arithmetic suggests: this work added a second
+awaited GraphQL query to `/services/$id`'s SSR loader, and `apps/e2e/tests/public-directory.spec.ts`
+exists because a routing bug once made every detail URL render the wrong thing with JavaScript
+disabled. **Trigger:** the next SSR or routing change to either detail route.
+
+**Test guards weaker than they look.** `flattenToDottedPaths` in the locale parity test treats `{}`
+identically to an absent key, so two content-empty sides compare equal. And
+`member-since.test.ts`'s UTC-vs-local regression test cannot fail on a runner whose timezone has a
+non-negative offset — `vite.config.ts` pins no `TZ` and CI is almost certainly UTC, so a test named
+for catching a timezone bug cannot catch it there. **Trigger:** either, the next time a date or a
+locale bug is suspected.
+
+**Keyboard behaviour carried across unchanged.** The service options radiogroup duplicates its own
+`h2` as an `aria-label` and has no roving `tabIndex` or arrow-key handling — inherited verbatim from
+the deleted `PackageChooser`, and now a full-width body control rather than a rail detail. Every
+radio is individually tabbable and `aria-checked` is correct, so it is operable, just not
+APG-conformant. **Trigger:** pair it with #90, the `Dialog` primitive's missing focus trap.
