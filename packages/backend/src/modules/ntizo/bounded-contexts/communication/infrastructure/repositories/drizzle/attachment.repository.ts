@@ -1,12 +1,12 @@
-import { and, eq, exists, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
+import { visibleToViewer } from "./thread-visibility";
 import {
   attachment,
   message,
   thread,
   type AttachmentRow,
 } from "../../../../../shared/infrastructure/database/communication/schemas";
-import { providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
 import type {
   AttachmentRepositoryPort,
   NewAttachment,
@@ -79,20 +79,7 @@ export class DrizzleAttachmentRepository implements AttachmentRepositoryPort {
       .where(
         and(
           eq(attachment.id, attachmentId),
-          or(
-            eq(thread.customerUserId, viewerUserId),
-            exists(
-              getDb()
-                .select({ one: sql`1` })
-                .from(providerMember)
-                .where(
-                  and(
-                    eq(providerMember.providerId, thread.providerId),
-                    eq(providerMember.userId, viewerUserId),
-                  ),
-                ),
-            ),
-          ),
+          visibleToViewer(viewerUserId),
         ),
       )
       .limit(1);

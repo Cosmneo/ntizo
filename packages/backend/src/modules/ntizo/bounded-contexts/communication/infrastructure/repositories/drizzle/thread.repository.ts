@@ -1,10 +1,10 @@
-import { and, desc, eq, exists, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
+import { visibleToViewer } from "./thread-visibility";
 import {
   thread,
   type ThreadRow,
 } from "../../../../../shared/infrastructure/database/communication/schemas";
-import { providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { Thread } from "../../../domain/aggregates/thread.aggregate";
 import { CursorInvalidError } from "../../../domain/exceptions";
 import type {
@@ -100,20 +100,7 @@ export class DrizzleThreadRepository implements ThreadRepositoryPort {
       .where(
         and(
           eq(thread.id, threadId),
-          or(
-            eq(thread.customerUserId, viewerUserId),
-            exists(
-              getDb()
-                .select({ one: sql`1` })
-                .from(providerMember)
-                .where(
-                  and(
-                    eq(providerMember.providerId, thread.providerId),
-                    eq(providerMember.userId, viewerUserId),
-                  ),
-                ),
-            ),
-          ),
+          visibleToViewer(viewerUserId),
         ),
       )
       .limit(1);
