@@ -75,11 +75,14 @@ export function RailPriceSummary({
     <RailCard>
       <p className="flex flex-wrap items-baseline gap-2">
         {/* Neither `type-display` nor `type-h1`: this is a number in a 22rem
-            column, and the display scale's `clamp(30px, 3.6vw, 42px)` grows
-            with the viewport rather than with the card it sits in. Assembled
-            from the same tokens those classes use, and identical to the
-            headline `ProviderRail` prints, so the two pages' rails open on
-            the same shape. */}
+            column. This headline uses `formatAmount` (decimals: "1200,00 MTn"),
+            unlike `ProviderRail`'s headline and `ServiceRow`'s price, which
+            use `formatHeadlinePrice` (whole units: "1 200 MTn"). The headline
+            sits above the breakdown's "Price" row showing the same total, so
+            rounding one and not the other would display two spellings of the
+            same amount inside this card. That inconsistency within a single
+            view is worse than a reader seeing "1 200 MTn" on a browse card
+            and "1200,00 MTn" here. This trade-off is intentional. */}
         <b className="font-display text-[30px] leading-none font-semibold tracking-[-0.02em] tabular-nums">
           {formatAmount(option.amountMinor, option.currency, locale)}
         </b>
