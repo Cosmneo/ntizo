@@ -433,9 +433,11 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     return {
       // `[]` for weekly hours: the directory renders 24 cards a page and must
       // not pay for a join over every member's availability just to show a
-      // list it never displays hours on. `serviceLocationTypes`/`weeklyHours`
-      // ride along on the return type but are dropped at the GraphQL edge,
-      // which still answers `provider.list` with `ProviderPublicDTO` alone.
+      // list it never displays hours on. `serviceLocationTypes`, `weeklyHours`
+      // and `memberSince` all ride along on the return type — the last one
+      // because `createdAt` is in `COLUMNS` for `findActiveBySlug`'s benefit —
+      // but are dropped at the GraphQL edge, which still answers `provider.list`
+      // with `ProviderPublicDTO` alone.
       items: rows.map((r) => DrizzleProviderPublicRepository.toDTO(r, categories.get(r.id) ?? [], [])),
       total: Number(counted?.total ?? 0),
     };

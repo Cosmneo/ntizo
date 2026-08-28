@@ -80,13 +80,18 @@ describe("ServiceRow", () => {
     renderRow(base);
     expect(await screen.findByText("Avaria eléctrica urgente")).toBeInTheDocument();
     expect(screen.getByText("Deslocação e diagnóstico.")).toBeInTheDocument();
-    // `formatAmount(120000, "MZN", "pt-MZ")` prints "1200,00 MTn" — no
-    // thousands separator below five digits in this locale's CLDR data (see
-    // `service-listing-card.test.tsx`'s own note on `useGrouping`), so the
-    // brief's `/1[\s.,]?200/` matches the "1200" substring directly, with its
-    // optional separator group matching nothing. Verified against the real
-    // `Intl.NumberFormat` output rather than trusted blind.
+    // `formatHeadlinePrice(120000, "MZN", "pt-MZ")` prints "1 200 MTn" — a
+    // non-breaking space groups the thousands (`useGrouping: "always"`,
+    // needed because `pt-MZ`'s `minimumGroupingDigits: 2` would otherwise
+    // leave a four-digit price ungrouped), no decimals. `\s` in a JS regex
+    // matches U+00A0, so `/1[\s.,]?200/` matches the grouped form directly.
+    // Verified against the real `Intl.NumberFormat` output rather than
+    // trusted blind.
     expect(screen.getByText(/1[\s.,]?200/)).toBeInTheDocument();
+    // The headline is a price *cell*, not a checkout total — no decimal part,
+    // unlike `formatAmount`'s "1200,00" (see `formatHeadlinePrice`'s own doc
+    // comment for the headline-vs-total distinction).
+    expect(screen.queryByText(/,00/)).not.toBeInTheDocument();
   });
 
   it("offers the calendar for a priced service", async () => {

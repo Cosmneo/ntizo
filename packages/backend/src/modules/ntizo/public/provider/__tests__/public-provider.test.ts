@@ -114,6 +114,20 @@ describe("public provider repository source", () => {
     // this predicate.
     expect(source).toContain("eq(memberAvailability.providerId,");
   });
+
+  it("scopes the location-type aggregate to published services", () => {
+    // Isolated to the `locations` aggregate specifically, not just counted
+    // across the whole file: `services` and `prices` also filter on
+    // `eq(service.status, "published")`, so a bare `toContain` would pass
+    // even if `locations` itself had lost the predicate. A provider who
+    // stops publishing an at-provider service must stop claiming to work
+    // that way — the same rule `categories` already follows.
+    const start = source.indexOf("const locations = db");
+    const end = source.indexOf('.as("location_agg")', start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(source.slice(start, end)).toContain('eq(service.status, "published")');
+  });
 });
 
 /**

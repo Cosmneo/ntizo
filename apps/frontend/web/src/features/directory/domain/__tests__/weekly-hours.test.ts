@@ -63,6 +63,16 @@ describe("groupWeekdays", () => {
     expect(rows[2]?.label).toBe("domingo");
   });
 
+  it("falls back to the dash for a French range, rather than a mistranslated 'au'", () => {
+    // Idiomatic French names a range "du lundi au vendredi" — a preposition
+    // before each endpoint, a shape `rangeWord`'s single-infix-word contract
+    // cannot produce (see its own doc comment). A bare "au" between two short
+    // forms ("lun. au ven.") reads as a mistranslation, so French has no
+    // entry in the word table and falls through to the dash instead.
+    const rows = groupWeekdays(TYPICAL, "fr-FR");
+    expect(rows[0]?.label).toBe("lun. – ven.");
+  });
+
   it("starts the week on Monday, not on Sunday", () => {
     // The DTO is indexed 0 = Sunday; the card is not read that way anywhere
     // this product ships.

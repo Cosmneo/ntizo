@@ -85,7 +85,14 @@ export function ProviderReviews({ providerId }: { providerId: string }) {
     <section className="mt-12">
       <h2 className="type-h2">{t("reviewsHeading", { count: summary.count })}</h2>
 
-      <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-11 rounded-[var(--radius-card)] border bg-[var(--color-muted)] px-7 py-6">
+      {/* One column below `sm`, two above — the same breakpoint the section
+          this replaced used. The score's own column is `auto`-sized by a
+          long aria label, so on a 360px phone (Mozambique is a mobile-first
+          market) a two-column layout would squeeze the histogram's label,
+          bar and count into what is left of a ~312px shell. `items-center`
+          is scoped to `sm:` too, so the stacked score does not float
+          against a histogram it is no longer beside. */}
+      <div className="mt-4 grid grid-cols-1 gap-6 rounded-[var(--radius-card)] border bg-[var(--color-muted)] px-5 py-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-11 sm:px-7 sm:py-6">
         <div className="grid justify-items-center gap-2">
           <p className="font-display text-[52px] font-semibold leading-none tabular-nums">
             {score}

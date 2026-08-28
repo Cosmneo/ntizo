@@ -153,8 +153,20 @@ export const providerPublicDetailReadModel = providerPublicReadModel.extend({
    */
   serviceLocationTypes: z.array(z.string()),
 
-  /** All seven weekdays, always. See `weeklyHoursReadModel`. */
-  weeklyHours: z.array(weeklyHoursReadModel),
+  /**
+   * All seven weekdays, always — enforced here, not just documented in the
+   * prose above. Exactly seven entries, and `superRefine` checks the weekday
+   * set covers 0–6 with no repeats: `weeklyHoursReadModel` already bounds a
+   * single entry's `weekday` to 0–6, so seven entries with seven distinct
+   * weekdays can only be the full week, never seven copies of Monday with
+   * Sunday missing.
+   */
+  weeklyHours: z.array(weeklyHoursReadModel).length(7).superRefine((hours, ctx) => {
+    const weekdays = new Set(hours.map((day) => day.weekday));
+    if (weekdays.size !== hours.length) {
+      ctx.addIssue("weeklyHours must cover each weekday 0-6 exactly once, with no repeats");
+    }
+  }),
 });
 
 export type WeeklyHoursDTO = z.infer<typeof weeklyHoursReadModel>;

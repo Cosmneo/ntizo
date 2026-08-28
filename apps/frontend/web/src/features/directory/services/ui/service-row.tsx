@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "@ntizo/frontend-ui";
 import {
-  formatAmount,
+  formatHeadlinePrice,
   optionDurationMinutes,
   serviceCardImage,
   servicePriceCell,
@@ -88,9 +88,9 @@ export function ServiceRow({
         {/* Decorative, like `ServiceCard`'s own thumbnail: the service's
             name is already adjacent link text, so a non-empty alt would
             have a screen reader announce it twice per row — once here,
-            once for the link — and Task 12 stacks every one of a
-            provider's services into a list, where that doubles up once
-            per row. */}
+            once for the link — and `ProviderServicesSection` stacks every
+            one of a provider's services into a list, where that doubles up
+            once per row. */}
         {image ? (
           <img
             src={image}
@@ -186,7 +186,7 @@ function servicePriceAndCta({
     return {
       price: (
         <p className="type-h3">
-          {t("priceFrom", { amount: formatAmount(cell.amountMinor, cell.currency, locale) })}
+          {t("priceFrom", { amount: formatHeadlinePrice(cell.amountMinor, cell.currency, locale) })}
         </p>
       ),
       cta: (
@@ -198,11 +198,11 @@ function servicePriceAndCta({
   }
 
   // `cell.kind === "priced"`: the one option this service has, its amount
-  // plus the hourly suffix when it charges by the hour — `formatAmount`
+  // plus the hourly suffix when it charges by the hour — `formatHeadlinePrice`
   // does not append that suffix itself, since it is a translated string a
   // domain function must not hard-code in English for every locale calling
   // it (see that function's own doc comment).
-  const amount = formatAmount(cell.option.amountMinor, cell.option.currency, locale);
+  const amount = formatHeadlinePrice(cell.option.amountMinor, cell.option.currency, locale);
   const suffix = cell.option.pricingMode === "hourly" ? ` ${t("priceHourlySuffix")}` : "";
   return {
     price: (

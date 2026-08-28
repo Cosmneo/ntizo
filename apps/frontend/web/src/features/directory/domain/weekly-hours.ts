@@ -96,11 +96,23 @@ export function groupWeekdays(
  * and produces "Mon – Fri" with a dash rather than a word. So this is a small
  * table, and the fallback is the dash, which is never wrong in any language
  * even where it is not idiomatic.
+ *
+ * French has no entry, deliberately. Idiomatic French names a range "du lundi
+ * au vendredi" — a preposition before *each* endpoint ("du" … "au"), not one
+ * word sitting between two short forms the way every other language here
+ * works. This function only ever returns the single infix word `groupWeekdays`
+ * places between its two `weekdayShortLabel` calls, so producing "du … au"
+ * would mean giving French its own sentence shape in `groupWeekdays` itself —
+ * a bigger change than a cheap fix warrants for one language's grammar. "lun.
+ * au ven." (a bare "au", no leading "du") reads as a mistranslation rather
+ * than merely informal, so French falls through to the dash instead —
+ * "lun. – ven.", a form French store-hours listings also use, and never wrong
+ * per the fallback's own reasoning above.
  */
 function rangeWord(locale: string): string {
   const lang = locale.split("-")[0];
   const words: Record<string, string> = {
-    pt: "a", en: "to", es: "a", fr: "au", de: "bis", it: "a", nl: "tot",
+    pt: "a", en: "to", es: "a", de: "bis", it: "a", nl: "tot",
   };
   return words[lang ?? ""] ?? "–";
 }

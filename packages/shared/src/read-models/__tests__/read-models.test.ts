@@ -454,21 +454,36 @@ describe("providerPublicDetailReadModel", () => {
     serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
   };
 
+  /**
+   * A full seven-day week, closed by default — the shape the schema now
+   * requires of every one of these fixtures, not just the ones that mean to
+   * test the week itself. `open` keys by weekday and only needs to name the
+   * days that are not closed.
+   */
+  function fullWeek(
+    open: Partial<Record<number, { startMinute: number; endMinute: number }[]>> = {},
+  ) {
+    return [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+      weekday,
+      intervals: open[weekday] ?? [],
+    }));
+  }
+
   it("accepts a provider with hours, a join month and location types", () => {
     const parsed = providerPublicDetailReadModel.parse({
       ...base,
       memberSince: "2025-03",
       serviceLocationTypes: ["at_customer", "remote"],
-      weeklyHours: [{ weekday: 1, intervals: [{ startMinute: 480, endMinute: 1080 }] }],
+      weeklyHours: fullWeek({ 1: [{ startMinute: 480, endMinute: 1080 }] }),
     });
     expect(parsed.memberSince).toBe("2025-03");
-    expect(parsed.weeklyHours[0]?.intervals[0]?.endMinute).toBe(1080);
+    expect(parsed.weeklyHours[1]?.intervals[0]?.endMinute).toBe(1080);
   });
 
   it("accepts a closed weekday as an empty interval list", () => {
     const parsed = providerPublicDetailReadModel.parse({
       ...base, memberSince: null, serviceLocationTypes: [],
-      weeklyHours: [{ weekday: 0, intervals: [] }],
+      weeklyHours: fullWeek(),
     });
     expect(parsed.weeklyHours[0]?.intervals).toEqual([]);
   });
@@ -477,7 +492,34 @@ describe("providerPublicDetailReadModel", () => {
     expect(() =>
       providerPublicDetailReadModel.parse({
         ...base, memberSince: null, serviceLocationTypes: [],
-        weeklyHours: [{ weekday: 7, intervals: [] }],
+        // Seven entries, so this exercises the weekday bound itself rather
+        // than the length check below — weekday 7 stands in for weekday 0.
+        weeklyHours: [7, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, intervals: [] })),
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a short weeklyHours array, even one where every entry is a distinct, in-range weekday", () => {
+    // The case a weekday-set check alone would miss: six distinct, valid
+    // weekdays are still not a week. `.length(7)` is what catches this one,
+    // not the `superRefine` — which is why it is its own case rather than
+    // folded into "outside 0..6" above.
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: null, serviceLocationTypes: [],
+        weeklyHours: fullWeek().slice(0, 6),
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a repeated weekday, even at a full length of seven", () => {
+    // Seven entries, so `.length(7)` alone would wave this through — two
+    // Mondays and no Sunday is exactly what the weekday-set `superRefine`
+    // exists to catch.
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: null, serviceLocationTypes: [],
+        weeklyHours: [1, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, intervals: [] })),
       }),
     ).toThrow();
   });
@@ -485,7 +527,7 @@ describe("providerPublicDetailReadModel", () => {
   it("rejects a memberSince that is not an ISO year-month", () => {
     expect(() =>
       providerPublicDetailReadModel.parse({
-        ...base, memberSince: "2025-03-14", serviceLocationTypes: [], weeklyHours: [],
+        ...base, memberSince: "2025-03-14", serviceLocationTypes: [], weeklyHours: fullWeek(),
       }),
     ).toThrow();
   });

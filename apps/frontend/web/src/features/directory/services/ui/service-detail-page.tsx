@@ -73,9 +73,10 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  *
  * Kept as a local, unexported function in the one page that needs it rather
  * than moved into `domain/`, since nothing else in this feature converts
- * between these two shapes yet — see the Task 10 report for why that
- * placement is a call worth a reviewer's second look rather than a settled
- * one.
+ * between these two shapes yet — a placement worth a reviewer's second look
+ * rather than a settled one, because "nothing else needs it yet" is exactly
+ * the kind of justification that stops holding the day a second caller shows
+ * up.
  */
 function toAvailabilityService(
   service: ServiceDetailDTO,
@@ -349,7 +350,7 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
                 // itself falls back to for the identical fact); a "see
                 // availability" button that opened the sheet only to repeat
                 // that sentence would say the same thing to the reader twice.
-                return <ServiceQuoteNotice />;
+                return <ServiceQuoteNotice providerId={service.providerId} />;
               }
               // A `priced` service with no active packages — see
               // `ServicePackagesUnavailable`'s own doc comment for why this

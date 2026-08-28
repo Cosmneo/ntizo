@@ -297,6 +297,11 @@ describe("ProviderDetailPage", () => {
     // number was drawn from.
     expect(within(rail()).getByText("The lowest price they publish.")).toBeInTheDocument();
     expect(within(rail()).queryByText(/\b3\b/)).not.toBeInTheDocument();
+    // The headline is `formatHeadlinePrice`, not `formatAmount`: a rail
+    // headline is not a checkout total, so it has no decimal part — unlike
+    // "MZN 1,200.00", which is what the same 120000 minor units would print
+    // through the total-formatting function.
+    expect(within(rail()).queryByText(/1,200\.00/)).not.toBeInTheDocument();
   });
 
   it("says nothing about a price when the provider publishes nothing priced", async () => {

@@ -229,10 +229,14 @@ describe("ServiceDetailPage's right column", () => {
     expect(screen.queryByText(/priced by quote/i)).not.toBeInTheDocument();
   });
 
-  it("shows the quote notice for a quote service", async () => {
+  it("shows the quote notice for a quote service, with a working way to contact the provider", async () => {
     renderPage(detailService({ bookingMode: "quote", options: [] }));
     expect(await screen.findByText(/priced by quote/i)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Packages" })).not.toBeInTheDocument();
+    // A quote service can be neither booked nor scheduled, so this button is
+    // the only action its page offers — see follow-up #69 for why it used to
+    // be disabled here.
+    expect(screen.getByRole("button", { name: "Send message" })).toBeEnabled();
   });
 
   it("a priced service with no active options is NOT shown as a quote service", async () => {

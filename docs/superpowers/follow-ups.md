@@ -1766,7 +1766,22 @@ this file is touched for an unrelated reason.
 
 ---
 
-## 69. `ServiceQuoteNotice` still disables "contact provider" behind a stale comment
+## ~~69. `ServiceQuoteNotice` still disables "contact provider" behind a stale comment~~ — RESOLVED 2026-08-28
+
+`ServiceQuoteNotice` now takes a `providerId` and renders the real `MessageProviderButton` in place
+of the disabled button and the `packageContactClosed` sentence — the same control
+`RailPriceSummary` and the provider page's own rail already mount. A quote service can be neither
+booked nor scheduled, so this is the only action its page offers, which made the stale disabled
+button more than cosmetic: the sentence beside it claimed messaging "isn't open on Ntizo yet" when
+it had been open since this phase, the same defect class this whole spec exists to prevent, merely
+inverted. `packageContactClosed` had no other consumer once this was the last place using it, so the
+key is gone from all eight locale files.
+
+The original entry is kept below for the record.
+
+---
+
+## 69. (original) `ServiceQuoteNotice` still disables "contact provider" behind a stale comment
 
 It renders its "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
 comment explaining why: "there is no Communication context in this product either"

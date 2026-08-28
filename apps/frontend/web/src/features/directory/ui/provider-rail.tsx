@@ -4,7 +4,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { MessageSquare } from "lucide-react";
 import { Button, buttonVariants } from "@ntizo/frontend-ui";
 import type { ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
-import { formatAmount } from "@/features/directory/services/domain/service-card";
+import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 import { RailCard } from "@/features/directory/ui/rail-card";
 import { TrustList } from "@/features/directory/ui/trust-list";
 import { WeeklyHoursCard } from "@/features/directory/ui/weekly-hours-card";
@@ -44,9 +44,14 @@ export function ProviderRail({ provider }: { provider: ProviderPublicDetailDTO }
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
   const { fromAmountMinor, fromCurrency } = provider;
+  // A headline, not a total: `formatHeadlinePrice` rounds to whole units, the
+  // same rule `ServiceRow`'s price cell follows for the identical number a
+  // click away. See that function's own doc comment for why `RailPriceSummary`
+  // (the service page's rail) stays on `formatAmount` for its breakdown and
+  // its total, which are one click further from here but must never round.
   const price =
     fromAmountMinor !== null && fromCurrency !== null
-      ? formatAmount(fromAmountMinor, fromCurrency, locale)
+      ? formatHeadlinePrice(fromAmountMinor, fromCurrency, locale)
       : null;
 
   // `verified` means an administrator accepted at least one document, so the

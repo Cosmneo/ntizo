@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button } from "@ntizo/frontend-ui";
+import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 
 /**
  * The right column's answer for a `quote` service, in place of the price rail.
@@ -20,15 +20,16 @@ import { Button } from "@ntizo/frontend-ui";
  * also considered and rejected — it is a price-tag label built for a browse
  * card, too terse to stand alone as the only content in this slot.
  *
- * The "contact provider" button is still rendered disabled and unlinked, and
- * it is now the last one in the product that is: `RailPriceSummary` mounts
- * the real `MessageProviderButton` (`ui/provider-rail.tsx`), which starts a
- * thread through `useStartThread`, and `PackageChooser`'s disabled "Reservar"
- * went with the component itself. Nothing is being waited for — the identical
- * CTA works two files away; nobody has come back to wire this one. See
- * follow-up #69.
+ * **The "contact provider" button now actually works.** A quote service can
+ * be neither booked nor scheduled — there is no fixed price or duration to
+ * check a calendar against — so this button is the only action its page
+ * offers, and rendering it disabled behind a sentence claiming messaging
+ * "isn't open on Ntizo yet" was false: messaging shipped, `RailPriceSummary`
+ * (the sibling branch of this same `serviceDetailPanel` choice, one file
+ * over) already mounts the identical `MessageProviderButton`, and so does the
+ * provider page itself. Closes follow-up #69.
  */
-export function ServiceQuoteNotice() {
+export function ServiceQuoteNotice({ providerId }: { providerId: string }) {
   const { t } = useTranslation("directory");
 
   return (
@@ -37,12 +38,7 @@ export function ServiceQuoteNotice() {
         {t("availabilityQuoteNotice")}
       </p>
       <div className="mt-4 grid gap-2">
-        <Button type="button" variant="secondary" disabled className="w-full">
-          {t("packageContactProvider")}
-        </Button>
-        <p className="type-caption text-center text-[var(--color-muted-foreground)]">
-          {t("packageContactClosed")}
-        </p>
+        <MessageProviderButton providerId={providerId} />
       </div>
     </div>
   );

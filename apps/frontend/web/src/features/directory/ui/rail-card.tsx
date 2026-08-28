@@ -14,9 +14,10 @@ import { cn } from "@ntizo/frontend-ui";
  * The gap between `label` and `children` is owned here, not left for each
  * caller to add: this component's whole job is making every card in the
  * rail look like one system, and a label-to-content gap invented separately
- * by Task 12's and Task 13's cards is exactly the kind of mismatch it
- * exists to prevent. `type-caption`'s line-height alone reads as flush
- * against whatever sits under it, so the margin is not optional polish.
+ * by `ProviderRail`'s and `RailPriceSummary`'s cards is exactly the kind of
+ * mismatch it exists to prevent. `type-caption`'s line-height alone reads as
+ * flush against whatever sits under it, so the margin is not optional
+ * polish.
  */
 export function RailCard({
   label,

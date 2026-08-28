@@ -136,7 +136,6 @@
   "packageBook": "Réserver",
   "packageBookingsClosed": "Les réservations ne sont pas encore ouvertes sur Ntizo.",
   "packageContactProvider": "Contacter le prestataire",
-  "packageContactClosed": "La messagerie n'est pas encore ouverte sur Ntizo.",
   "availabilityCheckAction": "Voir les disponibilités",
   "ratingCount": "{{count}} avis",
   "ratingCount_other": "{{count}} avis",

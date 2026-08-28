@@ -74,7 +74,13 @@ export function ProviderDetailPage({ slug }: { slug: string }) {
             the one that survives, because it is a fact about the name it sits
             beside and it renders for every provider, where a gallery badge
             disappears for the majority who have uploaded no photographs. */}
-        <DetailGallery images={provider.photoUrls} alt={provider.name} />
+        {/* Keyed by slug, like `service.id` keys the identical component on
+            the service page: the route reuses this page's instance across
+            slugs, and `DetailGallery` holds its own `open` dialog state —
+            without the key, navigating from one provider to another with the
+            photo dialog open leaves it open over a different provider's
+            photographs. */}
+        <DetailGallery key={provider.slug} images={provider.photoUrls} alt={provider.name} />
 
         <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="min-w-0">

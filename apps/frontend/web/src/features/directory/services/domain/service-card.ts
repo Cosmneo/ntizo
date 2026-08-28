@@ -78,6 +78,39 @@ export function formatAmount(
 }
 
 /**
+ * Any amount in minor units, as a headline price rather than a total.
+ *
+ * Whole units only, `useGrouping: "always"`: a rail's headline and a service
+ * row's price cell are the same kind of number the browse cards already
+ * print — `ProviderListingCard` and `ServiceListingCard` each carry their own
+ * private `formatPrice` twin of this, with the same shape, for the same
+ * reason recorded on both: two cards in the same product disagreeing about
+ * whether this platform writes "800 MZN" or "800,00 MZN" is worse than either
+ * choice, and the approved mockup writes whole units. `useGrouping: "always"`
+ * exists because `pt-MZ` and `pt-PT` set `minimumGroupingDigits: 2`, which
+ * would otherwise leave a four-digit price ungrouped — "1200 MZN" against the
+ * mockup's "1 200 MZN".
+ *
+ * `formatAmount` above is not this function with two fewer digits — it stays
+ * exactly as it is for `RailPriceSummary`'s breakdown lines and its total,
+ * because a checkout total is what the customer actually pays and cannot be
+ * rounded. A rail headline and a row price are headlines: an approximation
+ * announcing itself as one, not a number anybody is charged.
+ */
+export function formatHeadlinePrice(
+  amountMinor: number,
+  currency: string,
+  locale: string,
+): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+    useGrouping: "always",
+  }).format(amountMinor / 100);
+}
+
+/**
  * The minutes to show beside the price: the fixed job's own length, or the
  * hourly option's minimum booking.
  *

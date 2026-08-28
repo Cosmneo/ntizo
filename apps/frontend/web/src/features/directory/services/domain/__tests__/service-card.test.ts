@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ServiceDetailDTO, ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
 import {
+  formatAmount,
+  formatHeadlinePrice,
   formatOptionAmount,
   optionDurationMinutes,
   servicePriceCell,
@@ -123,6 +125,29 @@ describe("servicePriceCell", () => {
       expect(formatOptionAmount(cell.option, "pt-MZ")).toMatch(/250/);
       expect(optionDurationMinutes(cell.option)).toBe(120);
     }
+  });
+});
+
+/**
+ * The headline-vs-total split: `formatHeadlinePrice` rounds to whole units,
+ * `formatAmount` keeps the decimals a checkout total cannot drop. Same
+ * `amountMinor`, same locale, so this is a direct comparison rather than two
+ * assertions that happen to agree.
+ */
+describe("formatHeadlinePrice", () => {
+  it("prints whole units, unlike formatAmount's checkout precision", () => {
+    const headline = formatHeadlinePrice(120000, "MZN", "pt-MZ");
+    const total = formatAmount(120000, "MZN", "pt-MZ");
+
+    expect(headline).not.toContain(",00");
+    expect(total).toContain(",00");
+  });
+
+  it("groups a four-digit amount even where the locale's own default would not", () => {
+    // `pt-MZ` and `pt-PT` set `minimumGroupingDigits: 2`, so a bare
+    // `Intl.NumberFormat` call leaves a four-digit price ungrouped —
+    // `useGrouping: "always"` is what makes "1200" read as "1 200".
+    expect(formatHeadlinePrice(120000, "MZN", "pt-MZ")).toMatch(/1[\s.,]200/);
   });
 });
 
