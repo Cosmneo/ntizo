@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchAttachmentBlob } from "@/features/messaging/data/attachment.repository";
 
 export type AttachmentOpenState = "idle" | "loading" | "loaded" | "error";
@@ -20,10 +20,26 @@ export type AttachmentOpenState = "idle" | "loading" | "loaded" | "error";
  * caller decides when, which is what makes "an attachment's bytes are
  * fetched only once somebody opens it" true. See `AttachmentList`'s own doc
  * comment for why that matters.
+ *
+ * The object URL is revoked on unmount. Without that, every attachment
+ * somebody opens holds its blob in memory until the page is reloaded, and a
+ * long conversation is exactly where several get opened. The same pattern
+ * is in `features/admin/categories/ui/category-form.tsx`.
  */
 export function useAttachmentDownload(attachmentId: string) {
   const [state, setState] = useState<AttachmentOpenState>("idle");
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  // A ref as well as state: the unmount cleanup must see the CURRENT url, and
+  // an effect closing over the state value would capture whatever it was when
+  // that effect last ran.
+  const created = useRef<string | null>(null);
+
+  useEffect(
+    () => () => {
+      if (created.current) URL.revokeObjectURL(created.current);
+    },
+    [],
+  );
 
   const open = useCallback(async (): Promise<string | null> => {
     if (objectUrl) return objectUrl;
@@ -33,6 +49,7 @@ export function useAttachmentDownload(attachmentId: string) {
     try {
       const blob = await fetchAttachmentBlob(attachmentId);
       const url = URL.createObjectURL(blob);
+      created.current = url;
       setObjectUrl(url);
       setState("loaded");
       return url;
