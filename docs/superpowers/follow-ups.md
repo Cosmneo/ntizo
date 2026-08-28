@@ -2133,3 +2133,18 @@ rather than assume are covered:
 
 **Trigger:** the next time any of these paths is the one actually suspected of breaking, or this spec
 file is extended.
+
+---
+
+## 89. The qa and prod attachment buckets do not exist
+
+`apps/backend/api/wrangler.jsonc` binds `ATTACHMENTS_BUCKET` in all four environments, but only
+`ntizo-attachments-dev` was created (by hand, at deploy time — the account had none). `-local`,
+`-qa` and `-prod` are still missing. A `wrangler deploy --env qa` or `--env prod` fails at binding
+time, before any code runs, with no partial deploy to clean up.
+
+The local one matters separately: without it, `wrangler dev` answers 503 to every upload, which is
+the configured-not-broken path the route was written for — correct behaviour, confusing symptom.
+
+**Trigger:** the next deploy to qa or prod, or the first time somebody runs the API locally and
+finds uploads answering 503.
