@@ -12,12 +12,15 @@ import {
   serviceOption,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
+import { memberAvailability } from "../../../../../shared/infrastructure/database/scheduling/schemas/member-availability.schema";
 import { mediaUrl } from "../../../../../shared/infrastructure/media/media-url";
+import { weeklyHoursFromRows } from "../../../app/use-cases/weekly-hours";
 import type {
   ListActiveFilters,
   ProviderPage,
   ProviderPublicRepositoryPort,
 } from "../../../app/ports/outbound/provider-public.repository.port";
+import type { ProviderPublicDetailDTO, WeeklyHoursDTO } from "@ntizo/shared/read-models";
 
 /**
  * A term as literal text inside a LIKE pattern, with no wildcards of its own.
@@ -50,7 +53,12 @@ export function likePattern(term: string): string {
 }
 
 /**
- * The four aggregates a directory card carries, as grouped subqueries.
+ * The four aggregates a directory card carries, plus a fifth that only the
+ * detail page joins — `locations`, for `serviceLocationTypes`. It is grouped
+ * and shaped the same way as the other four, but `listActive` never joins it:
+ * the directory must not grow a join the list itself does not display.
+ *
+ * All five as grouped subqueries.
  *
  * **Not correlated subqueries written with `sql`.** That was the first attempt
  * and it does not work: drizzle's `sql` template interpolates a column as its
@@ -118,7 +126,23 @@ function aggregates() {
     .where(eq(providerDocument.status, "accepted"))
     .as("verified_agg");
 
-  return { reviews, services, prices, verified };
+  // Where this business actually works, from what it publishes rather than
+  // from what it declares — the same rule `categories` follows. `array_agg`
+  // over a distinct set, so a provider with six at-home services contributes
+  // "at_customer" once.
+  const locations = db
+    .select({
+      providerId: service.providerId,
+      types: sql<
+        string[] | null
+      >`array_agg(distinct ${service.locationType})`.as("location_types"),
+    })
+    .from(service)
+    .where(eq(service.status, "published"))
+    .groupBy(service.providerId)
+    .as("location_agg");
+
+  return { reviews, services, prices, verified, locations };
 }
 
 type Aggregates = ReturnType<typeof aggregates>;
@@ -144,6 +168,7 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     country: provider.addressCountry,
     logoKey: provider.logoKey,
     photoKeys: provider.photoKeys,
+    createdAt: provider.createdAt,
   };
 
   /**
@@ -178,10 +203,17 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       ratingAverage: string | null; reviewCount: number | null; serviceCount: number | null;
       fromAmountMinor: number | null; fromCurrency: string | null;
       verifiedProviderId: string | null;
+      createdAt: Date;
+      // Optional, not required: `listActive`'s select never joins the
+      // location aggregate — the directory must not grow that join — so its
+      // rows simply lack the field. `findActiveBySlug` is the only caller
+      // that ever supplies it.
+      locationTypes?: string[] | null;
     },
     categories: { code: string; name: string }[],
-  ): ProviderPublicDTO {
-    const { logoKey, photoKeys, ratingAverage, verifiedProviderId, ...rest } = row;
+    weeklyHours: WeeklyHoursDTO[],
+  ): ProviderPublicDetailDTO {
+    const { logoKey, photoKeys, ratingAverage, verifiedProviderId, createdAt, locationTypes, ...rest } = row;
     return {
       ...rest,
       type: row.type as ProviderPublicDTO["type"],
@@ -201,6 +233,14 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       fromAmountMinor: row.fromAmountMinor === null ? null : Number(row.fromAmountMinor),
       verified: verifiedProviderId !== null,
       categories,
+      // Year-month only. `toISOString().slice(0, 7)` rather than a locale
+      // format: this is a machine value the reader's own `Intl` turns into
+      // "Março 2025", so the server never picks a language.
+      memberSince: createdAt.toISOString().slice(0, 7),
+      // `array_agg` returns null for a provider with no published services,
+      // and an empty list is the honest reading of that.
+      serviceLocationTypes: locationTypes ?? [],
+      weeklyHours,
     };
   }
 
@@ -377,12 +417,17 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     );
 
     return {
-      items: rows.map((r) => DrizzleProviderPublicRepository.toDTO(r, categories.get(r.id) ?? [])),
+      // `[]` for weekly hours: the directory renders 24 cards a page and must
+      // not pay for a join over every member's availability just to show a
+      // list it never displays hours on. `serviceLocationTypes`/`weeklyHours`
+      // ride along on the return type but are dropped at the GraphQL edge,
+      // which still answers `provider.list` with `ProviderPublicDTO` alone.
+      items: rows.map((r) => DrizzleProviderPublicRepository.toDTO(r, categories.get(r.id) ?? [], [])),
       total: Number(counted?.total ?? 0),
     };
   }
 
-  async findActiveBySlug(slug: string, locale: string): Promise<ProviderPublicDTO | null> {
+  async findActiveBySlug(slug: string, locale: string): Promise<ProviderPublicDetailDTO | null> {
     const db = getDb();
     const agg = aggregates();
 
@@ -390,12 +435,14 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       .select({
         ...DrizzleProviderPublicRepository.COLUMNS,
         ...DrizzleProviderPublicRepository.aggregateColumns(agg),
+        locationTypes: agg.locations.types,
       })
       .from(provider)
       .leftJoin(agg.reviews, eq(agg.reviews.providerId, provider.id))
       .leftJoin(agg.services, eq(agg.services.providerId, provider.id))
       .leftJoin(agg.prices, eq(agg.prices.providerId, provider.id))
       .leftJoin(agg.verified, eq(agg.verified.providerId, provider.id))
+      .leftJoin(agg.locations, eq(agg.locations.providerId, provider.id))
       // `status = active` is part of the lookup, not a filter applied after —
       // so an inactive provider can never be returned by a slug that matches.
       .where(and(eq(provider.slug, slug), eq(provider.status, "active")))
@@ -403,7 +450,24 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
 
     if (!row) return null;
     const categories = await this.categoriesFor([row.id], locale);
-    return DrizzleProviderPublicRepository.toDTO(row, categories.get(row.id) ?? []);
+    // Every member's rules for this business, unioned into seven days by
+    // `weeklyHoursFromRows`. A second round trip rather than a sixth join:
+    // this is one row per member per weekday, and folding it into the
+    // aggregate above would multiply the single provider row it decorates.
+    const rules = await db
+      .select({
+        weekday: memberAvailability.weekday,
+        startMinute: memberAvailability.startMinute,
+        endMinute: memberAvailability.endMinute,
+      })
+      .from(memberAvailability)
+      .where(eq(memberAvailability.providerId, row.id));
+
+    return DrizzleProviderPublicRepository.toDTO(
+      row,
+      categories.get(row.id) ?? [],
+      weeklyHoursFromRows(rules),
+    );
   }
 
   /**

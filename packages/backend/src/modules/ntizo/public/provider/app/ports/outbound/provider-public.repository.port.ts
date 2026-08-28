@@ -1,4 +1,5 @@
 import type { ProviderPublicDTO } from "@ntizo/shared";
+import type { ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 
 /** How the directory narrows and orders the list. Every field but the paging ones is optional. */
 export interface ListActiveFilters {
@@ -44,7 +45,7 @@ export interface ProviderPublicRepositoryPort {
    */
   listActive(filters: ListActiveFilters): Promise<ProviderPage>;
   /** Active provider by slug, or null. An inactive one is indistinguishable from a missing one. */
-  findActiveBySlug(slug: string, locale: string): Promise<ProviderPublicDTO | null>;
+  findActiveBySlug(slug: string, locale: string): Promise<ProviderPublicDetailDTO | null>;
   /** The cities that currently have a listed business, with how many — the filter's own options. */
   listCityFacets(): Promise<{ city: string; count: number }[]>;
 }

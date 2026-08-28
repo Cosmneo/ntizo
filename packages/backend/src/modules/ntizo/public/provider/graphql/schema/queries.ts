@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import { localeSchema, providerTypeSchema } from "@ntizo/shared";
-import { providerPageReadModel, providerPublicReadModel } from "@ntizo/shared/read-models";
+import { providerPageReadModel, providerPublicDetailReadModel } from "@ntizo/shared/read-models";
 import { MAX_PUBLIC_PAGE_SIZE } from "../../app/use-cases/list-public-providers.projection";
 
 /**
@@ -47,7 +47,7 @@ export const listPublicProviders = defineQuery({
 
 export const getPublicProvider = defineQuery({
   input: zodSchema(z.object({ slug: z.string().min(1), locale: localeSchema.optional() })),
-  output: zodSchema(providerPublicReadModel.nullable()),
+  output: zodSchema(providerPublicDetailReadModel.nullable()),
   docs: { summary: "A single active provider by slug", tags: ["Public"] },
 });
 
