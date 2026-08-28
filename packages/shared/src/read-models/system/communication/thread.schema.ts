@@ -28,6 +28,16 @@ import { z } from "zod";
  * with no profile row yet, a thread with no messages yet) must degrade that
  * one row, not fail the whole page the way a bare `z.string()` would — the
  * same reason `activityEntryReadModel.payload` carries one.
+ *
+ * `lastMessageHasAttachment` disambiguates two cases that otherwise look
+ * identical through `lastMessagePreview` alone: a thread with no messages
+ * yet (`lastMessagePreview: ""`, this field `false`) and a thread whose
+ * latest message is a caption-less photo (`lastMessagePreview: ""` too —
+ * `Message.compose` allows an empty body when an attachment rides along —
+ * but this field `true`). Without it, an inbox row for the second case
+ * rendered the "no messages yet" placeholder next to a bold unread badge on
+ * a thread just sorted to the top. `.catch(false)` for the same
+ * degrade-not-fail reason the other three fields get one.
  */
 export const threadSummaryReadModel = z.object({
   id: z.string(),
@@ -37,6 +47,7 @@ export const threadSummaryReadModel = z.object({
   customerName: z.string().catch(""),
   lastMessageAt: z.string(),
   lastMessagePreview: z.string().catch(""),
+  lastMessageHasAttachment: z.boolean().catch(false),
   unreadCount: z.number().int().min(0),
 });
 

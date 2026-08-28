@@ -30,6 +30,7 @@ const threads: Thread[] = [
     customerName: "Ana Silva",
     lastMessageAt: "2026-08-20T09:00:00Z",
     lastMessagePreview: "Olá, ainda tem vaga?",
+    lastMessageHasAttachment: false,
     unreadCount: 1,
   },
   {
@@ -39,6 +40,7 @@ const threads: Thread[] = [
     customerName: "Ana Silva",
     lastMessageAt: "2026-08-21T10:00:00Z",
     lastMessagePreview: "Confirmado para sexta.",
+    lastMessageHasAttachment: false,
     unreadCount: 0,
   },
 ];

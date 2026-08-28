@@ -167,8 +167,12 @@ class FakeCustomerNameReader implements CustomerNameReaderPort {
 
 class FakeThreadPreviewReader implements ThreadPreviewReaderPort {
   public readonly calls: string[][] = [];
-  constructor(private readonly bodies: Map<string, string> = new Map()) {}
-  async findLastMessageBodies(threadIds: string[]): Promise<Map<string, string>> {
+  constructor(
+    private readonly bodies: Map<string, { body: string; hasAttachment: boolean }> = new Map(),
+  ) {}
+  async findLastMessageBodies(
+    threadIds: string[],
+  ): Promise<Map<string, { body: string; hasAttachment: boolean }>> {
     this.calls.push([...threadIds]);
     return this.bodies;
   }
@@ -274,7 +278,9 @@ describe("ListMyThreadsProjection", () => {
       // this also proves `customerName` degrades to "" per row, not
       // per-page.
       const customerNames = new FakeCustomerNameReader(new Map([["u-customer-1", "Ana Silva"]]));
-      const previews = new FakeThreadPreviewReader(new Map([["t1", "See you tomorrow"]]));
+      const previews = new FakeThreadPreviewReader(
+        new Map([["t1", { body: "See you tomorrow", hasAttachment: false }]]),
+      );
 
       const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
         requesterUserId: "u1",
@@ -295,16 +301,18 @@ describe("ListMyThreadsProjection", () => {
             customerName: "Ana Silva",
             lastMessageAt: "2026-08-21T09:00:00.000Z",
             lastMessagePreview: "See you tomorrow",
+            lastMessageHasAttachment: false,
             unreadCount: 3,
           },
           {
             id: "t2",
             providerId: "p2",
-            // Missed by every lookup — degrades to empty/zero, not an error.
+            // Missed by every lookup — degrades to empty/zero/false, not an error.
             providerName: "",
             customerName: "",
             lastMessageAt: "2026-08-20T09:00:00.000Z",
             lastMessagePreview: "",
+            lastMessageHasAttachment: false,
             unreadCount: 0,
           },
         ],
@@ -312,6 +320,46 @@ describe("ListMyThreadsProjection", () => {
       });
     },
   );
+
+  /**
+   * The Important finding from the whole-branch review: `lastMessagePreview`
+   * alone cannot tell "no messages yet" apart from "the latest message is a
+   * caption-less photo" — `Message.compose` allows an empty body when an
+   * attachment rides along (Task 2), so both cases present as `""`. Without
+   * `lastMessageHasAttachment`, `thread-list.tsx` rendered "no messages yet"
+   * for a thread that very much has one, sorted to the top with a bold
+   * unread badge. Both threads here have `lastMessagePreview: ""` — only
+   * `lastMessageHasAttachment` tells them apart.
+   */
+  it("tells a caption-less photo apart from a thread with no messages at all", async () => {
+    const twoThreads: ThreadPage = {
+      items: [
+        thread({ id: "t-photo", providerId: "p1", lastMessageAt: new Date("2026-08-21T09:00:00.000Z") }),
+        thread({ id: "t-empty", providerId: "p2", lastMessageAt: new Date("2026-08-20T09:00:00.000Z") }),
+      ],
+      nextCursor: null,
+    };
+    const threads = new FakeThreadRepository(twoThreads);
+    const messages = new FakeMessageRepository();
+    const names = new FakeProviderNameReader();
+    const customerNames = new FakeCustomerNameReader();
+    // t-photo: present in the map, empty body, an attachment. t-empty:
+    // genuinely absent — no message has ever been sent in that thread.
+    const previews = new FakeThreadPreviewReader(
+      new Map([["t-photo", { body: "", hasAttachment: true }]]),
+    );
+
+    const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+      requesterUserId: "u1",
+    });
+
+    const photoRow = result.items.find((i) => i.id === "t-photo")!;
+    const emptyRow = result.items.find((i) => i.id === "t-empty")!;
+    expect(photoRow.lastMessagePreview).toBe("");
+    expect(photoRow.lastMessageHasAttachment).toBe(true);
+    expect(emptyRow.lastMessagePreview).toBe("");
+    expect(emptyRow.lastMessageHasAttachment).toBe(false);
+  });
 
   it("does not call the enrichment ports at all on an empty page", async () => {
     const threads = new FakeThreadRepository(emptyThreadPage);
@@ -367,7 +415,7 @@ describe("ListProviderThreadsProjection", () => {
     // that; only `customerName` can. See `ProviderMessagesPage`'s own doc
     // comment on the frontend side of this same requirement.
     const customerNames = new FakeCustomerNameReader(new Map([["u-customer-1", "Ana Silva"]]));
-    const previews = new FakeThreadPreviewReader(new Map([["t1", "hi"]]));
+    const previews = new FakeThreadPreviewReader(new Map([["t1", { body: "hi", hasAttachment: false }]]));
 
     const result = await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
       requesterUserId: "u-owner",

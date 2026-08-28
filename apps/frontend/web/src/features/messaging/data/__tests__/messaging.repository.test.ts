@@ -18,6 +18,7 @@ const twoThreadPage: ThreadPageDTO = {
       customerName: "Ana Silva",
       lastMessageAt: "2026-01-01T00:00:00.000Z",
       lastMessagePreview: "Olá, tudo bem?",
+      lastMessageHasAttachment: false,
       unreadCount: 2,
     },
     {
@@ -27,6 +28,7 @@ const twoThreadPage: ThreadPageDTO = {
       customerName: "Carlos Mendes",
       lastMessageAt: "2026-01-02T00:00:00.000Z",
       lastMessagePreview: "Confirmado para amanhã",
+      lastMessageHasAttachment: false,
       unreadCount: 0,
     },
   ],
@@ -117,7 +119,7 @@ describe("messagingQueries.mine", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }",
+      "items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }",
     );
   });
 
@@ -194,7 +196,7 @@ describe("messagingQueries.forProvider", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }",
+      "items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }",
     );
   });
 

@@ -12,6 +12,7 @@ const older: Thread = {
   customerName: "Ana Silva",
   lastMessageAt: "2026-08-20T09:00:00Z",
   lastMessagePreview: "Olá, ainda tem vaga?",
+  lastMessageHasAttachment: false,
   unreadCount: 3,
 };
 const newer: Thread = {
@@ -21,6 +22,7 @@ const newer: Thread = {
   customerName: "Carlos Mendes",
   lastMessageAt: "2026-08-21T10:00:00Z",
   lastMessagePreview: "Confirmado para sexta.",
+  lastMessageHasAttachment: false,
   unreadCount: 0,
 };
 
@@ -105,8 +107,17 @@ describe("ThreadList", () => {
 
   it("falls back to a placeholder name and preview for a degraded row", () => {
     // `Thread`'s own doc comment: `providerName`/`lastMessagePreview` land
-    // empty when the backend's enrichment lookup misses, not never.
-    const degraded: Thread = { ...older, id: "t3", providerName: "", lastMessagePreview: "" };
+    // empty when the backend's enrichment lookup misses, not never. This is
+    // the GENUINE "nothing to show" case — `lastMessageHasAttachment: false`
+    // is what tells it apart from the caption-less-photo case below, where
+    // `lastMessagePreview` is empty for an entirely different reason.
+    const degraded: Thread = {
+      ...older,
+      id: "t3",
+      providerName: "",
+      lastMessagePreview: "",
+      lastMessageHasAttachment: false,
+    };
     render(
       <ThreadList
         threads={[degraded]}
@@ -120,6 +131,38 @@ describe("ThreadList", () => {
     );
     expect(screen.getByText("Provider")).toBeInTheDocument();
     expect(screen.getByText("No messages yet")).toBeInTheDocument();
+    expect(screen.queryByText("Sent an attachment")).toBeNull();
+  });
+
+  /**
+   * The Important finding from the whole-branch review: a caption-less
+   * photo (`Message.compose` allows an empty body when an attachment rides
+   * along, since Task 2) used to render "No messages yet" — the exact same
+   * text as the genuinely-empty case above — right next to a bold unread
+   * badge, on a thread just sorted to the top. `lastMessageHasAttachment` is
+   * what the preview reads to tell the two apart; `lastMessagePreview` alone
+   * cannot.
+   */
+  it("shows an attachment marker, not 'no messages yet', when the latest message is a caption-less photo", () => {
+    const photoOnly: Thread = {
+      ...older,
+      id: "t4",
+      lastMessagePreview: "",
+      lastMessageHasAttachment: true,
+    };
+    render(
+      <ThreadList
+        threads={[photoOnly]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+    expect(screen.getByText("Sent an attachment")).toBeInTheDocument();
+    expect(screen.queryByText("No messages yet")).toBeNull();
   });
 
   it("labels each row with customerName instead of providerName when the caller asks for it", () => {

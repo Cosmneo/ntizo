@@ -72,7 +72,11 @@ async function toThreadSummaries(
     providerName: providerNamesById.get(t.providerId) ?? "",
     customerName: customerNamesById.get(t.customerUserId) ?? "",
     lastMessageAt: t.lastMessageAt.toISOString(),
-    lastMessagePreview: previewByThread.get(t.id!) ?? "",
+    lastMessagePreview: previewByThread.get(t.id!)?.body ?? "",
+    // Absent (no messages yet) degrades to `false`, the same convention
+    // every other lookup on this row uses for "nothing to say" — see
+    // `threadSummaryReadModel`'s own doc comment on why this field exists.
+    lastMessageHasAttachment: previewByThread.get(t.id!)?.hasAttachment ?? false,
     // A thread absent from the map has nothing unread for this viewer —
     // `countUnreadForViewer`'s own doc comment: absent, not present with 0.
     unreadCount: unread.get(t.id!) ?? 0,
