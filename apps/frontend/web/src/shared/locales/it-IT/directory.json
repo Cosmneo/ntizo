@@ -179,6 +179,8 @@
   "searchFieldProviderEmpty": "Nome dell'attività o del professionista",
   "searchFieldCity": "Città",
   "searchFieldCityEmpty": "Ovunque",
+  "searchFieldCityToggle": "Mostra città",
+  "searchFieldCityNoResults": "Nessuna città trovata",
   "pagerLabel": "Pagine",
   "stubProviderRating": "voto del professionista",
   "listingByProvider": "di {{name}}",

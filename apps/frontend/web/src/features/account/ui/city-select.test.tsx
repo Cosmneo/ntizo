@@ -10,10 +10,12 @@ function Harness({
   cities = MAPUTO,
   initial = "",
   loading = false,
+  autoFocus = false,
 }: {
   cities?: string[];
   initial?: string;
   loading?: boolean;
+  autoFocus?: boolean;
 }) {
   const [city, setCity] = useState(initial);
   return (
@@ -25,6 +27,7 @@ function Harness({
         onChange={setCity}
         cities={cities}
         loading={loading}
+        autoFocus={autoFocus}
         toggleLabel="Show cities"
         noResultsText="No city found"
         loadingText="Searching…"
@@ -89,6 +92,24 @@ describe("CitySelect", () => {
     await user.keyboard("{ArrowDown}{Enter}");
 
     expect(screen.getByLabelText("City")).toHaveValue(MAPUTO[1]);
+  });
+
+  it("opens its own list as soon as it mounts focused", () => {
+    // For a field that gets swapped into place by a click on something else
+    // — the hero search card's city button, for one — that earlier click
+    // cannot also focus the control it reveals. `autoFocus` closes that gap:
+    // focusing the input is what opens the list, so mounting focused makes the
+    // swap-in itself the one click that opens it.
+    render(<Harness autoFocus />);
+    expect(screen.getByLabelText("City")).toHaveFocus();
+    expect(screen.getAllByRole("option")).toHaveLength(MAPUTO.length);
+  });
+
+  it("stays closed when nothing asked it to focus", () => {
+    // The default, and every existing caller: a field already on screen in a
+    // form has no reason to pop its list open unasked.
+    render(<Harness />);
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
   it("moves the highlight back to the top when the offered set changes", async () => {

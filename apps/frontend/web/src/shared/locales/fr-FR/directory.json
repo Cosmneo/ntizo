@@ -179,6 +179,8 @@
   "searchFieldProviderEmpty": "Nom de l'entreprise ou du professionnel",
   "searchFieldCity": "Ville",
   "searchFieldCityEmpty": "Partout",
+  "searchFieldCityToggle": "Afficher les villes",
+  "searchFieldCityNoResults": "Aucune ville trouvée",
   "pagerLabel": "Pages",
   "stubProviderRating": "note du prestataire",
   "listingByProvider": "par {{name}}",

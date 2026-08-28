@@ -179,6 +179,8 @@
   "searchFieldProviderEmpty": "Nombre del negocio o profesional",
   "searchFieldCity": "Ciudad",
   "searchFieldCityEmpty": "En cualquier ciudad",
+  "searchFieldCityToggle": "Mostrar ciudades",
+  "searchFieldCityNoResults": "No se encontró ninguna ciudad",
   "pagerLabel": "Páginas",
   "stubProviderRating": "valoración del profesional",
   "listingByProvider": "por {{name}}",

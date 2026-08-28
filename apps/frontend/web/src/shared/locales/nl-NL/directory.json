@@ -179,6 +179,8 @@
   "searchFieldProviderEmpty": "Naam van het bedrijf of de vakman",
   "searchFieldCity": "Stad",
   "searchFieldCityEmpty": "Overal",
+  "searchFieldCityToggle": "Steden tonen",
+  "searchFieldCityNoResults": "Geen stad gevonden",
   "pagerLabel": "Pagina's",
   "stubProviderRating": "beoordeling van de aanbieder",
   "listingByProvider": "door {{name}}",
