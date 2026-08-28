@@ -1820,7 +1820,31 @@ side has seen what they wrote.
 
 ---
 
-## 73. Attachments are not supported
+## ~~73. Attachments are not supported~~ — RESOLVED 2026-08-28
+
+Communication now carries files: an `attachment` table (Task 1), a byte-sniffing type detector
+shared by client and server rather than trusting `file.type` (Task 3), an R2-backed
+`POST /api/communication/attachments` upload route and a session-authed, per-message
+`GET /api/communication/attachments/:id` download route (Task 5), a read model that returns
+`attachments: []` (never omitted) on every message (Task 6), and the `communicationSend` mutation's
+`attachments: [{ storageKey, fileName }]` input, with the server reading the real type and size back
+from storage rather than trusting either off the wire (Task 6/6b). A caption-less photo is legal —
+`Message.compose`'s "something in it, not necessarily words" rule, dead until Task 6b removed the
+frontend's own `.min(1)` on the body field.
+
+Proven end to end, not just unit-tested, by `apps/e2e/tests/attachments.spec.ts` (Task 8): a real PDF
+uploaded by one signed-in browser rides a real `communicationSend` mutation and comes back down
+byte-for-byte to a second, independently signed-in browser on the other side of the conversation; a
+third, real, persisted user who is neither the customer nor a provider member gets the identical
+403 a nonexistent attachment id gets; and a photo with no caption sends on its own. See that file's own
+doc comment for the one claim none of Tasks 1–7 could exercise — `runWithAttachmentsBucket`'s
+`AsyncLocalStorage` scope in `apps/backend/api/src/graphql/private.ts:175` — and how this suite closes it.
+
+The original entry is kept below for the record.
+
+---
+
+## 73. (original) Attachments are not supported
 
 `message.body` is `text` and nothing else — no column, no upload path, no rendering for anything but
 plain text. A conversation that would be answered fastest with a photo (a leaking pipe, a haircut
@@ -1873,3 +1897,132 @@ across roughly a dozen full-suite runs gives nothing to `git bisect` yet.
 
 **Trigger:** the next time this specific `CancelledError` shape shows up in a CI run, or any other
 spec that hits `/providers/$slug` (or another `ssr: true` route) starts flaking the same way.
+
+---
+
+## 77. Attachment contents are not inspected
+
+A photograph of a business card, or a number written on paper, passes every check this feature
+makes — `sniffContentType` decides *format*, never *content*. Catching it needs OCR on every upload:
+slow, costly, and still avoidable by a photo taken at a slight angle or with the digits rearranged in
+the caption.
+
+**Trigger:** the first time a provider is found routing contacts through photographs.
+
+---
+
+## 78. No virus scanning
+
+R2 stores exactly what it is given. `sniffContentType` only narrows the stored `content-type` to one
+of four formats; nothing inspects a JPEG, PNG, WEBP or PDF for an embedded payload before it is
+written to the bucket or served back to the other side of the conversation.
+
+**Trigger:** the first accepted file type that can execute on a recipient's machine, or the first report.
+
+---
+
+## 79. `media.ts` still trusts `file.type`
+
+The avatar, category and provider-media routes (`apps/backend/api/src/media.ts`) decide a file's
+type from the value the uploader's browser declared, not from its bytes — the exact bypass
+`sniffContentType` (Task 3) and this feature's own upload route (Task 5) exist to close for
+attachments. `media.ts` was left alone; only the new endpoint got the fix.
+
+**Trigger:** the next change to any of those three routes.
+
+---
+
+## 80. Orphaned R2 objects are never swept
+
+An upload that succeeds while its message write fails — or one a customer picks, then removes before
+hitting send — leaves a file in the bucket nothing ever references again (`attachments.ts`'s own doc
+comment: "this order leaves, at worst, a sweepable orphan"). Nothing sweeps it. `apps/e2e/tests/
+attachments.spec.ts` has to delete its own test objects for exactly this reason — see that file's own
+`deleteR2ObjectLocal` — because production has no equivalent.
+
+**Trigger:** the first storage bill that looks wrong, or a sweep becoming cheap to write.
+
+---
+
+## 81. Contact detection is refused without an alternative
+
+Until on-platform payment exists there is nothing to offer somebody who wants to arrange things off
+it — `hasContact` (shared by the composer, the file-name check, and the upload route) blocks the
+attempt and explains why, but the "why" is a permanent inconvenience with no other path offered.
+
+**Trigger:** the payment step landing — the copy should change the same day.
+
+---
+
+## 82. `scheduled.test.ts` cannot run in every worktree, and its own doc comment is now wrong about why that's safe
+
+`apps/backend/api/.env` does not exist in this worktree (`feat/message-attachments`, this task's
+own), so `scheduled.test.ts` — which drives the real notification sweep cron against a real database —
+has no connection string to run against and cannot be executed here at all, not merely skipped. Its
+own message calls the messaging tables it reads "the real (empty) messaging tables." That was true
+when it was written; it is not true any more. This branch's own work (`apps/e2e/tests/messaging.spec.ts`,
+`attachments.spec.ts`, and any manual testing before Task 8) writes and — mostly — cleans up rows in
+those same tables through the real dev database this test would run against, so "empty" is now an
+assumption the test's own comment states as fact rather than something this worktree can verify. This
+is not a regression in the test; it is a `.env`-gated test whose own justification has drifted out
+from under it in a worktree nobody has pointed at real credentials.
+
+**Trigger:** the day someone runs `scheduled.test.ts` from a worktree with a real `.env` and it is not
+actually empty — or the next time this comment is read and taken at face value.
+
+---
+
+## 83. `useSendMessage` fires and forgets, and a test (or a user navigating away) can outrun it
+
+Not a backend bug — logged here because chasing it looked exactly like one for a while, and the
+shape is worth knowing about. `MessageComposer.handleSubmit` calls `onSend(...)` (→ `useSendMessage`'s
+`mutation.mutate(...)`, TanStack Query's non-blocking form, never `mutateAsync`) and then
+unconditionally clears local state — no `await` on the mutation itself. While building this task's
+"photo with no caption" test, an assertion right after clicking Send —
+`getByRole("button", { name: fileName })` with no `exact: true` — passed instantly for the wrong
+reason: `AttachmentPicker`'s own "Remove {fileName}" button (still on screen for the brief window
+before `reset()` clears it) contains `fileName` as a substring, and Playwright's default string
+matching is substring-based. The test read that as "the message arrived," queried the database
+immediately, found nothing (the real mutation was still in flight), failed, and ran its `finally`
+cleanup — which deleted the thread, provider and users while the original `communicationSend` request
+was still on the wire. By the time it actually reached `SendMessageCommand.execute`, `findVisible`
+correctly found nothing, because by then there genuinely was nothing: this test had deleted it out
+from under its own still-pending request. That is what produced a real, server-logged
+`ThreadNotVisibleError` — not a concurrency bug in `findVisible`, `tx-context.ts`, or the session
+layer; a self-inflicted race, fixed by asserting on the exact post-send element
+(`{ name: fileName, exact: true }`, which only `attachment-list.tsx`'s post-send item matches) so the
+test genuinely waits for the mutation before doing anything else. Confirmed clean across multiple full
+runs after the fix. Filed anyway because the general shape — nothing here awaits the send, so a fast
+enough navigation-away or a fast enough test assertion can outrun it — is real, even though this
+task's own instance of hitting it was self-inflicted.
+
+**Trigger:** the next Playwright assertion in this feature that matches on a bare file name or message
+body without `exact: true`, or a real user report of a send that looked like it worked and did not.
+
+---
+
+## 84. What `attachments.spec.ts` does not prove
+
+Two tests, chosen for what would actually catch something over restating unit coverage (see that
+file's own doc comment) — which leaves real gaps a reader of this task's report should know about
+rather than assume are covered:
+
+- **The download route's own request handling is never exercised by the `AsyncLocalStorage` claim.**
+  `GET /api/communication/attachments/:id` reads `c.env.ATTACHMENTS_BUCKET` directly (it is a plain
+  Hono handler, not behind Yoga), so it needs no `runWithAttachmentsBucket` scope and proves nothing
+  about it either way. Only the send leg (`communicationSend`, over `/graphql`) exercises that scope —
+  see entry 73's resolution above for exactly how.
+- **No provider-side upload.** Every attachment in this suite is uploaded by the customer; the
+  mutation and the upload route apply identically regardless of sender role (nothing in
+  `SendMessageCommand` or `attachments.ts` branches on it), but nothing here drives a provider
+  attaching a file to a reply.
+- **`MAX_ATTACHMENTS` (5), `TOO_LARGE` (413), `UNACCEPTED_TYPE` (415), and `CONTACT_IN_FILE_NAME`
+  (422) are unit-tested, not e2e'd.** This suite only ever sends files that succeed.
+- **Only Chromium.** `playwright.config.ts` runs one browser project; this task adds no new one.
+- **R2 cleanup depends on a hardcoded bucket name** (`ATTACHMENTS_BUCKET_NAME` in the spec file,
+  copied from `wrangler.jsonc`'s top-level `r2_buckets` entry) and shells out to the `wrangler` CLI
+  against local, file-persisted storage — best-effort, and silently logged rather than failing the
+  test if it ever falls out of sync with that config.
+
+**Trigger:** the next time any of these paths is the one actually suspected of breaking, or this spec
+file is extended.
