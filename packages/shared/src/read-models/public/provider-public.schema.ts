@@ -98,10 +98,13 @@ export type ProviderPublicDTO = z.infer<typeof providerPublicReadModel>;
 /**
  * One page of providers.
  *
- * A total, not a cursor — unlike `servicePageReadModel`. The directory prints
- * "12 businesses found" above a filter panel, and a count is the feedback that
- * says whether the filter just applied did anything. A service browse has no
- * such line and loads as it scrolls, which is why the two differ.
+ * A total with no cursor: this directory pages by a fixed page size rather
+ * than scrolling further, so there is no "next" to point at. The count is
+ * what lets it print "12 businesses found" above a filter panel — the
+ * feedback that says whether the filter just applied did anything.
+ * `servicePageReadModel` carries both for the reason given on it: that browse
+ * offers numbered pages too, but still loads a page at a time as it scrolls,
+ * so it needs somewhere to point *and* a count.
  */
 export const providerPageReadModel = z.object({
   items: z.array(providerPublicReadModel),

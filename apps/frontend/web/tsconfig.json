@@ -7,6 +7,13 @@
     // `google.maps` is a global namespace, not an import, so it has to be
     // listed here or every reference to it fails to resolve.
     "types": ["vite/client", "@testing-library/jest-dom", "google.maps"],
+    // The base config's `lib` (`es2022`, `DOM`, `DOM.Iterable`) predates the
+    // spec version that added `useGrouping: "always"` to
+    // `Intl.NumberFormatOptions` — without this, the two listing cards'
+    // grouped price formatting fails to typecheck even though every runtime
+    // this ships to supports it. Restates the base list rather than merging
+    // with it, because `lib` overrides replace rather than extend.
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "ES2023.Intl"],
     "noEmit": true
   },
   "include": ["src"]

@@ -39,8 +39,10 @@ export const MAX_SEARCH_LENGTH = 100;
  * How the browse orders its results.
  *
  * `default` is the provider's own arrangement — their answer to "what do I
- * want shown first". `newest` ignores it rather than ordering within it: a
- * reader who asked for the newest is asking a different question, and one
- * provider's arrangement should not outrank another's recency.
+ * want shown first" — and is written as an *absent* parameter, so `/services`
+ * and `/services?sort=default` stay one page. `newest` and `price` each ignore
+ * that arrangement rather than ordering within it: a reader who asked for the
+ * cheapest is asking a different question, and one provider's arrangement
+ * should not outrank another's price.
  */
-export type BrowseSort = "newest";
+export type BrowseSort = "newest" | "price";

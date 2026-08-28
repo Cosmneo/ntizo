@@ -1873,3 +1873,79 @@ across roughly a dozen full-suite runs gives nothing to `git bisect` yet.
 
 **Trigger:** the next time this specific `CancelledError` shape shows up in a CI run, or any other
 spec that hits `/providers/$slug` (or another `ssr: true` route) starts flaking the same way.
+
+---
+
+## 77. `useAllCategories` has no callers left
+
+`features/landing/viewmodel/use-categories.ts` exports two hooks. `useCategoryPreview(limit)` is used
+by the home page and, since the listings redesign, by both browse pages' category rails.
+`useAllCategories` — the `useInfiniteQuery` one — had exactly one caller, the old `/providers`
+directory page, and lost it when that page was rebuilt on the shared browse shells and moved to
+`useCategoryPreview(24)` like its twin. Nothing in `src/` references it now.
+
+Left in place rather than deleted with the page: an unused export is not a lint error here, it was
+outside that task's scope, and `categoryQueries.all` behind it is a real paged query that a
+"browse every category" screen would want back. Deleting it means deleting that query definition too,
+or leaving a repository method with no viewmodel.
+
+**Trigger:** the next time someone touches `use-categories.ts` or `category.repository.ts` — delete it
+then if no such screen has appeared, or wire it up if one has.
+
+---
+
+## 78. `Sheet` is called a dialog but is not modal, and the bottom nav paints over its backdrop
+
+`packages/frontend/src/components/sheet.tsx` is a deliberately minimal primitive: `SheetContent`
+renders a `z-40` backdrop and a `z-50` fixed panel, and that is all. There is **no focus trap, no
+Escape handler, no focus move on open, no focus restore on close and no `inert`/`aria-hidden` on the
+background.** Tab from the last control in a sheet lands on the page underneath it.
+
+The three browse sheets (`MobileSearchSheet`, `MobileFilterBar`, `MobileDirectoryFilterBar`) carry
+`role="dialog"` + `aria-labelledby`, which they earn — the primitive draws a bare div, so without
+them a screen reader gets the fields with no boundary and no name. They deliberately do **not** carry
+`aria-modal="true"`, which was dropped in task 21's review: `aria-modal` asserts that everything
+outside the node is inert, and a false claim of modality is strictly worse than no claim, because it
+tells assistive tech to ignore exactly the controls keyboard focus is about to land on.
+`features/provider/availability/ui/rule-drawer.tsx` still carries `aria-modal="true"` over the same
+primitive and has the same problem.
+
+Second, smaller defect in the same primitive: the backdrop is `z-40`, and `MobileNav`
+(`shared/components/mobile-nav.tsx`) is also `z-40` and later in the DOM — `__root.tsx` renders it
+after the page content. Equal z-index resolves on tree order, so below `md` the bottom nav paints
+**over** the sheet's backdrop and stays tappable behind a sheet short enough not to cover it. A
+reader can navigate away from underneath an open dialog.
+
+The fix is one of two, not both: give `Sheet` real modality (focus trap, Escape, focus restore,
+background `inert`, and a backdrop above every fixed chrome the app has), and then put `aria-modal`
+back everywhere; or accept it as a non-modal disclosure panel and stop the `role="dialog"` too. It
+was left alone here because it is a shared primitive with callers outside this branch, and changing
+its focus behaviour is not a thing to do inside a listings redesign.
+
+**Trigger:** the first keyboard or screen-reader accessibility pass on the customer app, or the first
+report of the bottom nav being tappable behind an open sheet — whichever comes first. Also urgent if
+a fourth caller adopts `Sheet` for anything the user must not be able to escape from mid-flow
+(a payment confirmation, a destructive confirm).
+
+---
+
+## 79. The provider repository's own `verified` join has no test guarding its `SELECT DISTINCT`
+
+`DrizzleProviderPublicRepository.aggregates().verified`
+(`public/provider/infra/repositories/drizzle/provider-public.repository.ts:100-104`) caps a
+business with several accepted documents at one row with `selectDistinct` on `providerId` —
+the same invariant task 22 added an SQL-shape test for on its own copy,
+`verifiedAggregate` in `bounded-contexts/catalog/infrastructure/repositories/drizzle/
+service-read.repository.ts` (`__tests__/service-read.repository.test.ts`, "caps the verified
+join at one row per provider with SELECT DISTINCT"). The original is still unguarded: nothing
+asserts its `SELECT DISTINCT` either, and it is true only by construction, the same way the
+copy was before that test existed.
+
+Left alone rather than fixed alongside the copy: `public/provider` is a different bounded
+context from `bounded-contexts/catalog`, and reaching into it was explicitly out of scope for
+that task.
+
+**Trigger:** somebody simplifying `selectDistinct` away on `aggregates().verified` (it looks
+redundant next to the `groupBy`-based `reviews`/`services`/`prices` aggregates in the same
+function, and is not), or the first business that legitimately accumulates a second accepted
+document and a directory card's service count looks doubled.

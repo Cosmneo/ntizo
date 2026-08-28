@@ -37,6 +37,15 @@ const READ_BY_THE_CARDS = [
   // client turns it into a translated phrase.
   "categoryName",
   "locationType",
+  // The chip a service card shares with its provider card — see
+  // `service-listing-card.tsx`'s `service.providerVerified` read.
+  "providerVerified",
+  // The stars beside it, both dereferenced by the same card. Trimming these
+  // two out of `SERVICE_FIELDS` would take the rating off every service card
+  // on the platform with the whole suite green: the card tests build their own
+  // fixtures, so they would go on rendering stars nobody could see.
+  "providerRatingAverage",
+  "providerReviewCount",
 ];
 
 describe("the browse and provider-page service query", () => {

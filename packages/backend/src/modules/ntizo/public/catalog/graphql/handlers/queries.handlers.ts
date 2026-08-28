@@ -5,11 +5,13 @@ import { catalogPublicSchema } from "../schema/queries";
 import type { ListCategoriesProjection } from "../../app/use-cases/list-categories.projection";
 import type { ListServicesProjection } from "../../app/use-cases/list-services.projection";
 import type { GetServiceProjection } from "../../app/use-cases/get-service.projection";
+import type { ListServiceCitiesProjection } from "../../app/use-cases/list-service-cities.projection";
 
 export interface CatalogPublicModule {
   readonly listCategories: ListCategoriesProjection;
   readonly listServices: ListServicesProjection;
   readonly getService: GetServiceProjection;
+  readonly listServiceCities: ListServiceCitiesProjection;
 }
 
 export function createCatalogPublicHandlers(mod: CatalogPublicModule) {
@@ -35,6 +37,11 @@ export function createCatalogPublicHandlers(mod: CatalogPublicModule) {
     .handleWithUseCase("service.byId", {
       argsMapper: (args) => mapGetServiceInput(args.input),
       useCase: mod.getService,
+      responseMapper: (output) => output,
+    })
+    .handleWithUseCase("service.cities", {
+      argsMapper: () => undefined as never,
+      useCase: mod.listServiceCities,
       responseMapper: (output) => output,
     })
     .build();

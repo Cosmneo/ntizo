@@ -25,6 +25,8 @@ export interface ListServicesInput {
   paymentMode?: string | undefined;
   /** `individual` or `organization`. Absent means both. */
   providerType?: string | undefined;
+  /** The provider's city. A `remote` service matches every city — it has none. */
+  city?: string | undefined;
   /** A locale the listing is written in — not a language anyone speaks. */
   language?: string | undefined;
   /** Inclusive bounds on the cheapest active option, in minor units. */
@@ -36,8 +38,13 @@ export interface ListServicesInput {
    * here; blank means no search.
    */
   q?: string | undefined;
-  /** `default` is the provider's own order; `newest` is most recently added first. */
-  sort?: "default" | "newest" | undefined;
+  /**
+   * `default` is the provider's own order; `newest` is most recently added
+   * first; `price` is cheapest first, on the same `fromAmountMinor` the card
+   * prints and the price filter matches — so a service can never sort into a
+   * position its own visible price contradicts.
+   */
+  sort?: "default" | "newest" | "price" | undefined;
   limit: number;
   offset: number;
 }
@@ -47,11 +54,27 @@ export interface ListServicesOutput {
   /**
    * Where the next page starts, or null at the end.
    *
-   * A cursor rather than a total, matching `ListCategoriesOutput`: the page
-   * loads as it is scrolled, and what it needs to know is "is there more and
-   * from where", not how many there are altogether.
+   * A cursor, the same shape `ListCategoriesOutput` uses: it lets a caller
+   * page forward by handing this straight back as the next request's
+   * `offset`, without recomputing one from `total`. See `total`'s own
+   * comment for why this projection reports both now.
    */
   nextOffset: number | null;
+  /**
+   * Both a cursor and a total, which the doc comment here used to argue
+   * against. The argument was sound while the browse only stepped forward —
+   * "is there more and from where" is all a next link needs. It stopped being
+   * sound when the page began stating how many results there are and
+   * offering numbered pages: `items.length` reports the page size, not the
+   * search, and told somebody with 40 matches that they had 24.
+   *
+   * `total` counts what the *filters* match. This projection then drops rows
+   * it cannot render — a service whose translations resolve to nothing in any
+   * locale — so across every page the rows shown can be very slightly fewer
+   * than `total` claims. That is the honest trade: the alternative is
+   * counting by fetching and mapping the whole result set on every request.
+   */
+  total: number;
 }
 
 /**
@@ -82,23 +105,35 @@ export class ListServicesProjection {
     // spaces is truthy, and would narrow the browse to names containing a
     // space.
     const q = input.q?.trim();
+    // Trimmed and blank-normalised for the same reason `q` is: a picker leaves
+    // a trailing space, and a string of spaces is truthy — it would narrow the
+    // browse to a city nobody is in.
+    const city = input.city?.trim() || undefined;
 
-    // One more than asked for: whether another page exists is then a length
-    // check rather than a second round trip, and the extra row is discarded.
-    const rows = await this.repo.listPublished({
+    // The same object both calls receive, so a filter added to one can never
+    // be forgotten by the other.
+    const filters = {
       categoryCode: input.categoryCode,
       providerId: input.providerId,
       locationType: input.locationType,
       paymentMode: input.paymentMode,
       providerType: input.providerType,
+      city,
       language: input.language,
       minPriceMinor: input.minPriceMinor,
       maxPriceMinor: input.maxPriceMinor,
       q: q ? q : undefined,
-      sort: input.sort,
-      limit: limit + 1,
-      offset,
-    });
+    };
+
+    // Concurrently: the count and the page are independent queries, and
+    // awaiting them in sequence adds a round trip to every browse.
+    //
+    // One more than asked for: whether another page exists is then a length
+    // check rather than a second round trip, and the extra row is discarded.
+    const [rows, total] = await Promise.all([
+      this.repo.listPublished({ ...filters, sort: input.sort, limit: limit + 1, offset }),
+      this.repo.countPublished(filters),
+    ]);
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
@@ -128,6 +163,14 @@ export class ListServicesProjection {
         // Constrained to the two values by the column's own CHECK; narrowed
         // the same way `DrizzleProviderPublicRepository` narrows it.
         providerType: r.providerType as ServiceDTO["providerType"],
+        // Both of the next two are straight from the row: the repository's
+        // own mapper has already done the real work — turning the nullable
+        // join id into this boolean (`verifiedAggregate`, `service-read.
+        // repository.ts`) and Postgres's `avg()` string into a number or
+        // null (`coerceReviewAggregate`, same file).
+        providerVerified: r.providerVerified,
+        providerRatingAverage: r.providerRatingAverage,
+        providerReviewCount: r.providerReviewCount,
         categoryCode: r.categoryCode,
         categoryName: c?.name ?? r.categoryCode,
         name: t.name,
@@ -151,6 +194,6 @@ export class ListServicesProjection {
     // being unpublished, for its provider going inactive, or for having no
     // readable name still occupied a position in the underlying order, and
     // paging by the shorter number would fetch it again forever.
-    return { items, nextOffset: hasMore ? offset + limit : null };
+    return { items, nextOffset: hasMore ? offset + limit : null, total };
   }
 }

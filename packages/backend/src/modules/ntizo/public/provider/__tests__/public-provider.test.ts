@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { and, type SQL } from "drizzle-orm";
 import { providerPublicReadModel } from "@ntizo/shared/read-models";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import type {
@@ -17,6 +20,7 @@ import {
   DrizzleProviderPublicRepository,
   likePattern,
 } from "../infra/repositories/drizzle/provider-public.repository";
+import { provider } from "../../../shared/infrastructure/database/provider/schemas";
 import {
   __resetMediaUrlBaseForTests,
   configureMediaUrlBase,
@@ -272,5 +276,54 @@ describe("likePattern", () => {
   it("escapes the escape character itself", () => {
     // Done first, or the backslashes added above would themselves be escaped.
     expect(likePattern("a\\b")).toBe("%a\\\\b%");
+  });
+});
+
+/**
+ * The WHERE the directory page and its count both run, as SQL text.
+ *
+ * `postgres()` connects lazily, so building this client and calling `.toSQL()`
+ * never opens a socket — the same seam the catalog's `conditionsFor` tests use,
+ * and the only one that can see *which operator* a filter compiles to. Every
+ * other test in this file replaces the repository with a double, and a double
+ * answers the same rows whether the city is matched with `=` or with `ilike`.
+ *
+ * `wheres` is `private static`; TypeScript erases that at runtime, so it is
+ * reached through a narrow cast rather than by widening its visibility for a
+ * test. The aggregates argument is never touched by the filters below — only
+ * `verifiedOnly`, the price bounds and `minRating` read it — so an empty
+ * object stands in for it and no database is needed to build one.
+ */
+describe("DrizzleProviderPublicRepository.wheres — city", () => {
+  const db = drizzle(postgres("postgres://user:pass@localhost:5999/nonexistent", { prepare: false, max: 1 }));
+
+  const build = (city: string) => {
+    const wheres = (
+      DrizzleProviderPublicRepository as unknown as {
+        wheres(filters: ListActiveFilters, agg: unknown): SQL[];
+      }
+    ).wheres({ limit: 20, offset: 0, locale: "en-US", city }, {});
+    const { sql, params } = db.select({ id: provider.id }).from(provider).where(and(...wheres)).toSQL();
+    // Sliced at the keyword, so the SELECT list cannot satisfy an assertion
+    // about the WHERE — `address_city` is a column this query names either way.
+    const at = sql.toLowerCase().indexOf(" where ");
+    if (at === -1) throw new Error(`no \`where\` in: ${sql}`);
+    return { where: sql.toLowerCase().slice(at), params };
+  };
+
+  it("matches a lowercase city, because the reader types the city themselves", () => {
+    // The twin rule at the API layer. Both pages show the same city field in
+    // the same hero card, so `?city=maputo` has to answer on both — with `eq`
+    // it returned businesses on one page and an empty list on the other, under
+    // an h1 reading "Prestadores em maputo".
+    expect(build("maputo").where).toContain('address_city" ilike');
+  });
+
+  it("treats a wildcard the reader typed as a character, not as a wildcard", () => {
+    // `%` and `_` are ILIKE's own metacharacters, so `?city=M%` would
+    // otherwise match every city beginning with M.
+    const { params } = build("M%");
+    expect(params).toContain("M\\%");
+    expect(params).not.toContain("M%");
   });
 });

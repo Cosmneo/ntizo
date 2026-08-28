@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { browseSearch } from "@/features/directory/services/domain/browse-search";
+import {
+  activeFilterCount,
+  browseSearch,
+} from "@/features/directory/services/domain/browse-search";
 
 /**
  * What survives when a reader changes one thing about the browse.
@@ -94,5 +97,57 @@ describe("browseSearch", () => {
     expect(
       browseSearch({ offset: 48 }, { providerType: "individual" }),
     ).toEqual({ providerType: "individual" });
+  });
+
+  it("carries the city past a change to the category", () => {
+    // A city chip and a category link are two different controls on the same
+    // page — one should not clear the other.
+    expect(browseSearch({ city: "Maputo", category: "hair" }, { category: "beauty" })).toEqual({
+      city: "Maputo",
+      category: "beauty",
+    });
+  });
+});
+
+/**
+ * The number on the phone's filter button, and the twin of
+ * `activeDirectoryFilterCount`.
+ *
+ * A badge is a promise that opening the sheet shows you what it counted. It
+ * broke that promise once already — the count grew a `city` while the sheet
+ * had no city group at all — so what it counts is tested rather than trusted.
+ */
+describe("activeFilterCount", () => {
+  it("counts a price range once, however many of its bounds are set", () => {
+    // Counting the bounds separately shows "2" for a single range.
+    expect(activeFilterCount({ minPrice: 100 })).toBe(1);
+    expect(activeFilterCount({ minPrice: 100, maxPrice: 900 })).toBe(1);
+  });
+
+  it("does not count the category", () => {
+    // On a phone the rail is still on screen above the results, so counting it
+    // would badge something the reader can already see and clear.
+    expect(activeFilterCount({ category: "plumbing" })).toBe(0);
+  });
+
+  it("counts each of the others once", () => {
+    expect(
+      activeFilterCount({
+        q: "x",
+        city: "Maputo",
+        locationType: "remote",
+        paymentMode: "hourly",
+        providerType: "individual",
+        language: "pt-MZ",
+        maxPrice: 900,
+      }),
+    ).toBe(7);
+  });
+
+  it("is zero for an untouched page", () => {
+    expect(activeFilterCount({})).toBe(0);
+    // A sort is an ordering, not a narrowing — badging it would tell a reader
+    // they had filtered something when they had not.
+    expect(activeFilterCount({ sort: "newest", offset: 24 })).toBe(0);
   });
 });
