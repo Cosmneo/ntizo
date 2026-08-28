@@ -658,6 +658,54 @@ git commit -m "feat(communication): a message's files come back with it"
 
 ---
 
+## Task 6b: The send mutation takes attachments
+
+**Added during execution, after Task 5's review.** The original eight tasks never
+wired attachments into the write-side GraphQL mutation, so Task 7 would have built
+a file picker against an API that cannot receive a file. The feature would have been
+unusable end to end. This task closes that, and settles the trust question Task 5's
+review surfaced before any client can exercise it.
+
+**Files:**
+- Create: `.../communication/app/ports/outbound/attachment-storage.port.ts`
+- Create: `apps/backend/api/src/attachment-storage.adapter.ts`
+- Modify: `.../write/communication/graphql/schema/mutations.ts`, the send handler,
+  `.../communication/bootstrap/index.ts`, `apps/backend/api/src/graphql/private.ts`
+- Test: `.../write/communication/__tests__/` and `.../communication/__tests__/commands.test.ts`
+
+**The trust rule — the point of this task.** The client sends only `storageKey` and
+`fileName`. It never sends `contentType` or `sizeBytes`. The server reads those from
+the R2 object, which Task 5's upload route already stamped with the *sniffed* type in
+`httpMetadata` and the uploader in `customMetadata.uploadedByUserId`.
+
+Without this, a client uploads a real JPEG, then calls send with a forged descriptor
+claiming a different type — and the "the bytes decide, never the caller's claim"
+guarantee that Tasks 3 and 5 exist to provide is undone one hop later.
+
+Two checks, both cheap:
+1. The key must start with `attachment/${senderUserId}/` — no I/O.
+2. The object's `customMetadata.uploadedByUserId` must equal the sender. This is an
+   independent record of the same fact, and fetching it is needed anyway for the type
+   and the size, and proves the object exists at all.
+
+**`body` must stop being `.min(1)`.** It is `z.string().trim().min(1).max(4000)` today,
+which refuses an empty body before the command runs — so Task 2's invariant change
+(a message must carry *something*, a photo needs no caption) is currently dead code.
+The rule becomes: body non-empty OR at least one attachment, refined on the object,
+with the same `MessageEmptyError` shape when neither is present.
+
+**At most 5 attachments**, matching `MAX_ATTACHMENTS`.
+
+**Mutations that must red:**
+
+| Mutation | Must red |
+|---|---|
+| the resolver takes `contentType` from the client instead of R2 | the forged-type test |
+| the sender/owner check is dropped | the someone-else's-key test |
+| `body` goes back to `.min(1)` | the photo-with-no-caption test |
+
+---
+
 ## Task 7: Sending and showing a file
 
 **Files:**
