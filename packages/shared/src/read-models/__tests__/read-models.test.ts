@@ -13,6 +13,10 @@ import {
   messageReadModel,
   messagePageReadModel,
 } from "../system/communication";
+import {
+  providerPublicDetailReadModel,
+  providerPublicReadModel,
+} from "../public";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -438,5 +442,55 @@ describe("messagePageReadModel", () => {
       nextCursor: "2026-08-24T09:00:00.000Z|m1",
     });
     expect(parsed.nextCursor).toBe("2026-08-24T09:00:00.000Z|m1");
+  });
+});
+
+describe("providerPublicDetailReadModel", () => {
+  const base = {
+    id: "p1", name: "Org", slug: "org", type: "organization" as const,
+    description: null, city: null, district: null, country: null,
+    logoUrl: null, photoUrls: [], verified: false,
+    ratingAverage: null, reviewCount: 0, categories: [],
+    serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
+  };
+
+  it("accepts a provider with hours, a join month and location types", () => {
+    const parsed = providerPublicDetailReadModel.parse({
+      ...base,
+      memberSince: "2025-03",
+      serviceLocationTypes: ["at_customer", "remote"],
+      weeklyHours: [{ weekday: 1, intervals: [{ startMinute: 480, endMinute: 1080 }] }],
+    });
+    expect(parsed.memberSince).toBe("2025-03");
+    expect(parsed.weeklyHours[0]?.intervals[0]?.endMinute).toBe(1080);
+  });
+
+  it("accepts a closed weekday as an empty interval list", () => {
+    const parsed = providerPublicDetailReadModel.parse({
+      ...base, memberSince: null, serviceLocationTypes: [],
+      weeklyHours: [{ weekday: 0, intervals: [] }],
+    });
+    expect(parsed.weeklyHours[0]?.intervals).toEqual([]);
+  });
+
+  it("rejects a weekday outside 0..6", () => {
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: null, serviceLocationTypes: [],
+        weeklyHours: [{ weekday: 7, intervals: [] }],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a memberSince that is not an ISO year-month", () => {
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: "2025-03-14", serviceLocationTypes: [], weeklyHours: [],
+      }),
+    ).toThrow();
+  });
+
+  it("still parses as the list model, so the directory is unaffected", () => {
+    expect(() => providerPublicReadModel.parse(base)).not.toThrow();
   });
 });

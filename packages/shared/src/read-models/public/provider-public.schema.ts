@@ -96,6 +96,71 @@ export const providerPublicReadModel = z.object({
 export type ProviderPublicDTO = z.infer<typeof providerPublicReadModel>;
 
 /**
+ * One weekday's usual opening, as the business rather than as a member.
+ *
+ * `intervals` is the *union* of every member's rules for that weekday, already
+ * merged by the projection — never `min(start)`–`max(end)`. An organization
+ * running two shifts with a gap between them would otherwise publish itself as
+ * open through a break it does not staff. An empty array means closed, which is
+ * a fact; a missing weekday would be an absence the reader has to interpret, so
+ * all seven are always present.
+ */
+export const weeklyHoursReadModel = z.object({
+  weekday: z.number().int().min(0).max(6),
+  intervals: z.array(
+    z.object({
+      startMinute: z.number().int().min(0).max(1440),
+      endMinute: z.number().int().min(0).max(1440),
+    }),
+  ),
+});
+
+/**
+ * A provider on their own page — the list model plus what only a detail view
+ * needs.
+ *
+ * A separate model rather than three more fields on `providerPublicReadModel`,
+ * for the reason `serviceDetailReadModel` already records: the directory asks
+ * for 24 providers at a time and needs none of this. Joining every member's
+ * availability 24 times to render a list of cards would make the browse pay for
+ * a page it is not.
+ *
+ * Every field here is a one-way publication, the same as `logoUrl` and
+ * `photoUrls` above.
+ */
+export const providerPublicDetailReadModel = providerPublicReadModel.extend({
+  /**
+   * The month the business joined, as `YYYY-MM` — never the day.
+   *
+   * The exact date somebody registered is not a thing a customer needs and not
+   * a thing the business chose to publish; the month is enough to tell a
+   * five-year business from a five-week one, which is the only question being
+   * asked. Nullable so a future backfill can admit it does not know, rather
+   * than being forced to invent a date.
+   */
+  memberSince: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .nullable(),
+
+  /**
+   * Where this business actually works, derived from its published services'
+   * `location_type` — not from anything it declared.
+   *
+   * The same reasoning as `categories` above: a provider who says they travel
+   * but publishes only at-provider services would otherwise appear to offer
+   * something they do not sell.
+   */
+  serviceLocationTypes: z.array(z.string()),
+
+  /** All seven weekdays, always. See `weeklyHoursReadModel`. */
+  weeklyHours: z.array(weeklyHoursReadModel),
+});
+
+export type WeeklyHoursDTO = z.infer<typeof weeklyHoursReadModel>;
+export type ProviderPublicDetailDTO = z.infer<typeof providerPublicDetailReadModel>;
+
+/**
  * One page of providers.
  *
  * A total with no cursor: this directory pages by a fixed page size rather
