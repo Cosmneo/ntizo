@@ -76,6 +76,13 @@ export function directorySearch(
  * however many of its two boxes are filled — counting the bounds separately
  * shows "2" for a single range. The same rules `activeFilterCount` follows on
  * the services browse.
+ *
+ * Every *facet* counted here is reachable inside the sheet the badge opens.
+ * `q` is the one deliberate exception: it is the hero's search term, the sheet
+ * has no box for it, and what takes it off is its own chip above the results
+ * or "Clear all" beside them. It is counted anyway, because it narrows harder
+ * than any facet does and a badge that ignored it would read 0 over a page
+ * showing three results out of two hundred.
  */
 export function activeDirectoryFilterCount(current: DirectorySearch): number {
   return [

@@ -4,6 +4,7 @@ import { DrizzleServiceReadRepository } from "../../bounded-contexts/catalog/inf
 import { GetServiceProjection } from "./app/use-cases/get-service.projection";
 import { ListCategoriesProjection } from "./app/use-cases/list-categories.projection";
 import { ListServicesProjection } from "./app/use-cases/list-services.projection";
+import { ListServiceCitiesProjection } from "./app/use-cases/list-service-cities.projection";
 import type { CatalogPublicModule } from "./graphql/handlers/queries.handlers";
 
 export function bootstrapCatalogPublic(): {
@@ -26,6 +27,7 @@ export function bootstrapCatalogPublic(): {
       listCategories: new ListCategoriesProjection(categoryReadRepository),
       listServices: new ListServicesProjection(serviceReadRepository),
       getService: new GetServiceProjection(serviceReadRepository, performerReadRepository),
+      listServiceCities: new ListServiceCitiesProjection(serviceReadRepository),
     },
   };
 }

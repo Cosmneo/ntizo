@@ -1900,7 +1900,114 @@ spec that hits `/providers/$slug` (or another `ssr: true` route) starts flaking 
 
 ---
 
-## 77. Attachment contents are not inspected
+## 77. `useAllCategories` has no callers left
+
+`features/landing/viewmodel/use-categories.ts` exports two hooks. `useCategoryPreview(limit)` is used
+by the home page and, since the listings redesign, by both browse pages' category rails.
+`useAllCategories` — the `useInfiniteQuery` one — had exactly one caller, the old `/providers`
+directory page, and lost it when that page was rebuilt on the shared browse shells and moved to
+`useCategoryPreview(24)` like its twin. Nothing in `src/` references it now.
+
+Left in place rather than deleted with the page: an unused export is not a lint error here, it was
+outside that task's scope, and `categoryQueries.all` behind it is a real paged query that a
+"browse every category" screen would want back. Deleting it means deleting that query definition too,
+or leaving a repository method with no viewmodel.
+
+**Trigger:** the next time someone touches `use-categories.ts` or `category.repository.ts` — delete it
+then if no such screen has appeared, or wire it up if one has.
+
+---
+
+## 78. `Sheet` is called a dialog but is not modal, and the bottom nav paints over its backdrop
+
+`packages/frontend/src/components/sheet.tsx` is a deliberately minimal primitive: `SheetContent`
+renders a `z-40` backdrop and a `z-50` fixed panel, and that is all. There is **no focus trap, no
+Escape handler, no focus move on open, no focus restore on close and no `inert`/`aria-hidden` on the
+background.** Tab from the last control in a sheet lands on the page underneath it.
+
+The three browse sheets (`MobileSearchSheet`, `MobileFilterBar`, `MobileDirectoryFilterBar`) carry
+`role="dialog"` + `aria-labelledby`, which they earn — the primitive draws a bare div, so without
+them a screen reader gets the fields with no boundary and no name. They deliberately do **not** carry
+`aria-modal="true"`, which was dropped in task 21's review: `aria-modal` asserts that everything
+outside the node is inert, and a false claim of modality is strictly worse than no claim, because it
+tells assistive tech to ignore exactly the controls keyboard focus is about to land on.
+`features/provider/availability/ui/rule-drawer.tsx` still carries `aria-modal="true"` over the same
+primitive and has the same problem.
+
+Second, smaller defect in the same primitive: the backdrop is `z-40`, and `MobileNav`
+(`shared/components/mobile-nav.tsx`) is also `z-40` and later in the DOM — `__root.tsx` renders it
+after the page content. Equal z-index resolves on tree order, so below `md` the bottom nav paints
+**over** the sheet's backdrop and stays tappable behind a sheet short enough not to cover it. A
+reader can navigate away from underneath an open dialog.
+
+The fix is one of two, not both: give `Sheet` real modality (focus trap, Escape, focus restore,
+background `inert`, and a backdrop above every fixed chrome the app has), and then put `aria-modal`
+back everywhere; or accept it as a non-modal disclosure panel and stop the `role="dialog"` too. It
+was left alone here because it is a shared primitive with callers outside this branch, and changing
+its focus behaviour is not a thing to do inside a listings redesign.
+
+**Trigger:** the first keyboard or screen-reader accessibility pass on the customer app, or the first
+report of the bottom nav being tappable behind an open sheet — whichever comes first. Also urgent if
+a fourth caller adopts `Sheet` for anything the user must not be able to escape from mid-flow
+(a payment confirmation, a destructive confirm).
+
+---
+
+## 79. The provider repository's own `verified` join has no test guarding its `SELECT DISTINCT`
+
+`DrizzleProviderPublicRepository.aggregates().verified`
+(`public/provider/infra/repositories/drizzle/provider-public.repository.ts:100-104`) caps a
+business with several accepted documents at one row with `selectDistinct` on `providerId` —
+the same invariant task 22 added an SQL-shape test for on its own copy,
+`verifiedAggregate` in `bounded-contexts/catalog/infrastructure/repositories/drizzle/
+service-read.repository.ts` (`__tests__/service-read.repository.test.ts`, "caps the verified
+join at one row per provider with SELECT DISTINCT"). The original is still unguarded: nothing
+asserts its `SELECT DISTINCT` either, and it is true only by construction, the same way the
+copy was before that test existed.
+
+Left alone rather than fixed alongside the copy: `public/provider` is a different bounded
+context from `bounded-contexts/catalog`, and reaching into it was explicitly out of scope for
+that task.
+
+**Trigger:** somebody simplifying `selectDistinct` away on `aggregates().verified` (it looks
+redundant next to the `groupBy`-based `reviews`/`services`/`prices` aggregates in the same
+function, and is not), or the first business that legitimately accumulates a second accepted
+document and a directory card's service count looks doubled.
+
+---
+
+## 80. `DropdownMenuItem` spreads `{...props}` after its own `onClick`, so a caller's handler replaces it
+
+`packages/frontend/src/components/dropdown-menu.tsx` (`DropdownMenuItem`) writes its `onClick`
+and then spreads the rest of the props over it:
+
+```tsx
+onClick={(e) => { if (disabled) return; props.onClick?.(e); onSelect?.(); ctx.setOpen(false); … }}
+{...props}
+```
+
+`props` still carries `onClick`, so a caller that passes one wins the attribute outright. The
+row would run the caller's handler and nothing else: `onSelect` never fires, the menu never
+closes, and — since the keyboard work landed — focus is never handed back to the trigger
+either, leaving a keyboard reader on `<body>` over a menu that is still open. The bug is
+invisible today because the spread's own `props.onClick?.(e)` call reads like it covers the
+case, and because Enter and Space go through `.click()`, so the keyboard fails in exactly the
+same way as the pointer rather than differently.
+
+Left alone rather than fixed: the spread has to stay last for `role` and `aria-checked` to be
+overridable — the sort control's `menuitemradio` rows depend on it — so the fix is to
+destructure `onClick` out alongside `className`/`onSelect`/`disabled` rather than to reorder,
+and that is a change to a shared primitive's prop handling that belongs with a task about its
+props, not with one about its keys. All eight call sites were checked: none passes `onClick`.
+
+**Trigger:** the first caller that passes `onClick` to `DropdownMenuItem` — most likely
+someone wanting `event.preventDefault()` or a stopPropagation on a row, or a row that is a
+link and wants to intercept the navigation. Also worth doing pre-emptively the next time
+anything else in this component's props is touched.
+
+---
+
+## 81. Attachment contents are not inspected
 
 A photograph of a business card, or a number written on paper, passes every check this feature
 makes — `sniffContentType` decides *format*, never *content*. Catching it needs OCR on every upload:
@@ -1911,7 +2018,7 @@ the caption.
 
 ---
 
-## 78. No virus scanning
+## 82. No virus scanning
 
 R2 stores exactly what it is given. `sniffContentType` only narrows the stored `content-type` to one
 of four formats; nothing inspects a JPEG, PNG, WEBP or PDF for an embedded payload before it is
@@ -1921,7 +2028,7 @@ written to the bucket or served back to the other side of the conversation.
 
 ---
 
-## 79. `media.ts` still trusts `file.type`
+## 83. `media.ts` still trusts `file.type`
 
 The avatar, category and provider-media routes (`apps/backend/api/src/media.ts`) decide a file's
 type from the value the uploader's browser declared, not from its bytes — the exact bypass
@@ -1932,7 +2039,7 @@ attachments. `media.ts` was left alone; only the new endpoint got the fix.
 
 ---
 
-## 80. Orphaned R2 objects are never swept
+## 84. Orphaned R2 objects are never swept
 
 An upload that succeeds while its message write fails — or one a customer picks, then removes before
 hitting send — leaves a file in the bucket nothing ever references again (`attachments.ts`'s own doc
@@ -1944,7 +2051,7 @@ attachments.spec.ts` has to delete its own test objects for exactly this reason 
 
 ---
 
-## 81. Contact detection is refused without an alternative
+## 85. Contact detection is refused without an alternative
 
 Until on-platform payment exists there is nothing to offer somebody who wants to arrange things off
 it — `hasContact` (shared by the composer, the file-name check, and the upload route) blocks the
@@ -1954,7 +2061,7 @@ attempt and explains why, but the "why" is a permanent inconvenience with no oth
 
 ---
 
-## 82. `scheduled.test.ts` cannot run in every worktree, and its own doc comment is now wrong about why that's safe
+## 86. `scheduled.test.ts` cannot run in every worktree, and its own doc comment is now wrong about why that's safe
 
 `apps/backend/api/.env` does not exist in this worktree (`feat/message-attachments`, this task's
 own), so `scheduled.test.ts` — which drives the real notification sweep cron against a real database —
@@ -1972,7 +2079,7 @@ actually empty — or the next time this comment is read and taken at face value
 
 ---
 
-## 83. `useSendMessage` fires and forgets, and a test (or a user navigating away) can outrun it
+## 87. `useSendMessage` fires and forgets, and a test (or a user navigating away) can outrun it
 
 Not a backend bug — logged here because chasing it looked exactly like one for a while, and the
 shape is worth knowing about. `MessageComposer.handleSubmit` calls `onSend(...)` (→ `useSendMessage`'s
@@ -2001,7 +2108,7 @@ body without `exact: true`, or a real user report of a send that looked like it 
 
 ---
 
-## 84. What `attachments.spec.ts` does not prove
+## 88. What `attachments.spec.ts` does not prove
 
 Two tests, chosen for what would actually catch something over restating unit coverage (see that
 file's own doc comment) — which leaves real gaps a reader of this task's report should know about

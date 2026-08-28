@@ -76,6 +76,21 @@ export interface ServicePublicRow {
   providerStatus: string;
   /** `individual` or `organization`, off the same joined row as the status. */
   providerType: string;
+  /**
+   * Whether the platform has accepted at least one of this business's
+   * documents — the same fact `DrizzleProviderPublicRepository`'s own
+   * verified join publishes, reaching the card that already names the
+   * business.
+   */
+  providerVerified: boolean;
+  /**
+   * The business's average review score and how many it has — never the
+   * service's own, because nothing aggregates reviews per service yet. Null
+   * average for a business nobody has reviewed, not zero — see
+   * `serviceReadModel.providerRatingAverage`.
+   */
+  providerRatingAverage: number | null;
+  providerReviewCount: number;
   categoryCode: string;
   /** Every language the category has a name in; the projection picks one. */
   categoryTranslations: ServicePublicTranslationRow[];
@@ -105,7 +120,19 @@ export interface ServiceDetailOptionRow {
   translations: { locale: string; name: string }[];
 }
 
-export interface ServiceDetailRow extends ServicePublicRow {
+/**
+ * `Omit`s `providerRatingAverage`/`providerReviewCount`/`providerVerified`
+ * rather than inheriting them as `ServicePublicRow` requires: nothing on the
+ * service's own page reads any of the three — `serviceDetailReadModel` has no
+ * such fields, and `GetServiceProjection` never looks at them — so
+ * `getPublishedById` runs neither the review join nor the verified join to
+ * populate them. A query that ran on every single-service page load to
+ * satisfy a type relationship, for data nothing renders, would be a real cost
+ * paid for nothing. If this page ever wants any of them, adding the join back
+ * is one line, and it will be wanted for a reason.
+ */
+export interface ServiceDetailRow
+  extends Omit<ServicePublicRow, "providerRatingAverage" | "providerReviewCount" | "providerVerified"> {
   providerLogoKey: string | null;
   providerCity: string | null;
   providerDistrict: string | null;
@@ -134,6 +161,8 @@ export interface ListPublishedServicesFilter {
   paymentMode?: string | undefined;
   /** `individual` or `organization`. Absent means both. */
   providerType?: string | undefined;
+  /** The provider's city. A `remote` service matches every city — it has none. */
+  city?: string | undefined;
   /**
    * A locale the service is *written in* — matched against
    * `service_translation`, not against anything the provider speaks.
@@ -159,7 +188,7 @@ export interface ListPublishedServicesFilter {
    * means no text search — an empty or blank string never reaches here.
    */
   q?: string | undefined;
-  sort?: "default" | "newest" | undefined;
+  sort?: "default" | "newest" | "price" | undefined;
   limit: number;
   offset: number;
 }
@@ -188,6 +217,17 @@ export interface ServiceReadRepositoryPort {
    */
   listPublished(filter: ListPublishedServicesFilter): Promise<ServicePublicRow[]>;
   /**
+   * How many published services of active providers match — before the page
+   * size cuts in.
+   *
+   * Deliberately takes the filter *without* `limit`, `offset` or `sort`: none
+   * of the three can change how many rows match, and accepting them invites an
+   * implementation that applies one.
+   */
+  countPublished(
+    filter: Omit<ListPublishedServicesFilter, "limit" | "offset" | "sort">,
+  ): Promise<number>;
+  /**
    * One service by id, in full — whatever its own status and whatever its
    * provider's, because this method does not look at either. It answers only
    * "does a service with this id exist", never "may an anonymous reader see
@@ -202,6 +242,25 @@ export interface ServiceReadRepositoryPort {
    * forget.
    */
   getPublishedById(id: string): Promise<ServiceDetailRow | null>;
+  /**
+   * The cities that currently have a published service, with how many.
+   *
+   * Read from the data rather than from the reference `city` table, so the
+   * filter never offers a place that returns nothing — a chip reading
+   * "Nampula 0" is a control whose only outcome is an empty page. The same
+   * rule `DrizzleProviderPublicRepository.listCityFacets` follows.
+   *
+   * The count is how many `?city=…` returns, not how many services sit in that
+   * city — a city filter also matches every remote service, which has no
+   * geography to be excluded by, so every count carries that whole population.
+   * A count that measured the city alone would be a wrong number printed over
+   * its own link.
+   *
+   * Unfiltered on purpose: the options a filter offers must not shrink as that
+   * filter is used, or somebody who picked Matola is stranded with no way back
+   * to Maputo.
+   */
+  listCityFacets(): Promise<{ city: string; count: number }[]>;
 }
 
 export type { ServiceOwnerDTO };

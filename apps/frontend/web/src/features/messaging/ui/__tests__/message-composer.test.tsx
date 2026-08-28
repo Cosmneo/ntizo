@@ -147,8 +147,8 @@ describe("MessageComposer", () => {
   it("gives the field an accessible name, not just a placeholder", () => {
     // A placeholder is not an accessible name — it disappears the moment
     // there is text in the field, and some assistive tech never announces
-    // it at all. `search-box.tsx` pairs its placeholder with a distinct
-    // `aria-label`; this field follows the same convention.
+    // it at all. Every search field on this platform pairs its placeholder
+    // with a distinct label; this field follows the same convention.
     render(<MessageComposer onSend={vi.fn()} />);
     expect(screen.getByRole("textbox", { name: /message body/i })).toBeInTheDocument();
   });

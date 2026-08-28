@@ -128,7 +128,10 @@ The sort pills read *Sugeridos · Mais recentes · Preço*. The enum today is
 `"default" | "newest"`. Ordering is on the same `fromAmountMinor` the card
 prints and the price filter matches, so a service can never sort into a
 position its visible price contradicts. Services with no price (`quote`) sort
-last, never as zero.
+last, never as zero — and the `NULLS LAST` is written out rather than left to
+Postgres's default, because that default is `NULLS LAST` for `ASC` and
+`NULLS FIRST` for `DESC`: a later "most expensive first" order would otherwise
+move every unpriced service silently to the top.
 
 ### 3. `city` filter and a `serviceCities` facet
 

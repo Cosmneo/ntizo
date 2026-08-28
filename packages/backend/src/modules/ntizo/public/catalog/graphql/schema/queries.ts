@@ -59,6 +59,11 @@ export const listServices = defineQuery({
       locationType: serviceLocationTypeSchema.optional(),
       paymentMode: servicePaymentModeSchema.optional(),
       providerType: providerTypeSchema.optional(),
+      // 120, not because the column is bounded — `provider.address_city` is
+      // `text`, with no width limit anywhere. A longer string is not a city
+      // name, and every character is one more the database compares with no
+      // index to help it.
+      city: z.string().trim().min(1).max(120).optional(),
       language: localeSchema.optional(),
       // Minor units, and bounded: a price filter is a pair of numbers a person
       // typed, not an arbitrary bigint. The cap is far above any real service
@@ -71,7 +76,7 @@ export const listServices = defineQuery({
        * is one more the database scans with no index to help it.
        */
       q: z.string().min(1).max(100).optional(),
-      sort: z.enum(["default", "newest"]).optional(),
+      sort: z.enum(["default", "newest", "price"]).optional(),
       // Optional, not `.default()`: a zod default does not survive into the
       // GraphQL schema, so the fallback belongs in the handler where it can
       // actually run.
@@ -105,6 +110,20 @@ export const getService = defineQuery({
 });
 
 /**
+ * The cities that currently have a published service, with how many.
+ *
+ * Mirrors `listProviderCityFacets` field for field. A separate query rather
+ * than a shared one because the two count different things: a city with four
+ * providers and no published services must appear in one list and not the
+ * other.
+ */
+export const listServiceCityFacets = defineQuery({
+  input: zodSchema(z.object({})),
+  output: zodSchema(z.array(z.object({ city: z.string(), count: z.number().int().min(0) }))),
+  docs: { summary: "Cities with at least one published service", tags: ["Catalog"] },
+});
+
+/**
  * No context schema, like the other public slices.
  *
  * Declaring the private one made every field on this mount demand a session,
@@ -115,5 +134,5 @@ export const getService = defineQuery({
  */
 export const catalogPublicSchema = defineGraphQLSchema({
   category: { all: listCategories },
-  service: { all: listServices, byId: getService },
+  service: { all: listServices, byId: getService, cities: listServiceCityFacets },
 });

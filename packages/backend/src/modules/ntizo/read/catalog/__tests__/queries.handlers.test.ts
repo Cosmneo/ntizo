@@ -52,11 +52,23 @@ class FakeServiceReadRepository implements ServiceReadRepositoryPort {
     return [];
   }
 
+  // Unused by `service.mine`, the only field this suite drives through
+  // `listPublished`/`countPublished` at all — present only to satisfy the
+  // port.
+  async countPublished(): Promise<number> {
+    return 0;
+  }
+
   // These tests exercise the list queries, not the detail one; a double that
   // returned a fabricated service would make them assert against data no
   // repository produces.
   async getPublishedById(): Promise<null> {
     return null;
+  }
+
+  // Present only to satisfy the port; this suite never calls it.
+  async listCityFacets(): Promise<{ city: string; count: number }[]> {
+    return [];
   }
 }
 
@@ -218,11 +230,20 @@ class FixedServiceReadRepository implements ServiceReadRepositoryPort {
   async listPublished(): Promise<never[]> {
     return [];
   }
+  // Present only to satisfy the port; this suite never calls it.
+  async countPublished(): Promise<number> {
+    return 0;
+  }
   // This suite exercises the list queries, not the detail one; a double that
   // returned a fabricated service would make them assert against data no
   // repository produces.
   async getPublishedById(): Promise<null> {
     return null;
+  }
+
+  // Present only to satisfy the port; this suite never calls it.
+  async listCityFacets(): Promise<{ city: string; count: number }[]> {
+    return [];
   }
 }
 
@@ -247,11 +268,20 @@ describe("ListMyServicesProjection images", () => {
     async listPublished(): Promise<never[]> {
       return [];
     }
+    // Present only to satisfy the port; this suite never calls it.
+    async countPublished(): Promise<number> {
+      return 0;
+    }
     // This describe block exercises the list query's image handling, not the
     // detail one; a double that returned a fabricated service would make it
     // assert against data no repository produces.
     async getPublishedById(): Promise<null> {
       return null;
+    }
+
+    // Present only to satisfy the port; this suite never calls it.
+    async listCityFacets(): Promise<{ city: string; count: number }[]> {
+      return [];
     }
   }
 

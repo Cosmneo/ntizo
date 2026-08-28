@@ -20,18 +20,33 @@ import type {
 } from "../../../app/ports/outbound/provider-public.repository.port";
 
 /**
- * Wraps a search term in a LIKE pattern, escaping the metacharacters first.
+ * A term as literal text inside a LIKE pattern, with no wildcards of its own.
  *
- * Without the escape, a search for "100%" matches every provider and "_"
- * matches all of them too — those wildcards are the user's typing, not their
- * intent. Postgres treats backslash as LIKE's escape character by default, so
- * the backslash itself is escaped first or it would escape the escapes.
+ * Without this, a search for "100%" matches every provider and "_" matches all
+ * of them too — those wildcards are the user's typing, not their intent.
+ * Postgres treats backslash as LIKE's escape character by default, so the
+ * backslash itself is escaped first or it would escape the escapes.
+ *
+ * Separate from `likePattern` because not every ILIKE here is a search: the
+ * city is matched *exactly*, case-insensitively, and so needs the escaping
+ * without the surrounding `%`.
+ *
+ * The twin of `escapeLike` in the catalog read repository, copied rather than
+ * imported for the same reason the aggregates there are — a public read
+ * adapter does not reach into a bounded context.
+ */
+export function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Wraps a search term in a LIKE pattern, escaping the metacharacters first.
  *
  * Exported for its own test: the behaviour is invisible from the outside until
  * someone searches for a percent sign.
  */
 export function likePattern(term: string): string {
-  return `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  return `%${escapeLike(term)}%`;
 }
 
 /**
@@ -251,7 +266,19 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       );
       if (match) wheres.push(match);
     }
-    if (filters.city) wheres.push(eq(provider.addressCity, filters.city));
+    if (filters.city) {
+      // `ilike` and not `eq`, the same match `conditionsFor` makes on the
+      // services side: the city arrives from a free-text combobox
+      // (`CitySelect` lets people type their own), and both pages now show
+      // that one control, so "maputo" and "Maputo" have to be one place here
+      // too. With `eq`, the identical link returned businesses on one page
+      // and nothing on the other.
+      //
+      // Escaped, and no `%` of our own around it: an exact match that ignores
+      // case, not a prefix search — `%` and `_` are ILIKE's metacharacters, so
+      // unescaped `?city=M%` would quietly become one.
+      wheres.push(ilike(provider.addressCity, escapeLike(filters.city)));
+    }
     if (filters.type) wheres.push(eq(provider.type, filters.type));
     if (filters.verifiedOnly) wheres.push(isNotNull(agg.verified.providerId));
 

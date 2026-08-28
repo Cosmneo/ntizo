@@ -17,5 +17,15 @@ export default defineConfig({
     // Vitest can't resolve `bun:test`, so it is excluded here rather than
     // left to fail on a file this config was never meant to run.
     exclude: [...configDefaults.exclude, "src/components/__tests__/image-cropper.test.ts"],
+    /*
+     * Vitest stubs every CSS import to an empty string by default, and its
+     * check is on the extension — so `globals.css?raw` is stubbed too, and a
+     * test that reads the stylesheet to assert on it silently compares
+     * nothing. Enabling this lets Vite's own `?raw` handling win.
+     *
+     * Nothing else in this package imports CSS, so this turns on a pipeline
+     * for exactly one file: `styles/__tests__/tokens.test.ts`.
+     */
+    css: true,
   },
 });
