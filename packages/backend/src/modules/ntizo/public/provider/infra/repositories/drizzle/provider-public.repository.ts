@@ -194,6 +194,14 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     };
   }
 
+  /**
+   * The private-to-public boundary, named field by field rather than built
+   * with `...row`. A spread makes the public surface default-open: the next
+   * column added to `COLUMNS` would reach an anonymous caller with no test
+   * turning red. This is the last thing standing between a row that
+   * deliberately selects private columns (`logoKey`, `createdAt`) and that
+   * caller, so it lists what leaves rather than what to hold back.
+   */
   private static toDTO(
     row: {
       id: string; name: string; slug: string; type: string;
@@ -213,33 +221,39 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     categories: { code: string; name: string }[],
     weeklyHours: WeeklyHoursDTO[],
   ): ProviderPublicDetailDTO {
-    const { logoKey, photoKeys, ratingAverage, verifiedProviderId, createdAt, locationTypes, ...rest } = row;
     return {
-      ...rest,
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
       type: row.type as ProviderPublicDTO["type"],
-      logoUrl: mediaUrl(logoKey),
+      description: row.description,
+      city: row.city,
+      district: row.district,
+      country: row.country,
+      logoUrl: mediaUrl(row.logoKey),
       // A key with nowhere to be served from resolves to null, and a null in a
       // list of image URLs is a broken tile — dropped rather than rendered.
-      photoUrls: (photoKeys ?? []).map(mediaUrl).filter((url): url is string => url !== null),
+      photoUrls: (row.photoKeys ?? []).map(mediaUrl).filter((url): url is string => url !== null),
       // Rounded to one decimal at the edge, because that is the only precision
       // anything displays — shipping 4.833333 invites two clients to round it
       // differently and show different scores for the same business.
-      ratingAverage: ratingAverage === null ? null : Math.round(Number(ratingAverage) * 10) / 10,
+      ratingAverage: row.ratingAverage === null ? null : Math.round(Number(row.ratingAverage) * 10) / 10,
       // `?? 0`, not `Number(null)`: a business nobody has reviewed has no row
       // in the aggregate at all, and `Number(null)` is 0 only by accident of
       // coercion — `Number(undefined)` beside it would be NaN.
       reviewCount: Number(row.reviewCount ?? 0),
       serviceCount: Number(row.serviceCount ?? 0),
       fromAmountMinor: row.fromAmountMinor === null ? null : Number(row.fromAmountMinor),
-      verified: verifiedProviderId !== null,
+      fromCurrency: row.fromCurrency,
+      verified: row.verifiedProviderId !== null,
       categories,
       // Year-month only. `toISOString().slice(0, 7)` rather than a locale
       // format: this is a machine value the reader's own `Intl` turns into
       // "Março 2025", so the server never picks a language.
-      memberSince: createdAt.toISOString().slice(0, 7),
+      memberSince: row.createdAt.toISOString().slice(0, 7),
       // `array_agg` returns null for a provider with no published services,
       // and an empty list is the honest reading of that.
-      serviceLocationTypes: locationTypes ?? [],
+      serviceLocationTypes: row.locationTypes ?? [],
       weeklyHours,
     };
   }
