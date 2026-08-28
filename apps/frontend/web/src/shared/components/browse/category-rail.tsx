@@ -44,11 +44,26 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
       {/* The positioned wrapper the fades and arrows are measured against.
           Transparent, so it can sit above the card without covering it. */}
       <div className="relative">
-        <Fade side="left" />
-        <Fade side="right" />
+        {/* `page-shell` again, but positioned absolute-inset-0 over the band
+            rather than laid out in flow: it borrows the row's own centred
+            width so the fades and arrows land at the edge of the *chips*,
+            not the edge of the *screen*. On a wide monitor those are two
+            different lines, and an arrow sitting 12px from the browser chrome
+            while the row it scrolls starts hundreds of pixels further in
+            reads as a stray control, not as part of the rail.
 
-        <RailArrow side="left" onClick={() => nudge(-SCROLL_STEP)} />
-        <RailArrow side="right" onClick={() => nudge(SCROLL_STEP)} />
+            `pointer-events-none` on the box itself: unlike the individual
+            corner-sized elements this used to hold directly, the box now
+            spans the whole centred column, and a transparent layer that size
+            sitting above the chips would eat every click on the row it is
+            only meant to decorate. Each `RailArrow` opts back in for itself. */}
+        <div className="page-shell pointer-events-none absolute inset-0">
+          <Fade side="left" />
+          <Fade side="right" />
+
+          <RailArrow side="left" onClick={() => nudge(-SCROLL_STEP)} />
+          <RailArrow side="right" onClick={() => nudge(SCROLL_STEP)} />
+        </div>
 
         <div
           ref={scroller}
@@ -94,7 +109,7 @@ function RailArrow({ side, onClick }: { side: "left" | "right"; onClick: () => v
       tabIndex={-1}
       onClick={onClick}
       className={cn(
-        "absolute top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full sm:grid",
+        "pointer-events-auto absolute top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full sm:grid",
         "border border-[var(--color-border)] bg-[var(--color-background)] shadow-[var(--shadow-sm)]",
         "transition-colors hover:border-[var(--color-muted-foreground)]",
         side === "left" ? "left-3" : "right-3",

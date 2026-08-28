@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ListingMedia } from "../listing-media";
 
 describe("ListingMedia", () => {
@@ -71,6 +71,45 @@ describe("ListingMedia", () => {
     );
     expect(container.querySelector("[data-testid='listing-badge']")).toBeNull();
     expect(container.querySelector("[data-testid='listing-favourite']")).toBeNull();
+  });
+
+  it("falls back to the generated tile when the photograph 404s", () => {
+    // A broken-image glyph is worse than the grey rectangle this component
+    // exists to avoid, and it can happen for reasons nobody controls: a
+    // deleted object, a moved bucket, an expired signed URL.
+    const { container } = render(
+      <ListingMedia imageUrl="https://cdn/dead.jpg" seed="hair" name="Estúdio Mavalane" icon="Scissors" />,
+    );
+    const img = container.querySelector("img")!;
+    fireEvent.error(img);
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText("EM")).toBeInTheDocument();
+  });
+
+  it("keeps the photograph on screen when it loads fine", () => {
+    // The failure path must not fire for a healthy image — no `onError` means
+    // no reason to swap anything.
+    const { container } = render(
+      <ListingMedia imageUrl="https://cdn/x.jpg" seed="hair" name="Estúdio Mavalane" icon="Scissors" />,
+    );
+    expect(container.querySelector("img")).not.toBeNull();
+    expect(container.querySelector("[data-testid='listing-placeholder']")).toBeNull();
+  });
+
+  it("gives a new imageUrl a fresh chance after an earlier one failed", () => {
+    // The same card, scrolled out and back in with a different photograph,
+    // must not stay stuck on the tile a previous, unrelated URL earned.
+    const { container, rerender } = render(
+      <ListingMedia imageUrl="https://cdn/dead.jpg" seed="hair" name="Estúdio Mavalane" icon="Scissors" />,
+    );
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("img")).toBeNull();
+
+    rerender(
+      <ListingMedia imageUrl="https://cdn/fresh.jpg" seed="hair" name="Estúdio Mavalane" icon="Scissors" />,
+    );
+    expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn/fresh.jpg");
+    expect(container.querySelector("[data-testid='listing-placeholder']")).toBeNull();
   });
 
   it("puts the badge top-left and the favourite top-right", () => {
