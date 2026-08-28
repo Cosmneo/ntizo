@@ -1639,26 +1639,26 @@ outcomes, or soften the comment to say what is actually proven.
 
 ---
 
-## 62. The catalogue search test asks for one page and asserts on all of it
+## ~~62. The catalogue search test asks for one page and asserts on all of it~~ — RESOLVED 2026-08-28
 
-`packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/catalog-service-search.test.ts`
-fails today on `returns everything when no search was asked for`. Its helper calls
-`listPublished({ q, limit: 48, offset: 0 })` and then filters the page down to the five services it
-seeded — so the assertion only holds while the whole database fits on one page. Dev holds 72
-published services now, the seeded rows fall off the end, and the set comes back empty.
+Fixed on `fix/db-test-isolation` (`abefb87`). The helper now passes the run's own
+`categoryCode` — unique per run — into `listPublished`, so the rows the query chooses
+between *are* the fixtures. Filtering the page afterwards could never have worked: the
+seeded rows were not in the page to be filtered. `limit` stays 48 so the query keeps its
+production shape.
 
-Nothing is wrong with the code under test. The test is data-dependent and started failing when the
-database grew, which is why CI stays green: its job builds a fresh database from zero
-(`ci.yml`, `DEV_DB_URL` pointed at a throwaway Postgres), so the page is never full.
+The diagnosis recorded above was right about the mechanism and wrong about the scale.
+Dev held 91 published services, not 72, and 74 of them were leaked test fixtures rather
+than real data — two test files had been leaving rows behind since 12 August. Those 98
+rows were purged on 2026-08-28, leaving 17 real published services.
 
-The fix is a decision about what that case is for. Raising the limit only moves the cliff. Scoping
-the query to the seeded provider, or asserting `isSupersetOf` rather than equality, would say what
-it means.
+Two sibling assertions in the same file failed for the same reason and are fixed with it.
+Three further assertions there were vacuous — `not.toContain(englishOnly)`,
+`search("CORTE") == search("corte")` and `toEqual(new Set())` all pass when the search
+returns nothing at all — and now name the rows that must be present. Every test in the
+file was proved to bite by mutation; `M4` (applying the text predicate when no term was
+given) fails this test and no other.
 
-**Trigger:** the next time somebody runs the backend suite locally and has to be told which failure
-to ignore.
-
----
 
 ## 63. `better_auth.user.phone_number` has a second writer
 
