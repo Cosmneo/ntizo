@@ -42,6 +42,10 @@ const twoMessagePage: MessagePageDTO = {
       body: "Olá, tudo bem?",
       readAt: null,
       createdAt: "2026-01-02T10:00:00.000Z",
+      // `attachments` is required on `MessageDTO` (Task 6) — this fixture
+      // predates that field and carries none, unrelated to what this file
+      // tests.
+      attachments: [],
     },
     {
       id: "m2",
@@ -50,6 +54,7 @@ const twoMessagePage: MessagePageDTO = {
       body: "Tudo bem, em que posso ajudar?",
       readAt: "2026-01-02T10:05:00.000Z",
       createdAt: "2026-01-02T09:00:00.000Z",
+      attachments: [],
     },
   ],
   nextCursor: null,
