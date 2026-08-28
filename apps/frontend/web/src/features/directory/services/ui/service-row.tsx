@@ -83,10 +83,16 @@ export function ServiceRow({
     // into whatever width is left.
     <li className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-5 border-b border-[var(--color-border)] py-6 first:border-t sm:grid-cols-[112px_minmax(0,1fr)_auto]">
       <div className="aspect-square w-full overflow-hidden rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
+        {/* Decorative, like `ServiceCard`'s own thumbnail: the service's
+            name is already adjacent link text, so a non-empty alt would
+            have a screen reader announce it twice per row — once here,
+            once for the link — and Task 12 stacks every one of a
+            provider's services into a list, where that doubles up once
+            per row. */}
         {image ? (
           <img
             src={image}
-            alt={service.name}
+            alt=""
             className="h-full w-full object-cover"
             loading="lazy"
           />

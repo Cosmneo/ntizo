@@ -96,6 +96,33 @@ describe("ServiceRow", () => {
     expect(onSelect).toHaveBeenCalledWith(base);
   });
 
+  it("prices an hourly service with its /h suffix, and shows the minimum booking rather than a duration", async () => {
+    // Traced as correct from `optionDurationMinutes` and `servicePriceAndCta`
+    // but, until now, exercised by nothing — and an hourly service is in the
+    // approved design for this page, not a hypothetical branch.
+    const hourly: ServiceDTO = {
+      ...base,
+      defaultOption: {
+        amountMinor: 120000,
+        currency: "MZN",
+        durationMinutes: null,
+        minMinutes: 240,
+        stepMinutes: 60,
+        pricingMode: "hourly",
+      },
+    };
+    renderRow(hourly);
+    // `optionDurationMinutes` returns `minMinutes` for an hourly option,
+    // never `durationMinutes` — the customer chooses how long the job runs,
+    // so the meta line states the shortest booking allowed, not a fixed
+    // length the provider does not actually set. A regex rather than an
+    // exact string: the meta line joins duration, location and pricing mode
+    // into one line (`"240 min minimum · At your place"`), so the duration
+    // is a substring of a bigger text node, not a node of its own.
+    expect(await screen.findByText(/240 min minimum/)).toBeInTheDocument();
+    expect(screen.getByText(/\/h/)).toBeInTheDocument();
+  });
+
   it("says a quote service is on request, and does not offer a calendar", async () => {
     // A quote service has no fixed duration and no price, so there is no slot
     // to check — the same reason ServiceQuoteNotice replaces the availability
@@ -114,14 +141,20 @@ describe("ServiceRow", () => {
   });
 
   it("falls back to the provider's photo when the service has none", async () => {
-    renderRow(base, "https://cdn.test/logo.jpg");
-    expect(await screen.findByRole("img")).toHaveAttribute("src", "https://cdn.test/logo.jpg");
+    // The thumbnail is decorative (`alt=""`, same as `ServiceCard`'s own —
+    // the service's name is already adjacent link text), so it carries no
+    // accessible role to query by. The DOM is read directly instead, the
+    // same trade-off `service-listing-card.test.tsx` makes for its own
+    // decorative thumbnail.
+    const { container } = renderRow(base, "https://cdn.test/logo.jpg");
+    await screen.findByText("Avaria eléctrica urgente");
+    expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn.test/logo.jpg");
   });
 
   it("renders without any photo at all", async () => {
-    renderRow(base);
+    const { container } = renderRow(base);
     expect(await screen.findByText("Avaria eléctrica urgente")).toBeInTheDocument();
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
   });
 
   it("links the name to the service's own page", async () => {
