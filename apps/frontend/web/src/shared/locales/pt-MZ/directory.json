@@ -183,11 +183,7 @@
     "city": "em {{city}}",
     "categoryCity": "em {{category}}, {{city}}"
   },
-  "heroBadgeServices": "Sem regateio",
-  "heroBadgeServicesBody": "preço e duração fechados antes de reservar",
   "heroSubtitleServices": "Escolha o trabalho, veja quanto custa e quanto demora, e combine a hora.",
-  "heroBadgeProviders": "Verificados",
-  "heroBadgeProvidersBody": "documentos conferidos pela Ntizo, um a um",
   "heroSubtitleProviders": "Pessoas e negócios com preços à vista e avaliações escritas por quem já os contratou.",
   "searchFieldService": "Serviço",
   "searchFieldServiceEmpty": "O que precisa de fazer?",

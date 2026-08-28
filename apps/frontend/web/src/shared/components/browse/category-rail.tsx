@@ -63,8 +63,21 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
             line, so without give somewhere the row can scroll a chip straight
             underneath one. That give isn't here — it can't be, this layer
             doesn't share flow with the row — it's the scroller's own padding
-            below. */}
-        <div className="page-shell pointer-events-none absolute inset-0">
+            below.
+
+            `top-6 bottom-0`, not `inset-0`: the scroller below carries more
+            padding above the chips than below (see `pt-10`/`pb-4` there), to
+            open a gap under the hero's search card. `inset-0` would stretch
+            this layer to that taller, asymmetric box and centre the arrows —
+            and, through `Fade`'s own `inset-y-0`, the fades — on the *band*,
+            which sits higher than the chip row now sits within it: the
+            arrows would float above the chips. Insetting the top by the same
+            24px the padding grew by (`pt-10` minus `pb-4`) shrinks this layer
+            back to exactly the old symmetric box, so `top-1/2` below and
+            `Fade`'s `inset-y-0` land on the chip row again, not the band. If
+            the padding split above changes, this offset has to change with
+            it — it is `pt - pb`, not a fixed 24px. */}
+        <div className="page-shell pointer-events-none absolute inset-x-0 top-6 bottom-0">
           <Fade side="left" />
           <Fade side="right" />
 
@@ -81,11 +94,21 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
             phone. Don't trim this as a duplicate of the arrows' own inset:
             it's a different box (the row, not the absolutely-positioned
             layer above) solving a different problem (the row's *content*
-            sitting under an arrow, not the arrow's own position). */}
+            sitting under an arrow, not the arrow's own position).
+
+            `pt-10`, not the `pb-4` it used to match: the hero's search card
+            straddles this band by design (see `BrowseHero`) and, with a
+            symmetric `py-4`, its bottom edge landed within a pixel of the
+            chip row's top edge — the two read as one crowded block. Padding
+            only the top opens a clear gap under the card without pushing the
+            chips' own bottom spacing along with it. `pb-4` is what `py-4`
+            used to give both sides, kept as-is. The wrapper above compensates
+            so the arrows and fades keep tracking the chip row, not this now
+            taller, asymmetric box. */}
         <div
           ref={scroller}
           data-testid="rail-scroller"
-          className="page-shell flex gap-2 overflow-x-auto py-4 sm:px-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="page-shell flex gap-2 overflow-x-auto pt-10 pb-4 sm:px-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {children}
         </div>

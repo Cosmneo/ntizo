@@ -66,11 +66,32 @@ describe("CategoryRail", () => {
     expect(rightArrow.parentElement).toBe(column);
     expect(column.className).toContain("page-shell");
     expect(column.className).toContain("absolute");
-    expect(column.className).toContain("inset-0");
+    expect(column.className).toContain("inset-x-0");
     // Not the scroller itself — a distinct, absolutely positioned layer
     // measured against the same column width.
     const scroller = container.querySelector("[data-testid='rail-scroller']")!;
     expect(column).not.toBe(scroller);
+  });
+
+  it("keeps the arrows centred on the chip row, not on the taller band the extra top padding makes", () => {
+    // The scroller pads its top more than its bottom (`pt-10`/`pb-4`) to open
+    // a gap under the hero's search card. Naively centring the arrow layer on
+    // the whole band with `inset-0` would centre the arrows on that now
+    // taller, asymmetric box instead — floating them above the chips, which
+    // is the exact defect this locks down. The fix insets the layer's top by
+    // the same amount the padding grew by (`pt-10` minus `pb-4` = 24px =
+    // `top-6`), which shrinks it back to the old symmetric box and puts
+    // `top-1/2` back on the chip row's real centre. If the padding split
+    // changes, this offset has to change with it.
+    const { container } = render(rail);
+    const scroller = container.querySelector("[data-testid='rail-scroller']")!;
+    const leftArrow = container.querySelector("[data-testid='rail-arrow-left']")!;
+    const column = leftArrow.parentElement!;
+    expect(scroller.className).toContain("pt-10");
+    expect(scroller.className).toContain("pb-4");
+    expect(column.className).toContain("top-6");
+    expect(column.className).toContain("bottom-0");
+    expect(column.className).not.toContain("inset-0");
   });
 
   it("gives the row enough padding to keep a chip from ever landing under an arrow", () => {

@@ -133,7 +133,6 @@ export function ServicesBrowsePage() {
 
       <div className="bg-[var(--color-surface-raised)]">
         <BrowseHero
-          kicker={{ badge: t("heroBadgeServices"), body: t("heroBadgeServicesBody") }}
           title={t(title.key, title.values)}
           subtitle={t("heroSubtitleServices")}
           search={<HeroSearch current={current} />}

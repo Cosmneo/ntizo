@@ -123,7 +123,6 @@ export function DirectoryPage() {
 
       <div className="bg-[var(--color-surface-raised)]">
         <BrowseHero
-          kicker={{ badge: t("heroBadgeProviders"), body: t("heroBadgeProvidersBody") }}
           title={t(title.key, title.values)}
           subtitle={t("heroSubtitleProviders")}
           search={<HeroSearch current={current} />}
