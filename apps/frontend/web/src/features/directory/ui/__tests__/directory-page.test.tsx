@@ -151,32 +151,60 @@ describe("DirectoryPage", () => {
     expect(await screen.findByText("No providers listed yet")).toBeInTheDocument();
   });
 
-  it("offers five orders, and writes the default as an absent parameter", async () => {
+  it("offers five orders in the dropdown, with only the one in force checked", async () => {
+    // A dropdown, not five links — the clearest sign the two browse pages had
+    // drifted apart, and now the shape both share again.
+    renderPage("/providers?sort=rating", { items: [provider()], total: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+
+    expect(screen.getByRole("menuitemradio", { name: "Suggested" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Best rated" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Most reviewed" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Price" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Name (A–Z)" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+
+  it("writes the chosen order to the URL and resets to the first page", async () => {
+    const { router } = renderPage("/providers?sort=rating&offset=40", {
+      items: [provider()],
+      total: 96,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Price" }));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ sort: "price" });
+    });
+  });
+
+  it("writes the default order as an absent parameter, never sort=relevance", async () => {
     // `/providers` and `/providers?sort=relevance` would otherwise be one page
     // at two URLs — two cache entries, and two things for a crawler to index.
-    // Five links rather than the dropdown that was the clearest sign the two
-    // browse pages had drifted apart.
-    renderPage("/providers?sort=rating", { items: [provider()], total: 1 });
-    expect(await screen.findByRole("link", { name: "Suggested" })).toHaveAttribute(
-      "href",
-      "/providers",
-    );
-    expect(screen.getByRole("link", { name: "Best rated" })).toHaveAttribute(
-      "href",
-      "/providers?sort=rating",
-    );
-    expect(screen.getByRole("link", { name: "Most reviewed" })).toHaveAttribute(
-      "href",
-      "/providers?sort=reviews",
-    );
-    expect(screen.getByRole("link", { name: "Price" })).toHaveAttribute(
-      "href",
-      "/providers?sort=price",
-    );
-    expect(screen.getByRole("link", { name: "Name (A–Z)" })).toHaveAttribute(
-      "href",
-      "/providers?sort=name",
-    );
+    const { router } = renderPage("/providers?sort=rating", {
+      items: [provider()],
+      total: 1,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Sort" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
   });
 
   it("shows what is narrowing the list, each with the link that removes just it", async () => {
@@ -293,16 +321,15 @@ describe("DirectoryPage", () => {
     });
   });
 
-  it("marks only the order and the category actually in force as the current page", async () => {
+  it("marks only the category actually in force as the current page", async () => {
     // TanStack matches a link's search as a *subset* of the current one, so
-    // "Suggested" and "All" — whose search is empty — were both announced as
-    // the page you are on the moment anything was set. `EXACT_MATCH` makes it
-    // an equality test.
+    // "All" — whose search is empty — was announced as the page you are on the
+    // moment anything else was set. `EXACT_MATCH` makes it an equality test.
+    // The sort's own active state is not this trap's business any more: it is
+    // a menu row's `aria-checked`, decided by comparing the URL to a value
+    // this page already holds, not a `<Link>` guessing from a subset match.
     renderPage("/providers?sort=rating&category=hair", { items: [provider()], total: 1 });
-    expect(await screen.findByRole("link", { name: "Suggested" })).not.toHaveAttribute(
-      "aria-current",
-    );
-    expect(screen.getByRole("link", { name: /All/ })).not.toHaveAttribute("aria-current");
+    expect(await screen.findByRole("link", { name: /All/ })).not.toHaveAttribute("aria-current");
     // And the site header's own /providers link, which genuinely *is* this
     // page, still says so — the fix must not silence a true one.
     expect(screen.getByRole("link", { name: "Providers" })).toHaveAttribute(
