@@ -23,10 +23,27 @@
   "send": "Enviar",
   "sending": "A enviar…",
   "loadError": "Não foi possível carregar as suas conversas. Tente novamente.",
+  "contactWarning": "Não é permitido partilhar contactos nas mensagens. Manter a conversa aqui significa que fica registada, há sempre alguém a quem recorrer se algo correr mal, e é o que torna possível uma avaliação.",
+  "attachmentPickerLabel": "Anexar um ficheiro",
+  "removeAttachment": "Remover {{fileName}}",
+  "attachmentsLimitReached": "Atingiu o limite de {{max}} ficheiros.",
+  "attachmentLoadError": "Não foi possível carregar este ficheiro. Tente novamente.",
+  "attachmentError": {
+    "TOO_LARGE": "Este ficheiro tem mais de 10 MB.",
+    "UNACCEPTED_TYPE": "Este tipo de ficheiro não é suportado. Use JPEG, PNG, WEBP ou PDF.",
+    "CONTACT_IN_FILE_NAME": "O nome deste ficheiro não pode conter um número de telefone, email ou link.",
+    "ATTACHMENT_STORAGE_UNCONFIGURED": "O envio de ficheiros não está disponível de momento.",
+    "NO_FILE": "Nenhum ficheiro foi recebido. Tente novamente.",
+    "UNAUTHENTICATED": "Inicie sessão novamente para anexar um ficheiro.",
+    "GENERIC": "Não foi possível anexar este ficheiro. Tente novamente."
+  },
   "sendError": {
     "VALIDATION_ERROR": "As mensagens podem ter até 4000 caracteres.",
     "THREAD_NOT_VISIBLE": "Esta conversa já não está disponível.",
     "UNAUTHENTICATED": "Inicie sessão novamente para enviar esta mensagem.",
+    "MESSAGE_EMPTY": "Escreva algo, ou anexe um ficheiro.",
+    "TOO_MANY_ATTACHMENTS": "Uma mensagem pode ter no máximo 5 ficheiros.",
+    "ATTACHMENT_NOT_AVAILABLE": "Um destes ficheiros já não está disponível. Remova-o e tente novamente.",
     "GENERIC": "Não foi possível enviar a mensagem. Tente novamente."
   }
 }

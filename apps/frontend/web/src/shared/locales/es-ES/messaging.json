@@ -23,10 +23,27 @@
   "send": "Enviar",
   "sending": "Enviando…",
   "loadError": "No se pudieron cargar tus conversaciones. Inténtalo de nuevo.",
+  "contactWarning": "No se permiten datos de contacto en los mensajes. Mantener la conversación aquí significa que queda registrada, que hay alguien a quien acudir si algo sale mal, y que es lo que hace posible una reseña.",
+  "attachmentPickerLabel": "Adjuntar un archivo",
+  "removeAttachment": "Quitar {{fileName}}",
+  "attachmentsLimitReached": "Has alcanzado el límite de {{max}} archivos.",
+  "attachmentLoadError": "No se pudo cargar este archivo. Inténtalo de nuevo.",
+  "attachmentError": {
+    "TOO_LARGE": "Este archivo pesa más de 10 MB.",
+    "UNACCEPTED_TYPE": "Este tipo de archivo no es compatible. Usa JPEG, PNG, WEBP o PDF.",
+    "CONTACT_IN_FILE_NAME": "El nombre de este archivo no puede incluir un número de teléfono, email o enlace.",
+    "ATTACHMENT_STORAGE_UNCONFIGURED": "Ahora mismo no se pueden subir archivos.",
+    "NO_FILE": "No se recibió ningún archivo. Inténtalo de nuevo.",
+    "UNAUTHENTICATED": "Vuelve a iniciar sesión para adjuntar un archivo.",
+    "GENERIC": "No se pudo adjuntar ese archivo. Inténtalo de nuevo."
+  },
   "sendError": {
     "VALIDATION_ERROR": "Los mensajes pueden tener hasta 4000 caracteres.",
     "THREAD_NOT_VISIBLE": "Esta conversación ya no está disponible.",
     "UNAUTHENTICATED": "Vuelve a iniciar sesión para enviar este mensaje.",
+    "MESSAGE_EMPTY": "Escribe algo, o adjunta un archivo.",
+    "TOO_MANY_ATTACHMENTS": "Un mensaje puede llevar como máximo 5 archivos.",
+    "ATTACHMENT_NOT_AVAILABLE": "Uno de estos archivos ya no está disponible. Quítalo e inténtalo de nuevo.",
     "GENERIC": "No se pudo enviar el mensaje. Inténtalo de nuevo."
   }
 }

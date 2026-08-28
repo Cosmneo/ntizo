@@ -23,10 +23,27 @@
   "send": "Senden",
   "sending": "Wird gesendet…",
   "loadError": "Deine Unterhaltungen konnten nicht geladen werden. Bitte versuche es erneut.",
+  "contactWarning": "Kontaktdaten sind in Nachrichten nicht erlaubt. Das Gespräch bleibt hier dokumentiert, es gibt jemanden, an den du dich bei Problemen wenden kannst, und nur so ist eine Bewertung möglich.",
+  "attachmentPickerLabel": "Datei anhängen",
+  "removeAttachment": "{{fileName}} entfernen",
+  "attachmentsLimitReached": "Du hast das Limit von {{max}} Dateien erreicht.",
+  "attachmentLoadError": "Diese Datei konnte nicht geladen werden. Bitte versuche es erneut.",
+  "attachmentError": {
+    "TOO_LARGE": "Diese Datei ist größer als 10 MB.",
+    "UNACCEPTED_TYPE": "Dieser Dateityp wird nicht unterstützt. Verwende JPEG, PNG, WEBP oder PDF.",
+    "CONTACT_IN_FILE_NAME": "Der Dateiname darf keine Telefonnummer, E-Mail-Adresse oder keinen Link enthalten.",
+    "ATTACHMENT_STORAGE_UNCONFIGURED": "Datei-Uploads sind derzeit nicht verfügbar.",
+    "NO_FILE": "Es wurde keine Datei empfangen. Bitte versuche es erneut.",
+    "UNAUTHENTICATED": "Melde dich erneut an, um eine Datei anzuhängen.",
+    "GENERIC": "Diese Datei konnte nicht angehängt werden. Bitte versuche es erneut."
+  },
   "sendError": {
     "VALIDATION_ERROR": "Nachrichten dürfen bis zu 4000 Zeichen lang sein.",
     "THREAD_NOT_VISIBLE": "Diese Unterhaltung ist nicht mehr verfügbar.",
     "UNAUTHENTICATED": "Melde dich erneut an, um diese Nachricht zu senden.",
+    "MESSAGE_EMPTY": "Schreib etwas, oder hänge eine Datei an.",
+    "TOO_MANY_ATTACHMENTS": "Eine Nachricht darf höchstens 5 Dateien enthalten.",
+    "ATTACHMENT_NOT_AVAILABLE": "Eine dieser Dateien ist nicht mehr verfügbar. Entferne sie und versuche es erneut.",
     "GENERIC": "Diese Nachricht konnte nicht gesendet werden. Bitte versuche es erneut."
   }
 }

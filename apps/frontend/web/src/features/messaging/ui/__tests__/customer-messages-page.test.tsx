@@ -51,6 +51,7 @@ const messages: Message[] = [
     body: "Olá, ainda tem vaga?",
     readAt: null,
     createdAt: "2026-08-20T09:00:00Z",
+    attachments: [],
   },
   {
     id: "m2",
@@ -59,6 +60,7 @@ const messages: Message[] = [
     body: "Tenho sim!",
     readAt: null,
     createdAt: "2026-08-20T09:05:00Z",
+    attachments: [],
   },
 ];
 
@@ -213,6 +215,7 @@ describe("CustomerMessagesPage: marking a thread read on open", () => {
           body: "Ainda tem vaga às 15h?",
           readAt: null,
           createdAt: "2026-08-20T09:10:00Z",
+          attachments: [],
         },
         ...messages,
       ],
@@ -254,7 +257,7 @@ describe("CustomerMessagesPage: composing", () => {
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    expect(send).toHaveBeenCalledWith("t1", "Obrigado!");
+    expect(send).toHaveBeenCalledWith("t1", "Obrigado!", []);
   });
 });
 

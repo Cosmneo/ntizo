@@ -38,6 +38,26 @@ export interface Thread {
 }
 
 /**
+ * One file riding with a message, as a conversation view draws it.
+ *
+ * No `storageKey` — same reason `messageAttachmentReadModel` on the backend
+ * omits it: a client downloads by `id`, through
+ * `/api/communication/attachments/:id`, which re-checks visibility itself
+ * rather than trusting a bucket key nobody here has verified this viewer may
+ * reach. `contentType` and `sizeBytes` are what a display needs to choose a
+ * thumbnail versus a file card and to show a size — both read back from
+ * storage server-side, never from anything a client claimed (see
+ * `AttachmentDescriptor`'s own doc comment for the other half of that
+ * split: what a client is trusted to say on the way *up*).
+ */
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+/**
  * One message, as a conversation view draws it.
  *
  * `readAt` is `null` until the recipient marks the thread read — see
@@ -52,6 +72,8 @@ export interface Message {
   readAt: string | null;
   /** ISO 8601. Messages list newest-first — the order the wire sends them in; nothing in this feature re-sorts. */
   createdAt: string;
+  /** Always present — `[]` for a message with none, never omitted. See `messageReadModel`'s own doc comment for why the projection guarantees this rather than a display having to. */
+  attachments: readonly MessageAttachment[];
 }
 
 /**
@@ -65,3 +87,55 @@ export interface Message {
  * let them type past it and find out only after they hit send.
  */
 export const MESSAGE_BODY_MAX_LENGTH = 4000;
+
+/**
+ * What a client may say about one already-uploaded file when it sends a
+ * message — the same shape `SendMessageCommand`'s `AttachmentDescriptor`
+ * accepts on the wire (`communicationSend`'s `attachments` input), and
+ * nothing more. Deliberately absent: `contentType`, `sizeBytes`. Both are
+ * read back from the object storage holds, on the server, from
+ * `AttachmentStoragePort.head` — never taken from the wire. A client that
+ * uploaded a genuine JPEG and then claimed a different type here would undo
+ * the exact guarantee `sniffContentType` (Task 3) and the upload route
+ * (Task 5) exist to provide, so the server ignores anything sent under
+ * either key. Do not add them back "for completeness" — see
+ * `mutations.ts`'s own doc comment on the backend for the same warning.
+ */
+export interface AttachmentDescriptor {
+  storageKey: string;
+  fileName: string;
+}
+
+/**
+ * The most attachments one message may carry. Mirrors, not imports,
+ * `MAX_ATTACHMENTS` in
+ * `packages/backend/.../communication/domain/aggregates/message.aggregate.ts`
+ * — this app has no dependency on `@ntizo/backend` (a server-only package:
+ * database drivers, Node-only infrastructure) and adding one just to reach a
+ * single constant would drag that whole graph into a browser bundle. Same
+ * trade `MESSAGE_BODY_MAX_LENGTH` above already makes for `MESSAGE_BODY_MAX`.
+ * A picker built on this must stop someone at this count, not let them
+ * attach a sixth file only to have `communicationSend` refuse it as
+ * `TOO_MANY_ATTACHMENTS`.
+ */
+export const MAX_ATTACHMENTS = 5;
+
+/**
+ * 10 MB. Mirrors, not imports, `MAX_ATTACHMENT_BYTES` in
+ * `packages/backend/.../communication/domain/attachment.ts` — same reason
+ * `MAX_ATTACHMENTS` above mirrors rather than imports. A picker built on
+ * this must refuse an oversized file before spending a single byte of
+ * upload on one the server was always going to answer `413` to.
+ */
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * What the upload route will ever accept, sniffed from the file's own bytes
+ * server-side — mirrors, not imports, `ACCEPTED_ATTACHMENT_TYPES` in
+ * `packages/backend/.../communication/domain/attachment.ts`, for the same
+ * reason `MAX_ATTACHMENTS` above does. Exists for exactly one consumer:
+ * `AttachmentPicker`'s file input `accept` attribute — a hint to the file
+ * dialog, not enforcement; the server decides from bytes, never from this
+ * list or from `file.type`, which the picker's caller chose.
+ */
+export const ACCEPTED_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;

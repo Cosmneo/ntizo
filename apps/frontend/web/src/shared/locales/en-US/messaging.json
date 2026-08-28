@@ -23,10 +23,27 @@
   "send": "Send",
   "sending": "Sending…",
   "loadError": "Couldn't load your conversations. Please try again.",
+  "contactWarning": "Contact details aren't allowed in messages. Keeping the conversation here means it's on record, there's someone to turn to if something goes wrong, and it's what makes a review possible.",
+  "attachmentPickerLabel": "Attach a file",
+  "removeAttachment": "Remove {{fileName}}",
+  "attachmentsLimitReached": "You've reached the {{max}}-file limit.",
+  "attachmentLoadError": "Couldn't load this file. Try again.",
+  "attachmentError": {
+    "TOO_LARGE": "This file is larger than 10 MB.",
+    "UNACCEPTED_TYPE": "This file type isn't supported. Use a JPEG, PNG, WEBP, or PDF.",
+    "CONTACT_IN_FILE_NAME": "This file's name can't include a phone number, email, or link.",
+    "ATTACHMENT_STORAGE_UNCONFIGURED": "File uploads aren't available right now.",
+    "NO_FILE": "No file was received. Try again.",
+    "UNAUTHENTICATED": "Sign in again to attach a file.",
+    "GENERIC": "Couldn't attach that file. Try again."
+  },
   "sendError": {
     "VALIDATION_ERROR": "Messages can be up to 4000 characters.",
     "THREAD_NOT_VISIBLE": "This conversation is no longer available.",
     "UNAUTHENTICATED": "Sign in again to send this message.",
+    "MESSAGE_EMPTY": "Write something, or attach a file.",
+    "TOO_MANY_ATTACHMENTS": "A message can carry at most 5 files.",
+    "ATTACHMENT_NOT_AVAILABLE": "One of these files is no longer available. Remove it and try again.",
     "GENERIC": "That message didn't send. Please try again."
   }
 }

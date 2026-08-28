@@ -38,10 +38,20 @@ const PROVIDER_THREADS = `
     }
   }`;
 
+/**
+ * `attachments { id fileName contentType sizeBytes }` — deliberately no
+ * `storageKey`, matching `messageAttachmentReadModel`'s own wire shape: a
+ * client downloads by `id`, through `/api/communication/attachments/:id`,
+ * which re-checks visibility itself. Task 6 put `attachments` on the read
+ * model and on the wire; this selection set is the one place that actually
+ * asks a running server for it — a field that reaches the schema but never
+ * the query renders nothing, with every backend test still green, because
+ * nothing there exercises this file at all.
+ */
 const THREAD_MESSAGES = `
   query ThreadMessages($input: CommunicationThreadMessagesInput!) {
     communicationThreadMessages(input: $input) {
-      items { id threadId senderUserId body readAt createdAt }
+      items { id threadId senderUserId body readAt createdAt attachments { id fileName contentType sizeBytes } }
       nextCursor
     }
   }`;

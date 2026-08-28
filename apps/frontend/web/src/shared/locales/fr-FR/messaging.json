@@ -23,10 +23,27 @@
   "send": "Envoyer",
   "sending": "Envoi en cours…",
   "loadError": "Impossible de charger vos conversations. Veuillez réessayer.",
+  "contactWarning": "Les coordonnées ne sont pas autorisées dans les messages. Garder la conversation ici, c'est avoir une trace, quelqu'un vers qui se tourner en cas de problème, et c'est ce qui rend un avis possible.",
+  "attachmentPickerLabel": "Joindre un fichier",
+  "removeAttachment": "Retirer {{fileName}}",
+  "attachmentsLimitReached": "Vous avez atteint la limite de {{max}} fichiers.",
+  "attachmentLoadError": "Impossible de charger ce fichier. Veuillez réessayer.",
+  "attachmentError": {
+    "TOO_LARGE": "Ce fichier dépasse 10 Mo.",
+    "UNACCEPTED_TYPE": "Ce type de fichier n'est pas pris en charge. Utilisez un JPEG, un PNG, un WEBP ou un PDF.",
+    "CONTACT_IN_FILE_NAME": "Le nom de ce fichier ne peut pas contenir de numéro de téléphone, d'email ou de lien.",
+    "ATTACHMENT_STORAGE_UNCONFIGURED": "L'envoi de fichiers n'est pas disponible pour le moment.",
+    "NO_FILE": "Aucun fichier n'a été reçu. Veuillez réessayer.",
+    "UNAUTHENTICATED": "Reconnectez-vous pour joindre un fichier.",
+    "GENERIC": "Ce fichier n'a pas pu être joint. Veuillez réessayer."
+  },
   "sendError": {
     "VALIDATION_ERROR": "Les messages peuvent compter jusqu'à 4000 caractères.",
     "THREAD_NOT_VISIBLE": "Cette conversation n'est plus disponible.",
     "UNAUTHENTICATED": "Reconnectez-vous pour envoyer ce message.",
+    "MESSAGE_EMPTY": "Écrivez quelque chose, ou joignez un fichier.",
+    "TOO_MANY_ATTACHMENTS": "Un message peut contenir 5 fichiers au maximum.",
+    "ATTACHMENT_NOT_AVAILABLE": "L'un de ces fichiers n'est plus disponible. Retirez-le et réessayez.",
     "GENERIC": "Ce message n'a pas pu être envoyé. Veuillez réessayer."
   }
 }

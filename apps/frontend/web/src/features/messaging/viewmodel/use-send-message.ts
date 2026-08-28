@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-error";
+import type { AttachmentDescriptor } from "@/features/messaging/domain/types";
 
 /**
  * Field name is flat (`communicationSend`, not `communication { send }`) —
@@ -9,10 +10,17 @@ import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-err
  * introspecting the running API's mutation type.
  *
  * `body` is capped at 4000 characters server-side
- * (`z.string().trim().min(1).max(4000)`, mirroring `Message.compose`'s own
- * bound) and refused as `VALIDATION_ERROR` past it — see
- * `MESSAGE_BODY_MAX_LENGTH` in `domain/types.ts`. A composer built on this
- * hook must stop someone at that length, not let them find out on submit.
+ * (`z.string().trim().max(4000)`, mirroring `Message.compose`'s own bound)
+ * and refused as `VALIDATION_ERROR` past it — see `MESSAGE_BODY_MAX_LENGTH`
+ * in `domain/types.ts`. A composer built on this hook must stop someone at
+ * that length, not let them find out on submit. No server-side `.min(1)`
+ * any more: a body-less send is legal exactly when `attachments` is not
+ * empty (see `AttachmentDescriptor`'s own doc comment) — refused as
+ * `MESSAGE_EMPTY` only when both are.
+ *
+ * `attachments` carries only `storageKey`/`fileName` per entry, capped at 5
+ * server-side — see `AttachmentDescriptor`'s own doc comment for why
+ * `contentType`/`sizeBytes` are never sent.
  */
 const SEND = `
   mutation SendMessage($input: CommunicationSendInput!) {
@@ -28,10 +36,19 @@ const SEND = `
  * nested `communication { send(...) } }` rewrite passed `vitest` and
  * `tsc` clean, the exact regression this project has already lost a round
  * to twice elsewhere. See `__tests__/use-send-message.test.ts`.
+ *
+ * `attachments` always rides along, even as `[]` for a body-only send —
+ * one shape rather than two ("with attachments" / "without"), and `[]` is
+ * exactly what an `.optional()` array input treats identically to omitting
+ * it (`resolveAttachments` maps over zero descriptors either way).
  */
-export function sendMessage(threadId: string, body: string): Promise<string> {
+export function sendMessage(
+  threadId: string,
+  body: string,
+  attachments: AttachmentDescriptor[] = [],
+): Promise<string> {
   return sessionGraphql<{ communicationSend: { id: string } }>(SEND, {
-    input: { threadId, body },
+    input: { threadId, body, attachments },
   }).then((d) => d.communicationSend.id);
 }
 
@@ -57,14 +74,21 @@ export function useSendMessage() {
   const qc = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ threadId, body }: { threadId: string; body: string }) =>
-      sendMessage(threadId, body),
+    mutationFn: ({
+      threadId,
+      body,
+      attachments,
+    }: {
+      threadId: string;
+      body: string;
+      attachments: AttachmentDescriptor[];
+    }) => sendMessage(threadId, body, attachments),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["messaging"] }),
   });
 
   return {
-    send: (threadId: string, body: string) =>
-      mutation.mutate({ threadId, body }),
+    send: (threadId: string, body: string, attachments: AttachmentDescriptor[] = []) =>
+      mutation.mutate({ threadId, body, attachments }),
     sending: mutation.isPending,
     /**
      * `"VALIDATION_ERROR"` for an empty or >4000-character body,

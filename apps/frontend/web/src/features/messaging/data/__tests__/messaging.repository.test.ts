@@ -243,8 +243,32 @@ describe("messagingQueries.thread", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id threadId senderUserId body readAt createdAt }",
+      "items { id threadId senderUserId body readAt createdAt attachments { id fileName contentType sizeBytes } }",
     );
+  });
+
+  it("selects attachments, not just the fields that predate Task 6", async () => {
+    // Task 6 put `attachments` on `messageReadModel` and on the wire, but
+    // nothing asked for it here until this test: the fixture below hands
+    // `attachments` back regardless of what the query text asks for (same
+    // as every other field in this file), so this is the one assertion that
+    // actually catches the field being dropped again — the exact gap this
+    // task's own brief flagged as its point.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationThreadMessages: twoMessagePage } as never);
+
+    const opts = messagingQueries.thread("t1");
+    await queryFnOf<MessagePageDTO>(opts)({ pageParam: undefined });
+
+    const [query] = spy.mock.calls[0]!;
+    expect(query as string).toContain(
+      "attachments { id fileName contentType sizeBytes }",
+    );
+    // Never the bucket key — `messageAttachmentReadModel` omits it on
+    // purpose, and a query asking for it would be asking a field the
+    // schema does not have.
+    expect(query as string).not.toContain("storageKey");
   });
 
   it("passes a later cursor through untouched", async () => {
