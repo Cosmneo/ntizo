@@ -507,6 +507,53 @@ describe("ListThreadMessagesProjection", () => {
     });
   });
 
+  /**
+   * The one-message page above cannot tell a per-id lookup apart from a
+   * positional one, and the paging tests use a page where NO message has
+   * attachments. So this exists: two messages, one with files and one
+   * without, each asserted separately.
+   *
+   * The mutation it closes was found by review and passed all sixteen other
+   * tests: apply whichever attachments array comes first in the map to every
+   * message in the page. Under that bug a customer sees another message's
+   * files hanging off their own, and nothing goes red.
+   */
+  it("gives each message in a page its own attachments, and none to the message with none", async () => {
+    const threads = new FakeThreadRepository(emptyThreadPage, { "t1:u-customer": true });
+    const page: MessagePage = {
+      items: [
+        message({ id: "m1", threadId: "t1", senderUserId: "u-provider-staff", body: "O orçamento" }),
+        message({ id: "m2", threadId: "t1", senderUserId: "u-customer", body: "Obrigado" }),
+      ],
+      nextCursor: null,
+    };
+    const messages = new FakeMessageRepository(page);
+    const row: AttachmentRow = {
+      id: "a1",
+      messageId: "m1",
+      storageKey: "attachment/u-provider-staff/123-uuid",
+      fileName: "orcamento.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 1024,
+      createdAt: new Date("2026-08-21T09:00:00.000Z"),
+    };
+    // Only m1 is in the map. m2's absence is the normal shape, not an edge
+    // case: `listForMessages` omits messages with no attachments entirely
+    // rather than mapping them to an empty array.
+    const attachments = new FakeAttachmentRepository(new Map([["m1", [row]]]));
+
+    const result = await new ListThreadMessagesProjection(threads, messages, attachments).execute({
+      requesterUserId: "u-customer",
+      threadId: "t1",
+    });
+
+    expect(result.items[0]!.id).toBe("m1");
+    expect(result.items[0]!.attachments).toHaveLength(1);
+    expect(result.items[0]!.attachments[0]!.fileName).toBe("orcamento.pdf");
+    expect(result.items[1]!.id).toBe("m2");
+    expect(result.items[1]!.attachments).toEqual([]);
+  });
+
   it("carries a message's attachments", async () => {
     const threads = new FakeThreadRepository(emptyThreadPage, { "t1:u-customer": true });
     const page: MessagePage = {
