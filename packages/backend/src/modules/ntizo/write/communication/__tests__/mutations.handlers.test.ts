@@ -87,7 +87,7 @@ describe("the communication write schema", () => {
     };
 
     expect(shapeKeys(startThread)).toEqual(["providerId"]);
-    expect(shapeKeys(send)).toEqual(["body", "threadId"]);
+    expect(shapeKeys(send)).toEqual(["attachments", "body", "threadId"]);
     expect(shapeKeys(markRead)).toEqual(["threadId"]);
   });
 });
@@ -237,20 +237,64 @@ describe("createCommunicationWriteHandlers", () => {
   });
 
   /**
-   * `send`'s body bound (`.trim().min(1).max(4000)`) reaches the emitted
-   * field, mirroring `Message.compose` / `MESSAGE_BODY_MAX` — a caller
-   * sending an empty (or all-whitespace) body gets a VALIDATION_ERROR
-   * without the use case ever running, the same "cheap edge refusal" split
-   * `read/communication`'s `limit` bound documents.
+   * `send`'s body bound is `.trim().max(4000)` — deliberately no
+   * `.min(1)`, unlike before Task 6b. A blank (or all-whitespace) body must
+   * now REACH the use case rather than being refused at this schema edge:
+   * `Message.compose` is what decides whether a message carries anything,
+   * because it alone knows whether an attachment rode along too. If
+   * `.min(1)` ever comes back, this reds — a blank body would be refused as
+   * VALIDATION_ERROR before `sendSpy` is ever called.
    */
-  it("rejects a blank body as VALIDATION_ERROR (the wire code), on the built handler", async () => {
+  it("passes a blank body straight through to the use case, trimmed, rather than refusing it here", async () => {
     const sendSpy = spyUseCase({ id: "m1" });
     const handlers = createCommunicationWriteHandlers(makeModule({ sendMessage: sendSpy }));
     const field = handlers.find((h) => h.key === "communication.send")!;
 
+    await field.handler({ threadId: "t1", body: "   " }, ctx());
+
+    expect(sendSpy.calls).toEqual([{ threadId: "t1", senderUserId: "u-session", body: "" }]);
+  });
+
+  /**
+   * The exact case Task 6b exists to un-break: a photograph with no
+   * caption. `.min(1)` refused this at the schema edge before the use case
+   * ever ran — Task 2's `Message.compose` rule (an attachment can stand in
+   * for a body) was dead code as long as it did. This is "the
+   * photo-with-no-caption test" the brief's mutation table names: reinstate
+   * `.min(1)` on `body` and this reds, because zod refuses the whole input
+   * before `sendSpy` is ever called.
+   */
+  it("accepts an empty body when the message carries an attachment, and forwards the descriptor unchanged", async () => {
+    const sendSpy = spyUseCase({ id: "m1" });
+    const handlers = createCommunicationWriteHandlers(makeModule({ sendMessage: sendSpy }));
+    const field = handlers.find((h) => h.key === "communication.send")!;
+    const attachments = [{ storageKey: "attachment/u-session/one.png", fileName: "one.png" }];
+
+    await field.handler({ threadId: "t1", body: "", attachments }, ctx());
+
+    expect(sendSpy.calls).toEqual([
+      { threadId: "t1", senderUserId: "u-session", body: "", attachments },
+    ]);
+  });
+
+  /**
+   * `attachments`' bound (`.max(5)`, matching `MAX_ATTACHMENTS`) reaches
+   * the emitted field the same way `body`'s `.max(4000)` does — refused at
+   * the schema edge, before the use case runs, as a cheap duplicate of
+   * `Message.compose`'s own count check.
+   */
+  it("rejects more than five attachments as VALIDATION_ERROR (the wire code), before the use case runs", async () => {
+    const sendSpy = spyUseCase({ id: "m1" });
+    const handlers = createCommunicationWriteHandlers(makeModule({ sendMessage: sendSpy }));
+    const field = handlers.find((h) => h.key === "communication.send")!;
+    const tooMany = Array.from({ length: 6 }, (_, i) => ({
+      storageKey: `attachment/u-session/${i}.png`,
+      fileName: `${i}.png`,
+    }));
+
     let caught: unknown;
     try {
-      await field.handler({ threadId: "t1", body: "   " }, ctx());
+      await field.handler({ threadId: "t1", body: "olá", attachments: tooMany }, ctx());
     } catch (err) {
       caught = err;
     }

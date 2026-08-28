@@ -48,6 +48,7 @@ import { buildYoga } from "./build-yoga";
 import { buildHardeningPlugins } from "./hardening";
 import { createGraphqlContextFactory } from "./context-factory";
 import { graphqlCorsFetch } from "./cors";
+import { AttachmentStorageAdapter, runWithAttachmentsBucket } from "../attachment-storage.adapter";
 import type { AppBindings } from "../types";
 
 /**
@@ -95,6 +96,12 @@ export function buildPrivateGraphQLFields(): {
   const communicationRead = bootstrapCommunicationRead();
   const communication = bootstrapCommunication({
     raiseNotification: notification.useCases.internal.raiseNotification,
+    // Reads the CURRENT request's `ATTACHMENTS_BUCKET` via
+    // `runWithAttachmentsBucket` below at call time, not now — this
+    // function runs once at module scope (see this file's own doc
+    // comment), before any request, and therefore before any `c.env`,
+    // exists.
+    attachmentStorage: new AttachmentStorageAdapter(),
   });
   const workflows = bootstrapProviderWorkflows({
     userInternal: {
@@ -160,8 +167,13 @@ function getYoga(stage: string) {
 export function mountPrivateGraphql(app: Hono<{ Bindings: AppBindings }>) {
   app.all("/graphql", (c) => {
     const stage = c.env.STAGE ?? "local";
-    return graphqlCorsFetch(c.req.raw, stage, (request) =>
-      getYoga(stage).fetch(request),
+    // Wraps the whole request — CORS included — so every resolver Yoga
+    // invokes while handling it, `communication.send` among them, can see
+    // this request's attachments bucket through `AttachmentStorageAdapter`,
+    // however deep the call that needs it. See `runWithAttachmentsBucket`'s
+    // own doc comment for why nothing shallower in this chain carries it.
+    return runWithAttachmentsBucket(c.env.ATTACHMENTS_BUCKET, () =>
+      graphqlCorsFetch(c.req.raw, stage, (request) => getYoga(stage).fetch(request)),
     );
   });
 }

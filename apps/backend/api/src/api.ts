@@ -20,6 +20,7 @@ import { mountPublicGraphql } from "./graphql/public";
 import { mountDocuments } from "./documents";
 import { mountMedia } from "./media";
 import { mountAttachments } from "./attachments";
+import { AttachmentStorageAdapter } from "./attachment-storage.adapter";
 import { mountWebhooks } from "./webhooks";
 import { configureMediaUrlBase } from "@ntizo/backend/modules/ntizo/media";
 import "./bootstrap";
@@ -59,9 +60,14 @@ const notificationBootstrap = bootstrapNotification();
 // other contexts' read repositories rather than a use case — see
 // `bootstrapCommunication`'s own doc comment for why that adapter is exposed
 // at all. `raiseNotification` is required only because the same bootstrap
-// also wires `NotifyUnreadInternalCommand`, which this mount never calls.
+// also wires `NotifyUnreadInternalCommand`, which this mount never calls —
+// `attachmentStorage` likewise, because `bootstrapCommunication` always
+// wires `SendMessageCommand`, even though nothing routed through THIS
+// instance ever calls it either (the GraphQL write mutations use a separate
+// instance — see `graphql/private.ts`).
 const communicationBootstrap = bootstrapCommunication({
   raiseNotification: notificationBootstrap.useCases.internal.raiseNotification,
+  attachmentStorage: new AttachmentStorageAdapter(),
 });
 
 // Bootstrapped here too, at module scope beside `notificationBootstrap`: the

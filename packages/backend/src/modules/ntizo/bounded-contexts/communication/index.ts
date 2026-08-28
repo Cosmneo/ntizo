@@ -1,4 +1,8 @@
-export { bootstrapCommunication, type CommunicationBootstrap } from "./bootstrap";
+export {
+  bootstrapCommunication,
+  type CommunicationBootstrap,
+  type CommunicationBootstrapDeps,
+} from "./bootstrap";
 
 export {
   MAX_ATTACHMENT_BYTES,
@@ -17,6 +21,7 @@ export {
   MessageEmptyError,
   MessageBodyTooLongError,
   TooManyAttachmentsError,
+  AttachmentNotAvailableError,
   ThreadNotVisibleError,
   ProviderNotContactableError,
   ThreadTypeInvalidError,
@@ -24,7 +29,11 @@ export {
 } from "./domain/exceptions";
 
 export { StartThreadCommand, type StartThreadInput } from "./app/use-cases/start-thread.command";
-export { SendMessageCommand, type SendMessageInput } from "./app/use-cases/send-message.command";
+export {
+  SendMessageCommand,
+  type SendMessageInput,
+  type AttachmentDescriptor,
+} from "./app/use-cases/send-message.command";
 export {
   MarkThreadReadCommand,
   type MarkThreadReadInput,
@@ -45,6 +54,10 @@ export type {
   NewAttachment,
   AttachmentRepositoryPort,
 } from "./app/ports/outbound/attachment.repository.port";
+export type {
+  StoredAttachmentMetadata,
+  AttachmentStoragePort,
+} from "./app/ports/outbound/attachment-storage.port";
 export type { ProviderReaderPort } from "./app/ports/outbound/provider-reader.port";
 export type {
   RaiseNotificationInput,

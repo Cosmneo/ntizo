@@ -71,6 +71,30 @@ export class TooManyAttachmentsError extends UnprocessableError {
 }
 
 /**
+ * Refused because an attachment descriptor `sendMessage` was given does not
+ * point at a file this sender may attach — collapsing three different
+ * reasons into one answer, deliberately:
+ *
+ * 1. `storageKey` does not start with this sender's own
+ *    `attachment/<senderUserId>/` prefix.
+ * 2. No object exists at that key at all.
+ * 3. The object's `customMetadata.uploadedByUserId` names somebody else.
+ *
+ * Same reason `ThreadNotVisibleError` collapses "not yours" and "doesn't
+ * exist": telling these apart would tell a caller probing storage keys
+ * which ones are real and who owns them.
+ */
+export class AttachmentNotAvailableError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "One of these files is not available to attach.",
+      code: "ATTACHMENT_NOT_AVAILABLE",
+    });
+    this.name = "AttachmentNotAvailableError";
+  }
+}
+
+/**
  * Refused because the caller cannot see this thread — or because no such
  * thread exists.
  *

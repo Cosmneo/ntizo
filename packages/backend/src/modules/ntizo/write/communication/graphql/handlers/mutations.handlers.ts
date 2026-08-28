@@ -55,6 +55,7 @@ export function createCommunicationWriteHandlers(mod: CommunicationWriteModule) 
         threadId: args.input.threadId,
         senderUserId: requireUser(ctx),
         body: args.input.body,
+        attachments: args.input.attachments,
       }),
     )
     .handle("communication.markRead", async (args, ctx) =>

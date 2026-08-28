@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Message } from "../domain/aggregates/message.aggregate";
-import { ProviderNotContactableError, ThreadNotVisibleError } from "../domain/exceptions";
+import {
+  AttachmentNotAvailableError,
+  ProviderNotContactableError,
+  ThreadNotVisibleError,
+  TooManyAttachmentsError,
+} from "../domain/exceptions";
 import { StartThreadCommand } from "../app/use-cases/start-thread.command";
-import { SendMessageCommand } from "../app/use-cases/send-message.command";
+import {
+  SendMessageCommand,
+  type AttachmentDescriptor,
+} from "../app/use-cases/send-message.command";
 import { MarkThreadReadCommand } from "../app/use-cases/mark-thread-read.command";
 import type {
   DueMessage,
@@ -16,6 +24,10 @@ import type {
   ThreadRepositoryPort,
 } from "../app/ports/outbound/thread.repository.port";
 import type { AttachmentRepositoryPort, NewAttachment } from "../app/ports/outbound/attachment.repository.port";
+import type {
+  AttachmentStoragePort,
+  StoredAttachmentMetadata,
+} from "../app/ports/outbound/attachment-storage.port";
 import type { ProviderReaderPort } from "../app/ports/outbound/provider-reader.port";
 import type {
   AttachmentRow,
@@ -261,6 +273,23 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
   }
 }
 
+/**
+ * Answers `head` purely from a map the test seeds directly — no bucket, no
+ * I/O. Every key it is asked about is recorded too, so a test can prove the
+ * "no I/O" prefix check in `resolveAttachments` refused a descriptor
+ * BEFORE this port was ever consulted, rather than merely refusing it
+ * somehow.
+ */
+class FakeAttachmentStoragePort implements AttachmentStoragePort {
+  objects = new Map<string, StoredAttachmentMetadata>();
+  headCalls: string[] = [];
+
+  async head(storageKey: string): Promise<StoredAttachmentMetadata | null> {
+    this.headCalls.push(storageKey);
+    return this.objects.get(storageKey) ?? null;
+  }
+}
+
 class FakeProviderReader implements ProviderReaderPort {
   contactable = new Map<string, boolean>();
 
@@ -282,6 +311,7 @@ let members: Map<string, string[]>;
 let fakeThreads: FakeThreadRepository;
 let fakeMessages: FakeMessageRepository;
 let fakeAttachments: FakeAttachmentRepository;
+let fakeAttachmentStorage: FakeAttachmentStoragePort;
 let fakeProviders: FakeProviderReader;
 let uow: TrackingUnitOfWork;
 let existingThread: string;
@@ -296,6 +326,7 @@ beforeEach(() => {
   fakeThreads = new FakeThreadRepository(members, uow);
   fakeMessages = new FakeMessageRepository(uow);
   fakeAttachments = new FakeAttachmentRepository(uow);
+  fakeAttachmentStorage = new FakeAttachmentStoragePort();
   fakeProviders = new FakeProviderReader(members);
 
   existingThread = crypto.randomUUID();
@@ -309,7 +340,14 @@ beforeEach(() => {
   });
 
   start = new StartThreadCommand(fakeThreads, fakeProviders, () => NOW);
-  send = new SendMessageCommand(fakeThreads, fakeMessages, fakeAttachments, uow, () => NOW);
+  send = new SendMessageCommand(
+    fakeThreads,
+    fakeMessages,
+    fakeAttachments,
+    fakeAttachmentStorage,
+    uow,
+    () => NOW,
+  );
   markRead = new MarkThreadReadCommand(fakeThreads, fakeMessages, () => NOW);
 });
 
@@ -369,27 +407,142 @@ describe("sending", () => {
   });
 
   it("writes the message and its attachments in one transaction", async () => {
-    const one: NewAttachment = {
-      storageKey: "communication/one.png",
+    const descriptor: AttachmentDescriptor = {
+      storageKey: `attachment/${customerId}/one.png`,
       fileName: "one.png",
+    };
+    fakeAttachmentStorage.objects.set(descriptor.storageKey, {
       contentType: "image/png",
       sizeBytes: 1024,
-    };
+      uploadedByUserId: customerId,
+    });
+    const resolved: NewAttachment = { ...descriptor, contentType: "image/png", sizeBytes: 1024 };
+
     // Empty body, one attachment: legal per `Message.compose` since Task 2 —
     // a photograph with no caption is a message.
     const result = await send.execute({
       threadId: existingThread,
       senderUserId: customerId,
       body: "",
-      attachments: [one],
+      attachments: [descriptor],
     });
 
-    expect(fakeAttachments.inserted).toEqual([{ messageId: result.id, attachments: [one] }]);
+    expect(fakeAttachments.inserted).toEqual([{ messageId: result.id, attachments: [resolved] }]);
     // The assertion that actually proves "one transaction" for all three
     // writes — see `bothWritesInSameTransaction`'s own doc comment for why
     // this, and not `insideTransaction`/`touchedAfterInsert` alone, is what
     // catches the attachment insert moving outside `atomicExecute`.
     expect(uow.bothWritesInSameTransaction).toBe(true);
+  });
+
+  it("resolves contentType and sizeBytes from storage, ignoring anything the caller's descriptor claims about them", async () => {
+    // The forged-type case Task 6b closes: a caller uploaded a real PNG
+    // (`fakeAttachmentStorage` holds what storage actually recorded) and
+    // then sends a descriptor smuggling a different, forged `contentType`
+    // and `sizeBytes` — the exact shape a client could build if it ever
+    // stopped going through `AttachmentDescriptor`'s real, narrower type.
+    // `as unknown as AttachmentDescriptor` is deliberate here: the type
+    // system already refuses these two fields; this proves the RUNTIME
+    // behaviour refuses them too, in case that type ever widens.
+    const storageKey = `attachment/${customerId}/photo.png`;
+    fakeAttachmentStorage.objects.set(storageKey, {
+      contentType: "image/png",
+      sizeBytes: 55,
+      uploadedByUserId: customerId,
+    });
+    const hostileDescriptor = {
+      storageKey,
+      fileName: "photo.png",
+      contentType: "text/html",
+      sizeBytes: 999_999,
+    } as unknown as AttachmentDescriptor;
+
+    const result = await send.execute({
+      threadId: existingThread,
+      senderUserId: customerId,
+      body: "",
+      attachments: [hostileDescriptor],
+    });
+
+    expect(fakeAttachments.inserted).toEqual([
+      {
+        messageId: result.id,
+        attachments: [{ storageKey, fileName: "photo.png", contentType: "image/png", sizeBytes: 55 }],
+      },
+    ]);
+  });
+
+  it("refuses a storage key that is not this sender's own, without ever consulting storage", async () => {
+    // No object seeded for this key at all — if the prefix check were
+    // skipped, the missing-object check below would still refuse this, but
+    // `headCalls` staying empty is what proves THIS check — the free,
+    // no-I/O one — is the one that actually fired.
+    const foreignKey = "attachment/someone-else/one.png";
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey: foreignKey, fileName: "one.png" }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachmentStorage.headCalls).toEqual([]);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses when the object's own uploader disagrees with the storage key's prefix", async () => {
+    // The key's prefix names `customerId` — passing the free check above —
+    // but the object's OWN metadata, an independent record of the same
+    // fact, names somebody else. Only reachable by seeding the fake this
+    // way; the real upload route always writes both together (see
+    // `apps/backend/api/src/attachments.ts`). This proves the second check
+    // is enforced on its own, not merely implied by the first.
+    const key = `attachment/${customerId}/spoofed.png`;
+    fakeAttachmentStorage.objects.set(key, {
+      contentType: "image/png",
+      sizeBytes: 10,
+      uploadedByUserId: "someone-else",
+    });
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey: key, fileName: "spoofed.png" }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses a descriptor pointing at a key nothing was ever uploaded to", async () => {
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey: `attachment/${customerId}/missing.png`, fileName: "missing.png" }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses more than five attachment descriptors before consulting storage at all", async () => {
+    const tooMany: AttachmentDescriptor[] = Array.from({ length: 6 }, (_, i) => ({
+      storageKey: `attachment/${customerId}/${i}.png`,
+      fileName: `${i}.png`,
+    }));
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "olá",
+        attachments: tooMany,
+      }),
+    ).rejects.toThrow(TooManyAttachmentsError);
+    expect(fakeAttachmentStorage.headCalls).toEqual([]);
   });
 
   it("composes the message through Message.compose, trimmed and stamped with the injected clock", async () => {

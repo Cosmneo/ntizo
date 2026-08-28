@@ -20,20 +20,43 @@ export const startThread = defineMutation({
 });
 
 /**
- * The bound here mirrors the aggregate's rather than replacing it — same
+ * The bounds here mirror the aggregate's rather than replacing them — same
  * split `review/graphql/schema/mutations.ts` uses for `rating`: this is the
  * edge refusing obvious nonsense cheaply, and `Message.compose`
- * (`MESSAGE_BODY_MAX = 4000`) is where the rule is *defined*. A body over
- * 4000 characters, trimmed, is refused twice, in both places, on purpose —
- * duplicated as a literal here rather than imported, the same tradeoff
+ * (`MESSAGE_BODY_MAX = 4000`, `MAX_ATTACHMENTS = 5`) is where the rules are
+ * *defined*. Both bounds are refused twice, in both places, on purpose —
+ * duplicated as literals here rather than imported, the same tradeoff
  * `review`'s 1..5 rating bound makes, so this schema file never has to
  * import a bounded-context's domain module.
+ *
+ * `body` deliberately has no `.min(1)` — Task 2 changed the rule to "body
+ * non-empty OR at least one attachment", and `.min(1)` would refuse an
+ * empty, attachment-carrying body before `Message.compose` (the actual
+ * source of that rule) ever runs. An empty body with no attachments still
+ * refuses, just one layer down, as `MessageEmptyError`.
+ *
+ * `attachments` carries only `storageKey` and `fileName` — never
+ * `contentType` or `sizeBytes`. Those are read back from the R2 object
+ * itself (`AttachmentStoragePort.head`, called from
+ * `SendMessageCommand.resolveAttachments`), never taken from the wire: a
+ * caller's claim about its own file's type is exactly what Task 3's
+ * `sniffContentType` and Task 5's upload route exist to stop being trusted,
+ * and accepting one here would undo that one hop later.
  */
 export const send = defineMutation({
   input: zodSchema(
     z.object({
       threadId: z.string().min(1),
-      body: z.string().trim().min(1).max(4000),
+      body: z.string().trim().max(4000),
+      attachments: z
+        .array(
+          z.object({
+            storageKey: z.string().min(1),
+            fileName: z.string().min(1).max(200),
+          }),
+        )
+        .max(5)
+        .optional(),
     }),
   ),
   output: zodSchema(z.object({ id: z.string().min(1) })),

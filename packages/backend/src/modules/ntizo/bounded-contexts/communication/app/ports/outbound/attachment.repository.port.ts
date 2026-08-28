@@ -2,10 +2,15 @@ import type { AttachmentRow } from "../../../../../shared/infrastructure/databas
 
 /**
  * A file already uploaded to storage, ready to be recorded beside a
- * message. `SendMessageCommand`'s `attachments` input is a list of these —
- * Task 5's upload route builds one after `sniffContentType` and the bucket
- * write both succeed, so nothing here re-validates content type or size;
- * that already happened before this shape exists.
+ * message — the TRUSTED shape `insertMany` accepts, not what a caller sent
+ * on the wire. `SendMessageCommand.resolveAttachments` is what builds one:
+ * `storageKey` and `fileName` come from the caller's `AttachmentDescriptor`,
+ * but `contentType` and `sizeBytes` are read back from
+ * `AttachmentStoragePort.head` — Task 5's upload route stamped the bytes'
+ * SNIFFED type and the object's real size onto the R2 object itself, and
+ * that resolution step is what `insertMany` relies on having already
+ * happened. Nothing here re-validates content type or size; a caller of
+ * this port is trusted to have done that already.
  */
 export interface NewAttachment {
   storageKey: string;

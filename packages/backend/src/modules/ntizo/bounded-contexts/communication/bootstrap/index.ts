@@ -7,6 +7,7 @@ import { SendMessageCommand } from "../app/use-cases/send-message.command";
 import { MarkThreadReadCommand } from "../app/use-cases/mark-thread-read.command";
 import { NotifyUnreadInternalCommand } from "../app/use-cases/notify-unread.internal.command";
 import type { RaiseNotificationInternalPort } from "../app/ports/outbound/raise-notification.port";
+import type { AttachmentStoragePort } from "../app/ports/outbound/attachment-storage.port";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 
 export interface CommunicationBootstrapDeps {
@@ -27,6 +28,17 @@ export interface CommunicationBootstrapDeps {
    * dependency this bootstrap already required for the sweep).
    */
   raiseNotification: RaiseNotificationInternalPort;
+  /**
+   * Reads an R2 object's real content type, size, and uploader —
+   * `apps/backend/api/src/attachment-storage.adapter.ts`'s
+   * `AttachmentStorageAdapter`, unlike `raiseNotification` above, since
+   * nothing elsewhere in this codebase is already shaped like this port:
+   * `packages/backend` must build without the Workers type package, so the
+   * real R2-backed implementation can only live in `apps/backend/api`,
+   * where the `ATTACHMENTS_BUCKET` binding does. Wired only into
+   * `sendMessage` — see `SendMessageCommand.resolveAttachments`.
+   */
+  attachmentStorage: AttachmentStoragePort;
 }
 
 export function bootstrapCommunication(deps: CommunicationBootstrapDeps) {
@@ -45,7 +57,13 @@ export function bootstrapCommunication(deps: CommunicationBootstrapDeps) {
     adapters: { threadRepository, messageRepository, attachmentRepository, providerReader, unitOfWork },
     useCases: {
       startThread: new StartThreadCommand(threadRepository, providerReader),
-      sendMessage: new SendMessageCommand(threadRepository, messageRepository, attachmentRepository, unitOfWork),
+      sendMessage: new SendMessageCommand(
+        threadRepository,
+        messageRepository,
+        attachmentRepository,
+        deps.attachmentStorage,
+        unitOfWork,
+      ),
       markThreadRead: new MarkThreadReadCommand(threadRepository, messageRepository),
       internal: {
         // The delayed notice a cron sweeps — nobody asks for this, something

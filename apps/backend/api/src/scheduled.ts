@@ -3,6 +3,7 @@ import { closeDbBehindDeferredWork } from "@ntizo/backend/shared/infra/database"
 import type { Stage } from "@ntizo/backend/shared/infra/config";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
+import { AttachmentStorageAdapter } from "./attachment-storage.adapter";
 import type { AppBindings } from "./types";
 
 /**
@@ -81,6 +82,12 @@ export async function scheduled(
         const notification = bootstrapNotification();
         const communication = bootstrapCommunication({
           raiseNotification: notification.useCases.internal.raiseNotification,
+          // Never actually called: the sweep only ever reaches
+          // `useCases.internal.notifyUnread`, which `bootstrapCommunication`
+          // wires independently of `sendMessage` — required here only
+          // because `bootstrapCommunication` always constructs
+          // `SendMessageCommand` too.
+          attachmentStorage: new AttachmentStorageAdapter(),
         });
 
         const { notified, failed } = await communication.useCases.internal.notifyUnread.execute({
