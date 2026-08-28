@@ -51,25 +51,27 @@ describe("sendMessage", () => {
     });
   });
 
-  it("sends storageKey and fileName for each attachment, and nothing else", async () => {
+  it("sends only storageKey for each attachment, never fileName, contentType, or sizeBytes", async () => {
     // `contentType`/`sizeBytes` are deliberately absent from
     // `AttachmentDescriptor` — the server reads both back from storage
-    // instead (see that type's own doc comment). This is the one test that
-    // would catch either sneaking back onto the wire.
+    // instead (see that type's own doc comment). `fileName` used to ride
+    // along too, until the whole-branch review found that a client could
+    // send back a DIFFERENT, unchecked name from the one it actually
+    // uploaded — the upload route's own `hasContact` check on the name was
+    // defeated one request later. This is the one test that would catch any
+    // of the three sneaking back onto the wire.
     const spy = vi
       .spyOn(client, "sessionGraphql")
       .mockResolvedValue({ communicationSend: { id: "m11" } } as never);
 
-    await sendMessage("t1", "", [
-      { storageKey: "attachment/u1/1-a", fileName: "foto.jpg" },
-    ]);
+    await sendMessage("t1", "", [{ storageKey: "attachment/u1/1-a" }]);
 
     const [, variables] = spy.mock.calls[0]!;
     expect(variables).toEqual({
       input: {
         threadId: "t1",
         body: "",
-        attachments: [{ storageKey: "attachment/u1/1-a", fileName: "foto.jpg" }],
+        attachments: [{ storageKey: "attachment/u1/1-a" }],
       },
     });
   });
@@ -83,9 +85,7 @@ describe("sendMessage", () => {
       .spyOn(client, "sessionGraphql")
       .mockResolvedValue({ communicationSend: { id: "m12" } } as never);
 
-    const id = await sendMessage("t1", "", [
-      { storageKey: "attachment/u1/1-a", fileName: "foto.jpg" },
-    ]);
+    const id = await sendMessage("t1", "", [{ storageKey: "attachment/u1/1-a" }]);
 
     expect(spy).toHaveBeenCalled();
     expect(id).toBe("m12");
@@ -130,9 +130,7 @@ describe("useSendMessage", () => {
     });
 
     act(() => {
-      result.current.send("t1", "", [
-        { storageKey: "attachment/u1/1-a", fileName: "foto.jpg" },
-      ]);
+      result.current.send("t1", "", [{ storageKey: "attachment/u1/1-a" }]);
     });
 
     await waitFor(() => expect(result.current.sending).toBe(false));
@@ -142,7 +140,7 @@ describe("useSendMessage", () => {
       input: {
         threadId: "t1",
         body: "",
-        attachments: [{ storageKey: "attachment/u1/1-a", fileName: "foto.jpg" }],
+        attachments: [{ storageKey: "attachment/u1/1-a" }],
       },
     });
   });

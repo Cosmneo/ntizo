@@ -32,8 +32,23 @@ export interface Thread {
   customerName: string;
   /** ISO 8601. Threads list newest-last-message-first, ordered by this. */
   lastMessageAt: string;
-  /** Same degrade-not-fail rule as `providerName`: empty when the lookup missed, or the thread has no messages yet. */
+  /**
+   * Same degrade-not-fail rule as `providerName`: empty when the lookup
+   * missed, the thread has no messages yet, OR the latest message is a
+   * caption-less photo — `Message.compose` allows an empty body when an
+   * attachment rides along, so this alone cannot tell those apart. See
+   * `lastMessageHasAttachment`.
+   */
   lastMessagePreview: string;
+  /**
+   * True when the thread's latest message carries at least one attachment.
+   * The one thing that distinguishes "no messages yet" from "a caption-less
+   * photo" when `lastMessagePreview` is empty for both — `ThreadList` reads
+   * this to show an attachment marker instead of the "no messages yet"
+   * placeholder next to what may be a bold, unread row just sorted to the
+   * top.
+   */
+  lastMessageHasAttachment: boolean;
   unreadCount: number;
 }
 
@@ -92,18 +107,23 @@ export const MESSAGE_BODY_MAX_LENGTH = 4000;
  * What a client may say about one already-uploaded file when it sends a
  * message — the same shape `SendMessageCommand`'s `AttachmentDescriptor`
  * accepts on the wire (`communicationSend`'s `attachments` input), and
- * nothing more. Deliberately absent: `contentType`, `sizeBytes`. Both are
- * read back from the object storage holds, on the server, from
- * `AttachmentStoragePort.head` — never taken from the wire. A client that
- * uploaded a genuine JPEG and then claimed a different type here would undo
- * the exact guarantee `sniffContentType` (Task 3) and the upload route
- * (Task 5) exist to provide, so the server ignores anything sent under
- * either key. Do not add them back "for completeness" — see
- * `mutations.ts`'s own doc comment on the backend for the same warning.
+ * nothing more. Deliberately absent: `contentType`, `sizeBytes`, `fileName`.
+ * All three are read back from the object storage holds, on the server,
+ * from `AttachmentStoragePort.head` — never taken from the wire. A client
+ * that uploaded a genuine JPEG and then claimed a different type here would
+ * undo the exact guarantee `sniffContentType` (Task 3) and the upload route
+ * (Task 5) exist to provide, so the server ignores anything sent under any
+ * of the three. `fileName` used to ride along here — the whole-branch review
+ * found that sending one back defeated the upload route's own `hasContact`
+ * check on the name: the route validates `file.name`, but a client could
+ * still send back a completely different, unchecked string in THIS call.
+ * The upload response (`UploadedAttachment`) still carries `fileName`, for
+ * local display before send — this type is only what goes back on the wire.
+ * Do not add these back "for completeness" — see `mutations.ts`'s own doc
+ * comment on the backend for the same warning.
  */
 export interface AttachmentDescriptor {
   storageKey: string;
-  fileName: string;
 }
 
 /**

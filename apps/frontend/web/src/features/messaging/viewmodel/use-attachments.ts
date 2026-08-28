@@ -114,7 +114,11 @@ export function useAttachments() {
       for (const pending of files) {
         try {
           const uploaded = await uploadAttachment(pending.file);
-          descriptors.push({ storageKey: uploaded.storageKey, fileName: uploaded.fileName });
+          // `fileName` is deliberately not forwarded — see
+          // `AttachmentDescriptor`'s own doc comment. The upload response
+          // still carries it (`uploaded.fileName`), but only for local
+          // display; `sendMessage` never needs it back.
+          descriptors.push({ storageKey: uploaded.storageKey });
         } catch (err) {
           const code =
             err instanceof AttachmentUploadError && KNOWN_UPLOAD_ERRORS.has(err.code)

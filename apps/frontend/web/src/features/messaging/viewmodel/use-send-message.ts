@@ -16,11 +16,15 @@ import type { AttachmentDescriptor } from "@/features/messaging/domain/types";
  * that length, not let them find out on submit. No server-side `.min(1)`
  * any more: a body-less send is legal exactly when `attachments` is not
  * empty (see `AttachmentDescriptor`'s own doc comment) — refused as
- * `MESSAGE_EMPTY` only when both are.
+ * `MESSAGE_EMPTY` only when both are. The body is also checked server-side
+ * for a phone number, email, or link (`hasContact`, run inside
+ * `SendMessageCommand.execute`) and refused as `MESSAGE_CONTAINS_CONTACT` —
+ * the composer runs the identical check on every keystroke, but this hook
+ * itself does not duplicate it; `sendMessage` is a thin wire call.
  *
- * `attachments` carries only `storageKey`/`fileName` per entry, capped at 5
+ * `attachments` carries only `storageKey` per entry, capped at 5
  * server-side — see `AttachmentDescriptor`'s own doc comment for why
- * `contentType`/`sizeBytes` are never sent.
+ * `fileName`/`contentType`/`sizeBytes` are never sent.
  */
 const SEND = `
   mutation SendMessage($input: CommunicationSendInput!) {
@@ -91,11 +95,14 @@ export function useSendMessage() {
       mutation.mutate({ threadId, body, attachments }),
     sending: mutation.isPending,
     /**
-     * `"VALIDATION_ERROR"` for an empty or >4000-character body,
-     * `"THREAD_NOT_VISIBLE"` for a thread the sender can no longer reach
-     * (the specific domain code, not the coarse `"UNPROCESSABLE"` it wears
-     * on the wire) — see `messagingErrorCode`'s doc comment for why each
-     * reads a different field of the underlying `GraphqlError`.
+     * `"VALIDATION_ERROR"` for a body over 4000 characters — no longer for
+     * an empty one; `.min(1)` came off this schema so a caption-less photo
+     * could send (see this file's own doc comment). An empty, attachment-
+     * less body now reaches the use case and comes back `"MESSAGE_EMPTY"`
+     * instead. `"THREAD_NOT_VISIBLE"` for a thread the sender can no longer
+     * reach (the specific domain code, not the coarse `"UNPROCESSABLE"` it
+     * wears on the wire) — see `messagingErrorCode`'s doc comment for why
+     * each reads a different field of the underlying `GraphqlError`.
      */
     errorCode: messagingErrorCode(mutation.error),
   };

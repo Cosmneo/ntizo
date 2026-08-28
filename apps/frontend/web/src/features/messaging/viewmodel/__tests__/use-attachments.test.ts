@@ -105,7 +105,11 @@ describe("useAttachments: uploadAll", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("uploads every clean file in order and returns storageKey/fileName descriptors", async () => {
+  it("uploads every clean file in order and returns storageKey-only descriptors, never fileName", async () => {
+    // `fileName` is deliberately absent from what `uploadAll` returns — see
+    // `AttachmentDescriptor`'s own doc comment. The upload response
+    // (`uploadAttachment`'s resolved value) still carries `fileName`, for
+    // local display before send; this proves it is not forwarded.
     vi.spyOn(attachmentRepository, "uploadAttachment").mockImplementation(async (file: File) => ({
       storageKey: `attachment/u1/${file.name}`,
       fileName: file.name,
@@ -125,8 +129,8 @@ describe("useAttachments: uploadAll", () => {
     });
 
     expect(uploaded).toEqual([
-      { storageKey: "attachment/u1/a.jpg", fileName: "a.jpg" },
-      { storageKey: "attachment/u1/b.jpg", fileName: "b.jpg" },
+      { storageKey: "attachment/u1/a.jpg" },
+      { storageKey: "attachment/u1/b.jpg" },
     ]);
   });
 

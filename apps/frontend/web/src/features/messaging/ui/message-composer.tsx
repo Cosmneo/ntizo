@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button, cn } from "@ntizo/frontend-ui";
 import { hasContact } from "@ntizo/shared/text";
 import {
+  MAX_ATTACHMENTS,
   MESSAGE_BODY_MAX_LENGTH,
   type AttachmentDescriptor,
 } from "@/features/messaging/domain/types";
@@ -23,6 +24,11 @@ const KNOWN_SEND_ERRORS = new Set([
   "MESSAGE_EMPTY",
   "TOO_MANY_ATTACHMENTS",
   "ATTACHMENT_NOT_AVAILABLE",
+  // `SendMessageCommand.execute` runs `hasContact` on the trimmed body,
+  // before anything is written — the gate `bodyHasContact` below is the
+  // client-side hint for, not a substitute for. A `curl` that skips this
+  // component entirely still gets refused with this code.
+  "MESSAGE_CONTAINS_CONTACT",
 ]);
 
 /**
@@ -41,9 +47,9 @@ const KNOWN_SEND_ERRORS = new Set([
  * the actual `useSendMessage()` call and passes `sending`/`errorCode` back
  * down. `useAttachments()` is the one exception to "dumb": picking and
  * uploading files has to happen somewhere before `onSend` can be called at
- * all (a `File` is not what `communicationSend` accepts — a
- * `storageKey`/`fileName` pair is), and this component is where a submit
- * turns into that upload.
+ * all (a `File` is not what `communicationSend` accepts — a bare
+ * `storageKey` is), and this component is where a submit turns into that
+ * upload.
  *
  * A body is no longer required — `Message.compose`'s own rule is "something
  * in it, not necessarily words" (see `MESSAGE_EMPTY`'s doc comment on the
@@ -51,12 +57,16 @@ const KNOWN_SEND_ERRORS = new Set([
  * enough.
  *
  * The contact warning runs on every keystroke, not on submit — `hasContact`
- * is the *same function* the server runs on file names
- * (`apps/backend/api/src/attachments.ts`) and would run on this body too, so
- * a message this component would refuse to send is one the server would
- * have refused anyway. Finding that out only after writing the whole thing
- * is the worst moment to learn it; this shows it while the sender is still
- * typing.
+ * is the *same function* the server runs, both on file names
+ * (`apps/backend/api/src/attachments.ts`) and, since the whole-branch
+ * review closed the gap where it did not, on this body too
+ * (`SendMessageCommand.execute`, before anything is written). So a message
+ * this component refuses to send is one the server would have refused
+ * anyway — but the reverse also matters now: this is a client-side hint,
+ * and the server's check is the actual gate, reachable by anything that
+ * skips this component entirely. Finding out a message is invalid only
+ * after writing the whole thing is the worst moment to learn it; this shows
+ * it while the sender is still typing.
  */
 export function MessageComposer({
   onSend,
@@ -142,7 +152,7 @@ export function MessageComposer({
 
       {errorCode && (
         <p role="alert" className="type-caption text-[var(--color-destructive)]">
-          {t(`sendError.${errorKey}`)}
+          {t(`sendError.${errorKey}`, { max: MAX_ATTACHMENTS })}
         </p>
       )}
     </form>

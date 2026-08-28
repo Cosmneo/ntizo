@@ -240,7 +240,7 @@ describe("MessageComposer", () => {
       expect(onSend).not.toHaveBeenCalled();
     });
 
-    it("uploads picked files on submit and sends onSend their storageKey/fileName descriptors, never contentType or sizeBytes", async () => {
+    it("uploads picked files on submit and sends onSend their storageKey-only descriptors, never fileName, contentType, or sizeBytes", async () => {
       stubUpload(201, {
         storageKey: "attachment/u1/1-a",
         fileName: "foto.jpg",
@@ -257,9 +257,7 @@ describe("MessageComposer", () => {
       await user.click(screen.getByRole("button", { name: /send/i }));
 
       await waitFor(() => expect(onSend).toHaveBeenCalled());
-      expect(onSend).toHaveBeenCalledWith("Olha isto", [
-        { storageKey: "attachment/u1/1-a", fileName: "foto.jpg" },
-      ]);
+      expect(onSend).toHaveBeenCalledWith("Olha isto", [{ storageKey: "attachment/u1/1-a" }]);
     });
 
     it("sends a caption-less message when only a file is attached — a photo needs no caption", async () => {
@@ -281,9 +279,7 @@ describe("MessageComposer", () => {
       await user.click(screen.getByRole("button", { name: /send/i }));
 
       await waitFor(() => expect(onSend).toHaveBeenCalled());
-      expect(onSend).toHaveBeenCalledWith("", [
-        { storageKey: "attachment/u1/1-a", fileName: "foto.jpg" },
-      ]);
+      expect(onSend).toHaveBeenCalledWith("", [{ storageKey: "attachment/u1/1-a" }]);
     });
 
     it("does not call onSend, and shows why, when the server refuses the upload", async () => {
