@@ -87,8 +87,10 @@ export function NotificationsPage({ scope }: { scope: InboxScope }) {
             {/* Said plainly rather than with a "load more" that does nothing:
                 paging this list needs an offset control this page does not
                 carry yet, and a control that lies is worse than a sentence
-                that does not. Same ruling `provider-reviews.tsx` already made
-                for the same reason. */}
+                that does not. `provider-reviews.tsx` has since grown a "see
+                all" button, but only because its query takes a `limit` this
+                one has no equivalent of — `useInbox`'s `offset` is never
+                varied from here, so there is still nothing honest to raise. */}
             {page.total > page.items.length && (
               <p className="type-caption text-[var(--color-muted-foreground)]">
                 {t("showingCount", { shown: page.items.length, total: page.total })}

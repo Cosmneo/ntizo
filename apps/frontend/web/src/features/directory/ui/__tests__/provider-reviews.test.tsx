@@ -65,6 +65,7 @@ describe("ProviderReviews", () => {
     renderReviews({ summary: summary(4), reviews: [review("r1"), review("r2")] });
     expect(screen.getByText("4.8")).toBeInTheDocument();
     expect(screen.getAllByText("Teresa Mondlane")).toHaveLength(2);
+    expect(screen.getAllByText("Chegou a horas.")).toHaveLength(2);
   });
 
   it("dates a review without naming a service", () => {
@@ -100,5 +101,16 @@ describe("ProviderReviews", () => {
   it("keeps saying how many are shown while more remain", () => {
     renderReviews({ summary: summary(80), reviews: [review("r1")] });
     expect(screen.getByText("Showing 1 of 80.")).toBeInTheDocument();
+  });
+
+  it("stops offering the button once the read model's cap is already showing", () => {
+    // At 50 shown, clicking the button again would ask for the same limit it
+    // already has — a re-request that changes nothing. The button reasoning
+    // for that in `provider-reviews.tsx` needs a test, not just a doc comment,
+    // or the next person can reason their way back out of the guard.
+    const fifty = Array.from({ length: 50 }, (_, i) => review(`r${i}`));
+    renderReviews({ summary: summary(80), reviews: fifty });
+    expect(screen.getByText("Showing 50 of 80.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "See all reviews" })).not.toBeInTheDocument();
   });
 });
