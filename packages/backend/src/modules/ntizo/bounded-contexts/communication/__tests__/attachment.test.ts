@@ -27,10 +27,14 @@ describe("sniffContentType", () => {
     expect(sniffContentType(SVG)).toBeNull();
   });
 
-  it("does not trust a declared type over the bytes", () => {
-    // The caller says PDF; the bytes say HTML. The bytes win.
-    expect(sniffContentType(HTML)).not.toBe("application/pdf");
-  });
+  // A "does not trust the declared type" test lived here and was deleted: it
+  // asserted `not.toBe("application/pdf")` on the same HTML bytes the test
+  // above already asserts are null, so its failure set was a strict subset of
+  // that test's — a misclassification as `text/html` reds the neighbour and
+  // left this one green. It also names a threat this function has no surface
+  // for: there is no declared type here to distrust. The real version belongs
+  // to the upload route, which holds both the caller's Content-Type header and
+  // the sniffed answer, and can assert the bytes win.
 
   it("checks WEBP at both RIFF (offset 0) and WEBP (offset 8) — a RIFF container alone is not enough", () => {
     // A WAV file is also RIFF-at-0; only the WEBP tag at offset 8 tells them apart.
