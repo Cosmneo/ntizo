@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { ProviderPublicDTO, ProviderPublicDetailDTO } from "@ntizo/shared";
+import type { ProviderPublicDetailDTO } from "@ntizo/shared";
 import type { ProviderPageDTO, ProviderReviewsPublicDTO } from "@ntizo/shared/read-models";
 import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
 import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listing";
