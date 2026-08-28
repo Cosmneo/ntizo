@@ -11,6 +11,8 @@ import type {
   MessageRepositoryPort,
 } from "../../../bounded-contexts/communication/app/ports/outbound/message.repository.port";
 import type { ProviderReaderPort } from "../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
+import type { AttachmentRepositoryPort } from "../../../bounded-contexts/communication";
+import type { AttachmentRow } from "../../../shared/infrastructure/database/communication/schemas";
 import type { ProviderNameReaderPort } from "../app/ports/outbound/provider-name-reader.port";
 import type { CustomerNameReaderPort } from "../app/ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../app/ports/outbound/thread-preview-reader.port";
@@ -101,6 +103,27 @@ class FakeMessageRepository implements MessageRepositoryPort {
   async countUnreadForViewer(threadIds: string[], viewerUserId: string): Promise<Map<string, number>> {
     this.calls.push(`countUnreadForViewer:[${threadIds.join(",")}]:${viewerUserId}`);
     return this.unread;
+  }
+}
+
+/** Records every call and counts them, so a test can prove a page is enriched with exactly ONE batched call, not one per message. */
+class FakeAttachmentRepository implements AttachmentRepositoryPort {
+  public readonly calls: string[][] = [];
+  constructor(private readonly byMessage: Map<string, AttachmentRow[]> = new Map()) {}
+
+  get listCallCount(): number {
+    return this.calls.length;
+  }
+
+  async insertMany(): Promise<void> {
+    throw new Error("not used by the read side");
+  }
+  async listForMessages(messageIds: string[]): Promise<Map<string, AttachmentRow[]>> {
+    this.calls.push([...messageIds]);
+    return this.byMessage;
+  }
+  async findVisible(): Promise<AttachmentRow | null> {
+    throw new Error("not used by the read side");
   }
 }
 
@@ -408,9 +431,10 @@ describe("ListThreadMessagesProjection", () => {
   it("refuses an invisible thread before reading any messages", async () => {
     const threads = new FakeThreadRepository(emptyThreadPage, {});
     const messages = new FakeMessageRepository();
+    const attachments = new FakeAttachmentRepository();
 
     await expect(
-      new ListThreadMessagesProjection(threads, messages).execute({
+      new ListThreadMessagesProjection(threads, messages, attachments).execute({
         requesterUserId: "u-stranger",
         threadId: "t1",
       }),
@@ -418,6 +442,7 @@ describe("ListThreadMessagesProjection", () => {
 
     expect(threads.calls).toEqual(["findVisible:t1:u-stranger"]);
     expect(messages.calls).toEqual([]);
+    expect(attachments.calls).toEqual([]);
   });
 
   it("lists a visible thread's messages, paged", async () => {
@@ -443,14 +468,18 @@ describe("ListThreadMessagesProjection", () => {
       nextCursor: "2026-08-21T09:00:00.000Z|m1",
     };
     const messages = new FakeMessageRepository(page);
+    // Neither row appears in the attachment map — both must degrade to
+    // `[]`, not `undefined`, the same convention `unreadCount` uses for 0.
+    const attachments = new FakeAttachmentRepository();
 
-    const result = await new ListThreadMessagesProjection(threads, messages).execute({
+    const result = await new ListThreadMessagesProjection(threads, messages, attachments).execute({
       requesterUserId: "u-customer",
       threadId: "t1",
     });
 
     expect(threads.calls).toEqual(["findVisible:t1:u-customer"]);
     expect(messages.calls).toEqual(["listForThread:t1:20:none"]);
+    expect(attachments.calls).toEqual([["m2", "m1"]]);
     // Two rows, not one — a fixture with a single item cannot tell a
     // correct page apart from one truncated to its first row (or reversed).
     expect(result).toEqual({
@@ -462,6 +491,7 @@ describe("ListThreadMessagesProjection", () => {
           body: "See you tomorrow",
           readAt: null,
           createdAt: "2026-08-21T09:05:00.000Z",
+          attachments: [],
         },
         {
           id: "m1",
@@ -470,16 +500,76 @@ describe("ListThreadMessagesProjection", () => {
           body: "Hi, are you free?",
           readAt: "2026-08-21T09:01:00.000Z",
           createdAt: "2026-08-21T09:00:00.000Z",
+          attachments: [],
         },
       ],
       nextCursor: "2026-08-21T09:00:00.000Z|m1",
     });
   });
 
+  it("carries a message's attachments", async () => {
+    const threads = new FakeThreadRepository(emptyThreadPage, { "t1:u-customer": true });
+    const page: MessagePage = {
+      items: [
+        message({
+          id: "m1",
+          threadId: "t1",
+          senderUserId: "u-provider-staff",
+          body: "Aqui está o orçamento",
+        }),
+      ],
+      nextCursor: null,
+    };
+    const messages = new FakeMessageRepository(page);
+    const row: AttachmentRow = {
+      id: "a1",
+      messageId: "m1",
+      storageKey: "attachment/u-provider-staff/123-uuid",
+      fileName: "orcamento.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 1024,
+      createdAt: new Date("2026-08-21T09:00:00.000Z"),
+    };
+    const attachments = new FakeAttachmentRepository(new Map([["m1", [row]]]));
+
+    const result = await new ListThreadMessagesProjection(threads, messages, attachments).execute({
+      requesterUserId: "u-customer",
+      threadId: "t1",
+    });
+
+    // `storageKey` and `createdAt` are deliberately absent from the wire
+    // shape — see `messageAttachmentReadModel`'s own doc comment.
+    expect(result.items[0]!.attachments).toEqual([
+      { id: "a1", fileName: "orcamento.pdf", contentType: "application/pdf", sizeBytes: 1024 },
+    ]);
+  });
+
+  it("asks for a page of messages' attachments in one call, not one per message", async () => {
+    const threads = new FakeThreadRepository(emptyThreadPage, { "t1:u-customer": true });
+    const page: MessagePage = {
+      items: [
+        message({ id: "m2", threadId: "t1", senderUserId: "u-provider-staff" }),
+        message({ id: "m1", threadId: "t1", senderUserId: "u-customer" }),
+      ],
+      nextCursor: null,
+    };
+    const messages = new FakeMessageRepository(page);
+    const attachments = new FakeAttachmentRepository();
+
+    await new ListThreadMessagesProjection(threads, messages, attachments).execute({
+      requesterUserId: "u-customer",
+      threadId: "t1",
+    });
+
+    expect(attachments.listCallCount).toBe(1);
+    expect(attachments.calls).toEqual([["m2", "m1"]]);
+  });
+
   it("clamps the limit and passes the cursor through", async () => {
     const threads = new FakeThreadRepository(emptyThreadPage, { "t1:u1": true });
     const messages = new FakeMessageRepository();
-    await new ListThreadMessagesProjection(threads, messages).execute({
+    const attachments = new FakeAttachmentRepository();
+    await new ListThreadMessagesProjection(threads, messages, attachments).execute({
       requesterUserId: "u1",
       threadId: "t1",
       limit: 0,

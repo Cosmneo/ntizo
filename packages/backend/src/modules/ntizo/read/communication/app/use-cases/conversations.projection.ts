@@ -4,6 +4,7 @@ import type { ThreadRepositoryPort } from "../../../../bounded-contexts/communic
 import type { MessageRepositoryPort } from "../../../../bounded-contexts/communication/app/ports/outbound/message.repository.port";
 import type { ProviderReaderPort } from "../../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
 import { ThreadNotVisibleError } from "../../../../bounded-contexts/communication/domain/exceptions";
+import type { AttachmentRepositoryPort } from "../../../../bounded-contexts/communication";
 import type { ProviderNameReaderPort } from "../ports/outbound/provider-name-reader.port";
 import type { CustomerNameReaderPort } from "../ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../ports/outbound/thread-preview-reader.port";
@@ -167,6 +168,7 @@ export class ListThreadMessagesProjection {
   constructor(
     private readonly threads: ThreadRepositoryPort,
     private readonly messages: MessageRepositoryPort,
+    private readonly attachments: AttachmentRepositoryPort,
   ) {}
 
   async execute(input: {
@@ -183,6 +185,13 @@ export class ListThreadMessagesProjection {
     const limit = clampLimit(input.limit);
     const page = await this.messages.listForThread(input.threadId, limit, input.cursor ?? null);
 
+    // One batched call for the whole page, never one per message — see
+    // `AttachmentRepositoryPort.listForMessages`'s own doc comment. A
+    // message absent from the returned map has no attachments; `?? []`
+    // below is that degrade, the same convention `countUnreadForViewer`
+    // uses for zero.
+    const attachmentsByMessage = await this.attachments.listForMessages(page.items.map((m) => m.id!));
+
     return {
       items: page.items.map((m) => ({
         id: m.id!,
@@ -191,6 +200,12 @@ export class ListThreadMessagesProjection {
         body: m.body,
         readAt: m.readAt ? m.readAt.toISOString() : null,
         createdAt: m.createdAt.toISOString(),
+        attachments: (attachmentsByMessage.get(m.id!) ?? []).map((a) => ({
+          id: a.id,
+          fileName: a.fileName,
+          contentType: a.contentType,
+          sizeBytes: a.sizeBytes,
+        })),
       })),
       nextCursor: page.nextCursor,
     };
