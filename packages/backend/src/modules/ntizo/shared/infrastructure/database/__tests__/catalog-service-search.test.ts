@@ -18,13 +18,20 @@
  * reader is not reading, and one carries a literal `%` that a naive `ILIKE`
  * would read as "match everything".
  *
- * Assertions intersect with the seeded ids rather than reading the whole
- * result: this runs against the shared dev database, which has other services
- * in it, and a test that asserted on totals would break whenever somebody
- * published something.
+ * Every query below is scoped to this run's own category — a code nothing
+ * else in the database has ever carried — so the rows the search chooses
+ * between are exactly the five seeded here. That scope, not the page size, is
+ * what makes these assertions deterministic: this runs against the shared dev
+ * database, whose published services number in the hundreds and grow, and
+ * `listPublished`'s default page is `sort_order, created_at` ascending with a
+ * `LIMIT` — oldest first. Rows seeded a moment ago are the newest rows there
+ * are, so an unscoped query pages straight past them and the test fails for a
+ * reason that has nothing to do with the predicate it is about. Filtering the
+ * *result* would not have helped either: the fixtures are not in the page to
+ * be filtered.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
@@ -47,8 +54,20 @@ const repo = new DrizzleServiceReadRepository();
 
 const suffix = crypto.randomUUID();
 
-let userAId: string;
-let userBId: string;
+/**
+ * The keys teardown deletes by, all decided here rather than handed back by
+ * `beforeAll`.
+ *
+ * A hook bun:test has given up on keeps running — its `await`s resume, and
+ * `afterAll` starts alongside them. Teardown that deletes by ids `beforeAll`
+ * returned therefore has nothing to delete by exactly when it matters most,
+ * on the run that failed partway. These are known before a single row exists.
+ */
+const categoryCode = `svc-search-test-${suffix}`;
+const providerSlugs = [`svc-search-a-${suffix}`, `svc-search-b-${suffix}`] as const;
+const userAId = crypto.randomUUID();
+const userBId = crypto.randomUUID();
+
 let providerAId: string;
 let providerBId: string;
 let categoryId: string;
@@ -59,21 +78,37 @@ let byName: string;
 let byDescription: string;
 /** Written only in English: matches "haircut", and must NOT match "corte". */
 let englishOnly: string;
+/**
+ * Contains "100" but no `%`. The row that tells the two readings of a search
+ * for "100%" apart: escaped, the pattern is `%100\%%` and only matches the
+ * literal; unescaped it is `%100%%`, which is just "contains 100" and matches
+ * this too. Without it the percent test passes either way.
+ */
+let hundredNoPercent: string;
 /** Carries a literal `%`, the character an unescaped `ILIKE` reads as "anything". */
 let withPercent: string;
 /** Matches "corte" only through its provider's name. */
 let byProviderName: string;
 
-/**
- * Every service this test seeded, for intersecting against a shared database.
- * Starts empty rather than `undefined` so `afterAll` can iterate it safely
- * even when `beforeAll` throws before ever assigning it.
- */
+/** Every service this test seeded — the entire population its own category holds. */
 let seeded: Set<string> = new Set();
 
-beforeAll(async () => {
-  userAId = crypto.randomUUID();
-  userBId = crypto.randomUUID();
+/**
+ * `beforeAll`'s own promise, so `afterAll` can wait for it.
+ *
+ * Not redundant with awaiting the hook: when a hook exceeds bun:test's
+ * timeout, bun:test stops waiting but the hook does not stop running, and
+ * teardown that starts while seeding is still inserting deletes rows that are
+ * created a moment after it looked. Measured on the shared dev database: the
+ * one `service_member` row of every leaked run of `catalog-unpublish-sweep`
+ * was deleted by `afterAll` and then re-inserted by the `beforeAll` bun:test
+ * had already declared failed.
+ */
+let seeding: Promise<unknown> = Promise.resolve();
+
+beforeAll(() => (seeding = seed()));
+
+async function seed(): Promise<void> {
   await db.insert(user).values([
     { id: userAId, email: `svc-search-a-${suffix}@example.com` },
     { id: userBId, email: `svc-search-b-${suffix}@example.com` },
@@ -108,7 +143,7 @@ beforeAll(async () => {
 
   const [categoryRow] = await db
     .insert(category)
-    .values({ code: `svc-search-test-${suffix}` })
+    .values({ code: categoryCode })
     .returning({ id: category.id });
   categoryId = categoryRow!.id;
 
@@ -137,30 +172,59 @@ beforeAll(async () => {
   byDescription = await makeService(providerAId, "pt-MZ", "Manicure", "Inclui corte de unhas");
   englishOnly = await makeService(providerAId, "en-US", "Haircut", null);
   withPercent = await makeService(providerAId, "pt-MZ", "Massagem 100% relaxante", null);
+  hundredNoPercent = await makeService(providerAId, "pt-MZ", "Pacote 100 fotos", null);
   byProviderName = await makeService(providerBId, "pt-MZ", "Massagem de pedras", null);
 
-  seeded = new Set([byName, byDescription, englishOnly, withPercent, byProviderName]);
-});
+  seeded = new Set([
+    byName,
+    byDescription,
+    englishOnly,
+    withPercent,
+    hundredNoPercent,
+    byProviderName,
+  ]);
+}
 
+/**
+ * Three statements, keyed on names this file chose, not on ids seeding
+ * returned — and in this order, which is the order the foreign keys allow.
+ *
+ * Deleting the providers is what removes the services: `service.provider_id`
+ * cascades, and so do `service_translation`, `service_member` and
+ * `provider_member` behind it. Sixteen statements deleting each row by id, as
+ * this used to be, is sixteen round trips sharing one hook budget — and a
+ * teardown that runs out of budget halfway leaves everything after the cut,
+ * which is how the fixtures of fifteen separate runs came to be sitting in
+ * the dev database.
+ *
+ * The category can only go once no service references it (that FK does not
+ * cascade), and the users only once no provider owns them (nor does that
+ * one) — so: providers, then category, then users.
+ */
 afterAll(async () => {
+  // Never race a hook bun:test gave up on; see `seeding`.
+  await seeding.catch(() => {});
   await bestEffortCleanup([
-    ...Array.from(seeded, (id) => () => db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, id))),
-    ...Array.from(seeded, (id) => () => db.delete(service).where(eq(service.id, id))),
-    () => db.delete(category).where(eq(category.id, categoryId)),
-    () => db.delete(provider).where(eq(provider.id, providerAId)),
-    () => db.delete(provider).where(eq(provider.id, providerBId)),
-    () => db.delete(user).where(eq(user.id, userAId)),
-    () => db.delete(user).where(eq(user.id, userBId)),
+    () => db.delete(provider).where(inArray(provider.slug, [...providerSlugs])),
+    () => db.delete(category).where(eq(category.code, categoryCode)),
+    () => db.delete(user).where(inArray(user.id, [userAId, userBId])),
     () => sql.end({ timeout: 5 }),
   ]);
 });
 
-/** The seeded services a search returns, as a set — everything else in the dev database is ignored. */
+/**
+ * What a search returns, as a set of ids.
+ *
+ * Scoped to this run's own category, so the result *is* the fixtures: not a
+ * page of the shared dev database that the fixtures might or might not have
+ * made it into. `limit` stays at the browse's real page size so the query
+ * keeps its production shape, but five rows can never fill it.
+ */
 async function search(q: string | undefined): Promise<Set<string>> {
   const rows = await __runWithTransactionContextForTests(db, () =>
-    repo.listPublished({ q, limit: 48, offset: 0 }),
+    repo.listPublished({ q, categoryCode, limit: 48, offset: 0 }),
   );
-  return new Set(rows.map((r) => r.id).filter((id) => seeded.has(id)));
+  return new Set(rows.map((r) => r.id));
 }
 
 describe("listPublished text search", () => {
@@ -181,14 +245,21 @@ describe("listPublished text search", () => {
   });
 
   test("leaves out a service that matches nowhere", async () => {
-    // Written only in English. Proves the predicate is a filter and not a
-    // no-op: an `EXISTS` correlated on the wrong column returns every row,
-    // and every other assertion here would still pass.
-    expect(await search("corte")).not.toContain(englishOnly);
+    // The whole set, not `not.toContain`: "the English-only service is
+    // absent" is also true of an empty result, and an empty result is what a
+    // search that has stopped working returns. Naming the three that must be
+    // there says the predicate is a filter rather than a no-op — an `EXISTS`
+    // correlated on the wrong column returns every row, and the three
+    // `toContain` assertions above would still pass — and that it is not the
+    // opposite no-op either.
+    expect(await search("corte")).toEqual(new Set([byName, byDescription, byProviderName]));
   });
 
   test("ignores case", async () => {
-    expect(await search("CORTE")).toEqual(await search("corte"));
+    // Spelled out rather than compared against `search("corte")`: two empty
+    // sets are equal, so a comparison of the two would survive the search
+    // matching nothing at all.
+    expect(await search("CORTE")).toEqual(new Set([byName, byDescription, byProviderName]));
   });
 
   test("searches every translation, not only the platform's language", async () => {
@@ -198,18 +269,27 @@ describe("listPublished text search", () => {
   });
 
   test("treats a percent sign as text, not as a wildcard", async () => {
-    // Unescaped, `%` is ILIKE's "match anything" and this returns all five.
-    // The only seeded service with a literal `%` is the one named
-    // "Massagem 100% relaxante".
+    // Both rows carry "100"; only "Massagem 100% relaxante" carries the `%`.
+    // Escaped, "100%" is a search for that literal and finds one of them.
+    // Unescaped it degrades to "contains 100" and finds both — which is why
+    // the row without the sign has to be here for this to mean anything.
+    expect(await search("100")).toEqual(new Set([withPercent, hundredNoPercent]));
     expect(await search("100%")).toEqual(new Set([withPercent]));
   });
 
   test("treats an underscore as text, not as a single-character wildcard", async () => {
     // `_` matches any one character, so unescaped "m_nicure" finds "Manicure".
+    // The correct spelling is asserted first: on its own, "this returns
+    // nothing" is what a search that finds nothing for anything also returns.
+    expect(await search("manicure")).toEqual(new Set([byDescription]));
     expect(await search("m_nicure")).toEqual(new Set());
   });
 
   test("returns everything when no search was asked for", async () => {
+    // Everything meaning every published service of an active provider in
+    // this run's category — all five, including the two no "corte" search
+    // reaches. An absent `q` adds no condition at all, which is the whole
+    // claim: the browse with no search box filled in is the full listing.
     expect(await search(undefined)).toEqual(seeded);
   });
 });
