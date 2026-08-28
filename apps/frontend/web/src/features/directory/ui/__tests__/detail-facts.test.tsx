@@ -23,6 +23,18 @@ describe("DetailFacts", () => {
     expect(screen.queryByText("Na Ntizo desde")).not.toBeInTheDocument();
   });
 
+  it("keeps a fact whose value is the literal zero, not a falsy value", () => {
+    // "0" is a real fact a provider with no published services must still
+    // read as "Services 0" — trim() !== "" is a presence check, and a plain
+    // `if (!value)` falsy check would wrongly delete this row. This test
+    // exists to catch a regression to that falsy check, which the earlier
+    // "drops a fact with no value" test (using only "") cannot: both
+    // predicates behave identically on an empty string.
+    render(<DetailFacts facts={[{ label: "Services", value: "0" }]} />);
+    expect(screen.getByText("Services")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
+  });
+
   it("renders nothing when no fact survives", () => {
     const { container } = render(<DetailFacts facts={[{ label: "Categoria", value: "" }]} />);
     expect(container).toBeEmptyDOMElement();

@@ -10,6 +10,13 @@ import { cn } from "@ntizo/frontend-ui";
  * `flat` drops the shadow for a card that sits directly under another
  * `RailCard` (or otherwise already reads as separated by the border alone),
  * so two stacked cards don't double up on elevation.
+ *
+ * The gap between `label` and `children` is owned here, not left for each
+ * caller to add: this component's whole job is making every card in the
+ * rail look like one system, and a label-to-content gap invented separately
+ * by Task 12's and Task 13's cards is exactly the kind of mismatch it
+ * exists to prevent. `type-caption`'s line-height alone reads as flush
+ * against whatever sits under it, so the margin is not optional polish.
  */
 export function RailCard({
   label,
@@ -32,7 +39,7 @@ export function RailCard({
       )}
     >
       {label && (
-        <p className="type-caption text-[var(--color-muted-foreground)] uppercase tracking-[0.09em]">
+        <p className="type-caption mb-3 text-[var(--color-muted-foreground)] uppercase tracking-[0.09em]">
           {label}
         </p>
       )}
