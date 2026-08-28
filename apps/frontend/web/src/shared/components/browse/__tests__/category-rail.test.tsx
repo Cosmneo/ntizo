@@ -125,6 +125,22 @@ describe("CategoryRail", () => {
     }
   });
 
+  it("centres the row from `lg` up using the safe variant, not plain centring", () => {
+    // Plain `justify-center` on a *scrolling* flex container is a standing
+    // browser bug, not a style choice: once the chips overflow, the part that
+    // overflows to the left sits before the container's own scroll start, and
+    // nothing can scroll back far enough to reach it — the first categories
+    // become permanently unreachable the moment the catalogue outgrows the
+    // dev seed data. `-safe` centres only while everything fits and falls
+    // back to start alignment the instant it doesn't, which is what keeps
+    // the row centred on a wide screen *and* fully reachable. Below `lg` the
+    // row stays start-aligned, matching the phone layout below it.
+    const { container } = render(rail);
+    const scroller = container.querySelector("[data-testid='rail-scroller']")!;
+    expect(scroller.className).toContain("lg:justify-center-safe");
+    expect(scroller.className).not.toMatch(/(?:^|\s)lg:justify-center(?:\s|$)/);
+  });
+
   it("does not let the arrows' box swallow clicks meant for the chips", () => {
     // The box that carries the arrows now spans the whole centred column
     // instead of a corner-sized square — without `pointer-events-none` on it,

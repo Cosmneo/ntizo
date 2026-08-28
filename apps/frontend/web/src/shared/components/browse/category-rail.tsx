@@ -104,11 +104,29 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
             chips' own bottom spacing along with it. `pb-4` is what `py-4`
             used to give both sides, kept as-is. The wrapper above compensates
             so the arrows and fades keep tracking the chip row, not this now
-            taller, asymmetric box. */}
+            taller, asymmetric box.
+
+            `lg:justify-center-safe`, not `lg:justify-center`: the hero above
+            (title, subtitle, search card) is centred from `lg` up, and a
+            short category list should sit under it the same way instead of
+            hugging the left edge with empty space to its right. Plain
+            `justify-center` on a *scrolling* flex container is a standing
+            browser bug, not a style choice — once the chips overflow, the
+            portion that overflows to the left is pushed before the
+            container's own scroll start, and nothing can scroll back far
+            enough to reach it, so the first categories become permanently
+            unreachable the moment the catalogue outgrows the dev seed data.
+            `-safe` centres only while every chip already fits and falls back
+            to start alignment the instant it doesn't, which is centred *and*
+            keeps the whole row reachable — do not "simplify" this back to
+            `justify-center`, it only looks equivalent with a handful of
+            categories. Below `lg` the row stays start-aligned, unchanged: on
+            a phone the first chip should sit flush with the content column,
+            where the eye already is. */}
         <div
           ref={scroller}
           data-testid="rail-scroller"
-          className="page-shell flex gap-2 overflow-x-auto pt-10 pb-4 sm:px-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="page-shell flex gap-2 overflow-x-auto pt-10 pb-4 sm:px-14 lg:justify-center-safe [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {children}
         </div>
