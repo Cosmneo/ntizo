@@ -1,22 +1,34 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { ProviderPublicDTO } from "@ntizo/shared";
+import type { ProviderPublicDetailDTO } from "@ntizo/shared";
 import type { ProviderPageDTO, ProviderReviewsPublicDTO } from "@ntizo/shared/read-models";
 import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
 import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listing";
 import type { DirectorySearch } from "@/features/directory/domain/directory-search";
 
-/** Every field a card or the detail header draws, named once. */
-const PROVIDER_FIELDS = `
+export const PROVIDER_FIELDS = `
   id name slug type description city district country logoUrl photoUrls
   verified ratingAverage reviewCount serviceCount fromAmountMinor fromCurrency
   categories { code name }`;
 
-const BY_SLUG = `
+/**
+ * The slug lookup asks for more than the list does, and that split is the point.
+ *
+ * `weeklyHours` costs a join over every member's availability. Asking for it in
+ * `PROVIDER_FIELDS` would make the directory pay that 24 times to render a grid
+ * of cards that show none of it — see `providerPublicDetailReadModel`'s own doc
+ * comment for the same reasoning on the server's side of the wire.
+ */
+export const PROVIDER_DETAIL_FIELDS = `${PROVIDER_FIELDS}
+  memberSince
+  serviceLocationTypes
+  weeklyHours { weekday intervals { startMinute endMinute } }`;
+
+export const BY_SLUG = `
   query ProviderBySlug($input: ProviderBySlugInput!) {
-    providerBySlug(input: $input) { ${PROVIDER_FIELDS} }
+    providerBySlug(input: $input) { ${PROVIDER_DETAIL_FIELDS} }
   }`;
 
-const LIST = `
+export const LIST = `
   query ProviderList($input: ProviderListInput!) {
     providerList(input: $input) {
       items { ${PROVIDER_FIELDS} }
@@ -143,8 +155,8 @@ export const directoryQueries = {
   bySlug: (slug: string, locale: string) =>
     queryOptions({
       queryKey: ["public", "provider", slug, locale] as const,
-      queryFn: async (): Promise<ProviderPublicDTO | null> => {
-        const d = await publicGraphql<{ providerBySlug: ProviderPublicDTO | null }>(BY_SLUG, {
+      queryFn: async (): Promise<ProviderPublicDetailDTO | null> => {
+        const d = await publicGraphql<{ providerBySlug: ProviderPublicDetailDTO | null }>(BY_SLUG, {
           input: { slug, locale },
         });
         // null is a legitimate answer, not an error: the backend returns it for

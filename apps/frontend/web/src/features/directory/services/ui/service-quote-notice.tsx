@@ -1,17 +1,16 @@
 import { useTranslation } from "react-i18next";
-import { Button } from "@ntizo/frontend-ui";
+import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 
 /**
- * The right column's answer for a `quote` service, in place of `PackageChooser`.
+ * The right column's answer for a `quote` service, in place of the price rail.
  *
- * `PackageChooser` renders nothing at all when `options` is empty — correctly,
- * per its own doc comment: there is no honest total to show until the provider
- * has priced the job. Left there, that "nothing" propagated up: nothing else
- * in the plan put any affordance in this slot for a quote service, so the page
- * offered a customer no explanation and no next step at all. This is the
- * page's own answer, not the chooser's — `service-detail-page.tsx` composes
- * one or the other depending on `service.options.length`, and `PackageChooser`
- * itself, and its tests, are unchanged.
+ * A quote service carries no priced option, so there is no honest total to
+ * show until the provider has seen the job — which is why `RailPriceSummary`
+ * is not merely rendered empty here. An empty rail leaves a customer with no
+ * explanation and no next step at all, and that "nothing" is exactly what
+ * this exists to replace. `serviceDetailPanel` (`domain/service-card.ts`) is
+ * the one place the choice between the three is made, keyed off `bookingMode`
+ * rather than off `options.length`.
  *
  * The explanation reuses `availabilityQuoteNotice` rather than introducing a
  * near-identical sentence: `AvailabilitySheet` already says "priced by quote,
@@ -21,15 +20,16 @@ import { Button } from "@ntizo/frontend-ui";
  * also considered and rejected — it is a price-tag label built for a browse
  * card, too terse to stand alone as the only content in this slot.
  *
- * The "Falar com o prestador" button gets the same disabled, unlinked
- * treatment `PackageChooser` gives "Reservar" — not because there is nothing
- * to wire it to any more (`features/messaging` exists now, and
- * `provider-hero.tsx`'s `MessageProviderButton` already wires the identical
- * CTA to `useStartThread` a few features over), but because nobody has come
- * back to wire this one now that the reason it was disabled no longer
- * holds. See follow-up #69.
+ * **The "contact provider" button now actually works.** A quote service can
+ * be neither booked nor scheduled — there is no fixed price or duration to
+ * check a calendar against — so this button is the only action its page
+ * offers, and rendering it disabled behind a sentence claiming messaging
+ * "isn't open on Ntizo yet" was false: messaging shipped, `RailPriceSummary`
+ * (the sibling branch of this same `serviceDetailPanel` choice, one file
+ * over) already mounts the identical `MessageProviderButton`, and so does the
+ * provider page itself. Closes follow-up #69.
  */
-export function ServiceQuoteNotice() {
+export function ServiceQuoteNotice({ providerId }: { providerId: string }) {
   const { t } = useTranslation("directory");
 
   return (
@@ -38,12 +38,7 @@ export function ServiceQuoteNotice() {
         {t("availabilityQuoteNotice")}
       </p>
       <div className="mt-4 grid gap-2">
-        <Button type="button" variant="secondary" disabled className="w-full">
-          {t("packageContactProvider")}
-        </Button>
-        <p className="type-caption text-center text-[var(--color-muted-foreground)]">
-          {t("packageContactClosed")}
-        </p>
+        <MessageProviderButton providerId={providerId} />
       </div>
     </div>
   );

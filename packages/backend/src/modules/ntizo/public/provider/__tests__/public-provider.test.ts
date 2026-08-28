@@ -4,8 +4,11 @@ import { join } from "node:path";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { and, type SQL } from "drizzle-orm";
-import { providerPublicReadModel } from "@ntizo/shared/read-models";
-import type { ProviderPublicDTO } from "@ntizo/shared";
+import {
+  providerPublicReadModel,
+  type ProviderPublicDetailDTO,
+  type WeeklyHoursDTO,
+} from "@ntizo/shared/read-models";
 import type {
   ListActiveFilters,
   ProviderPage,
@@ -27,22 +30,23 @@ import {
   mediaUrl,
 } from "../../../shared/infrastructure/media/media-url";
 
-const dto: ProviderPublicDTO = {
+const dto: ProviderPublicDetailDTO = {
   id: "p1", name: "Org", slug: "org", type: "organization",
   description: null, city: null, district: null, country: null, logoUrl: null,
   photoUrls: [], verified: false, ratingAverage: null, reviewCount: 0,
   categories: [], serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
+  memberSince: null, serviceLocationTypes: [], weeklyHours: [],
 };
 
 class FakeRepo implements ProviderPublicRepositoryPort {
   public readonly calls: string[] = [];
-  constructor(private readonly result: ProviderPublicDTO | null = dto) {}
+  constructor(private readonly result: ProviderPublicDetailDTO | null = dto) {}
   async listActive(filters: ListActiveFilters): Promise<ProviderPage> {
     this.calls.push(`listActive:${filters.limit}:${filters.offset}:${filters.search ?? "-"}`);
     const items = this.result ? [this.result] : [];
     return { items, total: items.length };
   }
-  async findActiveBySlug(slug: string): Promise<ProviderPublicDTO | null> {
+  async findActiveBySlug(slug: string): Promise<ProviderPublicDetailDTO | null> {
     this.calls.push(`findActiveBySlug:${slug}`);
     return this.result;
   }
@@ -102,6 +106,28 @@ describe("public provider repository source", () => {
     const statusChecks = source.match(/eq\(provider\.status, "active"\)/g) ?? [];
     expect(statusChecks.length).toBe(3);
   });
+
+  it("scopes the weekly-hours query to one provider", () => {
+    // Availability rows are not filtered by provider status — the slug lookup
+    // above already refused an inactive provider before this query runs — so
+    // the only thing standing between one business's hours and another's is
+    // this predicate.
+    expect(source).toContain("eq(memberAvailability.providerId,");
+  });
+
+  it("scopes the location-type aggregate to published services", () => {
+    // Isolated to the `locations` aggregate specifically, not just counted
+    // across the whole file: `services` and `prices` also filter on
+    // `eq(service.status, "published")`, so a bare `toContain` would pass
+    // even if `locations` itself had lost the predicate. A provider who
+    // stops publishing an at-provider service must stop claiming to work
+    // that way — the same rule `categories` already follows.
+    const start = source.indexOf("const locations = db");
+    const end = source.indexOf('.as("location_agg")', start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(source.slice(start, end)).toContain('eq(service.status, "published")');
+  });
 });
 
 /**
@@ -135,15 +161,21 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     fromAmountMinor: number | null;
     fromCurrency: string | null;
     verified: boolean;
+    createdAt: Date;
+    locationTypes: string[] | null;
   };
 
   const raw = (
     DrizzleProviderPublicRepository as unknown as {
-      toDTO(row: PublicProviderRow, categories: { code: string; name: string }[]): ProviderPublicDTO;
+      toDTO(
+        row: PublicProviderRow,
+        categories: { code: string; name: string }[],
+        weeklyHours: WeeklyHoursDTO[],
+      ): ProviderPublicDetailDTO;
     }
   ).toDTO;
-  /** The categories argument is not what these tests are about — always empty. */
-  const toDTO = (row: PublicProviderRow) => raw(row, []);
+  /** The categories and weeklyHours arguments are not what these tests are about — always empty. */
+  const toDTO = (row: PublicProviderRow) => raw(row, [], []);
 
   const row: PublicProviderRow = {
     id: "p1",
@@ -162,6 +194,8 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     fromAmountMinor: null,
     fromCurrency: null,
     verified: false,
+    createdAt: new Date("2024-01-01T00:00:00Z"),
+    locationTypes: null,
   };
 
   beforeEach(() => {
@@ -196,6 +230,27 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
     const result = toDTO({ ...row, logoKey: null });
     expect(result.logoUrl).toBeNull();
   });
+
+  it("publishes created_at as a year-month, never a day", () => {
+    const result = toDTO({ ...row, createdAt: new Date("2025-03-14T09:41:00Z") });
+    expect(result.memberSince).toBe("2025-03");
+    expect(JSON.stringify(result)).not.toContain("14");
+  });
+
+  it("maps a null location-type aggregate to an empty list, not null", () => {
+    const result = toDTO({ ...row, locationTypes: null });
+    expect(result.serviceLocationTypes).toEqual([]);
+  });
+
+  it("passes the location types through in the order given", () => {
+    const result = toDTO({ ...row, locationTypes: ["at_customer", "remote"] });
+    expect(result.serviceLocationTypes).toEqual(["at_customer", "remote"]);
+  });
+
+  it("never carries createdAt, in any form, once mapped", () => {
+    const result = toDTO({ ...row }) as Record<string, unknown>;
+    expect(Object.keys(result)).not.toContain("createdAt");
+  });
 });
 
 describe("ListPublicProvidersProjection", () => {
@@ -218,6 +273,18 @@ describe("GetPublicProviderProjection", () => {
     // them apart reveals which businesses exist but are hidden.
     const result = await new GetPublicProviderProjection(new FakeRepo(null)).execute({ slug: "gone" });
     expect(result).toBeNull();
+  });
+
+  it("passes the detail fields through untouched", async () => {
+    const repo = new FakeRepo({
+      ...dto,
+      memberSince: "2025-03",
+      serviceLocationTypes: ["at_customer"],
+      weeklyHours: [{ weekday: 1, intervals: [{ startMinute: 480, endMinute: 1080 }] }],
+    });
+    const result = await new GetPublicProviderProjection(repo).execute({ slug: "org" });
+    expect(result?.memberSince).toBe("2025-03");
+    expect(result?.weeklyHours[1 - 1]?.intervals[0]?.startMinute).toBe(480);
   });
 });
 

@@ -943,7 +943,9 @@ not the three components that happen to produce them. (Duration was briefly a
 fifth fabricated fact inside `ServiceFacts` — "4–12 horas" beside a real price
 — and is not part of this entry's scope any more: it was replaced with real
 data, `optionDurationMinutes`, rendered by `PackageChooser` instead, in the
-same pass that corrected this count.)
+same pass that corrected this count. `PackageChooser` has since been split into
+`ServiceOptions` and `RailPriceSummary`, which both still read that same
+function.)
 
 Deleting the module also orphans locale keys nothing else reads: `ratingCount`
 (and its plural sibling `ratingCount_other`), `ratingAriaLabel`,
@@ -1765,17 +1767,37 @@ this file is touched for an unrelated reason.
 
 ---
 
-## 69. `PackageChooser` and `ServiceQuoteNotice` still disable "contact provider" behind a stale comment
+## ~~69. `ServiceQuoteNotice` still disables "contact provider" behind a stale comment~~ — RESOLVED 2026-08-28
 
-Both render their "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
-comment explaining why: "there is no Communication context in this product either" (`package-chooser.tsx`,
-`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
-context, and `provider-hero.tsx`'s `MessageProviderButton` already wires the identical CTA to
-`useStartThread` a few features over. The button in these two files could work today; nobody has
-gone back to wire it up now that the reason it was disabled no longer holds.
+`ServiceQuoteNotice` now takes a `providerId` and renders the real `MessageProviderButton` in place
+of the disabled button and the `packageContactClosed` sentence — the same control
+`RailPriceSummary` and the provider page's own rail already mount. A quote service can be neither
+booked nor scheduled, so this is the only action its page offers, which made the stale disabled
+button more than cosmetic: the sentence beside it claimed messaging "isn't open on Ntizo yet" when
+it had been open since this phase, the same defect class this whole spec exists to prevent, merely
+inverted. `packageContactClosed` had no other consumer once this was the last place using it, so the
+key is gone from all eight locale files.
 
-**Trigger:** the next time `PackageChooser` or `ServiceQuoteNotice` is touched — wire the button the
-way `provider-hero.tsx` already does, or explain why a package/quote page shouldn't offer it.
+The original entry is kept below for the record.
+
+---
+
+## 69. (original) `ServiceQuoteNotice` still disables "contact provider" behind a stale comment
+
+It renders its "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
+comment explaining why: "there is no Communication context in this product either"
+(`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
+context, and `provider-rail.tsx`'s `MessageProviderButton` wires the identical CTA to
+`useStartThread`. The button could work today; nobody has gone back to wire it up now that the
+reason it was disabled no longer holds.
+
+Half of this entry is now closed. `PackageChooser` carried the same disabled button and was deleted
+in the detail-pages redesign; its replacement, `RailPriceSummary`, mounts the real
+`MessageProviderButton` — so `ServiceQuoteNotice` is the last place in the product where this
+control is a placeholder, and it is now conspicuous rather than consistent.
+
+**Trigger:** the next time `ServiceQuoteNotice` is touched — wire the button the way
+`RailPriceSummary` already does, or explain why a quote page shouldn't offer it.
 
 ---
 
@@ -2149,3 +2171,81 @@ the configured-not-broken path the route was written for — correct behaviour, 
 
 **Trigger:** the next deploy to qa or prod, or the first time somebody runs the API locally and
 finds uploads answering 503.
+
+---
+
+## 90. The `Dialog` primitive is not a dialog
+
+`packages/frontend/src/components/dialog.tsx`'s `DialogContent` renders two bare `div`s. It has no
+`role="dialog"`, no `aria-modal`, no focus trap, no focus restoration, and **no Escape handler** —
+the only thing that closes it is a click on the backdrop.
+
+Every modal surface in the app inherits this: `mobile-search-sheet.tsx`, `provider-facets.tsx`,
+`service-facets.tsx`, `rule-drawer.tsx`, `availability-sheet.tsx`, and now
+`detail-gallery.tsx`. Each of them independently supplies its own `role="dialog"` and
+`aria-labelledby` to paper over it, which is six copies of a fix that belongs in one place — and
+six chances for the seventh consumer to forget.
+
+**What is not broken:** these components are still operable without a mouse, because each supplies
+its own focusable close button. A keyboard user is not trapped; they are made to Tab to a control
+that Escape should have handled.
+
+**Why it was not fixed here:** it surfaced during Task 7 of the detail-pages redesign, whose diff
+touches none of the other five consumers. Changing a primitive with that blast radius would have put
+an unreviewed behaviour change under five screens nobody was reviewing that day — and a focus trap
+is behaviour, not decoration: it changes what Tab does on every one of them.
+
+**Trigger:** the next accessibility pass, the next keyboard-navigation bug filed against any modal,
+or the next component that needs a dialog — at which point it is a seventh copy of the workaround,
+and the argument for fixing the primitive has beaten the argument against it.
+
+---
+
+## 91. What the detail-pages redesign deferred
+
+The whole-branch review triaged each of these as a follow-up rather than a merge blocker, with
+the reason. Recorded here because the branch's own working notes are deleted once it merges.
+
+**Dead code behind a live export.** `features/directory/services/ui/service-card.tsx` has had no
+consumer for its `ServiceCard` export since the browse moved to `ServiceListingCard` — before this
+branch. The same file still exports `ServicePrice`, which `availability/ui/availability-sheet.tsx`
+imports, so removing it means extracting that first. **Trigger:** the next change to either symbol.
+
+**The browse card still says "Book".** `service-listing-card.tsx` labels its CTA `packageBook` on a
+`<Link>` into a page that states, in words, that bookings are not open. The detail pages were
+scrubbed of that word; the front door was out of scope. It is asserted by name in that card's own
+test, so it is a two-file change. **Trigger:** the next honesty pass, or the first customer who asks
+why "Book" does not book.
+
+**Two prices, two spellings, one click apart.** `rail-price-summary.tsx`'s headline keeps
+`formatAmount`'s decimals while `ProviderRail`'s headline and `ServiceRow`'s price use
+`formatHeadlinePrice`'s whole units. Deliberate — the comment at that line records the trade and its
+cost — because rounding it would show two spellings of one amount inside a single card. **Trigger:**
+a decision that cross-page consistency matters more, or a redesign that separates the headline from
+the breakdown.
+
+**`memberSince` is pinned to UTC.** `provider-public.repository.ts` derives it with
+`toISOString().slice(0, 7)`, so a business registered between midnight and 02:00 on the 1st in Maputo
+publishes the previous month. Wrong by one month, on a fact whose whole purpose is telling a
+five-year business from a five-week one. **Trigger:** the next change to `toDTO`.
+
+**Coverage the redesign did not add.** The rail's fixed-duration label is unasserted (only the hourly
+branch is covered); `ServiceRow`'s `from` and `unavailable` price branches are untested; and the
+spec asked for the e2e provider journey to assert the rail's price and the availability card, which
+was not done. That last one matters more than coverage arithmetic suggests: this work added a second
+awaited GraphQL query to `/services/$id`'s SSR loader, and `apps/e2e/tests/public-directory.spec.ts`
+exists because a routing bug once made every detail URL render the wrong thing with JavaScript
+disabled. **Trigger:** the next SSR or routing change to either detail route.
+
+**Test guards weaker than they look.** `flattenToDottedPaths` in the locale parity test treats `{}`
+identically to an absent key, so two content-empty sides compare equal. And
+`member-since.test.ts`'s UTC-vs-local regression test cannot fail on a runner whose timezone has a
+non-negative offset — `vite.config.ts` pins no `TZ` and CI is almost certainly UTC, so a test named
+for catching a timezone bug cannot catch it there. **Trigger:** either, the next time a date or a
+locale bug is suspected.
+
+**Keyboard behaviour carried across unchanged.** The service options radiogroup duplicates its own
+`h2` as an `aria-label` and has no roving `tabIndex` or arrow-key handling — inherited verbatim from
+the deleted `PackageChooser`, and now a full-width body control rather than a rail detail. Every
+radio is individually tabbable and `aria-checked` is correct, so it is operable, just not
+APG-conformant. **Trigger:** pair it with #90, the `Dialog` primitive's missing focus trap.

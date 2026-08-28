@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
-import { cn } from "@ntizo/frontend-ui";
+import { Button, cn } from "@ntizo/frontend-ui";
 import { useProviderReviews } from "@/features/directory/viewmodel/use-directory";
 import { RatingStars } from "@/features/directory/ui/rating-stars";
 
@@ -9,6 +10,40 @@ const BARS = ["five", "four", "three", "two", "one"] as const;
 const SCORE_OF: Record<(typeof BARS)[number], number> = {
   five: 5, four: 4, three: 3, two: 2, one: 1,
 };
+
+/** The `ReviewByProviderInput` GraphQL input's own ceiling (see the `REVIEWS`
+ *  query in `directory.repository.ts`) — repeated here as a literal, rather
+ *  than imported, so the "see all" button's promise is checkable by reading
+ *  this file alone. */
+const REVIEWS_CAP = 50;
+
+/**
+ * The summary panel's own five-star row, drawn directly instead of through
+ * `RatingStars`: that component always prints the score and the count as text
+ * beside its stars, and this panel already prints both once each — the score
+ * as the headline number above, the count in the caption below. Hiding
+ * `RatingStars`'s copies with CSS would still leave them in the DOM as a
+ * second, redundant "4.8", so the fix is a row that only ever draws stars.
+ */
+function AverageStars({ average }: { average: number }) {
+  return (
+    <span aria-hidden="true" className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((position) => (
+        <Star
+          key={position}
+          className={cn(
+            "h-4 w-4",
+            // The same quarter-star tolerance `RatingStars` uses, so 4.8 fills
+            // its fifth star here too rather than reading as a rounded-down 4.
+            average >= position - 0.25
+              ? "fill-[var(--color-warning)] text-[var(--color-warning)]"
+              : "text-[color-mix(in_srgb,var(--color-muted-foreground)_40%,transparent)]",
+          )}
+        />
+      ))}
+    </span>
+  );
+}
 
 /**
  * What customers said about this business.
@@ -22,11 +57,21 @@ const SCORE_OF: Record<(typeof BARS)[number], number> = {
  * over a blank space is a hole in the page that says the business is untested
  * in the least generous way possible; the card in the directory has already
  * said "no reviews yet" in words, which is enough.
+ *
+ * "See all reviews" raises the query's `limit` rather than paging it. The
+ * `ReviewByProviderInput` GraphQL input caps that field at 50, so 50 is
+ * the whole of what it can ever hand back; a "load more" built to keep
+ * requesting past that could never reach the end, which makes it a control
+ * that lies about how much more there is. Raising the limit and re-fetching
+ * is the honest version of the same button, and it is why the local `limit`
+ * state below only ever takes the values `undefined` (the hook's default) and
+ * `REVIEWS_CAP` — there is no third page to ask for.
  */
 export function ProviderReviews({ providerId }: { providerId: string }) {
   const { t, i18n } = useTranslation("directory");
   const locale = i18n.resolvedLanguage ?? i18n.language;
-  const data = useProviderReviews(providerId);
+  const [limit, setLimit] = useState<number | undefined>(undefined);
+  const data = useProviderReviews(providerId, limit);
 
   if (!data || data.summary.count === 0) return null;
 
@@ -40,12 +85,22 @@ export function ProviderReviews({ providerId }: { providerId: string }) {
     <section className="mt-12">
       <h2 className="type-h2">{t("reviewsHeading", { count: summary.count })}</h2>
 
-      <div className="mt-4 grid gap-6 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-muted)] p-5 sm:grid-cols-[auto_minmax(0,20rem)] sm:items-center">
-        <div className="grid justify-items-center gap-1 sm:justify-items-start">
-          <p className="font-rounded text-[2.75rem] leading-none font-semibold tabular-nums">
+      {/* One column below `sm`, two above — the same breakpoint the section
+          this replaced used. The score's own column is `auto`-sized by a
+          long aria label, so on a 360px phone (Mozambique is a mobile-first
+          market) a two-column layout would squeeze the histogram's label,
+          bar and count into what is left of a ~312px shell. `items-center`
+          is scoped to `sm:` too, so the stacked score does not float
+          against a histogram it is no longer beside. */}
+      <div className="mt-4 grid grid-cols-1 gap-6 rounded-[var(--radius-card)] border bg-[var(--color-muted)] px-5 py-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-11 sm:px-7 sm:py-6">
+        <div className="grid justify-items-center gap-2">
+          <p className="font-display text-[52px] font-semibold leading-none tabular-nums">
             {score}
           </p>
-          <RatingStars average={summary.average} count={summary.count} />
+          <AverageStars average={summary.average ?? 0} />
+          <p className="type-caption text-[var(--color-muted-foreground)]">
+            {t("providerRatingLabel", { score, count: summary.count })}
+          </p>
         </div>
 
         {/* The distribution, so an average can be weighed rather than trusted:
@@ -62,13 +117,16 @@ export function ProviderReviews({ providerId }: { providerId: string }) {
                   <Star className="h-3 w-3 fill-current" aria-hidden="true" />
                 </span>
                 <span
-                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)]"
+                  className="h-[7px] flex-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)]"
                   // The bar is decoration for the number beside it; a screen
                   // reader gets "4 stars, 12" from the row, not a percentage.
                   aria-hidden="true"
                 >
                   <span
-                    className="block h-full rounded-full bg-[var(--color-warning)]"
+                    // Foreground, not warning: the stars above are the only
+                    // gold on the page, so a bar reads as quantity, not as a
+                    // second, competing rating.
+                    className="block h-full rounded-full bg-[var(--color-foreground)]"
                     style={{ width: `${share}%` }}
                   />
                 </span>
@@ -81,32 +139,31 @@ export function ProviderReviews({ providerId }: { providerId: string }) {
         </div>
       </div>
 
-      <ul className="mt-5 grid gap-3">
+      <ul className="mt-6">
         {reviews.map((review) => (
-          <li
-            key={review.id}
-            className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
-          >
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <li key={review.id} className="border-t border-[var(--color-border)] py-6">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
               <span
                 aria-hidden="true"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[11px] font-semibold text-[var(--color-muted-foreground)]"
+                className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[13px] font-semibold text-[var(--color-muted-foreground)]"
               >
                 {initials(review.authorName)}
               </span>
-              <p className="type-body-medium font-semibold">
-                {/* Somebody who set no display name is "a customer", never their
-                    email and never their id: this page is public, and they did
-                    not agree to appear under either. */}
-                {review.authorName ?? t("reviewAnonymous")}
-              </p>
+              <div className="grid gap-0.5">
+                <p className="type-body-medium font-semibold">
+                  {/* Somebody who set no display name is "a customer", never
+                      their email and never their id: this page is public, and
+                      they did not agree to appear under either. */}
+                  {review.authorName ?? t("reviewAnonymous")}
+                </p>
+                <time
+                  dateTime={review.createdAt}
+                  className="type-caption text-[var(--color-muted-foreground)]"
+                >
+                  {formatDate(review.createdAt, locale)}
+                </time>
+              </div>
               <RatingStars average={review.rating} count={1} className="[&>span:last-child]:hidden" />
-              <time
-                dateTime={review.createdAt}
-                className="type-caption ml-auto text-[var(--color-muted-foreground)]"
-              >
-                {formatDate(review.createdAt, locale)}
-              </time>
             </div>
             {review.comment && (
               <p className="type-body mt-2.5 whitespace-pre-line">{review.comment}</p>
@@ -115,13 +172,21 @@ export function ProviderReviews({ providerId }: { providerId: string }) {
         ))}
       </ul>
 
-      {/* Said plainly rather than with a "load more" that does nothing: paging
-          the reviews needs an offset this page does not carry yet, and a
-          control that lies is worse than a sentence that does not. */}
       {summary.count > reviews.length && (
-        <p className={cn("type-caption mt-4 text-[var(--color-muted-foreground)]")}>
-          {t("reviewsShowing", { shown: reviews.length, total: summary.count })}
-        </p>
+        <div className="mt-4 grid gap-3 justify-items-start">
+          {reviews.length < REVIEWS_CAP && (
+            <Button type="button" variant="outline" onClick={() => setLimit(REVIEWS_CAP)}>
+              {t("reviewsSeeAll")}
+            </Button>
+          )}
+          {/* Said plainly rather than with a "load more" that keeps offering
+              past 50: the read model has nothing further to give, so once
+              `reviews.length` reaches its cap this sentence is the honest end
+              of the story, not a control promising a next page. */}
+          <p className="type-caption text-[var(--color-muted-foreground)]">
+            {t("reviewsShowing", { shown: reviews.length, total: summary.count })}
+          </p>
+        </div>
       )}
     </section>
   );

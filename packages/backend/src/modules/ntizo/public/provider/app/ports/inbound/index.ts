@@ -1,4 +1,4 @@
-import type { ProviderPageDTO, ProviderPublicDTO } from "@ntizo/shared/read-models";
+import type { ProviderPageDTO, ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 
 export interface ListPublicProvidersInput {
   limit: number;
@@ -27,7 +27,7 @@ export interface GetPublicProviderInput {
 }
 
 export interface GetPublicProviderPort {
-  execute(input: GetPublicProviderInput): Promise<ProviderPublicDTO | null>;
+  execute(input: GetPublicProviderInput): Promise<ProviderPublicDetailDTO | null>;
 }
 
 export interface ListProviderCityFacetsPort {

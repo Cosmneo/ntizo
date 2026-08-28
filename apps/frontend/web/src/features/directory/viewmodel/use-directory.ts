@@ -1,7 +1,6 @@
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import type { ProviderPublicDTO } from "@ntizo/shared";
-import type { ProviderPageDTO, ProviderReviewsPublicDTO } from "@ntizo/shared/read-models";
+import type { ProviderPageDTO, ProviderReviewsPublicDTO, ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 import {
   directoryQueries,
   type CityFacet,
@@ -62,13 +61,21 @@ export function prefetchDirectory(
  * services are what a crawler indexes and what a reader came for, and holding
  * all of it behind a second round trip to fetch verdicts would make the page
  * slower for everyone to render the part nobody scrolled to yet.
+ *
+ * `limit` is optional and forwarded as-is. `directoryQueries.reviews` already
+ * keys its cache on it, so raising it — the only thing `ProviderReviews`'s
+ * "see all" button does — asks for a second, larger cache entry rather than
+ * mutating the first; no pagination state belongs here.
  */
-export function useProviderReviews(providerId: string): ProviderReviewsPublicDTO | undefined {
-  const { data } = useQuery(directoryQueries.reviews(providerId));
+export function useProviderReviews(
+  providerId: string,
+  limit?: number,
+): ProviderReviewsPublicDTO | undefined {
+  const { data } = useQuery(directoryQueries.reviews(providerId, limit));
   return data;
 }
 
-export function useProviderDetail(slug: string, locale: string): ProviderPublicDTO | null {
+export function useProviderDetail(slug: string, locale: string): ProviderPublicDetailDTO | null {
   const { data } = useSuspenseQuery(directoryQueries.bySlug(slug, locale));
   return data;
 }
@@ -77,6 +84,6 @@ export function prefetchProviderDetail(
   queryClient: QueryClient,
   slug: string,
   locale: string,
-): Promise<ProviderPublicDTO | null> {
+): Promise<ProviderPublicDetailDTO | null> {
   return queryClient.ensureQueryData(directoryQueries.bySlug(slug, locale));
 }

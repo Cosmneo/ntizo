@@ -4,7 +4,7 @@ import { CustomerMessagesPage } from "@/features/messaging/ui/customer-messages-
 /**
  * `?thread=<id>` is the whole search schema: which conversation is open,
  * carried in the URL rather than component state so a direct link (the
- * "message this provider" button on `provider-hero.tsx`, or a reload) lands
+ * "message this provider" button on `provider-rail.tsx`, or a reload) lands
  * on the right conversation instead of the inbox's default "pick one" state.
  * An empty or non-string value is read as "none selected" rather than
  * rejected — an unrecognisable id still opens the list, it just finds no
