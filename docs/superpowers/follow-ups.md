@@ -943,7 +943,9 @@ not the three components that happen to produce them. (Duration was briefly a
 fifth fabricated fact inside `ServiceFacts` — "4–12 horas" beside a real price
 — and is not part of this entry's scope any more: it was replaced with real
 data, `optionDurationMinutes`, rendered by `PackageChooser` instead, in the
-same pass that corrected this count.)
+same pass that corrected this count. `PackageChooser` has since been split into
+`ServiceOptions` and `RailPriceSummary`, which both still read that same
+function.)
 
 Deleting the module also orphans locale keys nothing else reads: `ratingCount`
 (and its plural sibling `ratingCount_other`), `ratingAriaLabel`,
@@ -1764,17 +1766,22 @@ this file is touched for an unrelated reason.
 
 ---
 
-## 69. `PackageChooser` and `ServiceQuoteNotice` still disable "contact provider" behind a stale comment
+## 69. `ServiceQuoteNotice` still disables "contact provider" behind a stale comment
 
-Both render their "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
-comment explaining why: "there is no Communication context in this product either" (`package-chooser.tsx`,
-`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
-context, and `provider-hero.tsx`'s `MessageProviderButton` already wires the identical CTA to
-`useStartThread` a few features over. The button in these two files could work today; nobody has
-gone back to wire it up now that the reason it was disabled no longer holds.
+It renders its "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
+comment explaining why: "there is no Communication context in this product either"
+(`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
+context, and `provider-rail.tsx`'s `MessageProviderButton` wires the identical CTA to
+`useStartThread`. The button could work today; nobody has gone back to wire it up now that the
+reason it was disabled no longer holds.
 
-**Trigger:** the next time `PackageChooser` or `ServiceQuoteNotice` is touched — wire the button the
-way `provider-hero.tsx` already does, or explain why a package/quote page shouldn't offer it.
+Half of this entry is now closed. `PackageChooser` carried the same disabled button and was deleted
+in the detail-pages redesign; its replacement, `RailPriceSummary`, mounts the real
+`MessageProviderButton` — so `ServiceQuoteNotice` is the last place in the product where this
+control is a placeholder, and it is now conspicuous rather than consistent.
+
+**Trigger:** the next time `ServiceQuoteNotice` is touched — wire the button the way
+`RailPriceSummary` already does, or explain why a quote page shouldn't offer it.
 
 ---
 

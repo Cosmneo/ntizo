@@ -27,9 +27,10 @@ const SIDE_TILES = 2;
  * dialog every photo is equally presented, with no single one already
  * described, so there each image is labelled by its position instead.
  *
- * Renders nothing at all with no photos — the same call `ServiceGallery`
- * already makes: an empty frame reads as a page that failed to load, where
- * the plain absence of the section reads as "no photo yet".
+ * Renders nothing at all with no photos — the call `ServiceGallery` and
+ * `ProviderPortfolio`, the two components this replaced, both already made:
+ * an empty frame reads as a page that failed to load, where the plain
+ * absence of the section reads as "no photo yet".
  */
 export function DetailGallery({
   images,

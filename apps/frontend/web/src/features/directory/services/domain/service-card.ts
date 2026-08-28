@@ -94,7 +94,8 @@ export function optionDurationMinutes(
 }
 
 /**
- * What the service page's right column shows in place of `PackageChooser`.
+ * What the service page's right column shows: the price rail
+ * (`RailPriceSummary`), or one of two notices in place of it.
  *
  * Keyed off `bookingMode` first, never off `options.length` — the same rule
  * `servicePriceCell` states above and for the same reason. `service-detail-page.tsx`

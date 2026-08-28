@@ -162,7 +162,7 @@ export function ServiceListingCard({
  * approved mockup writes whole units, so both do.
  *
  * Here rather than in the services domain's `formatAmount`: that helper also
- * formats `PackageChooser`'s line items and its total, and a checkout total
+ * formats `RailPriceSummary`'s line items and its total, and a checkout total
  * rounded to the escudo is a different number from the one the customer pays.
  * A card is a headline price and can round; a total cannot.
  *

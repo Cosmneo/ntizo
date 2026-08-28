@@ -144,7 +144,7 @@ export function ServiceRow({
  * `quotePrice` in place of an amount *and* offers `quoteAction`, never the
  * filled availability button — a quote has no fixed duration and no price,
  * so there is no slot to check, the same reasoning `ServiceQuoteNotice`
- * applies in place of `PackageChooser` on the service page itself.
+ * applies in place of the price rail on the service page itself.
  *
  * `unavailable` (a `priced` service whose last active option was
  * deactivated after publish — reachable, not theoretical; see

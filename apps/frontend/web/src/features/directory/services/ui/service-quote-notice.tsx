@@ -2,16 +2,15 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@ntizo/frontend-ui";
 
 /**
- * The right column's answer for a `quote` service, in place of `PackageChooser`.
+ * The right column's answer for a `quote` service, in place of the price rail.
  *
- * `PackageChooser` renders nothing at all when `options` is empty — correctly,
- * per its own doc comment: there is no honest total to show until the provider
- * has priced the job. Left there, that "nothing" propagated up: nothing else
- * in the plan put any affordance in this slot for a quote service, so the page
- * offered a customer no explanation and no next step at all. This is the
- * page's own answer, not the chooser's — `service-detail-page.tsx` composes
- * one or the other depending on `service.options.length`, and `PackageChooser`
- * itself, and its tests, are unchanged.
+ * A quote service carries no priced option, so there is no honest total to
+ * show until the provider has seen the job — which is why `RailPriceSummary`
+ * is not merely rendered empty here. An empty rail leaves a customer with no
+ * explanation and no next step at all, and that "nothing" is exactly what
+ * this exists to replace. `serviceDetailPanel` (`domain/service-card.ts`) is
+ * the one place the choice between the three is made, keyed off `bookingMode`
+ * rather than off `options.length`.
  *
  * The explanation reuses `availabilityQuoteNotice` rather than introducing a
  * near-identical sentence: `AvailabilitySheet` already says "priced by quote,
@@ -21,13 +20,13 @@ import { Button } from "@ntizo/frontend-ui";
  * also considered and rejected — it is a price-tag label built for a browse
  * card, too terse to stand alone as the only content in this slot.
  *
- * The "Falar com o prestador" button gets the same disabled, unlinked
- * treatment `PackageChooser` gives "Reservar" — not because there is nothing
- * to wire it to any more (`features/messaging` exists now, and
- * `provider-rail.tsx`'s `MessageProviderButton` already wires the identical
- * CTA to `useStartThread` a few features over), but because nobody has come
- * back to wire this one now that the reason it was disabled no longer
- * holds. See follow-up #69.
+ * The "contact provider" button is still rendered disabled and unlinked, and
+ * it is now the last one in the product that is: `RailPriceSummary` mounts
+ * the real `MessageProviderButton` (`ui/provider-rail.tsx`), which starts a
+ * thread through `useStartThread`, and `PackageChooser`'s disabled "Reservar"
+ * went with the component itself. Nothing is being waited for — the identical
+ * CTA works two files away; nobody has come back to wire this one. See
+ * follow-up #69.
  */
 export function ServiceQuoteNotice() {
   const { t } = useTranslation("directory");

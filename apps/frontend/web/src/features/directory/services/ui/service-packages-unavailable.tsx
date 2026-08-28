@@ -12,8 +12,9 @@ import { useTranslation } from "react-i18next";
  * (probably temporarily) gone — so the same button here would tell the reader
  * to go ask for a price that already exists. That is wrong advice, not a
  * mislabelled button, which is why this notice offers no action at all rather
- * than reusing `packageContactProvider`. The same restraint `PackageChooser`
- * itself applies by rendering nothing sooner than inventing a total.
+ * than reusing `packageContactProvider`. The same restraint `ServiceOptions`
+ * applies in the body, rendering nothing at all sooner than a chooser with
+ * nothing to choose between.
  */
 export function ServicePackagesUnavailable() {
   const { t } = useTranslation("directory");

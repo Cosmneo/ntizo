@@ -137,8 +137,23 @@ export function ProviderRail({ provider }: { provider: ProviderPublicDetailDTO }
  * rather than beside the title. The only thing that changed in the move is
  * width: the rail's controls are a stack of full-width blocks, where the
  * hero's button sat inline beside an `h1`.
+ *
+ * Exported, because a service's rail (`RailPriceSummary`) needs the identical
+ * control and the redirect effect below is the part that must not be written
+ * twice — a second copy is a second place for the "don't list `pathname`"
+ * trap to be re-introduced by someone tidying up a dependency array. The two
+ * rails differ only in emphasis, which is what `variant` carries: on a
+ * provider's page this is the primary action, on a service's page the primary
+ * is the calendar and this sits under it.
  */
-function MessageProviderButton({ providerId }: { providerId: string }) {
+export function MessageProviderButton({
+  providerId,
+  variant = "default",
+}: {
+  providerId: string;
+  /** `outline` where another control is already the page's primary action. */
+  variant?: "default" | "outline";
+}) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -176,7 +191,13 @@ function MessageProviderButton({ providerId }: { providerId: string }) {
 
   return (
     <div>
-      <Button type="button" onClick={handleClick} disabled={starting} className="w-full gap-2">
+      <Button
+        type="button"
+        variant={variant}
+        onClick={handleClick}
+        disabled={starting}
+        className="w-full gap-2"
+      >
         <MessageSquare className="h-4 w-4" aria-hidden="true" />
         {starting ? t("messageProviderStarting") : t("messageProviderCta")}
       </Button>
