@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Compass, LayoutGrid, MapPin, Search, SearchX, Tag, X, icons } from "lucide-react";
+import { CitySelect } from "@ntizo/frontend-ui";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import {
@@ -378,15 +379,25 @@ function resultsScope(values: { category?: string; city?: string }): string {
  * work, and the card is not the one control on a page of links that needs
  * JavaScript to do anything.
  *
- * The city field opens a `<select>` rather than a text box: the cities are a
- * closed set the server counts, and a typed place that matches none of them is
- * a search that silently returns nothing. It does **not** navigate on change —
- * arrowing through a native select fires `change` on every key on Windows and
- * Firefox, which would have run a search per city passed.
+ * The city field opens a `CitySelect` — the same combobox `AddressesPage` and
+ * provider `Settings` already use — rather than the raw `<select>` the first
+ * version of this reached for under time pressure. A native select carries no
+ * card styling into its own popup, so opened it looked like a control from a
+ * different application; it also needed two clicks, because focusing a select
+ * and opening its list are two different things. `CitySelect` is focused as it
+ * mounts, and because *its own* focus handler is what opens its list, the swap
+ * that reveals it is the one click that opens it too. Typing and arrowing
+ * through the list still do not navigate — only picking a city or submitting
+ * the form does — which matters because a native select's `change` fired on
+ * every arrow key on Windows and Firefox, and would have run a search per city
+ * passed.
  *
- * Escape closes an open field, and closing puts focus back on the button that
- * opened it. A control that unmounts under the cursor and drops focus on
- * `<body>` sends a keyboard user back to the top of the document.
+ * Escape on the *service* field closes it and puts focus back on the button
+ * that opened it — a control that unmounts under the cursor and drops focus on
+ * `<body>` sends a keyboard user back to the top of the document. The city
+ * field has no such hand-rolled handler: `CitySelect` already closes its own
+ * list on Escape, and layering a second handler on top of a control that
+ * manages its own open state would fight it rather than help it.
  *
  * **Not drawn at all below `md`.** Two fields and a button in 360px is a
  * control nobody completes, so the card hides itself there and
@@ -398,6 +409,7 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
   const cities = useServiceCities();
+  const cityFieldId = useId();
   const [open, setOpen] = useState<"q" | "city" | null>(null);
   // The phone's sheet, which is the whole card at that width. Its own state
   // rather than a third value of `open`: the two never overlap, because one is
@@ -407,6 +419,12 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
   const [city, setCity] = useState(current.city ?? "");
   const termButton = useRef<HTMLButtonElement>(null);
   const cityButton = useRef<HTMLButtonElement>(null);
+  // `CitySelect` does no filtering of its own — it only shows what it is
+  // given — so narrowing the offered set as the reader types is this field's
+  // job, not the combobox's.
+  const cityOptions = cities
+    .map((c) => c.city)
+    .filter((c) => c.toLowerCase().includes(city.trim().toLowerCase()));
 
   // The URL is the authority. Going back to a previous search has to put that
   // search back in both fields, or they would go on offering a question the
@@ -494,21 +512,25 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
         )}
 
         {open === "city" ? (
-          <select
-            autoFocus
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            onKeyDown={onEscape}
-            aria-label={t("searchFieldCity")}
-            className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
-          >
-            <option value="">{t("searchFieldCityEmpty")}</option>
-            {cities.map((c) => (
-              <option key={c.city} value={c.city}>
-                {c.city}
-              </option>
-            ))}
-          </select>
+          <div className="flex min-w-0 items-center">
+            {/* Visually hidden: the button it replaces carries its own label
+                above the value, and putting a second one here would be the
+                card growing a line it never had at rest. */}
+            <label htmlFor={cityFieldId} className="sr-only">
+              {t("searchFieldCity")}
+            </label>
+            <CitySelect
+              id={cityFieldId}
+              value={city}
+              onChange={setCity}
+              cities={cityOptions}
+              autoFocus
+              placeholder={t("searchFieldCityEmpty")}
+              toggleLabel={t("searchFieldCityToggle")}
+              noResultsText={t("searchFieldCityNoResults")}
+              className="w-full"
+            />
+          </div>
         ) : (
           <BrowseSearchField
             ref={cityButton}
@@ -550,21 +572,21 @@ function HeroSearch({ current }: { current: BrowseSearch }) {
 
         <label className="grid gap-1.5">
           <span className="type-caption font-semibold">{t("searchFieldCity")}</span>
-          {/* The same closed set the card offers, for the same reason: a typed
-              place matching none of the cities the server counted is a search
-              that silently returns nothing. */}
-          <select
+          {/* The same `CitySelect` the card uses, and for the same reason the
+              card carries it: a raw `<select>` here still opened the OS's own
+              popup, which is exactly the mismatch a screenshot caught on the
+              card. Wrapped in the `<label>` above rather than given an `id`,
+              like `Serviço`'s own input beside it — the label's one labelable
+              descendant is `CitySelect`'s `<input>`, so the association still
+              holds without one. */}
+          <CitySelect
             value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className={MOBILE_SEARCH_FIELD_CLASS}
-          >
-            <option value="">{t("searchFieldCityEmpty")}</option>
-            {cities.map((c) => (
-              <option key={c.city} value={c.city}>
-                {c.city}
-              </option>
-            ))}
-          </select>
+            onChange={setCity}
+            cities={cityOptions}
+            placeholder={t("searchFieldCityEmpty")}
+            toggleLabel={t("searchFieldCityToggle")}
+            noResultsText={t("searchFieldCityNoResults")}
+          />
         </label>
       </MobileSearchSheet>
     </>

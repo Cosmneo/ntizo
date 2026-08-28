@@ -191,6 +191,8 @@
   "searchFieldProviderEmpty": "Business or professional name",
   "searchFieldCity": "City",
   "searchFieldCityEmpty": "Anywhere",
+  "searchFieldCityToggle": "Show cities",
+  "searchFieldCityNoResults": "No city found",
   "pagerLabel": "Pages",
   "stubProviderRating": "provider rating",
   "listingByProvider": "by {{name}}",

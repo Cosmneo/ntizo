@@ -179,6 +179,8 @@
   "searchFieldProviderEmpty": "Name des Betriebs oder der Fachkraft",
   "searchFieldCity": "Stadt",
   "searchFieldCityEmpty": "Überall",
+  "searchFieldCityToggle": "Städte anzeigen",
+  "searchFieldCityNoResults": "Keine Stadt gefunden",
   "pagerLabel": "Seiten",
   "stubProviderRating": "Bewertung des Anbieters",
   "listingByProvider": "von {{name}}",

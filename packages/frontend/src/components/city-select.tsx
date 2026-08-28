@@ -25,6 +25,15 @@ export interface CitySelectProps {
   noResultsText?: string;
   loadingText?: string;
   className?: string;
+  /**
+   * Focuses the input as soon as it mounts, opening the list with it — this
+   * is what a control that gets swapped into place *after* the click that
+   * revealed it needs, since the click that caused the swap already landed on
+   * the element being replaced and cannot also focus the one that replaces
+   * it. Left off for every field that is on screen from the start, which is
+   * every caller but that one.
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -52,6 +61,7 @@ export function CitySelect({
   noResultsText,
   loadingText,
   className,
+  autoFocus,
 }: CitySelectProps) {
   const [open, setOpen] = React.useState(false);
   const [active, setActive] = React.useState(0);
@@ -122,6 +132,7 @@ export function CitySelect({
           required={required}
           value={value}
           placeholder={placeholder}
+          autoFocus={autoFocus}
           autoComplete="address-level2"
           role="combobox"
           aria-expanded={open}

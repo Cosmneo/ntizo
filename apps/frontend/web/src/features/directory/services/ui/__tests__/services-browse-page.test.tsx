@@ -208,9 +208,25 @@ describe("ServicesBrowsePage", () => {
     // nothing, with no way for the reader to see why.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
     fireEvent.click(await screen.findByRole("button", { name: /City/ }));
-    const picker = screen.getByRole("combobox", { name: "City" });
-    expect(within(picker).getByRole("option", { name: "Maputo" })).toBeInTheDocument();
-    expect(within(picker).getByRole("option", { name: "Beira" })).toBeInTheDocument();
+    // `CitySelect` renders the list in its own popover, a sibling of the
+    // combobox rather than a child of it — `<option>` inside `<select>` no
+    // longer applies, so the options are found at the document root.
+    expect(screen.getByRole("combobox", { name: "City" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Maputo" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Beira" })).toBeInTheDocument();
+  });
+
+  it("swaps in the styled combobox, open on the one click that revealed it", async () => {
+    // The defect a screenshot caught: a raw `<select>` carries none of the
+    // card's styling into its own popup and reads as a control from a
+    // different application — and needs a second click besides, because
+    // focusing a native select does not open its popup. `CitySelect` opens on
+    // its own focus handler, so focusing it as it mounts makes the swap-in
+    // itself the one click.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: /City/ }));
+    expect(screen.getByRole("combobox", { name: "City" }).tagName).toBe("INPUT");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 
   it("carries a typed term through a change to the other field", async () => {
@@ -250,18 +266,21 @@ describe("ServicesBrowsePage", () => {
     );
   });
 
-  it("does not run a search while the reader is still arrowing through cities", async () => {
-    // A native select fires `change` on every arrow key on Windows and
-    // Firefox. Navigating from it would have run a search per city passed.
+  it("does not run a search while the reader is still typing or arrowing through cities", async () => {
+    // Typing and highlighting are `CitySelect`'s own business, not a search
+    // trigger — only picking a city or submitting the form is. A native
+    // select could not make that distinction: it fired `change` on every
+    // arrow key on Windows and Firefox, which would have run a search per
+    // city passed.
     const { router } = renderPage("/services", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
     fireEvent.click(await screen.findByRole("button", { name: /City/ }));
-    fireEvent.change(screen.getByRole("combobox", { name: "City" }), {
-      target: { value: "Maputo" },
-    });
+    const box = screen.getByRole("combobox", { name: "City" });
+    fireEvent.change(box, { target: { value: "Maputo" } });
+    fireEvent.keyDown(box, { key: "ArrowDown" });
     expect(router.state.location.search).toEqual({});
   });
 
