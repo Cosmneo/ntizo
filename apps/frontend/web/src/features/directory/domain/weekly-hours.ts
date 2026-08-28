@@ -1,5 +1,5 @@
 import type { WeeklyHoursDTO } from "@ntizo/shared/read-models";
-import { WEEKDAY_ORDER, weekdayLabel } from "@/shared/domain/week-format";
+import { WEEKDAY_ORDER, weekdayLabel, weekdayShortLabel } from "@/shared/domain/week-format";
 
 export interface HoursInterval {
   startMinute: number;
@@ -9,7 +9,7 @@ export interface HoursInterval {
 export interface HoursRow {
   /** Stable across renders, unique within the list — the weekdays it covers. */
   key: string;
-  /** "Segunda a sexta", or one weekday's own name. */
+  /** "Seg. a sex.", or one weekday's own long-form name. */
   label: string;
   /** Empty means closed. */
   intervals: HoursInterval[];
@@ -22,7 +22,7 @@ function signature(intervals: readonly HoursInterval[]): string {
 /**
  * Seven weekdays as the two or three rows a person actually reads.
  *
- * Consecutive weekdays with identical hours collapse: "Segunda a sexta
+ * Consecutive weekdays with identical hours collapse: "Seg. a sex.
  * 08:00 – 18:00" is how everybody writes opening hours, and seven rows saying
  * the same thing five times is a table pretending to be information.
  *
@@ -72,11 +72,17 @@ export function groupWeekdays(
       key: weekdays.join("-"),
       label:
         weekdays.length === 1
-          ? weekdayLabel(locale, first)
-          : // `Intl.ListFormat` would give "Monday, Tuesday, …, Friday". A
-            // range is how opening hours are written, and the two endpoints
-            // are the only thing the reader needs.
-            `${weekdayLabel(locale, first)} ${rangeWord(locale)} ${weekdayLabel(locale, last)}`,
+          ? // A single day is read as itself — "sábado", "domingo" — so it
+            // gets the long form; there is no second endpoint to make short.
+            weekdayLabel(locale, first)
+          : // The short form for a range's two endpoints, not the long one:
+            // `weekdayLabel` gives Portuguese "segunda-feira a sexta-feira",
+            // which overruns the 352px rail this renders in. `formatDayList`
+            // elsewhere in this app already defaults to short for the same
+            // reason. `Intl.ListFormat` would give "Monday, Tuesday, …,
+            // Friday" — a range is how opening hours are written, and the
+            // two endpoints are the only thing the reader needs.
+            `${weekdayShortLabel(locale, first)} ${rangeWord(locale)} ${weekdayShortLabel(locale, last)}`,
       intervals,
     };
   });
