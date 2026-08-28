@@ -1926,3 +1926,26 @@ its focus behaviour is not a thing to do inside a listings redesign.
 report of the bottom nav being tappable behind an open sheet — whichever comes first. Also urgent if
 a fourth caller adopts `Sheet` for anything the user must not be able to escape from mid-flow
 (a payment confirmation, a destructive confirm).
+
+---
+
+## 79. The provider repository's own `verified` join has no test guarding its `SELECT DISTINCT`
+
+`DrizzleProviderPublicRepository.aggregates().verified`
+(`public/provider/infra/repositories/drizzle/provider-public.repository.ts:100-104`) caps a
+business with several accepted documents at one row with `selectDistinct` on `providerId` —
+the same invariant task 22 added an SQL-shape test for on its own copy,
+`verifiedAggregate` in `bounded-contexts/catalog/infrastructure/repositories/drizzle/
+service-read.repository.ts` (`__tests__/service-read.repository.test.ts`, "caps the verified
+join at one row per provider with SELECT DISTINCT"). The original is still unguarded: nothing
+asserts its `SELECT DISTINCT` either, and it is true only by construction, the same way the
+copy was before that test existed.
+
+Left alone rather than fixed alongside the copy: `public/provider` is a different bounded
+context from `bounded-contexts/catalog`, and reaching into it was explicitly out of scope for
+that task.
+
+**Trigger:** somebody simplifying `selectDistinct` away on `aggregates().verified` (it looks
+redundant next to the `groupBy`-based `reviews`/`services`/`prices` aggregates in the same
+function, and is not), or the first business that legitimately accumulates a second accepted
+document and a directory card's service count looks doubled.

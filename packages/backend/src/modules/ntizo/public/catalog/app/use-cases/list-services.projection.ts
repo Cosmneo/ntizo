@@ -163,12 +163,12 @@ export class ListServicesProjection {
         // Constrained to the two values by the column's own CHECK; narrowed
         // the same way `DrizzleProviderPublicRepository` narrows it.
         providerType: r.providerType as ServiceDTO["providerType"],
-        // Straight from the row: the repository's own mapper has already
-        // turned the nullable join id into this boolean — see
-        // `verifiedAggregate` in `service-read.repository.ts`.
+        // Both of the next two are straight from the row: the repository's
+        // own mapper has already done the real work — turning the nullable
+        // join id into this boolean (`verifiedAggregate`, `service-read.
+        // repository.ts`) and Postgres's `avg()` string into a number or
+        // null (`coerceReviewAggregate`, same file).
         providerVerified: r.providerVerified,
-        // Straight from the row: the repository's own mapper has already
-        // turned Postgres's `avg()` string into a number (or null).
         providerRatingAverage: r.providerRatingAverage,
         providerReviewCount: r.providerReviewCount,
         categoryCode: r.categoryCode,

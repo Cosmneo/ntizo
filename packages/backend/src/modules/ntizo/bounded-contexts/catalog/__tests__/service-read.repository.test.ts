@@ -1,12 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { service } from "../../../shared/infrastructure/database/catalog/schemas";
 import {
   coerceReviewAggregate,
   conditionsFor,
   orderByFor,
+  reviewAggregate,
+  verifiedAggregate,
 } from "../infrastructure/repositories/drizzle/service-read.repository";
 
 /**
@@ -110,5 +112,42 @@ describe("coerceReviewAggregate", () => {
     expect(
       coerceReviewAggregate({ providerRatingAverage: null, providerReviewCount: 3 }),
     ).toEqual({ providerRatingAverage: null, providerReviewCount: 3 });
+  });
+});
+
+/**
+ * The construct that stops a provider with several rows on the other side of
+ * a join — several accepted documents, several reviews — from multiplying
+ * its service rows, for each of `listPublished`'s two provider aggregates.
+ *
+ * Both hold "one row per provider" by construction (`SELECT DISTINCT` on one
+ * column; `GROUP BY` under an aggregate), and both held it with no test to
+ * say so — the exact shape of fact a later tidy-up deletes without noticing,
+ * since dropping either changes nothing observable until a provider actually
+ * accumulates a second accepted document or a second review. The DB-
+ * integration suite doesn't seed `provider_document` either, so nothing
+ * downstream would have caught it. `.toSQL()` against a lazily-connecting
+ * client, the same seam `orderByFor`/`conditionsFor` use above, so this pins
+ * the clause without a live database.
+ */
+describe("listPublished's provider aggregates never multiply a service row", () => {
+  it("caps the verified join at one row per provider with SELECT DISTINCT", () => {
+    const verifiedAgg = verifiedAggregate(db as never);
+    const { sql } = db
+      .select({ id: service.id })
+      .from(service)
+      .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, service.providerId))
+      .toSQL();
+    expect(sql.toLowerCase()).toContain("select distinct");
+  });
+
+  it("caps the review join at one row per provider with GROUP BY", () => {
+    const reviewAgg = reviewAggregate(db as never);
+    const { sql } = db
+      .select({ id: service.id })
+      .from(service)
+      .leftJoin(reviewAgg, eq(reviewAgg.providerId, service.providerId))
+      .toSQL();
+    expect(sql.toLowerCase()).toContain("group by");
   });
 });

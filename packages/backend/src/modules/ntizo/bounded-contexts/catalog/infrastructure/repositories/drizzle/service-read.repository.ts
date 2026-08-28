@@ -204,8 +204,13 @@ const cheapestActiveOption = sql`
  * `status = 'published'` is load-bearing here exactly as it is there: without
  * it a card counts reviews an administrator has not published, and the
  * number on the card disagrees with the number on the provider's own page.
+ *
+ * Exported, the same reason `conditionsFor` above is: a review joined without
+ * this `groupBy` would multiply a service row per review, and a private
+ * function gives no seam for a test to pin that the `GROUP BY` is still
+ * there — see `__tests__/service-read.repository.test.ts`.
  */
-function reviewAggregate(db: ReturnType<typeof getDb>) {
+export function reviewAggregate(db: ReturnType<typeof getDb>) {
   return db
     .select({
       providerId: review.providerId,
@@ -232,8 +237,14 @@ function reviewAggregate(db: ReturnType<typeof getDb>) {
  * three accepted documents must not multiply its service rows. So is
  * `status = "accepted"` — the field means "the platform has accepted at
  * least one of this business's documents", never "this business registered".
+ *
+ * Exported for the same reason `reviewAggregate` above now is: "true by
+ * construction" is exactly the kind of fact a later tidy-up deletes, and
+ * nothing seeds `provider_document` in the DB-integration suite to catch it
+ * downstream either — see the `SELECT DISTINCT` assertion in
+ * `__tests__/service-read.repository.test.ts`.
  */
-function verifiedAggregate(db: ReturnType<typeof getDb>) {
+export function verifiedAggregate(db: ReturnType<typeof getDb>) {
   return db
     .selectDistinct({
       providerId: sql<string>`${providerDocument.providerId}`.as("verified_provider_id"),
