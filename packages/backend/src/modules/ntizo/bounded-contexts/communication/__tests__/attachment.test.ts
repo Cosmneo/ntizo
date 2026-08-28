@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { AcceptedAttachmentType } from "@ntizo/shared/attachments";
 import { sniffContentType } from "../domain/attachment";
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
@@ -15,7 +16,7 @@ describe("sniffContentType", () => {
     [PNG, "image/png"],
     [PDF, "application/pdf"],
     [WEBP, "image/webp"],
-  ])("recognises %#", (bytes, expected) => {
+  ] as [Uint8Array, AcceptedAttachmentType][])("recognises %#", (bytes, expected) => {
     expect(sniffContentType(bytes)).toBe(expected);
   });
 

@@ -1,3 +1,9 @@
+import type { AcceptedAttachmentType } from "@ntizo/shared/attachments";
+
+// Both re-exported so this context's barrel keeps its shape for callers;
+// defined in @ntizo/shared because the browser enforces the same two rules.
+export { MAX_ATTACHMENT_BYTES, ACCEPTED_ATTACHMENT_TYPES } from "@ntizo/shared/attachments";
+
 /**
  * What a file may be, and how big it may be, when it rides along with a
  * message.
@@ -11,18 +17,7 @@
  * error. A domain exception nothing throws is dead surface.
  */
 
-/** 10 MB. See Task 3's brief. */
-export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
-/**
- * What `sniffContentType` will ever return, and the only content types an
- * attachment may be stored as.
- *
- * Exists for exactly one consumer: the file picker's `accept` attribute in
- * Task 7. If that task does not end up reading this export, it should be
- * deleted rather than left to look meaningful.
- */
-export const ACCEPTED_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
 
 /**
  * What the file actually is, from its leading bytes.
@@ -43,7 +38,7 @@ export const ACCEPTED_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp
  * SVG is a legitimate image format that can carry `<script>`, and there is
  * no version of serving one back to another user that is worth it.
  */
-export function sniffContentType(bytes: Uint8Array): string | null {
+export function sniffContentType(bytes: Uint8Array): AcceptedAttachmentType | null {
   const starts = (...sig: number[]) => sig.every((b, i) => bytes[i] === b);
 
   if (starts(0xff, 0xd8, 0xff)) return "image/jpeg";

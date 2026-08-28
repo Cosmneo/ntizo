@@ -107,35 +107,24 @@ export interface AttachmentDescriptor {
 }
 
 /**
- * The most attachments one message may carry. Mirrors, not imports,
- * `MAX_ATTACHMENTS` in
- * `packages/backend/.../communication/domain/aggregates/message.aggregate.ts`
- * — this app has no dependency on `@ntizo/backend` (a server-only package:
- * database drivers, Node-only infrastructure) and adding one just to reach a
- * single constant would drag that whole graph into a browser bundle. Same
- * trade `MESSAGE_BODY_MAX_LENGTH` above already makes for `MESSAGE_BODY_MAX`.
- * A picker built on this must stop someone at this count, not let them
- * attach a sixth file only to have `communicationSend` refuse it as
- * `TOO_MANY_ATTACHMENTS`.
+ * The three attachment limits, defined once in `@ntizo/shared/attachments`
+ * and re-exported here so this feature's own modules keep importing them
+ * from their domain folder.
+ *
+ * They used to be spelled out here, each with a comment explaining it
+ * mirrored a copy in `@ntizo/backend`. That reasoning was right about the
+ * constraint — `@ntizo/backend` is server-only, and depending on it to
+ * reach a constant would drag database drivers into a browser bundle — but
+ * it left two definitions of one rule. `@ntizo/shared` is the way out:
+ * browser-safe, already a dependency of both, and already home to
+ * `hasContact` for exactly this reason.
+ *
+ * What they are for here: refusing early, so nobody spends an upload on a
+ * file the server was always going to answer 413 or 415 to. Enforcement
+ * stays on the server, which decides a file's type from its bytes.
  */
-export const MAX_ATTACHMENTS = 5;
-
-/**
- * 10 MB. Mirrors, not imports, `MAX_ATTACHMENT_BYTES` in
- * `packages/backend/.../communication/domain/attachment.ts` — same reason
- * `MAX_ATTACHMENTS` above mirrors rather than imports. A picker built on
- * this must refuse an oversized file before spending a single byte of
- * upload on one the server was always going to answer `413` to.
- */
-export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-
-/**
- * What the upload route will ever accept, sniffed from the file's own bytes
- * server-side — mirrors, not imports, `ACCEPTED_ATTACHMENT_TYPES` in
- * `packages/backend/.../communication/domain/attachment.ts`, for the same
- * reason `MAX_ATTACHMENTS` above does. Exists for exactly one consumer:
- * `AttachmentPicker`'s file input `accept` attribute — a hint to the file
- * dialog, not enforcement; the server decides from bytes, never from this
- * list or from `file.type`, which the picker's caller chose.
- */
-export const ACCEPTED_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
+export {
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_BYTES,
+  ACCEPTED_ATTACHMENT_TYPES,
+} from "@ntizo/shared/attachments";

@@ -4,7 +4,10 @@ import { MessageEmptyError, MessageBodyTooLongError, TooManyAttachmentsError } f
 export const MESSAGE_BODY_MAX = 4000;
 
 /** The most attachments one message may carry. See Task 2's brief. */
-export const MAX_ATTACHMENTS = 5;
+import { MAX_ATTACHMENTS } from "@ntizo/shared/attachments";
+
+// Re-exported so callers of this aggregate keep importing it from here.
+export { MAX_ATTACHMENTS };
 
 /**
  * How long a message waits, unread, before anybody is told about it. One
