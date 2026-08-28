@@ -7,11 +7,15 @@ function fakeR2Object(overrides: {
   size: number;
   contentType?: string;
   uploadedByUserId?: string;
+  originalName?: string;
 }): R2Object {
+  const customMetadata: Record<string, string> = {};
+  if (overrides.uploadedByUserId) customMetadata["uploadedByUserId"] = overrides.uploadedByUserId;
+  if (overrides.originalName) customMetadata["originalName"] = overrides.originalName;
   return {
     size: overrides.size,
     httpMetadata: overrides.contentType ? { contentType: overrides.contentType } : undefined,
-    customMetadata: overrides.uploadedByUserId ? { uploadedByUserId: overrides.uploadedByUserId } : undefined,
+    customMetadata: Object.keys(customMetadata).length > 0 ? customMetadata : undefined,
   } as unknown as R2Object;
 }
 
@@ -44,19 +48,25 @@ describe("AttachmentStorageAdapter.head", () => {
     expect(result).toBeNull();
   });
 
-  it("maps the sniffed type, the object's own size, and the recorded uploader — never anything else", async () => {
+  it("maps the sniffed type, the object's own size, the recorded uploader, and the recorded name — never anything else", async () => {
     const adapter = new AttachmentStorageAdapter();
     const bucket = fakeBucket({
       "attachment/u1/photo.png": fakeR2Object({
         size: 4096,
         contentType: "image/png",
         uploadedByUserId: "u1",
+        originalName: "photo.png",
       }),
     });
 
     const result = await runWithAttachmentsBucket(bucket, () => adapter.head("attachment/u1/photo.png"));
 
-    expect(result).toEqual({ contentType: "image/png", sizeBytes: 4096, uploadedByUserId: "u1" });
+    expect(result).toEqual({
+      contentType: "image/png",
+      sizeBytes: 4096,
+      uploadedByUserId: "u1",
+      originalName: "photo.png",
+    });
   });
 
   it("answers null uploadedByUserId for an object nothing stamped one onto", async () => {
@@ -68,6 +78,29 @@ describe("AttachmentStorageAdapter.head", () => {
     const result = await runWithAttachmentsBucket(bucket, () => adapter.head("attachment/u1/orphan.png"));
 
     expect(result?.uploadedByUserId).toBeNull();
+  });
+
+  /**
+   * Critical 2's own boundary: `resolveAttachments` refuses an attachment
+   * whose stored object carries no recorded name (see
+   * `send-message.command.ts`'s test of the same name) — this proves the
+   * adapter is what makes that null actually reachable, the same fallback
+   * `uploadedByUserId` already gets, rather than fabricating a name for an
+   * object the real upload route did not write.
+   */
+  it("answers null originalName for an object nothing stamped one onto", async () => {
+    const adapter = new AttachmentStorageAdapter();
+    const bucket = fakeBucket({
+      "attachment/u1/nameless.png": fakeR2Object({
+        size: 10,
+        contentType: "image/png",
+        uploadedByUserId: "u1",
+      }),
+    });
+
+    const result = await runWithAttachmentsBucket(bucket, () => adapter.head("attachment/u1/nameless.png"));
+
+    expect(result?.originalName).toBeNull();
   });
 });
 

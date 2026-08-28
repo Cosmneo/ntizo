@@ -35,13 +35,18 @@ export const startThread = defineMutation({
  * source of that rule) ever runs. An empty body with no attachments still
  * refuses, just one layer down, as `MessageEmptyError`.
  *
- * `attachments` carries only `storageKey` and `fileName` — never
- * `contentType` or `sizeBytes`. Those are read back from the R2 object
- * itself (`AttachmentStoragePort.head`, called from
+ * `attachments` carries only `storageKey` — never `fileName`, `contentType`,
+ * or `sizeBytes`. All three are read back from the R2 object itself
+ * (`AttachmentStoragePort.head`, called from
  * `SendMessageCommand.resolveAttachments`), never taken from the wire: a
  * caller's claim about its own file's type is exactly what Task 3's
  * `sniffContentType` and Task 5's upload route exist to stop being trusted,
- * and accepting one here would undo that one hop later.
+ * and accepting one here would undo that one hop later. `fileName` used to
+ * be accepted here too, until the whole-branch review found that the client
+ * could upload a clean file (passing the upload route's own `hasContact`
+ * check on the name) and then send back an entirely different, unchecked
+ * name in THIS call — the upload response already told the caller the
+ * clean name for display; there was never a reason for it to say it again.
  */
 export const send = defineMutation({
   input: zodSchema(
@@ -52,7 +57,6 @@ export const send = defineMutation({
         .array(
           z.object({
             storageKey: z.string().min(1),
-            fileName: z.string().min(1).max(200),
           }),
         )
         .max(5)

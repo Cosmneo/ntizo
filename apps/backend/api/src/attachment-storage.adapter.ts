@@ -76,6 +76,12 @@ export class AttachmentStorageAdapter implements AttachmentStoragePort {
       contentType: object.httpMetadata?.contentType ?? "application/octet-stream",
       sizeBytes: object.size,
       uploadedByUserId: object.customMetadata?.uploadedByUserId ?? null,
+      // Same fallback, same reason: the upload route always stamps this
+      // (see `attachments.ts`'s `customMetadata: { ..., originalName }`).
+      // `null` here means an object this route did not write, and
+      // `SendMessageCommand.resolveAttachments` refuses it rather than
+      // guessing a display name for it.
+      originalName: object.customMetadata?.originalName ?? null,
     };
   }
 }

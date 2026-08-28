@@ -268,7 +268,7 @@ describe("createCommunicationWriteHandlers", () => {
     const sendSpy = spyUseCase({ id: "m1" });
     const handlers = createCommunicationWriteHandlers(makeModule({ sendMessage: sendSpy }));
     const field = handlers.find((h) => h.key === "communication.send")!;
-    const attachments = [{ storageKey: "attachment/u-session/one.png", fileName: "one.png" }];
+    const attachments = [{ storageKey: "attachment/u-session/one.png" }];
 
     await field.handler({ threadId: "t1", body: "", attachments }, ctx());
 
@@ -289,7 +289,6 @@ describe("createCommunicationWriteHandlers", () => {
     const field = handlers.find((h) => h.key === "communication.send")!;
     const tooMany = Array.from({ length: 6 }, (_, i) => ({
       storageKey: `attachment/u-session/${i}.png`,
-      fileName: `${i}.png`,
     }));
 
     let caught: unknown;

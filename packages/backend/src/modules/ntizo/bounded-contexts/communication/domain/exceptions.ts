@@ -31,6 +31,27 @@ export class MessageEmptyError extends UnprocessableError {
   }
 }
 
+/**
+ * Refused because the message body carries a phone number, email address, or
+ * direct-contact link — `hasContact` (`@ntizo/shared/text`) is the same
+ * detector the composer runs on every keystroke for immediate feedback and
+ * the upload route already ran on a file's NAME (Task 5); this is what makes
+ * it the gate, not merely a hint, on the one path that mattered and had
+ * none: the message body itself. See `SendMessageCommand.execute` — a
+ * `curl` posting a body straight past a browser reaches this check before
+ * anything is written, exactly the bypass the spec's own reasoning for
+ * putting the detector in `packages/shared` names.
+ */
+export class MessageContainsContactError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "Contact details aren't allowed in messages.",
+      code: "MESSAGE_CONTAINS_CONTACT",
+    });
+    this.name = "MessageContainsContactError";
+  }
+}
+
 export class MessageBodyTooLongError extends UnprocessableError {
   // `max` is a constructor argument, not an import of `MESSAGE_BODY_MAX`
   // from `message.aggregate.ts` — that file imports this one to throw it,
@@ -72,13 +93,20 @@ export class TooManyAttachmentsError extends UnprocessableError {
 
 /**
  * Refused because an attachment descriptor `sendMessage` was given does not
- * point at a file this sender may attach — collapsing three different
+ * point at a file this sender may attach — collapsing five different
  * reasons into one answer, deliberately:
  *
  * 1. `storageKey` does not start with this sender's own
  *    `attachment/<senderUserId>/` prefix.
  * 2. No object exists at that key at all.
  * 3. The object's `customMetadata.uploadedByUserId` names somebody else.
+ * 4. The object's stored `contentType` is not one `ACCEPTED_ATTACHMENT_TYPES`
+ *    lists — unreachable in production (`sniffContentType` never stamps
+ *    anything else), but the boundary that makes that list actually
+ *    constrain rather than merely document.
+ * 5. The object carries no `customMetadata.originalName` — every object the
+ *    real upload route writes has one; its absence means this object did
+ *    not come through that route.
  *
  * Same reason `ThreadNotVisibleError` collapses "not yours" and "doesn't
  * exist": telling these apart would tell a caller probing storage keys

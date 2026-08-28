@@ -20,6 +20,20 @@ export interface StoredAttachmentMetadata {
    * sender's file", the same refusal a missing object gets.
    */
   readonly uploadedByUserId: string | null;
+  /**
+   * `customMetadata.originalName`, verbatim — the display name the upload
+   * route (Task 5) already ran `hasContact` on and stamped onto the object,
+   * the moment it decided this was a clean upload. This is the ONLY place
+   * `SendMessageCommand.resolveAttachments` takes a file's name from since
+   * `AttachmentDescriptor` stopped carrying one: a `fileName` sent back with
+   * `sendMessage` was a client-controlled string the upload route's own
+   * check never touched, one request later. Null when the object exists but
+   * was never stamped with one — every object the real upload route writes
+   * has one, so this only happens for an object that did not come through
+   * that path; `resolveAttachments` refuses it, the same refusal a missing
+   * object gets.
+   */
+  readonly originalName: string | null;
 }
 
 /**

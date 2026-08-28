@@ -1,27 +1,43 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import { hasContact } from "@ntizo/shared/text";
+import { ACCEPTED_ATTACHMENT_TYPES, type AcceptedAttachmentType } from "@ntizo/shared/attachments";
 import { Message, MAX_ATTACHMENTS } from "../../domain/aggregates/message.aggregate";
-import { AttachmentNotAvailableError, ThreadNotVisibleError, TooManyAttachmentsError } from "../../domain/exceptions";
+import {
+  AttachmentNotAvailableError,
+  MessageContainsContactError,
+  ThreadNotVisibleError,
+  TooManyAttachmentsError,
+} from "../../domain/exceptions";
 import type { ThreadRepositoryPort } from "../ports/outbound/thread.repository.port";
 import type { MessageRepositoryPort } from "../ports/outbound/message.repository.port";
 import type { AttachmentRepositoryPort, NewAttachment } from "../ports/outbound/attachment.repository.port";
 import type { AttachmentStoragePort } from "../ports/outbound/attachment-storage.port";
 
+/** Narrows `stored.contentType` (a plain `string` — storage does not know about `AcceptedAttachmentType`) to the list `sniffContentType` is allowed to return. */
+function isAcceptedAttachmentType(contentType: string): contentType is AcceptedAttachmentType {
+  return (ACCEPTED_ATTACHMENT_TYPES as readonly string[]).includes(contentType);
+}
+
 /**
- * What an untrusted caller may say about one file it wants to attach: the
- * key it was uploaded under, and a display name. Nothing else —
- * `contentType` and `sizeBytes` are deliberately absent from this shape.
+ * What an untrusted caller may say about one file it wants to attach: only
+ * the key it was uploaded under. Nothing else — `contentType`, `sizeBytes`,
+ * and `fileName` are all deliberately absent from this shape.
  *
- * `SendMessageCommand` never trusts either of those two off the wire: a
- * client that uploaded a genuine JPEG and then claimed a different type in
- * `sendMessage` would undo the exact guarantee `sniffContentType` (Task 3)
- * and the upload route (Task 5) exist to provide. Both values are read back
- * from storage instead — see `resolveAttachments` — which is also where
- * `NewAttachment` (the trusted shape `AttachmentRepositoryPort.insertMany`
- * accepts) gets built.
+ * `SendMessageCommand` never trusts any of those three off the wire. The
+ * first two are the guarantee `sniffContentType` (Task 3) and the upload
+ * route (Task 5) exist to provide: a client that uploaded a genuine JPEG and
+ * then claimed a different type in `sendMessage` would undo it one hop
+ * later. `fileName` used to ride along here too — the upload route already
+ * runs `hasContact` on it and stamps the clean result onto the object as
+ * `customMetadata.originalName`, but a client could still send back ANY
+ * string under `fileName` in this separate call, one request later,
+ * defeating that check entirely. All three are read back from storage
+ * instead — see `resolveAttachments` — which is also where `NewAttachment`
+ * (the trusted shape `AttachmentRepositoryPort.insertMany` accepts) gets
+ * built.
  */
 export interface AttachmentDescriptor {
   storageKey: string;
-  fileName: string;
 }
 
 export interface SendMessageInput {
@@ -63,6 +79,13 @@ export interface SendMessageInput {
  * `resolveAttachments` — before the transaction even opens: a forged or
  * stale descriptor is rejected before anything is written, not rolled back
  * after.
+ *
+ * `hasContact` runs on the trimmed body here too, before any of the above —
+ * the gate the spec calls for and the only one of its two required call
+ * sites (body, file name) that used to be missing. The composer already
+ * runs the identical check as someone types, and the upload route already
+ * runs it on a file's name; this is what makes the body check a GATE rather
+ * than a hint a `curl` can skip.
  */
 export class SendMessageCommand {
   constructor(
@@ -78,13 +101,24 @@ export class SendMessageCommand {
     const visible = await this.threads.findVisible(input.threadId, input.senderUserId);
     if (!visible) throw new ThreadNotVisibleError();
 
+    // The gate the spec's own reasoning for `packages/shared` exists to
+    // make true: `hasContact` runs on the CLIENT (as someone types, for
+    // feedback) and on the FILE NAME (the upload route, Task 5) — but until
+    // this line, never on the body a `curl` can post straight past both.
+    // Checked on the trimmed body, before `resolveAttachments` (which does
+    // real I/O against storage) and before the transaction even opens — the
+    // same cheap-check-first ordering `resolveAttachments` itself already
+    // uses for `MAX_ATTACHMENTS`.
+    const trimmedBody = input.body.trim();
+    if (hasContact(trimmedBody)) throw new MessageContainsContactError();
+
     const descriptors = input.attachments ?? [];
     const attachments = await this.resolveAttachments(input.senderUserId, descriptors);
 
     const message = Message.compose({
       threadId: input.threadId,
       senderUserId: input.senderUserId,
-      body: input.body,
+      body: trimmedBody,
       attachmentCount: attachments.length,
       now: this.now(),
     });
@@ -104,8 +138,8 @@ export class SendMessageCommand {
    * is allowed to trust — that port's own doc comment says it does not
    * re-validate, so this is where that assumption is made true.
    *
-   * Two checks per descriptor, in this order because the first is free and
-   * the second is not:
+   * Checks per descriptor, in this order because the cheaper ones come
+   * first:
    *
    * 1. `storageKey` must start with `attachment/<senderUserId>/` — a plain
    *    string comparison, no I/O, and the fast way to refuse a key that was
@@ -114,11 +148,23 @@ export class SendMessageCommand {
    *    exist at all, and its `customMetadata.uploadedByUserId` must name
    *    this same sender. This is an INDEPENDENT record of the same fact —
    *    not derived from the key's prefix — and fetching it is also how
-   *    `contentType` and `sizeBytes` are learned, never from the
-   *    descriptor. It is also the only check that proves the file exists,
-   *    closing "a message pointing at a file that is not there".
+   *    `contentType`, `sizeBytes` and `fileName` are learned, never from the
+   *    descriptor (which no longer carries a `fileName` at all — see
+   *    `AttachmentDescriptor`'s own doc comment for why). It is also the
+   *    only check that proves the file exists, closing "a message pointing
+   *    at a file that is not there".
+   * 3. The stored `contentType` must be one `ACCEPTED_ATTACHMENT_TYPES`
+   *    lists. Unreachable today — `sniffContentType` only ever stamps an
+   *    accepted type or refuses the upload outright — but the point of
+   *    exporting that list from `@ntizo/shared/attachments` was that it
+   *    CONSTRAINS, not merely documents; this is the boundary that makes
+   *    that true rather than aspirational.
+   * 4. The stored `originalName` must not be null. Every object the real
+   *    upload route writes carries one (`customMetadata.originalName`); its
+   *    absence means this object did not come through that route, which is
+   *    reason enough to refuse it the same way a missing object is refused.
    *
-   * Both failure reasons — and a caller-forged key that never had the right
+   * All four reasons — and a caller-forged key that never had the right
    * prefix — throw the identical `AttachmentNotAvailableError`; see that
    * class's own doc comment for why they must stay indistinguishable.
    *
@@ -146,10 +192,16 @@ export class SendMessageCommand {
         if (!stored || stored.uploadedByUserId !== senderUserId) {
           throw new AttachmentNotAvailableError();
         }
+        if (!isAcceptedAttachmentType(stored.contentType)) {
+          throw new AttachmentNotAvailableError();
+        }
+        if (stored.originalName === null) {
+          throw new AttachmentNotAvailableError();
+        }
 
         return {
           storageKey: descriptor.storageKey,
-          fileName: descriptor.fileName,
+          fileName: stored.originalName,
           contentType: stored.contentType,
           sizeBytes: stored.sizeBytes,
         };
