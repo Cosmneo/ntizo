@@ -1659,6 +1659,7 @@ returns nothing at all — and now name the rows that must be present. Every tes
 file was proved to bite by mutation; `M4` (applying the text predicate when no term was
 given) fails this test and no other.
 
+---
 
 ## 63. `better_auth.user.phone_number` has a second writer
 
