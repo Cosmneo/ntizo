@@ -18,7 +18,6 @@ export { MAX_ATTACHMENT_BYTES, ACCEPTED_ATTACHMENT_TYPES } from "@ntizo/shared/a
  */
 
 
-
 /**
  * What the file actually is, from its leading bytes.
  *

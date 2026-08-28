@@ -1,12 +1,15 @@
+import { MAX_ATTACHMENTS } from "@ntizo/shared/attachments";
 import { MessageEmptyError, MessageBodyTooLongError, TooManyAttachmentsError } from "../exceptions";
 
 /** A message body's hard ceiling, trimmed length. Matches the DB CHECK — see Task 1's schema. */
 export const MESSAGE_BODY_MAX = 4000;
 
-/** The most attachments one message may carry. See Task 2's brief. */
-import { MAX_ATTACHMENTS } from "@ntizo/shared/attachments";
-
-// Re-exported so callers of this aggregate keep importing it from here.
+/**
+ * The most attachments one message may carry — defined in
+ * `@ntizo/shared/attachments` because the browser enforces the same count,
+ * re-exported here so this aggregate's callers keep importing it from the
+ * aggregate that enforces it.
+ */
 export { MAX_ATTACHMENTS };
 
 /**
