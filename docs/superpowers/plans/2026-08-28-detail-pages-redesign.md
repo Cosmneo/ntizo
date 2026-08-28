@@ -940,7 +940,7 @@ that, and it now guards the whole directory namespace, not just these."
 ### Task 5: Shared weekday formatting, and two pure modules
 
 **Files:**
-- Create: `apps/frontend/web/src/shared/lib/week-format.ts`
+- Create: `apps/frontend/web/src/shared/domain/week-format.ts`
 - Modify: `apps/frontend/web/src/features/provider/availability/domain/week.ts`
 - Create: `apps/frontend/web/src/features/directory/domain/weekly-hours.ts`
 - Create: `apps/frontend/web/src/features/directory/domain/member-since.ts`
@@ -950,7 +950,7 @@ that, and it now guards the whole directory namespace, not just these."
 **Interfaces:**
 - Consumes: `WeeklyHoursDTO` (Task 1).
 - Produces:
-  - `shared/lib/week-format.ts` re-exports the locale primitives that were in the provider feature: `WEEKDAY_ORDER`, `weekdayDisplayIndex`, `weekdayLabel`, `weekdayShortLabel`, `weekdayNarrowLabel`, `minutesToLabel`, `labelToMinutes`, `formatDayList`, `formatHours`.
+  - `shared/domain/week-format.ts` re-exports the locale primitives that were in the provider feature: `WEEKDAY_ORDER`, `weekdayDisplayIndex`, `weekdayLabel`, `weekdayShortLabel`, `weekdayNarrowLabel`, `minutesToLabel`, `labelToMinutes`, `formatDayList`, `formatHours`.
   - `groupWeekdays(hours: readonly WeeklyHoursDTO[], locale: string): HoursRow[]` where `HoursRow = { key: string; label: string; intervals: { startMinute: number; endMinute: number }[] }`. Rows are Monday-first; consecutive weekdays with identical intervals collapse into one row whose label is `"Segunda a sexta"`.
   - `hasAnyHours(hours: readonly WeeklyHoursDTO[]): boolean`.
   - `formatMemberSince(value: string | null, locale: string): string | null`.
@@ -1088,7 +1088,16 @@ Expected: FAIL — neither module resolves.
 
 - [ ] **Step 3: Move the locale primitives to `shared/lib`**
 
-Create `apps/frontend/web/src/shared/lib/week-format.ts` and move into it, verbatim with their doc comments, from `features/provider/availability/domain/week.ts`: `WEEKDAY_ORDER`, `weekdayDisplayIndex`, `REFERENCE_SUNDAY_UTC_MS`, `MS_PER_DAY`, `weekdayLabel`, `LABEL`, `minutesToLabel`, `labelToMinutes`, `weekdayShortLabel`, `weekdayNarrowLabel`, `formatDayList`, `formatHours`.
+**Path correction, made during execution:** the plan originally said
+`src/shared/lib/week-format.ts`. That location fails this app's own
+`boundaries/dependencies` ESLint rule — `eslint.config.js` maps `src/shared/**`
+to element type `shared` and forbids `domain -> shared`, so a `domain/` module
+importing from `shared/lib` is three lint errors. `src/shared/domain/**` is
+already declared as element type `domain` in that same config, reserved for
+exactly this: shared, framework-free domain code. Verified against a clean
+baseline: the corrected path returns lint to zero errors.
+
+Create `apps/frontend/web/src/shared/domain/week-format.ts` and move into it, verbatim with their doc comments, from `features/provider/availability/domain/week.ts`: `WEEKDAY_ORDER`, `weekdayDisplayIndex`, `REFERENCE_SUNDAY_UTC_MS`, `MS_PER_DAY`, `weekdayLabel`, `LABEL`, `minutesToLabel`, `labelToMinutes`, `weekdayShortLabel`, `weekdayNarrowLabel`, `formatDayList`, `formatHours`.
 
 Add at the top of the new file:
 
@@ -1117,10 +1126,10 @@ export {
   labelToMinutes,
   formatDayList,
   formatHours,
-} from "@/shared/lib/week-format";
+} from "@/shared/domain/week-format";
 ```
 
-`compareRules`, `patternMinutes`, `WeekRuleGroup`, `groupRules` and `overlaps` stay; they use the moved helpers, so add an `import { ... } from "@/shared/lib/week-format";` for whichever they call.
+`compareRules`, `patternMinutes`, `WeekRuleGroup`, `groupRules` and `overlaps` stay; they use the moved helpers, so add an `import { ... } from "@/shared/domain/week-format";` for whichever they call.
 
 - [ ] **Step 4: Write the two directory modules**
 
@@ -1128,7 +1137,7 @@ Create `apps/frontend/web/src/features/directory/domain/weekly-hours.ts`:
 
 ```ts
 import type { WeeklyHoursDTO } from "@ntizo/shared/read-models";
-import { WEEKDAY_ORDER, weekdayLabel } from "@/shared/lib/week-format";
+import { WEEKDAY_ORDER, weekdayLabel } from "@/shared/domain/week-format";
 
 export interface HoursInterval {
   startMinute: number;
@@ -1280,7 +1289,7 @@ Expected: PASS — the new tests, and the provider availability suite still gree
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/frontend/web/src/shared/lib/week-format.ts apps/frontend/web/src/features/provider/availability/domain/week.ts apps/frontend/web/src/features/directory/domain
+git add apps/frontend/web/src/shared/domain/week-format.ts apps/frontend/web/src/features/provider/availability/domain/week.ts apps/frontend/web/src/features/directory/domain
 git commit -m "Share weekday formatting, and read seven days as three rows
 
 The customer pages need the same weekday names the provider configures
@@ -1632,7 +1641,7 @@ deserves."
 - Test: `apps/frontend/web/src/features/directory/ui/__tests__/weekly-hours-card.test.tsx`
 
 **Interfaces:**
-- Consumes: `groupWeekdays`, `hasAnyHours` (Task 5); `minutesToLabel` from `@/shared/lib/week-format`; `RailCard` (Task 8); `availabilityHeading`, `availabilityClosed`, `availabilityUsualNote` (Task 4).
+- Consumes: `groupWeekdays`, `hasAnyHours` (Task 5); `minutesToLabel` from `@/shared/domain/week-format`; `RailCard` (Task 8); `availabilityHeading`, `availabilityClosed`, `availabilityUsualNote` (Task 4).
 - Produces: `<WeeklyHoursCard hours={readonly WeeklyHoursDTO[]} />`. Renders nothing when no weekday has an interval.
 
 - [ ] **Step 1: Write the failing test**
@@ -2632,6 +2641,6 @@ about which package is chosen."
 
 **Spec coverage.** Every section maps to a task: the detail read model → 1; `mergeIntervals` → 2; the repository, ports, projection and GraphQL → 3; i18n → 4; `groupWeekdays` / `formatMemberSince` and the `week.ts` split → 5; the frontend selection split → 6; `DetailGallery` → 7; `DetailFacts` / `RailCard` / `TrustList` → 8; `WeeklyHoursCard` → 9; `ServiceRow` → 10; the reviews rewrite and "see all" → 11; the provider page and the portfolio deletion → 12; the service page, the `PackageChooser` split and the gallery deletion → 13. The spec's exclusion table is carried into Global Constraints and asserted in Tasks 11, 12 and 13.
 
-**One thing the spec did not anticipate**, found while planning and folded into Task 5: `weekdayLabel`, `minutesToLabel` and `WEEKDAY_ORDER` already exist in `features/provider/availability/domain/week.ts`. The directory feature importing from the provider feature would be a cross-feature dependency, and copying them would be a second chance to disagree with the calendar a provider configures. So the locale primitives move to `shared/lib/week-format.ts` and `week.ts` re-exports them, leaving its seven importers untouched. That file's own domain — `WeeklyRuleDraft`, `groupRules`, `overlaps` — does not move.
+**One thing the spec did not anticipate**, found while planning and folded into Task 5: `weekdayLabel`, `minutesToLabel` and `WEEKDAY_ORDER` already exist in `features/provider/availability/domain/week.ts`. The directory feature importing from the provider feature would be a cross-feature dependency, and copying them would be a second chance to disagree with the calendar a provider configures. So the locale primitives move to `shared/domain/week-format.ts` and `week.ts` re-exports them, leaving its seven importers untouched. That file's own domain — `WeeklyRuleDraft`, `groupRules`, `overlaps` — does not move.
 
 **Two places the plan deliberately tells the implementer to look before writing**, rather than guessing: whether the web test setup loads real i18n bundles (Task 9, Step 1) and how existing tests seed `QueryClient` data (Task 11, Step 1). Both are conventions the repository already has, and a plan that invented a third would be worse than one that asks.
