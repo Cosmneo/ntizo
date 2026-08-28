@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SortDropdown, type SortDropdownOption } from "../sort-dropdown";
 
 type Sort = "newest" | "price";
@@ -80,6 +81,26 @@ describe("SortDropdown", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
 
     expect(onChoose).toHaveBeenCalledExactlyOnceWith(undefined);
+  });
+
+  it("is worked end to end without a mouse", async () => {
+    // The trigger here is the design system's `Button`, not a bare <button>,
+    // so this is also the check that the menu's keyboard handling survives
+    // being cloned onto a forwarding component rather than an element.
+    const user = userEvent.setup();
+    const onChoose = vi.fn();
+    render(<SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort" onChoose={onChoose} />);
+
+    const trigger = screen.getByRole("button", { name: "Sort" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("menuitemradio", { name: "Suggested" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    expect(onChoose).toHaveBeenCalledExactlyOnceWith("price");
+
+    // And the reader is put back on the control they opened, not on <body>.
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("chooses a named order by its value", () => {
