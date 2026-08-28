@@ -15,12 +15,16 @@ import type {
   ThreadPage,
   ThreadRepositoryPort,
 } from "../app/ports/outbound/thread.repository.port";
+import type { AttachmentRepositoryPort, NewAttachment } from "../app/ports/outbound/attachment.repository.port";
 import type { ProviderReaderPort } from "../app/ports/outbound/provider-reader.port";
-import type { ThreadRow } from "../../../shared/infrastructure/database/communication/schemas";
+import type {
+  AttachmentRow,
+  ThreadRow,
+} from "../../../shared/infrastructure/database/communication/schemas";
 
 const NOW = new Date("2026-08-27T10:00:00.000Z");
 
-type TrackedOp = "insert" | "touch";
+type TrackedOp = "insert" | "touch" | "attachment";
 
 /**
  * A record of one write a fake repository made, tagged with whichever
@@ -31,7 +35,11 @@ type TrackedOp = "insert" | "touch";
  * and a plain ordered log cannot give it: an ordered log can prove "touch
  * happened after insert" without ever proving the two happened inside the
  * SAME transaction, or inside any transaction at all — see that getter's
- * own doc comment for the mutation this closes.
+ * own doc comment for the mutation this closes. `"attachment"` joined
+ * `"insert"` and `"touch"` here for the same reason: a fake that recorded
+ * it on some untagged, parallel list would let an attachment write land
+ * outside every `atomicExecute` invocation with nothing here able to see it
+ * — see `bothWritesInSameTransaction`'s doc comment.
  */
 interface TrackedWrite {
   op: TrackedOp;
@@ -92,8 +100,8 @@ class TrackingUnitOfWork implements UnitOfWorkPort {
    * The claim `SendMessageCommand`'s own doc comment makes: not merely that
    * touch happened after insert in program order (a `touch` call sitting
    * entirely outside `atomicExecute`, positioned after it, would also
-   * satisfy that), but that both writes were logged while ONE SAME
-   * `atomicExecute` invocation was the currently-open one.
+   * satisfy that), but that every write the command made was logged while
+   * ONE SAME `atomicExecute` invocation was the currently-open one.
    *
    * A production change that narrows the transaction to cover only the
    * insert — `await this.unitOfWork.atomicExecute(() => this.messages.insert(message));
@@ -102,16 +110,29 @@ class TrackingUnitOfWork implements UnitOfWorkPort {
    * and `touchedAfterInsert` both stay green under it. This getter is what
    * actually catches that: `touch`'s `transactionId` is `null` (recorded
    * outside every open transaction), so it can never equal `insert`'s.
+   *
+   * The attachment write is checked the same way, but only when the test
+   * actually produced one — an attachment-less send (most of this file's
+   * tests) never calls `insertMany`, and treating an absent write as a
+   * failure would make every one of those tests red for a call that was
+   * never supposed to happen. When an attachment write IS present, it must
+   * share `insert`'s transaction id too — this is what catches the exact
+   * mutation the brief calls out: the attachment insert moving outside
+   * `atomicExecute` entirely, which `TrackedOp` widened to `"attachment"` to
+   * make visible in the first place (see `TrackedWrite`'s doc comment) —
+   * before that widening, a third op invisible to this getter could sit
+   * anywhere and this assertion would stay green regardless.
    */
   get bothWritesInSameTransaction(): boolean {
     const insert = this.writes.find((w) => w.op === "insert");
     const touch = this.writes.find((w) => w.op === "touch");
-    return (
-      insert !== undefined &&
-      touch !== undefined &&
-      insert.transactionId !== null &&
-      insert.transactionId === touch.transactionId
-    );
+    if (insert === undefined || touch === undefined) return false;
+    if (insert.transactionId === null || insert.transactionId !== touch.transactionId) return false;
+
+    const attachment = this.writes.find((w) => w.op === "attachment");
+    if (attachment !== undefined && attachment.transactionId !== insert.transactionId) return false;
+
+    return true;
   }
 }
 
@@ -214,6 +235,32 @@ class FakeMessageRepository implements MessageRepositoryPort {
   }
 }
 
+/**
+ * `insertMany` is the only method `SendMessageCommand` calls; `findVisible`
+ * and `listForMessages` are implemented anyway so this class satisfies
+ * `AttachmentRepositoryPort` in full — `DrizzleAttachmentRepository`'s
+ * versions of those two are exercised against the real database in
+ * `repositories.test.ts`, not here.
+ */
+class FakeAttachmentRepository implements AttachmentRepositoryPort {
+  inserted: { messageId: string; attachments: NewAttachment[] }[] = [];
+
+  constructor(private readonly tracker?: TrackingUnitOfWork) {}
+
+  async insertMany(messageId: string, attachments: NewAttachment[]): Promise<void> {
+    this.tracker?.record("attachment");
+    this.inserted.push({ messageId, attachments });
+  }
+
+  async listForMessages(): Promise<Map<string, AttachmentRow[]>> {
+    return new Map();
+  }
+
+  async findVisible(): Promise<AttachmentRow | null> {
+    return null;
+  }
+}
+
 class FakeProviderReader implements ProviderReaderPort {
   contactable = new Map<string, boolean>();
 
@@ -234,6 +281,7 @@ const providerId = "provider-1";
 let members: Map<string, string[]>;
 let fakeThreads: FakeThreadRepository;
 let fakeMessages: FakeMessageRepository;
+let fakeAttachments: FakeAttachmentRepository;
 let fakeProviders: FakeProviderReader;
 let uow: TrackingUnitOfWork;
 let existingThread: string;
@@ -247,6 +295,7 @@ beforeEach(() => {
   uow = new TrackingUnitOfWork();
   fakeThreads = new FakeThreadRepository(members, uow);
   fakeMessages = new FakeMessageRepository(uow);
+  fakeAttachments = new FakeAttachmentRepository(uow);
   fakeProviders = new FakeProviderReader(members);
 
   existingThread = crypto.randomUUID();
@@ -260,7 +309,7 @@ beforeEach(() => {
   });
 
   start = new StartThreadCommand(fakeThreads, fakeProviders, () => NOW);
-  send = new SendMessageCommand(fakeThreads, fakeMessages, uow, () => NOW);
+  send = new SendMessageCommand(fakeThreads, fakeMessages, fakeAttachments, uow, () => NOW);
   markRead = new MarkThreadReadCommand(fakeThreads, fakeMessages, () => NOW);
 });
 
@@ -316,6 +365,30 @@ describe("sending", () => {
     // `bothWritesInSameTransaction`'s own doc comment for the mutation this
     // alone catches: narrowing `atomicExecute` to wrap only the insert,
     // order otherwise preserved, leaves both assertions above green.
+    expect(uow.bothWritesInSameTransaction).toBe(true);
+  });
+
+  it("writes the message and its attachments in one transaction", async () => {
+    const one: NewAttachment = {
+      storageKey: "communication/one.png",
+      fileName: "one.png",
+      contentType: "image/png",
+      sizeBytes: 1024,
+    };
+    // Empty body, one attachment: legal per `Message.compose` since Task 2 —
+    // a photograph with no caption is a message.
+    const result = await send.execute({
+      threadId: existingThread,
+      senderUserId: customerId,
+      body: "",
+      attachments: [one],
+    });
+
+    expect(fakeAttachments.inserted).toEqual([{ messageId: result.id, attachments: [one] }]);
+    // The assertion that actually proves "one transaction" for all three
+    // writes — see `bothWritesInSameTransaction`'s own doc comment for why
+    // this, and not `insideTransaction`/`touchedAfterInsert` alone, is what
+    // catches the attachment insert moving outside `atomicExecute`.
     expect(uow.bothWritesInSameTransaction).toBe(true);
   });
 

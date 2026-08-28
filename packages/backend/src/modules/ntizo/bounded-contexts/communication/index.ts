@@ -41,6 +41,10 @@ export type {
   MessagePage,
   MessageRepositoryPort,
 } from "./app/ports/outbound/message.repository.port";
+export type {
+  NewAttachment,
+  AttachmentRepositoryPort,
+} from "./app/ports/outbound/attachment.repository.port";
 export type { ProviderReaderPort } from "./app/ports/outbound/provider-reader.port";
 export type {
   RaiseNotificationInput,

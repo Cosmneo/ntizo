@@ -1,5 +1,6 @@
 import { DrizzleThreadRepository } from "../infrastructure/repositories/drizzle/thread.repository";
 import { DrizzleMessageRepository } from "../infrastructure/repositories/drizzle/message.repository";
+import { DrizzleAttachmentRepository } from "../infrastructure/repositories/drizzle/attachment.repository";
 import { DrizzleProviderReader } from "../infrastructure/outbound-adapters/cross-bc/provider-reader.adapter";
 import { StartThreadCommand } from "../app/use-cases/start-thread.command";
 import { SendMessageCommand } from "../app/use-cases/send-message.command";
@@ -31,14 +32,20 @@ export interface CommunicationBootstrapDeps {
 export function bootstrapCommunication(deps: CommunicationBootstrapDeps) {
   const threadRepository = new DrizzleThreadRepository();
   const messageRepository = new DrizzleMessageRepository();
+  const attachmentRepository = new DrizzleAttachmentRepository();
   const providerReader = new DrizzleProviderReader();
   const unitOfWork = new DrizzleUnitOfWork();
 
   return {
-    adapters: { threadRepository, messageRepository, providerReader, unitOfWork },
+    // `attachmentRepository` is exposed here, not only wired into
+    // `sendMessage`, because Task 5's download route needs `findVisible`
+    // directly — it is a permission check plus a row fetch, not a use case
+    // — the same reason `admin-access.ts` and `api.ts` reach other
+    // contexts' read repositories through `adapters` rather than a command.
+    adapters: { threadRepository, messageRepository, attachmentRepository, providerReader, unitOfWork },
     useCases: {
       startThread: new StartThreadCommand(threadRepository, providerReader),
-      sendMessage: new SendMessageCommand(threadRepository, messageRepository, unitOfWork),
+      sendMessage: new SendMessageCommand(threadRepository, messageRepository, attachmentRepository, unitOfWork),
       markThreadRead: new MarkThreadReadCommand(threadRepository, messageRepository),
       internal: {
         // The delayed notice a cron sweeps — nobody asks for this, something

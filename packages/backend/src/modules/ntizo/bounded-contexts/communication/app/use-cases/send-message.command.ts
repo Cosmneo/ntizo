@@ -3,11 +3,18 @@ import { Message } from "../../domain/aggregates/message.aggregate";
 import { ThreadNotVisibleError } from "../../domain/exceptions";
 import type { ThreadRepositoryPort } from "../ports/outbound/thread.repository.port";
 import type { MessageRepositoryPort } from "../ports/outbound/message.repository.port";
+import type { AttachmentRepositoryPort, NewAttachment } from "../ports/outbound/attachment.repository.port";
 
 export interface SendMessageInput {
   threadId: string;
   senderUserId: string;
   body: string;
+  /**
+   * Already-uploaded files to attach — see `NewAttachment`. Optional and
+   * defaults to none; `Message.compose` still throws `MessageEmptyError` for
+   * an empty `body` when this is also empty.
+   */
+  attachments?: NewAttachment[];
 }
 
 /**
@@ -23,16 +30,20 @@ export interface SendMessageInput {
  * stay indistinguishable to the caller: telling "not yours" apart from
  * "doesn't exist" tells an attacker probing thread ids which ones are real.
  *
- * The insert and the touch happen inside one transaction, insert first: a
- * message that exists but never moved its thread's `last_message_at` would
- * silently drop out of both inboxes' newest-first ordering, and
- * `atomicExecute` is what makes "both writes or neither" true across a
- * failure landing between the two statements.
+ * The insert, the attachment writes, and the touch happen inside one
+ * transaction, in that order: a message that exists but never moved its
+ * thread's `last_message_at` would silently drop out of both inboxes'
+ * newest-first ordering, and a message whose attachments landed outside the
+ * transaction could exist with a promised attachment count that the
+ * `attachment` table never backs. `atomicExecute` is what makes "all three
+ * writes or none of them" true across a failure landing between any two of
+ * them.
  */
 export class SendMessageCommand {
   constructor(
     private readonly threads: ThreadRepositoryPort,
     private readonly messages: MessageRepositoryPort,
+    private readonly attachments: AttachmentRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly now: () => Date = () => new Date(),
   ) {}
@@ -41,15 +52,20 @@ export class SendMessageCommand {
     const visible = await this.threads.findVisible(input.threadId, input.senderUserId);
     if (!visible) throw new ThreadNotVisibleError();
 
+    const attachments = input.attachments ?? [];
     const message = Message.compose({
       threadId: input.threadId,
       senderUserId: input.senderUserId,
       body: input.body,
+      attachmentCount: attachments.length,
       now: this.now(),
     });
 
     return await this.unitOfWork.atomicExecute(async () => {
       const id = await this.messages.insert(message);
+      if (attachments.length > 0) {
+        await this.attachments.insertMany(id, attachments);
+      }
       await this.threads.touch(input.threadId, message.createdAt);
       return { id };
     });
