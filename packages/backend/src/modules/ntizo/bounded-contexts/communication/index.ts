@@ -1,5 +1,11 @@
 export { bootstrapCommunication, type CommunicationBootstrap } from "./bootstrap";
 
+export {
+  MAX_ATTACHMENT_BYTES,
+  ACCEPTED_ATTACHMENT_TYPES,
+  sniffContentType,
+} from "./domain/attachment";
+
 export { Thread } from "./domain/aggregates/thread.aggregate";
 export {
   Message,
