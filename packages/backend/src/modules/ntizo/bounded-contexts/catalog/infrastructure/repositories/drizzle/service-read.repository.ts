@@ -73,9 +73,13 @@ export function conditionsFor(
         eq(service.locationType, "remote"),
         // `ilike` and not `eq`: the city arrives from a free-text combobox
         // (`CitySelect` lets people type their own), so "maputo" and
-        // "Maputo" are one place. No wildcards — this is an exact match
-        // that ignores case, not a prefix search.
-        ilike(provider.addressCity, filter.city),
+        // "Maputo" are one place.
+        //
+        // Escaped, and no `%` of our own around it: this is an exact match
+        // that ignores case, not a prefix search — but `%` and `_` are
+        // ILIKE's own metacharacters, so without the escape `?city=M%`
+        // silently becomes one, matching every city beginning with M.
+        ilike(provider.addressCity, escapeLike(filter.city)),
       )!,
     );
   }
@@ -723,30 +727,63 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
   /**
    * The cities that currently have a published service, with how many.
    *
-   * Mirrors `DrizzleProviderPublicRepository.listCityFacets` field for field,
-   * including its blank-string guard: a provider row can carry `''` for a
-   * city nobody filled in, and it would reach the filter as a chip with no
-   * label whose only outcome is an empty page.
+   * The count is what `?city=…` actually returns, which is **not** the size of
+   * the city's own group: `conditionsFor` matches `city OR remote`, so every
+   * city link also returns every remote service on the platform. Grouped
+   * alone, the sidebar printed "Beira 1" over a link that answered with one
+   * service plus every online listing there is — a number that is simply
+   * wrong about the destination under it.
+   *
+   * So it is assembled from the two halves of that predicate: the city's own
+   * non-remote services, plus the remote population once. Remote is excluded
+   * from the group rather than merely added on, or a remote service whose
+   * provider happens to sit in Beira would be counted twice for Beira. The
+   * remote half is counted without the city guard below, because a remote
+   * service matches `?city=Beira` whether or not its provider filled a city
+   * in at all.
+   *
+   * Every city therefore carries the same remote floor, which is honest about
+   * the link and surprising on its own — so the sidebar says so, once, in the
+   * city group's `hint` (`filterCityHint`).
+   *
+   * The blank-string guard is `DrizzleProviderPublicRepository.listCityFacets`'s,
+   * and the reason is the same: a provider row can carry `''` for a city
+   * nobody filled in, and it would reach the filter as a chip with no label
+   * whose only outcome is an empty page. The counting no longer mirrors that
+   * one — a provider has a single city, so the directory's facet has no
+   * second population to fold in.
    */
   async listCityFacets(): Promise<{ city: string; count: number }[]> {
-    const rows = await getDb()
-      .select({ city: provider.addressCity, count: sql<number>`count(*)` })
+    const db = getDb();
+    const published = and(eq(service.status, "published"), eq(provider.status, "active"));
+
+    const rows = await db
+      .select({
+        city: provider.addressCity,
+        count: sql<number>`count(*) filter (where ${service.locationType} <> 'remote')`,
+      })
       .from(service)
       .innerJoin(provider, eq(provider.id, service.providerId))
       .where(
-        and(
-          eq(service.status, "published"),
-          eq(provider.status, "active"),
-          isNotNull(provider.addressCity),
-          sql`btrim(${provider.addressCity}) <> ''`,
-        ),
+        and(published, isNotNull(provider.addressCity), sql`btrim(${provider.addressCity}) <> ''`),
       )
+      // Grouped over every published service, remote included, even though
+      // only the non-remote ones are counted: a city whose services are all
+      // remote still belongs in the list, because its link still returns
+      // them. It simply contributes none of its own to the shared floor.
       .groupBy(provider.addressCity)
       .orderBy(asc(provider.addressCity));
 
+    const [remote] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(service)
+      .innerJoin(provider, eq(provider.id, service.providerId))
+      .where(and(published, eq(service.locationType, "remote")));
+    const remoteCount = Number(remote?.count ?? 0);
+
     return rows
       .filter((r): r is { city: string; count: number } => r.city !== null)
-      .map((r) => ({ city: r.city, count: Number(r.count) }));
+      .map((r) => ({ city: r.city, count: Number(r.count) + remoteCount }));
   }
 }
 

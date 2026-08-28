@@ -250,6 +250,12 @@ export interface ServiceReadRepositoryPort {
    * "Nampula 0" is a control whose only outcome is an empty page. The same
    * rule `DrizzleProviderPublicRepository.listCityFacets` follows.
    *
+   * The count is how many `?city=…` returns, not how many services sit in that
+   * city — a city filter also matches every remote service, which has no
+   * geography to be excluded by, so every count carries that whole population.
+   * A count that measured the city alone would be a wrong number printed over
+   * its own link.
+   *
    * Unfiltered on purpose: the options a filter offers must not shrink as that
    * filter is used, or somebody who picked Matola is stranded with no way back
    * to Maputo.

@@ -51,7 +51,6 @@
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
   "searchSubmit": "Search",
-  "searchClear": "Clear search",
   "servicesNoMatch": "Nothing matches what you are looking for.",
   "servicesNoMatchHint": "Try different words, or remove some filters.",
   "servicesFound": "{{count}} service found",
@@ -79,6 +78,7 @@
   "providerFrom": "from",
   "providerOpen": "View business",
   "filterCity": "City",
+  "filterCityHint": "Remote services appear under every city.",
   "filterRating": "Rating",
   "filterRatingHint": "Only businesses customers have already reviewed.",
   "filterRatingOption": "{{score}} or more",
@@ -200,7 +200,6 @@
   "listingByProvider": "by {{name}}",
   "stubQuoteAmount": "To agree",
   "stubPerService": "per service",
-  "mobileSearchOpen": "Search",
   "mobileSearchTitle": "What are you looking for?",
   "mobileSearchApply": "Show results"
 }

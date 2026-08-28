@@ -426,6 +426,23 @@ describe("ServicesBrowsePage", () => {
     expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
   });
 
+  it("warns, on the city group, that every city\u2019s count includes the remote services", async () => {
+    // `?city=\u2026` matches "this city OR remote" \u2014 a remote service has no
+    // geography to be excluded by \u2014 so the count beside a city is the city\u2019s
+    // own services plus every online listing on the platform. Without the
+    // sentence, "Beira 12" over a town with one business reads as a wrong
+    // number rather than as an honest one about a wider link.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    const hint = await screen.findByText("Remote services appear under every city.");
+    // On the city group and not merely somewhere on the page: this is the one
+    // group whose label overclaims, and the language group already carries a
+    // hint of its own two groups below.
+    const group = hint.closest("details");
+    expect(group).not.toBeNull();
+    expect(group).toHaveTextContent("City");
+    expect(within(group!).getByRole("link", { name: /Beira/ })).toBeInTheDocument();
+  });
+
   it("offers no numbered pages when everything matched fits on one", async () => {
     // A pager reading "page 1 of 1" makes an eight-result search look truncated.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });

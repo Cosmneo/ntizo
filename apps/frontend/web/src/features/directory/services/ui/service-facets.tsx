@@ -135,7 +135,13 @@ function FacetGroups({ current }: { current: BrowseSearch }) {
           filter offering a single city narrows nothing and takes a group of
           the panel to say so. */}
       {cities.length > 1 && (
-        <FacetGroup icon={MapPin} label={t("filterCity")}>
+        // The hint is the one thing the counts beside these cities cannot say
+        // for themselves. `?city=…` matches "this city OR remote" — a remote
+        // service has no geography to be excluded by — so every count carries
+        // the whole remote population, and "Beira 12" over a city with one
+        // business would otherwise read as a wrong number rather than as an
+        // honest one about a wider link.
+        <FacetGroup icon={MapPin} label={t("filterCity")} hint={t("filterCityHint")}>
           {cities.map((c) => (
             <FacetOption
               key={c.city}

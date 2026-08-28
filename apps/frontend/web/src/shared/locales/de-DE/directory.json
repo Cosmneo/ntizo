@@ -51,7 +51,6 @@
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
   "searchSubmit": "Suchen",
-  "searchClear": "Suche löschen",
   "servicesNoMatch": "Nichts entspricht Ihrer Suche.",
   "servicesNoMatchHint": "Versuchen Sie andere Wörter oder entfernen Sie Filter.",
   "servicesFound": "{{count}} service found",
@@ -79,6 +78,7 @@
   "providerFrom": "ab",
   "providerOpen": "Betrieb ansehen",
   "filterCity": "Stadt",
+  "filterCityHint": "Dienstleistungen aus der Ferne erscheinen unter jeder Stadt.",
   "filterRating": "Bewertung",
   "filterRatingHint": "Nur Betriebe, die Kunden bereits bewertet haben.",
   "filterRatingOption": "{{score}} oder mehr",
@@ -188,7 +188,6 @@
   "listingByProvider": "von {{name}}",
   "stubQuoteAmount": "Nach Absprache",
   "stubPerService": "pro Leistung",
-  "mobileSearchOpen": "Suchen",
   "mobileSearchTitle": "Wonach suchen Sie?",
   "mobileSearchApply": "Ergebnisse anzeigen"
 }

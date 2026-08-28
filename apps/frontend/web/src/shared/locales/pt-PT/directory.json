@@ -51,7 +51,6 @@
   "filterWhere": "Onde acontece",
   "sortLabel": "Ordenar",
   "searchSubmit": "Procurar",
-  "searchClear": "Limpar pesquisa",
   "servicesNoMatch": "Nada corresponde ao que procura.",
   "servicesNoMatchHint": "Experimente outras palavras ou retire alguns filtros.",
   "servicesFound": "{{count}} serviço encontrado",
@@ -79,6 +78,7 @@
   "providerFrom": "a partir de",
   "providerOpen": "Ver negócio",
   "filterCity": "Cidade",
+  "filterCityHint": "Os serviços à distância aparecem em todas as cidades.",
   "filterRating": "Avaliação",
   "filterRatingHint": "Só negócios já avaliados por clientes.",
   "filterRatingOption": "{{score}} ou mais",
@@ -200,7 +200,6 @@
   "listingByProvider": "por {{name}}",
   "stubQuoteAmount": "A combinar",
   "stubPerService": "por serviço",
-  "mobileSearchOpen": "Procurar",
   "mobileSearchTitle": "O que procura?",
   "mobileSearchApply": "Ver resultados"
 }

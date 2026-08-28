@@ -51,7 +51,6 @@
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
   "searchSubmit": "Rechercher",
-  "searchClear": "Effacer la recherche",
   "servicesNoMatch": "Rien ne correspond à votre recherche.",
   "servicesNoMatchHint": "Essayez d'autres mots ou retirez des filtres.",
   "servicesFound": "{{count}} service found",
@@ -79,6 +78,7 @@
   "providerFrom": "à partir de",
   "providerOpen": "Voir l'établissement",
   "filterCity": "Ville",
+  "filterCityHint": "Les services à distance apparaissent dans toutes les villes.",
   "filterRating": "Note",
   "filterRatingHint": "Uniquement les établissements déjà évalués par des clients.",
   "filterRatingOption": "{{score}} et plus",
@@ -188,7 +188,6 @@
   "listingByProvider": "par {{name}}",
   "stubQuoteAmount": "À convenir",
   "stubPerService": "par prestation",
-  "mobileSearchOpen": "Rechercher",
   "mobileSearchTitle": "Que cherchez-vous ?",
   "mobileSearchApply": "Voir les résultats"
 }

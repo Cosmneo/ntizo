@@ -51,7 +51,6 @@
   "filterWhere": "Where it happens",
   "sortLabel": "Sort",
   "searchSubmit": "Zoeken",
-  "searchClear": "Zoekopdracht wissen",
   "servicesNoMatch": "Niets komt overeen met je zoekopdracht.",
   "servicesNoMatchHint": "Probeer andere woorden of verwijder filters.",
   "servicesFound": "{{count}} service found",
@@ -79,6 +78,7 @@
   "providerFrom": "vanaf",
   "providerOpen": "Bedrijf bekijken",
   "filterCity": "Stad",
+  "filterCityHint": "Diensten op afstand verschijnen bij elke stad.",
   "filterRating": "Beoordeling",
   "filterRatingHint": "Alleen bedrijven die klanten al beoordeeld hebben.",
   "filterRatingOption": "{{score}} of meer",
@@ -188,7 +188,6 @@
   "listingByProvider": "door {{name}}",
   "stubQuoteAmount": "In overleg",
   "stubPerService": "per dienst",
-  "mobileSearchOpen": "Zoeken",
   "mobileSearchTitle": "Waar ben je naar op zoek?",
   "mobileSearchApply": "Resultaten tonen"
 }
