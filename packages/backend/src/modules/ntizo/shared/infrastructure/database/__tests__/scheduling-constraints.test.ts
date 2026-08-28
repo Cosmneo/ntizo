@@ -10,10 +10,9 @@
  * do: `postgres` + `drizzle-orm/postgres-js` against `DEV_DB_URL`, which Bun
  * loads automatically from `packages/backend/.env`.
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { category } from "../catalog/schemas/category.schema";
 import { service } from "../catalog/schemas/service.schema";
 import { provider } from "../provider/schemas/provider.schema";
@@ -22,16 +21,15 @@ import { user } from "../user/schemas/user.schema";
 import { dateException } from "../scheduling/schemas/date-exception.schema";
 import { houseClosure } from "../scheduling/schemas/house-closure.schema";
 import { memberAvailability } from "../scheduling/schemas/member-availability.schema";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. These tests assert against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 const db = drizzle(sql);
 
 const suffix = crypto.randomUUID();
@@ -84,15 +82,17 @@ beforeAll(async () => {
 afterAll(async () => {
   // Children first: FKs cascade on delete, but being explicit keeps this
   // readable as an ordered teardown rather than relying on cascade silently.
-  await db.delete(memberAvailability).where(eq(memberAvailability.providerId, providerId));
-  await db.delete(dateException).where(eq(dateException.providerId, providerId));
-  await db.delete(houseClosure).where(eq(houseClosure.providerId, providerId));
-  await db.delete(service).where(eq(service.id, serviceId));
-  await db.delete(category).where(eq(category.id, categoryId));
-  await db.delete(providerMember).where(eq(providerMember.id, memberId));
-  await db.delete(provider).where(eq(provider.id, providerId));
-  await db.delete(user).where(eq(user.id, userId));
-  await sql.end({ timeout: 5 });
+  await bestEffortCleanup([
+    () => db.delete(memberAvailability).where(eq(memberAvailability.providerId, providerId)),
+    () => db.delete(dateException).where(eq(dateException.providerId, providerId)),
+    () => db.delete(houseClosure).where(eq(houseClosure.providerId, providerId)),
+    () => db.delete(service).where(eq(service.id, serviceId)),
+    () => db.delete(category).where(eq(category.id, categoryId)),
+    () => db.delete(providerMember).where(eq(providerMember.id, memberId)),
+    () => db.delete(provider).where(eq(provider.id, providerId)),
+    () => db.delete(user).where(eq(user.id, userId)),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 async function insertWeekly(overrides: {

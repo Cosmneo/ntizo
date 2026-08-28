@@ -1,23 +1,21 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { notification } from "../notification/schemas/notification.schema";
 import type { NewNotificationRecord } from "../notification/schemas/notification.schema";
 import { notificationRead } from "../notification/schemas/notification-read.schema";
 import { user } from "../user/schemas/user.schema";
 import { provider } from "../provider/schemas/provider.schema";
 import { providerMember } from "../provider/schemas/provider-member.schema";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. These tests assert against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 const db = drizzle(sql);
 
 const suffix = crypto.randomUUID();
@@ -60,10 +58,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Children first, same ordering discipline as scheduling-constraints.test.ts.
-  await db.delete(providerMember).where(eq(providerMember.id, memberId));
-  await db.delete(provider).where(eq(provider.id, providerId));
-  await db.delete(user).where(eq(user.id, userId));
-  await sql.end();
+  await bestEffortCleanup([
+    () => db.delete(providerMember).where(eq(providerMember.id, memberId)),
+    () => db.delete(provider).where(eq(provider.id, providerId)),
+    () => db.delete(user).where(eq(user.id, userId)),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 // Drizzle's query builders are lazy thenables, not native `Promise`s — they

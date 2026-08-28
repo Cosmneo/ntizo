@@ -1,5 +1,5 @@
-import { afterAll, describe, expect, test } from "bun:test";
-import postgres from "postgres";
+import { afterAll, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { DEV_DB_COLD_START_TIMEOUT_MS, openDevDbConnection } from "./dev-db-test-connection";
 
 /**
  * DB-backed, like its siblings (`notification-constraints`,
@@ -26,18 +26,12 @@ import postgres from "postgres";
  * metadata instead, for the same reason the index and the "no read state"
  * columns are — absence is not something a rejected insert can prove.
  */
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. These tests assert against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 
 afterAll(async () => {
-  await sql.end();
+  await sql.end({ timeout: 5 });
 });
 
 // The `postgres` package's tagged-template result is a lazy thenable (a

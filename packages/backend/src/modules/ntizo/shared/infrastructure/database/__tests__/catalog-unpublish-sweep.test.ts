@@ -23,13 +23,17 @@
  * uses — the difference here is the bound client is a genuine connection to
  * `DEV_DB_URL`, not a fake, because the point is to exercise the real SQL.
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
 import { DrizzleServiceRepository } from "../../../../bounded-contexts/catalog/infrastructure/repositories/drizzle/service.repository";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 import { category } from "../catalog/schemas/category.schema";
 import { service, serviceTranslation } from "../catalog/schemas/service.schema";
 import { serviceMember } from "../catalog/schemas/service-member.schema";
@@ -37,15 +41,9 @@ import { provider } from "../provider/schemas/provider.schema";
 import { providerMember } from "../provider/schemas/provider-member.schema";
 import { user } from "../user/schemas/user.schema";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. This test asserts against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 // `{ schema: authSchema }` matches exactly how the app's own
 // `Db.getDbConnection()` constructs its client (see `connection.ts`) — the
 // `DrizzleDb` type `__runWithTransactionContextForTests` expects is that
@@ -55,12 +53,19 @@ const repo = new DrizzleServiceRepository();
 
 const suffix = crypto.randomUUID();
 
-let userAId: string;
-let userBId: string;
+/**
+ * The keys teardown deletes by, all decided here rather than handed back by
+ * `beforeAll` — see this file's `afterAll` for why that difference is the
+ * whole fix.
+ */
+const categoryCode = `catalog-sweep-test-${suffix}`;
+const providerSlugs = [`catalog-sweep-test-a-${suffix}`, `catalog-sweep-test-b-${suffix}`] as const;
+const userAId = crypto.randomUUID();
+const userBId = crypto.randomUUID();
+
 let providerAId: string;
 let providerBId: string;
 let memberAId: string;
-let memberBId: string;
 let categoryId: string;
 
 // The one row that should be swept, and the three that each survive for a
@@ -73,9 +78,25 @@ let draftNoMembersA: string;
 /** The sweep runs exactly once, in `beforeAll`, against real rows; every test below only reads its result. */
 let sweepResult: { serviceId: string; name: string }[];
 
-beforeAll(async () => {
-  userAId = crypto.randomUUID();
-  userBId = crypto.randomUUID();
+/**
+ * `beforeAll`'s own promise, so `afterAll` can wait for it.
+ *
+ * A hook that exceeds bun:test's timeout is declared failed but is not
+ * stopped: its `await`s go on resolving, and `afterAll` starts alongside
+ * them. Both hooks share this file's single connection (`max: 1`), so their
+ * statements interleave, and teardown that begins mid-seed deletes rows the
+ * seed then re-creates. That is not hypothetical here — it is legible in the
+ * rows fifteen leaked runs left in the dev database: every one of them still
+ * has the `service_member` row that `afterAll`'s *first* statement deletes,
+ * and four of them are missing exactly the first three service translations
+ * of four, the seed's fourth insert having landed after teardown had already
+ * gone past it.
+ */
+let seeding: Promise<unknown> = Promise.resolve();
+
+beforeAll(() => (seeding = seed()));
+
+async function seed(): Promise<void> {
   await db.insert(user).values([
     { id: userAId, email: `catalog-sweep-a-${suffix}@example.com` },
     { id: userBId, email: `catalog-sweep-b-${suffix}@example.com` },
@@ -111,15 +132,17 @@ beforeAll(async () => {
     .returning({ id: providerMember.id });
   memberAId = memberARow!.id;
 
-  const [memberBRow] = await db
+  // Provider B's owner, for shape: an active provider with no membership at
+  // all is not a state the write path can produce. Its id is never needed —
+  // the sweep's `notExists` looks at `service_member`, not at this — and
+  // teardown reaches it by cascade from the provider.
+  await db
     .insert(providerMember)
-    .values({ providerId: providerBId, userId: userBId, role: "owner" })
-    .returning({ id: providerMember.id });
-  memberBId = memberBRow!.id;
+    .values({ providerId: providerBId, userId: userBId, role: "owner" });
 
   const [categoryRow] = await db
     .insert(category)
-    .values({ code: `catalog-sweep-test-${suffix}` })
+    .values({ code: categoryCode })
     .returning({ id: category.id });
   categoryId = categoryRow!.id;
 
@@ -164,30 +187,36 @@ beforeAll(async () => {
   sweepResult = await __runWithTransactionContextForTests(db, () =>
     repo.unpublishServicesWithoutMembers(providerAId),
   );
-});
+}
 
+/**
+ * Three statements, keyed on names this file chose, not on ids the seed
+ * returned — and in the order the foreign keys allow.
+ *
+ * Deleting the two providers is what removes everything under them:
+ * `service.provider_id` cascades, and `service_translation`,
+ * `service_member` and `provider_member` cascade behind it. The category can
+ * only go once no service references it and the users only once no provider
+ * owns them — neither of those two FKs cascades — so: providers, category,
+ * users.
+ *
+ * Sixteen statements deleting each row by its own id, which is what this was,
+ * is sixteen round trips against a database on the other side of the Atlantic
+ * sharing one hook budget between them; whatever the budget, a teardown that
+ * runs out of it leaves every row after the cut. Three statements are also
+ * three chances to be interrupted rather than sixteen, and each one deletes a
+ * whole subtree rather than a single row, so being interrupted between them
+ * leaves less behind.
+ */
 afterAll(async () => {
-  const serviceIds = [
-    publishedNoMembersA,
-    publishedNoMembersB,
-    publishedWithMemberA,
-    draftNoMembersA,
-  ];
-  await db.delete(serviceMember).where(eq(serviceMember.serviceId, publishedWithMemberA));
-  for (const id of serviceIds) {
-    await db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, id));
-  }
-  for (const id of serviceIds) {
-    await db.delete(service).where(eq(service.id, id));
-  }
-  await db.delete(category).where(eq(category.id, categoryId));
-  await db.delete(providerMember).where(eq(providerMember.id, memberAId));
-  await db.delete(providerMember).where(eq(providerMember.id, memberBId));
-  await db.delete(provider).where(eq(provider.id, providerAId));
-  await db.delete(provider).where(eq(provider.id, providerBId));
-  await db.delete(user).where(eq(user.id, userAId));
-  await db.delete(user).where(eq(user.id, userBId));
-  await sql.end({ timeout: 5 });
+  // Never race a hook bun:test gave up on; see `seeding`.
+  await seeding.catch(() => {});
+  await bestEffortCleanup([
+    () => db.delete(provider).where(inArray(provider.slug, [...providerSlugs])),
+    () => db.delete(category).where(eq(category.code, categoryCode)),
+    () => db.delete(user).where(inArray(user.id, [userAId, userBId])),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 async function statusOf(serviceId: string): Promise<string | undefined> {

@@ -12,25 +12,23 @@
  * against `DEV_DB_URL`, which Bun loads automatically from
  * `packages/backend/.env`.
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq, sql as sqlExpr } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { thread } from "../communication/schemas/thread.schema";
 import type { NewThreadRow } from "../communication/schemas/thread.schema";
 import { message } from "../communication/schemas/message.schema";
 import { user } from "../user/schemas/user.schema";
 import { provider } from "../provider/schemas/provider.schema";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. These tests assert against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 const db = drizzle(sql);
 
 const suffix = crypto.randomUUID();
@@ -65,14 +63,19 @@ afterAll(async () => {
   // provider before the user. Deletes by FK (a subquery on `providerId`)
   // rather than by a tracked id list, so this still cleans up fully even if
   // an assertion above threw partway through a test, leaving a row this file
-  // inserted but never got to track.
-  await db.delete(message).where(
-    sqlExpr`${message.threadId} IN (SELECT ${thread.id} FROM ${thread} WHERE ${thread.providerId} = ${providerId})`,
-  );
-  await db.delete(thread).where(eq(thread.providerId, providerId));
-  await db.delete(provider).where(eq(provider.id, providerId));
-  await db.delete(user).where(eq(user.id, userId));
-  await sql.end({ timeout: 5 });
+  // inserted but never got to track. `bestEffortCleanup` covers the other
+  // half of that: `providerId`/`userId` themselves unassigned because
+  // `beforeAll` didn't get that far.
+  await bestEffortCleanup([
+    () =>
+      db.delete(message).where(
+        sqlExpr`${message.threadId} IN (SELECT ${thread.id} FROM ${thread} WHERE ${thread.providerId} = ${providerId})`,
+      ),
+    () => db.delete(thread).where(eq(thread.providerId, providerId)),
+    () => db.delete(provider).where(eq(provider.id, providerId)),
+    () => db.delete(user).where(eq(user.id, userId)),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 // postgres.js's tagged-template result is a lazy thenable, not a native
