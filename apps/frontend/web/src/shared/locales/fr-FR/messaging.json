@@ -8,6 +8,7 @@
   "unknownProvider": "Prestataire",
   "unknownCustomer": "Client",
   "noPreview": "Aucun message pour l'instant",
+  "attachmentPreview": "A envoyé une pièce jointe",
   "unreadBadge": "{{count}} message non lu",
   "unreadBadge_other": "{{count}} messages non lus",
   "back": "Retour aux conversations",
@@ -29,8 +30,8 @@
   "attachmentsLimitReached": "Vous avez atteint la limite de {{max}} fichiers.",
   "attachmentLoadError": "Impossible de charger ce fichier. Veuillez réessayer.",
   "attachmentError": {
-    "TOO_LARGE": "Ce fichier dépasse 10 Mo.",
-    "UNACCEPTED_TYPE": "Ce type de fichier n'est pas pris en charge. Utilisez un JPEG, un PNG, un WEBP ou un PDF.",
+    "TOO_LARGE": "Ce fichier dépasse {{maxMB}} Mo.",
+    "UNACCEPTED_TYPE": "Ce type de fichier n'est pas pris en charge. Formats acceptés : {{formats}}.",
     "CONTACT_IN_FILE_NAME": "Le nom de ce fichier ne peut pas contenir de numéro de téléphone, d'email ou de lien.",
     "ATTACHMENT_STORAGE_UNCONFIGURED": "L'envoi de fichiers n'est pas disponible pour le moment.",
     "NO_FILE": "Aucun fichier n'a été reçu. Veuillez réessayer.",
@@ -42,7 +43,8 @@
     "THREAD_NOT_VISIBLE": "Cette conversation n'est plus disponible.",
     "UNAUTHENTICATED": "Reconnectez-vous pour envoyer ce message.",
     "MESSAGE_EMPTY": "Écrivez quelque chose, ou joignez un fichier.",
-    "TOO_MANY_ATTACHMENTS": "Un message peut contenir 5 fichiers au maximum.",
+    "MESSAGE_CONTAINS_CONTACT": "Les messages ne peuvent pas contenir de numéro de téléphone, d'email ou de lien. Retirez-le et réessayez.",
+    "TOO_MANY_ATTACHMENTS": "Un message peut contenir {{max}} fichiers au maximum.",
     "ATTACHMENT_NOT_AVAILABLE": "L'un de ces fichiers n'est plus disponible. Retirez-le et réessayez.",
     "GENERIC": "Ce message n'a pas pu être envoyé. Veuillez réessayer."
   }

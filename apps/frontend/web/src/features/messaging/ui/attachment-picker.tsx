@@ -3,11 +3,25 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@ntizo/frontend-ui";
 import {
   ACCEPTED_ATTACHMENT_TYPES,
+  MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS,
 } from "@/features/messaging/domain/types";
 import type { PendingAttachment } from "@/features/messaging/viewmodel/use-attachments";
 
 const ACCEPT_ATTR = ACCEPTED_ATTACHMENT_TYPES.join(",");
+
+/**
+ * The two values `attachmentError.*` copy interpolates rather than spells
+ * out — `MAX_ATTACHMENT_BYTES` and `ACCEPTED_ATTACHMENT_TYPES` are already
+ * the single source of truth (`@ntizo/shared/attachments`); a string that
+ * spells "10 MB" or "JPEG, PNG, WEBP, PDF" itself drifts silently the day
+ * either constant changes, exactly the failure mode `attachmentsLimitReached`
+ * already avoided by interpolating `{{max}}`.
+ */
+const MAX_ATTACHMENT_MB = MAX_ATTACHMENT_BYTES / (1024 * 1024);
+const ACCEPTED_FORMATS_LABEL = ACCEPTED_ATTACHMENT_TYPES.map((type) =>
+  type.split("/")[1]!.toUpperCase(),
+).join(", ");
 
 /**
  * Picking files for the message being composed, and the preview strip of
@@ -91,7 +105,10 @@ export function AttachmentPicker({
               </button>
               {pending.errorKey && (
                 <p role="alert" className="type-caption w-full text-[var(--color-destructive)]">
-                  {t(pending.errorKey)}
+                  {t(pending.errorKey, {
+                    maxMB: MAX_ATTACHMENT_MB,
+                    formats: ACCEPTED_FORMATS_LABEL,
+                  })}
                 </p>
               )}
             </li>

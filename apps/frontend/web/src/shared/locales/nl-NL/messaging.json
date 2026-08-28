@@ -8,6 +8,7 @@
   "unknownProvider": "Aanbieder",
   "unknownCustomer": "Klant",
   "noPreview": "Nog geen berichten",
+  "attachmentPreview": "Heeft een bijlage verstuurd",
   "unreadBadge": "{{count}} ongelezen bericht",
   "unreadBadge_other": "{{count}} ongelezen berichten",
   "back": "Terug naar gesprekken",
@@ -29,8 +30,8 @@
   "attachmentsLimitReached": "Je hebt de limiet van {{max}} bestanden bereikt.",
   "attachmentLoadError": "Dit bestand kon niet worden geladen. Probeer het opnieuw.",
   "attachmentError": {
-    "TOO_LARGE": "Dit bestand is groter dan 10 MB.",
-    "UNACCEPTED_TYPE": "Dit bestandstype wordt niet ondersteund. Gebruik JPEG, PNG, WEBP of PDF.",
+    "TOO_LARGE": "Dit bestand is groter dan {{maxMB}} MB.",
+    "UNACCEPTED_TYPE": "Dit bestandstype wordt niet ondersteund. Ondersteunde formaten: {{formats}}.",
     "CONTACT_IN_FILE_NAME": "De bestandsnaam mag geen telefoonnummer, e-mailadres of link bevatten.",
     "ATTACHMENT_STORAGE_UNCONFIGURED": "Bestanden uploaden is op dit moment niet beschikbaar.",
     "NO_FILE": "Er is geen bestand ontvangen. Probeer het opnieuw.",
@@ -42,7 +43,8 @@
     "THREAD_NOT_VISIBLE": "Dit gesprek is niet meer beschikbaar.",
     "UNAUTHENTICATED": "Log opnieuw in om dit bericht te versturen.",
     "MESSAGE_EMPTY": "Schrijf iets, of voeg een bestand bij.",
-    "TOO_MANY_ATTACHMENTS": "Een bericht mag maximaal 5 bestanden bevatten.",
+    "MESSAGE_CONTAINS_CONTACT": "Berichten mogen geen telefoonnummer, e-mailadres of link bevatten. Verwijder het en probeer het opnieuw.",
+    "TOO_MANY_ATTACHMENTS": "Een bericht mag maximaal {{max}} bestanden bevatten.",
     "ATTACHMENT_NOT_AVAILABLE": "Een van deze bestanden is niet meer beschikbaar. Verwijder het en probeer het opnieuw.",
     "GENERIC": "Dit bericht kon niet worden verstuurd. Probeer het opnieuw."
   }

@@ -8,6 +8,7 @@
   "unknownProvider": "Proveedor",
   "unknownCustomer": "Cliente",
   "noPreview": "Aún no hay mensajes",
+  "attachmentPreview": "Envió un archivo adjunto",
   "unreadBadge": "{{count}} mensaje sin leer",
   "unreadBadge_other": "{{count}} mensajes sin leer",
   "back": "Volver a las conversaciones",
@@ -29,8 +30,8 @@
   "attachmentsLimitReached": "Has alcanzado el límite de {{max}} archivos.",
   "attachmentLoadError": "No se pudo cargar este archivo. Inténtalo de nuevo.",
   "attachmentError": {
-    "TOO_LARGE": "Este archivo pesa más de 10 MB.",
-    "UNACCEPTED_TYPE": "Este tipo de archivo no es compatible. Usa JPEG, PNG, WEBP o PDF.",
+    "TOO_LARGE": "Este archivo pesa más de {{maxMB}} MB.",
+    "UNACCEPTED_TYPE": "Este tipo de archivo no es compatible. Formatos aceptados: {{formats}}.",
     "CONTACT_IN_FILE_NAME": "El nombre de este archivo no puede incluir un número de teléfono, email o enlace.",
     "ATTACHMENT_STORAGE_UNCONFIGURED": "Ahora mismo no se pueden subir archivos.",
     "NO_FILE": "No se recibió ningún archivo. Inténtalo de nuevo.",
@@ -42,7 +43,8 @@
     "THREAD_NOT_VISIBLE": "Esta conversación ya no está disponible.",
     "UNAUTHENTICATED": "Vuelve a iniciar sesión para enviar este mensaje.",
     "MESSAGE_EMPTY": "Escribe algo, o adjunta un archivo.",
-    "TOO_MANY_ATTACHMENTS": "Un mensaje puede llevar como máximo 5 archivos.",
+    "MESSAGE_CONTAINS_CONTACT": "Los mensajes no pueden incluir un número de teléfono, un email o un enlace. Quítalo e inténtalo de nuevo.",
+    "TOO_MANY_ATTACHMENTS": "Un mensaje puede llevar como máximo {{max}} archivos.",
     "ATTACHMENT_NOT_AVAILABLE": "Uno de estos archivos ya no está disponible. Quítalo e inténtalo de nuevo.",
     "GENERIC": "No se pudo enviar el mensaje. Inténtalo de nuevo."
   }

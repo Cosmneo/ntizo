@@ -19,6 +19,9 @@ import i18n, { SUPPORTED_LOCALES } from "@/shared/lib/i18n";
  *   charCount              features/messaging/ui/message-composer.tsx  -> t("charCount", { count, max })
  *   removeAttachment       features/messaging/ui/attachment-picker.tsx -> t("removeAttachment", { fileName })
  *   attachmentsLimitReached features/messaging/ui/attachment-picker.tsx -> t("attachmentsLimitReached", { max })
+ *   attachmentError.TOO_LARGE       features/messaging/ui/attachment-picker.tsx -> t(key, { maxMB, formats })
+ *   attachmentError.UNACCEPTED_TYPE features/messaging/ui/attachment-picker.tsx -> t(key, { maxMB, formats })
+ *   sendError.TOO_MANY_ATTACHMENTS  features/messaging/ui/message-composer.tsx  -> t(key, { max })
  *
  * `unreadBadge` is exercised at both `count: 1` and `count: 3` — i18next's
  * pluralisation picks the base key or the `_other` suffix off `count`, and
@@ -33,6 +36,14 @@ const CALL_PAYLOADS: Record<string, Record<string, unknown>[]> = {
   ],
   removeAttachment: [{ fileName: "foto.jpg" }],
   attachmentsLimitReached: [{ max: 5 }],
+  // The real call site passes all three keys to every `attachmentError.*`
+  // lookup regardless of which the specific string actually uses (i18next
+  // ignores an unused interpolation var) — see `AttachmentPicker`'s own
+  // call. Exercised here with the real values so a locale's `{{maxMB}}` or
+  // `{{formats}}` token is proven to resolve, not merely present.
+  "attachmentError.TOO_LARGE": [{ maxMB: 10, formats: "JPEG, PNG, WEBP, PDF" }],
+  "attachmentError.UNACCEPTED_TYPE": [{ maxMB: 10, formats: "JPEG, PNG, WEBP, PDF" }],
+  "sendError.TOO_MANY_ATTACHMENTS": [{ max: 5 }],
 };
 
 describe("messaging copy renders every real call site's payload with no token left over", () => {
