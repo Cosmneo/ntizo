@@ -23,12 +23,12 @@ export const PROVIDER_DETAIL_FIELDS = `${PROVIDER_FIELDS}
   serviceLocationTypes
   weeklyHours { weekday intervals { startMinute endMinute } }`;
 
-const BY_SLUG = `
+export const BY_SLUG = `
   query ProviderBySlug($input: ProviderBySlugInput!) {
     providerBySlug(input: $input) { ${PROVIDER_DETAIL_FIELDS} }
   }`;
 
-const LIST = `
+export const LIST = `
   query ProviderList($input: ProviderListInput!) {
     providerList(input: $input) {
       items { ${PROVIDER_FIELDS} }

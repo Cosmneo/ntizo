@@ -1,6 +1,5 @@
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import type { ProviderPublicDTO } from "@ntizo/shared";
 import type { ProviderPageDTO, ProviderReviewsPublicDTO, ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 import {
   directoryQueries,
