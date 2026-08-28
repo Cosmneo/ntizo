@@ -2148,3 +2148,30 @@ the configured-not-broken path the route was written for — correct behaviour, 
 
 **Trigger:** the next deploy to qa or prod, or the first time somebody runs the API locally and
 finds uploads answering 503.
+
+---
+
+## 90. The `Dialog` primitive is not a dialog
+
+`packages/frontend/src/components/dialog.tsx`'s `DialogContent` renders two bare `div`s. It has no
+`role="dialog"`, no `aria-modal`, no focus trap, no focus restoration, and **no Escape handler** —
+the only thing that closes it is a click on the backdrop.
+
+Every modal surface in the app inherits this: `mobile-search-sheet.tsx`, `provider-facets.tsx`,
+`service-facets.tsx`, `rule-drawer.tsx`, `availability-sheet.tsx`, and now
+`detail-gallery.tsx`. Each of them independently supplies its own `role="dialog"` and
+`aria-labelledby` to paper over it, which is six copies of a fix that belongs in one place — and
+six chances for the seventh consumer to forget.
+
+**What is not broken:** these components are still operable without a mouse, because each supplies
+its own focusable close button. A keyboard user is not trapped; they are made to Tab to a control
+that Escape should have handled.
+
+**Why it was not fixed here:** it surfaced during Task 7 of the detail-pages redesign, whose diff
+touches none of the other five consumers. Changing a primitive with that blast radius would have put
+an unreviewed behaviour change under five screens nobody was reviewing that day — and a focus trap
+is behaviour, not decoration: it changes what Tab does on every one of them.
+
+**Trigger:** the next accessibility pass, the next keyboard-navigation bug filed against any modal,
+or the next component that needs a dialog — at which point it is a seventh copy of the workaround,
+and the argument for fixing the primitive has beaten the argument against it.
