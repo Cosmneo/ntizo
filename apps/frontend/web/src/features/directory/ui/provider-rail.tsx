@@ -75,8 +75,16 @@ export function ProviderRail({ provider }: { provider: ProviderPublicDetailDTO }
                 {t("railFromPrice")}
               </span>
             </p>
+            {/* No count in this sentence, deliberately. `fromAmountMinor` is
+                the minimum over *priced options*; `serviceCount` counts
+                *published services*, and the two are not the same set — a
+                provider with one priced service and two quote-only ones would
+                have read "the cheapest of 3" beside a minimum taken over one.
+                The read model exposes no priced-service count, so the honest
+                fix is to stop claiming a denominator rather than to print one
+                the number was not drawn from. */}
             <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
-              {t("railCheapestOf", { count: provider.serviceCount })}
+              {t("railCheapestOf")}
             </p>
           </>
         )}

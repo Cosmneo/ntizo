@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { BadgeCheck } from "lucide-react";
 import type { ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 import { useProviderDetail } from "@/features/directory/viewmodel/use-directory";
 import { formatMemberSince } from "@/features/directory/domain/member-since";
@@ -68,11 +67,14 @@ export function ProviderDetailPage({ slug }: { slug: string }) {
       <main className="page-shell py-8">
         <Breadcrumb provider={provider} />
 
-        <DetailGallery
-          images={provider.photoUrls}
-          alt={provider.name}
-          badge={provider.verified ? <VerifiedBadge /> : undefined}
-        />
+        {/* No verification badge over the photograph, though `DetailGallery`
+            offers the slot. `ProviderHero` badges the name a few lines below
+            this, and the rail states the same fact a third time in words —
+            three assertions of one boolean inside one screen. The hero's is
+            the one that survives, because it is a fact about the name it sits
+            beside and it renders for every provider, where a gallery badge
+            disappears for the majority who have uploaded no photographs. */}
+        <DetailGallery images={provider.photoUrls} alt={provider.name} />
 
         <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="min-w-0">
@@ -157,27 +159,6 @@ function locationLabels(
     .map((code) => t(`filterWhereOption.${code}`, { defaultValue: "" }))
     .filter(Boolean)
     .join(" · ");
-}
-
-/**
- * "Verified", over the main photograph.
- *
- * White ground and a shadow rather than the hero badge's tinted pill: this one
- * sits on top of an image whose colours nobody controls, where a 10%-primary
- * wash would be unreadable against half the photographs providers upload.
- *
- * Rendered only when `provider.verified` — the flag means an administrator
- * accepted at least one document, which is the whole of what the word claims.
- */
-function VerifiedBadge() {
-  const { t } = useTranslation("directory");
-
-  return (
-    <span className="type-caption inline-flex items-center gap-1.5 rounded-full bg-[var(--color-background)] px-3 py-1.5 font-semibold text-[var(--color-success)] shadow-[var(--shadow-sm)]">
-      <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-      {t("providerVerified")}
-    </span>
-  );
 }
 
 /**

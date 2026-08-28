@@ -13,6 +13,7 @@ import type {
   ProviderPublicDetailDTO,
   ProviderReviewsPublicDTO,
 } from "@ntizo/shared/read-models";
+import type { ServiceDTO } from "@/features/directory/services/domain/types";
 import * as client from "@/shared/lib/graphql/session-graphql";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 
@@ -35,15 +36,24 @@ import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 const state: {
   provider: ProviderPublicDetailDTO | null;
   reviews: ProviderReviewsPublicDTO | undefined;
-} = { provider: null, reviews: undefined };
+  services: ServiceDTO[];
+} = { provider: null, reviews: undefined, services: [] };
 
 vi.mock("@/features/directory/viewmodel/use-directory", () => ({
   useProviderDetail: () => state.provider,
   useProviderReviews: () => state.reviews,
 }));
 
+// `services` is mutable rather than a fixed empty list: a page whose services
+// section is always empty cannot prove the section renders rows at all, and
+// makes "offers no booking anywhere" an assertion of absence over an empty
+// search space — the rows are exactly where a "Book" button would appear.
 vi.mock("@/features/directory/services/viewmodel/use-provider-services", () => ({
-  useProviderServices: () => ({ data: { items: [] }, isPending: false, isError: false }),
+  useProviderServices: () => ({
+    data: { items: state.services },
+    isPending: false,
+    isError: false,
+  }),
 }));
 
 const { ProviderDetailPage } = await import("../provider-detail-page");
@@ -85,12 +95,47 @@ function provider(over: Partial<ProviderPublicDetailDTO> = {}): ProviderPublicDe
 
 const CLOSED_ALL_WEEK = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, intervals: [] }));
 
+/** One published, priced service — what `ProviderServicesSection` turns into a row. */
+function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
+  return {
+    id: "s1",
+    providerId: "p1",
+    providerName: "Hélder Cossa",
+    providerSlug: "helder-cossa",
+    providerType: "individual",
+    providerVerified: true,
+    providerRatingAverage: 4.8,
+    providerReviewCount: 4,
+    categoryCode: "electricity",
+    categoryName: "Electricity",
+    name: "Avaria eléctrica urgente",
+    description: "Deslocação e diagnóstico.",
+    locationType: "at_customer",
+    bookingMode: "priced",
+    imageUrls: [],
+    defaultOption: {
+      amountMinor: 120000,
+      currency: "MZN",
+      durationMinutes: 60,
+      minMinutes: null,
+      stepMinutes: null,
+      pricingMode: "fixed",
+    },
+    fromAmountMinor: 120000,
+    optionCount: 1,
+    isFallback: false,
+    ...over,
+  };
+}
+
 function renderPage(
   value: ProviderPublicDetailDTO | null,
   reviews: ProviderReviewsPublicDTO | undefined = undefined,
+  services: ServiceDTO[] = [],
 ) {
   state.provider = value;
   state.reviews = reviews;
+  state.services = services;
 
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -127,8 +172,20 @@ function renderPage(
     validateSearch: (search: Record<string, unknown>) => search as { next?: string },
     component: () => <p>sign in page</p>,
   });
+  // Each service row links to the service's own page.
+  const serviceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/services/$id",
+    component: () => <p>service page</p>,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, providersRoute, messagesRoute, signInRoute]),
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      providersRoute,
+      messagesRoute,
+      signInRoute,
+      serviceRoute,
+    ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
 
@@ -234,7 +291,12 @@ describe("ProviderDetailPage", () => {
     // Scoped to the rail: "from" is three letters, and `priceFrom` prints it
     // again beside every service row on the same page.
     expect(within(rail()).getByText("from")).toBeInTheDocument();
-    expect(within(rail()).getByText("The cheapest of 3 published services.")).toBeInTheDocument();
+    // No count in that sentence, and the assertion pins its absence: the
+    // price is a minimum over priced options, where `serviceCount` counts
+    // published services, so a denominator here would overstate what the
+    // number was drawn from.
+    expect(within(rail()).getByText("The lowest price they publish.")).toBeInTheDocument();
+    expect(within(rail()).queryByText(/\b3\b/)).not.toBeInTheDocument();
   });
 
   it("says nothing about a price when the provider publishes nothing priced", async () => {
@@ -282,12 +344,57 @@ describe("ProviderDetailPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens on the provider's own photographs", async () => {
+    // Every other test in this file hands the page an empty `photoUrls`,
+    // which means the `DetailGallery` mount is executed by nothing and can be
+    // deleted from the page without reddening anything. This is the test that
+    // holds it there.
+    renderPage(provider({ photoUrls: ["https://cdn.test/1.jpg", "https://cdn.test/2.jpg"] }));
+    const main = await screen.findByAltText("Hélder Cossa");
+    expect(main).toHaveAttribute("src", "https://cdn.test/1.jpg");
+  });
+
+  it("lists the provider's services as rows, each offering only a look at the calendar", async () => {
+    renderPage(provider(), undefined, [
+      service(),
+      service({ id: "s2", name: "Instalação eléctrica de obra nova" }),
+    ]);
+    expect(
+      await screen.findByRole("link", { name: "Avaria eléctrica urgente" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Instalação eléctrica de obra nova" }),
+    ).toBeInTheDocument();
+    // One row, one call to action, and the call to action is a calendar —
+    // this is what reds if the section ever goes back to `ServiceCard`s,
+    // which offer no per-card availability button at all.
+    expect(screen.getAllByRole("button", { name: "See availability" })).toHaveLength(2);
+    expect(screen.queryByText("No services yet")).not.toBeInTheDocument();
+  });
+
   it("offers no booking anywhere on the page", async () => {
-    renderPage(provider());
-    await screen.findByRole("heading", { level: 1, name: /Hélder Cossa/ });
+    // Rendered *with* services, priced and quote-only, because the rows are
+    // exactly where a "Book" button would go: asserted against a provider
+    // with no services this searched an empty page and proved nothing.
+    renderPage(provider(), undefined, [
+      service(),
+      service({
+        id: "s2",
+        name: "Instalação eléctrica de obra nova",
+        bookingMode: "quote",
+        defaultOption: null,
+        fromAmountMinor: null,
+        optionCount: 0,
+      }),
+    ]);
+    await screen.findByRole("link", { name: "Avaria eléctrica urgente" });
     expect(
       screen.queryByRole("button", { name: /^book$|reservar|pedir marca/i }),
     ).not.toBeInTheDocument();
+    // The two things the rows do offer instead, so the absence above is
+    // "no booking control" and not "no controls rendered at all".
+    expect(screen.getByRole("button", { name: "See availability" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Request a quote" })).toBeInTheDocument();
   });
 
   it("reads as finished for a provider with no photos, no hours and no reviews", async () => {

@@ -13,8 +13,10 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
 /**
  * One published service, as a row on its provider's own page.
  *
- * `ServiceCard` (this same directory) is the four-across grid this replaces,
- * and stays exactly as it is for the platform-wide browse. A provider's own
+ * `ServiceCard` (this same directory) is the four-across grid this replaces.
+ * It is left in place but has no consumers: the platform-wide browse moved to
+ * `ServiceListingCard` before this change, and `ProviderServicesSection` —
+ * its last caller — now renders these rows. A provider's own
  * page is a different reading task: a customer here has usually already
  * decided on the provider and is weighing which of their services to book,
  * which is a comparison of prices down one column, not a gallery of
