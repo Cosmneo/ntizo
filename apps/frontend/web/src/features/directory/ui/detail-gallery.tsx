@@ -55,7 +55,18 @@ export function DetailGallery({
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:h-[clamp(340px,40vw,520px)] sm:grid-cols-[minmax(0,1.72fr)_minmax(0,1fr)]">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-muted)] sm:aspect-auto sm:h-full">
+      <div
+        className={cn(
+          "relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-muted)] sm:aspect-auto sm:h-full",
+          // A single photo has no side column to sit beside — without this,
+          // the outer grid's two-track template still reserves the second
+          // track, and CSS Grid's auto-placement leaves it empty rather than
+          // giving the one tile the room. That empty second track is exactly
+          // what every provider and service looks like on the day of its
+          // first photo, so this is not a rare case to shrug off.
+          !hasSide && "sm:col-span-2",
+        )}
+      >
         <img src={main} alt={alt} className="h-full w-full object-cover" />
         {badge && <div className="absolute top-3 left-3">{badge}</div>}
       </div>
@@ -104,7 +115,7 @@ export function DetailGallery({
            */}
           <div role="dialog" aria-labelledby={titleId} className="flex min-h-0 flex-1 flex-col">
             <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4">
-              <h2 id={titleId} className="type-h3 font-semibold">
+              <h2 id={titleId} className="type-h3">
                 {t("galleryDialogTitle")}
               </h2>
               <button

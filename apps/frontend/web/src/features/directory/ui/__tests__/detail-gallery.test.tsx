@@ -17,6 +17,24 @@ describe("DetailGallery", () => {
     expect(screen.queryByRole("button", { name: /1/ })).not.toBeInTheDocument();
   });
 
+  it("spans the main tile across both columns when there is no side column", () => {
+    // jsdom computes no layout, so there is no rendered width to assert on —
+    // the class list is the honest handle here, since it is what CSS Grid
+    // itself reads to decide whether the tile occupies one track or two.
+    // Without `sm:col-span-2`, the outer grid's two-track template
+    // (`1.72fr` / `1fr`) still reserves the second track and CSS Grid's
+    // auto-placement leaves it empty next to the one photo.
+    const { container: single } = render(<DetailGallery images={images(1)} alt="Hélder Cossa" />);
+    const soloTile = single.querySelector("img")!.parentElement!;
+    expect(soloTile.className).toContain("sm:col-span-2");
+
+    // And the reverse: once a side column exists, the main tile must give
+    // that second track back rather than spanning over it.
+    const { container: multi } = render(<DetailGallery images={images(3)} alt="Hélder Cossa" />);
+    const mainTile = multi.querySelector("img")!.parentElement!;
+    expect(mainTile.className).not.toContain("sm:col-span-2");
+  });
+
   it("shows at most three tiles, however many there are", () => {
     // Counted on the DOM rather than `getAllByRole("img")`: the side tiles
     // carry `alt=""`, which removes them from the accessibility tree
