@@ -1,22 +1,27 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import {
   emailSuppression,
   notificationDelivery,
 } from "../notification/schemas";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) throw new Error("DEV_DB_URL is not set — see packages/backend/.env");
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 const db = drizzle(sql);
 const suffix = crypto.randomUUID();
 
 afterAll(async () => {
-  await db.delete(emailSuppression).where(eq(emailSuppression.email, `bounced-${suffix}@ntizo.test`));
-  await sql.end();
+  await bestEffortCleanup([
+    () => db.delete(emailSuppression).where(eq(emailSuppression.email, `bounced-${suffix}@ntizo.test`)),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 /** Drizzle builders are lazy thenables, not Promises — `expect(builder).rejects` throws before the query runs. */

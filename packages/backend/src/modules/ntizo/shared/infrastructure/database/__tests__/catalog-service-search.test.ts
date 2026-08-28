@@ -23,27 +23,25 @@
  * in it, and a test that asserted on totals would break whenever somebody
  * published something.
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
 import { DrizzleServiceReadRepository } from "../../../../bounded-contexts/catalog/infrastructure/repositories/drizzle/service-read.repository";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 import { category } from "../catalog/schemas/category.schema";
 import { service, serviceTranslation } from "../catalog/schemas/service.schema";
 import { provider } from "../provider/schemas/provider.schema";
 import { user } from "../user/schemas/user.schema";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. This test asserts against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 const db = drizzle(sql, { schema: authSchema });
 const repo = new DrizzleServiceReadRepository();
 
@@ -66,8 +64,12 @@ let withPercent: string;
 /** Matches "corte" only through its provider's name. */
 let byProviderName: string;
 
-/** Every service this test seeded, for intersecting against a shared database. */
-let seeded: Set<string>;
+/**
+ * Every service this test seeded, for intersecting against a shared database.
+ * Starts empty rather than `undefined` so `afterAll` can iterate it safely
+ * even when `beforeAll` throws before ever assigning it.
+ */
+let seeded: Set<string> = new Set();
 
 beforeAll(async () => {
   userAId = crypto.randomUUID();
@@ -141,18 +143,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const id of seeded) {
-    await db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, id));
-  }
-  for (const id of seeded) {
-    await db.delete(service).where(eq(service.id, id));
-  }
-  await db.delete(category).where(eq(category.id, categoryId));
-  await db.delete(provider).where(eq(provider.id, providerAId));
-  await db.delete(provider).where(eq(provider.id, providerBId));
-  await db.delete(user).where(eq(user.id, userAId));
-  await db.delete(user).where(eq(user.id, userBId));
-  await sql.end({ timeout: 5 });
+  await bestEffortCleanup([
+    ...Array.from(seeded, (id) => () => db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, id))),
+    ...Array.from(seeded, (id) => () => db.delete(service).where(eq(service.id, id))),
+    () => db.delete(category).where(eq(category.id, categoryId)),
+    () => db.delete(provider).where(eq(provider.id, providerAId)),
+    () => db.delete(provider).where(eq(provider.id, providerBId)),
+    () => db.delete(user).where(eq(user.id, userAId)),
+    () => db.delete(user).where(eq(user.id, userBId)),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 /** The seeded services a search returns, as a set — everything else in the dev database is ignored. */

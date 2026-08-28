@@ -23,13 +23,17 @@
  * uses — the difference here is the bound client is a genuine connection to
  * `DEV_DB_URL`, not a fake, because the point is to exercise the real SQL.
  */
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
 import { DrizzleServiceRepository } from "../../../../bounded-contexts/catalog/infrastructure/repositories/drizzle/service.repository";
+import {
+  bestEffortCleanup,
+  DEV_DB_COLD_START_TIMEOUT_MS,
+  openDevDbConnection,
+} from "./dev-db-test-connection";
 import { category } from "../catalog/schemas/category.schema";
 import { service, serviceTranslation } from "../catalog/schemas/service.schema";
 import { serviceMember } from "../catalog/schemas/service-member.schema";
@@ -37,15 +41,9 @@ import { provider } from "../provider/schemas/provider.schema";
 import { providerMember } from "../provider/schemas/provider-member.schema";
 import { user } from "../user/schemas/user.schema";
 
-const url = process.env["DEV_DB_URL"];
-if (!url) {
-  throw new Error(
-    "DEV_DB_URL is not set. This test asserts against the real dev database " +
-      "— set it (see packages/backend/.env) and try again.",
-  );
-}
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
-const sql = postgres(url, { max: 1 });
+const sql = openDevDbConnection();
 // `{ schema: authSchema }` matches exactly how the app's own
 // `Db.getDbConnection()` constructs its client (see `connection.ts`) — the
 // `DrizzleDb` type `__runWithTransactionContextForTests` expects is that
@@ -173,21 +171,19 @@ afterAll(async () => {
     publishedWithMemberA,
     draftNoMembersA,
   ];
-  await db.delete(serviceMember).where(eq(serviceMember.serviceId, publishedWithMemberA));
-  for (const id of serviceIds) {
-    await db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, id));
-  }
-  for (const id of serviceIds) {
-    await db.delete(service).where(eq(service.id, id));
-  }
-  await db.delete(category).where(eq(category.id, categoryId));
-  await db.delete(providerMember).where(eq(providerMember.id, memberAId));
-  await db.delete(providerMember).where(eq(providerMember.id, memberBId));
-  await db.delete(provider).where(eq(provider.id, providerAId));
-  await db.delete(provider).where(eq(provider.id, providerBId));
-  await db.delete(user).where(eq(user.id, userAId));
-  await db.delete(user).where(eq(user.id, userBId));
-  await sql.end({ timeout: 5 });
+  await bestEffortCleanup([
+    () => db.delete(serviceMember).where(eq(serviceMember.serviceId, publishedWithMemberA)),
+    ...serviceIds.map((id) => () => db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, id))),
+    ...serviceIds.map((id) => () => db.delete(service).where(eq(service.id, id))),
+    () => db.delete(category).where(eq(category.id, categoryId)),
+    () => db.delete(providerMember).where(eq(providerMember.id, memberAId)),
+    () => db.delete(providerMember).where(eq(providerMember.id, memberBId)),
+    () => db.delete(provider).where(eq(provider.id, providerAId)),
+    () => db.delete(provider).where(eq(provider.id, providerBId)),
+    () => db.delete(user).where(eq(user.id, userAId)),
+    () => db.delete(user).where(eq(user.id, userBId)),
+    () => sql.end({ timeout: 5 }),
+  ]);
 });
 
 async function statusOf(serviceId: string): Promise<string | undefined> {
