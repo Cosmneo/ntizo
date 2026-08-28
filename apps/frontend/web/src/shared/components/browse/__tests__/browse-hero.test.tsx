@@ -42,16 +42,6 @@ describe("BrowseHero", () => {
     expect(slot.className).not.toMatch(/(^|\s)z-\d/);
   });
 
-  it("renders no kicker when none was given", () => {
-    const { container } = render(hero());
-    expect(container.querySelector("[data-testid='hero-kicker']")).toBeNull();
-  });
-
-  it("renders the kicker when one was given", () => {
-    render(hero({ kicker: { badge: "No haggling", body: "price settled before you book" } }));
-    expect(screen.getByText("No haggling")).toBeInTheDocument();
-    expect(screen.getByText("price settled before you book")).toBeInTheDocument();
-  });
 });
 
 describe("BrowseSearchCard", () => {

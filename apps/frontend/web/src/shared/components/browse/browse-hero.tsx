@@ -13,12 +13,10 @@ import type { ComponentType, FormEvent, ReactNode, Ref } from "react";
  * inside the hero rather than the hero clipping its children.
  */
 export function BrowseHero({
-  kicker,
   title,
   subtitle,
   search,
 }: {
-  kicker?: { badge: string; body: string };
   title: string;
   subtitle: string;
   /** A `BrowseSearchCard`. It straddles the hero's bottom edge onto the rail below. */
@@ -34,20 +32,6 @@ export function BrowseHero({
 
       <div className="page-shell relative">
         <div className="mx-auto max-w-[44rem] text-center">
-          {kicker && (
-            <p
-              data-testid="hero-kicker"
-              className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] py-1.5 pr-4 pl-2 shadow-[var(--shadow-xs)]"
-            >
-              <b className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] px-2.5 py-1 text-[11px] font-bold tracking-[0.06em] text-[var(--color-primary)] uppercase">
-                {kicker.badge}
-              </b>
-              <span className="type-caption text-[var(--color-muted-foreground)]">
-                {kicker.body}
-              </span>
-            </p>
-          )}
-
           <h1 className="type-display mx-auto max-w-[20ch]">{title}</h1>
           <p className="type-body mt-3 text-[var(--color-muted-foreground)]">{subtitle}</p>
         </div>
