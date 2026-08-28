@@ -1949,3 +1949,34 @@ that task.
 redundant next to the `groupBy`-based `reviews`/`services`/`prices` aggregates in the same
 function, and is not), or the first business that legitimately accumulates a second accepted
 document and a directory card's service count looks doubled.
+
+---
+
+## 80. `DropdownMenuItem` spreads `{...props}` after its own `onClick`, so a caller's handler replaces it
+
+`packages/frontend/src/components/dropdown-menu.tsx` (`DropdownMenuItem`) writes its `onClick`
+and then spreads the rest of the props over it:
+
+```tsx
+onClick={(e) => { if (disabled) return; props.onClick?.(e); onSelect?.(); ctx.setOpen(false); … }}
+{...props}
+```
+
+`props` still carries `onClick`, so a caller that passes one wins the attribute outright. The
+row would run the caller's handler and nothing else: `onSelect` never fires, the menu never
+closes, and — since the keyboard work landed — focus is never handed back to the trigger
+either, leaving a keyboard reader on `<body>` over a menu that is still open. The bug is
+invisible today because the spread's own `props.onClick?.(e)` call reads like it covers the
+case, and because Enter and Space go through `.click()`, so the keyboard fails in exactly the
+same way as the pointer rather than differently.
+
+Left alone rather than fixed: the spread has to stay last for `role` and `aria-checked` to be
+overridable — the sort control's `menuitemradio` rows depend on it — so the fix is to
+destructure `onClick` out alongside `className`/`onSelect`/`disabled` rather than to reorder,
+and that is a change to a shared primitive's prop handling that belongs with a task about its
+props, not with one about its keys. All eight call sites were checked: none passes `onClick`.
+
+**Trigger:** the first caller that passes `onClick` to `DropdownMenuItem` — most likely
+someone wanting `event.preventDefault()` or a stopPropagation on a row, or a row that is a
+link and wants to intercept the navigation. Also worth doing pre-emptively the next time
+anything else in this component's props is touched.

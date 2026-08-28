@@ -157,22 +157,52 @@ describe("ServicesBrowsePage", () => {
     expect(await screen.findByText("No services published yet")).toBeInTheDocument();
   });
 
+  it("offers three orders in the dropdown, with only the one in force checked", async () => {
+    renderPage("/services?sort=newest", { items: [service()], nextOffset: null, total: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
+
+    expect(screen.getByRole("menuitemradio", { name: "Suggested" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Newest" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Price" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+
+  it("writes the chosen order to the URL and resets to the first page", async () => {
+    const { router } = renderPage("/services?sort=newest&offset=48", {
+      items: [service()],
+      nextOffset: null,
+      total: 96,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Price" }));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ sort: "price" });
+    });
+  });
+
   it("writes the default order as an absent parameter, never sort=default", async () => {
     // `/services` and `/services?sort=default` would otherwise be one page at
     // two URLs — two cache entries, and two things for a crawler to index.
-    renderPage("/services?sort=newest", { items: [service()], nextOffset: null, total: 1 });
-    expect(await screen.findByRole("link", { name: "Suggested" })).toHaveAttribute(
-      "href",
-      "/services",
-    );
-    expect(screen.getByRole("link", { name: "Newest" })).toHaveAttribute(
-      "href",
-      "/services?sort=newest",
-    );
-    expect(screen.getByRole("link", { name: "Price" })).toHaveAttribute(
-      "href",
-      "/services?sort=price",
-    );
+    const { router } = renderPage("/services?sort=newest", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({});
+    });
   });
 
   it("shows what is narrowing the list, each with the link that removes just it", async () => {
@@ -299,20 +329,19 @@ describe("ServicesBrowsePage", () => {
     });
   });
 
-  it("marks only the order and the category actually in force as the current page", async () => {
+  it("marks only the category actually in force as the current page", async () => {
     // TanStack matches a link's search as a *subset* of the current one, so
-    // "Suggested" and "All" — whose search is empty — were both announced as
-    // the page you are on the moment anything was set. `EXACT_MATCH` makes it
-    // an equality test.
+    // "All" — whose search is empty — was announced as the page you are on the
+    // moment anything was set. `EXACT_MATCH` makes it an equality test. The
+    // sort's own active state is not this trap's business any more: it is a
+    // menu row's `aria-checked`, decided by comparing the URL to a value this
+    // page already holds, not a `<Link>` guessing from a subset match.
     renderPage("/services?sort=newest&category=hair", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
-    expect(await screen.findByRole("link", { name: "Suggested" })).not.toHaveAttribute(
-      "aria-current",
-    );
-    expect(screen.getByRole("link", { name: /All/ })).not.toHaveAttribute("aria-current");
+    expect(await screen.findByRole("link", { name: /All/ })).not.toHaveAttribute("aria-current");
     // And the site header's own /services link, which genuinely *is* this
     // page, still says so — the fix must not silence a true one.
     expect(screen.getByRole("link", { name: "Services" })).toHaveAttribute(

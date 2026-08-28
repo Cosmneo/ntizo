@@ -13,7 +13,8 @@ import {
   SEARCH_SUBMIT_CLASS,
 } from "@/shared/components/browse/browse-hero";
 import { CategoryRail, categoryChipClass } from "@/shared/components/browse/category-rail";
-import { ResultsBar, segmentClass } from "@/shared/components/browse/results-bar";
+import { ResultsBar } from "@/shared/components/browse/results-bar";
+import { SortDropdown, type SortDropdownOption } from "@/shared/components/browse/sort-dropdown";
 import {
   ActiveFilterChip,
   ActiveFilterChips,
@@ -96,6 +97,7 @@ export function ServicesBrowsePage() {
     sort,
     offset,
   });
+  const navigate = useNavigate();
   // A plain query, unlike the services: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
   const categories = useCategoryPreview(CATEGORY_RAIL_LIMIT).data?.items ?? [];
@@ -103,6 +105,25 @@ export function ServicesBrowsePage() {
 
   const title = browseTitle(current, categoryName);
   const chips = browseFilterChips(current);
+
+  /** Every order this page offers, default first — `SortDropdown`'s menu. */
+  const sortOptions: ReadonlyArray<SortDropdownOption<BrowseSort>> = [
+    { value: undefined, label: t("sortOption.default") },
+    { value: "newest", label: t("sortOption.newest") },
+    { value: "price", label: t("sortOption.price") },
+  ];
+
+  /**
+   * Writes the chosen order and resets to the first page — page 4 of "cheapest"
+   * is not page 4 of "newest". `browseSearch` is what keeps every other filter
+   * and writes the default order as an absent parameter rather than
+   * `sort=default`.
+   */
+  const chooseSort = (value: BrowseSort | undefined) =>
+    void navigate({
+      to: "/services",
+      search: browseSearch(current, { sort: value, offset: undefined }),
+    });
 
   /**
    * Whether the reader narrowed the list at all — which is what "nothing here"
@@ -179,24 +200,12 @@ export function ServicesBrowsePage() {
                     {t(`resultsScope.${resultsScope(title.values)}`, title.values)}
                   </>
                 }
-                sortLabel={t("sortLabel")}
               >
-                {/* The default order is an ABSENT parameter, never
-                    `sort=default`: `/services` and `/services?sort=default`
-                    would otherwise be one page at two URLs, which is two cache
-                    entries and two things for a crawler to index. */}
-                <SortLink current={current} active={!sort} label={t("sortOption.default")} />
-                <SortLink
-                  current={current}
-                  value="newest"
-                  active={sort === "newest"}
-                  label={t("sortOption.newest")}
-                />
-                <SortLink
-                  current={current}
-                  value="price"
-                  active={sort === "price"}
-                  label={t("sortOption.price")}
+                <SortDropdown
+                  active={sort}
+                  options={sortOptions}
+                  sortLabel={t("sortLabel")}
+                  onChoose={chooseSort}
                 />
               </ResultsBar>
 
@@ -637,28 +646,4 @@ function iconComponent(name: string | null, isAll: boolean) {
   if (isAll) return Compass;
   if (!name) return Tag;
   return icons[name as keyof typeof icons] ?? Tag;
-}
-
-/** Changing the order keeps every filter and the search, and resets the page. */
-function SortLink({
-  current,
-  value,
-  active,
-  label,
-}: {
-  current: BrowseSearch;
-  value?: BrowseSort;
-  active: boolean;
-  label: string;
-}) {
-  return (
-    <Link
-      to="/services"
-      activeOptions={EXACT_MATCH}
-      search={browseSearch(current, { sort: value })}
-      className={segmentClass(active)}
-    >
-      {label}
-    </Link>
-  );
 }

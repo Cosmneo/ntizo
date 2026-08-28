@@ -7,52 +7,35 @@ import type { ReactNode } from "react";
  * order they are in. The count states the *total*, never the length of this
  * page — `items.length` told somebody with 40 matches that they had 24, which
  * is the page size talking rather than the search.
+ *
+ * `children` is no longer wrapped in a `<nav aria-label="Sort">`. That
+ * landmark earned its place when this held a row of 3–5 destination links —
+ * genuinely a small menu of places to go, worth naming for a screen reader
+ * skimming landmarks. `SortDropdown` is one button with its own accessible
+ * name; it is a setting, not somewhere to navigate, and a `nav` around it
+ * would announce a second menu that is not there. `overflow-x-auto` is gone
+ * with it — that existed so five pills could scroll sideways instead of
+ * wrapping onto a second row and pushing the first result off a 360px screen,
+ * and one trigger is narrower than the row it replaced ever needed a whole
+ * width for.
  */
 export function ResultsBar({
   summary,
-  sortLabel,
   children,
 }: {
   summary: ReactNode;
-  /** Names the sort control for assistive technology. */
-  sortLabel: string;
-  /** The page's own route-typed sort `<Link>`s. */
+  /** The page's own sort control — one trigger button, not a row of links. */
   children: ReactNode;
 }) {
   return (
-    // Two rows on a phone and one from `sm` up, as the mockup draws it. Side
-    // by side at 360px the count and five orders do not fit, and there is no
-    // arrangement of them that does.
-    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    // `flex-wrap` rather than the forced `flex-col`/`sm:flex-row` stack this
+    // replaced: that stack existed because five pills needed a row of their
+    // own. One trigger fits beside the count at every width the pills needed
+    // splitting for; wrapping stays as the fallback for whatever the count's
+    // own text does at a width nobody has tried.
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="type-body text-[var(--color-muted-foreground)]">{summary}</p>
-      {/* Scrolls rather than wraps. Five orders at 360px wrap onto a second
-          row and push the first result off the screen.
-
-          `min-w-0` and `max-w-full`, never `shrink-0`: a flex item that refuses
-          to shrink never reaches its own `overflow-x-auto`, so the control kept
-          its full width and took the *page* sideways with it instead — 449px of
-          document in a 360px window, and every section of the page scrollable
-          off the right edge. */}
-      <nav
-        aria-label={sortLabel}
-        className="flex w-full max-w-full min-w-0 gap-1 overflow-x-auto rounded-full border border-[var(--color-border)] bg-[var(--color-background)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:w-auto [&::-webkit-scrollbar]:hidden"
-      >
-        {children}
-      </nav>
+      {children}
     </div>
   );
-}
-
-/**
- * One order, as a segment of the control.
- *
- * The active one is filled with the foreground colour rather than the brand
- * blue: every CTA on the cards below is brand blue, and a sort pill in the same
- * colour reads as a second call to action rather than as a setting.
- */
-export function segmentClass(active: boolean): string {
-  const base = "type-body-medium whitespace-nowrap rounded-full px-4 py-1.5 transition-colors";
-  return active
-    ? `${base} bg-[var(--color-foreground)] font-semibold text-[var(--color-background)]`
-    : `${base} text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]`;
 }

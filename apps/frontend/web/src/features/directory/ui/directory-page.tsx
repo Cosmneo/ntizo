@@ -13,7 +13,8 @@ import {
   SEARCH_SUBMIT_CLASS,
 } from "@/shared/components/browse/browse-hero";
 import { CategoryRail, categoryChipClass } from "@/shared/components/browse/category-rail";
-import { ResultsBar, segmentClass } from "@/shared/components/browse/results-bar";
+import { ResultsBar } from "@/shared/components/browse/results-bar";
+import { SortDropdown, type SortDropdownOption } from "@/shared/components/browse/sort-dropdown";
 import {
   ActiveFilterChip,
   ActiveFilterChips,
@@ -92,6 +93,7 @@ export function DirectoryPage() {
   const current = useSearch({ strict: false }) as DirectorySearch;
   const { category, q, sort, offset = 0 } = current;
   const page = useDirectory(current, locale);
+  const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
   const categories = useCategoryPreview(CATEGORY_RAIL_LIMIT).data?.items ?? [];
@@ -99,6 +101,27 @@ export function DirectoryPage() {
 
   const title = directoryTitle(current, categoryName);
   const chips = directoryFilterChips(current);
+
+  /** Every order this page offers, default first — `SortDropdown`'s menu. */
+  const sortOptions: ReadonlyArray<SortDropdownOption<DirectorySort>> = [
+    { value: undefined, label: t("sortOption.default") },
+    { value: "rating", label: t("sortOption.rating") },
+    { value: "reviews", label: t("sortOption.reviews") },
+    { value: "price", label: t("sortOption.price") },
+    { value: "name", label: t("sortOption.name") },
+  ];
+
+  /**
+   * Writes the chosen order and resets to the first page — page 3 of "best
+   * rated" is not page 3 of "cheapest". `directorySearch` is what keeps every
+   * other filter and writes the default order as an absent parameter rather
+   * than `sort=relevance`.
+   */
+  const chooseSort = (value: DirectorySort | undefined) =>
+    void navigate({
+      to: "/providers",
+      search: directorySearch(current, { sort: value, offset: undefined }),
+    });
 
   /**
    * Whether the reader narrowed the list at all — which is what "nothing here"
@@ -169,36 +192,12 @@ export function DirectoryPage() {
                     {t(`resultsScope.${resultsScope(title.values)}`, title.values)}
                   </>
                 }
-                sortLabel={t("sortLabel")}
               >
-                {/* The default order is an ABSENT parameter, never
-                    `sort=relevance`: `/providers` and `/providers?sort=relevance`
-                    would otherwise be one page at two URLs, which is two cache
-                    entries and two things for a crawler to index. */}
-                <SortLink current={current} active={!sort} label={t("sortOption.default")} />
-                <SortLink
-                  current={current}
-                  value="rating"
-                  active={sort === "rating"}
-                  label={t("sortOption.rating")}
-                />
-                <SortLink
-                  current={current}
-                  value="reviews"
-                  active={sort === "reviews"}
-                  label={t("sortOption.reviews")}
-                />
-                <SortLink
-                  current={current}
-                  value="price"
-                  active={sort === "price"}
-                  label={t("sortOption.price")}
-                />
-                <SortLink
-                  current={current}
-                  value="name"
-                  active={sort === "name"}
-                  label={t("sortOption.name")}
+                <SortDropdown
+                  active={sort}
+                  options={sortOptions}
+                  sortLabel={t("sortLabel")}
+                  onChoose={chooseSort}
                 />
               </ResultsBar>
 
@@ -646,28 +645,4 @@ function iconComponent(name: string | null, isAll: boolean) {
   if (isAll) return Compass;
   if (!name) return Tag;
   return icons[name as keyof typeof icons] ?? Tag;
-}
-
-/** Changing the order keeps every filter and the search, and resets the page. */
-function SortLink({
-  current,
-  value,
-  active,
-  label,
-}: {
-  current: DirectorySearch;
-  value?: DirectorySort;
-  active: boolean;
-  label: string;
-}) {
-  return (
-    <Link
-      to="/providers"
-      activeOptions={EXACT_MATCH}
-      search={directorySearch(current, { sort: value })}
-      className={segmentClass(active)}
-    >
-      {label}
-    </Link>
-  );
 }

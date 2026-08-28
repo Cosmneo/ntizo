@@ -1,77 +1,43 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ResultsBar, segmentClass } from "../results-bar";
+import { ResultsBar } from "../results-bar";
 import { ActiveFilterChip, ActiveFilterChips } from "../active-filter-chips";
 
 describe("ResultsBar", () => {
   it("states how many results there are, not how many fit on this page", () => {
     render(
-      <ResultsBar summary={<span>8 services in all categories</span>} sortLabel="Sort">
-        <a href="/services">Suggested</a>
+      <ResultsBar summary={<span>8 services in all categories</span>}>
+        <button type="button">Suggested</button>
       </ResultsBar>,
     );
     expect(screen.getByText("8 services in all categories")).toBeInTheDocument();
   });
 
-  it("names the sort control, so it is not an unlabelled row of links", () => {
+  it("renders the sort control on its own, not wrapped in a second nav landmark", () => {
+    // `SortDropdown` is one button with its own accessible name — a setting,
+    // not a place to browse to. A `<nav>` around it would announce a menu of
+    // destinations that is not there; that landmark belongs to the row of
+    // links this replaced, not to a single trigger.
     render(
-      <ResultsBar summary={<span>8 services</span>} sortLabel="Sort">
-        <a href="/services">Suggested</a>
+      <ResultsBar summary={<span>8</span>}>
+        <button type="button">Suggested</button>
       </ResultsBar>,
     );
-    expect(screen.getByRole("navigation", { name: "Sort" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suggested" })).toBeInTheDocument();
   });
 
-  it("lets the sort scroll sideways rather than wrapping under the count", () => {
-    // Five orders at 360px wrap to a second row and push the first result off
-    // the screen.
-    render(
-      <ResultsBar summary={<span>8</span>} sortLabel="Sort">
-        <a href="/services">Suggested</a>
-      </ResultsBar>,
-    );
-    expect(screen.getByRole("navigation", { name: "Sort" }).className).toContain("overflow-x-auto");
-  });
-
-  it("lets the sort shrink, so its own overflow is the thing that gives", () => {
-    // `shrink-0` and `overflow-x-auto` together are a contradiction: a flex
-    // item that refuses to shrink never reaches its own overflow, so the
-    // control kept its full width and took the *page* sideways with it —
-    // 449px of document in a 360px window, every section of it scrollable off
-    // the right edge.
-    render(
-      <ResultsBar summary={<span>8</span>} sortLabel="Sort">
-        <a href="/services">Suggested</a>
-      </ResultsBar>,
-    );
-    const sort = screen.getByRole("navigation", { name: "Sort" });
-    expect(sort.className).not.toContain("shrink-0");
-    expect(sort.className).toContain("min-w-0");
-  });
-
-  it("puts the count and the orders on two rows on a phone", () => {
-    // Side by side at 360px the count and five orders do not fit, and there is
-    // no arrangement of them that does. The mockup stacks them.
+  it("lets the count and the trigger sit on one row, wrapping rather than forcing two", () => {
+    // The forced `flex-col`/`sm:flex-row` stack this replaced existed because
+    // five pills at 360px needed a row of their own; one trigger does not.
     const { container } = render(
-      <ResultsBar summary={<span>8</span>} sortLabel="Sort">
-        <a href="/services">Suggested</a>
+      <ResultsBar summary={<span>8</span>}>
+        <button type="button">Suggested</button>
       </ResultsBar>,
     );
     const row = container.firstElementChild!;
-    expect(row.className).toContain("flex-col");
-    expect(row.className).toContain("sm:flex-row");
-  });
-});
-
-describe("segmentClass", () => {
-  it("distinguishes the active order", () => {
-    expect(segmentClass(true)).not.toBe(segmentClass(false));
-  });
-
-  it("does not paint the active order in the brand blue", () => {
-    // Every CTA on the cards below is brand blue. A sort pill in the same
-    // colour reads as a second call to action rather than as a setting.
-    expect(segmentClass(true)).not.toContain("--color-primary)");
+    expect(row.className).toContain("flex-wrap");
+    expect(row.className).not.toContain("flex-col");
   });
 });
 
