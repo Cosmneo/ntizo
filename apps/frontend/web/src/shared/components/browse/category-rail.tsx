@@ -56,7 +56,14 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
             corner-sized elements this used to hold directly, the box now
             spans the whole centred column, and a transparent layer that size
             sitting above the chips would eat every click on the row it is
-            only meant to decorate. Each `RailArrow` opts back in for itself. */}
+            only meant to decorate. Each `RailArrow` opts back in for itself.
+
+            Aligning the arrows to the chips' own edge cuts both ways: it also
+            puts the arrows and the row's first/last chip on the exact same
+            line, so without give somewhere the row can scroll a chip straight
+            underneath one. That give isn't here — it can't be, this layer
+            doesn't share flow with the row — it's the scroller's own padding
+            below. */}
         <div className="page-shell pointer-events-none absolute inset-0">
           <Fade side="left" />
           <Fade side="right" />
@@ -65,10 +72,20 @@ export function CategoryRail({ label, children }: { label: string; children: Rea
           <RailArrow side="right" onClick={() => nudge(SCROLL_STEP)} />
         </div>
 
+        {/* `sm:px-14`: clears the arrows above (36px wide, inset 12px, so
+            they end 48px in from this same edge) by the same 56px the fade
+            already uses, so a chip can't land under either arrow, at rest or
+            scrolled to either end. `sm`-only because that's the only range
+            with arrows to clear — below it there's nothing to give way to, so
+            the row stays flush with the content column, exactly as on a
+            phone. Don't trim this as a duplicate of the arrows' own inset:
+            it's a different box (the row, not the absolutely-positioned
+            layer above) solving a different problem (the row's *content*
+            sitting under an arrow, not the arrow's own position). */}
         <div
           ref={scroller}
           data-testid="rail-scroller"
-          className="page-shell flex gap-2 overflow-x-auto py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="page-shell flex gap-2 overflow-x-auto py-4 sm:px-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {children}
         </div>

@@ -73,6 +73,20 @@ describe("CategoryRail", () => {
     expect(column).not.toBe(scroller);
   });
 
+  it("gives the row enough padding to keep a chip from ever landing under an arrow", () => {
+    // The arrows are measured against this same `page-shell` edge as the row
+    // (previous test), which means without give somewhere a chip can scroll
+    // right underneath one — that's the bug this guards. `sm:` only: below
+    // that breakpoint there are no arrows to clear, so an unconditional
+    // `px-14` would wrongly push the first chip away from the sidebar below
+    // it on a phone, where the row is supposed to stay flush with the
+    // content column exactly as it is today.
+    const { container } = render(rail);
+    const scroller = container.querySelector("[data-testid='rail-scroller']")!;
+    expect(scroller.className).toContain("sm:px-14");
+    expect(scroller.className).not.toMatch(/(?:^|\s)px-14(?:\s|$)/);
+  });
+
   it("keeps the edge fades on the same column as the arrows", () => {
     // A fade starting at the screen edge while its arrow sits at the column
     // edge would be two different measurements of the same row — the fade
