@@ -371,6 +371,7 @@ describe("messageReadModel", () => {
       body: "Olá!",
       readAt: null,
       createdAt: "2026-08-24T09:00:00.000Z",
+      attachments: [],
     });
     expect(parsed.readAt).toBeNull();
   });
@@ -382,6 +383,37 @@ describe("messageReadModel", () => {
         threadId: "t1",
         senderUserId: "u1",
         body: undefined,
+        readAt: null,
+        createdAt: "2026-08-24T09:00:00.000Z",
+        attachments: [],
+      }),
+    ).toThrow();
+  });
+
+  it("carries the files sent with it", () => {
+    const parsed = messageReadModel.parse({
+      id: "m1",
+      threadId: "t1",
+      senderUserId: "u1",
+      body: "Aqui está o orçamento",
+      readAt: null,
+      createdAt: "2026-08-24T09:00:00.000Z",
+      attachments: [
+        { id: "a1", fileName: "orcamento.pdf", contentType: "application/pdf", sizeBytes: 1024 },
+      ],
+    });
+    expect(parsed.attachments).toEqual([
+      { id: "a1", fileName: "orcamento.pdf", contentType: "application/pdf", sizeBytes: 1024 },
+    ]);
+  });
+
+  it("has no `.catch()` on attachments — a missing list is a real error, not silently empty", () => {
+    expect(() =>
+      messageReadModel.parse({
+        id: "m1",
+        threadId: "t1",
+        senderUserId: "u1",
+        body: "Olá!",
         readAt: null,
         createdAt: "2026-08-24T09:00:00.000Z",
       }),
@@ -400,6 +432,7 @@ describe("messagePageReadModel", () => {
           body: "Olá!",
           readAt: null,
           createdAt: "2026-08-24T09:00:00.000Z",
+          attachments: [],
         },
       ],
       nextCursor: "2026-08-24T09:00:00.000Z|m1",

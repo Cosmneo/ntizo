@@ -18,6 +18,7 @@ const twoThreadPage: ThreadPageDTO = {
       customerName: "Ana Silva",
       lastMessageAt: "2026-01-01T00:00:00.000Z",
       lastMessagePreview: "Olá, tudo bem?",
+      lastMessageHasAttachment: false,
       unreadCount: 2,
     },
     {
@@ -27,6 +28,7 @@ const twoThreadPage: ThreadPageDTO = {
       customerName: "Carlos Mendes",
       lastMessageAt: "2026-01-02T00:00:00.000Z",
       lastMessagePreview: "Confirmado para amanhã",
+      lastMessageHasAttachment: false,
       unreadCount: 0,
     },
   ],
@@ -42,6 +44,10 @@ const twoMessagePage: MessagePageDTO = {
       body: "Olá, tudo bem?",
       readAt: null,
       createdAt: "2026-01-02T10:00:00.000Z",
+      // `attachments` is required on `MessageDTO` (Task 6) — this fixture
+      // predates that field and carries none, unrelated to what this file
+      // tests.
+      attachments: [],
     },
     {
       id: "m2",
@@ -50,6 +56,7 @@ const twoMessagePage: MessagePageDTO = {
       body: "Tudo bem, em que posso ajudar?",
       readAt: "2026-01-02T10:05:00.000Z",
       createdAt: "2026-01-02T09:00:00.000Z",
+      attachments: [],
     },
   ],
   nextCursor: null,
@@ -112,7 +119,7 @@ describe("messagingQueries.mine", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }",
+      "items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }",
     );
   });
 
@@ -189,7 +196,7 @@ describe("messagingQueries.forProvider", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id providerId providerName customerName lastMessageAt lastMessagePreview unreadCount }",
+      "items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }",
     );
   });
 
@@ -238,8 +245,32 @@ describe("messagingQueries.thread", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id threadId senderUserId body readAt createdAt }",
+      "items { id threadId senderUserId body readAt createdAt attachments { id fileName contentType sizeBytes } }",
     );
+  });
+
+  it("selects attachments, not just the fields that predate Task 6", async () => {
+    // Task 6 put `attachments` on `messageReadModel` and on the wire, but
+    // nothing asked for it here until this test: the fixture below hands
+    // `attachments` back regardless of what the query text asks for (same
+    // as every other field in this file), so this is the one assertion that
+    // actually catches the field being dropped again — the exact gap this
+    // task's own brief flagged as its point.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationThreadMessages: twoMessagePage } as never);
+
+    const opts = messagingQueries.thread("t1");
+    await queryFnOf<MessagePageDTO>(opts)({ pageParam: undefined });
+
+    const [query] = spy.mock.calls[0]!;
+    expect(query as string).toContain(
+      "attachments { id fileName contentType sizeBytes }",
+    );
+    // Never the bucket key — `messageAttachmentReadModel` omits it on
+    // purpose, and a query asking for it would be asking a field the
+    // schema does not have.
+    expect(query as string).not.toContain("storageKey");
   });
 
   it("passes a later cursor through untouched", async () => {

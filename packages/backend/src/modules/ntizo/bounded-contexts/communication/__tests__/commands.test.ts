@@ -1,9 +1,18 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Message } from "../domain/aggregates/message.aggregate";
-import { ProviderNotContactableError, ThreadNotVisibleError } from "../domain/exceptions";
+import {
+  AttachmentNotAvailableError,
+  MessageContainsContactError,
+  ProviderNotContactableError,
+  ThreadNotVisibleError,
+  TooManyAttachmentsError,
+} from "../domain/exceptions";
 import { StartThreadCommand } from "../app/use-cases/start-thread.command";
-import { SendMessageCommand } from "../app/use-cases/send-message.command";
+import {
+  SendMessageCommand,
+  type AttachmentDescriptor,
+} from "../app/use-cases/send-message.command";
 import { MarkThreadReadCommand } from "../app/use-cases/mark-thread-read.command";
 import type {
   DueMessage,
@@ -15,12 +24,20 @@ import type {
   ThreadPage,
   ThreadRepositoryPort,
 } from "../app/ports/outbound/thread.repository.port";
+import type { AttachmentRepositoryPort, NewAttachment } from "../app/ports/outbound/attachment.repository.port";
+import type {
+  AttachmentStoragePort,
+  StoredAttachmentMetadata,
+} from "../app/ports/outbound/attachment-storage.port";
 import type { ProviderReaderPort } from "../app/ports/outbound/provider-reader.port";
-import type { ThreadRow } from "../../../shared/infrastructure/database/communication/schemas";
+import type {
+  AttachmentRow,
+  ThreadRow,
+} from "../../../shared/infrastructure/database/communication/schemas";
 
 const NOW = new Date("2026-08-27T10:00:00.000Z");
 
-type TrackedOp = "insert" | "touch";
+type TrackedOp = "insert" | "touch" | "attachment";
 
 /**
  * A record of one write a fake repository made, tagged with whichever
@@ -31,7 +48,11 @@ type TrackedOp = "insert" | "touch";
  * and a plain ordered log cannot give it: an ordered log can prove "touch
  * happened after insert" without ever proving the two happened inside the
  * SAME transaction, or inside any transaction at all — see that getter's
- * own doc comment for the mutation this closes.
+ * own doc comment for the mutation this closes. `"attachment"` joined
+ * `"insert"` and `"touch"` here for the same reason: a fake that recorded
+ * it on some untagged, parallel list would let an attachment write land
+ * outside every `atomicExecute` invocation with nothing here able to see it
+ * — see `bothWritesInSameTransaction`'s doc comment.
  */
 interface TrackedWrite {
   op: TrackedOp;
@@ -92,8 +113,8 @@ class TrackingUnitOfWork implements UnitOfWorkPort {
    * The claim `SendMessageCommand`'s own doc comment makes: not merely that
    * touch happened after insert in program order (a `touch` call sitting
    * entirely outside `atomicExecute`, positioned after it, would also
-   * satisfy that), but that both writes were logged while ONE SAME
-   * `atomicExecute` invocation was the currently-open one.
+   * satisfy that), but that every write the command made was logged while
+   * ONE SAME `atomicExecute` invocation was the currently-open one.
    *
    * A production change that narrows the transaction to cover only the
    * insert — `await this.unitOfWork.atomicExecute(() => this.messages.insert(message));
@@ -102,16 +123,29 @@ class TrackingUnitOfWork implements UnitOfWorkPort {
    * and `touchedAfterInsert` both stay green under it. This getter is what
    * actually catches that: `touch`'s `transactionId` is `null` (recorded
    * outside every open transaction), so it can never equal `insert`'s.
+   *
+   * The attachment write is checked the same way, but only when the test
+   * actually produced one — an attachment-less send (most of this file's
+   * tests) never calls `insertMany`, and treating an absent write as a
+   * failure would make every one of those tests red for a call that was
+   * never supposed to happen. When an attachment write IS present, it must
+   * share `insert`'s transaction id too — this is what catches the exact
+   * mutation the brief calls out: the attachment insert moving outside
+   * `atomicExecute` entirely, which `TrackedOp` widened to `"attachment"` to
+   * make visible in the first place (see `TrackedWrite`'s doc comment) —
+   * before that widening, a third op invisible to this getter could sit
+   * anywhere and this assertion would stay green regardless.
    */
   get bothWritesInSameTransaction(): boolean {
     const insert = this.writes.find((w) => w.op === "insert");
     const touch = this.writes.find((w) => w.op === "touch");
-    return (
-      insert !== undefined &&
-      touch !== undefined &&
-      insert.transactionId !== null &&
-      insert.transactionId === touch.transactionId
-    );
+    if (insert === undefined || touch === undefined) return false;
+    if (insert.transactionId === null || insert.transactionId !== touch.transactionId) return false;
+
+    const attachment = this.writes.find((w) => w.op === "attachment");
+    if (attachment !== undefined && attachment.transactionId !== insert.transactionId) return false;
+
+    return true;
   }
 }
 
@@ -214,6 +248,49 @@ class FakeMessageRepository implements MessageRepositoryPort {
   }
 }
 
+/**
+ * `insertMany` is the only method `SendMessageCommand` calls; `findVisible`
+ * and `listForMessages` are implemented anyway so this class satisfies
+ * `AttachmentRepositoryPort` in full — `DrizzleAttachmentRepository`'s
+ * versions of those two are exercised against the real database in
+ * `repositories.test.ts`, not here.
+ */
+class FakeAttachmentRepository implements AttachmentRepositoryPort {
+  inserted: { messageId: string; attachments: NewAttachment[] }[] = [];
+
+  constructor(private readonly tracker?: TrackingUnitOfWork) {}
+
+  async insertMany(messageId: string, attachments: NewAttachment[]): Promise<void> {
+    this.tracker?.record("attachment");
+    this.inserted.push({ messageId, attachments });
+  }
+
+  async listForMessages(): Promise<Map<string, AttachmentRow[]>> {
+    return new Map();
+  }
+
+  async findVisible(): Promise<AttachmentRow | null> {
+    return null;
+  }
+}
+
+/**
+ * Answers `head` purely from a map the test seeds directly — no bucket, no
+ * I/O. Every key it is asked about is recorded too, so a test can prove the
+ * "no I/O" prefix check in `resolveAttachments` refused a descriptor
+ * BEFORE this port was ever consulted, rather than merely refusing it
+ * somehow.
+ */
+class FakeAttachmentStoragePort implements AttachmentStoragePort {
+  objects = new Map<string, StoredAttachmentMetadata>();
+  headCalls: string[] = [];
+
+  async head(storageKey: string): Promise<StoredAttachmentMetadata | null> {
+    this.headCalls.push(storageKey);
+    return this.objects.get(storageKey) ?? null;
+  }
+}
+
 class FakeProviderReader implements ProviderReaderPort {
   contactable = new Map<string, boolean>();
 
@@ -234,6 +311,8 @@ const providerId = "provider-1";
 let members: Map<string, string[]>;
 let fakeThreads: FakeThreadRepository;
 let fakeMessages: FakeMessageRepository;
+let fakeAttachments: FakeAttachmentRepository;
+let fakeAttachmentStorage: FakeAttachmentStoragePort;
 let fakeProviders: FakeProviderReader;
 let uow: TrackingUnitOfWork;
 let existingThread: string;
@@ -247,6 +326,8 @@ beforeEach(() => {
   uow = new TrackingUnitOfWork();
   fakeThreads = new FakeThreadRepository(members, uow);
   fakeMessages = new FakeMessageRepository(uow);
+  fakeAttachments = new FakeAttachmentRepository(uow);
+  fakeAttachmentStorage = new FakeAttachmentStoragePort();
   fakeProviders = new FakeProviderReader(members);
 
   existingThread = crypto.randomUUID();
@@ -260,7 +341,14 @@ beforeEach(() => {
   });
 
   start = new StartThreadCommand(fakeThreads, fakeProviders, () => NOW);
-  send = new SendMessageCommand(fakeThreads, fakeMessages, uow, () => NOW);
+  send = new SendMessageCommand(
+    fakeThreads,
+    fakeMessages,
+    fakeAttachments,
+    fakeAttachmentStorage,
+    uow,
+    () => NOW,
+  );
   markRead = new MarkThreadReadCommand(fakeThreads, fakeMessages, () => NOW);
 });
 
@@ -319,6 +407,203 @@ describe("sending", () => {
     expect(uow.bothWritesInSameTransaction).toBe(true);
   });
 
+  it("writes the message and its attachments in one transaction", async () => {
+    const descriptor: AttachmentDescriptor = {
+      storageKey: `attachment/${customerId}/one.png`,
+    };
+    fakeAttachmentStorage.objects.set(descriptor.storageKey, {
+      contentType: "image/png",
+      sizeBytes: 1024,
+      uploadedByUserId: customerId,
+      originalName: "one.png",
+    });
+    const resolved: NewAttachment = {
+      storageKey: descriptor.storageKey,
+      fileName: "one.png",
+      contentType: "image/png",
+      sizeBytes: 1024,
+    };
+
+    // Empty body, one attachment: legal per `Message.compose` since Task 2 —
+    // a photograph with no caption is a message.
+    const result = await send.execute({
+      threadId: existingThread,
+      senderUserId: customerId,
+      body: "",
+      attachments: [descriptor],
+    });
+
+    expect(fakeAttachments.inserted).toEqual([{ messageId: result.id, attachments: [resolved] }]);
+    // The assertion that actually proves "one transaction" for all three
+    // writes — see `bothWritesInSameTransaction`'s own doc comment for why
+    // this, and not `insideTransaction`/`touchedAfterInsert` alone, is what
+    // catches the attachment insert moving outside `atomicExecute`.
+    expect(uow.bothWritesInSameTransaction).toBe(true);
+  });
+
+  it("resolves fileName, contentType and sizeBytes from storage, ignoring anything the caller's descriptor claims about them", async () => {
+    // The forged-type case Task 6b closes: a caller uploaded a real PNG
+    // (`fakeAttachmentStorage` holds what storage actually recorded) and
+    // then sends a descriptor smuggling forged `fileName`, `contentType`
+    // and `sizeBytes` — the exact shape a client could build if it ever
+    // stopped going through `AttachmentDescriptor`'s real, narrower type.
+    // `as unknown as AttachmentDescriptor` is deliberate here: the type
+    // system already refuses these fields; this proves the RUNTIME
+    // behaviour refuses them too, in case that type ever widens. This is
+    // also Critical 2's own proof: the whole-branch review's finding was
+    // that a client sending back a *different* `fileName` from the one it
+    // uploaded under was undetected — this seeds storage with the TRUE name
+    // ("photo.png") and asserts the forged one ("evil.jpg") never reaches
+    // what gets inserted.
+    const storageKey = `attachment/${customerId}/photo.png`;
+    fakeAttachmentStorage.objects.set(storageKey, {
+      contentType: "image/png",
+      sizeBytes: 55,
+      uploadedByUserId: customerId,
+      originalName: "photo.png",
+    });
+    const hostileDescriptor = {
+      storageKey,
+      fileName: "evil.jpg",
+      contentType: "text/html",
+      sizeBytes: 999_999,
+    } as unknown as AttachmentDescriptor;
+
+    const result = await send.execute({
+      threadId: existingThread,
+      senderUserId: customerId,
+      body: "",
+      attachments: [hostileDescriptor],
+    });
+
+    expect(fakeAttachments.inserted).toEqual([
+      {
+        messageId: result.id,
+        attachments: [{ storageKey, fileName: "photo.png", contentType: "image/png", sizeBytes: 55 }],
+      },
+    ]);
+  });
+
+  it("refuses an attachment whose stored object carries no recorded name", async () => {
+    // Critical 2's own ruling: an object that exists, and was uploaded by
+    // this sender, but was never stamped with `customMetadata.originalName`
+    // did not come through the real upload route — refused the same way a
+    // missing object is, rather than guessed at with a placeholder name.
+    const storageKey = `attachment/${customerId}/nameless.png`;
+    fakeAttachmentStorage.objects.set(storageKey, {
+      contentType: "image/png",
+      sizeBytes: 10,
+      uploadedByUserId: customerId,
+      originalName: null,
+    });
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses an attachment whose stored contentType is not one ACCEPTED_ATTACHMENT_TYPES lists", async () => {
+    // Unreachable through the real upload route (`sniffContentType` never
+    // stamps anything else) — this is Minor 1's boundary check, proving the
+    // exported list actually constrains rather than merely documents.
+    const storageKey = `attachment/${customerId}/script.svg`;
+    fakeAttachmentStorage.objects.set(storageKey, {
+      contentType: "image/svg+xml",
+      sizeBytes: 10,
+      uploadedByUserId: customerId,
+      originalName: "script.svg",
+    });
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses a storage key that is not this sender's own, without ever consulting storage", async () => {
+    // No object seeded for this key at all — if the prefix check were
+    // skipped, the missing-object check below would still refuse this, but
+    // `headCalls` staying empty is what proves THIS check — the free,
+    // no-I/O one — is the one that actually fired.
+    const foreignKey = "attachment/someone-else/one.png";
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey: foreignKey }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachmentStorage.headCalls).toEqual([]);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses when the object's own uploader disagrees with the storage key's prefix", async () => {
+    // The key's prefix names `customerId` — passing the free check above —
+    // but the object's OWN metadata, an independent record of the same
+    // fact, names somebody else. Only reachable by seeding the fake this
+    // way; the real upload route always writes both together (see
+    // `apps/backend/api/src/attachments.ts`). This proves the second check
+    // is enforced on its own, not merely implied by the first.
+    const key = `attachment/${customerId}/spoofed.png`;
+    fakeAttachmentStorage.objects.set(key, {
+      contentType: "image/png",
+      sizeBytes: 10,
+      uploadedByUserId: "someone-else",
+      originalName: "spoofed.png",
+    });
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey: key }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses a descriptor pointing at a key nothing was ever uploaded to", async () => {
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "",
+        attachments: [{ storageKey: `attachment/${customerId}/missing.png` }],
+      }),
+    ).rejects.toThrow(AttachmentNotAvailableError);
+    expect(fakeAttachments.inserted).toEqual([]);
+  });
+
+  it("refuses more than five attachment descriptors before consulting storage at all", async () => {
+    const tooMany: AttachmentDescriptor[] = Array.from({ length: 6 }, (_, i) => ({
+      storageKey: `attachment/${customerId}/${i}.png`,
+    }));
+
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "olá",
+        attachments: tooMany,
+      }),
+    ).rejects.toThrow(TooManyAttachmentsError);
+    expect(fakeAttachmentStorage.headCalls).toEqual([]);
+  });
+
   it("composes the message through Message.compose, trimmed and stamped with the injected clock", async () => {
     await send.execute({ threadId: existingThread, senderUserId: customerId, body: "  olá  " });
     expect(fakeMessages.inserted).toHaveLength(1);
@@ -339,6 +624,62 @@ describe("sending", () => {
     await expect(start.execute({ customerUserId: customerId, providerId })).rejects.toThrow(
       ProviderNotContactableError,
     );
+  });
+});
+
+/**
+ * Critical 1's own proof. Whole-branch review found `hasContact` had
+ * exactly three call sites — two in the browser (`MessageComposer`,
+ * `useAttachments`'s file-name check) and one on the file NAME at upload
+ * (`apps/backend/api/src/attachments.ts`) — and nothing on the send path
+ * ever ran it over the message body. A `curl` posting a body straight past
+ * both browser checks was written verbatim. These tests exercise the
+ * COMMAND directly, not the composer — proving the gate is real regardless
+ * of what client is talking to it.
+ */
+describe("contact detection", () => {
+  it("refuses a body carrying a phone number before anything is written", async () => {
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "liga-me 84 123 4567",
+      }),
+    ).rejects.toThrow(MessageContainsContactError);
+    expect(fakeMessages.inserted).toEqual([]);
+    expect(fakeThreads.touched).toEqual([]);
+  });
+
+  it("checks the TRIMMED body — surrounding whitespace does not hide a contact", async () => {
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "   liga-me 84 123 4567   ",
+      }),
+    ).rejects.toThrow(MessageContainsContactError);
+  });
+
+  it("refuses on the contact check before ever consulting attachment storage", async () => {
+    // Cheap-check-first ordering, the same reasoning `resolveAttachments`
+    // itself already applies to `MAX_ATTACHMENTS`: a body carrying a contact
+    // is refused without the command ever resolving a descriptor against
+    // storage, even when one rode along.
+    await expect(
+      send.execute({
+        threadId: existingThread,
+        senderUserId: customerId,
+        body: "liga-me 84 123 4567",
+        attachments: [{ storageKey: `attachment/${customerId}/one.png` }],
+      }),
+    ).rejects.toThrow(MessageContainsContactError);
+    expect(fakeAttachmentStorage.headCalls).toEqual([]);
+  });
+
+  it("does not refuse an ordinary body carrying no contact information", async () => {
+    await expect(
+      send.execute({ threadId: existingThread, senderUserId: customerId, body: "Confirmado para sexta." }),
+    ).resolves.toBeDefined();
   });
 });
 

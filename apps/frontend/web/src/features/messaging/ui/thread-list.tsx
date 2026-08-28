@@ -171,7 +171,8 @@ function ThreadRow({
           </span>
           <span className="mt-0.5 flex items-center justify-between gap-2">
             <span className="type-caption truncate text-[var(--color-muted-foreground)]">
-              {thread.lastMessagePreview || t("noPreview")}
+              {thread.lastMessagePreview ||
+                (thread.lastMessageHasAttachment ? t("attachmentPreview") : t("noPreview"))}
             </span>
             {thread.unreadCount > 0 && (
               <span

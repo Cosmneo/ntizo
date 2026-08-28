@@ -8,6 +8,7 @@
   "unknownProvider": "Fornitore",
   "unknownCustomer": "Cliente",
   "noPreview": "Ancora nessun messaggio",
+  "attachmentPreview": "Ha inviato un allegato",
   "unreadBadge": "{{count}} messaggio non letto",
   "unreadBadge_other": "{{count}} messaggi non letti",
   "back": "Torna alle conversazioni",
@@ -23,10 +24,28 @@
   "send": "Invia",
   "sending": "Invio…",
   "loadError": "Non è stato possibile caricare le tue conversazioni. Riprova.",
+  "contactWarning": "I contatti non sono ammessi nei messaggi. Tenere la conversazione qui significa che resta registrata, che c'è qualcuno a cui rivolgersi se qualcosa va storto, ed è ciò che rende possibile una recensione.",
+  "attachmentPickerLabel": "Allega un file",
+  "removeAttachment": "Rimuovi {{fileName}}",
+  "attachmentsLimitReached": "Hai raggiunto il limite di {{max}} file.",
+  "attachmentLoadError": "Non è stato possibile caricare questo file. Riprova.",
+  "attachmentError": {
+    "TOO_LARGE": "Questo file supera i {{maxMB}} MB.",
+    "UNACCEPTED_TYPE": "Questo tipo di file non è supportato. Formati supportati: {{formats}}.",
+    "CONTACT_IN_FILE_NAME": "Il nome di questo file non può contenere un numero di telefono, un'email o un link.",
+    "ATTACHMENT_STORAGE_UNCONFIGURED": "L'invio di file non è disponibile al momento.",
+    "NO_FILE": "Nessun file è stato ricevuto. Riprova.",
+    "UNAUTHENTICATED": "Accedi di nuovo per allegare un file.",
+    "GENERIC": "Non è stato possibile allegare questo file. Riprova."
+  },
   "sendError": {
     "VALIDATION_ERROR": "I messaggi possono contenere fino a 4000 caratteri.",
     "THREAD_NOT_VISIBLE": "Questa conversazione non è più disponibile.",
     "UNAUTHENTICATED": "Accedi di nuovo per inviare questo messaggio.",
+    "MESSAGE_EMPTY": "Scrivi qualcosa, oppure allega un file.",
+    "MESSAGE_CONTAINS_CONTACT": "I messaggi non possono contenere un numero di telefono, un'email o un link. Rimuovilo e riprova.",
+    "TOO_MANY_ATTACHMENTS": "Un messaggio può contenere al massimo {{max}} file.",
+    "ATTACHMENT_NOT_AVAILABLE": "Uno di questi file non è più disponibile. Rimuovilo e riprova.",
     "GENERIC": "Non è stato possibile inviare il messaggio. Riprova."
   }
 }

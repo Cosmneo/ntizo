@@ -5,13 +5,14 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as authSchema from "../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../shared/infrastructure/database/tx-context";
-import { message, thread } from "../../../shared/infrastructure/database/communication/schemas";
+import { attachment, message, thread } from "../../../shared/infrastructure/database/communication/schemas";
 import { user } from "../../../shared/infrastructure/database/user/schemas";
 import { provider, providerMember } from "../../../shared/infrastructure/database/provider/schemas";
 import { CursorInvalidError } from "../domain/exceptions";
 import { Message } from "../domain/aggregates/message.aggregate";
 import { DrizzleThreadRepository } from "../infrastructure/repositories/drizzle/thread.repository";
 import { DrizzleMessageRepository } from "../infrastructure/repositories/drizzle/message.repository";
+import { DrizzleAttachmentRepository } from "../infrastructure/repositories/drizzle/attachment.repository";
 
 const url = process.env["DEV_DB_URL"];
 if (!url) throw new Error("DEV_DB_URL is not set — see packages/backend/.env");
@@ -32,6 +33,7 @@ const sql = postgres(url, { max: 2 });
 const db = drizzle(sql, { schema: authSchema });
 const threads = new DrizzleThreadRepository();
 const messages = new DrizzleMessageRepository();
+const attachments = new DrizzleAttachmentRepository();
 
 const suffix = crypto.randomUUID();
 
@@ -683,6 +685,153 @@ describe("countUnreadForViewer", () => {
       const counts = await messages.countUnreadForViewer([threadA.id, threadB.id], customerId);
       expect(counts.get(threadA.id)).toBe(2);
       expect(counts.get(threadB.id) ?? 0).toBe(0);
+    });
+  });
+});
+
+describe("attachment", () => {
+  let providerId: string;
+  let threadId: string;
+  let m1: string;
+  let m2: string;
+  let attachmentId: string;
+
+  // No explicit cleanup of `attachment` rows in `afterAll` above: every one
+  // inserted here hangs off a message under `providerIds`, and `attachment`
+  // references `message.id` with `ON DELETE CASCADE` — deleting `message`
+  // there already removes these.
+  beforeAll(async () => {
+    providerId = await makeProvider(ownerId, "attachment");
+    // A member row for staff, deliberately none for `ownerId` — same reason
+    // the `findVisible` describe above gives: visibility rides on
+    // `provider_member`, not on `provider.owner_user_id`.
+    await db.insert(providerMember).values({ providerId, userId: staffId, role: "staff" });
+
+    const opened = await __runWithTransactionContextForTests(db, () =>
+      threads.openOrFind(customerId, providerId, new Date("2026-08-17T00:00:00.000Z")),
+    );
+    threadId = opened.id;
+
+    await __runWithTransactionContextForTests(db, async () => {
+      m1 = await messages.insert(
+        Message.compose({
+          threadId,
+          senderUserId: customerId,
+          body: "",
+          attachmentCount: 2,
+          now: new Date("2026-08-17T00:01:00.000Z"),
+        }),
+      );
+      m2 = await messages.insert(
+        Message.compose({
+          threadId,
+          senderUserId: customerId,
+          body: "no files here",
+          now: new Date("2026-08-17T00:02:00.000Z"),
+        }),
+      );
+
+      await attachments.insertMany(m1, [
+        { storageKey: "communication/attachment-test/a.png", fileName: "a.png", contentType: "image/png", sizeBytes: 111 },
+        { storageKey: "communication/attachment-test/b.pdf", fileName: "b.pdf", contentType: "application/pdf", sizeBytes: 222 },
+      ]);
+    });
+
+    const [row] = await db.select({ id: attachment.id }).from(attachment).where(eq(attachment.messageId, m1));
+    attachmentId = row!.id;
+  }, 20_000);
+
+  describe("insertMany", () => {
+    test("writes every attachment, retrievable by its message", async () => {
+      const rows = await db.select().from(attachment).where(eq(attachment.messageId, m1));
+      expect(rows.map((r) => r.fileName).sort()).toEqual(["a.png", "b.pdf"]);
+    });
+
+    test("does nothing, and does not error, on an empty list", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        await attachments.insertMany(m2, []);
+      });
+      const rows = await db.select().from(attachment).where(eq(attachment.messageId, m2));
+      expect(rows).toHaveLength(0);
+    });
+  });
+
+  describe("findVisible", () => {
+    test("the customer on the thread reads the attachment", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        const row = await attachments.findVisible(attachmentId, customerId);
+        expect(row?.id).toBe(attachmentId);
+        expect(row?.storageKey).toBe("communication/attachment-test/a.png");
+      });
+    });
+
+    test("a member of the provider reads it too — resolved through provider_member, not ownership", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        const row = await attachments.findVisible(attachmentId, staffId);
+        expect(row?.id).toBe(attachmentId);
+      });
+    });
+
+    // `customer2Id` — a second REAL, registered user (inserted in the
+    // top-level `beforeAll`), never a made-up id: a fixture whose only
+    // "stranger" is a fabricated, never-inserted id cannot tell a working
+    // visibility check apart from one that was silently dropped, if the
+    // query happens to filter on the row's mere existence in `user` for any
+    // other reason. `customer2Id` is real, exists, and is still refused —
+    // the check itself is what refuses it, nothing incidental about the id.
+    //
+    // The missing-attachment case returns the exact same answer as the
+    // stranger case: a stranger guessing attachment ids learns nothing from
+    // the difference, the same guarantee `ThreadRepositoryPort.findVisible`
+    // makes for thread ids.
+    test("a stranger sees nothing — the same answer as an attachment that does not exist", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        expect(await attachments.findVisible(attachmentId, customer2Id)).toBeNull();
+        expect(await attachments.findVisible(crypto.randomUUID(), customerId)).toBeNull();
+      });
+    });
+  });
+
+  describe("listForMessages", () => {
+    test("groups attachments by message, a message with none absent rather than empty", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        const byMessage = await attachments.listForMessages([m1, m2]);
+        expect(byMessage.get(m1)).toHaveLength(2);
+        expect(byMessage.get(m2) ?? []).toHaveLength(0);
+      });
+    });
+
+    test("one query for the whole page, not one per message", async () => {
+      let queryCount = 0;
+      const countingSql = postgres(url, {
+        max: 1,
+        debug: () => {
+          queryCount++;
+        },
+      });
+      const countingDb = drizzle(countingSql, { schema: authSchema });
+      try {
+        // A fresh postgres.js connection's first-ever query always fires one
+        // extra, internal type-array introspection query ahead of it — this
+        // warms that away so it is not mistaken for `listForMessages`'s own
+        // query.
+        await countingSql`select 1`;
+        queryCount = 0;
+
+        const byMessage = await __runWithTransactionContextForTests(countingDb, () =>
+          attachments.listForMessages([m1, m2]),
+        );
+        expect(byMessage.get(m1)).toHaveLength(2);
+        expect(byMessage.get(m2) ?? []).toHaveLength(0);
+        expect(queryCount).toBe(1);
+      } finally {
+        await countingSql.end();
+      }
+    }, 20_000);
+
+    test("an empty list of message ids is a no-op, not a query with an empty IN()", async () => {
+      const byMessage = await attachments.listForMessages([]);
+      expect(byMessage.size).toBe(0);
     });
   });
 });

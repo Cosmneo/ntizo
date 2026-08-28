@@ -32,11 +32,13 @@ describe("sendMessage", () => {
     expect(query as string).toContain("communicationSend");
     expect(query as string).not.toContain("communication {");
     expect(query as string).not.toMatch(/communication\s*\{\s*send/);
-    expect(variables).toEqual({ input: { threadId: "t1", body: "Olá, tudo bem?" } });
+    expect(variables).toEqual({
+      input: { threadId: "t1", body: "Olá, tudo bem?", attachments: [] },
+    });
     expect(id).toBe("m9");
   });
 
-  it("passes the given threadId and body through untouched", async () => {
+  it("passes the given threadId and body through untouched, with no attachments given", async () => {
     const spy = vi
       .spyOn(client, "sessionGraphql")
       .mockResolvedValue({ communicationSend: { id: "m10" } } as never);
@@ -45,8 +47,48 @@ describe("sendMessage", () => {
 
     const [, variables] = spy.mock.calls[0]!;
     expect(variables).toEqual({
-      input: { threadId: "t-other", body: "Confirmado para amanhã" },
+      input: { threadId: "t-other", body: "Confirmado para amanhã", attachments: [] },
     });
+  });
+
+  it("sends only storageKey for each attachment, never fileName, contentType, or sizeBytes", async () => {
+    // `contentType`/`sizeBytes` are deliberately absent from
+    // `AttachmentDescriptor` — the server reads both back from storage
+    // instead (see that type's own doc comment). `fileName` used to ride
+    // along too, until the whole-branch review found that a client could
+    // send back a DIFFERENT, unchecked name from the one it actually
+    // uploaded — the upload route's own `hasContact` check on the name was
+    // defeated one request later. This is the one test that would catch any
+    // of the three sneaking back onto the wire.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationSend: { id: "m11" } } as never);
+
+    await sendMessage("t1", "", [{ storageKey: "attachment/u1/1-a" }]);
+
+    const [, variables] = spy.mock.calls[0]!;
+    expect(variables).toEqual({
+      input: {
+        threadId: "t1",
+        body: "",
+        attachments: [{ storageKey: "attachment/u1/1-a" }],
+      },
+    });
+  });
+
+  it("sends an empty body alongside attachments without refusing it client-side", async () => {
+    // The server's own rule: a body-less send is legal exactly when at
+    // least one attachment rides with it (`MessageEmptyError`'s doc
+    // comment). `sendMessage` is a thin wire call and must not reintroduce
+    // a body-required check the server no longer has.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationSend: { id: "m12" } } as never);
+
+    const id = await sendMessage("t1", "", [{ storageKey: "attachment/u1/1-a" }]);
+
+    expect(spy).toHaveBeenCalled();
+    expect(id).toBe("m12");
   });
 });
 
@@ -75,5 +117,31 @@ describe("useSendMessage", () => {
     await waitFor(() => expect(result.current.sending).toBe(false));
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["messaging"] });
+  });
+
+  it("forwards attachments through to the wire call, defaulting to none", async () => {
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationSend: { id: "m2" } } as never);
+
+    const qc = new QueryClient();
+    const { result } = renderHook(() => useSendMessage(), {
+      wrapper: withQueryClient(qc),
+    });
+
+    act(() => {
+      result.current.send("t1", "", [{ storageKey: "attachment/u1/1-a" }]);
+    });
+
+    await waitFor(() => expect(result.current.sending).toBe(false));
+
+    const [, variables] = spy.mock.calls[0]!;
+    expect(variables).toEqual({
+      input: {
+        threadId: "t1",
+        body: "",
+        attachments: [{ storageKey: "attachment/u1/1-a" }],
+      },
+    });
   });
 });

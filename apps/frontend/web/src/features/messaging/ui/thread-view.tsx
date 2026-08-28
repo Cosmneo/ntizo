@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
 import { Skeleton, cn } from "@ntizo/frontend-ui";
 import { EmptyCard } from "@/shared/components/empty-card";
+import { AttachmentList } from "@/features/messaging/ui/attachment-list";
 import type { Message } from "@/features/messaging/domain/types";
 
 /**
@@ -23,6 +24,13 @@ import type { Message } from "@/features/messaging/domain/types";
  * a customer or provider reads was typed by the *other* party at the
  * keyboard, not by the party viewing it. See `__tests__/thread-view.test.tsx`
  * for the render-path check this claim has to survive.
+ *
+ * `message.attachments` carries the identical risk one field over —
+ * `fileName` is also the other party's own input, chosen by them at upload
+ * time, not by whoever is reading it here — and `AttachmentList` makes the
+ * same commitment for it: every file name renders through an ordinary JSX
+ * text child, never `dangerouslySetInnerHTML`. See that component's own doc
+ * comment.
  */
 export function ThreadView({
   messages,
@@ -120,7 +128,10 @@ function MessageBubble({
       >
         {/* An ordinary text child. React escapes this by construction — see
             this file's own doc comment for why that is load-bearing here. */}
-        <p className="type-body whitespace-pre-wrap break-words">{message.body}</p>
+        {message.body && (
+          <p className="type-body whitespace-pre-wrap break-words">{message.body}</p>
+        )}
+        <AttachmentList attachments={message.attachments} />
         <time
           dateTime={message.createdAt}
           className={cn(

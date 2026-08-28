@@ -1,5 +1,6 @@
 import { DrizzleThreadRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/thread.repository";
 import { DrizzleMessageRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/message.repository";
+import { DrizzleAttachmentRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/attachment.repository";
 import { DrizzleProviderReader } from "../../../bounded-contexts/communication/infrastructure/outbound-adapters/cross-bc/provider-reader.adapter";
 import { DrizzleProviderNameReader } from "../infra/repositories/drizzle/provider-name-reader.adapter";
 import { DrizzleCustomerNameReader } from "../infra/repositories/drizzle/customer-name-reader.adapter";
@@ -18,11 +19,15 @@ import {
  * identical SQL is two places to fix one bug. The three enrichment reads
  * (provider names, customer names, last-message previews) are new questions
  * the write side never had to answer, so those get the read tier's own port
- * and adapter instead — see their doc comments.
+ * and adapter instead — see their doc comments. `attachmentRepository`
+ * joins the same reused group as `threadRepository`/`messageRepository`:
+ * `listForMessages` is the write tier's own `DrizzleAttachmentRepository`
+ * method, not a new question this tier had to answer for itself.
  */
 export function bootstrapCommunicationRead() {
   const threadRepository = new DrizzleThreadRepository();
   const messageRepository = new DrizzleMessageRepository();
+  const attachmentRepository = new DrizzleAttachmentRepository();
   const providerReader = new DrizzleProviderReader();
   const providerNameReader = new DrizzleProviderNameReader();
   const customerNameReader = new DrizzleCustomerNameReader();
@@ -32,6 +37,7 @@ export function bootstrapCommunicationRead() {
     adapters: {
       threadRepository,
       messageRepository,
+      attachmentRepository,
       providerReader,
       providerNameReader,
       customerNameReader,
@@ -53,7 +59,11 @@ export function bootstrapCommunicationRead() {
         customerNameReader,
         threadPreviewReader,
       ),
-      listThreadMessages: new ListThreadMessagesProjection(threadRepository, messageRepository),
+      listThreadMessages: new ListThreadMessagesProjection(
+        threadRepository,
+        messageRepository,
+        attachmentRepository,
+      ),
     },
   };
 }

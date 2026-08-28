@@ -1,6 +1,20 @@
 import { z } from "zod";
 
 /**
+ * One file sent with a message, as the wire sees it — `storageKey` is
+ * deliberately absent: a client downloads by `id`, through
+ * `/api/communication/attachments/:id`, which re-checks visibility itself
+ * rather than trusting a bucket key nobody has verified this viewer may
+ * reach.
+ */
+export const messageAttachmentReadModel = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  contentType: z.string(),
+  sizeBytes: z.number().int().min(0),
+});
+
+/**
  * One message, as a conversation view draws it.
  *
  * `body` carries no `.catch()`, unlike the two enriched fields on
@@ -12,6 +26,14 @@ import { z } from "zod";
  * `readAt` and `createdAt` are ISO strings rather than `Date`: this crosses
  * GraphQL, and a `Date` would be serialised to a string on the way anyway —
  * with the type quietly lying about it in the meantime.
+ *
+ * `attachments` is resolved batched, one `listForMessages` call for the
+ * whole page a projection is building — never one call per message, the
+ * same rule `countUnreadForViewer` and `providerName`/`customerName`
+ * follow. A message with no attachments always gets `[]` here even though
+ * `AttachmentRepositoryPort.listForMessages`'s map leaves it absent rather
+ * than present with an empty array — that degrade-to-empty step is the
+ * projection's job, not this schema's.
  */
 export const messageReadModel = z.object({
   id: z.string(),
@@ -20,6 +42,7 @@ export const messageReadModel = z.object({
   body: z.string(),
   readAt: z.string().nullable(),
   createdAt: z.string(),
+  attachments: z.array(messageAttachmentReadModel),
 });
 
 /** One page of one conversation, newest first — see `threadPageReadModel` for why `nextCursor` is opaque. */
@@ -28,5 +51,6 @@ export const messagePageReadModel = z.object({
   nextCursor: z.string().nullable(),
 });
 
+export type MessageAttachmentDTO = z.infer<typeof messageAttachmentReadModel>;
 export type MessageDTO = z.infer<typeof messageReadModel>;
 export type MessagePageDTO = z.infer<typeof messagePageReadModel>;

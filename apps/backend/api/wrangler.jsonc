@@ -53,7 +53,8 @@
   // URL is how they are served.
   "r2_buckets": [
     { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-local" },
-    { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-local" }
+    { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-local" },
+    { "binding": "ATTACHMENTS_BUCKET", "bucket_name": "ntizo-attachments-local" }
   ],
 
   "env": {
@@ -66,7 +67,8 @@
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" },
-        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-dev" }
+        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-dev" },
+        { "binding": "ATTACHMENTS_BUCKET", "bucket_name": "ntizo-attachments-dev" }
       ],
       "routes": [{ "pattern": "dev.api.ntizo.co.mz", "custom_domain": true }],
       // Wakes `scheduled` (src/scheduled.ts) to sweep for messages still
@@ -86,7 +88,8 @@
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" },
-        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-qa" }
+        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-qa" },
+        { "binding": "ATTACHMENTS_BUCKET", "bucket_name": "ntizo-attachments-qa" }
       ],
       "routes": [{ "pattern": "qa.api.ntizo.co.mz", "custom_domain": true }],
       "triggers": { "crons": ["* * * * *"] }
@@ -100,7 +103,8 @@
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" },
-        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-prod" }
+        { "binding": "MEDIA_BUCKET", "bucket_name": "ntizo-media-prod" },
+        { "binding": "ATTACHMENTS_BUCKET", "bucket_name": "ntizo-attachments-prod" }
       ],
       "routes": [{ "pattern": "api.ntizo.co.mz", "custom_domain": true }],
       "triggers": { "crons": ["* * * * *"] }

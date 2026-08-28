@@ -35,6 +35,7 @@ const threads: Thread[] = [
     customerName: "Ana Silva",
     lastMessageAt: "2026-08-20T09:00:00Z",
     lastMessagePreview: "Olá, ainda tem vaga para sexta?",
+    lastMessageHasAttachment: false,
     unreadCount: 2,
   },
   {
@@ -44,6 +45,7 @@ const threads: Thread[] = [
     customerName: "Carlos Mendes",
     lastMessageAt: "2026-08-21T10:00:00Z",
     lastMessagePreview: "Obrigado, confirmado!",
+    lastMessageHasAttachment: false,
     unreadCount: 0,
   },
 ];
@@ -56,6 +58,7 @@ const messages: Message[] = [
     body: "Olá, ainda tem vaga para sexta?",
     readAt: null,
     createdAt: "2026-08-20T09:00:00Z",
+    attachments: [],
   },
   {
     id: "m2",
@@ -64,6 +67,7 @@ const messages: Message[] = [
     body: "Sim, tenho!",
     readAt: null,
     createdAt: "2026-08-20T09:05:00Z",
+    attachments: [],
   },
 ];
 
@@ -304,6 +308,7 @@ describe("ProviderMessagesPage: marking a thread read on open", () => {
           body: "E às 16h, tem?",
           readAt: null,
           createdAt: "2026-08-20T09:10:00Z",
+          attachments: [],
         },
         ...messages,
       ],
@@ -331,6 +336,6 @@ describe("ProviderMessagesPage: composing", () => {
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    expect(send).toHaveBeenCalledWith("t1", "Confirmado para sexta às 14h.");
+    expect(send).toHaveBeenCalledWith("t1", "Confirmado para sexta às 14h.", []);
   });
 });

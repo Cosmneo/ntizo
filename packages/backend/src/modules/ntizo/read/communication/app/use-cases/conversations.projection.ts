@@ -4,6 +4,7 @@ import type { ThreadRepositoryPort } from "../../../../bounded-contexts/communic
 import type { MessageRepositoryPort } from "../../../../bounded-contexts/communication/app/ports/outbound/message.repository.port";
 import type { ProviderReaderPort } from "../../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
 import { ThreadNotVisibleError } from "../../../../bounded-contexts/communication/domain/exceptions";
+import type { AttachmentRepositoryPort } from "../../../../bounded-contexts/communication";
 import type { ProviderNameReaderPort } from "../ports/outbound/provider-name-reader.port";
 import type { CustomerNameReaderPort } from "../ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../ports/outbound/thread-preview-reader.port";
@@ -71,7 +72,11 @@ async function toThreadSummaries(
     providerName: providerNamesById.get(t.providerId) ?? "",
     customerName: customerNamesById.get(t.customerUserId) ?? "",
     lastMessageAt: t.lastMessageAt.toISOString(),
-    lastMessagePreview: previewByThread.get(t.id!) ?? "",
+    lastMessagePreview: previewByThread.get(t.id!)?.body ?? "",
+    // Absent (no messages yet) degrades to `false`, the same convention
+    // every other lookup on this row uses for "nothing to say" — see
+    // `threadSummaryReadModel`'s own doc comment on why this field exists.
+    lastMessageHasAttachment: previewByThread.get(t.id!)?.hasAttachment ?? false,
     // A thread absent from the map has nothing unread for this viewer —
     // `countUnreadForViewer`'s own doc comment: absent, not present with 0.
     unreadCount: unread.get(t.id!) ?? 0,
@@ -167,6 +172,7 @@ export class ListThreadMessagesProjection {
   constructor(
     private readonly threads: ThreadRepositoryPort,
     private readonly messages: MessageRepositoryPort,
+    private readonly attachments: AttachmentRepositoryPort,
   ) {}
 
   async execute(input: {
@@ -183,6 +189,13 @@ export class ListThreadMessagesProjection {
     const limit = clampLimit(input.limit);
     const page = await this.messages.listForThread(input.threadId, limit, input.cursor ?? null);
 
+    // One batched call for the whole page, never one per message — see
+    // `AttachmentRepositoryPort.listForMessages`'s own doc comment. A
+    // message absent from the returned map has no attachments; `?? []`
+    // below is that degrade, the same convention `countUnreadForViewer`
+    // uses for zero.
+    const attachmentsByMessage = await this.attachments.listForMessages(page.items.map((m) => m.id!));
+
     return {
       items: page.items.map((m) => ({
         id: m.id!,
@@ -191,6 +204,12 @@ export class ListThreadMessagesProjection {
         body: m.body,
         readAt: m.readAt ? m.readAt.toISOString() : null,
         createdAt: m.createdAt.toISOString(),
+        attachments: (attachmentsByMessage.get(m.id!) ?? []).map((a) => ({
+          id: a.id,
+          fileName: a.fileName,
+          contentType: a.contentType,
+          sizeBytes: a.sizeBytes,
+        })),
       })),
       nextCursor: page.nextCursor,
     };

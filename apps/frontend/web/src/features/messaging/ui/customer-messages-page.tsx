@@ -140,7 +140,7 @@ export function CustomerMessagesPage() {
 
               <div className="border-t border-[var(--color-border)] p-4 sm:p-5">
                 <MessageComposer
-                  onSend={(body) => send(selectedThreadId, body)}
+                  onSend={(body, attachments) => send(selectedThreadId, body, attachments)}
                   sending={sending}
                   errorCode={sendErrorCode}
                 />
