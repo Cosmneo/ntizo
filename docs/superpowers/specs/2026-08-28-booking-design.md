@@ -205,13 +205,34 @@ page and actions (spec 3). The three customer screens (spec 4).
 
 ## Open questions this spec does not settle
 
-**No payment processor has been chosen.** Nothing in the repository names one.
-The automatic-refund decision above assumes an API that can send money back;
-if the chosen processor cannot, that decision returns to the table. **This must
-be settled before spec 2 is written**, not during it.
+**The rail is M-Pesa for the first phase** (decided 2026-08-29). What is still
+open is the integration: Vodacom's M-Pesa OpenAPI directly, or an aggregator.
 
-**The two windows have no values.** How long a customer has to pay, and how long
-a provider has to answer. The second is the expensive one — see "Two clocks".
+The automatic-refund decision rests on that choice, so it is the one thing
+spec 2 must settle before anything else. M-Pesa's own API is understood to
+expose a reversal transaction against an original transaction id, with time
+limits — **that belief has not been checked against the live API documentation
+and must be, not assumed.** If reversal is unavailable or expires sooner than a
+provider's answering window, the refund becomes a B2C payment out, which costs a
+fee per declined booking and can itself fail. The decision to refund
+automatically stands either way; what changes is what it costs and how often it
+lands in the admin queue.
+
+**M-Pesa changes what `PENDING_PAYMENT` is waiting for.** The thirty minutes in
+the mockup were drawn for a card — the time it takes to type sixteen digits.
+M-Pesa is a push: the customer gets a USSD prompt and either approves it or
+does not. Ignoring it is the ordinary outcome, not an edge case, so
+`PaymentFailed` is a common event rather than a rare one, and the realistic
+window is minutes.
+
+This matters beyond the timer. A slot held for thirty minutes per abandoned
+prompt, on a rail where abandonment is normal, is a busy Saturday spent held by
+people who never paid. Card-shaped assumptions about this window are the thing
+to be most careful of.
+
+**The two windows have no values.** How long a customer has to approve the
+prompt, and how long a provider has to answer. The second is the expensive one
+— see "Two clocks".
 
 **The cancellation penalty is undefined.** A provider cancelling a confirmed
 booking, and a customer doing the same, are different acts with different
