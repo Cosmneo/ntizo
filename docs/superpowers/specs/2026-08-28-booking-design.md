@@ -205,18 +205,41 @@ page and actions (spec 3). The three customer screens (spec 4).
 
 ## Open questions this spec does not settle
 
-**The rail is M-Pesa for the first phase** (decided 2026-08-29). What is still
-open is the integration: Vodacom's M-Pesa OpenAPI directly, or an aggregator.
+**The rail is M-Pesa for the first phase** (decided 2026-08-29), and
+`~/Desktop/Salif/Projects/ntizo-v1` — the platform's own Laravel predecessor —
+has a working integration against Vodacom Mozambique
+(`developer.mpesa.vm.co.mz`, success code `INS-0`).
 
-The automatic-refund decision rests on that choice, so it is the one thing
-spec 2 must settle before anything else. M-Pesa's own API is understood to
-expose a reversal transaction against an original transaction id, with time
-limits — **that belief has not been checked against the live API documentation
-and must be, not assumed.** If reversal is unavailable or expires sooner than a
-provider's answering window, the refund becomes a B2C payment out, which costs a
-fee per declined booking and can itself fail. The decision to refund
-automatically stands either way; what changes is what it costs and how often it
-lands in the admin queue.
+**Reversal exists.** `app/Services/Payment/MpesaService.php` implements `c2b`,
+`b2c` and `reversal`, so the automatic-refund decision holds on evidence rather
+than on assumption. v1 also already built the shape this spec arrived at
+independently — `PaymentIntentService`, `EscrowService`, `WalletService` — and
+its phone normalisation to `258XXXXXXXXX` is a solved detail worth copying
+rather than rediscovering. One deliberate divergence: v1's
+`EscrowService::release` defaults to `'customer_confirmation'`, the model
+rejected here in favour of provider-marks-done with a dispute window.
+
+**The hazard v1 did not have, and this one does.** The C2B call is
+**synchronous and blocking**: it returns `INS-0` only once the customer has
+approved the USSD prompt, so the HTTP request waits on a human for anything up
+to a minute or more. Laravel on an ordinary server merely finds that ugly.
+Ntizo runs on Cloudflare Workers, which have wall-time and subrequest limits,
+and a request parked on somebody's thumb is not something a Worker can be
+relied on to survive.
+
+**The asynchronous path that would solve it is dead code in v1, so it cannot be
+copied — it has to be built.** `PaymentIntentService::handleCallback` parses
+`Body.stkCallback` with `CheckoutRequestID` and `CallbackMetadata`, which is
+Safaricom Kenya's STK Push shape, not Vodacom Mozambique's. It then looks up
+`payment_intents.mpesa_checkout_request_id`, whose only writer —
+`PaymentIntent::markAsProcessing()` — is never called anywhere in the codebase.
+The route is registered and the column is migrated, and the lookup can never
+match. It has never fired.
+
+**So the first thing spec 2 must establish is not whether M-Pesa can refund —
+it can — but how a Worker initiates a payment without holding a request open
+while a customer decides.** Everything else in that spec depends on the answer,
+and v1 has no answer to lend.
 
 **M-Pesa changes what `PENDING_PAYMENT` is waiting for.** The thirty minutes in
 the mockup were drawn for a card — the time it takes to type sixteen digits.
