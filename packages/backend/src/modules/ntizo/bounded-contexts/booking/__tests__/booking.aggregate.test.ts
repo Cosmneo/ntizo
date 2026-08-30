@@ -55,11 +55,25 @@ describe("Booking.create", () => {
     expect(booking.commissionBps).toBe(1000);
   });
 
-  it("rounds the commission rather than truncating it", () => {
-    // 333 minor at 10% is 33.3. Truncation quietly favours the platform on
-    // every booking; rounding is the arithmetic somebody can reproduce.
+  it("rounds the ordinary case, where rounding and truncation happen to agree", () => {
+    // 333 minor at 10% is 33.3, which rounds down to 33 — the same answer
+    // truncation gives for this particular input. This pins the everyday
+    // shape of the arithmetic; it is the next test, not this one, that would
+    // notice a regression to Math.trunc.
     const booking = Booking.create(validInput({ priceMinor: 333 }));
     expect(booking.commissionMinor).toBe(33);
+  });
+
+  it("rounds up past the half, where truncation would quietly shortchange the provider", () => {
+    // 337 minor at 10% is 33.7 — chosen because it is the smallest kind of
+    // value where rounding and truncation disagree: rounding gives 34,
+    // truncation gives 33. Switch the implementation to Math.trunc and this
+    // is the assertion that fails; the 333 case above would not notice.
+    // Truncation would favour the platform by one minor unit on this booking,
+    // and by the same kind of amount on every booking after it — a
+    // difference too small for any one customer to notice from the outside.
+    const booking = Booking.create(validInput({ priceMinor: 337 }));
+    expect(booking.commissionMinor).toBe(34);
   });
 
   it("refuses a price below zero", () => {
