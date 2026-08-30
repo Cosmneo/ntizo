@@ -8,23 +8,35 @@
  * already prove the pass-through (a verdict's `bookingId` lands on the
  * review); what only a real query can prove is the verdict itself.
  *
- * Four customers, not one, each proving a different way this could go wrong
- * silently:
- *  - one with a booking that is real but not `COMPLETED` — refused. A
- *    fixture holding only completed bookings could pass this file even if
- *    the status filter were deleted; this is the row that makes that a
- *    failing test instead.
- *  - one with a `COMPLETED` booking, but with the *other* provider — refused
- *    for the provider under test. This is what catches the `providerId`
- *    predicate being dropped, which would let anyone who ever completed any
- *    booking review every provider on the platform.
- *  - one with a single `COMPLETED` booking against the provider under test —
- *    allowed, with that booking's own id.
- *  - one with two `COMPLETED` bookings against the provider under test, at
- *    different times, and nothing else — allowed, and pointed at the more
- *    recently completed one specifically, not merely at "a" completed
- *    booking. Its own customer, not the previous one, so the assertion
- *    depends on `completedAt` rather than on cross-test insertion order.
+ * Six customers, not one, each proving a different way this could go wrong
+ * silently. The query has three predicates — `status`, `providerId`,
+ * `customerId` — and each is pinned by exactly one test below, not merely
+ * exercised in passing by whichever fixture happens to be there:
+ *  - `status`: "refuses a customer whose only booking with this provider is
+ *    not COMPLETED". A fixture holding only completed bookings could pass
+ *    this file even if the status filter were deleted; this is the row that
+ *    makes that a failing test instead.
+ *  - `providerId`: "refuses a customer whose COMPLETED booking is with the
+ *    other provider". Catches `providerId` being dropped, which would let
+ *    anyone who ever completed any booking review every provider on the
+ *    platform.
+ *  - `customerId`: "returns this customer's own completed booking, not a
+ *    different customer's who also completed one with the same provider".
+ *    The other customer's booking is given a *later* `completedAt` than this
+ *    one's own, so if `customerId` were dropped the `ORDER BY completedAt
+ *    DESC` would deterministically surface the wrong person's booking —
+ *    this does not depend on which other tests ran first, unlike the
+ *    file-order coincidence it replaces (see that test's own comment).
+ *
+ * Two more tests cover behaviour once eligibility is established, rather than
+ * a single predicate:
+ *  - a single `COMPLETED` booking against the provider under test — allowed,
+ *    with that booking's own id.
+ *  - two `COMPLETED` bookings against the provider under test, at different
+ *    times, and nothing else — allowed, and pointed at the more recently
+ *    completed one specifically, not merely at "a" completed booking. Its
+ *    own customer, not any other test's, so the assertion depends on
+ *    `completedAt` rather than on cross-test insertion order.
  *
  * Fixtures follow `booking-repository.test.ts`'s pattern: a random `suffix`
  * per run so this file's rows cannot collide with another worktree's or
@@ -67,6 +79,8 @@ let customerNotCompletedId: string;
 let customerWrongProviderId: string;
 let customerEarnedId: string;
 let customerMultipleCompletedId: string;
+let customerSelfId: string;
+let customerOtherId: string;
 let ownerAId: string;
 let ownerBId: string;
 let providerAId: string;
@@ -84,6 +98,8 @@ beforeAll(async () => {
   customerWrongProviderId = crypto.randomUUID();
   customerEarnedId = crypto.randomUUID();
   customerMultipleCompletedId = crypto.randomUUID();
+  customerSelfId = crypto.randomUUID();
+  customerOtherId = crypto.randomUUID();
   ownerAId = crypto.randomUUID();
   ownerBId = crypto.randomUUID();
 
@@ -109,6 +125,18 @@ beforeAll(async () => {
     {
       id: customerMultipleCompletedId,
       email: `review-elig-multiple-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: customerSelfId,
+      email: `review-elig-self-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: customerOtherId,
+      email: `review-elig-other-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -222,6 +250,8 @@ afterAll(async () => {
     () => db.delete(user).where(eq(user.id, customerWrongProviderId)),
     () => db.delete(user).where(eq(user.id, customerEarnedId)),
     () => db.delete(user).where(eq(user.id, customerMultipleCompletedId)),
+    () => db.delete(user).where(eq(user.id, customerSelfId)),
+    () => db.delete(user).where(eq(user.id, customerOtherId)),
     () => db.delete(user).where(eq(user.id, ownerAId)),
     () => db.delete(user).where(eq(user.id, ownerBId)),
     () => sql.end({ timeout: 5 }),
@@ -299,6 +329,57 @@ describe("BookingReviewEligibilityAdapter — real status filter, real providerI
     );
 
     expect(verdict).toEqual({ allowed: false, bookingId: null });
+  });
+
+  test("returns this customer's own completed booking, not a different customer's who also completed one with the same provider", async () => {
+    // Symmetric to the wrong-provider test above, pinning the third
+    // predicate instead of the second: same provider, same status, two
+    // different customers. `other`'s booking is completed *after* `self`'s —
+    // if `customerId` were dropped from the WHERE clause, `ORDER BY
+    // completedAt DESC LIMIT 1` would deterministically return `other`'s row
+    // instead, regardless of which other tests in this file happened to run
+    // first. That determinism is the point: the "several COMPLETED bookings"
+    // test below only failed on a dropped `customerId` by accident — a
+    // *different* customer's booking two tests up (`customerEarnedId`,
+    // completed 2026-09-12) happens to be more recent than that test's own
+    // "newer" row, so an unfiltered query happened to return the wrong
+    // customer's booking there too, but only in this file's own run order.
+    // Under `.only` on that test alone, or a different ordering, that
+    // accidental cover disappears; this test's own two rows are the only
+    // ones it needs, so dropping `customerId` fails it on its own.
+    const [self] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerSelfId,
+          status: BookingStatus.Completed,
+          completedAt: new Date("2026-12-01T10:00:00Z"),
+          startsAt: new Date("2026-12-01T09:00:00Z"),
+          endsAt: new Date("2026-12-01T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const [other] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerOtherId,
+          status: BookingStatus.Completed,
+          completedAt: new Date("2026-12-02T10:00:00Z"),
+          startsAt: new Date("2026-12-02T09:00:00Z"),
+          endsAt: new Date("2026-12-02T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const verdict = await __runWithTransactionContextForTests(db, () =>
+      adapter.check(providerAId, customerSelfId),
+    );
+
+    expect(verdict.allowed).toBe(true);
+    expect(verdict.bookingId).toBe(self!.id);
+    expect(verdict.bookingId).not.toBe(other!.id);
   });
 
   test("allows a customer with a COMPLETED booking against this provider, and returns its id", async () => {

@@ -26,12 +26,12 @@ export const reviewSchema = pgSchema("ntizo_review");
  *
  * `bookingId` is the seam for the eligibility rule this platform actually
  * wants: only somebody who has been served should be able to score the service.
- * It is nullable today because the Booking context does not exist yet — its
- * table is a placeholder carrying an id, a customer and a status, with no
- * column saying *which provider* the booking was for, so there is nothing to
- * check against. Nullable rather than absent so the column is already here when
- * Booking arrives, and the rows written before it can be told apart from the
- * ones written after. See `ReviewEligibilityPort`.
+ * `BookingReviewEligibilityAdapter` sets it on every new review, to the
+ * customer's most recently `COMPLETED` booking with this provider. It stays
+ * nullable for the reviews written before this rule was enforced — the column
+ * existed before the check did, precisely so a row written under the old,
+ * unenforced rule could still be told apart from one written after. See
+ * `ReviewEligibilityPort`.
  *
  * `rating` is checked 1–5 in the database as well as in the aggregate. The
  * aggregate is the reason the rule is *understandable*; the constraint is the
