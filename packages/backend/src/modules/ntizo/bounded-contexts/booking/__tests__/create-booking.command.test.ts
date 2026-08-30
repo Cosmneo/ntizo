@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
-import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Booking } from "../domain/aggregates/booking.aggregate";
 import {
   ProviderNotFoundError,
@@ -28,6 +27,7 @@ import type {
 import type { SlotHoldPort, SlotWindow } from "../app/ports/outbound/slot-hold.port";
 import type { DelayedJobsPort } from "../app/ports/outbound/delayed-jobs.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
+import { TrackingUnitOfWork, withId } from "./support/fakes";
 
 const INPUT: CreateBookingInput = {
   customerId: "cust-1",
@@ -73,111 +73,9 @@ function validProvider(over: Partial<ProviderSnapshot> = {}): ProviderSnapshot {
   };
 }
 
-/**
- * Stands in for what a real `BookingRepositoryPort.insert` does: hand back
- * the same booking with a database-assigned id. Built through
- * `Booking.restore`, the same reconstitution seam Task 7's repository uses,
- * rather than reaching into `Booking`'s private state.
- */
-function withId(booking: Booking, id: string): Booking {
-  return Booking.restore({
-    id,
-    customerId: booking.customerId,
-    providerId: booking.providerId,
-    serviceId: booking.serviceId,
-    serviceOptionId: booking.serviceOptionId,
-    providerMemberId: booking.providerMemberId,
-    startsAt: booking.startsAt,
-    endsAt: booking.endsAt,
-    durationMinutes: booking.durationMinutes,
-    status: booking.status,
-    expiresAt: booking.expiresAt,
-    paidAt: booking.paidAt,
-    paymentRef: booking.paymentRef,
-    confirmedAt: booking.confirmedAt,
-    declinedAt: booking.declinedAt,
-    cancelledAt: booking.cancelledAt,
-    markedDoneAt: booking.markedDoneAt,
-    completedAt: booking.completedAt,
-    disputedAt: booking.disputedAt,
-    expiredAt: booking.expiredAt,
-    priceMinor: booking.priceMinor,
-    commissionBps: booking.commissionBps,
-    commissionMinor: booking.commissionMinor,
-    currency: booking.currency,
-    serviceName: booking.serviceName,
-    providerName: booking.providerName,
-    providerSlug: booking.providerSlug,
-    optionName: booking.optionName,
-    addressLabel: booking.addressLabel,
-    addressLine: booking.addressLine,
-    addressCity: booking.addressCity,
-    addressDistrict: booking.addressDistrict,
-    addressDirections: booking.addressDirections,
-    addressLat: booking.addressLat,
-    addressLng: booking.addressLng,
-    description: booking.description,
-  });
-}
-
-/**
- * A transactional fake with real buffer-and-discard semantics, not a
- * passthrough. `stage(commit)` is how `FakeRepo.insert` and
- * `CapturingOutbox.publish` register a write instead of applying it
- * straight to their own arrays: called while `atomicExecute`'s block is
- * running, the write is buffered and only applied once that block returns
- * without throwing; a throw discards the whole buffer instead. Called with
- * no block open, it applies immediately — the same way a bare `INSERT`
- * against a real database autocommits unless something wrapped it in
- * `BEGIN … COMMIT`. That second branch is not a convenience fallback: it is
- * what makes the transaction-removal experiment meaningful. Strip
- * `atomicExecute` out of `CreateBookingCommand` and every write here starts
- * autocommitting on its own — including the one a later step in the same
- * call was about to fail on — exactly as it would against the real
- * database, and exactly the failure the "rolls back a successful insert"
- * test below exists to catch.
- *
- * `insideTransaction` and `order` are unchanged from before: still how
- * `CapturingOutbox` tells "published inside the transaction, after the
- * insert" apart from "published outside it, or before the write".
- *
- * **The limit of this simulation, stated plainly:** buffering and discarding
- * in this fake proves that `CreateBookingCommand`'s call ordering — insert,
- * then hold, then publish, all before the block returns — is *compatible*
- * with a database that rolls back on a mid-transaction failure. It does not
- * prove Postgres actually rolls anything back; nothing in this file talks to
- * a database. That proof runs against the real one, in Task 7's repository
- * test.
- */
-class TrackingUnitOfWork implements UnitOfWorkPort {
-  insideTransaction = false;
-  order: string[] = [];
-  private pending: (() => void)[] = [];
-
-  stage(commit: () => void): void {
-    if (this.insideTransaction) {
-      this.pending.push(commit);
-    } else {
-      commit();
-    }
-  }
-
-  async atomicExecute<T>(work: () => Promise<T>): Promise<T> {
-    this.insideTransaction = true;
-    this.order = [];
-    this.pending = [];
-    try {
-      const result = await work();
-      for (const commit of this.pending) commit();
-      return result;
-    } catch (error) {
-      this.pending = [];
-      throw error;
-    } finally {
-      this.insideTransaction = false;
-    }
-  }
-}
+// `withId` and `TrackingUnitOfWork` live in `./support/fakes` — Task 9's
+// `booking-lifecycle.command.test.ts` needs the exact same fakes, and a
+// second copy would only be a second place for the two to drift.
 
 class FakeRepo implements BookingRepositoryPort {
   public insertedArg: Booking | null = null;

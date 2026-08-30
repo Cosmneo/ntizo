@@ -236,6 +236,29 @@ export class ServiceOptionNotFoundError extends NotFoundError {
 }
 
 /**
+ * Refused because a command was given a booking id that does not name any
+ * booking.
+ *
+ * Both of Task 9's commands throw this rather than returning silently, even
+ * though neither is ever called by a person waiting on a response.
+ * `MarkBookingPaidCommand` is driven by Payment's event and
+ * `ExpireBookingCommand` by a sweep job — but a payment event naming a
+ * booking that does not exist means the money and the booking have come
+ * apart, and an expiry job naming one means the job outlived its row.
+ * Neither is routine, and a command that shrugs at both leaves nothing
+ * behind for anyone to find them by.
+ */
+export class BookingNotFoundError extends NotFoundError {
+  constructor(public readonly bookingId: string) {
+    super({
+      message: `No booking was found with id "${bookingId}"`,
+      code: "BOOKING_NOT_FOUND",
+    });
+    this.name = "BookingNotFoundError";
+  }
+}
+
+/**
  * Refused because the provider a service option belongs to does not exist.
  *
  * Checked last among Task 8's refusals, once every fact the option itself
