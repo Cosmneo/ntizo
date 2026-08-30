@@ -35,9 +35,6 @@ export interface BookingRepositoryPort {
    */
   insert(booking: Booking): Promise<Booking>;
 
-  /**
-   * Find a booking by id, or null if it does not exist.
-   */
   findById(id: string): Promise<Booking | null>;
 
   /**
@@ -50,6 +47,11 @@ export interface BookingRepositoryPort {
 
   /**
    * Append an audit change to the booking_change table.
+   *
+   * Changes are stored separately from the booking because a booking can move
+   * through many states and each change must survive the next one. A change
+   * record is append-only; the history it builds is the immutable record of
+   * how a booking became what it is.
    */
   appendChange(change: BookingChangeRecord): Promise<void>;
 
