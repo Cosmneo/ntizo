@@ -1,6 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   integer,
   pgSchema,
   text,
@@ -80,6 +82,26 @@ export const platformSettings = platformSchema.table("platform_settings", {
    */
   earningsHoldDays: integer("earnings_hold_days").notNull().default(3),
 
+  // ── Booking ──────────────────────────────────────────────────────────────
+
+  /**
+   * LIVE. Minutes an unpaid booking holds its slot before expiring.
+   *
+   * Read when the booking is created, so a change applies to new bookings at
+   * once; bookings already made keep the deadline they were given — that is
+   * the booking snapshot behaving normally (see this table's header comment
+   * on seed vs. live), not a seed relationship. Was a hard-coded 30 in
+   * `CreateBookingCommand`.
+   *
+   * The trade is real in both directions: long enough and an abandoned
+   * checkout blocks a member's calendar while other customers are turned
+   * away, short enough and somebody who fumbles an M-Pesa PIN loses the slot
+   * they were paying for. M-Pesa's C2B is synchronous — approval takes a
+   * minute or two, not half an hour — which is why the default here is 15,
+   * not the mockup's 30.
+   */
+  paymentWindowMinutes: integer("payment_window_minutes").notNull().default(15),
+
   // ── Approval and verification ────────────────────────────────────────────
 
   /** LIVE. Whether a new workspace goes straight to active or waits in review. */
@@ -125,7 +147,16 @@ export const platformSettings = platformSchema.table("platform_settings", {
     .default(true),
 
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  // A zero-minute window creates bookings that are already expired, and a
+  // negative one creates bookings whose deadline is in the past — both are
+  // rows the expiry sweep would delete the instant they exist, and neither
+  // is a state anybody meant to configure.
+  check(
+    "platform_settings_payment_window_minutes_positive",
+    sql`${t.paymentWindowMinutes} >= 1`,
+  ),
+]);
 
 /**
  * Who changed what, when, and from what to what.

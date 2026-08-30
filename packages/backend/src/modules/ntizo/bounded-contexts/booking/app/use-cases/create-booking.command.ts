@@ -9,29 +9,10 @@ import {
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
+import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
 import type { ProviderSnapshotReaderPort } from "../ports/outbound/provider-snapshot.reader.port";
 import type { ServicePricingReaderPort } from "../ports/outbound/service-pricing.reader.port";
 import type { SlotHoldPort } from "../ports/outbound/slot-hold.port";
-
-/**
- * How long a customer has to pay before the hold on their slot releases.
- *
- * **This number is a placeholder, not a decision.** The spec this plan
- * implements (`docs/superpowers/specs/2026-08-28-booking-design.md`, "Two
- * clocks, not one") says outright: "This spec does not set the window; it
- * requires that the window be a configured value with a stated reason."
- * Neither `task-8-brief.md` nor `task-8-decisions.md` names a number either —
- * a gap in both, reported rather than silently resolved. Thirty minutes is
- * the same document's own account of the mockup's card-payment figure, which
- * it then warns against for the rail this platform actually launches on: "the
- * realistic window is minutes" once payment means an M-Pesa prompt a customer
- * can ignore, because abandoning one is the ordinary outcome, not the
- * exception. Using the mockup's number here anyway is the smallest possible
- * placeholder — a single named constant one later task can replace with real
- * configuration — rather than inventing a different unreviewed number or
- * leaving the command unable to run at all.
- */
-const PENDING_PAYMENT_WINDOW_MINUTES = 30;
 
 export interface CreateBookingInput {
   /** From `requireUser` at the GraphQL layer, never from the client. */
@@ -59,11 +40,13 @@ export interface CreateBookingInput {
  *
  * This is the first place Task 1 through Task 7's pieces all come together:
  * the aggregate's invariants (`Booking.create`), the domain events (Task 4),
- * and all five outbound ports (Task 6) meet here for the first time. Nothing
- * in this command re-derives what `Booking.create` already computes —
- * `endsAt` from `durationMinutes`, `commissionMinor` from `priceMinor` and
- * the provider's rate — because a second implementation of either formula is
- * a second place for them to disagree.
+ * and all five outbound ports (Task 6) meet here for the first time — plus
+ * `PlatformSettingsReaderPort`, added by Task 13 in place of the hardcoded
+ * payment window Task 8 started with. Nothing in this command re-derives
+ * what `Booking.create` already computes — `endsAt` from `durationMinutes`,
+ * `commissionMinor` from `priceMinor` and the provider's rate — because a
+ * second implementation of either formula is a second place for them to
+ * disagree.
  *
  * **The refusals run in a fixed order, and every one of them happens before
  * anything is written.** Read the option, then refuse a quote service, an
@@ -93,6 +76,7 @@ export class CreateBookingCommand {
     private readonly repo: BookingRepositoryPort,
     private readonly pricingReader: ServicePricingReaderPort,
     private readonly providerReader: ProviderSnapshotReaderPort,
+    private readonly platformSettingsReader: PlatformSettingsReaderPort,
     private readonly slotHold: SlotHoldPort,
     private readonly delayedJobs: DelayedJobsPort,
     private readonly unitOfWork: UnitOfWorkPort,
@@ -130,7 +114,12 @@ export class CreateBookingCommand {
       throw new ProviderNotFoundError(pricing.providerId);
     }
 
-    const expiresAt = new Date(Date.now() + PENDING_PAYMENT_WINDOW_MINUTES * 60_000);
+    // LIVE, not carried on the booking until it is: read fresh on every call,
+    // so an administrator's change reaches the very next booking. See
+    // `PlatformSettingsReaderPort` and `platform_settings`'s own header
+    // comment for why that is not the same thing as a seed.
+    const paymentWindowMinutes = await this.platformSettingsReader.findPaymentWindowMinutes();
+    const expiresAt = new Date(Date.now() + paymentWindowMinutes * 60_000);
 
     // The address arrives as a value, not a reference: `input.address`'s
     // fields are copied onto individually-typed `Booking.create` parameters

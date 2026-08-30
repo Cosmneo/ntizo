@@ -22,6 +22,7 @@ import { user } from "../user/schemas/user.schema";
 import { booking } from "../booking/schemas/booking.schema";
 import type { NewBookingRow } from "../booking/schemas/booking.schema";
 import { bookingChange } from "../booking/schemas/booking-change.schema";
+import { platformSettings } from "../platform/schemas/platform-settings.schema";
 import { BookingStatus, SLOT_HOLDING_STATUSES } from "../booking/enums";
 import {
   bestEffortCleanup,
@@ -209,6 +210,41 @@ describe("booking money and status CHECK constraints", () => {
       endsAt: new Date("2026-09-01T14:00:00Z"),
     });
     expect(high?.id).toBeString();
+  });
+});
+
+/**
+ * `platform_settings`, not `booking` — this file's own top comment is about
+ * `booking`, but `payment_window_minutes` exists only because it governs a
+ * booking's `expiresAt` (Task 13), and this is where the plan's other
+ * booking-adjacent CHECK constraints already live rather than a new file for
+ * one column.
+ *
+ * Inserted with a random `id` rather than `"global"`: the real singleton row
+ * is shared with every other test and adapter hitting this dev database, and
+ * a CHECK failure aborts the statement without creating a row anyway — there
+ * is nothing here for `afterAll` to clean up.
+ */
+async function insertPlatformSettingsRow(
+  overrides: Partial<typeof platformSettings.$inferInsert> = {},
+) {
+  return await db
+    .insert(platformSettings)
+    .values({ id: crypto.randomUUID(), ...overrides })
+    .returning({ id: platformSettings.id });
+}
+
+describe("platform_settings_payment_window_minutes_positive", () => {
+  test("refuses a zero-minute window", async () => {
+    await expect(insertPlatformSettingsRow({ paymentWindowMinutes: 0 })).rejects.toThrow(
+      /platform_settings_payment_window_minutes_positive/,
+    );
+  });
+
+  test("refuses a negative window", async () => {
+    await expect(insertPlatformSettingsRow({ paymentWindowMinutes: -1 })).rejects.toThrow(
+      /platform_settings_payment_window_minutes_positive/,
+    );
   });
 });
 

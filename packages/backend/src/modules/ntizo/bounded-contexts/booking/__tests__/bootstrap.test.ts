@@ -7,6 +7,7 @@ import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.comma
 import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
+import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
 
@@ -55,5 +56,16 @@ describe("bootstrapBooking", () => {
     // itself and not a bare object literal standing in for one.
     expect(adapters.slotHold).toBeInstanceOf(BookingRowSlotHold);
     expect(adapters.delayedJobs).toBeInstanceOf(ExpiresAtDelayedJobs);
+  });
+
+  // Task 13: the payment window moved from a hardcoded constant in
+  // `CreateBookingCommand` to this reader. Asserted separately from the test
+  // above because it postdates "the whole point of this task" (Task 10) —
+  // this is the wiring Task 13 added on top of it.
+  it("wires the payment-window reader Task 13 added", () => {
+    const { adapters, useCases } = bootstrapBooking();
+
+    expect(adapters.platformSettingsReader).toBeInstanceOf(DrizzlePlatformSettingsReader);
+    expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
   });
 });

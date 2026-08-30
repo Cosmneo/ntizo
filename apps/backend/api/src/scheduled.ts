@@ -20,15 +20,20 @@ export const SWEEP_LIMIT = 200;
 /**
  * How many due bookings one expiry sweep may claim.
  *
- * The cron runs every minute (see `wrangler.jsonc`) against a 30-minute
- * `PENDING_PAYMENT` window (`PENDING_PAYMENT_WINDOW_MINUTES` in
- * `create-booking.command.ts`), so under any plausible load whatever went
+ * The cron runs every minute (see `wrangler.jsonc`) against the
+ * `PENDING_PAYMENT` window — an administrator-configured setting,
+ * `platform_settings.payment_window_minutes` (see `PlatformSettingsReaderPort`
+ * in the booking bounded context), defaulting to 15 minutes rather than the
+ * 30 an earlier version of this comment cited before Task 13 moved the
+ * window out of a hardcoded constant. Under any plausible load whatever went
  * stale in the last minute is a small fraction of this ceiling, and one wave
- * clears it before the next wave starts. This is a generous ceiling against
- * a runaway backlog, not a throttle a normal run is expected to hit — kept
- * as its own constant, not a reuse of `SWEEP_LIMIT` above, because the two
- * sweeps are budgeting against different windows on different tables and
- * have no reason to share a number just because it currently matches.
+ * clears it before the next wave starts. A shorter window only shrinks the
+ * possible backlog further, so 200 stays a generous ceiling against a
+ * runaway backlog either way — not a throttle a normal run is expected to
+ * hit — kept as its own constant, not a reuse of `SWEEP_LIMIT` above,
+ * because the two sweeps are budgeting against different windows on
+ * different tables and have no reason to share a number just because it
+ * currently matches.
  */
 export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
 

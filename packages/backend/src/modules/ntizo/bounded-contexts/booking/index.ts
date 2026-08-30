@@ -13,6 +13,7 @@ export type {
   BookingRepositoryPort,
 } from "./app/ports/outbound/booking.repository.port";
 export type { DelayedJobsPort } from "./app/ports/outbound/delayed-jobs.port";
+export type { PlatformSettingsReaderPort } from "./app/ports/outbound/platform-settings.reader.port";
 export type {
   ProviderSnapshot,
   ProviderSnapshotReaderPort,

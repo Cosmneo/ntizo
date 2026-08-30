@@ -20,6 +20,7 @@ import type {
   ProviderSnapshot,
   ProviderSnapshotReaderPort,
 } from "../app/ports/outbound/provider-snapshot.reader.port";
+import type { PlatformSettingsReaderPort } from "../app/ports/outbound/platform-settings.reader.port";
 import type {
   ServiceOptionPricing,
   ServicePricingReaderPort,
@@ -146,6 +147,25 @@ class FakeProviderReader implements ProviderSnapshotReaderPort {
   }
 }
 
+/**
+ * Returns a fixed value rather than reading a settings row, matching every
+ * other fake in this file. The value handed to `setup()` below is
+ * deliberately neither the schema's new default (15) nor the constant this
+ * command used to carry (30) — a command that ignored this reader and fell
+ * back to either number would still pass every other test in this file, so
+ * this is the fake the "reads the payment window" test depends on to fail.
+ */
+class FakePlatformSettingsReader implements PlatformSettingsReaderPort {
+  public calls = 0;
+
+  constructor(private readonly minutes: number) {}
+
+  async findPaymentWindowMinutes(): Promise<number> {
+    this.calls += 1;
+    return this.minutes;
+  }
+}
+
 class FakeSlotHold implements SlotHoldPort {
   public held: { bookingId: string; slot: SlotWindow }[] = [];
   public released: string[] = [];
@@ -206,12 +226,19 @@ class CapturingOutbox implements OutboxPort {
   }
 }
 
+/**
+ * Neither the schema's default (15) nor the constant this command used to
+ * hardcode (30) — see `FakePlatformSettingsReader`'s own comment.
+ */
+const FAKE_PAYMENT_WINDOW_MINUTES = 42;
+
 function setup(
   opts: {
     pricing?: ServiceOptionPricing | null;
     provider?: ProviderSnapshot | null;
     insertError?: Error;
     holdError?: Error;
+    paymentWindowMinutes?: number;
   } = {},
 ) {
   const unitOfWork = new TrackingUnitOfWork();
@@ -223,18 +250,32 @@ function setup(
   const providerReader = new FakeProviderReader(
     opts.provider === undefined ? validProvider() : opts.provider,
   );
+  const platformSettingsReader = new FakePlatformSettingsReader(
+    opts.paymentWindowMinutes ?? FAKE_PAYMENT_WINDOW_MINUTES,
+  );
   const slotHold = new FakeSlotHold({ holdError: opts.holdError });
   const delayedJobs = new FakeDelayedJobs();
   const command = new CreateBookingCommand(
     repo,
     pricingReader,
     providerReader,
+    platformSettingsReader,
     slotHold,
     delayedJobs,
     unitOfWork,
     outbox,
   );
-  return { command, repo, pricingReader, providerReader, slotHold, delayedJobs, unitOfWork, outbox };
+  return {
+    command,
+    repo,
+    pricingReader,
+    providerReader,
+    platformSettingsReader,
+    slotHold,
+    delayedJobs,
+    unitOfWork,
+    outbox,
+  };
 }
 
 describe("CreateBookingCommand", () => {
@@ -248,6 +289,28 @@ describe("CreateBookingCommand", () => {
     expect(result.bookingId).toBe("bk-1");
     expect(repo.insertedArg?.commissionBps).toBe(1234);
     expect(providerReader.queries).toEqual(["prov-1"]);
+  });
+
+  it("reads the payment window from PlatformSettingsReaderPort, not a hard-coded constant", async () => {
+    const { command, platformSettingsReader } = setup({
+      paymentWindowMinutes: FAKE_PAYMENT_WINDOW_MINUTES,
+    });
+
+    const before = Date.now();
+    const result = await command.execute(INPUT);
+    const after = Date.now();
+
+    // Bounded by wall-clock reads taken immediately before and after the
+    // call, rather than pinned to one instant, because `expiresAt` is
+    // computed from `Date.now()` inside `execute` and this test cannot see
+    // that exact moment. Both bounds move by the configured window (42
+    // minutes) — neither the schema's new default (15) nor the constant this
+    // command used to carry (30) — so a command that ignored the reader and
+    // kept either number would land outside this range and fail here.
+    const expiresAtMs = new Date(result.expiresAt).getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + FAKE_PAYMENT_WINDOW_MINUTES * 60_000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + FAKE_PAYMENT_WINDOW_MINUTES * 60_000);
+    expect(platformSettingsReader.calls).toBe(1);
   });
 
   it("holds the slot for the member and window that was actually booked", async () => {

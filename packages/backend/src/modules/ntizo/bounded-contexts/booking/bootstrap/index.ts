@@ -1,6 +1,7 @@
 import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
+import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
 import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
@@ -33,6 +34,7 @@ export function bootstrapBooking() {
   const bookingRepository = new DrizzleBookingRepository();
   const pricingReader = new DrizzleServicePricingReader();
   const providerReader = new DrizzleProviderSnapshotReader();
+  const platformSettingsReader = new DrizzlePlatformSettingsReader();
   const slotHold = new BookingRowSlotHold();
   const delayedJobs = new ExpiresAtDelayedJobs();
   const unitOfWork = new DrizzleUnitOfWork();
@@ -45,6 +47,7 @@ export function bootstrapBooking() {
       bookingRepository,
       pricingReader,
       providerReader,
+      platformSettingsReader,
       slotHold,
       delayedJobs,
       unitOfWork,
@@ -55,6 +58,7 @@ export function bootstrapBooking() {
         bookingRepository,
         pricingReader,
         providerReader,
+        platformSettingsReader,
         slotHold,
         delayedJobs,
         unitOfWork,
