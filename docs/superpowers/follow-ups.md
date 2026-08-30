@@ -2327,3 +2327,31 @@ them to an ephemeral Postgres (a throwaway Docker instance already proved out du
 Task 2's `inArray` investigation).
 
 **Trigger:** the next time a database test fails and the failure does not reproduce in isolation.
+
+## #96 — Nothing guarantees the singleton settings row exists
+
+`ntizo_platform.platform_settings` holds exactly one row, `id = 'global'`, and the whole table is
+designed around that: a typed single row rather than a key-value table, so a schema can refuse to
+store nonsense. But **no migration ever created it.** `0010` creates the table and sets column
+defaults; nothing inserts. The row exists in the shared `dev` database only because somebody wrote
+it by hand — which is also why its `default_commission_bps` reads 1200 against a schema default of
+1000.
+
+This surfaced during the Booking work, when a new reader was written to throw on a missing row
+rather than fall back silently. That was the right call and it made the gap loud: combined with a
+row nothing creates, booking creation would have failed outright in any environment where nobody
+happened to hand-write it. Migration `0026` now seeds it with
+`INSERT ... VALUES ('global') ON CONFLICT DO NOTHING`, which closes it from `0026` onward.
+
+What is left is the general shape. A database that stopped between `0010` and `0025` still has zero
+rows, and Provider's `defaultCommissionBps()` papers over that by falling back to a hardcoded
+default instead of throwing — so a misconfigured environment reads as a configured one. Any future
+table with a singleton row will hit the same thing unless seeding becomes a habit rather than a
+patch.
+
+Worth doing: audit which environments actually have the row, decide whether
+`defaultCommissionBps()`'s fallback should become a throw now that a seed exists, and make "a
+singleton row is created by the migration that creates its table" an explicit rule.
+
+**Trigger:** before the first deploy to an environment whose database has not run `0026`, or the
+next time a settings value reads as a default nobody set.
