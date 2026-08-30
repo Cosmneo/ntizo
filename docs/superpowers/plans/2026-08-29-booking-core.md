@@ -815,20 +815,41 @@ second confirmation and Scheduling to hold a slot it already holds."
 
 ---
 
-### Task 10: Bootstrap, GraphQL, and the read
+### Task 10: Bootstrap, the adapters, and booking.create
 
 **Files:**
 - Create: `.../booking/bootstrap/index.ts`
 - Create: `.../booking/index.ts`
-- Create: `.../booking/app/use-cases/read-my-bookings.query.ts`
+- Create: `.../booking/infrastructure/repositories/drizzle/service-pricing.reader.ts`
+- Create: `.../booking/infrastructure/repositories/drizzle/provider-snapshot.reader.ts`
+- Create: `.../booking/infrastructure/adapters/booking-row-slot-hold.adapter.ts`
+- Create: `.../booking/infrastructure/adapters/expires-at-delayed-jobs.adapter.ts`
 - Create: `packages/backend/src/modules/ntizo/write/booking/graphql/schema/mutations.ts`
 - Create: `packages/backend/src/modules/ntizo/write/booking/graphql/handlers/mutations.handlers.ts`
 - Create: `packages/backend/src/modules/ntizo/write/booking/index.ts`
+- Modify: `packages/backend/src/modules/ntizo/write/schema.ts`
 - Modify: `apps/backend/api/src/graphql/private.ts`
 
 **Interfaces:**
 - Consumes: everything above.
-- Produces: `booking.create` as a mutation and `booking.mine` as a query on the private GraphQL schema.
+- Produces: `bootstrapBooking()`, and `booking.create` as a mutation on the
+  private GraphQL schema.
+
+**The four adapters are part of this task, and two of them do nothing.** The
+plan originally named five ports and built only the repository, which would have
+left `bootstrapBooking()` unable to construct a single command. The two readers
+are real Drizzle queries. `SlotHoldPort` and `DelayedJobsPort` get adapters that
+perform no write and say so in their own comments: the booking row plus the
+partial unique index *is* the hold — Scheduling has no hold table, it computes
+availability — and the delayed job is a no-op because `expires_at` is on the row
+and a cron sweep reads it (Task 12), exactly as the notification sweep reads
+`notify_due_at`. An adapter that explains why it is empty is honest; one that
+pretends to work is not.
+
+**`booking.mine` is not here — it is Task 14.** This plan first put the query
+beside the mutation in the `write/` tier. That tier is mutations only; the read
+tier has its own barrel (`read/schema.ts`), its own bootstrap convention, and
+its own handler shape.
 
 Follow `bounded-contexts/review/bootstrap/index.ts` and `write/review/graphql/*` exactly — they are the shortest complete example of this wiring in the repository.
 
@@ -836,7 +857,9 @@ Follow `bounded-contexts/review/bootstrap/index.ts` and `write/review/graphql/*`
 
 - [ ] **Step 1: Write the failing test**
 
-Extend `packages/backend/src/modules/ntizo/bounded-contexts/booking/__tests__/` with a bootstrap test asserting `bootstrapBooking()` returns the use cases the handlers reach for. Then assert the mutation's zod input rejects a missing address and a non-positive duration.
+Extend `packages/backend/src/modules/ntizo/bounded-contexts/booking/__tests__/` with a bootstrap test asserting `bootstrapBooking()` returns the use cases the handlers reach for — all four, including the two nothing exposes yet, because a bootstrap that omits them leaves Payment and the sweep with nothing to reach for and the omission only surfaces when somebody tries.
+
+Then assert the mutation's zod input rejects a missing address and a `startsAt` that is not a date. Note there is no duration to reject: the duration comes from the service option, not from the client, which is the whole reason a customer cannot book a two-minute house clean.
 
 - [ ] **Step 2: Run to verify it fails**
 - [ ] **Step 3: Write the bootstrap, the schema, the handlers, and register them**
@@ -1095,6 +1118,83 @@ a developer's: too long blocks a member's calendar for an abandoned
 checkout, too short loses the slot for somebody fumbling their M-Pesa
 PIN. The default drops from 30 to 15, because M-Pesa's C2B is
 synchronous and half an hour was never the shape of that flow."
+```
+
+---
+
+### Task 14: The customer's own bookings
+
+**Files:**
+- Create: `.../booking/app/ports/outbound/booking-read.repository.port.ts`
+- Create: `.../booking/infrastructure/repositories/drizzle/booking-read.repository.ts`
+- Create: `packages/backend/src/modules/ntizo/read/booking/app/use-cases/list-my-bookings.projection.ts`
+- Create: `packages/backend/src/modules/ntizo/read/booking/graphql/schema/queries.ts`
+- Create: `packages/backend/src/modules/ntizo/read/booking/graphql/handlers/queries.handlers.ts`
+- Create: `packages/backend/src/modules/ntizo/read/booking/bootstrap/index.ts`
+- Create: `packages/backend/src/modules/ntizo/read/booking/index.ts`
+- Modify: `packages/backend/src/modules/ntizo/read/schema.ts`
+- Modify: `apps/backend/api/src/graphql/private.ts`
+- Test: `packages/backend/src/modules/ntizo/read/booking/__tests__/list-my-bookings.projection.test.ts`
+
+**Interfaces:**
+- Consumes: `bookingReadModel` (Task 1), the `booking` table (Task 2).
+- Produces: `booking.mine` as a query on the private GraphQL schema.
+
+**Why this is a separate reader rather than the write repository.** `read/activity`
+and `read/notification` both reuse the write side's repository, and their
+bootstraps say why: the read model is the same rows in the same shape, so a
+second class running identical SQL is two places to fix one bug. That reasoning
+does not hold here. `DrizzleBookingRepository` rebuilds full aggregates through
+`Booking.restore`, which re-runs every guard and both consistency checks on
+every row — right for a booking you are about to change, wasteful for a list
+nobody will mutate, and it turns one corrupt row into a failed page instead of
+one odd line. `read/catalog` has the precedent for the other direction: a thin
+reader selecting exactly the columns the DTO carries.
+
+**Authorisation is the point of this query, not a detail.** BR7 says only the
+booking's own customer, its provider, or an administrator may read it. This
+query answers for the signed-in customer, so the `customerId` comes from the
+GraphQL context and never from the input — a query that took it as an argument
+would let anybody read anybody's bookings by changing one field.
+
+- [ ] **Step 1: Write the failing test**
+
+Assert: the projection returns only the signed-in customer's bookings, newest
+first; a customer with none gets an empty list, not an error; every field of
+`bookingReadModel` parses, so the DTO and the query cannot drift apart; and
+dates come back as ISO strings rather than `Date` objects, because that is what
+the read model declares and what crosses the wire.
+
+Include a booking belonging to a *different* customer in the fixture. A test
+whose fixture contains only the caller's own rows cannot fail if the `where`
+clause is dropped.
+
+- [ ] **Step 2: Run to verify it fails**
+- [ ] **Step 3: Write the reader, the projection, the schema and the handler**
+- [ ] **Step 4: Run the suites and typecheck**
+
+Run: `cd packages/backend && bun test src && bun run typecheck`
+
+- [ ] **Step 5: Prove the schema still builds**
+
+The same `__typename` probe Task 10 uses, against both `/public/graphql` and
+`/graphql`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo apps/backend/api/src/graphql/private.ts
+git commit -m "Let a customer see their own bookings
+
+The customer id comes from the signed-in context, never from the query
+input. Taking it as an argument would have made this the endpoint that
+reads anybody's bookings, and no amount of later checking undoes an
+interface that invites it.
+
+A thin reader rather than the write repository: that one rebuilds full
+aggregates through Booking.restore, which re-runs every guard on every
+row -- right before a change, wasteful for a list, and it turns one bad
+row into a failed page instead of one odd line."
 ```
 
 ---
