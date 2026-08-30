@@ -8,6 +8,7 @@ import {
   BookingSnapshotInconsistentError,
   BookingTransitionError,
   CommissionOutOfRangeError,
+  PaymentReferenceMismatchError,
 } from "../domain/exceptions";
 import type { BookingStatus } from "../../../shared/infrastructure/database/booking/enums";
 
@@ -280,7 +281,7 @@ describe("Booking.markPaid", () => {
     // once, and somebody is owed a refund on one of the two. That is not
     // something this method gets to decide quietly.
     const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
-    expect(() => first.markPaid("mpesa-456", new Date())).toThrow(BookingTransitionError);
+    expect(() => first.markPaid("mpesa-456", new Date())).toThrow(PaymentReferenceMismatchError);
   });
 
   it("names both references in the error, so a duplicate payment can be traced", () => {

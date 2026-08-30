@@ -10,6 +10,7 @@ import {
   BookingSnapshotInconsistentError,
   BookingTransitionError,
   CommissionOutOfRangeError,
+  PaymentReferenceMismatchError,
 } from "../exceptions";
 
 /**
@@ -517,11 +518,7 @@ export class Booking {
       if (this.props.paymentRef === paymentRef) {
         return this;
       }
-      // `this.props.paymentRef` is never actually null here — every
-      // slot-holding status past PENDING_PAYMENT is only reachable by
-      // having been paid — but the props type can't say that, so the
-      // fallback exists for the type checker, not for a real booking.
-      throw new BookingTransitionError(this.props.paymentRef ?? "(no reference on file)", paymentRef);
+      throw new PaymentReferenceMismatchError(this.props.paymentRef, paymentRef);
     }
 
     throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);

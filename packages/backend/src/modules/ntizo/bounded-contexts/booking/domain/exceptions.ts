@@ -151,6 +151,38 @@ export class BookingSnapshotInconsistentError extends UnprocessableError {
 }
 
 /**
+ * Refused because a second payment landed on a booking that was already paid,
+ * carrying a different reference.
+ *
+ * The distinction this class exists to make: a webhook that arrives twice
+ * carries the *same* reference, and `markPaid` absorbs it silently because
+ * absorbing it is correct — the payment succeeded once and is being announced
+ * twice. A *different* reference is a different transaction. The customer was
+ * debited twice for one slot and is owed money back, and there is no reading
+ * of that fact under which the right response is to shrug.
+ *
+ * Separate from `BookingTransitionError` rather than reusing it, though the
+ * first version of this guard did reuse it. That produced the message "A
+ * booking cannot go from mpesa-123 to mpesa-456", which is not a sentence
+ * about anything, and left `.from` and `.to` — fields every other thrower
+ * fills with a `BookingStatus` — holding payment references instead. A
+ * consumer branching on those fields would have had no way to tell which kind
+ * of value it was looking at.
+ */
+export class PaymentReferenceMismatchError extends ConflictError {
+  constructor(
+    public readonly existingPaymentRef: string | null,
+    public readonly incomingPaymentRef: string,
+  ) {
+    super({
+      message: `This booking was already paid under reference "${existingPaymentRef ?? "(none on file)"}"; a second payment arrived under "${incomingPaymentRef}"`,
+      code: "PAYMENT_REFERENCE_MISMATCH",
+    });
+    this.name = "PaymentReferenceMismatchError";
+  }
+}
+
+/**
  * Refused because another booking already holds this member's calendar at
  * this instant.
  *
