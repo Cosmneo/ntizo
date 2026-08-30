@@ -2270,6 +2270,13 @@ violation or the enum's location is, then moving one or the other.
 is started — a rule that would have caught it is cheaper than another reviewer reading import lists
 by hand.
 
+## #93 — Nothing sets how long an unpaid booking holds its slot — CLOSED, see Task 13
+
+**Closed 2026-08-30.** Raised as a follow-up, then answered the same day: the payment window
+becomes a LIVE `platform_settings` column with a default of 15 minutes, and `CreateBookingCommand`
+reads it rather than carrying a constant. Task 13 of the booking-core plan. The original text
+follows, because the reasoning is still why the number is not a developer's to pick.
+
 ## #93 — Nothing sets how long an unpaid booking holds its slot
 
 `CreateBookingCommand` carries `PENDING_PAYMENT_WINDOW_MINUTES = 30` as a named, commented

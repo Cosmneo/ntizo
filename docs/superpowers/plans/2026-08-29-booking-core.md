@@ -976,6 +976,123 @@ bookings past expires_at."
 
 ---
 
+### Task 13: Let an administrator set the payment window
+
+**Files:**
+- Modify: `.../shared/infrastructure/database/platform/schemas/platform-settings.schema.ts`
+- Create: migration (generate only — do not apply; that is a manual act per stage)
+- Create: `.../booking/app/ports/outbound/platform-settings.reader.port.ts`
+- Modify: `.../booking/app/use-cases/create-booking.command.ts`
+- Modify: `.../booking/__tests__/create-booking.command.test.ts`
+- Test: `.../shared/infrastructure/database/__tests__/booking-constraints.test.ts` (extend)
+
+**Interfaces:**
+- Consumes: `platformSettings` (existing table), `CreateBookingCommand` (Task 8).
+- Produces: `PlatformSettingsReaderPort.findPaymentWindowMinutes(): Promise<number>`.
+
+**Why this task exists.** `CreateBookingCommand` carries
+`PENDING_PAYMENT_WINDOW_MINUTES = 30` as a named constant, with a comment saying
+it is a stand-in. The booking spec deliberately leaves the window unset and says
+it must be configured; it also warns that the 30 minutes its own mockup shows is
+wrong for M-Pesa, whose C2B flow is synchronous — the customer approves on the
+handset in a minute or two, not half an hour.
+
+The number has a real cost on each side, which is exactly why it is not a
+developer's to pick. Too long, and an abandoned checkout blocks a member's
+calendar for half an hour while other customers are told the slot is taken. Too
+short, and somebody who fumbles their PIN loses the slot they were in the middle
+of paying for.
+
+**It is a LIVE setting, not a seed.** Read `platform_settings`' own header
+comment before you add the field: a seed is copied onto a row at creation and
+the row keeps its copy; a live setting is read at the moment of the decision.
+The window is read when a booking is created, so a change applies to every new
+booking at once. Existing bookings keep the `expiresAt` they were given — that
+is the booking snapshot behaving normally, not a seed relationship, and the
+field's comment should say so, because the distinction is exactly what that
+header warns people not to blur.
+
+- [ ] **Step 1: Add the column**
+
+```ts
+  /**
+   * LIVE. Minutes an unpaid booking holds its slot before expiring.
+   *
+   * Read when the booking is created, so a change applies to new bookings at
+   * once; bookings already made keep the deadline they were given. Was a
+   * hard-coded 30 in CreateBookingCommand.
+   *
+   * The trade is real in both directions: long enough and an abandoned
+   * checkout blocks a member's calendar while other customers are turned
+   * away, short enough and somebody who fumbles an M-Pesa PIN loses the slot
+   * they were paying for. M-Pesa's C2B is synchronous — approval takes a
+   * minute or two, not half an hour.
+   */
+  paymentWindowMinutes: integer("payment_window_minutes").notNull().default(15),
+```
+
+Add a CHECK that it is at least 1. A zero-minute window creates bookings that
+are already expired, and a negative one creates bookings whose deadline is in
+the past — both are rows the sweep will delete the instant they exist, and
+neither is a state anybody meant to configure.
+
+- [ ] **Step 2: Generate the migration and stop**
+
+Run: `cd packages/backend && bun run db:ntizo:generate`
+
+Read the generated SQL in full. Confirm it is one `ADD COLUMN` with a default
+and one `ADD CONSTRAINT`, that there is no `DROP`, and that no `$N` bind
+parameter appears anywhere — a migration file cannot carry them, and building a
+CHECK with a query-builder helper is how they get in.
+
+**Do not run any migrate command.** Migrations here are a manual act per stage.
+
+- [ ] **Step 3: Write the failing test**
+
+In the constraint test file, assert the CHECK refuses 0 and refuses -1, matching
+that file's existing style: an async helper, and an assertion naming the
+constraint rather than a bare `toThrow()`.
+
+In the command test, assert that the reader's value is what reaches the
+booking's `expiresAt` — set the fake to something that is not 15 and not 30, so
+a command that ignored the reader and kept its constant would fail.
+
+- [ ] **Step 4: The port and the command**
+
+`PlatformSettingsReaderPort` returns the number, not the whole settings row. A
+port that hands back every knob invites the next command to read a second one
+through it and quietly become a dependency on the entire table.
+
+Delete `PENDING_PAYMENT_WINDOW_MINUTES` from the command. Do not leave it as a
+fallback: a fallback means a misconfigured deployment silently books with a
+window nobody chose, and the single row it reads is created by the same
+migration that adds the column.
+
+- [ ] **Step 5: Wire the adapter in the bootstrap**
+
+The Drizzle adapter reads the single `global` row. Task 10's bootstrap composes
+it like the others.
+
+- [ ] **Step 6: Run the suites and typecheck**
+
+Run: `cd packages/backend && bun test src && bun run typecheck`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo
+git commit -m "Let an administrator set how long a slot is held unpaid
+
+The window was a constant with a comment admitting it was a guess, and
+the spec says it must be configured. The number is a business trade, not
+a developer's: too long blocks a member's calendar for an abandoned
+checkout, too short loses the slot for somebody fumbling their M-Pesa
+PIN. The default drops from 30 to 15, because M-Pesa's C2B is
+synchronous and half an hour was never the shape of that flow."
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage.** The spec's aggregate, snapshot, immutability, address-snapshot reasoning, commission-at-creation rule, `booking_change` table, the outbox events and the ports are all covered by Tasks 1–10. BR1 (published service), BR2 (slot held atomically), BR3 (commission arithmetic), BR5 (idempotent expiry) and BR8 (no booking for a quote service) each have a task and a test. **BR4, BR6 and BR7 belong to Plan 2** — snapshot immutability across a reschedule, holding before releasing, and read authorisation — and are named here so the gap is deliberate rather than forgotten.
