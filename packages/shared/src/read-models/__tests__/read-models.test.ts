@@ -17,6 +17,7 @@ import {
   providerPublicDetailReadModel,
   providerPublicReadModel,
 } from "../public";
+import { bookingReadModel } from "../system";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -442,6 +443,59 @@ describe("messagePageReadModel", () => {
       nextCursor: "2026-08-24T09:00:00.000Z|m1",
     });
     expect(parsed.nextCursor).toBe("2026-08-24T09:00:00.000Z|m1");
+  });
+});
+
+describe("bookingReadModel", () => {
+  const base = {
+    id: "b1",
+    status: "PENDING_PAYMENT" as const,
+    serviceName: "Avaria eléctrica urgente",
+    providerName: "Hélder Cossa",
+    providerSlug: "helder-cossa-electricidade",
+    optionName: "Diagnóstico e reparação",
+    durationMinutes: 60,
+    priceMinor: 120000,
+    commissionBps: 1000,
+    commissionMinor: 12000,
+    currency: "MZN",
+    startsAt: "2026-09-04T12:30:00.000Z",
+    endsAt: "2026-09-04T13:30:00.000Z",
+    addressLabel: "Casa",
+    addressLine: "Av. Julius Nyerere 812",
+    addressCity: "Maputo",
+    addressDistrict: "Sommerschield",
+    addressDirections: null,
+    description: null,
+    expiresAt: "2026-09-01T10:15:00.000Z",
+    createdAt: "2026-09-01T10:00:00.000Z",
+  };
+
+  it("accepts a booking awaiting payment", () => {
+    expect(() => bookingReadModel.parse(base)).not.toThrow();
+  });
+
+  it("rejects a status outside the machine", () => {
+    expect(() => bookingReadModel.parse({ ...base, status: "PAID" })).toThrow();
+  });
+
+  it("rejects a negative price", () => {
+    // Money is minor units and never negative. A refund is a payment's fact,
+    // not a booking with a negative price.
+    expect(() => bookingReadModel.parse({ ...base, priceMinor: -1 })).toThrow();
+  });
+
+  it("rejects a commission outside 0..10000 basis points", () => {
+    expect(() => bookingReadModel.parse({ ...base, commissionBps: 10001 })).toThrow();
+  });
+
+  it("allows expiresAt to be null once the booking is no longer waiting to be paid", () => {
+    const parsed = bookingReadModel.parse({
+      ...base,
+      status: "AWAITING_PROVIDER",
+      expiresAt: null,
+    });
+    expect(parsed.expiresAt).toBeNull();
   });
 });
 
