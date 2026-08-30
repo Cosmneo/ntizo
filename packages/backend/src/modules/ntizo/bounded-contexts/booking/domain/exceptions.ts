@@ -1,4 +1,4 @@
-import { ConflictError, UnprocessableError } from "@cosmneo/onion-lasagna";
+import { ConflictError, NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
 
 /**
  * The booking context's refusals.
@@ -212,5 +212,85 @@ export class SlotAlreadyTakenError extends ConflictError {
       code: "SLOT_ALREADY_TAKEN",
     });
     this.name = "SlotAlreadyTakenError";
+  }
+}
+
+/**
+ * Refused because the service option a customer tried to book does not
+ * exist.
+ *
+ * Task 8's `CreateBookingCommand` checks this first, ahead of every other
+ * refusal it can raise: there is no provider to read, no price to snapshot,
+ * and no pricing rule to check anything else against until an option is
+ * found. A stale link — a page bookmarked before the option was deleted —
+ * is exactly what reaches this path.
+ */
+export class ServiceOptionNotFoundError extends NotFoundError {
+  constructor(public readonly serviceOptionId: string) {
+    super({
+      message: `No service option was found with id "${serviceOptionId}"`,
+      code: "SERVICE_OPTION_NOT_FOUND",
+    });
+    this.name = "ServiceOptionNotFoundError";
+  }
+}
+
+/**
+ * Refused because the provider a service option belongs to does not exist.
+ *
+ * Checked last among Task 8's refusals, once every fact the option itself
+ * carries has already checked out. `ProviderSnapshotReaderPort.findForBooking`
+ * returns null only for this case — a provider row missing beneath a service
+ * option that still references it — distinct from a real provider with a
+ * zero commission rate, which is a normal, allowed snapshot.
+ */
+export class ProviderNotFoundError extends NotFoundError {
+  constructor(public readonly providerId: string) {
+    super({
+      message: `No provider was found with id "${providerId}"`,
+      code: "PROVIDER_NOT_FOUND",
+    });
+    this.name = "ProviderNotFoundError";
+  }
+}
+
+/**
+ * Refused because the thing a customer is looking at cannot be bought the way
+ * they are trying to buy it — for one of four reasons, each needing different
+ * words on the page that sent them here:
+ *
+ * - `"quote"` — the service is quote-based (`booking_mode = "quote"`); there
+ *   is no price to snapshot until a provider has seen the job.
+ * - `"not_published"` — the service exists but is not currently published.
+ * - `"option_retired"` — the service is fine, but this particular option has
+ *   since been deactivated by its provider.
+ * - `"hourly"` — the option prices by the hour. `Booking.create` needs a
+ *   `durationMinutes`, and an hourly option has none by construction: the
+ *   customer picks a length within a minimum and a step, and the price
+ *   follows from that choice — a second pricing rule, with its own rounding,
+ *   that no task in this plan implements. This is a boundary of what has
+ *   been built, not a judgement on the provider or the option, and the
+ *   message says so rather than implying a fault.
+ *
+ * One class, not four, because to a frontend branching on `.code` these are
+ * one fact — "you cannot buy this" — with four different reasons to display,
+ * not four different facts.
+ */
+export type ServiceNotBookableReason = "quote" | "not_published" | "option_retired" | "hourly";
+
+const SERVICE_NOT_BOOKABLE_MESSAGES: Record<ServiceNotBookableReason, string> = {
+  quote: "This service needs a quote before it can be booked — there is no fixed price yet",
+  not_published: "This service is not currently available to book",
+  option_retired: "This option is no longer offered",
+  hourly: "Booking by the hour is not supported yet",
+};
+
+export class ServiceNotBookableError extends UnprocessableError {
+  constructor(public readonly reason: ServiceNotBookableReason) {
+    super({
+      message: SERVICE_NOT_BOOKABLE_MESSAGES[reason],
+      code: "SERVICE_NOT_BOOKABLE",
+    });
+    this.name = "ServiceNotBookableError";
   }
 }
