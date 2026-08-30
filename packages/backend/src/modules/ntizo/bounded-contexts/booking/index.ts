@@ -4,6 +4,8 @@ export { CreateBookingCommand } from "./app/use-cases/create-booking.command";
 export type { CreateBookingInput } from "./app/use-cases/create-booking.command";
 export { ExpireBookingCommand } from "./app/use-cases/expire-booking.command";
 export type { ExpireBookingInput } from "./app/use-cases/expire-booking.command";
+export { ExpireDueBookingsInternalCommand } from "./app/use-cases/expire-due-bookings.internal.command";
+export type { ExpireDueBookingsInternalInput } from "./app/use-cases/expire-due-bookings.internal.command";
 export { MarkBookingPaidCommand } from "./app/use-cases/mark-booking-paid.command";
 export type { MarkBookingPaidInput } from "./app/use-cases/mark-booking-paid.command";
 export type {

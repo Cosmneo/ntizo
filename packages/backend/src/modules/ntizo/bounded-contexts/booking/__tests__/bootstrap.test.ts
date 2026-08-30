@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { bootstrapBooking } from "../bootstrap";
 import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { ExpireBookingCommand } from "../app/use-cases/expire-booking.command";
+import { ExpireDueBookingsInternalCommand } from "../app/use-cases/expire-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
 import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
@@ -15,11 +16,12 @@ import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-dela
  * nothing ever constructs, and that is exactly how eight GraphQL handlers
  * shipped mounted-nowhere in an earlier phase of this project.
  *
- * `markBookingPaid` and `expireBooking` have no caller anywhere in this task
- * — Payment's event handler and Task 12's sweep reach for them later. A
- * bootstrap that silently dropped either would leave both with nothing to
- * call, and nothing today would notice: their own command tests construct
- * the class directly and never go through `bootstrapBooking()`.
+ * `markBookingPaid` has no caller anywhere in this task — Payment's event
+ * handler reaches for it later. `expireBooking` now does have a caller,
+ * `useCases.internal.expireDue` (Task 12's sweep), asserted separately
+ * below. A bootstrap that silently dropped either would leave it with
+ * nothing to call, and nothing today would notice: their own command tests
+ * construct the class directly and never go through `bootstrapBooking()`.
  *
  * Note on count: `task-10-brief.md` and `task-10-decisions.md` both call for
  * asserting "all four" use cases. Only three command classes exist under
@@ -35,6 +37,12 @@ describe("bootstrapBooking", () => {
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
     expect(useCases.expireBooking).toBeInstanceOf(ExpireBookingCommand);
     expect(useCases.markBookingPaid).toBeInstanceOf(MarkBookingPaidCommand);
+  });
+
+  it("wires the expiry sweep Task 12's cron calls, over the same expireBooking instance", () => {
+    const { useCases } = bootstrapBooking();
+
+    expect(useCases.internal.expireDue).toBeInstanceOf(ExpireDueBookingsInternalCommand);
   });
 
   it("builds the two real readers and the two no-op adapters — the whole point of this task", () => {

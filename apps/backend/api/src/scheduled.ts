@@ -3,6 +3,7 @@ import { closeDbBehindDeferredWork } from "@ntizo/backend/shared/infra/database"
 import type { Stage } from "@ntizo/backend/shared/infra/config";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
+import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
 import { AttachmentStorageAdapter } from "./attachment-storage.adapter";
 import type { AppBindings } from "./types";
 
@@ -15,6 +16,21 @@ import type { AppBindings } from "./types";
  * backlog, not a throttle a normal run is expected to hit.
  */
 export const SWEEP_LIMIT = 200;
+
+/**
+ * How many due bookings one expiry sweep may claim.
+ *
+ * The cron runs every minute (see `wrangler.jsonc`) against a 30-minute
+ * `PENDING_PAYMENT` window (`PENDING_PAYMENT_WINDOW_MINUTES` in
+ * `create-booking.command.ts`), so under any plausible load whatever went
+ * stale in the last minute is a small fraction of this ceiling, and one wave
+ * clears it before the next wave starts. This is a generous ceiling against
+ * a runaway backlog, not a throttle a normal run is expected to hit — kept
+ * as its own constant, not a reuse of `SWEEP_LIMIT` above, because the two
+ * sweeps are budgeting against different windows on different tables and
+ * have no reason to share a number just because it currently matches.
+ */
+export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
 
 /**
  * The worker that wakes up to check for unread messages.
@@ -47,6 +63,18 @@ export const SWEEP_LIMIT = 200;
  * `closeDbBehindDeferredWork` with `configMiddleware` rather than
  * hand-copying that chain a second time — see that function's own doc
  * comment for the full argument.
+ *
+ * **Task 12 adds a second sweep in this same scope, not a second one of its
+ * own.** A booking's `PENDING_PAYMENT` deadline is the same shape of
+ * question against the same clock as a message's `notifyDueAt`, and this
+ * function already builds the one context a cron invocation needs — a
+ * second `infraStore.runAsync` would mean a second `{ max: 1 }` connection
+ * and a second close racing this one. Unlike the notification sweep,
+ * `ExpireDueBookingsInternalCommand` defers nothing past its own `await`:
+ * each booking's transaction commits and its outbox dispatch runs
+ * synchronously inside `ExpireBookingCommand.execute`, so it needs nothing
+ * from `infraStore.waitUntil` — it only needs the DB context this scope
+ * already set up.
  */
 export async function scheduled(
   controller: ScheduledController,
@@ -100,6 +128,19 @@ export async function scheduled(
           // reason notify-unread.internal.command.ts does this itself.
           console.error(
             `[scheduled] notify-unread sweep: ${notified} notified, ${failed} failed`,
+          );
+        }
+
+        const booking = bootstrapBooking();
+        const { expired, failed: bookingFailed } = await booking.useCases.internal.expireDue.execute({
+          limit: BOOKING_EXPIRY_SWEEP_LIMIT,
+        });
+
+        if (bookingFailed > 0) {
+          // Same reasoning as the notify-unread log above: no request scope
+          // exists for getRequestScopedLogger() to read.
+          console.error(
+            `[scheduled] booking-expiry sweep: ${expired} expired, ${bookingFailed} failed`,
           );
         }
       } finally {
