@@ -1,12 +1,24 @@
-import { BookingStatus } from "../../../../shared/infrastructure/database/booking/enums";
+import {
+  BookingStatus,
+  SLOT_HOLDING_STATUSES,
+} from "../../../../shared/infrastructure/database/booking/enums";
 import {
   BookingDateInvalidError,
   BookingDurationInvalidError,
   BookingFieldBlankError,
   BookingPriceInvalidError,
+  BookingSnapshotInconsistentError,
   BookingTransitionError,
   CommissionOutOfRangeError,
 } from "../exceptions";
+
+/**
+ * `SLOT_HOLDING_STATUSES` is a tuple of literal strings, narrower than the
+ * full `BookingStatus` union its members belong to — so `.includes` needs
+ * the widened type to accept an arbitrary `BookingStatus` as its argument
+ * rather than only the four literals the tuple was built from.
+ */
+const SLOT_HOLDING_STATUS_SET: readonly BookingStatus[] = SLOT_HOLDING_STATUSES;
 
 /** A commission rate is basis points: 0 is free, 10000 is the whole price. */
 const COMMISSION_BPS_MAX = 10_000;
@@ -254,6 +266,95 @@ export class Booking {
     });
   }
 
+  /**
+   * A booking as the repository reconstitutes it from a stored row.
+   *
+   * This is Task 7's reconstitution seam, not test scaffolding: `findById`
+   * and `findDueForExpiry` both need to turn a row into an aggregate, and
+   * this is the only place that does it.
+   *
+   * It re-runs every guard `create` runs — the blank-string checks, the
+   * valid-date checks, the numeric checks — rather than trusting the row.
+   * The row may have been written by an earlier version of this code, or
+   * edited by hand; a reconstitution that skips validation launders
+   * whatever is wrong with it into an aggregate that looks fine.
+   *
+   * Unlike `create`, it does not *derive* `endsAt` or `commissionMinor` —
+   * those arrive as whatever the row says they are, because recomputing
+   * them here would silently rewrite a stored snapshot, which is the one
+   * thing this aggregate exists to prevent. It does check that both still
+   * agree with the facts they were derived from, and refuses the row if
+   * they don't: a stored commission that disagrees with its own price and
+   * rate is a corrupt row, and finding that out here beats finding it out
+   * in an accounting reconciliation.
+   */
+  static restore(props: BookingProps): Booking {
+    Booking.requireNonBlank(props.customerId, "customerId");
+    Booking.requireNonBlank(props.providerId, "providerId");
+    Booking.requireNonBlank(props.serviceId, "serviceId");
+    Booking.requireNonBlank(props.serviceOptionId, "serviceOptionId");
+    Booking.requireNonBlank(props.providerMemberId, "providerMemberId");
+    Booking.requireNonBlank(props.currency, "currency");
+    Booking.requireNonBlank(props.serviceName, "serviceName");
+    Booking.requireNonBlank(props.providerName, "providerName");
+    Booking.requireNonBlank(props.providerSlug, "providerSlug");
+    Booking.requireNonBlank(props.optionName, "optionName");
+    Booking.requireNonBlank(props.addressLabel, "addressLabel");
+    Booking.requireNonBlank(props.addressLine, "addressLine");
+    Booking.requireNonBlank(props.addressCity, "addressCity");
+
+    if (props.addressDistrict != null) {
+      Booking.requireNonBlank(props.addressDistrict, "addressDistrict");
+    }
+    if (props.addressDirections != null) {
+      Booking.requireNonBlank(props.addressDirections, "addressDirections");
+    }
+
+    Booking.requireValidDate(props.startsAt, "startsAt");
+    Booking.requireValidDate(props.endsAt, "endsAt");
+    if (props.expiresAt != null) {
+      Booking.requireValidDate(props.expiresAt, "expiresAt");
+    }
+
+    if (!Number.isInteger(props.durationMinutes) || props.durationMinutes <= 0) {
+      throw new BookingDurationInvalidError(props.durationMinutes);
+    }
+
+    if (!Number.isInteger(props.priceMinor) || props.priceMinor < 0) {
+      throw new BookingPriceInvalidError(props.priceMinor);
+    }
+
+    if (
+      !Number.isInteger(props.commissionBps) ||
+      props.commissionBps < 0 ||
+      props.commissionBps > COMMISSION_BPS_MAX
+    ) {
+      throw new CommissionOutOfRangeError(props.commissionBps);
+    }
+
+    const expectedEndsAt = new Date(props.startsAt.getTime() + props.durationMinutes * 60_000);
+    if (props.endsAt.getTime() !== expectedEndsAt.getTime()) {
+      throw new BookingSnapshotInconsistentError(
+        "endsAt",
+        props.endsAt.toISOString(),
+        expectedEndsAt.toISOString(),
+      );
+    }
+
+    const expectedCommissionMinor = Math.round(
+      (props.priceMinor * props.commissionBps) / COMMISSION_BPS_MAX,
+    );
+    if (props.commissionMinor !== expectedCommissionMinor) {
+      throw new BookingSnapshotInconsistentError(
+        "commissionMinor",
+        props.commissionMinor,
+        expectedCommissionMinor,
+      );
+    }
+
+    return new Booking({ ...props });
+  }
+
   get id(): string | null {
     return this.props.id;
   }
@@ -379,33 +480,51 @@ export class Booking {
   /**
    * A payment lands on the slot this booking is holding.
    *
-   * Idempotent from `AWAITING_PROVIDER`: a payment webhook that arrives
-   * twice must not move the booking twice, and the command layer's own
-   * guard against a duplicate delivery is not the last place that can be
-   * got wrong — this is, so it holds the line itself rather than trusting
-   * the caller to have checked first. Refused from anywhere else, because
-   * the only other place `create` can leave a booking short of paid is
-   * `EXPIRED` — and money arriving for a slot that was already released
-   * back to the calendar is not a race to shrug off the way a stray timer
-   * is. It is a fact, a card charged for a slot nobody is holding anymore,
-   * that a person has to see, not a status this method can quietly absorb.
+   * `PENDING_PAYMENT` is the only status this actually moves. Every other
+   * status splits along one question, the same one `SLOT_HOLDING_STATUSES`
+   * exists to answer: does the booking still hold its slot?
+   *
+   * A booking that still holds it — `AWAITING_PROVIDER`, `CONFIRMED`,
+   * `MARKED_DONE` — can only have reached that status by having already
+   * been paid once, so a second call here is never a new event. Carrying
+   * the *same* reference, it's the same payment webhook delivered twice —
+   * absorbed silently, same as before. Carrying a *different* reference,
+   * it's a second, genuinely distinct transaction against a booking that
+   * was already paid for — not a race to shrug off, but a fact somebody has
+   * to see (most likely a refund owed on one of the two), so it throws with
+   * both references named.
+   *
+   * A booking that no longer holds its slot has released it — `EXPIRED`
+   * because nobody paid before the deadline, `DECLINED` or `CANCELLED`
+   * because it was called off after being paid, `COMPLETED` or `DISPUTED`
+   * because the work is behind it. Money arriving there is refused outright,
+   * regardless of the reference: a card charged for a slot nobody is
+   * holding anymore is a fact somebody has to see, and no comparison of
+   * references makes it any less one.
    */
   markPaid(paymentRef: string, at: Date): Booking {
-    if (this.props.status === BookingStatus.AwaitingProvider) {
-      return this;
+    if (this.props.status === BookingStatus.PendingPayment) {
+      return new Booking({
+        ...this.props,
+        status: BookingStatus.AwaitingProvider,
+        paidAt: at,
+        paymentRef,
+        expiresAt: null,
+      });
     }
 
-    if (this.props.status !== BookingStatus.PendingPayment) {
-      throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
+    if (SLOT_HOLDING_STATUS_SET.includes(this.props.status)) {
+      if (this.props.paymentRef === paymentRef) {
+        return this;
+      }
+      // `this.props.paymentRef` is never actually null here — every
+      // slot-holding status past PENDING_PAYMENT is only reachable by
+      // having been paid — but the props type can't say that, so the
+      // fallback exists for the type checker, not for a real booking.
+      throw new BookingTransitionError(this.props.paymentRef ?? "(no reference on file)", paymentRef);
     }
 
-    return new Booking({
-      ...this.props,
-      status: BookingStatus.AwaitingProvider,
-      paidAt: at,
-      paymentRef,
-      expiresAt: null,
-    });
+    throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
   }
 
   /**

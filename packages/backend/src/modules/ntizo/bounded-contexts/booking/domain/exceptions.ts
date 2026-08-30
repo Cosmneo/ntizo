@@ -122,6 +122,35 @@ export class BookingTransitionError extends UnprocessableError {
 }
 
 /**
+ * Refused because a row being reconstituted disagrees with itself: a stored
+ * `endsAt` that isn't `startsAt` plus `durationMinutes`, or a stored
+ * `commissionMinor` that isn't the rounded product of `priceMinor` and
+ * `commissionBps`.
+ *
+ * `create` can never produce this — it derives both fields itself, every
+ * time, from the facts they depend on. `restore` is the only path that can
+ * reach it, because a stored row is a fact somebody else wrote: an earlier
+ * version of this code, a manual edit, a bad migration. Those two derived
+ * fields are exactly what a customer's receipt and a provider's payout are
+ * computed from, so a mismatch surfacing here — at read time — is cheap
+ * compared to the same mismatch surfacing later, as a booking whose payout
+ * doesn't reconcile with its price.
+ */
+export class BookingSnapshotInconsistentError extends UnprocessableError {
+  constructor(
+    public readonly field: string,
+    public readonly stored: unknown,
+    public readonly expected: unknown,
+  ) {
+    super({
+      message: `A booking's stored "${field}" is ${String(stored)}, but its other fields say it should be ${String(expected)}`,
+      code: "BOOKING_SNAPSHOT_INCONSISTENT",
+    });
+    this.name = "BookingSnapshotInconsistentError";
+  }
+}
+
+/**
  * Refused because another booking already holds this member's calendar at
  * this instant.
  *
