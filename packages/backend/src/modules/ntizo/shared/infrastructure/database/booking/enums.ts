@@ -10,11 +10,10 @@
  * waiting for a dispute; it is waiting for the absence of one, and a name
  * that promises the opposite is a name the next reader has to unlearn.
  *
- * @see booking_member_slot_active_uq — a partial unique index whose SQL
- * predicate lists the four statuses that still hold a slot: `PENDING_PAYMENT`,
- * `AWAITING_PROVIDER`, `CONFIRMED`, and `MARKED_DONE`. Adding a status that
- * holds a slot means changing that index's predicate too; SQL cannot read
- * TypeScript, so the two lists can drift silently if not guarded.
+ * @see SLOT_HOLDING_STATUSES — the four statuses that still occupy a member's
+ * time. The partial unique index `booking_member_slot_active_uq` is built
+ * from this list in Task 2; adding a slot-holding status here without adding
+ * it there silently stops preventing double-bookings.
  */
 export const BookingStatus = {
   /** Created, slot held, waiting for the customer to pay. */
@@ -40,3 +39,23 @@ export const BookingStatus = {
 export type BookingStatus = (typeof BookingStatus)[keyof typeof BookingStatus];
 
 export const BOOKING_STATUSES = Object.values(BookingStatus);
+
+/**
+ * The statuses in which a booking still occupies its member's time.
+ *
+ * These are the states that hold a slot — `pending_payment`, `awaiting_provider`,
+ * `confirmed`, and `marked_done`. A new status added here without thought will
+ * start blocking slots; a new status added without changing this will silently
+ * stop blocking them. The partial unique index `booking_member_slot_active_uq`
+ * is built from this list rather than a SQL string of its own, so both lists
+ * become one list and stay in sync.
+ *
+ * Task 2 of the booking core plan builds the index predicate from this constant
+ * with Drizzle's `inArray`.
+ */
+export const SLOT_HOLDING_STATUSES = [
+  BookingStatus.PendingPayment,
+  BookingStatus.AwaitingProvider,
+  BookingStatus.Confirmed,
+  BookingStatus.MarkedDone,
+] as const;

@@ -17,14 +17,6 @@ export const BOOKING_PATHS = [
 export const bookingPathSchema = z.enum(BOOKING_PATHS);
 export type BookingPath = (typeof BOOKING_PATHS)[number];
 
-export type BookingStatus =
-  | "pending"
-  | "confirmed"
-  | "in_progress"
-  | "completed"
-  | "cancelled"
-  | "disputed";
-
 /**
  * Where the work happens.
  *
