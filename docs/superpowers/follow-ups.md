@@ -2249,3 +2249,51 @@ locale bug is suspected.
 the deleted `PackageChooser`, and now a full-width body control rather than a rail detail. Every
 radio is individually tabbable and `aria-checked` is correct, so it is operable, just not
 APG-conformant. **Trigger:** pair it with #90, the `Dialog` primitive's missing focus trap.
+
+## #92 — The backend's hexagonal layering is enforced by nobody
+
+`eslint-plugin-boundaries` is configured only in `apps/frontend/web/eslint.config.js`.
+`packages/backend/eslint.config.js` extends `packages/tooling/eslint-config/base.js`, and neither
+carries a `boundaries` or `no-restricted-imports` rule. So the rule that `domain/` imports nothing
+from `app/` or `infrastructure/` — the architectural premise of every bounded context here — holds
+only because people keep remembering it. This was believed otherwise for a long time: six
+subagent dispatches during the Booking work asserted the rule was enforced, and an implementer
+checking with `eslint --debug` is what settled it.
+
+Turning it on is not a config edit. The domain already imports `BookingStatus` from
+`shared/infrastructure/database/booking/enums.ts` — a path with `infrastructure` in it — and
+Review's and Communication's aggregates do the identical thing, so the rule would light up existing
+code in several contexts on the first run. The work is deciding whether those imports are the
+violation or the enum's location is, then moving one or the other.
+
+**Trigger:** the next time a layering violation is found in review, or before a new bounded context
+is started — a rule that would have caught it is cheaper than another reviewer reading import lists
+by hand.
+
+## #93 — Nothing sets how long an unpaid booking holds its slot
+
+`CreateBookingCommand` carries `PENDING_PAYMENT_WINDOW_MINUTES = 30` as a named, commented
+stand-in. The booking spec deliberately does not set the window and says it must be a configured
+value; it also warns that the 30 minutes its own mockup shows is wrong for M-Pesa, whose C2B flow
+is synchronous — the customer approves on the handset in a minute or two, not half an hour.
+
+The number is a product decision with a real cost on each side: too long and an abandoned checkout
+blocks a member's calendar for half an hour; too short and a customer who fumbles the PIN loses the
+slot they were paying for. It belongs in `platform_settings` beside `default_commission_bps`, not
+in a constant.
+
+**Trigger:** before the first real M-Pesa payment runs end to end, or the first time a provider asks
+why a slot showed as taken with no booking behind it.
+
+## #94 — This plan books fixed-price options only
+
+`CreateBookingCommand` refuses an `hourly` option with `ServiceNotBookableError("hourly")`.
+`Booking.create` needs a `durationMinutes` and an hourly option has none by construction: the
+customer picks a length within a minimum and a step, and the price follows from that choice. That
+is a second pricing rule with its own arithmetic and rounding, and no task in the booking-core plan
+contains a line of it.
+
+The MVP scope names hourly as booking path B, so this is a missing feature rather than a deliberate
+product boundary. The refusal message says so and does not imply the provider did anything wrong.
+
+**Trigger:** the first provider who publishes an hourly service and finds nobody can book it.
