@@ -712,6 +712,8 @@ This test hits the real database, in the same directory and style as Task 2's.
 
 Cover: a booking round-trips through `insert` then `findById` with every snapshot field intact; a second insert on the same `(member, startsAt)` while the first is `PENDING_PAYMENT` raises `SlotAlreadyTakenError`; and the same insert succeeds once the first booking is `EXPIRED`, which is the partial index earning its keep.
 
+**And one more, which is not about this repository so much as about the claim Task 8 makes on its behalf.** Insert a booking inside a real `atomicExecute` against the live database, then throw from inside that block, and assert the row is not there afterwards. Task 8's test suite proves its commands *call* the unit of work in an order compatible with rollback — its own comment says so, and points here for the rest. Nothing in this codebase currently proves Postgres rolls anything back: the existing `drizzle-unit-of-work.test.ts` uses a fake context and no live connection. Until this test exists, the atomicity that BR2 rests on is asserted by two fakes agreeing with each other.
+
 - [ ] **Step 2: Run to verify it fails**
 - [ ] **Step 3: Implement the repository**
 - [ ] **Step 4: Run the tests**
