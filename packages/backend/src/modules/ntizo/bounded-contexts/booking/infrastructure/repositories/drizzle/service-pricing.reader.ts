@@ -107,9 +107,19 @@ export class DrizzleServicePricingReader implements ServicePricingReaderPort {
       // service that is not published), not this reader's.
       serviceName: row.serviceNameRequested ?? row.serviceNameSource ?? "",
       optionName: row.optionNameRequested ?? row.optionNameSource ?? "",
-      // Kept honest by CHECK constraints on the columns they came from
-      // (`service_option_mode_fields` for `pricingMode`); this cast names
-      // that fact rather than re-validating it.
+      // Three `text` columns widened into unions. Only `pricingMode` has any
+      // constraint behind it (`service_option_mode_fields`, and even that
+      // constrains the mode's *companion* columns rather than its own value);
+      // `service.status` and `service.booking_mode` carry no CHECK at all,
+      // unlike `booking.status` or `review.status`. So these casts assert
+      // something the database does not currently enforce.
+      //
+      // Safe anyway, because of how the values are used rather than how they
+      // are typed: `CreateBookingCommand` compares them by equality against a
+      // known-good value — `!== "priced"`, `!== "published"` — so any string
+      // nobody expected refuses the booking rather than being mistaken for a
+      // valid one. It fails closed. A union member added here without a
+      // matching branch there would too.
       bookingMode: row.bookingMode as ServiceOptionPricing["bookingMode"],
       serviceStatus: row.serviceStatus as ServiceOptionPricing["serviceStatus"],
       optionIsActive: row.optionIsActive,
