@@ -273,13 +273,24 @@ describe("booking_member_slot_active_uq", () => {
 
 describe("booking_change", () => {
   test("cannot exist without its booking", async () => {
-    await expect(
-      db.insert(bookingChange).values({
+    // Wrapped in an async helper rather than handed to `expect` directly. A
+    // Drizzle query builder is a thenable, not a Promise, and bun's `.rejects`
+    // will not run one — it reports the builder itself as the received value
+    // and fails whether or not the database would have refused the row. Every
+    // other rejection test in this file goes through `insertBooking`, which is
+    // async, which is why this was the only one that could not pass.
+    const insertOrphanChange = async () =>
+      await db.insert(bookingChange).values({
         bookingId: crypto.randomUUID(),
         changedByUserId: ownerUserId,
         reason: "orphan change — no booking to attach to",
-      }),
-    ).rejects.toThrow();
+      });
+
+    // Named, like every other rejection assertion here: a bare `toThrow()`
+    // passes for any reason the insert fails, including a typo in the row.
+    await expect(insertOrphanChange()).rejects.toThrow(
+      /booking_change_booking_id_booking_id_fk/,
+    );
   });
 
   test("deleting the booking cascades to its change log", async () => {
