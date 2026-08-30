@@ -6,6 +6,18 @@ import type { PlatformSettingsReaderPort } from "../../../app/ports/outbound/pla
 /**
  * The single `global` row's `payment_window_minutes`, with no fallback.
  *
+ * The row is guaranteed to exist for any database that has run migration
+ * `0026_lame_wendell_vaughn.sql`: alongside the column and its CHECK, that
+ * migration inserts the `global` row (`ON CONFLICT ("id") DO NOTHING`, so it
+ * never overwrites values an administrator already set — dev already had a
+ * hand-written row with a non-default commission rate before this task, and
+ * that had to survive). Before this task, nothing did: `CREATE TABLE` in
+ * migration `0010` set only column-level defaults for future inserts, not a
+ * row of its own, so `platform_settings` could be empty on a fresh QA or
+ * prod database. That gap for tables before `0026` — and for any future
+ * singleton-row table nobody thinks to seed — is filed as its own follow-up,
+ * not fixed here.
+ *
  * Provider's sibling adapter (`DrizzlePlatformSettingsAdapter`) falls back to
  * a hardcoded number when the row is missing, reasoning that a platform on
  * its first deploy shouldn't be unable to create a workspace. That reasoning
@@ -13,7 +25,8 @@ import type { PlatformSettingsReaderPort } from "../../../app/ports/outbound/pla
  * window nobody chose, which is exactly the failure `CreateBookingCommand`
  * was told not to reintroduce (see its own history — this port replaced a
  * hardcoded constant for that reason). Throwing turns a missing settings row
- * into a loud failure an operator can fix, instead of a wrong number nobody
+ * into a loud failure an operator can fix — one migration `0026` means
+ * should not be reachable going forward — instead of a wrong number nobody
  * notices until a customer disputes how long their slot was actually held.
  */
 export class DrizzlePlatformSettingsReader implements PlatformSettingsReaderPort {
