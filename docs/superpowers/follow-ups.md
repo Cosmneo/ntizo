@@ -2304,3 +2304,26 @@ The MVP scope names hourly as booking path B, so this is a missing feature rathe
 product boundary. The refusal message says so and does not imply the provider did anything wrong.
 
 **Trigger:** the first provider who publishes an hourly service and finds nobody can book it.
+
+## #95 — The database integration suite is not safe to run concurrently with itself
+
+During the Booking work, a reviewer running `bun test src/modules/ntizo/shared/infrastructure/database/__tests__`
+while another session ran the same suite saw the whole thing take **931 seconds** with one failure: the
+booking rollback test hit bun's 45-second timeout, and a `CONNECTION_CLOSED` surfaced roughly fifteen
+minutes later on a different connection. Run alone, the same suite is 70/70 in 29 seconds and the same
+file is 7/7 in 5 seconds — verified twice.
+
+Nothing was wrong with the code. The suite opens per-file connections against a shared Neon `dev`
+database that several worktrees and sessions use at once, and a test holding a real transaction open
+while connections are contested is enough to stall the rest.
+
+This matters beyond one slow run: **a contended run produces a red test that looks exactly like a
+broken one.** A reviewer who had not re-run it in isolation would have reported working code as
+failing, and somebody would have spent an afternoon on it. This session has now hit that shape of
+false signal twice — the other was CI's exhausted Actions quota reading as broken code.
+
+Worth doing: a per-run advisory lock or a serialised project for the DB-integration files, or moving
+them to an ephemeral Postgres (a throwaway Docker instance already proved out during this plan, in
+Task 2's `inArray` investigation).
+
+**Trigger:** the next time a database test fails and the failure does not reproduce in isolation.
