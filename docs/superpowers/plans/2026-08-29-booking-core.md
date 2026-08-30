@@ -905,16 +905,22 @@ half of why a review cannot yet name the service it is about."
 ### Task 12: Make expiry actually happen
 
 **Files:**
-- Modify: `.../booking/app/ports/outbound/booking.repository.port.ts`
-- Modify: `.../booking/infrastructure/repositories/drizzle/booking.repository.ts`
 - Modify: `.../booking/bootstrap/index.ts`
 - Modify: `apps/backend/api/src/scheduled.ts`
 - Test: `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/booking-expiry-sweep.test.ts`
 
 **Interfaces:**
-- Consumes: `ExpireBookingCommand` (Task 9), `bootstrapBooking()` (Task 10).
-- Produces: `findDueForExpiry(now, limit)` on the repository port, and a booking
-  sweep inside the existing `scheduled` handler.
+- Consumes: `ExpireBookingCommand` (Task 9), `bootstrapBooking()` (Task 10),
+  `findDueForExpiry(now, limit)` (Task 7).
+- Produces: a booking sweep inside the existing `scheduled` handler.
+
+**`findDueForExpiry` is not yours to write — Task 7 already did.** This plan
+originally declared it on the port in Task 6 and left its implementation here,
+which cannot work: a class must satisfy every member of the interface it
+implements, so Task 7's repository failed to typecheck until it had one. Task 7
+implemented it against the specification this task used to carry, and its
+integration test covers the cases that matter — a paid booking past its deadline
+is not returned, and the oldest are returned first. Your job is the caller.
 
 **Why this task exists at all.** Task 9 writes `ExpireBookingCommand` and Task 10
 wires it, but in this plan nothing ever calls it. A customer who opens the
