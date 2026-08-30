@@ -1013,6 +1013,7 @@ bookings past expires_at."
 - Create: `.../booking/app/ports/outbound/platform-settings.reader.port.ts`
 - Modify: `.../booking/app/use-cases/create-booking.command.ts`
 - Modify: `.../booking/__tests__/create-booking.command.test.ts`
+- Modify: `apps/backend/api/src/scheduled.ts` (the comment only — see below)
 - Test: `.../shared/infrastructure/database/__tests__/booking-constraints.test.ts` (extend)
 
 **Interfaces:**
@@ -1096,6 +1097,16 @@ Delete `PENDING_PAYMENT_WINDOW_MINUTES` from the command. Do not leave it as a
 fallback: a fallback means a misconfigured deployment silently books with a
 window nobody chose, and the single row it reads is created by the same
 migration that adds the column.
+
+**Then fix the comment that cites it.** `BOOKING_EXPIRY_SWEEP_LIMIT` in
+`apps/backend/api/src/scheduled.ts` justifies its ceiling as a relationship
+between the one-minute cron and the payment window, naming both "30 minutes" and
+`PENDING_PAYMENT_WINDOW_MINUTES in create-booking.command.ts`. After this task
+the number is wrong and the symbol does not exist. The ceiling's *conclusion*
+survives — a shorter window means a smaller possible backlog, so 200 is more
+generous than before, not less — but the argument has to point at the setting
+instead of at a deleted constant. A comment citing a symbol that no longer
+exists is how a reader learns to stop trusting the comments.
 
 - [ ] **Step 5: Wire the adapter in the bootstrap**
 
