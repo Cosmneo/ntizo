@@ -900,11 +900,85 @@ half of why a review cannot yet name the service it is about."
 
 ---
 
+### Task 12: Make expiry actually happen
+
+**Files:**
+- Modify: `.../booking/app/ports/outbound/booking.repository.port.ts`
+- Modify: `.../booking/infrastructure/repositories/drizzle/booking.repository.ts`
+- Modify: `.../booking/bootstrap/index.ts`
+- Modify: `apps/backend/api/src/scheduled.ts`
+- Test: `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/booking-expiry-sweep.test.ts`
+
+**Interfaces:**
+- Consumes: `ExpireBookingCommand` (Task 9), `bootstrapBooking()` (Task 10).
+- Produces: `findDueForExpiry(now, limit)` on the repository port, and a booking
+  sweep inside the existing `scheduled` handler.
+
+**Why this task exists at all.** Task 9 writes `ExpireBookingCommand` and Task 10
+wires it, but in this plan nothing ever calls it. A customer who opens the
+payment page and walks away leaves a booking in `PENDING_PAYMENT` for ever,
+and the partial unique index does exactly what it was built to do: holds that
+member's slot against every other customer, permanently. The command without a
+caller is not a smaller feature — it is a slot leak.
+
+The plan's own self-review named this gap and offered a cron sweep as the
+stand-in. It is the right stand-in and not a compromise: `apps/backend/api/src/scheduled.ts`
+already runs every minute in `dev`, `qa` and `prod`, and already sweeps
+Communication for messages past `notify_due_at`. A booking past `expires_at` is
+the same shape of question against the same clock. A Cloudflare Queue would add
+a deployment surface to do what one more query on an existing wake-up does.
+
+Read `apps/backend/api/src/scheduled.ts` in full before touching it, especially
+its doc comment about `infraStore.runAsync` — a `scheduled` invocation has no
+request for `configMiddleware` to wrap, so the context is built by hand and
+anything reading it outside that scope throws. Your sweep goes inside the
+existing scope, beside the notification sweep, not in a second one.
+
+- [ ] **Step 1: Write the failing test**
+
+Against the real database, in the same style as Task 7's:
+
+- a `PENDING_PAYMENT` booking whose `expires_at` is in the past is returned by
+  `findDueForExpiry(now, limit)`;
+- one whose `expires_at` is in the future is not;
+- one already `PAID`/`AWAITING_PROVIDER` is not, **even with `expires_at` in the
+  past** — this is the case that matters, because a paid booking keeps its slot
+  and expiring it would cancel a sale that already took the customer's money;
+- `limit` is respected, and the oldest are returned first, so a backlog drains
+  in the order it accumulated rather than starving the oldest booking for ever.
+
+- [ ] **Step 2: Run to verify it fails**
+- [ ] **Step 3: Implement `findDueForExpiry`, then the sweep**
+
+Give the sweep its own `SWEEP_LIMIT`-style ceiling with a comment saying what
+it is protecting against. Run each expiry independently: one booking that
+throws must not stop the rest of the wave, and the failure must be logged
+rather than swallowed.
+
+- [ ] **Step 4: Run the booking and backend suites, and typecheck**
+
+Run: `cd packages/backend && bun test src && bun run typecheck`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/booking apps/backend/api/src/scheduled.ts packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/booking-expiry-sweep.test.ts
+git commit -m "Expire the bookings nobody paid for
+
+ExpireBookingCommand had no caller. A customer who opens the payment
+page and walks away held that member's slot for ever, because the
+partial unique index is doing precisely its job. The cron that already
+sweeps Communication every minute now asks the same question of
+bookings past expires_at."
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage.** The spec's aggregate, snapshot, immutability, address-snapshot reasoning, commission-at-creation rule, `booking_change` table, the outbox events and the ports are all covered by Tasks 1–10. BR1 (published service), BR2 (slot held atomically), BR3 (commission arithmetic), BR5 (idempotent expiry) and BR8 (no booking for a quote service) each have a task and a test. **BR4, BR6 and BR7 belong to Plan 2** — snapshot immutability across a reschedule, holding before releasing, and read authorisation — and are named here so the gap is deliberate rather than forgotten.
 
-**One thing the spec asked for that this plan does not build.** The spec names a `DelayedJobQueue` port and Task 6 defines it, but nothing in this plan runs the queue consumer that fires `ExpireBookingCommand`. The command is written and tested; what is missing is the Cloudflare Queue producer and consumer. That is deliberate — it is infrastructure with its own deployment surface — but it means **expiry does not happen on its own until that lands**, and a booking left unpaid will sit in `PENDING_PAYMENT` holding its slot. Plan 2 must open with it, or a cron sweep must stand in.
+**The expiry gap, and how it was closed.** As first written, this plan defined a `DelayedJobQueue` port in Task 6 and never ran anything that fired `ExpireBookingCommand` — the command was written and tested with no caller, which is not a smaller feature but a permanent slot leak. **Task 12 closes it with the cron sweep this paragraph originally offered as a stand-in.** It turned out not to be a compromise: `apps/backend/api/src/scheduled.ts` already wakes every minute in all three environments and already sweeps Communication for messages past `notify_due_at`, so a booking past `expires_at` is the same question against the same clock. A Cloudflare Queue would have added a deployment surface to do what one more query on an existing wake-up does. The `DelayedJobQueue` port still exists and is still the right seam if a real queue ever earns its place — Task 12 makes its adapter honest about doing nothing, rather than leaving expiry undone.
 
 **Placeholder scan.** Tasks 4, 6, 7 and 11 describe tests by their assertions rather than printing them. That is a deliberate compression where the shape is fully determined by a named reference file in the same repository, and each says which file. Tasks 1, 3, 5, 8 and 9 — where the behaviour is new and the assertions are the design — carry their tests in full.
 
