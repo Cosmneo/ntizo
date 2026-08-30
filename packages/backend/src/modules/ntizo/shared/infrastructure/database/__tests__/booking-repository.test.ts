@@ -183,7 +183,26 @@ function bookingInput(
   };
 }
 
-/** Every field `Booking.restore` did not derive — i.e. every field a round trip could lose. */
+/**
+ * Every field `Booking.restore` did not derive — i.e. every field a round
+ * trip could lose.
+ *
+ * `confirmedAt`, `declinedAt`, `cancelledAt`, `markedDoneAt`, `completedAt`
+ * and `disputedAt` are compared here too, but every booking this file can
+ * build is null on all six: `Booking` has no `confirm`/`decline`/`cancel`/
+ * `markDone`/`complete`/`dispute` transition yet (only `markPaid` and
+ * `expire` exist — see the aggregate), so there is no public way to give any
+ * of them a real value in this task. Said here rather than left silently
+ * looking equivalent to the fields this function *can* exercise with a real
+ * value: a null-to-null comparison still catches a `toRow`/`toAggregate`
+ * mapping bug that aliases one of these six to some unrelated non-null
+ * column (proven below, in the mis-mapping check this file's commit
+ * message points at), but it cannot distinguish one of these six columns
+ * from another of the same six — both would still read back null either
+ * way. Closing that specific residual gap needs Task 9's transitions to
+ * exist first, so a booking here can actually carry a distinguishing value
+ * in each.
+ */
 function expectSameSnapshot(actual: Booking, expected: Booking): void {
   expect(actual.customerId).toBe(expected.customerId);
   expect(actual.providerId).toBe(expected.providerId);
@@ -197,6 +216,13 @@ function expectSameSnapshot(actual: Booking, expected: Booking): void {
   expect(actual.expiresAt?.toISOString() ?? null).toBe(expected.expiresAt?.toISOString() ?? null);
   expect(actual.paidAt).toBe(expected.paidAt);
   expect(actual.paymentRef).toBe(expected.paymentRef);
+  expect(actual.confirmedAt).toBe(expected.confirmedAt);
+  expect(actual.declinedAt).toBe(expected.declinedAt);
+  expect(actual.cancelledAt).toBe(expected.cancelledAt);
+  expect(actual.markedDoneAt).toBe(expected.markedDoneAt);
+  expect(actual.completedAt).toBe(expected.completedAt);
+  expect(actual.disputedAt).toBe(expected.disputedAt);
+  expect(actual.expiredAt?.toISOString() ?? null).toBe(expected.expiredAt?.toISOString() ?? null);
   expect(actual.priceMinor).toBe(expected.priceMinor);
   expect(actual.commissionBps).toBe(expected.commissionBps);
   expect(actual.commissionMinor).toBe(expected.commissionMinor);
@@ -290,6 +316,12 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
 
       const reread = await repo.findById(first.id as string);
       expect(reread?.status).toBe("EXPIRED");
+      // Not only the status: `expiredAt` is the one transition timestamp
+      // this file can actually give a real (non-null) value, so this is
+      // the assertion that proves a transition timestamp itself — not only
+      // the status that moved alongside it — survives the round trip.
+      expect(reread?.expiredAt).not.toBeNull();
+      expect(reread?.expiredAt?.toISOString()).toBe(expired.expiredAt?.toISOString());
 
       const second = await repo.insert(
         Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
@@ -354,6 +386,20 @@ describe("findDueForExpiry", () => {
       const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
       expect(paid.expiresAt).toBeNull();
       await repo.save(paid);
+
+      // This booking is already being built for the exclusion check below;
+      // reading it back costs one query and is the only place in this file
+      // that proves `paidAt` and `paymentRef` survive a round trip with a
+      // real value — `expectSameSnapshot` never sees a paid booking, since
+      // `Booking.create` always starts both null.
+      const paidReread = await repo.findById(paidStale.id as string);
+      expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
+      expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
+      // And the other half of the same write: `markPaid` clears
+      // `expiresAt` on the way out of `PENDING_PAYMENT`, so this also
+      // confirms that clearing itself persisted, not only that the two
+      // new fields did.
+      expect(paidReread?.expiresAt).toBeNull();
 
       const due = await repo.findDueForExpiry(now, 10);
       const dueIds = due.map((b) => b.id);
