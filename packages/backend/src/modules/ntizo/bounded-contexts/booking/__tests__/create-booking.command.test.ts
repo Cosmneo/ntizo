@@ -7,6 +7,7 @@ import {
   ServiceNotBookableError,
   ServiceOptionNotFoundError,
   SlotAlreadyTakenError,
+  type ServiceNotBookableReason,
 } from "../domain/exceptions";
 import {
   CreateBookingCommand,
@@ -120,22 +121,58 @@ function withId(booking: Booking, id: string): Booking {
 }
 
 /**
- * Flips `insideTransaction` around `work()`, and resets an `order` log at the
- * start of every call, so `FakeRepo.insert` and `CapturingOutbox.publish` can
- * each stamp themselves onto it — the same shape `review-commands.test.ts`
- * uses, for the same reason: a fake that just runs `work()` inline cannot
- * tell "published inside the transaction, after the insert" apart from
- * "published outside it, or before the write".
+ * A transactional fake with real buffer-and-discard semantics, not a
+ * passthrough. `stage(commit)` is how `FakeRepo.insert` and
+ * `CapturingOutbox.publish` register a write instead of applying it
+ * straight to their own arrays: called while `atomicExecute`'s block is
+ * running, the write is buffered and only applied once that block returns
+ * without throwing; a throw discards the whole buffer instead. Called with
+ * no block open, it applies immediately — the same way a bare `INSERT`
+ * against a real database autocommits unless something wrapped it in
+ * `BEGIN … COMMIT`. That second branch is not a convenience fallback: it is
+ * what makes the transaction-removal experiment meaningful. Strip
+ * `atomicExecute` out of `CreateBookingCommand` and every write here starts
+ * autocommitting on its own — including the one a later step in the same
+ * call was about to fail on — exactly as it would against the real
+ * database, and exactly the failure the "rolls back a successful insert"
+ * test below exists to catch.
+ *
+ * `insideTransaction` and `order` are unchanged from before: still how
+ * `CapturingOutbox` tells "published inside the transaction, after the
+ * insert" apart from "published outside it, or before the write".
+ *
+ * **The limit of this simulation, stated plainly:** buffering and discarding
+ * in this fake proves that `CreateBookingCommand`'s call ordering — insert,
+ * then hold, then publish, all before the block returns — is *compatible*
+ * with a database that rolls back on a mid-transaction failure. It does not
+ * prove Postgres actually rolls anything back; nothing in this file talks to
+ * a database. That proof runs against the real one, in Task 7's repository
+ * test.
  */
 class TrackingUnitOfWork implements UnitOfWorkPort {
   insideTransaction = false;
   order: string[] = [];
+  private pending: (() => void)[] = [];
+
+  stage(commit: () => void): void {
+    if (this.insideTransaction) {
+      this.pending.push(commit);
+    } else {
+      commit();
+    }
+  }
 
   async atomicExecute<T>(work: () => Promise<T>): Promise<T> {
     this.insideTransaction = true;
     this.order = [];
+    this.pending = [];
     try {
-      return await work();
+      const result = await work();
+      for (const commit of this.pending) commit();
+      return result;
+    } catch (error) {
+      this.pending = [];
+      throw error;
     } finally {
       this.insideTransaction = false;
     }
@@ -146,6 +183,13 @@ class FakeRepo implements BookingRepositoryPort {
   public insertedArg: Booking | null = null;
   public insertCalls = 0;
   public nextId = "bk-1";
+  /**
+   * What has actually committed — what a real `findById` would be able to
+   * see. Separate from `insertedArg`, which records that `insert` was
+   * *called*, the same way a real `INSERT` statement runs and is assigned
+   * an id even inside a transaction that later rolls back.
+   */
+  public committed: Booking[] = [];
 
   constructor(
     private readonly opts: { insertError?: Error } = {},
@@ -159,11 +203,18 @@ class FakeRepo implements BookingRepositoryPort {
       throw this.opts.insertError;
     }
     this.unitOfWork?.order.push("insert");
-    return withId(booking, this.nextId);
+    const persisted = withId(booking, this.nextId);
+    const commit = () => this.committed.push(persisted);
+    if (this.unitOfWork) {
+      this.unitOfWork.stage(commit);
+    } else {
+      commit();
+    }
+    return persisted;
   }
 
-  async findById(): Promise<Booking | null> {
-    return null;
+  async findById(id: string): Promise<Booking | null> {
+    return this.committed.find((b) => b.id === id) ?? null;
   }
 
   async save(): Promise<void> {}
@@ -202,7 +253,12 @@ class FakeSlotHold implements SlotHoldPort {
   public released: string[] = [];
   public transferred: { bookingId: string; to: SlotWindow }[] = [];
 
+  constructor(private readonly opts: { holdError?: Error } = {}) {}
+
   async hold(bookingId: string, slot: SlotWindow): Promise<void> {
+    if (this.opts.holdError) {
+      throw this.opts.holdError;
+    }
     this.held.push({ bookingId, slot });
   }
 
@@ -242,12 +298,13 @@ class CapturingOutbox implements OutboxPort {
   constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
 
   async publish(events: BaseDomainEvent[], aggregateType: string): Promise<void> {
-    this.published.push({
+    const record = {
       events,
       aggregateType,
       insideTransaction: this.unitOfWork.insideTransaction,
       afterInsert: this.unitOfWork.order.includes("insert"),
-    });
+    };
+    this.unitOfWork.stage(() => this.published.push(record));
   }
 }
 
@@ -256,6 +313,7 @@ function setup(
     pricing?: ServiceOptionPricing | null;
     provider?: ProviderSnapshot | null;
     insertError?: Error;
+    holdError?: Error;
   } = {},
 ) {
   const unitOfWork = new TrackingUnitOfWork();
@@ -267,7 +325,7 @@ function setup(
   const providerReader = new FakeProviderReader(
     opts.provider === undefined ? validProvider() : opts.provider,
   );
-  const slotHold = new FakeSlotHold();
+  const slotHold = new FakeSlotHold({ holdError: opts.holdError });
   const delayedJobs = new FakeDelayedJobs();
   const command = new CreateBookingCommand(
     repo,
@@ -386,16 +444,46 @@ describe("CreateBookingCommand", () => {
 
   it("lets SlotAlreadyTakenError surface unchanged, and publishes nothing", async () => {
     const conflict = new SlotAlreadyTakenError(INPUT.providerMemberId, INPUT.startsAt);
-    const { command, outbox, slotHold, delayedJobs } = setup({ insertError: conflict });
+    const { command, repo, outbox, slotHold, delayedJobs } = setup({ insertError: conflict });
 
     await expect(command.execute(INPUT)).rejects.toBe(conflict);
 
-    // This is what proves the publish happens inside the atomic block rather
-    // than beside it: without the transaction wrapping insert-then-hold-
-    // then-publish, an insert failure would say nothing about whether the
-    // event had already been handed to the outbox.
+    // The insert itself throws here, before it ever reaches
+    // `unitOfWork.stage` — so this case is true regardless of whether a
+    // transaction wraps it. The test below, where the insert succeeds and
+    // the *hold* fails afterward, is the one that actually depends on the
+    // transaction existing.
+    expect(repo.committed).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(slotHold.held).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
+  });
+
+  it("rolls back a successful insert when the hold fails afterward, inside the same transaction", async () => {
+    // The case a passthrough fake cannot fail on: `repo.insert` succeeds —
+    // it returns a booking with an id, same as the happy path — and only
+    // the *next* step, `slotHold.hold`, throws. A fake that just appends to
+    // an array on every insert call has no notion of "ran, but its
+    // transaction never committed"; it would report the booking as present
+    // regardless of what happened after. `TrackingUnitOfWork.stage` gives
+    // `FakeRepo` that notion, so this is the test that actually depends on
+    // `atomicExecute` wrapping insert-then-hold-then-publish, rather than
+    // merely being consistent with it.
+    const holdError = new Error("scheduling adapter unreachable");
+    const { command, repo, outbox, slotHold, delayedJobs } = setup({ holdError });
+
+    await expect(command.execute(INPUT)).rejects.toBe(holdError);
+
+    // The attempt happened...
+    expect(repo.insertCalls).toBe(1);
+    // ...but the booking is not in the repository: the transaction that
+    // would have committed it never returned.
+    expect(await repo.findById("bk-1")).toBeNull();
+    expect(repo.committed).toEqual([]);
+    // `hold` throws before it ever records anything: a real hold attempt
+    // that fails never becomes a held slot.
+    expect(slotHold.held).toEqual([]);
+    expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
   });
 
@@ -449,6 +537,34 @@ describe("CreateBookingCommand", () => {
 
       await expect(command.execute(INPUT)).rejects.toThrow(ProviderNotFoundError);
       expect(repo.insertCalls).toBe(0);
+    });
+  });
+
+  describe("ServiceNotBookableError's code", () => {
+    // `mapErrorToGraphQLError` copies `message` and `error.code` onto the
+    // GraphQL error and nothing else — `reason` never crosses the wire. A
+    // shared "SERVICE_NOT_BOOKABLE" code for all four reasons would still
+    // pass every test above (they all assert on `.reason`, read in this
+    // process); this is the test that fails if the codes are ever
+    // collapsed back into one, because it is the only one reading the field
+    // that actually reaches the client.
+    const reasons: ServiceNotBookableReason[] = [
+      "quote",
+      "not_published",
+      "option_retired",
+      "hourly",
+    ];
+
+    it("gives every reason its own code — the one field that survives the trip to the client", () => {
+      const codes = reasons.map((reason) => new ServiceNotBookableError(reason).code);
+
+      expect(codes).toEqual([
+        "SERVICE_NOT_BOOKABLE_QUOTE",
+        "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED",
+        "SERVICE_NOT_BOOKABLE_OPTION_RETIRED",
+        "SERVICE_NOT_BOOKABLE_HOURLY",
+      ]);
+      expect(new Set(codes).size).toBe(reasons.length);
     });
   });
 });

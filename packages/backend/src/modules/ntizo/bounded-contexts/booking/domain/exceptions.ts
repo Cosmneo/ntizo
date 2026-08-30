@@ -272,9 +272,24 @@ export class ProviderNotFoundError extends NotFoundError {
  *   been built, not a judgement on the provider or the option, and the
  *   message says so rather than implying a fault.
  *
- * One class, not four, because to a frontend branching on `.code` these are
- * one fact — "you cannot buy this" — with four different reasons to display,
- * not four different facts.
+ * One class, not four, because the call sites read well as one fact — "you
+ * cannot buy this" — with four different reasons to display. But the `code`,
+ * not the class and not the `reason` property, is what survives the trip to
+ * the client: `mapErrorToGraphQLError` copies `message` and `error.code`
+ * onto the GraphQL error and nothing else, so a single shared
+ * `"SERVICE_NOT_BOOKABLE"` code would have made all four reasons
+ * indistinguishable on the other side of that boundary — the frontend would
+ * have had a `reason` field to read in this process and no way to ask for it
+ * in the one that actually renders the refusal. The discriminator therefore
+ * has to live in the code, the same shape this codebase already uses for
+ * `OptionDurationError`'s two reasons.
+ *
+ * The code is derived from `reason` through `SERVICE_NOT_BOOKABLE_CODES`, a
+ * `Record` keyed by the full `ServiceNotBookableReason` union rather than a
+ * `switch` with a default. A `Record` missing a key is a compile error the
+ * moment a fifth reason is added to the union; a `switch`'s default case
+ * would accept the same fifth reason silently and hand it whatever code the
+ * default falls back to.
  */
 export type ServiceNotBookableReason = "quote" | "not_published" | "option_retired" | "hourly";
 
@@ -285,11 +300,18 @@ const SERVICE_NOT_BOOKABLE_MESSAGES: Record<ServiceNotBookableReason, string> = 
   hourly: "Booking by the hour is not supported yet",
 };
 
+const SERVICE_NOT_BOOKABLE_CODES: Record<ServiceNotBookableReason, string> = {
+  quote: "SERVICE_NOT_BOOKABLE_QUOTE",
+  not_published: "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED",
+  option_retired: "SERVICE_NOT_BOOKABLE_OPTION_RETIRED",
+  hourly: "SERVICE_NOT_BOOKABLE_HOURLY",
+};
+
 export class ServiceNotBookableError extends UnprocessableError {
   constructor(public readonly reason: ServiceNotBookableReason) {
     super({
       message: SERVICE_NOT_BOOKABLE_MESSAGES[reason],
-      code: "SERVICE_NOT_BOOKABLE",
+      code: SERVICE_NOT_BOOKABLE_CODES[reason],
     });
     this.name = "ServiceNotBookableError";
   }
