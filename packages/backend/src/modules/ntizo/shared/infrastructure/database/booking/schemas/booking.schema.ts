@@ -13,7 +13,7 @@ import { user } from "../../user/schemas/user.schema";
 import { provider } from "../../provider/schemas/provider.schema";
 import { providerMember } from "../../provider/schemas/provider-member.schema";
 import { service, serviceOption } from "../../catalog/schemas/service.schema";
-import { BOOKING_STATUSES, SLOT_HOLDING_STATUSES } from "../enums";
+import { BOOKING_STATUSES, SLOT_HOLDING_STATUSES, type BookingStatus } from "../enums";
 
 export const bookingSchema = pgSchema("ntizo_booking");
 
@@ -35,15 +35,20 @@ export const bookingSchema = pgSchema("ntizo_booking");
  * `sql.raw` is normally the dangerous choice: it skips escaping entirely, and
  * a reader should stop and ask why before trusting it. It is safe in this one
  * spot because the values it is ever called with are members of a
- * compile-time enum defined in this repository — `BOOKING_STATUSES` and
- * `SLOT_HOLDING_STATUSES` from `../enums` — never user input, and nothing
- * else calls this function. The point of building the list from that constant
- * at all (rather than typing the statuses out by hand) is unchanged from
- * `inArray`'s original purpose: one list, read by both the TypeScript union
- * and the database constraint, not two that agree only by transcription and
- * can silently drift apart.
+ * compile-time enum defined in this repository — the parameter is typed
+ * `readonly BookingStatus[]`, so passing anything else is a compile
+ * error rather than something a reviewer has to notice. Convention would not
+ * have been enough: the quoting here does no escaping at all, so a widened
+ * parameter type is the only thing standing between this helper and a
+ * string-concatenation bug in a migration file.
+ *
+ * The point of building the list from that constant at all (rather than
+ * typing the statuses out by hand) is unchanged from `inArray`'s original
+ * purpose: one list, read by both the TypeScript union and the database
+ * constraint, not two that agree only by transcription and can silently
+ * drift apart.
  */
-const statusList = (values: readonly string[]) =>
+const statusList = (values: readonly BookingStatus[]) =>
   sql.raw(values.map((v) => `'${v}'`).join(", "));
 
 /**
