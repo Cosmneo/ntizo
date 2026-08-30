@@ -44,6 +44,60 @@ export class BookingDurationInvalidError extends UnprocessableError {
 }
 
 /**
+ * Refused because a required string was empty, or nothing but whitespace.
+ *
+ * A blank value slides past every other guard this class has: Postgres
+ * `NOT NULL` on a `text` column permits `""`, Task 2's CHECK constraints
+ * cover price, commission and status but not the snapshot strings, and the
+ * shared read model types a field like `serviceName` as a bare `z.string()`,
+ * which accepts `""` as readily as it accepts a real name. Nothing between
+ * this constructor and a customer's receipt would ever catch it.
+ *
+ * Trimmed before the check, so `"   "` is refused as readily as `""` — but
+ * only for the check. The value that reaches `BookingProps` is exactly what
+ * the caller passed in; rewriting a snapshot field to a trimmed copy of
+ * itself is not this method's job, and it is not what a snapshot is for.
+ *
+ * One class for all thirteen required strings, parameterised by `field`,
+ * rather than thirteen near-identical classes — the shape of the refusal is
+ * identical every time; only which field failed changes.
+ */
+export class BookingFieldBlankError extends UnprocessableError {
+  constructor(public readonly field: string) {
+    super({
+      message: `A booking's "${field}" cannot be blank`,
+      code: "BOOKING_FIELD_BLANK",
+    });
+    this.name = "BookingFieldBlankError";
+  }
+}
+
+/**
+ * Refused because a date input does not name a real instant.
+ *
+ * `new Date("garbage")` is a real `Date` — it satisfies the type checker and
+ * carries every method a valid one does — but its internal timestamp is
+ * `NaN`. Nothing about `startsAt` or `expiresAt` being *typed* as `Date`
+ * stops that value from reaching this constructor. Left unguarded, it
+ * survives all the way to `endsAt`, which computes to `Invalid Date`, and the
+ * failure only surfaces later as a bare `RangeError: Invalid time value` from
+ * whatever first calls `.toISOString()` on it — no named error, no field,
+ * quite possibly in a different process than the one that accepted the bad
+ * input. This is the same class of defect the three numeric guards above
+ * already catch (`Number.isInteger` rejects `NaN` on its own); the two
+ * `Date` inputs were simply the ones left unchecked.
+ */
+export class BookingDateInvalidError extends UnprocessableError {
+  constructor(public readonly field: string) {
+    super({
+      message: `A booking's "${field}" must be a valid date`,
+      code: "BOOKING_DATE_INVALID",
+    });
+    this.name = "BookingDateInvalidError";
+  }
+}
+
+/**
  * Refused because the move it was asked to make is not a legal one from the
  * status the booking is actually in — confirming a booking that was never
  * paid, marking done a booking nobody confirmed, and so on.

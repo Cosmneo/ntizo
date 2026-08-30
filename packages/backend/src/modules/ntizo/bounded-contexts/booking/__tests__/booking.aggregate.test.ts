@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { Booking } from "../domain/aggregates/booking.aggregate";
 import {
+  BookingDateInvalidError,
   BookingDurationInvalidError,
+  BookingFieldBlankError,
   BookingPriceInvalidError,
   CommissionOutOfRangeError,
 } from "../domain/exceptions";
@@ -102,5 +104,87 @@ describe("Booking.create", () => {
   it("keeps the payout as the price less the commission", () => {
     const booking = Booking.create(validInput());
     expect(booking.providerPayoutMinor).toBe(booking.priceMinor - booking.commissionMinor);
+  });
+});
+
+describe("Booking.create — blank-string guards", () => {
+  // Every non-nullable string in BookingProps. A NOT NULL Postgres column
+  // accepts "" as readily as a real value, and the CHECK constraints Task 2
+  // added cover the money and the status — nothing catches a blank one of
+  // these downstream, so `create` has to.
+  const REQUIRED_STRING_FIELDS = [
+    "customerId",
+    "providerId",
+    "serviceId",
+    "serviceOptionId",
+    "providerMemberId",
+    "currency",
+    "serviceName",
+    "providerName",
+    "providerSlug",
+    "optionName",
+    "addressLabel",
+    "addressLine",
+    "addressCity",
+  ] as const;
+
+  it("refuses a blank value — empty or whitespace-only — for every required string", () => {
+    for (const field of REQUIRED_STRING_FIELDS) {
+      expect(() => Booking.create(validInput({ [field]: "" }))).toThrow(BookingFieldBlankError);
+      expect(() => Booking.create(validInput({ [field]: "   " }))).toThrow(BookingFieldBlankError);
+    }
+  });
+
+  it("stores a required string exactly as given, not a trimmed copy of it", () => {
+    // The blank check trims to decide; it must not trim to store. Rewriting a
+    // snapshot value is a different job than refusing a bad one.
+    const booking = Booking.create(validInput({ serviceName: "  Avaria eléctrica  " }));
+    expect(booking.serviceName).toBe("  Avaria eléctrica  ");
+  });
+
+  it("refuses a blank address component when one is present, but keeps accepting its absence", () => {
+    // null still means "there is none" — only a present-but-empty string is
+    // the caller's bug.
+    expect(() => Booking.create(validInput({ addressDistrict: "   " }))).toThrow(
+      BookingFieldBlankError,
+    );
+    expect(() => Booking.create(validInput({ addressDirections: "   " }))).toThrow(
+      BookingFieldBlankError,
+    );
+    expect(Booking.create(validInput({ addressDistrict: null })).addressDistrict).toBeNull();
+  });
+});
+
+describe("Booking.create — dates", () => {
+  it("refuses a start that does not name a real instant", () => {
+    // new Date("garbage") type-checks as a Date; only its timestamp gives it
+    // away as unusable.
+    expect(() => Booking.create(validInput({ startsAt: new Date("garbage") }))).toThrow(
+      BookingDateInvalidError,
+    );
+  });
+
+  it("refuses an expiry that does not name a real instant", () => {
+    expect(() => Booking.create(validInput({ expiresAt: new Date("garbage") }))).toThrow(
+      BookingDateInvalidError,
+    );
+  });
+});
+
+describe("Booking.create — commission boundaries", () => {
+  it("accepts a commission rate of zero, the platform's smallest allowed cut", () => {
+    const booking = Booking.create(validInput({ commissionBps: 0 }));
+    expect(booking.commissionMinor).toBe(0);
+  });
+
+  it("accepts a commission rate of ten thousand basis points, the whole price", () => {
+    const booking = Booking.create(validInput({ commissionBps: 10_000 }));
+    expect(booking.commissionMinor).toBe(booking.priceMinor);
+  });
+
+  it("refuses a commission rate below zero", () => {
+    expect(() => Booking.create(validInput({ commissionBps: -1 }))).toThrow(
+      CommissionOutOfRangeError,
+    );
   });
 });

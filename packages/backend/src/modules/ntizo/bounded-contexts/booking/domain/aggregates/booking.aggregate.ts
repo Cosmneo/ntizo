@@ -1,6 +1,8 @@
 import { BookingStatus } from "../../../../shared/infrastructure/database/booking/enums";
 import {
+  BookingDateInvalidError,
   BookingDurationInvalidError,
+  BookingFieldBlankError,
   BookingPriceInvalidError,
   CommissionOutOfRangeError,
 } from "../exceptions";
@@ -86,6 +88,25 @@ export class Booking {
   private constructor(private readonly props: BookingProps) {}
 
   /**
+   * A required string is not allowed to be empty, or nothing but
+   * whitespace. Trimmed only for the check — the value stored on the
+   * snapshot is exactly what the caller passed in, untrimmed; silently
+   * rewriting it is not this guard's job.
+   */
+  private static requireNonBlank(value: string, field: string): void {
+    if (value.trim().length === 0) {
+      throw new BookingFieldBlankError(field);
+    }
+  }
+
+  /** A `Date` that type-checks is not the same thing as a `Date` that names a real instant. */
+  private static requireValidDate(value: Date, field: string): void {
+    if (Number.isNaN(value.getTime())) {
+      throw new BookingDateInvalidError(field);
+    }
+  }
+
+  /**
    * A booking as the checkout flow assembles it: a slot held, a price
    * agreed, and nothing yet paid.
    *
@@ -95,6 +116,14 @@ export class Booking {
    * accepted as an input, because a caller-supplied end that disagreed with
    * the duration would be a second version of the same fact with no way to
    * tell which one was true.
+   *
+   * Every required string is checked for being blank — `""` or whitespace —
+   * because nothing downstream would: a `NOT NULL` column accepts `""` just
+   * as happily as a real value, and the CHECK constraints Task 2 added cover
+   * the money and the status, not the snapshot strings. `startsAt` and
+   * `expiresAt` are checked for naming a real instant, because a `Date`
+   * built from a bad string type-checks and reaches this method looking
+   * exactly like a good one.
    */
   static create(input: {
     id?: string | null;
@@ -122,6 +151,37 @@ export class Booking {
     description?: string | null;
     expiresAt: Date;
   }): Booking {
+    Booking.requireNonBlank(input.customerId, "customerId");
+    Booking.requireNonBlank(input.providerId, "providerId");
+    Booking.requireNonBlank(input.serviceId, "serviceId");
+    Booking.requireNonBlank(input.serviceOptionId, "serviceOptionId");
+    Booking.requireNonBlank(input.providerMemberId, "providerMemberId");
+    Booking.requireNonBlank(input.currency, "currency");
+    Booking.requireNonBlank(input.serviceName, "serviceName");
+    Booking.requireNonBlank(input.providerName, "providerName");
+    Booking.requireNonBlank(input.providerSlug, "providerSlug");
+    Booking.requireNonBlank(input.optionName, "optionName");
+    Booking.requireNonBlank(input.addressLabel, "addressLabel");
+    Booking.requireNonBlank(input.addressLine, "addressLine");
+    Booking.requireNonBlank(input.addressCity, "addressCity");
+
+    // Nullable, but not free to be present-and-blank: null is how a caller
+    // says "there is no directions note" / "no district on file"; an empty
+    // string says something different and wrong — that there is one, and
+    // it's nothing. `description` is deliberately not checked here: a blank
+    // description is normalised to null below rather than refused, because
+    // "the customer typed nothing" is an expected, everyday shape for that
+    // one field in a way it is not for an address component.
+    if (input.addressDistrict != null) {
+      Booking.requireNonBlank(input.addressDistrict, "addressDistrict");
+    }
+    if (input.addressDirections != null) {
+      Booking.requireNonBlank(input.addressDirections, "addressDirections");
+    }
+
+    Booking.requireValidDate(input.startsAt, "startsAt");
+    Booking.requireValidDate(input.expiresAt, "expiresAt");
+
     if (!Number.isInteger(input.durationMinutes) || input.durationMinutes <= 0) {
       throw new BookingDurationInvalidError(input.durationMinutes);
     }
