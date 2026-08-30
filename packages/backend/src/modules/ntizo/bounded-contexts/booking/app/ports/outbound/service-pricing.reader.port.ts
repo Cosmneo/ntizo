@@ -23,9 +23,13 @@ import type {
  * genuine guard: an option id from another service must not become a booking
  * against a service that carries no prices.
  *
- * `serviceStatus` is required for the same reason. BR1 says only a published
- * service may be booked, and the command cannot check that against data it was
- * never given.
+ * `serviceStatus` and `optionIsActive` are required for the same reason. BR1 is
+ * "the service must be published and the option active at creation", and the
+ * command cannot check either half against data it was never given. They are
+ * separate fields rather than one `bookable` flag because the two failures need
+ * different words: a service that was never published is not the same news to a
+ * customer as an option a provider has since retired, and a link bookmarked
+ * yesterday produces the second far more often than the first.
  */
 export interface ServiceOptionPricing {
   serviceId: string;
@@ -36,6 +40,8 @@ export interface ServiceOptionPricing {
   bookingMode: ServiceBookingMode;
   /** The *service*: only `published` may be booked. */
   serviceStatus: ServiceStatus;
+  /** The *option*: a provider can retire one without unpublishing the service. */
+  optionIsActive: boolean;
   /** The *option*: `fixed` carries a duration, `hourly` does not. */
   pricingMode: ServicePricingMode;
   amountMinor: number;
@@ -46,12 +52,11 @@ export interface ServiceOptionPricing {
 
 export interface ServicePricingReaderPort {
   /**
-   * Fetch the price, duration, names, booking mode, and status for a service option.
-   *
-   * Returns null if the option does not exist.
-   *
-   * @param serviceOptionId The id of the service option to fetch
-   * @param locale The locale (language-region) to use for fetching translated names
+   * Null means no such option. It does not mean "not bookable" — an inactive
+   * option, an unpublished service and a quote service all come back with
+   * their real values, so the caller can say which one it is. Folding those
+   * into null would make every refusal read "that does not exist" to a
+   * customer looking at a page that plainly shows it does.
    */
   findOption(serviceOptionId: string, locale: string): Promise<ServiceOptionPricing | null>;
 }
