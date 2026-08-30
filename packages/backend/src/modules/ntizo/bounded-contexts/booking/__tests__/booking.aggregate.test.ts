@@ -5,6 +5,7 @@ import {
   BookingDurationInvalidError,
   BookingFieldBlankError,
   BookingPriceInvalidError,
+  BookingTransitionError,
   CommissionOutOfRangeError,
 } from "../domain/exceptions";
 
@@ -186,5 +187,50 @@ describe("Booking.create — commission boundaries", () => {
     expect(() => Booking.create(validInput({ commissionBps: -1 }))).toThrow(
       CommissionOutOfRangeError,
     );
+  });
+});
+
+describe("Booking.markPaid", () => {
+  it("moves a pending booking to awaiting the provider", () => {
+    const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    expect(paid.status).toBe("AWAITING_PROVIDER");
+    expect(paid.paymentRef).toBe("mpesa-123");
+  });
+
+  it("clears the payment deadline, rather than leaving a date that no longer applies", () => {
+    const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    expect(paid.expiresAt).toBeNull();
+  });
+
+  it("is idempotent: paying an already-paid booking changes nothing", () => {
+    // A webhook that arrives twice must not book twice. The command layer
+    // guards this too, but the aggregate is the last place it can be got
+    // wrong quietly.
+    const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    const second = first.markPaid("mpesa-123", new Date());
+    expect(second.status).toBe("AWAITING_PROVIDER");
+    expect(second.paymentRef).toBe("mpesa-123");
+    expect(second.paidAt).toEqual(first.paidAt);
+  });
+
+  it("refuses to pay a booking that already expired", () => {
+    const expired = Booking.create(validInput()).expire(new Date());
+    expect(() => expired.markPaid("mpesa-123", new Date())).toThrow(BookingTransitionError);
+  });
+});
+
+describe("Booking.expire", () => {
+  it("moves a pending booking to expired and clears the deadline", () => {
+    const expired = Booking.create(validInput()).expire(new Date());
+    expect(expired.status).toBe("EXPIRED");
+    expect(expired.expiresAt).toBeNull();
+  });
+
+  it("is a no-op on a booking that has already moved on", () => {
+    // The delayed job fires whether or not the payment landed first. If the
+    // status has moved, expiry has nothing to say — and throwing here would
+    // turn an ordinary race into an error somebody has to read.
+    const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    expect(paid.expire(new Date()).status).toBe("AWAITING_PROVIDER");
   });
 });

@@ -4,6 +4,7 @@ import {
   BookingDurationInvalidError,
   BookingFieldBlankError,
   BookingPriceInvalidError,
+  BookingTransitionError,
   CommissionOutOfRangeError,
 } from "../exceptions";
 
@@ -28,8 +29,17 @@ export interface BookingProps {
 
   // State: which status is current, and when each transition happened.
   readonly status: BookingStatus;
-  readonly expiresAt: Date;
+  /**
+   * The payment deadline — real while the booking is still `PENDING_PAYMENT`,
+   * `null` once it isn't. `markPaid` and `expire` both clear it: a deadline
+   * on a booking that is already paid or already expired no longer means
+   * anything, and leaving a stale date in place is an invitation for some
+   * later query to act on it as if it still did.
+   */
+  readonly expiresAt: Date | null;
   readonly paidAt: Date | null;
+  /** The payment processor's reference for this booking — e.g. an M-Pesa transaction id. Null until `markPaid`. */
+  readonly paymentRef: string | null;
   readonly confirmedAt: Date | null;
   readonly declinedAt: Date | null;
   readonly cancelledAt: Date | null;
@@ -81,8 +91,9 @@ export interface BookingProps {
  * consistent for it to be an accident.
  *
  * **The snapshot is immutable after creation.** Nothing here mutates a
- * `Booking` — later transitions (`pay`, `confirm`, …) return a new instance,
- * matching how `Review.revise` never touches the `Review` it was called on.
+ * `Booking` — every transition (`markPaid`, `expire`, and later `confirm`,
+ * …) returns a new instance, matching how `Review.revise` never touches the
+ * `Review` it was called on.
  */
 export class Booking {
   private constructor(private readonly props: BookingProps) {}
@@ -216,6 +227,7 @@ export class Booking {
       status: BookingStatus.PendingPayment,
       expiresAt: input.expiresAt,
       paidAt: null,
+      paymentRef: null,
       confirmedAt: null,
       declinedAt: null,
       cancelledAt: null,
@@ -272,11 +284,14 @@ export class Booking {
   get status(): BookingStatus {
     return this.props.status;
   }
-  get expiresAt(): Date {
+  get expiresAt(): Date | null {
     return this.props.expiresAt;
   }
   get paidAt(): Date | null {
     return this.props.paidAt;
+  }
+  get paymentRef(): string | null {
+    return this.props.paymentRef;
   }
   get confirmedAt(): Date | null {
     return this.props.confirmedAt;
@@ -359,5 +374,64 @@ export class Booking {
   }
   get description(): string | null {
     return this.props.description;
+  }
+
+  /**
+   * A payment lands on the slot this booking is holding.
+   *
+   * Idempotent from `AWAITING_PROVIDER`: a payment webhook that arrives
+   * twice must not move the booking twice, and the command layer's own
+   * guard against a duplicate delivery is not the last place that can be
+   * got wrong — this is, so it holds the line itself rather than trusting
+   * the caller to have checked first. Refused from anywhere else, because
+   * the only other place `create` can leave a booking short of paid is
+   * `EXPIRED` — and money arriving for a slot that was already released
+   * back to the calendar is not a race to shrug off the way a stray timer
+   * is. It is a fact, a card charged for a slot nobody is holding anymore,
+   * that a person has to see, not a status this method can quietly absorb.
+   */
+  markPaid(paymentRef: string, at: Date): Booking {
+    if (this.props.status === BookingStatus.AwaitingProvider) {
+      return this;
+    }
+
+    if (this.props.status !== BookingStatus.PendingPayment) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
+    }
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.AwaitingProvider,
+      paidAt: at,
+      paymentRef,
+      expiresAt: null,
+    });
+  }
+
+  /**
+   * The payment window closes without a payment arriving.
+   *
+   * A no-op everywhere except `PENDING_PAYMENT`. The job that calls this
+   * fires on a timer set at creation, with no way to know whether the
+   * booking already moved on — paid, or moved on some other way — by the
+   * time it does. That is an ordinary race, not a bug: the timer is
+   * watching a clock, not the booking, so it firing late says nothing
+   * about whether the payment arrived first. Throwing here would turn that
+   * ordinary race into an error somebody has to read and dismiss, for
+   * every booking that simply got paid before its deadline — the opposite
+   * of `markPaid`'s refusal, and deliberately so: a stray payment is a fact
+   * someone must see, a stray timer is not.
+   */
+  expire(at: Date): Booking {
+    if (this.props.status !== BookingStatus.PendingPayment) {
+      return this;
+    }
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.Expired,
+      expiredAt: at,
+      expiresAt: null,
+    });
   }
 }
