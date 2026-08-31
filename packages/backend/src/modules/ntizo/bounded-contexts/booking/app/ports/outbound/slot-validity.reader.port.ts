@@ -50,16 +50,20 @@
  * option's own duration is the answer that is actually correct for what is
  * being bought; where it disagrees with what the modal displayed for a
  * non-default option, that disagreement already exists in
- * `ListServiceAvailability` today and is not something this task touches.
+ * `ListServiceAvailability` today and is not something this task touches —
+ * it is recorded as its own follow-up rather than patched here, since the
+ * fix belongs to `ListServiceAvailabilityInput`, a different port in a
+ * different context.
  *
- * `serviceOptionId` is carried on the input for the same reason `serviceId`
- * and `providerMemberId` are — it names the thing being checked — but is not
- * read by `DrizzleSlotValidityReader`: nothing about which specific option a
- * customer chose changes whether a *member* can work at a given *instant*.
+ * No `serviceOptionId` field: nothing about which specific option a customer
+ * chose changes whether a *member* can work at a given *instant*, once
+ * `durationMinutes` is resolved. An earlier draft carried it anyway "for
+ * symmetry" and never read it — an unused parameter is a claim about what
+ * this check needs that isn't true, so it was removed rather than kept as
+ * decoration.
  */
 export interface SlotValidityCheckInput {
   readonly serviceId: string;
-  readonly serviceOptionId: string;
   readonly providerMemberId: string;
   readonly startsAt: Date;
   readonly durationMinutes: number;

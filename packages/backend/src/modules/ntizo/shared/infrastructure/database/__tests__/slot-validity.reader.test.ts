@@ -274,7 +274,6 @@ afterAll(async () => {
 
 function check(input: {
   serviceId: string;
-  serviceOptionId: string;
   providerMemberId: string;
   startsAt: Date;
   durationMinutes: number;
@@ -315,7 +314,6 @@ describe("the member/service join", () => {
   test("refuses a member of the right provider who was never assigned to this service", async () => {
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: nonPerformerMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,
@@ -327,7 +325,6 @@ describe("the member/service join", () => {
   test("refuses a member belonging to an entirely different provider", async () => {
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: otherProviderMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,
@@ -344,7 +341,6 @@ describe("the provider-status filter", () => {
     // Only the status read distinguishes this from the happy path.
     const result = await check({
       serviceId: pendingServiceId,
-      serviceOptionId: pendingServiceOptionId,
       providerMemberId: pendingMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,
@@ -358,7 +354,6 @@ describe("startsAt in the past", () => {
   test("refuses before any query runs, regardless of whether the slot would otherwise be real", async () => {
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: performerMemberId,
       startsAt: new Date("2020-01-01T09:00:00.000Z"),
       durationMinutes: DURATION_MINUTES,
@@ -372,7 +367,6 @@ describe("the grid", () => {
   test("refuses an off-grid instant — 03:00, outside the 08:00–17:00 rule", async () => {
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: performerMemberId,
       startsAt: localDateTimeToInstant(TIMEZONE, TARGET_DATE, 180),
       durationMinutes: DURATION_MINUTES,
@@ -384,7 +378,6 @@ describe("the grid", () => {
   test("accepts a real, free, on-grid instant for a member who performs the service at an active provider", async () => {
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: performerMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,
@@ -400,7 +393,6 @@ describe("busy time feeds the same grid, not a second one", () => {
 
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: performerMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,
@@ -416,7 +408,6 @@ describe("busy time feeds the same grid, not a second one", () => {
 
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: performerMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,
@@ -439,7 +430,6 @@ describe("busy time feeds the same grid, not a second one", () => {
 
     const result = await check({
       serviceId,
-      serviceOptionId,
       providerMemberId: performerMemberId,
       startsAt: ON_GRID_STARTS_AT,
       durationMinutes: DURATION_MINUTES,

@@ -166,7 +166,6 @@ export class CreateBookingCommand {
     // distinct errors rather than one generic "invalid slot".
     const validity = await this.slotValidityReader.check({
       serviceId: pricing.serviceId,
-      serviceOptionId: input.serviceOptionId,
       providerMemberId: input.providerMemberId,
       startsAt: input.startsAt,
       durationMinutes: pricing.durationMinutes,

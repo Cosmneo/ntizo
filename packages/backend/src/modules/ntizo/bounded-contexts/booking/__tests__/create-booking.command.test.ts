@@ -614,7 +614,6 @@ describe("CreateBookingCommand", () => {
       expect(slotValidityReader.queries).toEqual([
         {
           serviceId: "svc-1",
-          serviceOptionId: INPUT.serviceOptionId,
           providerMemberId: INPUT.providerMemberId,
           startsAt: INPUT.startsAt,
           durationMinutes: 90,
