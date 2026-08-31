@@ -2453,3 +2453,22 @@ notified.
 
 **Trigger:** before another context starts consuming Booking's events, or the next time an event
 payload changes shape.
+
+## #101 — `save` does not catch the exclusion constraint's SQLSTATE
+
+`isSlotCollision` maps `23505` (the old unique index) and `23P01` (the exclusion
+constraint) to `SlotAlreadyTakenError`, but it is wired into `insert` only. `save`'s
+`UPDATE` has no `try`/`catch`, so a `23P01` raised there propagates raw and reaches a
+customer as "An unexpected error occurred".
+
+Unreachable today: no transition changes `starts_at`, `ends_at` or `provider_member_id`,
+so `save` cannot violate the constraint. But `booking-row-slot-hold.adapter.ts`'s own doc
+comment describes the path that will — *"a reschedule's own UPDATE of startsAt/endsAt
+inside one transaction already moves what the constraint enforces"* — and `booking_change`
+already carries `previousStartsAt`, `previousEndsAt` and `previousProviderMemberId` for it.
+
+So the moment Plan 2 ships reschedule, an honest slot race on the update path becomes a
+500 — the exact failure `isSlotCollision`'s own comment says it exists to prevent. The
+comment is currently a trap: it describes a route that is not defended.
+
+**Trigger:** before reschedule lands. It is a `try`/`catch` around one `UPDATE`.
