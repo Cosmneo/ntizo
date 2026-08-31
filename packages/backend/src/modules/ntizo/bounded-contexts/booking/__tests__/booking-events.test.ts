@@ -44,6 +44,20 @@ describe("BookingCreated", () => {
 
 describe("BookingPaid", () => {
   it("publishes as booking.paid with the booking id as aggregate id", () => {
+    // `satisfies ConstructorParameters<typeof BookingPaid>[0]` pins this
+    // object literal to the constructor's payload type without widening it
+    // to the constructor parameter type the way a type annotation would —
+    // `payload` stays a plain object so it can still be handed to `toEqual`
+    // below. Without it, a field this test adds that the class never
+    // declared just rides along silently: a bare `const` reused for both
+    // construction and assertion is exactly the shape that defeats
+    // TypeScript's excess-property check (which only fires on a fresh
+    // object literal passed directly as an argument, not on a named
+    // variable), so a typo'd or forgotten field here would pass every gate
+    // up to `tsc` and then pass that too. Two of these three events cross a
+    // bounded-context boundary — a field silently dropped from `BookingPaid`
+    // or `BookingExpired` is a bug nobody notices until a customer is never
+    // told their booking expired.
     const payload = {
       bookingId: "b1",
       customerId: "u1",
@@ -55,7 +69,7 @@ describe("BookingPaid", () => {
       commissionMinor: 12000,
       currency: "MZN",
       paymentRef: "m-pesa-txn-12345",
-    };
+    } satisfies ConstructorParameters<typeof BookingPaid>[0];
 
     const event = new BookingPaid(payload);
 
@@ -75,7 +89,7 @@ describe("BookingPaid", () => {
       commissionMinor: 12000,
       currency: "MZN",
       paymentRef: "m-pesa-txn-12345",
-    };
+    } satisfies ConstructorParameters<typeof BookingPaid>[0];
 
     const event = new BookingPaid(payload);
 
@@ -90,7 +104,7 @@ describe("BookingExpired", () => {
       customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
-    };
+    } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
     const event = new BookingExpired(payload);
 
@@ -104,7 +118,7 @@ describe("BookingExpired", () => {
       customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
-    };
+    } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
     const event = new BookingExpired(payload);
 
