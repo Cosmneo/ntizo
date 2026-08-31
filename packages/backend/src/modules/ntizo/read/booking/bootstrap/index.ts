@@ -1,4 +1,4 @@
-import { DrizzleBookingReadRepository } from "../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking-read.repository";
+import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
 
 /**
@@ -17,8 +17,7 @@ import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.proj
  * changes a booking — it is what makes reconstitution trustworthy — and pure
  * cost against a list nobody here is about to mutate. Worse, running it over
  * every row on this page means one snapshot that fails a consistency check
- * takes the whole page down instead of rendering nineteen bookings and
- * skipping the odd one.
+ * throws and takes the whole page down.
  *
  * `read/catalog`'s `DrizzleServiceReadRepository` is this reader's
  * precedent instead: select exactly the columns the DTO carries, and let a

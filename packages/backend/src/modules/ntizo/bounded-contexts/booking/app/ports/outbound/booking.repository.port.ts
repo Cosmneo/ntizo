@@ -13,9 +13,12 @@ import type { Booking } from "../../../domain/aggregates/booking.aggregate";
  * a status transition without a time change leaves `previousStartsAt` and `previousEndsAt`
  * as null. This prevents a change from claiming facts that are not true.
  *
- * `findDueForExpiry` belongs to Task 12 (the expiry sweep) and is listed here so the
- * port is written once rather than reopened later. Task 12 implements it; Task 6 only
- * declares it.
+ * `findDueForExpiry` is declared here, on this port, but not implemented here:
+ * a class must satisfy every member of the interface it implements, so once
+ * Task 7's repository exists it has to implement whatever this port declares,
+ * whether or not the task that will call it has been written yet. Task 12
+ * (the expiry sweep) is the caller, not the implementer — Task 7 already
+ * implemented it, against the specification Task 12 used to carry.
  */
 export interface BookingChangeRecord {
   bookingId: string;

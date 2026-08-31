@@ -48,6 +48,9 @@ describe("BookingPaid", () => {
       bookingId: "b1",
       customerId: "u1",
       providerId: "p1",
+      providerMemberId: "m9",
+      startsAt: new Date("2026-09-05T08:00:00.000Z"),
+      endsAt: new Date("2026-09-05T09:00:00.000Z"),
       priceMinor: 120000,
       commissionMinor: 12000,
       currency: "MZN",
@@ -65,6 +68,9 @@ describe("BookingPaid", () => {
       bookingId: "b1",
       customerId: "u1",
       providerId: "p1",
+      providerMemberId: "m9",
+      startsAt: new Date("2026-09-05T08:00:00.000Z"),
+      endsAt: new Date("2026-09-05T09:00:00.000Z"),
       priceMinor: 120000,
       commissionMinor: 12000,
       currency: "MZN",
@@ -81,6 +87,7 @@ describe("BookingExpired", () => {
   it("publishes as booking.expired with the booking id as aggregate id", () => {
     const payload = {
       bookingId: "b1",
+      customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
     };
@@ -94,6 +101,7 @@ describe("BookingExpired", () => {
   it("round-trips the payload", () => {
     const payload = {
       bookingId: "b1",
+      customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
     };

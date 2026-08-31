@@ -45,13 +45,20 @@ export class BookingCreated extends BaseDomainEvent<{
  * A booking's payment was confirmed.
  *
  * Raised when a booking transitions to AwaitingProvider status. The booking
- * is now paid but not yet confirmed — the provider still has to answer. The
- * Payment context supplies the transaction reference that this event carries.
+ * is now paid but not yet confirmed — the provider still has to answer. It
+ * carries the member and the slot for the same reason `BookingCreated`
+ * does: Notification's "you're paid, awaiting confirmation" message has to
+ * name a time and cannot without reading the booking back, and that read
+ * is exactly what this field earns its keep by avoiding. The Payment
+ * context supplies the transaction reference that this event carries.
  */
 export class BookingPaid extends BaseDomainEvent<{
   bookingId: string;
   customerId: string;
   providerId: string;
+  providerMemberId: string;
+  startsAt: Date;
+  endsAt: Date;
   priceMinor: number;
   commissionMinor: number;
   currency: string;
@@ -61,6 +68,9 @@ export class BookingPaid extends BaseDomainEvent<{
     bookingId: string;
     customerId: string;
     providerId: string;
+    providerMemberId: string;
+    startsAt: Date;
+    endsAt: Date;
     priceMinor: number;
     commissionMinor: number;
     currency: string;
@@ -77,15 +87,20 @@ export class BookingPaid extends BaseDomainEvent<{
  * and the start rather than only the booking id because its consumer is
  * Scheduling, which has a slot to release — an event that made it read the
  * booking back to learn which one would be an event that knows less than it
- * could.
+ * could. It carries the customer id for the same reason, aimed at a
+ * different consumer: Notification cannot tell a customer their booking
+ * expired without knowing which customer, and the booking id alone does not
+ * say that.
  */
 export class BookingExpired extends BaseDomainEvent<{
   bookingId: string;
+  customerId: string;
   providerMemberId: string;
   startsAt: Date;
 }> {
   constructor(payload: {
     bookingId: string;
+    customerId: string;
     providerMemberId: string;
     startsAt: Date;
   }) {

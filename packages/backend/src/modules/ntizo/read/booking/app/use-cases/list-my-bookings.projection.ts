@@ -1,5 +1,5 @@
 import type { BookingDTO } from "@ntizo/shared/read-models";
-import type { BookingReadRepositoryPort } from "../../../../bounded-contexts/booking/app/ports/outbound/booking-read.repository.port";
+import type { BookingReadRepositoryPort } from "../ports/outbound/booking-read.repository.port";
 
 /**
  * A customer's own bookings, newest first.

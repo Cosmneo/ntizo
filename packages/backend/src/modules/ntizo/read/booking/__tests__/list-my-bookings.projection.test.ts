@@ -35,7 +35,7 @@ import { user } from "../../../shared/infrastructure/database/user/schemas";
 import { booking } from "../../../shared/infrastructure/database/booking/schemas";
 import { Booking } from "../../../bounded-contexts/booking/domain/aggregates/booking.aggregate";
 import { DrizzleBookingRepository } from "../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking.repository";
-import { DrizzleBookingReadRepository } from "../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking-read.repository";
+import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
 import {
   bestEffortCleanup,

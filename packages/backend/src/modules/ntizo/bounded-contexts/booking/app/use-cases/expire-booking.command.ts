@@ -115,6 +115,7 @@ export class ExpireBookingCommand {
         [
           new BookingExpired({
             bookingId,
+            customerId: moved.customerId,
             providerMemberId: moved.providerMemberId,
             startsAt: moved.startsAt,
           }),
