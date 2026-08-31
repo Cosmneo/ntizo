@@ -2384,3 +2384,45 @@ option and falling back to the default when omitted, so existing public callers 
 
 **Trigger:** before any provider publishes a second fixed-price option whose duration differs from their
 default — which no rule currently prevents.
+
+## #98 — A concurrent double payment fails closed silently
+
+`BookingRepositoryPort.save(booking, expectedStatus)` is a compare-and-swap: the `UPDATE` carries the
+status the command read, and a zero-row result means somebody else moved the booking first. Both
+`MarkBookingPaidCommand` and `ExpireBookingCommand` treat that as the aggregate's own no-op — no
+publish, no release, no error.
+
+That is right for the race it was built for, where a sweep and a webhook both act on one stale read
+and only one may win. It is less right for one case it also catches: **two payments with different
+references arriving concurrently.** Read sequentially, that conflict raises
+`PaymentReferenceMismatchError`, because the second call sees the first's reference already stored —
+a customer debited twice for one slot, and somebody owes them money back. Read concurrently, the
+second `save` simply finds the status moved and returns false, and the second payment leaves no
+trace at all.
+
+Not a regression: before the CAS the unconditional `UPDATE` had the same blind spot in a worse form,
+silently overwriting rather than silently dropping. And not this plan's to fix — its scope was the
+payment-versus-expiry race.
+
+Worth doing when double-payment handling is next touched: distinguish "the status moved" from "the
+status moved *and* a different payment reference is now stored", and raise on the second.
+
+**Trigger:** the first time M-Pesa's webhook is observed delivering two distinct transaction ids for
+one booking, or before any refund flow is built on the assumption that a double payment always raises.
+
+## #99 — A scheduled-handler test is flaky on unmodified HEAD
+
+`apps/backend/api/src/__tests__/scheduled.test.ts`'s "closes the run's postgres pool behind deferred
+work, not beside it" fails intermittently — reproduced three times in isolation against code it does
+not test, and confirmed against the original files checked out fresh.
+
+The mechanism: the booking-expiry sweep makes a real database round trip that sits between the mocked
+notification sweep's fire-and-forget 20ms timer and an assertion taken immediately after `scheduled()`
+resolves. Whether the timer has fired by then depends on how long the database takes, which is not
+something the test controls.
+
+It lives in `apps/backend/api`, not `packages/backend`, so it does not affect that package's gate and
+is easy to not notice.
+
+**Trigger:** the next time this test fails in CI and somebody starts looking for a defect in
+`scheduled.ts` — the answer is here.
