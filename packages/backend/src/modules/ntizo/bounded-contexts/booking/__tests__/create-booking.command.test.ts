@@ -3,9 +3,12 @@ import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Booking } from "../domain/aggregates/booking.aggregate";
 import {
   ProviderNotFoundError,
+  ServiceMemberCannotPerformError,
   ServiceNotBookableError,
   ServiceOptionNotFoundError,
   SlotAlreadyTakenError,
+  SlotInPastError,
+  SlotNotOfferedError,
   type ServiceNotBookableReason,
 } from "../domain/exceptions";
 import {
@@ -25,6 +28,11 @@ import type {
   ServiceOptionPricing,
   ServicePricingReaderPort,
 } from "../app/ports/outbound/service-pricing.reader.port";
+import type {
+  SlotValidityCheckInput,
+  SlotValidityReaderPort,
+  SlotValidityResult,
+} from "../app/ports/outbound/slot-validity.reader.port";
 import type { SlotHoldPort, SlotWindow } from "../app/ports/outbound/slot-hold.port";
 import type { DelayedJobsPort } from "../app/ports/outbound/delayed-jobs.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
@@ -166,6 +174,24 @@ class FakePlatformSettingsReader implements PlatformSettingsReaderPort {
   }
 }
 
+/**
+ * Fakes `SlotValidityReaderPort.check` at the boundary the command actually
+ * calls it through — these tests are about `CreateBookingCommand` turning
+ * each result into the right named refusal (and writing nothing first), not
+ * about `DrizzleSlotValidityReader`'s own queries. That reader gets its own
+ * database-level test, `slot-validity.reader.test.ts`.
+ */
+class FakeSlotValidityReader implements SlotValidityReaderPort {
+  public queries: SlotValidityCheckInput[] = [];
+
+  constructor(private readonly result: SlotValidityResult) {}
+
+  async check(input: SlotValidityCheckInput): Promise<SlotValidityResult> {
+    this.queries.push(input);
+    return this.result;
+  }
+}
+
 class FakeSlotHold implements SlotHoldPort {
   public held: { bookingId: string; slot: SlotWindow }[] = [];
   public released: string[] = [];
@@ -236,6 +262,7 @@ function setup(
   opts: {
     pricing?: ServiceOptionPricing | null;
     provider?: ProviderSnapshot | null;
+    slotValidity?: SlotValidityResult;
     insertError?: Error;
     holdError?: Error;
     paymentWindowMinutes?: number;
@@ -253,6 +280,7 @@ function setup(
   const platformSettingsReader = new FakePlatformSettingsReader(
     opts.paymentWindowMinutes ?? FAKE_PAYMENT_WINDOW_MINUTES,
   );
+  const slotValidityReader = new FakeSlotValidityReader(opts.slotValidity ?? { ok: true });
   const slotHold = new FakeSlotHold({ holdError: opts.holdError });
   const delayedJobs = new FakeDelayedJobs();
   const command = new CreateBookingCommand(
@@ -260,6 +288,7 @@ function setup(
     pricingReader,
     providerReader,
     platformSettingsReader,
+    slotValidityReader,
     slotHold,
     delayedJobs,
     unitOfWork,
@@ -271,6 +300,7 @@ function setup(
     pricingReader,
     providerReader,
     platformSettingsReader,
+    slotValidityReader,
     slotHold,
     delayedJobs,
     unitOfWork,
@@ -501,10 +531,114 @@ describe("CreateBookingCommand", () => {
     });
   });
 
+  describe("the slot validity check", () => {
+    // Every case below asserts the three things the brief calls out
+    // explicitly: the named error, and that nothing was written — not the
+    // weaker "no booking came back", which a command that writes and then
+    // throws would still pass. `repo.insertCalls`, `slotHold.held` and
+    // `outbox.published` are the three writes this command can make before
+    // it returns; a refusal that let any of them run would be exactly the
+    // bug this task exists to close, one step later.
+
+    it("refuses a member who cannot perform this service", async () => {
+      const { command, repo, slotHold, outbox } = setup({
+        slotValidity: { ok: false, reason: "member_cannot_perform_service" },
+      });
+
+      const err = (await command.execute(INPUT).catch((e: unknown) => e)) as ServiceMemberCannotPerformError;
+      expect(err).toBeInstanceOf(ServiceMemberCannotPerformError);
+      expect(err.serviceId).toBe("svc-1");
+      expect(err.memberId).toBe(INPUT.providerMemberId);
+
+      expect(repo.insertCalls).toBe(0);
+      expect(slotHold.held).toEqual([]);
+      expect(outbox.published).toEqual([]);
+    });
+
+    // A member belonging to a different provider than the option's is the
+    // other real-world case `member_cannot_perform_service` covers —
+    // `DrizzleSlotValidityReader`'s single `service_member` join cannot tell
+    // the two apart (see that reader's own comment), so from this command's
+    // point of view it is the identical result and needs no second test
+    // here. `slot-validity.reader.test.ts` is where the two scenarios are
+    // actually distinguished, against the real join.
+
+    it("refuses a provider that is not active", async () => {
+      const { command, repo, slotHold, outbox } = setup({
+        slotValidity: { ok: false, reason: "provider_not_active" },
+      });
+
+      const err = (await command.execute(INPUT).catch((e: unknown) => e)) as ServiceNotBookableError;
+      expect(err).toBeInstanceOf(ServiceNotBookableError);
+      expect(err.reason).toBe("provider_not_active");
+
+      expect(repo.insertCalls).toBe(0);
+      expect(slotHold.held).toEqual([]);
+      expect(outbox.published).toEqual([]);
+    });
+
+    it("refuses a startsAt in the past", async () => {
+      const { command, repo, slotHold, outbox } = setup({
+        slotValidity: { ok: false, reason: "starts_at_in_past" },
+      });
+
+      const err = (await command.execute(INPUT).catch((e: unknown) => e)) as SlotInPastError;
+      expect(err).toBeInstanceOf(SlotInPastError);
+      expect(err.startsAt).toEqual(INPUT.startsAt);
+
+      expect(repo.insertCalls).toBe(0);
+      expect(slotHold.held).toEqual([]);
+      expect(outbox.published).toEqual([]);
+    });
+
+    it("refuses a startsAt that is not an offered slot for that member", async () => {
+      const { command, repo, slotHold, outbox } = setup({
+        slotValidity: { ok: false, reason: "slot_not_offered" },
+      });
+
+      const err = (await command.execute(INPUT).catch((e: unknown) => e)) as SlotNotOfferedError;
+      expect(err).toBeInstanceOf(SlotNotOfferedError);
+      expect(err.providerMemberId).toBe(INPUT.providerMemberId);
+      expect(err.startsAt).toEqual(INPUT.startsAt);
+
+      expect(repo.insertCalls).toBe(0);
+      expect(slotHold.held).toEqual([]);
+      expect(outbox.published).toEqual([]);
+    });
+
+    it("checks the service the pricing resolved to, not a client-supplied id, and only after the provider was found", async () => {
+      const { command, slotValidityReader, providerReader } = setup();
+
+      await command.execute(INPUT);
+
+      expect(slotValidityReader.queries).toEqual([
+        {
+          serviceId: "svc-1",
+          serviceOptionId: INPUT.serviceOptionId,
+          providerMemberId: INPUT.providerMemberId,
+          startsAt: INPUT.startsAt,
+          durationMinutes: 90,
+        },
+      ]);
+      // The provider was already read by the time the slot check runs — the
+      // order the class doc comment describes.
+      expect(providerReader.queries).toEqual(["prov-1"]);
+    });
+
+    it("still creates the booking on the happy path — the slot check is a gate, not a replacement for the write", async () => {
+      const { command, repo } = setup({ slotValidity: { ok: true } });
+
+      const result = await command.execute(INPUT);
+
+      expect(result.bookingId).toBe("bk-1");
+      expect(repo.insertCalls).toBe(1);
+    });
+  });
+
   describe("ServiceNotBookableError's code", () => {
     // `mapErrorToGraphQLError` copies `message` and `error.code` onto the
     // GraphQL error and nothing else — `reason` never crosses the wire. A
-    // shared "SERVICE_NOT_BOOKABLE" code for all four reasons would still
+    // shared "SERVICE_NOT_BOOKABLE" code for all five reasons would still
     // pass every test above (they all assert on `.reason`, read in this
     // process); this is the test that fails if the codes are ever
     // collapsed back into one, because it is the only one reading the field
@@ -514,6 +648,7 @@ describe("CreateBookingCommand", () => {
       "not_published",
       "option_retired",
       "hourly",
+      "provider_not_active",
     ];
 
     it("gives every reason its own code — the one field that survives the trip to the client", () => {
@@ -524,6 +659,7 @@ describe("CreateBookingCommand", () => {
         "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED",
         "SERVICE_NOT_BOOKABLE_OPTION_RETIRED",
         "SERVICE_NOT_BOOKABLE_HOURLY",
+        "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE",
       ]);
       expect(new Set(codes).size).toBe(reasons.length);
     });

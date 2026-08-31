@@ -23,3 +23,9 @@ export type {
   ServicePricingReaderPort,
 } from "./app/ports/outbound/service-pricing.reader.port";
 export type { SlotHoldPort, SlotWindow } from "./app/ports/outbound/slot-hold.port";
+export type {
+  SlotValidityCheckInput,
+  SlotValidityReaderPort,
+  SlotValidityReason,
+  SlotValidityResult,
+} from "./app/ports/outbound/slot-validity.reader.port";

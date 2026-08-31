@@ -3,8 +3,11 @@ import { Booking } from "../../domain/aggregates/booking.aggregate";
 import { BookingCreated } from "../../domain/events";
 import {
   ProviderNotFoundError,
+  ServiceMemberCannotPerformError,
   ServiceNotBookableError,
   ServiceOptionNotFoundError,
+  SlotInPastError,
+  SlotNotOfferedError,
 } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
@@ -13,6 +16,10 @@ import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-sett
 import type { ProviderSnapshotReaderPort } from "../ports/outbound/provider-snapshot.reader.port";
 import type { ServicePricingReaderPort } from "../ports/outbound/service-pricing.reader.port";
 import type { SlotHoldPort } from "../ports/outbound/slot-hold.port";
+import type {
+  SlotValidityReaderPort,
+  SlotValidityReason,
+} from "../ports/outbound/slot-validity.reader.port";
 
 export interface CreateBookingInput {
   /** From `requireUser` at the GraphQL layer, never from the client. */
@@ -33,6 +40,35 @@ export interface CreateBookingInput {
   };
   description: string | null;
 }
+
+/**
+ * Turns each of `SlotValidityReaderPort.check`'s four refusal reasons into
+ * its own named error, and throws it.
+ *
+ * A `Record<SlotValidityReason, ...>` rather than a `switch`, and for the
+ * same reason `SERVICE_NOT_BOOKABLE_CODES` is one: a `switch` with no
+ * `default` lets a fifth reason compile silently with nothing thrown at all,
+ * while a `Record` missing a key is a compile error the moment that reason
+ * is added to the union. Each entry returns `never` — it always throws — so
+ * the call site below needs no `return` of its own.
+ */
+const RESULT_TO_REFUSAL: Record<
+  SlotValidityReason,
+  (serviceId: string, providerMemberId: string, startsAt: Date) => never
+> = {
+  provider_not_active: () => {
+    throw new ServiceNotBookableError("provider_not_active");
+  },
+  member_cannot_perform_service: (serviceId, providerMemberId) => {
+    throw new ServiceMemberCannotPerformError(serviceId, providerMemberId);
+  },
+  starts_at_in_past: (_serviceId, _providerMemberId, startsAt) => {
+    throw new SlotInPastError(startsAt);
+  },
+  slot_not_offered: (_serviceId, providerMemberId, startsAt) => {
+    throw new SlotNotOfferedError(providerMemberId, startsAt);
+  },
+};
 
 /**
  * Turning a customer's checkout into a held slot and a debt they have not yet
@@ -58,6 +94,14 @@ export interface CreateBookingInput {
  * from a customer-chosen length is a second pricing rule with its own
  * rounding that no task in this plan contains.
  *
+ * Once the provider exists, `SlotValidityReaderPort` runs one more check
+ * before `Booking.create` is ever called: is `providerMemberId` someone who
+ * performs this service, is the provider actually trading, is `startsAt` in
+ * the future, and is it a start Scheduling's own grid actually offers that
+ * member. That port calls Scheduling's rules rather than re-deriving them —
+ * see its own doc comment for why a second implementation of "is this slot
+ * free" would be the exact defect this task exists to close, one layer up.
+ *
  * **The insert, the hold, and the publish share one transaction.** The insert
  * runs first because the hold and the event both need the database-assigned
  * booking id, which does not exist until the row does. If the insert throws
@@ -77,6 +121,7 @@ export class CreateBookingCommand {
     private readonly pricingReader: ServicePricingReaderPort,
     private readonly providerReader: ProviderSnapshotReaderPort,
     private readonly platformSettingsReader: PlatformSettingsReaderPort,
+    private readonly slotValidityReader: SlotValidityReaderPort,
     private readonly slotHold: SlotHoldPort,
     private readonly delayedJobs: DelayedJobsPort,
     private readonly unitOfWork: UnitOfWorkPort,
@@ -112,6 +157,22 @@ export class CreateBookingCommand {
     const provider = await this.providerReader.findForBooking(pricing.providerId);
     if (!provider) {
       throw new ProviderNotFoundError(pricing.providerId);
+    }
+
+    // The one check this command does not define — it asks
+    // `SlotValidityReaderPort`, which asks Scheduling's own rules, whether
+    // `providerMemberId` and `startsAt` actually name a real, bookable slot.
+    // See `RESULT_TO_REFUSAL` below for why the four reasons become four
+    // distinct errors rather than one generic "invalid slot".
+    const validity = await this.slotValidityReader.check({
+      serviceId: pricing.serviceId,
+      serviceOptionId: input.serviceOptionId,
+      providerMemberId: input.providerMemberId,
+      startsAt: input.startsAt,
+      durationMinutes: pricing.durationMinutes,
+    });
+    if (!validity.ok) {
+      RESULT_TO_REFUSAL[validity.reason](pricing.serviceId, input.providerMemberId, input.startsAt);
     }
 
     // LIVE, not carried on the booking until it is: read fresh on every call,

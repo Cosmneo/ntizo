@@ -314,13 +314,33 @@ export class ProviderNotFoundError extends NotFoundError {
  * would accept the same fifth reason silently and hand it whatever code the
  * default falls back to.
  */
-export type ServiceNotBookableReason = "quote" | "not_published" | "option_retired" | "hourly";
+/**
+ * - `"provider_not_active"` — the option is fine and the service is
+ *   published, but the workspace selling it is not currently trading.
+ *   `provider.status` defaults to `pending`, so a workspace nobody has
+ *   reviewed yet already holds live option ids it can hand out directly, and
+ *   a workspace suspended after trading distributed its ids while it was
+ *   still active — the exact hole `SlotValidityReaderPort` closes. Checked
+ *   there, alongside the member and the slot, rather than by widening
+ *   `ProviderSnapshotReaderPort` to filter on status: that port's contract is
+ *   deliberately "gone" versus "exists, with a real snapshot" (see its own
+ *   doc comment), and folding a third meaning into it would leave the
+ *   booking's provider-name/commission snapshot with nothing to read for a
+ *   suspended provider's already-placed booking history.
+ */
+export type ServiceNotBookableReason =
+  | "quote"
+  | "not_published"
+  | "option_retired"
+  | "hourly"
+  | "provider_not_active";
 
 const SERVICE_NOT_BOOKABLE_MESSAGES: Record<ServiceNotBookableReason, string> = {
   quote: "This service needs a quote before it can be booked — there is no fixed price yet",
   not_published: "This service is not currently available to book",
   option_retired: "This option is no longer offered",
   hourly: "Booking by the hour is not supported yet",
+  provider_not_active: "This provider is not currently accepting bookings",
 };
 
 const SERVICE_NOT_BOOKABLE_CODES: Record<ServiceNotBookableReason, string> = {
@@ -328,6 +348,7 @@ const SERVICE_NOT_BOOKABLE_CODES: Record<ServiceNotBookableReason, string> = {
   not_published: "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED",
   option_retired: "SERVICE_NOT_BOOKABLE_OPTION_RETIRED",
   hourly: "SERVICE_NOT_BOOKABLE_HOURLY",
+  provider_not_active: "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE",
 };
 
 export class ServiceNotBookableError extends UnprocessableError {
@@ -337,5 +358,83 @@ export class ServiceNotBookableError extends UnprocessableError {
       code: SERVICE_NOT_BOOKABLE_CODES[reason],
     });
     this.name = "ServiceNotBookableError";
+  }
+}
+
+/**
+ * Refused because `providerMemberId` does not name someone who performs this
+ * service.
+ *
+ * Same `code` as Scheduling's own `ServiceMemberCannotPerformError` — both
+ * name the one thing "this member cannot do this service" means — but
+ * declared separately here rather than imported across bounded contexts, the
+ * same shape this codebase already uses for `NotProviderMemberError` and
+ * `NotProviderOwnerOrAdminError` (see scheduling's `domain/exceptions.ts`).
+ * Do not "fix" this back into an import.
+ *
+ * One error for two distinct client mistakes, on purpose: a member who
+ * belongs to this service's own provider but was never assigned to this
+ * service, and a member who belongs to an entirely different provider.
+ * `SlotValidityReaderPort`'s single `service_member` join cannot tell these
+ * apart — `SetServiceMembersCommand` never lets a `service_member` row exist
+ * for a member outside the service's own provider in the first place, so a
+ * cross-provider id fails the exact same join a same-provider-wrong-service
+ * id fails. Distinguishing them would need a second query whose only purpose
+ * is deciding which of two identical refusals to word differently.
+ */
+export class ServiceMemberCannotPerformError extends UnprocessableError {
+  constructor(
+    public readonly serviceId: string,
+    public readonly memberId: string,
+  ) {
+    super({
+      message: `Member "${memberId}" cannot perform service "${serviceId}"`,
+      code: "SERVICE_MEMBER_CANNOT_PERFORM",
+    });
+    this.name = "ServiceMemberCannotPerformError";
+  }
+}
+
+/**
+ * Refused because `startsAt` already happened.
+ *
+ * Not a Scheduling rule reused from `list-service-availability.projection.ts`
+ * — that projection has no notion of "now" built into it, and answers
+ * whatever `from`/`to` window it is asked about, past window included. This
+ * is a booking-specific refusal `SlotValidityReaderPort` owns outright.
+ */
+export class SlotInPastError extends UnprocessableError {
+  constructor(public readonly startsAt: Date) {
+    super({
+      message: `"${startsAt.toISOString()}" is in the past`,
+      code: "SLOT_IN_PAST",
+    });
+    this.name = "SlotInPastError";
+  }
+}
+
+/**
+ * Refused because nobody offered this member at this instant.
+ *
+ * Distinct from `SlotAlreadyTakenError`: that class is the database's own
+ * refusal, raised when the partial unique index rejects a concurrent insert
+ * — the race Task 4's constraint exists to make impossible. This one is the
+ * honest path's refusal, raised by `SlotValidityReaderPort` before anything
+ * is written, and it fires just as readily for a start nobody's calendar
+ * ever offered (off-grid, outside a rule's window, a day the member is
+ * closed) as for one that is currently held by another booking — `busy` is
+ * one more input `startsForDay` already weighs alongside the rules and the
+ * exceptions, not a separate check this reader runs twice.
+ */
+export class SlotNotOfferedError extends UnprocessableError {
+  constructor(
+    public readonly providerMemberId: string,
+    public readonly startsAt: Date,
+  ) {
+    super({
+      message: `Member "${providerMemberId}" does not offer a slot starting at ${startsAt.toISOString()}`,
+      code: "SLOT_NOT_OFFERED",
+    });
+    this.name = "SlotNotOfferedError";
   }
 }

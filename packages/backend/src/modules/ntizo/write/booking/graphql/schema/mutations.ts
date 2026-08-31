@@ -15,6 +15,21 @@ import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
  * not from the client, which is the whole reason a customer cannot book a
  * two-minute house clean by editing a payload: there is no field to edit.
  *
+ * **`providerMemberId` is the third field of that class, and it could not be
+ * omitted the same way.** Unlike `customerId` and `durationMinutes`, there is
+ * no server-side source for "which member's calendar" — the customer is
+ * genuinely choosing one, off the same availability modal that calls
+ * `ListServiceAvailability`. So this field stays, and the bug an omission
+ * would have prevented is closed by a check instead:
+ * `SlotValidityReaderPort`, called from `CreateBookingCommand` before
+ * anything is written, refuses a member who does not perform this service —
+ * including a member borrowed from a *different* provider's option, which
+ * used to reach `Booking.create` with nothing but a foreign key standing in
+ * its way and would silently hold that other provider's calendar against a
+ * real customer. The same call also refuses a provider that is not `active`
+ * and a `startsAt` that is not a real, future, on-grid start for that
+ * member.
+ *
  * The bounds here mirror the aggregate's rather than replacing them — this
  * is the edge refusing obvious nonsense cheaply (a blank address line, a
  * `startsAt` that isn't a real date), with `Booking.create` as the place the

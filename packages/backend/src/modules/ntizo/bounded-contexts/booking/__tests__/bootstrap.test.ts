@@ -8,6 +8,7 @@ import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
 import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
+import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
 
@@ -67,5 +68,15 @@ describe("bootstrapBooking", () => {
 
     expect(adapters.platformSettingsReader).toBeInstanceOf(DrizzlePlatformSettingsReader);
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
+  });
+
+  // The booking-seams plan's Task 2: without this, `createBooking` would
+  // still type-check against a slot-validity reader nothing real backs, and
+  // every booking would silently skip the check that closes the
+  // calendar-blocking hole.
+  it("wires the slot-validity reader that closes the calendar-blocking hole", () => {
+    const { adapters } = bootstrapBooking();
+
+    expect(adapters.slotValidityReader).toBeInstanceOf(DrizzleSlotValidityReader);
   });
 });
