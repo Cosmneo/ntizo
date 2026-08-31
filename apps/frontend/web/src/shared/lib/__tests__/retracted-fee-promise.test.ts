@@ -143,16 +143,34 @@ describe("the retracted fee promise never comes back", () => {
       };
     });
 
+    // es-ES, fr-FR, de-DE, it-IT and nl-NL shipped this file as a literal
+    // English copy before this task translated it -- confirmed against
+    // 706a49b (the commit before Task 7 touched it), where fr-FR's `title`
+    // was "Offer your services." verbatim. A revert of that translation
+    // restores English, not French or German, so the only banned list that
+    // actually matches what a revert brings back in those five locales is
+    // the English one -- byte-exact, including the unspaced "10%"/"0%" the
+    // English text used (French and German would write "10 %"/"0 %" if a
+    // NEW false claim were authored in-language instead, so both forms are
+    // banned for those two). The translated bans below stay too: they catch
+    // that second failure, a fresh mistranslation rather than a reverted
+    // commit, which is a different way for the same promise to come back.
+    // pt-MZ and pt-PT need no such addition -- confirmed against the same
+    // commit, they were already genuine Portuguese before this task, so a
+    // revert there restores Portuguese, which their existing list already
+    // bans.
+    const ENGLISH_REVERT_BANNED = [
+      "0%", "10%",
+      "keep the whole price",
+      "no commission on what you earn",
+      "zero commission for you",
+      "the price you set is the price you receive",
+      "on top of your price",
+      "never comes out of yours",
+    ];
+
     const BANNED: Record<string, string[]> = {
-      "en-US": [
-        "0%", "10%",
-        "keep the whole price",
-        "no commission on what you earn",
-        "zero commission for you",
-        "the price you set is the price you receive",
-        "on top of your price",
-        "never comes out of yours",
-      ],
+      "en-US": ENGLISH_REVERT_BANNED,
       "pt-MZ": [
         "0%", "10%",
         "receba o preço inteiro",
@@ -172,7 +190,7 @@ describe("the retracted fee promise never comes back", () => {
         "nunca sai do seu bolso",
       ],
       "es-ES": [
-        "0%", "10%",
+        ...ENGLISH_REVERT_BANNED,
         "quédate con el precio completo",
         "sin comisión sobre lo que ganas",
         "cero comisión para ti",
@@ -181,6 +199,7 @@ describe("the retracted fee promise never comes back", () => {
         "nunca sale de tu bolsillo",
       ],
       "fr-FR": [
+        ...ENGLISH_REVERT_BANNED,
         "0 %", "10 %",
         "gardez tout le prix",
         "sans commission sur ce que vous gagnez",
@@ -190,6 +209,7 @@ describe("the retracted fee promise never comes back", () => {
         "ne sort jamais de votre poche",
       ],
       "de-DE": [
+        ...ENGLISH_REVERT_BANNED,
         "0 %", "10 %",
         "behalte den vollen preis",
         "keine provision auf das, was du verdienst",
@@ -199,7 +219,7 @@ describe("the retracted fee promise never comes back", () => {
         "kommt nie aus deiner tasche",
       ],
       "it-IT": [
-        "0%", "10%",
+        ...ENGLISH_REVERT_BANNED,
         "tieni l’intero prezzo",
         "nessuna commissione su quanto guadagni",
         "zero commissioni per te",
@@ -208,7 +228,7 @@ describe("the retracted fee promise never comes back", () => {
         "non esce mai dalla tua tasca",
       ],
       "nl-NL": [
-        "0%", "10%",
+        ...ENGLISH_REVERT_BANNED,
         "hou de hele prijs",
         "geen commissie op wat je verdient",
         "nul commissie voor jou",
