@@ -151,8 +151,16 @@ export function ProviderShell({ children }: { children: ReactNode }) {
           {activeProvider && (
             <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border bg-muted/40 px-4 text-xs text-muted-foreground sm:px-6">
               <Percent className="h-3 w-3 shrink-0" aria-hidden="true" />
-              <span className="truncate">{t("commissionRateLabel")}</span>
-              <span className="font-medium text-foreground">{commissionRate ?? "—"}</span>
+              {/* `min-w-0` beside `truncate`, for the reason the header row
+                  above already documents: a flex child defaults to
+                  `min-width: auto` and refuses to shrink, so `truncate` alone
+                  does nothing and the row overflows instead. No current
+                  translation is long enough to reach that — Dutch's
+                  "Aandeel van het platform" is the longest at 25 characters —
+                  but the label is translated copy and the rate beside it is
+                  the one thing here that must stay readable. */}
+              <span className="min-w-0 truncate">{t("commissionRateLabel")}</span>
+              <span className="shrink-0 font-medium text-foreground">{commissionRate ?? "—"}</span>
             </div>
           )}
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
