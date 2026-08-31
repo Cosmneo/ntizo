@@ -110,6 +110,20 @@ export const booking = bookingSchema.table(
     // The slot.
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    /**
+     * Which of the member's concurrent slots this booking occupies, from 1.
+     * `member_availability.capacity` (null meaning one) is how many a member
+     * can hold at once for a given window — a room, a class, a team behind
+     * one name, not only ever one customer at a time. This is an assignment,
+     * not a fact about what was bought: unlike every other column in this
+     * table's snapshot, it is never shown to a customer or a provider and
+     * never travels through `bookingReadModel`, an event payload, or the
+     * GraphQL schema. It exists only so `booking_member_slot_no_overlap`
+     * below has something to key on besides the member and the time. At
+     * capacity 1 every booking is seat 1 and the constraint behaves exactly
+     * as it did before this column existed.
+     */
+    seat: integer("seat").notNull().default(1),
 
     // State: which status is current, and when each transition happened.
     status: text("status").notNull(),
@@ -165,14 +179,22 @@ export const booking = bookingSchema.table(
     // and a 30-minute one at 14:30 both inserted, and 14:30 is a grid start
     // the availability modal legitimately offers (`slot_interval_minutes` is
     // 30). It is replaced by `booking_member_slot_no_overlap`, an
-    // `EXCLUDE USING gist (provider_member_id WITH =, tstzrange(starts_at,
-    // ends_at) WITH &&)` constraint hand-added to the migration — Drizzle has
-    // no builder for `EXCLUDE`, so it cannot be declared here and will not
-    // show up in a `generate` diff. It subsumes the old index rather than
-    // sitting alongside it: an identical start is a degenerate case of two
-    // ranges overlapping, so nothing the unique index refused escapes this
-    // one, and keeping both would leave two constraints that can only
-    // disagree by one of them being wrong.
+    // `EXCLUDE USING gist (provider_member_id WITH =, seat WITH =,
+    // tstzrange(starts_at, ends_at) WITH &&)` constraint hand-added to the
+    // migration — Drizzle has no builder for `EXCLUDE`, so it cannot be
+    // declared here and will not show up in a `generate` diff. It subsumes
+    // the old index rather than sitting alongside it: an identical start is a
+    // degenerate case of two ranges overlapping, so nothing the unique index
+    // refused escapes this one, and keeping both would leave two constraints
+    // that can only disagree by one of them being wrong.
+    //
+    // `seat` joined the key after the constraint's first version refused
+    // *any* two overlapping bookings on one member, which is right at
+    // capacity 1 and wrong for a member who legitimately holds several at
+    // once — `member_availability.capacity` is a real, already-honoured
+    // column with nothing in the database backing it above 1. With `seat`
+    // in the key, two bookings overlap only if they also share a seat; at
+    // capacity 1 every booking is seat 1 and the guarantee is unchanged.
     //
     // Its `WHERE` clause is the same partial condition the old index used —
     // only statuses that still hold the slot; an expired or declined booking

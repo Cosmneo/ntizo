@@ -336,6 +336,14 @@ describe("booking_member_slot_no_overlap", () => {
     expect(definition).toContain("EXCLUDE");
     expect(definition).toContain("gist");
     expect(definition).toContain("WHERE");
+    // Both directions, the same discipline the loop below applies to the
+    // statuses: `seat` must be present (proving the new key column actually
+    // landed in the migration rather than only in this file's fixtures) and
+    // `provider_member_id` must still be present alongside it (proving seat
+    // was added to the key, not swapped in for the column that scopes the
+    // constraint to one member's calendar).
+    expect(definition).toContain("seat");
+    expect(definition).toContain("provider_member_id");
 
     // Both directions matter, and only because this predicate is hand-typed
     // into a migration file rather than generated from `SLOT_HOLDING_STATUSES`
@@ -422,6 +430,40 @@ describe("booking_member_slot_no_overlap", () => {
       endsAt: new Date("2026-09-08T15:00:00Z"),
     });
     expect(second?.id).toBeString();
+  });
+
+  // `member_availability.capacity` lets one member hold several bookings at
+  // once — a room, a class, a team behind one name — and every other test in
+  // this block uses the implicit default of seat 1, which is also every
+  // capacity-1 member this branch's fixtures ever create. These two are the
+  // ones that actually move the seat.
+  test("two overlapping bookings on one member succeed when they hold different seats", async () => {
+    const slotStart = new Date("2026-09-09T09:00:00Z");
+    const slotEnd = new Date("2026-09-09T10:00:00Z");
+
+    const [first] = await insertBooking({ seat: 1, startsAt: slotStart, endsAt: slotEnd });
+    expect(first?.id).toBeString();
+
+    const [second] = await insertBooking({ seat: 2, startsAt: slotStart, endsAt: slotEnd });
+    expect(second?.id).toBeString();
+  });
+
+  test("two overlapping bookings on one member are still refused when they share a seat", async () => {
+    const slotStart = new Date("2026-09-10T09:00:00Z");
+    const slotEnd = new Date("2026-09-10T10:00:00Z");
+
+    const [first] = await insertBooking({ seat: 2, startsAt: slotStart, endsAt: slotEnd });
+    expect(first?.id).toBeString();
+
+    // Same seat, overlapping window — `seat` narrows the exclusion key, it
+    // does not remove `provider_member_id` or the time range from it.
+    await expect(
+      insertBooking({
+        seat: 2,
+        startsAt: new Date("2026-09-10T09:30:00Z"),
+        endsAt: new Date("2026-09-10T10:30:00Z"),
+      }),
+    ).rejects.toThrow(/booking_member_slot_no_overlap/);
   });
 });
 
