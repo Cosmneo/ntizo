@@ -413,6 +413,83 @@ claims a per-row guard that does not exist."
 
 ---
 
+### Task 7: The promise catches up with the mechanics
+
+**Files:**
+- Modify: `apps/frontend/web/src/shared/locales/*/legal.json` (8 locales)
+- Modify: `apps/frontend/web/src/shared/locales/*/landing.json` (8 locales)
+- Modify: `apps/frontend/web/src/shared/locales/*/become-provider.json` (8 locales)
+- Modify: `apps/frontend/web/src/shared/locales/*/admin.json` (8 locales)
+- Modify: `apps/frontend/web/src/features/become-provider/ui/become-provider-page.tsx` (doc comment, and the "0%" band if its number is hardcoded)
+- Modify: `apps/frontend/web/src/features/landing/ui/sections.tsx` (same)
+- Modify: any test asserting the changed strings
+
+**Interfaces:** none. This is text.
+
+**Why this exists.** Task 1 fixed the number on the service page. It did not touch four other live surfaces that still promise the opposite, and the whole-branch reviewer found them by grepping past the diff:
+
+- **The Terms of Service**, rendered at `/legal`: *"A platform service fee is added on top of that price and paid by you, the customer… it is never deducted from the provider: the price they set is the price they receive."* This is a contract.
+- **The landing page's hero band**: `0%` above *"de comissão para quem trabalha"*, with *"A taxa de 10% é do cliente e vem por cima do seu preço. O que combina com o cliente é exactamente o que recebe."*
+- **The provider sign-up page**: *"Zero commission for you — the price you set is the price you receive."*
+- **The admin hint** under the commission field an administrator edits: *"The fee charged to the customer."* That one actively misinforms the person operating the control.
+
+The owner decided on 2026-08-31 to update the copy rather than revert the mechanics.
+
+**Write it plainly, and do not spin it.** The fee now comes out of the provider's payment. That is a worse offer than "0%" and no arrangement of words changes it. Copy that dresses a deduction as a benefit reads as evasion to exactly the audience it is aimed at, and this audience — pedreiros, canalizadores, domésticas — is the one the platform's positioning claims to respect.
+
+What is true and worth saying: the provider sets one price, the customer pays exactly that, and the platform's share is a stated percentage of it, visible up front and never a surprise at payout. What must not survive anywhere: "0%", "zero commission", "you receive what you set", "never deducted", "on top of your price".
+
+**The `0%` band is a design element, not only a string.** Read the component before editing the locale file — if the number is hardcoded in JSX, changing the sentence under it leaves a giant `0%` above copy that contradicts it, which is worse than either alone. Decide with the same care whether that band should carry the real rate, carry nothing, or go.
+
+**Do not invent a rate.** The number is per provider (`provider.commission_bps`) and an administrator can change it; the dev database currently holds 1200, not 1000. Copy that names "10%" is already a guess about a configurable value. Prefer wording that does not hardcode a percentage; where a number genuinely helps, say it is the standard rate rather than the only one.
+
+- [ ] **Step 1: Read every affected string in every locale, and list them**
+
+```bash
+grep -rn "zeroFee\|pricingTitle\|pricingBody\|providerDetailCommissionHint" apps/frontend/web/src/shared/locales
+```
+
+Plus the fee paragraphs in each `legal.json`. Report what each currently says — in English translation where it is not English — before writing anything. The point is to know what is being retracted.
+
+- [ ] **Step 2: Draft the English first, and stop**
+
+Write `en-US` for all four surfaces and put the drafts in your report. **Do not translate yet and do not commit.** The controller shows these to the owner before eight locales are written against them; a phrase that has to change after translation costs eight times as much.
+
+- [ ] **Step 3: Translate into the remaining seven**
+
+Only after the English is approved. `pt-MZ` and `pt-PT` are the ones a real reader will read first — treat them as originals, not as translations, and keep the register of the surrounding file rather than importing a formal legal voice into marketing copy.
+
+- [ ] **Step 4: Fix the components**
+
+The `0%` band, and the two doc comments that restate the old model in prose.
+
+- [ ] **Step 5: Run the suite and look at all three pages**
+
+```
+cd apps/frontend/web && bun run test && bun run typecheck
+```
+
+Then open `/`, `/become-provider` and `/legal` in the running app and read them as a provider would. A locale file that parses is not a page that makes sense.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/frontend/web/src
+git commit -m "Stop promising providers a fee they now pay
+
+The service page was fixed; the landing hero, the sign-up page and the
+Terms of Service still said the opposite -- 0% commission, the price you
+set is the price you receive, never deducted. The Terms are a contract,
+and the admin hint was misdescribing the control an administrator uses.
+
+Written plainly rather than softened. The fee comes out of the
+provider's payment now, which is a worse offer than the one this copy
+made, and dressing that as a benefit would read as evasion to the people
+it is addressed to."
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage.** BR2 is what this plan repairs: Tasks 2, 3 and 4 together make "the slot must be free for the chosen staff member, and held atomically" true rather than nearly true. BR1's provider half arrives in Task 2. BR3 needed no code change — the implementation was right and the *page* was wrong, which Task 1 fixes. BR5's idempotency is tightened in Task 5. BR4, BR6 and BR7's provider half remain Plan 2's, as before.
