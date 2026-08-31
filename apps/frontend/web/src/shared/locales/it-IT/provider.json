@@ -29,6 +29,7 @@
   "settings": "Impostazioni",
   "account": "Account",
   "noActiveProvider": "Nessun fornitore attivo.",
+  "commissionRateLabel": "Parte della piattaforma",
   "welcomeTitle": "Benvenuto! Configuriamo il tuo profilo da fornitore.",
   "welcomeSubtitle": "Scegli come iniziare. Potrai sempre modificare questi dati in seguito.",
   "setMeUpAutomatically": "Configura automaticamente",

@@ -29,6 +29,7 @@
   "settings": "Instellingen",
   "account": "Account",
   "noActiveProvider": "Geen actieve aanbieder.",
+  "commissionRateLabel": "Aandeel van het platform",
   "welcomeTitle": "Welkom! Laten we je instellen als aanbieder.",
   "welcomeSubtitle": "Kies hoe je wilt beginnen. Je kunt deze gegevens later altijd aanpassen.",
   "setMeUpAutomatically": "Automatisch instellen",
