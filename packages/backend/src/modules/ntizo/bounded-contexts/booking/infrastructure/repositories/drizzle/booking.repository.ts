@@ -209,17 +209,34 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
     return row ? toAggregate(row) : null;
   }
 
-  async save(entity: Booking): Promise<void> {
+  /**
+   * `expectedStatus` in the `WHERE`, not just `id` — see
+   * `BookingRepositoryPort.save`'s own comment for the race this defends
+   * against. Without it this was a plain `UPDATE … WHERE id = $1`: whichever
+   * of a payment webhook and the expiry sweep wrote second would win
+   * unconditionally, silently overwriting the first writer's transition
+   * (and its already-drained outbox row) with its own.
+   *
+   * `.returning({ id: booking.id })` rather than a bare `UPDATE`, so the
+   * caller can tell "matched and wrote" from "matched nothing" without a
+   * second round trip: zero rows back means the predicate didn't match —
+   * either this id doesn't exist (shouldn't happen given `save`'s contract,
+   * see below) or, the case this method exists for, `status` had already
+   * moved past `expectedStatus` by the time this `UPDATE` actually ran.
+   */
+  async save(entity: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
     // Never null here: `BookingRepositoryPort.save`'s contract is that the
     // aggregate it is handed already has an id — every caller loads it
     // through `findById` first (see `ExpireBookingCommand`,
     // `MarkBookingPaidCommand`), which only ever returns a booking the
     // database already assigned one to.
     const id = entity.id as string;
-    await getDb()
+    const rows = await getDb()
       .update(booking)
       .set({ ...toRow(entity), updatedAt: new Date() })
-      .where(eq(booking.id, id));
+      .where(and(eq(booking.id, id), eq(booking.status, expectedStatus)))
+      .returning({ id: booking.id });
+    return rows.length > 0;
   }
 
   async appendChange(change: BookingChangeRecord): Promise<void> {
@@ -240,10 +257,12 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * but has already taken the customer's money, and expiring it would
    * cancel a sale that already happened. `expires_at IS NOT NULL` is
    * belt-and-braces on top of the status filter, not a second filter doing
-   * real work: `Booking`'s transitions null it out on every path leaving
-   * `PENDING_PAYMENT` (see `markPaid` and `expire`), so nothing in the
-   * status should ever have a null `expiresAt` — the guard exists in case a
-   * row somehow does anyway.
+   * real work: `Booking.create` always sets `expiresAt`, and no transition
+   * nulls it afterward (see `markPaid` and `expire`, and `expiresAt`'s own
+   * doc comment on `BookingProps` for why it now stays put permanently, as
+   * a deadline the row itself is the audit trail for) — so a
+   * `PENDING_PAYMENT` row can never actually have a null `expiresAt` for
+   * this filter to need. The guard exists in case one somehow does anyway.
    *
    * Oldest deadline first, so a sweep that can only process part of a
    * backlog drains it in the order it accumulated rather than starving

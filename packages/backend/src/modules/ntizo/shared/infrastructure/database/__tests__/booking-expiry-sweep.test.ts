@@ -252,7 +252,10 @@ describe("ExpireDueBookingsInternalCommand", () => {
       const dueReread = await repo.findById(due.id as string);
       expect(dueReread?.status).toBe("EXPIRED");
       expect(dueReread?.expiredAt).not.toBeNull();
-      expect(dueReread?.expiresAt).toBeNull();
+      // The deadline survives the transition (Task 5 of the booking-seams
+      // repair plan) rather than being nulled — it is the fact a customer
+      // disputing "you gave my slot away" would need.
+      expect(dueReread?.expiresAt?.toISOString()).toBe("2026-11-01T09:30:00.000Z");
 
       const notYetDueReread = await repo.findById(notYetDue.id as string);
       expect(notYetDueReread?.status).toBe("PENDING_PAYMENT");
@@ -265,14 +268,16 @@ describe("ExpireDueBookingsInternalCommand", () => {
   /**
    * The test that matters: a booking already paid, whose old deadline has
    * long since passed, must come out of the sweep exactly as it went in.
-   * `markPaid` clears `expiresAt` to null on its way out of
-   * `PENDING_PAYMENT` (see `booking-repository.test.ts`), so this is not
-   * only the row `findDueForExpiry`'s status filter excludes — it is also
-   * the row a sweep that forgot the status filter and read straight off a
-   * stale `expiresAt` snapshot would wrongly leave alone anyway. What this
-   * test actually exercises is the sweep calling `findDueForExpiry` (which
-   * never hands this booking to `ExpireBookingCommand` in the first place)
-   * rather than some other query that would.
+   * Since Task 5 of the booking-seams repair plan, `markPaid` no longer
+   * clears `expiresAt` on its way out of `PENDING_PAYMENT` — the deadline
+   * stays on the row, still in the past, still non-null (see
+   * `booking-repository.test.ts`). That makes this test strictly harder
+   * than it was: `findDueForExpiry`'s status filter is now the *only* thing
+   * standing between this booking and the sweep, because the old
+   * `expires_at IS NOT NULL` check this row also used to fail on has
+   * nothing left to catch. A sweep that forgot the status filter and
+   * matched on a stale `expiresAt` alone would wrongly expire this booking,
+   * and this test is what would catch it.
    */
   test("a booking already paid survives the sweep untouched, even past its old deadline", async () => {
     await __runWithTransactionContextForTests(db, async () => {
@@ -289,15 +294,17 @@ describe("ExpireDueBookingsInternalCommand", () => {
       createdBookingIds.push(inserted.id as string);
       const paid = inserted.markPaid("mpesa-sweep-test", new Date("2026-11-02T08:45:00.000Z"));
       expect(paid.status).toBe("AWAITING_PROVIDER");
-      expect(paid.expiresAt).toBeNull();
-      await repo.save(paid);
+      expect(paid.expiresAt).toEqual(inserted.expiresAt);
+      const applied = await repo.save(paid, "PENDING_PAYMENT");
+      expect(applied).toBe(true);
 
       const sweep = buildSweep(repo, () => now);
       const result = await sweep.execute({ limit: 10 });
 
-      // Nothing in this file's fixtures was due at this `now` except the
-      // paid booking's old (now-cleared) deadline, so a sweep that
-      // mistakenly picked it up would show up here as `expired: 1`.
+      // Nothing in this file's fixtures was due at this `now` except this
+      // booking's old (still on the row, still in the past) deadline, so a
+      // sweep that mistakenly matched on `expiresAt` instead of trusting the
+      // status filter would show up here as `expired: 1`.
       expect(result).toEqual({ expired: 0, failed: 0 });
 
       const reread = await repo.findById(inserted.id as string);
@@ -390,7 +397,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       createdBookingIds.push(good.id as string, vanishedId);
       const flaky: BookingRepositoryPort = {
         insert: (b) => repo.insert(b),
-        save: (b) => repo.save(b),
+        save: (b, expectedStatus) => repo.save(b, expectedStatus),
         appendChange: (c: BookingChangeRecord) => repo.appendChange(c),
         findDueForExpiry: (n, limit) => repo.findDueForExpiry(n, limit),
         findById: (id) => {

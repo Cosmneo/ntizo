@@ -305,14 +305,16 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
         Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
       );
 
-      // `save`, exercised here rather than by a test of its own: this is
-      // the only scenario in this file that needs an UPDATE at all, and it
-      // is also the one the brief asks for — a released slot must accept a
-      // second booking, which is only true once `expire` moved the first
-      // one out of `PENDING_PAYMENT` and `save` persisted that.
+      // `save` against the happy path here — its compare-and-swap guard
+      // (Task 5 of the booking-seams repair plan) gets its own tests below.
+      // This is the scenario the brief asks for regardless: a released slot
+      // must accept a second booking, which is only true once `expire`
+      // moved the first one out of `PENDING_PAYMENT` and `save` persisted
+      // that.
       const expired = first.expire(new Date("2026-10-03T09:31:00.000Z"));
       expect(expired.status).toBe("EXPIRED");
-      await repo.save(expired);
+      const applied = await repo.save(expired, "PENDING_PAYMENT");
+      expect(applied).toBe(true);
 
       const reread = await repo.findById(first.id as string);
       expect(reread?.status).toBe("EXPIRED");
@@ -331,6 +333,52 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
 
       await db.delete(booking).where(eq(booking.id, first.id as string));
       await db.delete(booking).where(eq(booking.id, second.id as string));
+    });
+  });
+});
+
+/**
+ * The compare-and-swap Task 5 of the booking-seams repair plan added to
+ * `save`, proven against real Postgres rather than a fake: a plain
+ * `UPDATE … WHERE id = $1` (no status predicate) would apply both writers'
+ * transitions unconditionally and let whichever runs second silently
+ * overwrite the first, drained outbox row and all — see
+ * `BookingRepositoryPort.save`'s own comment for the full scenario.
+ */
+describe("save's expectedStatus guard", () => {
+  test("a write whose expectedStatus no longer matches the row applies nothing and returns false", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const slotStart = new Date("2026-10-03T15:00:00.000Z");
+      const slotExpires = new Date("2026-10-03T15:30:00.000Z");
+
+      const first = await repo.insert(
+        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+      );
+
+      // The row genuinely moves past PENDING_PAYMENT first — standing in
+      // for whichever of a payment webhook and the expiry sweep wins the
+      // race this guard exists to settle.
+      const paid = first.markPaid("mpesa-race-winner", new Date("2026-10-03T15:05:00.000Z"));
+      const winnerApplied = await repo.save(paid, "PENDING_PAYMENT");
+      expect(winnerApplied).toBe(true);
+
+      // A second writer computed its own transition from the SAME
+      // PENDING_PAYMENT read `first` represents — it never saw the write
+      // above, exactly like a webhook and a sweep that both selected the
+      // row before either wrote. Its `UPDATE … WHERE id = $1 AND status =
+      // 'PENDING_PAYMENT'` now matches nothing, because the row already
+      // moved.
+      const expired = first.expire(new Date("2026-10-03T15:06:00.000Z"));
+      const loserApplied = await repo.save(expired, "PENDING_PAYMENT");
+      expect(loserApplied).toBe(false);
+
+      // The row still says what the winner wrote — the loser's write did
+      // not silently overwrite it.
+      const reread = await repo.findById(first.id as string);
+      expect(reread?.status).toBe("AWAITING_PROVIDER");
+      expect(reread?.paymentRef).toBe("mpesa-race-winner");
+
+      await db.delete(booking).where(eq(booking.id, first.id as string));
     });
   });
 });
@@ -370,11 +418,13 @@ describe("findDueForExpiry", () => {
       );
 
       // Not due: expiresAt has passed, but the booking already left
-      // PENDING_PAYMENT — the status filter, not the null check, is what
-      // must exclude it. `markPaid` clears `expiresAt` to null on the way
-      // out, so this also happens to be the row `expires_at IS NOT NULL`
-      // would have caught on its own; the point of this row is that the
-      // status filter alone is already sufficient.
+      // PENDING_PAYMENT — the status filter is what excludes it, and has to
+      // be: `expiresAt` is no longer nulled on the way out of
+      // PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
+      // deadline is a fact a disputed booking needs, not a stale value to
+      // erase), so this row's `expires_at` is still in the past, still
+      // non-null, and only `status <> 'PENDING_PAYMENT'` keeps it out of
+      // the result below.
       const paidStale = await repo.insert(
         Booking.create(
           bookingInput({
@@ -384,8 +434,9 @@ describe("findDueForExpiry", () => {
         ),
       );
       const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
-      expect(paid.expiresAt).toBeNull();
-      await repo.save(paid);
+      expect(paid.expiresAt).toEqual(paidStale.expiresAt);
+      const paidApplied = await repo.save(paid, "PENDING_PAYMENT");
+      expect(paidApplied).toBe(true);
 
       // This booking is already being built for the exclusion check below;
       // reading it back costs one query and is the only place in this file
@@ -395,11 +446,10 @@ describe("findDueForExpiry", () => {
       const paidReread = await repo.findById(paidStale.id as string);
       expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
       expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
-      // And the other half of the same write: `markPaid` clears
-      // `expiresAt` on the way out of `PENDING_PAYMENT`, so this also
-      // confirms that clearing itself persisted, not only that the two
-      // new fields did.
-      expect(paidReread?.expiresAt).toBeNull();
+      // And the other half of the same write: `expiresAt` is preserved, not
+      // cleared, on the way out of `PENDING_PAYMENT` — this confirms that
+      // survival itself persisted, not only that the two new fields did.
+      expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
 
       const due = await repo.findDueForExpiry(now, 10);
       const dueIds = due.map((b) => b.id);

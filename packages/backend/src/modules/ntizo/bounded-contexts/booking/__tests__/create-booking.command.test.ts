@@ -124,7 +124,13 @@ class FakeRepo implements BookingRepositoryPort {
     return this.committed.find((b) => b.id === id) ?? null;
   }
 
-  async save(): Promise<void> {}
+  // `CreateBookingCommand` never calls `save` — it only ever `insert`s — so
+  // this stub's signature doesn't need to mirror the real compare-and-swap
+  // Task 5 of the booking-seams repair plan gave `BookingRepositoryPort.save`
+  // (fewer/optional parameters than an interface declares still satisfy it).
+  async save(): Promise<boolean> {
+    return true;
+  }
 
   async appendChange(_change: BookingChangeRecord): Promise<void> {}
 

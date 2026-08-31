@@ -38,12 +38,41 @@ export interface BookingRepositoryPort {
   findById(id: string): Promise<Booking | null>;
 
   /**
-   * Update an existing booking. The aggregate already has an id.
+   * Update an existing booking, but only if the row is still at
+   * `expectedStatus` — the status the caller's own read returned before it
+   * computed `booking`'s transition. Returns whether the write actually
+   * applied.
    *
-   * Returns nothing: the caller already holds the aggregate, and there is nothing
-   * new to return from a write to an existing row.
+   * **This is a compare-and-swap, not a plain `UPDATE`.** `MarkBookingPaidCommand`
+   * and `ExpireBookingCommand` both read a booking, transition it, and write
+   * it back inside their own `atomicExecute` — and both are driven by
+   * something that can legitimately fire within moments of the other: a
+   * payment webhook and the expiry sweep are watching the *same* deadline
+   * from opposite sides. Without a status predicate in the `WHERE` clause, a
+   * webhook landing as the sweep is mid-flight (M-Pesa's C2B is synchronous
+   * against a fifteen-minute window, so approvals routinely land near the
+   * deadline — this is not a theoretical race) reads the same
+   * `PENDING_PAYMENT` row the sweep just read, computes its own real
+   * transition, and overwrites the sweep's write once the row lock frees up
+   * — two outbox rows drain from one booking, one of them describing a fact
+   * that is no longer true.
+   *
+   * `expectedStatus` closes that: the caller always passes the status its
+   * own `findById` returned, before the transition. Under READ COMMITTED, an
+   * `UPDATE` whose `WHERE` includes that predicate blocks on the row lock if
+   * a concurrent writer got there first, then re-evaluates the predicate
+   * against the row that writer actually committed — so the loser's
+   * `WHERE` no longer matches, it updates zero rows, and `false` comes back
+   * instead of a second, silently-wrong write. The caller treats `false`
+   * exactly like the aggregate's own no-op (`moved === booking`): return
+   * without saving anything further and without publishing. The two are
+   * deliberately handled the same way, but they are not the same
+   * mechanism — the aggregate's identity check can only ever reason about
+   * the value it was handed at read time; it has no way to see a conflict
+   * that lands on the row afterward. That is exactly what this predicate is
+   * for.
    */
-  save(booking: Booking): Promise<void>;
+  save(booking: Booking, expectedStatus: Booking["status"]): Promise<boolean>;
 
   /**
    * Append an audit change to the booking_change table.

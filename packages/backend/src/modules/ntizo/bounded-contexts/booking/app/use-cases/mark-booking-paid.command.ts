@@ -32,6 +32,27 @@ export interface MarkBookingPaidInput {
  * delivery, not the exception, and a second `BookingPaid` for the same
  * payment would tell Notification to send a second confirmation and
  * Scheduling to hold a slot it already holds.
+ *
+ * **A lost update is a different problem from a duplicate, and the
+ * aggregate cannot solve it.** The identity check above only ever reasons
+ * about the value `findById` returned — it has nothing to say about a write
+ * that lands on the row *after* that read. The expiry sweep reads and
+ * writes the same row this command does, on the same deadline, from the
+ * opposite direction: M-Pesa's C2B is synchronous against a fifteen-minute
+ * window, so a webhook landing within moments of the sweep claiming the
+ * same booking as due is routine, not a theoretical edge case. Without a
+ * guard at the write, whichever of the two writes second would silently
+ * overwrite the first's transition — the row would say `EXPIRED` while this
+ * command had just told Notification and the customer they paid, or the
+ * row would say `AWAITING_PROVIDER` while `BookingExpired` had already told
+ * Scheduling the slot was free. `repo.save`'s `expectedStatus` parameter is
+ * the guard: it carries the status this command's own read saw, and the
+ * repository only writes if the row is still at that status by the time
+ * the write actually runs (see `BookingRepositoryPort.save`'s own comment
+ * for the mechanism). `false` back means the sweep won the race — handled
+ * the same way as the aggregate's own no-op, below, because from this
+ * command's point of view the outcome is identical: nothing here is true
+ * anymore, so nothing here gets saved or announced.
  */
 export class MarkBookingPaidCommand {
   constructor(
@@ -65,7 +86,17 @@ export class MarkBookingPaidCommand {
         return;
       }
 
-      await this.repo.save(moved);
+      const applied = await this.repo.save(moved, booking.status);
+      if (!applied) {
+        // The row no longer holds the status this read saw — the expiry
+        // sweep reached it first and already committed. `moved` describes a
+        // world that no longer exists; saving it would silently overwrite
+        // whatever the sweep just wrote, and publishing `BookingPaid` would
+        // tell the customer they hold a slot the sweep just gave away. See
+        // this class's own doc comment for why the aggregate's identity
+        // check above cannot catch this on its own.
+        return;
+      }
 
       await this.outboxPort.publish(
         [

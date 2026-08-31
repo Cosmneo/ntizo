@@ -253,9 +253,16 @@ describe("Booking.markPaid", () => {
     expect(paid.paymentRef).toBe("mpesa-123");
   });
 
-  it("clears the payment deadline, rather than leaving a date that no longer applies", () => {
-    const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
-    expect(paid.expiresAt).toBeNull();
+  it("keeps the payment deadline on the row, rather than erasing the fact a dispute might need", () => {
+    // A stale query cannot act on this: `findDueForExpiry` filters on
+    // `status = 'PENDING_PAYMENT'` before it ever looks at `expiresAt` (see
+    // `booking.repository.ts`), so a paid booking is already excluded by
+    // status alone. Nulling the deadline bought no protection — it only
+    // destroyed the one fact a customer disputing "you gave my slot away"
+    // needs: the deadline they were actually given.
+    const before = Booking.create(validInput());
+    const paid = before.markPaid("mpesa-123", new Date());
+    expect(paid.expiresAt).toEqual(before.expiresAt);
   });
 
   it("is idempotent: paying an already-paid booking changes nothing", () => {
@@ -344,6 +351,20 @@ describe("Booking.restore", () => {
 describe("Booking.markPaid — every status", () => {
   // Table-driven so a future addition to BookingStatus fails loudly here
   // instead of silently falling through markPaid's default case.
+  //
+  // Every status but PENDING_PAYMENT and EXPIRED is "no-op" here, not just
+  // the three that still hold their slot: the discriminator is the payment
+  // reference, not whether the booking still holds its slot (see
+  // `markPaid`'s own doc comment for why that changed). A duplicate webhook
+  // carrying the same reference that already paid this booking is absorbed
+  // silently whatever the booking has done since — including COMPLETED and
+  // DISPUTED, which the pre-Task-5 version of this method got backwards: it
+  // threw for exactly those two, on exactly the retry that is *most* likely
+  // to arrive late, because a webhook retries on a timer that has no idea
+  // the booking finished. EXPIRED is the one status that is genuinely
+  // never a duplicate of anything: nothing ever set a paymentRef on the way
+  // there, so a matching reference is impossible by construction, and
+  // every payment reaching an expired booking is a second, distinct one.
   const PAID_REF = "mpesa-existing";
 
   const cases: Array<[BookingStatus, "transitions" | "no-op" | "throws"]> = [
@@ -351,10 +372,10 @@ describe("Booking.markPaid — every status", () => {
     ["AWAITING_PROVIDER", "no-op"],
     ["CONFIRMED", "no-op"],
     ["MARKED_DONE", "no-op"],
-    ["COMPLETED", "throws"],
-    ["DISPUTED", "throws"],
-    ["DECLINED", "throws"],
-    ["CANCELLED", "throws"],
+    ["COMPLETED", "no-op"],
+    ["DISPUTED", "no-op"],
+    ["DECLINED", "no-op"],
+    ["CANCELLED", "no-op"],
     ["EXPIRED", "throws"],
   ];
 
@@ -387,11 +408,51 @@ describe("Booking.markPaid — every status", () => {
   });
 });
 
+describe("Booking.markPaid — a different reference throws at every status but PENDING_PAYMENT", () => {
+  // The companion table to the one above: a *matching* reference is always
+  // absorbed past PENDING_PAYMENT, but a *different* one is never a
+  // duplicate to shrug off — whatever the status, it names a second,
+  // genuinely distinct transaction. Which exception it throws still depends
+  // on whether the slot is still held (see `markPaid`'s own doc comment):
+  // `PaymentReferenceMismatchError` where a refund is probably owed on one
+  // of two payments against a slot still in play, `BookingTransitionError`
+  // where the transition was never legal to begin with.
+  const EXISTING_REF = "mpesa-existing";
+  const OTHER_REF = "mpesa-other";
+
+  const cases: Array<[BookingStatus, "PaymentReferenceMismatchError" | "BookingTransitionError"]> = [
+    ["AWAITING_PROVIDER", "PaymentReferenceMismatchError"],
+    ["CONFIRMED", "PaymentReferenceMismatchError"],
+    ["MARKED_DONE", "PaymentReferenceMismatchError"],
+    ["COMPLETED", "BookingTransitionError"],
+    ["DISPUTED", "BookingTransitionError"],
+    ["DECLINED", "BookingTransitionError"],
+    ["CANCELLED", "BookingTransitionError"],
+    ["EXPIRED", "BookingTransitionError"],
+  ];
+
+  it.each(cases)("from %s it throws %s", (status, errorName) => {
+    const alreadyPaid = status !== "EXPIRED";
+    const booking = Booking.restore(
+      validProps({
+        status,
+        paymentRef: alreadyPaid ? EXISTING_REF : null,
+        expiresAt: null,
+      }),
+    );
+
+    const ErrorClass =
+      errorName === "PaymentReferenceMismatchError" ? PaymentReferenceMismatchError : BookingTransitionError;
+    expect(() => booking.markPaid(OTHER_REF, new Date())).toThrow(ErrorClass);
+  });
+});
+
 describe("Booking.expire", () => {
-  it("moves a pending booking to expired and clears the deadline", () => {
-    const expired = Booking.create(validInput()).expire(new Date());
+  it("moves a pending booking to expired and keeps the deadline it was given", () => {
+    const before = Booking.create(validInput());
+    const expired = before.expire(new Date());
     expect(expired.status).toBe("EXPIRED");
-    expect(expired.expiresAt).toBeNull();
+    expect(expired.expiresAt).toEqual(before.expiresAt);
   });
 
   it("is a no-op on a booking that has already moved on", () => {
@@ -434,7 +495,10 @@ describe("Booking.expire — every status", () => {
 
     if (outcome === "transitions") {
       expect(result.status).toBe("EXPIRED");
-      expect(result.expiresAt).toBeNull();
+      // Kept, not nulled — see `Booking.expire`'s own doc comment and
+      // `expiresAt`'s on `BookingProps` for why (Task 5 of the
+      // booking-seams repair plan).
+      expect(result.expiresAt).toEqual(booking.expiresAt);
     } else {
       expect(result.status).toBe(status);
       expect(result).toBe(booking);

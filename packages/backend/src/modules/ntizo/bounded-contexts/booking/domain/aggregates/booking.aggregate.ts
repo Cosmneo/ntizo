@@ -43,11 +43,20 @@ export interface BookingProps {
   // State: which status is current, and when each transition happened.
   readonly status: BookingStatus;
   /**
-   * The payment deadline — real while the booking is still `PENDING_PAYMENT`,
-   * `null` once it isn't. `markPaid` and `expire` both clear it: a deadline
-   * on a booking that is already paid or already expired no longer means
-   * anything, and leaving a stale date in place is an invitation for some
-   * later query to act on it as if it still did.
+   * The payment deadline — set once at creation, and left alone by every
+   * transition after that. `markPaid` and `expire` used to null it out on
+   * the way past `PENDING_PAYMENT`, on the theory that a stale deadline
+   * invited some later query to act on it. That theory was wrong in
+   * practice: `findDueForExpiry` (see `booking.repository.ts`) already
+   * filters on `status = 'PENDING_PAYMENT'` before it ever looks at this
+   * column, so the null bought no protection a status check wasn't already
+   * giving for free. What it did cost is real — the one fact a customer
+   * disputing "you gave my slot away" needs is the deadline they were
+   * actually given, and `PlatformSettingsReaderPort.findPaymentWindowMinutes`
+   * is deliberately LIVE on the promise that "a booking already created
+   * keeps the `expiresAt` it was given regardless of what this returns
+   * afterward" (see that port's own comment) — a promise nulling this out
+   * quietly broke the moment the booking moved on.
    */
   readonly expiresAt: Date | null;
   readonly paidAt: Date | null;
@@ -481,27 +490,32 @@ export class Booking {
   /**
    * A payment lands on the slot this booking is holding.
    *
-   * `PENDING_PAYMENT` is the only status this actually moves. Every other
-   * status splits along one question, the same one `SLOT_HOLDING_STATUSES`
-   * exists to answer: does the booking still hold its slot?
+   * `PENDING_PAYMENT` is the only status this actually moves.
    *
-   * A booking that still holds it — `AWAITING_PROVIDER`, `CONFIRMED`,
-   * `MARKED_DONE` — can only have reached that status by having already
-   * been paid once, so a second call here is never a new event. Carrying
-   * the *same* reference, it's the same payment webhook delivered twice —
-   * absorbed silently, same as before. Carrying a *different* reference,
-   * it's a second, genuinely distinct transaction against a booking that
-   * was already paid for — not a race to shrug off, but a fact somebody has
-   * to see (most likely a refund owed on one of the two), so it throws with
-   * both references named.
+   * **The discriminator for everything else is the payment reference, not
+   * the status.** The first version of this method asked "does the booking
+   * still hold its slot?" before ever looking at the reference — which
+   * absorbed a duplicate webhook silently at `AWAITING_PROVIDER`,
+   * `CONFIRMED` or `MARKED_DONE`, but *threw* at `COMPLETED` or `DISPUTED`
+   * for the exact same duplicate, carrying the exact same reference. That
+   * was backwards: a retry landing after the work is already behind the
+   * booking is the *most* likely late duplicate there is — webhooks retry
+   * on a timer that has no idea the booking finished — and it was the one
+   * case guaranteed to raise instead of absorb.
    *
-   * A booking that no longer holds its slot has released it — `EXPIRED`
-   * because nobody paid before the deadline, `DECLINED` or `CANCELLED`
-   * because it was called off after being paid, `COMPLETED` or `DISPUTED`
-   * because the work is behind it. Money arriving there is refused outright,
-   * regardless of the reference: a card charged for a slot nobody is
-   * holding anymore is a fact somebody has to see, and no comparison of
-   * references makes it any less one.
+   * So the reference is compared first, against every status but
+   * `PENDING_PAYMENT`, before anything asks whether the slot is still held:
+   * the *same* reference is always a duplicate of a payment that already
+   * landed, whatever the booking has done since, and is absorbed silently.
+   * A *different* reference is always a second, genuinely distinct
+   * transaction — never a duplicate to shrug off, whatever the status —
+   * but *how* that gets reported still depends on whether the slot is still
+   * held: a still-held slot (`SLOT_HOLDING_STATUSES`) means somebody is
+   * probably owed a refund on one of the two payments, which is what
+   * `PaymentReferenceMismatchError` names; a slot already released
+   * (`EXPIRED`, `DECLINED`, `CANCELLED`) or a job already finished
+   * (`COMPLETED`, `DISPUTED`) means this transition was never legal to
+   * begin with, which is what `BookingTransitionError` names.
    */
   markPaid(paymentRef: string, at: Date): Booking {
     if (this.props.status === BookingStatus.PendingPayment) {
@@ -510,14 +524,14 @@ export class Booking {
         status: BookingStatus.AwaitingProvider,
         paidAt: at,
         paymentRef,
-        expiresAt: null,
       });
     }
 
+    if (this.props.paymentRef === paymentRef) {
+      return this;
+    }
+
     if (SLOT_HOLDING_STATUS_SET.includes(this.props.status)) {
-      if (this.props.paymentRef === paymentRef) {
-        return this;
-      }
       throw new PaymentReferenceMismatchError(this.props.paymentRef, paymentRef);
     }
 
@@ -547,7 +561,6 @@ export class Booking {
       ...this.props,
       status: BookingStatus.Expired,
       expiredAt: at,
-      expiresAt: null,
     });
   }
 }

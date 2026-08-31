@@ -29,12 +29,35 @@ export interface ExpireBookingInput {
  * or announced; a status comparison written a second time here would only be
  * a second place for that decision to drift from the aggregate's.
  *
+ * **A lost update is a different problem, and the aggregate cannot see it.**
+ * The identity check above only ever reasons about the value `findById`
+ * returned at the top of this transaction — it has nothing to say about a
+ * write that lands on the row afterward. A payment webhook can read and
+ * write this exact row within moments of this sweep run claiming it:
+ * M-Pesa's C2B is synchronous against the same payment window this sweep is
+ * enforcing, so approvals landing near the deadline are routine, not a
+ * theoretical edge case. Without a guard at the write, whichever of the two
+ * writes second would silently overwrite the first's transition — the row
+ * would say `EXPIRED` and the slot handed to someone else while the payment
+ * actually cleared, or the row would say paid while `BookingExpired` had
+ * already told Scheduling and Notification the opposite. `repo.save`'s
+ * `expectedStatus` parameter guards against exactly this: it carries the
+ * status this read saw, and the repository only writes if the row is still
+ * at that status when the write actually runs (see
+ * `BookingRepositoryPort.save`'s own comment for the mechanism). `false`
+ * back means the payment won the race — handled the same way as the
+ * aggregate's own no-op, below: no release, no publish, because the slot
+ * this sweep read as abandoned is not abandoned anymore.
+ *
  * **Order inside the transaction: save, then release, then publish.** The
  * save is what makes the release correct — releasing the hold while the row
  * still says `PENDING_PAYMENT` would leave a window where the slot reads as
  * free while the booking still claims it. One transaction makes that window
  * unobservable to anyone else today, but the ordering still has to read
- * right to whoever adds a second hold mechanism later.
+ * right to whoever adds a second hold mechanism later. The `applied` check
+ * sits between save and release for the same reason: releasing a hold this
+ * command's own write never actually took would hand away a slot on nothing
+ * but a stale read.
  */
 export class ExpireBookingCommand {
   constructor(
@@ -70,7 +93,17 @@ export class ExpireBookingCommand {
         return;
       }
 
-      await this.repo.save(moved);
+      const applied = await this.repo.save(moved, booking.status);
+      if (!applied) {
+        // The row no longer holds the status this read saw — a payment
+        // reached it first and already committed. `moved` describes a
+        // world that no longer exists; releasing its hold or announcing its
+        // expiry would hand away, and tell everyone about the loss of, a
+        // slot a customer who just paid is still holding. See this class's
+        // own doc comment for why the aggregate's identity check above
+        // cannot catch this on its own.
+        return;
+      }
 
       // Never null here: `moved` was loaded through `findById`, which only
       // ever returns a booking the database already assigned an id to.

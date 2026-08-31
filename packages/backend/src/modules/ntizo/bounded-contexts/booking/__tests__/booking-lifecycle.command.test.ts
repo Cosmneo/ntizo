@@ -69,6 +69,7 @@ function pendingBooking(id = "bk-1"): Booking {
 class FakeRepo implements BookingRepositoryPort {
   public saveCalls = 0;
   public savedArg: Booking | null = null;
+  public lastApplied: boolean | null = null;
   private current: Booking | null;
 
   constructor(
@@ -82,10 +83,25 @@ class FakeRepo implements BookingRepositoryPort {
     return this.current?.id === id ? this.current : null;
   }
 
-  async save(booking: Booking): Promise<void> {
+  /**
+   * Mirrors the real repository's compare-and-swap (Task 5 of the
+   * booking-seams repair plan): the write only "sticks" — and `true` comes
+   * back — when `expectedStatus` still matches what `current` holds at the
+   * moment of the write, the same as a real `UPDATE … WHERE status = $2`.
+   * Every test in this file that drives a single command against its own
+   * `FakeRepo` never lets anything else touch `current` between that
+   * command's read and its own write, so `applied` is always `true` here;
+   * `RacingFakeRepo` below is what stops that from being true, on purpose.
+   */
+  async save(booking: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
     this.saveCalls += 1;
     this.savedArg = booking;
     this.unitOfWork?.order.push("save");
+    const applied = this.current?.status === expectedStatus;
+    this.lastApplied = applied;
+    if (!applied) {
+      return false;
+    }
     const commit = () => {
       this.current = booking;
     };
@@ -94,11 +110,71 @@ class FakeRepo implements BookingRepositoryPort {
     } else {
       commit();
     }
+    return true;
   }
 
   // Neither command under test calls these — `BookingRepositoryPort` still
   // requires them, the same way `FakeRepo` in `create-booking.command.test.ts`
   // implements `findDueForExpiry` without exercising it.
+  async insert(booking: Booking): Promise<Booking> {
+    return booking;
+  }
+  async appendChange(_change: BookingChangeRecord): Promise<void> {}
+  async findDueForExpiry(): Promise<Booking[]> {
+    return [];
+  }
+}
+
+/**
+ * Stands in for two workers racing the same row from the same stale read —
+ * exactly the scenario `BookingRepositoryPort.save`'s `expectedStatus` guard
+ * exists for: a payment webhook and the expiry sweep both `findById` the
+ * same `PENDING_PAYMENT` booking before either has written anything back.
+ *
+ * `findById` always hands back `staleRead` — the one snapshot both racers
+ * actually read, frozen before either wrote — never `row.current`. `save`'s
+ * guard checks `expectedStatus` against `row.current`, the single mutable
+ * "table" every `RacingFakeRepo` sharing one `row` points at. Run the two
+ * commands sequentially (this file never interleaves their promises), and
+ * whichever executes first finds `row.current` still stale and applies;
+ * whichever executes second finds the row the first one just committed and
+ * does not — the same outcome a real `UPDATE … WHERE id = $1 AND status =
+ * $2` produces once the first writer's transaction has committed and the
+ * second's re-evaluates its `WHERE` clause against it.
+ *
+ * Not `FakeRepo` reused with a shared `current`: `FakeRepo.findById` reads
+ * its own `current`, which a second racer sharing the same field would see
+ * updated the instant the first one's `atomicExecute` resolves — before the
+ * second racer ever got to read anything, which is not a race, it is a
+ * booking that already knows the answer.
+ */
+class RacingFakeRepo implements BookingRepositoryPort {
+  public saveCalls = 0;
+  public lastApplied: boolean | null = null;
+
+  constructor(
+    private readonly staleRead: Booking,
+    private readonly row: { current: Booking | null },
+    private readonly unitOfWork: TrackingUnitOfWork,
+  ) {}
+
+  async findById(id: string): Promise<Booking | null> {
+    return this.staleRead.id === id ? this.staleRead : null;
+  }
+
+  async save(booking: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
+    this.saveCalls += 1;
+    this.unitOfWork.order.push("save");
+    const applied = this.row.current?.status === expectedStatus;
+    this.lastApplied = applied;
+    if (applied) {
+      this.unitOfWork.stage(() => {
+        this.row.current = booking;
+      });
+    }
+    return applied;
+  }
+
   async insert(booking: Booking): Promise<Booking> {
     return booking;
   }
@@ -306,5 +382,96 @@ describe("ExpireBookingCommand", () => {
     expect(repo.saveCalls).toBe(0);
     expect(slotHold.released).toEqual([]);
     expect(outbox.published).toEqual([]);
+  });
+});
+
+/**
+ * The lost-update race Task 5 of the booking-seams repair plan closes: the
+ * payment window closes at T, the expiry sweep selects the booking as
+ * `PENDING_PAYMENT` at T+0.4s, and the M-Pesa webhook selects the same row,
+ * also `PENDING_PAYMENT`, at T+0.5s. Both commands compute a real
+ * transition from that identical stale read. Before the `expectedStatus`
+ * guard, both writes applied and both outbox rows drained — the row ended
+ * up saying whichever wrote last, while the loser's own event had already
+ * told a different bounded context the opposite fact.
+ *
+ * `Booking`'s own identity-based idempotency (`moved === booking`) cannot
+ * catch this: it only ever reasons about the value each command's own
+ * `findById` returned, and by construction here that value is identical for
+ * both commands and genuinely transitions on both sides. The guard has to
+ * live at the write, which is what these tests exercise directly rather
+ * than through the aggregate.
+ */
+describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale read", () => {
+  it("the sweep writes first: expiry wins, the payment finds the row already moved and publishes nothing", async () => {
+    const staleRead = pendingBooking();
+    const row: { current: Booking | null } = { current: staleRead };
+
+    const uowExpire = new TrackingUnitOfWork();
+    const outboxExpire = new CapturingOutbox(uowExpire);
+    const repoExpire = new RacingFakeRepo(staleRead, row, uowExpire);
+    const slotHold = new FakeSlotHold(uowExpire);
+    const expireCmd = new ExpireBookingCommand(repoExpire, slotHold, uowExpire, outboxExpire);
+
+    const uowPay = new TrackingUnitOfWork();
+    const outboxPay = new CapturingOutbox(uowPay);
+    const repoPay = new RacingFakeRepo(staleRead, row, uowPay);
+    const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
+
+    // The sweep reaches the row first and commits its expiry.
+    await expireCmd.execute({ bookingId: "bk-1" });
+    // The webhook arrives against the very same PENDING_PAYMENT snapshot
+    // the sweep started from — its own `findById` never saw the sweep's
+    // write, because in the real race it ran before that write existed.
+    await markPaid.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
+
+    expect(repoExpire.lastApplied).toBe(true);
+    expect(outboxExpire.published).toHaveLength(1);
+    expect(outboxExpire.published[0]?.events[0]?.eventName).toBe("booking.expired");
+
+    // The webhook's write found the row already moved: no second
+    // transition, no second outbox row. The customer is never told they
+    // paid for a slot the row already gave away.
+    expect(repoPay.saveCalls).toBe(1);
+    expect(repoPay.lastApplied).toBe(false);
+    expect(outboxPay.published).toEqual([]);
+
+    // Exactly one status survives, and it is the winner's — not a status
+    // that reflects whichever command happened to run last.
+    expect(row.current?.status).toBe("EXPIRED");
+  });
+
+  it("the webhook writes first: the payment wins, the sweep finds the row already moved and releases nothing", async () => {
+    const staleRead = pendingBooking();
+    const row: { current: Booking | null } = { current: staleRead };
+
+    const uowPay = new TrackingUnitOfWork();
+    const outboxPay = new CapturingOutbox(uowPay);
+    const repoPay = new RacingFakeRepo(staleRead, row, uowPay);
+    const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
+
+    const uowExpire = new TrackingUnitOfWork();
+    const outboxExpire = new CapturingOutbox(uowExpire);
+    const repoExpire = new RacingFakeRepo(staleRead, row, uowExpire);
+    const slotHold = new FakeSlotHold(uowExpire);
+    const expireCmd = new ExpireBookingCommand(repoExpire, slotHold, uowExpire, outboxExpire);
+
+    await markPaid.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
+    await expireCmd.execute({ bookingId: "bk-1" });
+
+    expect(repoPay.lastApplied).toBe(true);
+    expect(outboxPay.published).toHaveLength(1);
+    expect(outboxPay.published[0]?.events[0]?.eventName).toBe("booking.paid");
+
+    // The sweep's write found the row already moved: no release (the slot
+    // is not abandoned — the customer who paid is still holding it) and no
+    // `BookingExpired` telling Scheduling and Notification the opposite of
+    // what the row now says.
+    expect(repoExpire.saveCalls).toBe(1);
+    expect(repoExpire.lastApplied).toBe(false);
+    expect(slotHold.released).toEqual([]);
+    expect(outboxExpire.published).toEqual([]);
+
+    expect(row.current?.status).toBe("AWAITING_PROVIDER");
   });
 });

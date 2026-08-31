@@ -112,41 +112,61 @@ export async function scheduled(
       infraStore.setWaitUntil(ctx.waitUntil.bind(ctx));
 
       try {
-        const notification = bootstrapNotification();
-        const communication = bootstrapCommunication({
-          raiseNotification: notification.useCases.internal.raiseNotification,
-          // Never actually called: the sweep only ever reaches
-          // `useCases.internal.notifyUnread`, which `bootstrapCommunication`
-          // wires independently of `sendMessage` — required here only
-          // because `bootstrapCommunication` always constructs
-          // `SendMessageCommand` too.
-          attachmentStorage: new AttachmentStorageAdapter(),
-        });
+        // Its own try, not shared with the booking sweep below (see that
+        // block's own comment for why): a throw here — Communication down,
+        // a DB error before `notifyUnread`'s own per-message try/catch even
+        // starts — must not skip booking expiry, an unrelated context with
+        // its own permanent-slot-leak problem to prevent.
+        try {
+          const notification = bootstrapNotification();
+          const communication = bootstrapCommunication({
+            raiseNotification: notification.useCases.internal.raiseNotification,
+            // Never actually called: the sweep only ever reaches
+            // `useCases.internal.notifyUnread`, which `bootstrapCommunication`
+            // wires independently of `sendMessage` — required here only
+            // because `bootstrapCommunication` always constructs
+            // `SendMessageCommand` too.
+            attachmentStorage: new AttachmentStorageAdapter(),
+          });
 
-        const { notified, failed } = await communication.useCases.internal.notifyUnread.execute({
-          limit: SWEEP_LIMIT,
-        });
+          const { notified, failed } = await communication.useCases.internal.notifyUnread.execute({
+            limit: SWEEP_LIMIT,
+          });
 
-        if (failed > 0) {
-          // console.error, not the logger: getRequestScopedLogger() throws
-          // when no scope is set and a cron invocation sets none — same
-          // reason notify-unread.internal.command.ts does this itself.
-          console.error(
-            `[scheduled] notify-unread sweep: ${notified} notified, ${failed} failed`,
-          );
+          if (failed > 0) {
+            // console.error, not the logger: getRequestScopedLogger() throws
+            // when no scope is set and a cron invocation sets none — same
+            // reason notify-unread.internal.command.ts does this itself.
+            console.error(
+              `[scheduled] notify-unread sweep: ${notified} notified, ${failed} failed`,
+            );
+          }
+        } catch (error) {
+          console.error("[scheduled] notify-unread sweep threw", error);
         }
 
-        const booking = bootstrapBooking();
-        const { expired, failed: bookingFailed } = await booking.useCases.internal.expireDue.execute({
-          limit: BOOKING_EXPIRY_SWEEP_LIMIT,
-        });
+        // Its own try too: this sweep must run — and must be judged on its
+        // own outcome — whether or not the one above threw. Before Task 5 of
+        // the booking-seams repair plan, both sweeps shared one `try` with
+        // notification first, so anything Communication threw skipped
+        // booking expiry entirely, reinstating the permanent slot leak this
+        // sweep exists to prevent, from a context that has nothing to do
+        // with bookings.
+        try {
+          const booking = bootstrapBooking();
+          const { expired, failed: bookingFailed } = await booking.useCases.internal.expireDue.execute({
+            limit: BOOKING_EXPIRY_SWEEP_LIMIT,
+          });
 
-        if (bookingFailed > 0) {
-          // Same reasoning as the notify-unread log above: no request scope
-          // exists for getRequestScopedLogger() to read.
-          console.error(
-            `[scheduled] booking-expiry sweep: ${expired} expired, ${bookingFailed} failed`,
-          );
+          if (bookingFailed > 0) {
+            // Same reasoning as the notify-unread log above: no request scope
+            // exists for getRequestScopedLogger() to read.
+            console.error(
+              `[scheduled] booking-expiry sweep: ${expired} expired, ${bookingFailed} failed`,
+            );
+          }
+        } catch (error) {
+          console.error("[scheduled] booking-expiry sweep threw", error);
         }
       } finally {
         // Workers run nothing after this function returns unless scheduled —
