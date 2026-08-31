@@ -64,6 +64,11 @@ describe("legal documents", () => {
   });
 
   it("never promises the fee model retracted on 2026-08-30", () => {
+    // The same shape repeats for the three surfaces that made this promise
+    // beside the Terms -- landing.json, become-provider.json, admin.json --
+    // in retracted-fee-promise.test.ts. A contract gets its own file rather
+    // than sharing one with marketing copy, but the check is identical.
+    //
     // This used to assert the terms NAME the rate ("10%"), which is backwards:
     // the rate is per provider and administrator-set, so a test pinning a
     // specific percentage into the contract is itself a bug waiting to fire

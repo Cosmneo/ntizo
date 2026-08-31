@@ -1,73 +1,73 @@
 {
-  "eyebrow": "Ntizo providers",
-  "title": "Offer your services.",
+  "eyebrow": "Prestataires Ntizo",
+  "title": "Proposez vos services.",
   "titleAccent": "Vous fixez le prix.",
   "subtitle": "Rejoignez les prestataires qui trouvent des clients à Maputo, Matola et Beira. Pas de frais mensuels — juste un pourcentage fixe sur ce que vous gagnez, affiché avant que vous ne publiiez une annonce.",
-  "cta": "Get started",
-  "trustFree": "Free to join",
-  "trustPaid": "Guaranteed payment",
-  "trustLocal": "Customers near you",
-  "pathsTitle": "Two ways to provide",
-  "pathsBlurb": "Pick one to start with. You can change later — what differs is how the calendar and the team work.",
+  "cta": "Commencer",
+  "trustFree": "Inscription gratuite",
+  "trustPaid": "Paiement garanti",
+  "trustLocal": "Des clients près de chez vous",
+  "pathsTitle": "Deux façons de proposer vos services",
+  "pathsBlurb": "Choisissez-en une pour commencer. Vous pourrez changer plus tard — ce qui change, c'est le fonctionnement du calendrier et de l'équipe.",
   "path": {
     "individual": {
-      "title": "On your own",
-      "body": "You are the service: your profile, your prices, the hours you choose. Work at the customer's, at your place, or remote.",
-      "tag": "One calendar — yours"
+      "title": "En indépendant",
+      "body": "Vous êtes le service : votre profil, vos prix, les horaires que vous choisissez. Travaillez chez le client, chez vous, ou à distance.",
+      "tag": "Un calendrier — le vôtre"
     },
     "organization": {
-      "title": "A business with staff",
-      "body": "Several staff under one name, with bookings running in parallel as people are free. Invite your team and set what each can do.",
-      "tag": "One calendar per member of staff"
+      "title": "Une entreprise avec du personnel",
+      "body": "Plusieurs membres du personnel sous un même nom, avec des réservations en parallèle selon les disponibilités. Invitez votre équipe et définissez ce que chacun peut faire.",
+      "tag": "Un calendrier par membre du personnel"
     }
   },
   "pricingTitle": "Un prix, fixé par vous",
   "pricingBody": "Le client paie exactement le prix que vous fixez. La part de la plateforme est prélevée sur ce que vous touchez — un pourcentage fixe, affiché avant que vous ne publiiez un service, et jamais une surprise au paiement.",
-  "stepsTitle": "How it works",
+  "stepsTitle": "Comment ça marche",
   "step": {
     "apply": {
-      "title": "Apply",
-      "body": "Create the account and tell us what you do and where. It takes a few minutes.",
+      "title": "Inscrivez-vous",
+      "body": "Créez le compte et dites-nous ce que vous faites et où. Cela prend quelques minutes.",
       "tag": "≈ 5 minutes"
     },
     "review": {
-      "title": "Verification",
-      "body": "We confirm who you are before showing you to customers. It is what makes the verified badge mean something.",
-      "tag": "1 to 2 days"
+      "title": "Vérification",
+      "body": "Nous confirmons votre identité avant de vous montrer aux clients. C'est ce qui donne sa valeur au badge vérifié.",
+      "tag": "1 à 2 jours"
     },
     "publish": {
-      "title": "Publish services",
-      "body": "Prices, duration and availability. Bookable slots are generated for you.",
-      "tag": "whenever you like"
+      "title": "Publiez vos services",
+      "body": "Prix, durée et disponibilité. Les créneaux réservables sont générés pour vous.",
+      "tag": "quand vous voulez"
     },
     "earn": {
-      "title": "Get paid",
-      "body": "Payment is held until the job is done, then released to you.",
-      "tag": "once it's done"
+      "title": "Soyez payé",
+      "body": "Le paiement est retenu jusqu'à ce que la prestation soit terminée, puis vous est reversé.",
+      "tag": "une fois terminé"
     }
   },
-  "requirementsTitle": "What you need",
-  "requirementsBlurb": "No complicated paperwork. Three things.",
+  "requirementsTitle": "Ce qu'il vous faut",
+  "requirementsBlurb": "Pas de démarches compliquées. Trois choses.",
   "requirement": {
     "identity": {
-      "title": "Proof of identity",
-      "body": "An ID card, passport or driving licence, so we can confirm you are who you say."
+      "title": "Preuve d'identité",
+      "body": "Une carte d'identité, un passeport ou un permis de conduire, pour que nous puissions confirmer qui vous êtes."
     },
     "payout": {
-      "title": "A way to be paid",
-      "body": "M-Pesa, e-Mola or a bank account. It is where your earnings go."
+      "title": "Un moyen d'être payé",
+      "body": "M-Pesa, e-Mola ou un compte bancaire. C'est là que vont vos revenus."
     },
     "terms": {
-      "title": "Accept the terms",
-      "body": "The platform's rules, including what happens when a booking goes wrong."
+      "title": "Accepter les conditions",
+      "body": "Les règles de la plateforme, y compris ce qui se passe quand une réservation tourne mal."
     }
   },
-  "ctaSecondary": "Browse providers",
-  "pathsEyebrow": "Pick your path",
-  "pricingEyebrow": "What it costs you",
-  "stepsEyebrow": "From signing up to your first booking",
-  "requirementsEyebrow": "Before you start",
-  "closingTitle": "Ready to start earning?",
-  "closingBody": "Joining is free, and there is nothing to pay until your first booking.",
-  "closingTalk": "Talk to us"
+  "ctaSecondary": "Voir les prestataires",
+  "pathsEyebrow": "Choisissez votre voie",
+  "pricingEyebrow": "Ce que cela vous coûte",
+  "stepsEyebrow": "De l'inscription à votre première réservation",
+  "requirementsEyebrow": "Avant de commencer",
+  "closingTitle": "Prêt à commencer à gagner de l'argent ?",
+  "closingBody": "L'inscription est gratuite, et il n'y a rien à payer avant votre première réservation.",
+  "closingTalk": "Parlez-nous"
 }

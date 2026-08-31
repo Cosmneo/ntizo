@@ -201,7 +201,7 @@
   "railViewServices": "Voir les services",
   "trustVerified": "Pièce d'identité et certification professionnelle vérifiées par Ntizo.",
   "trustMessagesKept": "Les messages restent sur Ntizo, ce qui est convenu est donc écrit.",
-  "trustFeeIncluded": "Le total comprend déjà les frais de service. Rien n'est ajouté ensuite.",
+  "trustFeeIncluded": "C'est le prix final. Rien n'est ajouté ensuite.",
   "quotePrice": "Sur devis",
   "quoteAction": "Demander un devis",
   "pricingModeFixed": "Prix fixe",

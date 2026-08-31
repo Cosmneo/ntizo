@@ -369,7 +369,7 @@ describe("ServiceDetailPage's second read, the provider behind the service", () 
     expect(screen.queryByText(/verified by Ntizo/i)).not.toBeInTheDocument();
     // The unconditional bullet stays, so the absence above is the
     // verification sentence going and not the whole list.
-    expect(screen.getByText(/already includes the service fee/i)).toBeInTheDocument();
+    expect(screen.getByText(/this is the final price/i)).toBeInTheDocument();
   });
 
   it("still renders when the provider resolves to nothing", async () => {

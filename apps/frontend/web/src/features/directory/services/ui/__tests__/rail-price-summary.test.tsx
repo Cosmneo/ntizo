@@ -111,12 +111,12 @@ describe("RailPriceSummary", () => {
     renderRail(FIXED, { verified: false });
     // The unconditional bullet, awaited first: without it this would pass
     // just as well against a card that rendered no trust list at all.
-    expect(await screen.findByText(/already includes the service fee/i)).toBeInTheDocument();
+    expect(await screen.findByText(/this is the final price/i)).toBeInTheDocument();
     expect(screen.queryByText(/verified by Ntizo/i)).not.toBeInTheDocument();
   });
 
-  it("always says the fee is already in the total", async () => {
+  it("always says this is the final price", async () => {
     renderRail(FIXED);
-    expect(await screen.findByText(/already includes the service fee/i)).toBeInTheDocument();
+    expect(await screen.findByText(/this is the final price/i)).toBeInTheDocument();
   });
 });

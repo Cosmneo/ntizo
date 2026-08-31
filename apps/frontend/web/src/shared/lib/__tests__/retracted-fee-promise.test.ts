@@ -1,0 +1,243 @@
+import { describe, expect, it } from "vitest";
+
+/**
+ * The tripwire for the promise this task retracted, on the three surfaces
+ * besides the Terms: the landing page's hero band, the sign-up page, and the
+ * admin hint under the commission field an administrator edits. The Terms
+ * have their own equivalent check in `legal-content.test.ts` -- a contract
+ * earns its own file rather than sharing one with marketing copy -- but the
+ * shape here is deliberately identical, because a whole-branch review is
+ * what caught these three still live after the Terms and the service page
+ * were already fixed once. One shape, four surfaces, so they cannot drift
+ * apart the way they did before any of this existed.
+ *
+ * Absence checks, not presence checks, for the reason `legal-content.test.ts`
+ * gives for its own: the rate is per provider and administrator-set
+ * (`provider.commission_bps`), so nothing here can assert a specific
+ * percentage without becoming exactly the kind of stale pin this task spent
+ * itself removing. Written out per locale, in that locale's own words --
+ * including the five `become-provider.json` locales that shipped raw
+ * English before this task and are genuinely translated after it, where the
+ * banned phrasing below is what the retracted claim would read like in that
+ * language if it were ever reintroduced, not literally what shipped.
+ *
+ * Each check reads only the specific keys the retraction touched, not the
+ * whole file -- `admin.json` alone has a legitimate "Between 0 and 100%."
+ * range hint a few lines from the commission field, and a bare "0%"/"10%"
+ * ban across an entire locale file would trip on it for no reason.
+ */
+
+function byLocale<T>(modules: Record<string, T>) {
+  return Object.entries(modules).map(([path, data]) => ({
+    locale: path.match(/locales\/([^/]+)\//)![1]!,
+    data,
+  }));
+}
+
+function checkBanned(
+  label: string,
+  entries: { locale: string; text: string }[],
+  banned: Record<string, string[]>,
+) {
+  for (const { locale, text } of entries) {
+    const list = banned[locale];
+    expect(list, `no banned-phrase list recorded for ${label}/${locale}`).toBeDefined();
+    const lower = text.toLowerCase();
+    for (const phrase of list!)
+      expect(lower, `${locale} ${label} still says "${phrase}"`).not.toContain(phrase.toLowerCase());
+  }
+}
+
+describe("the retracted fee promise never comes back", () => {
+  it("landing.json's hero band never claims a zero or customer-paid fee", () => {
+    const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/landing.json", {
+      eager: true,
+      import: "default",
+    });
+    const entries = byLocale(modules).map(({ locale, data }) => {
+      const d = data as { zeroFeeTitle: string; zeroFeeBody: string };
+      return { locale, text: `${d.zeroFeeTitle} ${d.zeroFeeBody}` };
+    });
+
+    const BANNED: Record<string, string[]> = {
+      "en-US": [
+        "0%", "10%",
+        "commission for the people doing the work",
+        "sits on top of your price",
+        "exactly what you receive",
+        "zero commission",
+      ],
+      "pt-MZ": [
+        "0%", "10%",
+        "de comissão para quem trabalha",
+        "vem por cima do seu preço",
+        "exactamente o que recebe",
+        "comissão zero",
+      ],
+      "pt-PT": [
+        "0%", "10%",
+        "de comissão para quem trabalha",
+        "vem por cima do seu preço",
+        "exactamente o que recebe",
+        "comissão zero",
+      ],
+      "es-ES": [
+        "0%", "10%",
+        "de comisión para quien trabaja",
+        "se suma a tu precio",
+        "exactamente lo que recibes",
+        "comisión cero",
+      ],
+      "fr-FR": [
+        "0 %", "10 %",
+        "de commission pour ceux qui travaillent",
+        "s’ajoutent à votre prix",
+        "exactement ce que vous recevez",
+        "commission nulle",
+      ],
+      "de-DE": [
+        "0 %", "10 %",
+        "provision für alle, die die arbeit machen",
+        "zusätzlich zu deinem preis",
+        "bekommst du genau so",
+        "nullprovision",
+      ],
+      "it-IT": [
+        "0%", "10%",
+        "di commissione per chi lavora",
+        "si somma al tuo prezzo",
+        "esattamente quello che ricevi",
+        "commissione zero",
+      ],
+      "nl-NL": [
+        "0%", "10%",
+        "commissie voor wie het werk doet",
+        "komt boven op jouw prijs",
+        "precies wat je ontvangt",
+        "nulcommissie",
+      ],
+    };
+
+    checkBanned("landing.json", entries, BANNED);
+  });
+
+  it("become-provider.json never promises to keep the whole price", () => {
+    const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/become-provider.json", {
+      eager: true,
+      import: "default",
+    });
+    const entries = byLocale(modules).map(({ locale, data }) => {
+      const d = data as {
+        titleAccent: string;
+        subtitle: string;
+        pricingTitle: string;
+        pricingBody: string;
+      };
+      return {
+        locale,
+        text: `${d.titleAccent} ${d.subtitle} ${d.pricingTitle} ${d.pricingBody}`,
+      };
+    });
+
+    const BANNED: Record<string, string[]> = {
+      "en-US": [
+        "0%", "10%",
+        "keep the whole price",
+        "no commission on what you earn",
+        "zero commission for you",
+        "the price you set is the price you receive",
+        "on top of your price",
+        "never comes out of yours",
+      ],
+      "pt-MZ": [
+        "0%", "10%",
+        "receba o preço inteiro",
+        "sem comissão sobre o que ganha",
+        "zero de comissão para si",
+        "o preço que define é o preço que recebe",
+        "por cima do seu preço",
+        "nunca sai do seu bolso",
+      ],
+      "pt-PT": [
+        "0%", "10%",
+        "receba o preço inteiro",
+        "sem comissão sobre o que ganha",
+        "zero de comissão para si",
+        "o preço que define é o preço que recebe",
+        "por cima do seu preço",
+        "nunca sai do seu bolso",
+      ],
+      "es-ES": [
+        "0%", "10%",
+        "quédate con el precio completo",
+        "sin comisión sobre lo que ganas",
+        "cero comisión para ti",
+        "el precio que fijas es el precio que recibes",
+        "encima de tu precio",
+        "nunca sale de tu bolsillo",
+      ],
+      "fr-FR": [
+        "0 %", "10 %",
+        "gardez tout le prix",
+        "sans commission sur ce que vous gagnez",
+        "zéro commission pour vous",
+        "le prix que vous fixez est le prix que vous recevez",
+        "en plus de votre prix",
+        "ne sort jamais de votre poche",
+      ],
+      "de-DE": [
+        "0 %", "10 %",
+        "behalte den vollen preis",
+        "keine provision auf das, was du verdienst",
+        "null provision für dich",
+        "der preis, den du festlegst, ist der preis, den du erhältst",
+        "zusätzlich zu deinem preis",
+        "kommt nie aus deiner tasche",
+      ],
+      "it-IT": [
+        "0%", "10%",
+        "tieni l’intero prezzo",
+        "nessuna commissione su quanto guadagni",
+        "zero commissioni per te",
+        "il prezzo che stabilisci è il prezzo che ricevi",
+        "sopra il tuo prezzo",
+        "non esce mai dalla tua tasca",
+      ],
+      "nl-NL": [
+        "0%", "10%",
+        "hou de hele prijs",
+        "geen commissie op wat je verdient",
+        "nul commissie voor jou",
+        "de prijs die jij bepaalt is de prijs die je ontvangt",
+        "boven op jouw prijs",
+        "komt nooit uit jouw zak",
+      ],
+    };
+
+    checkBanned("become-provider.json", entries, BANNED);
+  });
+
+  it("admin.json's commission hint never describes a fee charged to the customer", () => {
+    const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/admin.json", {
+      eager: true,
+      import: "default",
+    });
+    const entries = byLocale(modules).map(({ locale, data }) => {
+      const d = data as { providerDetailCommissionHint: string };
+      return { locale, text: d.providerDetailCommissionHint };
+    });
+
+    const BANNED: Record<string, string[]> = {
+      "en-US": ["charged to the customer"],
+      "pt-MZ": ["taxa cobrada ao cliente"],
+      "pt-PT": ["taxa cobrada ao cliente"],
+      "es-ES": ["tarifa que paga el cliente"],
+      "fr-FR": ["frais facturés au client"],
+      "de-DE": ["dem kunden berechnete gebühr"],
+      "it-IT": ["commissione addebitata al cliente"],
+      "nl-NL": ["aan de klant berekende vergoeding"],
+    };
+
+    checkBanned("admin.json", entries, BANNED);
+  });
+});

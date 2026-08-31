@@ -1,73 +1,73 @@
 {
-  "eyebrow": "Ntizo providers",
-  "title": "Offer your services.",
+  "eyebrow": "Ntizo-aanbieders",
+  "title": "Bied je diensten aan.",
   "titleAccent": "Jij bepaalt de prijs.",
   "subtitle": "Sluit je aan bij de aanbieders die klanten vinden in Maputo, Matola en Beira. Geen maandelijkse kosten — alleen een vast percentage van wat je verdient, dat je te zien krijgt voordat je iets aanbiedt.",
-  "cta": "Get started",
-  "trustFree": "Free to join",
-  "trustPaid": "Guaranteed payment",
-  "trustLocal": "Customers near you",
-  "pathsTitle": "Two ways to provide",
-  "pathsBlurb": "Pick one to start with. You can change later — what differs is how the calendar and the team work.",
+  "cta": "Aan de slag",
+  "trustFree": "Gratis aanmelden",
+  "trustPaid": "Gegarandeerde betaling",
+  "trustLocal": "Klanten bij jou in de buurt",
+  "pathsTitle": "Twee manieren om diensten aan te bieden",
+  "pathsBlurb": "Kies er één om mee te beginnen. Je kunt later wisselen — wat verschilt, is hoe de agenda en het team werken.",
   "path": {
     "individual": {
-      "title": "On your own",
-      "body": "You are the service: your profile, your prices, the hours you choose. Work at the customer's, at your place, or remote.",
-      "tag": "One calendar — yours"
+      "title": "Zelfstandig",
+      "body": "Jij bent de dienst: jouw profiel, jouw prijzen, de uren die je kiest. Werk bij de klant thuis, op je eigen plek, of op afstand.",
+      "tag": "Eén agenda — die van jou"
     },
     "organization": {
-      "title": "A business with staff",
-      "body": "Several staff under one name, with bookings running in parallel as people are free. Invite your team and set what each can do.",
-      "tag": "One calendar per member of staff"
+      "title": "Een bedrijf met personeel",
+      "body": "Meerdere medewerkers onder één naam, met boekingen die parallel lopen naargelang wie beschikbaar is. Nodig je team uit en bepaal wat ieder mag doen.",
+      "tag": "Eén agenda per medewerker"
     }
   },
   "pricingTitle": "Eén prijs, die jij bepaalt",
   "pricingBody": "De klant betaalt precies de prijs die jij bepaalt. Het aandeel van het platform gaat af van wat jij uitbetaald krijgt — een vast percentage, dat je te zien krijgt voordat je een dienst publiceert, en nooit een verrassing bij uitbetaling.",
-  "stepsTitle": "How it works",
+  "stepsTitle": "Zo werkt het",
   "step": {
     "apply": {
-      "title": "Apply",
-      "body": "Create the account and tell us what you do and where. It takes a few minutes.",
-      "tag": "≈ 5 minutes"
+      "title": "Meld je aan",
+      "body": "Maak het account aan en vertel ons wat je doet en waar. Het duurt maar een paar minuten.",
+      "tag": "≈ 5 minuten"
     },
     "review": {
-      "title": "Verification",
-      "body": "We confirm who you are before showing you to customers. It is what makes the verified badge mean something.",
-      "tag": "1 to 2 days"
+      "title": "Verificatie",
+      "body": "We bevestigen wie je bent voordat we je aan klanten laten zien. Dat is wat het geverifieerd-label betekenis geeft.",
+      "tag": "1 tot 2 dagen"
     },
     "publish": {
-      "title": "Publish services",
-      "body": "Prices, duration and availability. Bookable slots are generated for you.",
-      "tag": "whenever you like"
+      "title": "Publiceer diensten",
+      "body": "Prijzen, duur en beschikbaarheid. Boekbare tijdsloten worden automatisch voor je aangemaakt.",
+      "tag": "wanneer je maar wilt"
     },
     "earn": {
-      "title": "Get paid",
-      "body": "Payment is held until the job is done, then released to you.",
-      "tag": "once it's done"
+      "title": "Word betaald",
+      "body": "De betaling wordt vastgehouden tot de klus is geklaard, en dan aan jou vrijgegeven.",
+      "tag": "zodra het klaar is"
     }
   },
-  "requirementsTitle": "What you need",
-  "requirementsBlurb": "No complicated paperwork. Three things.",
+  "requirementsTitle": "Wat je nodig hebt",
+  "requirementsBlurb": "Geen ingewikkelde papierwinkel. Drie dingen.",
   "requirement": {
     "identity": {
-      "title": "Proof of identity",
-      "body": "An ID card, passport or driving licence, so we can confirm you are who you say."
+      "title": "Identiteitsbewijs",
+      "body": "Een identiteitskaart, paspoort of rijbewijs, zodat we kunnen bevestigen dat je bent wie je zegt te zijn."
     },
     "payout": {
-      "title": "A way to be paid",
-      "body": "M-Pesa, e-Mola or a bank account. It is where your earnings go."
+      "title": "Een manier om betaald te worden",
+      "body": "M-Pesa, e-Mola of een bankrekening. Daar komt terecht wat je verdient."
     },
     "terms": {
-      "title": "Accept the terms",
-      "body": "The platform's rules, including what happens when a booking goes wrong."
+      "title": "Accepteer de voorwaarden",
+      "body": "De regels van het platform, inclusief wat er gebeurt als een boeking misgaat."
     }
   },
-  "ctaSecondary": "Browse providers",
-  "pathsEyebrow": "Pick your path",
-  "pricingEyebrow": "What it costs you",
-  "stepsEyebrow": "From signing up to your first booking",
-  "requirementsEyebrow": "Before you start",
-  "closingTitle": "Ready to start earning?",
-  "closingBody": "Joining is free, and there is nothing to pay until your first booking.",
-  "closingTalk": "Talk to us"
+  "ctaSecondary": "Bekijk aanbieders",
+  "pathsEyebrow": "Kies je pad",
+  "pricingEyebrow": "Wat het je kost",
+  "stepsEyebrow": "Van aanmelding tot je eerste boeking",
+  "requirementsEyebrow": "Voordat je begint",
+  "closingTitle": "Klaar om te beginnen verdienen?",
+  "closingBody": "Aanmelden is gratis, en er is niets te betalen tot je eerste boeking.",
+  "closingTalk": "Praat met ons"
 }
