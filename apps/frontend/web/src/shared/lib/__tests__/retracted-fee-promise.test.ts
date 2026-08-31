@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 /**
- * The tripwire for the promise this task retracted, on the three surfaces
- * besides the Terms: the landing page's hero band, the sign-up page, and the
- * admin hint under the commission field an administrator edits. The Terms
- * have their own equivalent check in `legal-content.test.ts` -- a contract
- * earns its own file rather than sharing one with marketing copy -- but the
- * shape here is deliberately identical, because a whole-branch review is
- * what caught these three still live after the Terms and the service page
- * were already fixed once. One shape, four surfaces, so they cannot drift
- * apart the way they did before any of this existed.
+ * The tripwire for the promise this task retracted, on the four surfaces
+ * besides the Terms: the landing page's hero band, the sign-up page, the
+ * admin hint under the commission field an administrator edits, and the
+ * customer-facing trust line beside the price on the highest-intent page in
+ * the product. The Terms have their own equivalent check in
+ * `legal-content.test.ts` -- a contract earns its own file rather than
+ * sharing one with marketing copy -- but the shape here is deliberately
+ * identical, because a whole-branch review is what caught the first three
+ * still live after the Terms and the service page were already fixed once,
+ * and `trustFeeIncluded` has now been wrong twice on its own: once under the
+ * original model, and once when a ruling that it "still stood" under the
+ * new one had to be reversed. One shape, five surfaces, so none of them can
+ * drift back the way they did before any of this existed.
  *
  * Absence checks, not presence checks, for the reason `legal-content.test.ts`
  * gives for its own: the rate is per provider and administrator-set
@@ -239,5 +243,36 @@ describe("the retracted fee promise never comes back", () => {
     };
 
     checkBanned("admin.json", entries, BANNED);
+  });
+
+  it("directory.json's trust line never claims the total includes a fee", () => {
+    // Only the fee-INCLUSION claim is banned here, not "nothing is added
+    // later" -- that guarantee is still true under the new model (the price
+    // shown is the price paid, full stop) and is exactly what Fix 1 rewrote
+    // this string to say instead. Do not extend this list to cover it: a
+    // ban on the true half of the sentence would fail the very fix this
+    // test exists to guard, the moment someone "completes" the pattern
+    // without rereading why it stops here.
+    const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/directory.json", {
+      eager: true,
+      import: "default",
+    });
+    const entries = byLocale(modules).map(({ locale, data }) => {
+      const d = data as { trustFeeIncluded: string };
+      return { locale, text: d.trustFeeIncluded };
+    });
+
+    const BANNED: Record<string, string[]> = {
+      "en-US": ["includes the service fee"],
+      "pt-MZ": ["inclui a taxa de serviço"],
+      "pt-PT": ["inclui a taxa de serviço"],
+      "es-ES": ["incluye la tarifa de servicio"],
+      "fr-FR": ["comprend déjà les frais de service"],
+      "de-DE": ["servicegebühr ist im gesamtbetrag enthalten"],
+      "it-IT": ["include già la commissione di servizio"],
+      "nl-NL": ["is inclusief servicekosten"],
+    };
+
+    checkBanned("directory.json", entries, BANNED);
   });
 });
