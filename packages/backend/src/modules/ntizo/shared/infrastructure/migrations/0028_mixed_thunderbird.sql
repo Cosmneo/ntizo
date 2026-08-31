@@ -1,6 +1,10 @@
--- This file runs as one transaction (drizzle-kit's migrator wraps every
--- statement between `--> statement-breakpoint` markers in a single file
--- inside one transaction). Both `DROP CONSTRAINT` and `ADD CONSTRAINT ...
+-- This file runs as one transaction: drizzle-kit applies every statement in
+-- a file together. Do not name its separator marker anywhere in this file,
+-- not even inside a comment — drizzle-kit splits on that literal string
+-- wherever it appears, so a comment describing the syntax becomes the
+-- syntax, and Postgres receives a statement that is only a comment and
+-- fails with 42601 at position 1. That happened here once.
+-- Both `DROP CONSTRAINT` and `ADD CONSTRAINT ...
 -- EXCLUDE` take `ACCESS EXCLUSIVE` on "booking" for as long as they run, and
 -- Postgres has no `NOT VALID` / `VALIDATE CONSTRAINT` two-step for `EXCLUDE`
 -- the way it does for `CHECK` and `FOREIGN KEY` — so the whole file, start to
