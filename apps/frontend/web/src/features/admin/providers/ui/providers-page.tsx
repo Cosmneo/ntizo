@@ -9,7 +9,8 @@ import { initialsFrom } from "@/shared/lib/initials";
 import { ProvidersFilterSheet } from "./providers-filters";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useAdminProviders } from "../viewmodel/use-admin-providers";
-import { formatCommission, type AdminProvider } from "../domain/types";
+import type { AdminProvider } from "../domain/types";
+import { formatCommission } from "@/shared/domain/commission-format";
 
 const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "info"> = {
   [ProviderStatus.Active]: "success",

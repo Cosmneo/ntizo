@@ -21,15 +21,6 @@ export interface AdminProvider {
   createdAt: string;
 }
 
-/** 1250 → "12,5%". Basis points are exact; percentages are for reading. */
-export function formatCommission(bps: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "percent",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(bps / 10_000);
-}
-
 /**
  * One business, as the administrator deciding about it sees it.
  *

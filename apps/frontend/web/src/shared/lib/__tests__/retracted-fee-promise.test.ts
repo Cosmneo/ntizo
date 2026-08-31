@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 /**
- * The tripwire for the promise this task retracted, on the four surfaces
+ * The tripwire for the promise this task retracted, on the five surfaces
  * besides the Terms: the landing page's hero band, the sign-up page, the
- * admin hint under the commission field an administrator edits, and the
+ * admin hint under the commission field an administrator edits, the
  * customer-facing trust line beside the price on the highest-intent page in
- * the product. The Terms have their own equivalent check in
- * `legal-content.test.ts` -- a contract earns its own file rather than
- * sharing one with marketing copy -- but the shape here is deliberately
+ * the product, and the provider's own rate label -- added when a later
+ * review found that this file globbed four locale files per locale and the
+ * one Task 2 actually wrote to, `provider.json`, was not among them: the
+ * wording that shipped was verified safe by hand, but the tripwire meant to
+ * stop it drifting could not see it. The Terms have their own equivalent
+ * check in `legal-content.test.ts` -- a contract earns its own file rather
+ * than sharing one with marketing copy -- but the shape here is deliberately
  * identical, because a whole-branch review is what caught the first three
  * still live after the Terms and the service page were already fixed once,
  * and `trustFeeIncluded` has now been wrong twice on its own: once under the
  * original model, and once when a ruling that it "still stood" under the
- * new one had to be reversed. One shape, five surfaces, so none of them can
+ * new one had to be reversed. One shape, six surfaces, so none of them can
  * drift back the way they did before any of this existed.
  *
  * Absence checks, not presence checks, for the reason `legal-content.test.ts`
@@ -294,5 +298,47 @@ describe("the retracted fee promise never comes back", () => {
     };
 
     checkBanned("directory.json", entries, BANNED);
+  });
+
+  it("provider.json's rate label never hardcodes a percentage or describes a fee charged to the customer", () => {
+    const modules = import.meta.glob<Record<string, unknown>>("../../locales/*/provider.json", {
+      eager: true,
+      import: "default",
+    });
+    const entries = byLocale(modules).map(({ locale, data }) => {
+      const d = data as { commissionRateLabel: string };
+      return { locale, text: d.commissionRateLabel };
+    });
+
+    // Two different failure modes in one list. "10%"/"0%" is the retracted
+    // marketing figure creeping back into a label that must stay a pure
+    // function of `commissionBps` -- the whole point of Task 2 is that 1200
+    // in dev is 12%, not 10%, so a literal "10%" here can only mean the
+    // number stopped being read from the prop. "charged to the customer" is
+    // the retracted framing itself, in the exact words `admin.json`'s own
+    // check already bans.
+    //
+    // Both spacings of the percent sign are banned in every locale, not just
+    // the ones that write it with one (`fr-FR`, `de-DE`) -- a careless edit
+    // pastes whichever spelling was already in front of it, not necessarily
+    // the target locale's own. The English customer-charged phrase is banned
+    // in every non-English list for the same reason this file's own header
+    // now explains: an idiomatic translated ban misses a bad edit that
+    // arrives in English and is never translated at all.
+    const PERCENT = ["0%", "10%", "0 %", "10 %"];
+    const CUSTOMER_CHARGED_EN = "charged to the customer";
+
+    const BANNED: Record<string, string[]> = {
+      "en-US": [...PERCENT, CUSTOMER_CHARGED_EN],
+      "pt-MZ": [...PERCENT, CUSTOMER_CHARGED_EN, "taxa cobrada ao cliente"],
+      "pt-PT": [...PERCENT, CUSTOMER_CHARGED_EN, "taxa cobrada ao cliente"],
+      "es-ES": [...PERCENT, CUSTOMER_CHARGED_EN, "tarifa que paga el cliente"],
+      "fr-FR": [...PERCENT, CUSTOMER_CHARGED_EN, "frais facturés au client"],
+      "de-DE": [...PERCENT, CUSTOMER_CHARGED_EN, "dem kunden berechnete gebühr"],
+      "it-IT": [...PERCENT, CUSTOMER_CHARGED_EN, "commissione addebitata al cliente"],
+      "nl-NL": [...PERCENT, CUSTOMER_CHARGED_EN, "aan de klant berekende vergoeding"],
+    };
+
+    checkBanned("provider.json", entries, BANNED);
   });
 });

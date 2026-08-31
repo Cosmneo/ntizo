@@ -21,10 +21,10 @@ import {
   useSetProviderCommission,
 } from "../viewmodel/use-admin-providers";
 import {
-  formatCommission,
   type AdminProviderInvite,
   type AdminProviderMember,
 } from "../domain/types";
+import { formatCommission } from "@/shared/domain/commission-format";
 
 const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "info"> = {
   [ProviderStatus.Active]: "success",
