@@ -21,7 +21,7 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { localDateTimeToInstant, weekdayOf } from "@ntizo/shared/datetime";
+import { addDays, localDateTimeToInstant, weekdayOf } from "@ntizo/shared/datetime";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
 import { category } from "../catalog/schemas/category.schema";
@@ -52,6 +52,11 @@ const suffix = crypto.randomUUID();
 const TIMEZONE = "Africa/Maputo"; // UTC+2 year-round — no DST to complicate the arithmetic below.
 const TARGET_DATE = "2027-06-14";
 const TARGET_WEEKDAY = weekdayOf(TARGET_DATE);
+// A different civil date only so its weekday necessarily differs from
+// `TARGET_DATE`'s — read with `weekdayOf` for the same reason `TARGET_DATE`
+// is, not picked by eye.
+const SECOND_DATE = addDays(TARGET_DATE, 1);
+const SECOND_WEEKDAY = weekdayOf(SECOND_DATE);
 const DURATION_MINUTES = 60;
 
 let categoryId: string;
@@ -63,6 +68,14 @@ let serviceId: string;
 let serviceOptionId: string;
 let performerMemberId: string;
 let nonPerformerMemberId: string;
+
+// Three more members of the same provider, assigned to the same service,
+// existing only to prove `capacity` on the result travels off the rule the
+// reader already resolves, rather than defaulting to the 1 every other
+// fixture below happens to use — see `SlotValidityResult`'s own doc comment.
+let capacityThreeMemberId: string;
+let capacityNullMemberId: string;
+let perWindowMemberId: string;
 
 // A second, separate provider — also active, also with a member — used only
 // to prove a member from a *different* provider fails the same join a
@@ -92,11 +105,27 @@ let customerId: string;
  * so every `providerMember` row below needs its own distinct `userId`.
  */
 const staffUserIds = Object.fromEntries(
-  (["performer", "nonPerformer", "other", "pending"] as const).map((key) => [
-    key,
-    crypto.randomUUID(),
-  ]),
-) as Record<"performer" | "nonPerformer" | "other" | "pending", string>;
+  (
+    [
+      "performer",
+      "nonPerformer",
+      "other",
+      "pending",
+      "capacityThree",
+      "capacityNull",
+      "perWindow",
+    ] as const
+  ).map((key) => [key, crypto.randomUUID()]),
+) as Record<
+  | "performer"
+  | "nonPerformer"
+  | "other"
+  | "pending"
+  | "capacityThree"
+  | "capacityNull"
+  | "perWindow",
+  string
+>;
 
 beforeAll(async () => {
   ownerUserId = crypto.randomUUID();
@@ -199,29 +228,86 @@ beforeAll(async () => {
   nonPerformerMemberId = await makeMember(providerId, staffUserIds.nonPerformer);
   otherProviderMemberId = await makeMember(otherProviderId, staffUserIds.other);
   pendingMemberId = await makeMember(pendingProviderId, staffUserIds.pending);
+  capacityThreeMemberId = await makeMember(providerId, staffUserIds.capacityThree);
+  capacityNullMemberId = await makeMember(providerId, staffUserIds.capacityNull);
+  perWindowMemberId = await makeMember(providerId, staffUserIds.perWindow);
 
   // Only `performerMemberId` and `pendingMemberId` are assigned to a
   // service — `nonPerformerMemberId` deliberately never gets a
   // `service_member` row, and `otherProviderMemberId` never gets one for
   // `serviceId` (only for its own provider's service, which nothing here
-  // queries).
+  // queries). The three capacity members below are assigned to `serviceId`
+  // too — they exist only to reach the same capacity read, not to test the
+  // membership join again.
   await db.insert(serviceMember).values([
     { serviceId, memberId: performerMemberId },
     { serviceId: pendingServiceId, memberId: pendingMemberId },
+    { serviceId, memberId: capacityThreeMemberId },
+    { serviceId, memberId: capacityNullMemberId },
+    { serviceId, memberId: perWindowMemberId },
   ]);
 
-  // 08:00–17:00 local, a 30-minute grid, no buffer, one seat — enough room
-  // for the on-grid/off-grid and busy/free cases below.
-  await db.insert(memberAvailability).values({
-    providerId,
-    memberId: performerMemberId,
-    weekday: TARGET_WEEKDAY,
-    startMinute: 480,
-    endMinute: 1020,
-    bufferMinutes: 0,
-    slotIntervalMinutes: 30,
-    capacity: 1,
-  });
+  // 08:00–17:00 local, a 30-minute grid, no buffer.
+  //
+  // `performerMemberId` is capacity 1, the value every other fixture in this
+  // file uses. The other three exist only to prove `capacity` on the
+  // reader's result is read off the rule, not hardcoded: `capacityThree`
+  // above 1, `capacityNull` at the column's actual default (`capacity`
+  // omitted — null means one, not zero), and `perWindow` with two rows on
+  // two different weekdays so the same member answers differently depending
+  // on which rule the requested date falls under.
+  await db.insert(memberAvailability).values([
+    {
+      providerId,
+      memberId: performerMemberId,
+      weekday: TARGET_WEEKDAY,
+      startMinute: 480,
+      endMinute: 1020,
+      bufferMinutes: 0,
+      slotIntervalMinutes: 30,
+      capacity: 1,
+    },
+    {
+      providerId,
+      memberId: capacityThreeMemberId,
+      weekday: TARGET_WEEKDAY,
+      startMinute: 480,
+      endMinute: 1020,
+      bufferMinutes: 0,
+      slotIntervalMinutes: 30,
+      capacity: 3,
+    },
+    {
+      providerId,
+      memberId: capacityNullMemberId,
+      weekday: TARGET_WEEKDAY,
+      startMinute: 480,
+      endMinute: 1020,
+      bufferMinutes: 0,
+      slotIntervalMinutes: 30,
+      // `capacity` deliberately omitted — this row is the null case itself.
+    },
+    {
+      providerId,
+      memberId: perWindowMemberId,
+      weekday: TARGET_WEEKDAY,
+      startMinute: 480,
+      endMinute: 1020,
+      bufferMinutes: 0,
+      slotIntervalMinutes: 30,
+      capacity: 2,
+    },
+    {
+      providerId,
+      memberId: perWindowMemberId,
+      weekday: SECOND_WEEKDAY,
+      startMinute: 480,
+      endMinute: 1020,
+      bufferMinutes: 0,
+      slotIntervalMinutes: 30,
+      capacity: 4,
+    },
+  ]);
 });
 
 afterAll(async () => {
@@ -247,6 +333,9 @@ afterAll(async () => {
             nonPerformerMemberId,
             otherProviderMemberId,
             pendingMemberId,
+            capacityThreeMemberId,
+            capacityNullMemberId,
+            perWindowMemberId,
           ]),
         ),
     () =>
@@ -283,6 +372,9 @@ function check(input: {
 
 /** 09:00 local on `TARGET_DATE` — well inside the 08:00–17:00 rule, on the 30-minute grid. */
 const ON_GRID_STARTS_AT = localDateTimeToInstant(TIMEZONE, TARGET_DATE, 540);
+
+/** The same 09:00 local instant, on `SECOND_DATE` — `perWindowMemberId`'s other rule. */
+const SECOND_DATE_ON_GRID_STARTS_AT = localDateTimeToInstant(TIMEZONE, SECOND_DATE, 540);
 
 function bookingValues(overrides: Partial<NewBookingRow> = {}): NewBookingRow {
   return {
@@ -383,7 +475,7 @@ describe("the grid", () => {
       durationMinutes: DURATION_MINUTES,
     });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, capacity: 1 });
   });
 });
 
@@ -413,7 +505,7 @@ describe("busy time feeds the same grid, not a second one", () => {
       durationMinutes: DURATION_MINUTES,
     });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, capacity: 1 });
 
     await db.delete(booking).where(eq(booking.providerMemberId, performerMemberId));
   });
@@ -435,8 +527,60 @@ describe("busy time feeds the same grid, not a second one", () => {
       durationMinutes: DURATION_MINUTES,
     });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, capacity: 1 });
 
     await db.delete(booking).where(eq(booking.providerMemberId, performerMemberId));
+  });
+});
+
+describe("capacity travels with the rule, not a default", () => {
+  // The blind spot this file used to have: every fixture above uses
+  // capacity 1, and one test even says so in its own name. `capacity` on
+  // the result is read straight off `member_availability` via the same
+  // `startsForDay` resolution that already decided `ok`, per
+  // `SlotValidityResult`'s own doc comment — these three prove it is a real
+  // read, not the 1 every other case in this file happens to also produce.
+
+  test("a rule with capacity 3 answers with capacity 3", async () => {
+    const result = await check({
+      serviceId,
+      providerMemberId: capacityThreeMemberId,
+      startsAt: ON_GRID_STARTS_AT,
+      durationMinutes: DURATION_MINUTES,
+    });
+
+    expect(result).toEqual({ ok: true, capacity: 3 });
+  });
+
+  test("a rule with capacity left null answers with capacity 1 — null means one, not zero", async () => {
+    const result = await check({
+      serviceId,
+      providerMemberId: capacityNullMemberId,
+      startsAt: ON_GRID_STARTS_AT,
+      durationMinutes: DURATION_MINUTES,
+    });
+
+    expect(result).toEqual({ ok: true, capacity: 1 });
+  });
+
+  test("one member with two rules on different weekdays answers with each day's own capacity", async () => {
+    const onTargetDate = await check({
+      serviceId,
+      providerMemberId: perWindowMemberId,
+      startsAt: ON_GRID_STARTS_AT,
+      durationMinutes: DURATION_MINUTES,
+    });
+    const onSecondDate = await check({
+      serviceId,
+      providerMemberId: perWindowMemberId,
+      startsAt: SECOND_DATE_ON_GRID_STARTS_AT,
+      durationMinutes: DURATION_MINUTES,
+    });
+
+    // Same member, same query shape, two different answers — proof the
+    // resolution reads the window's own rule rather than something cached
+    // or looked up per member.
+    expect(onTargetDate).toEqual({ ok: true, capacity: 2 });
+    expect(onSecondDate).toEqual({ ok: true, capacity: 4 });
   });
 });

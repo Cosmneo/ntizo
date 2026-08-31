@@ -82,8 +82,16 @@ export type SlotValidityReason =
   | "starts_at_in_past"
   | "slot_not_offered";
 
+/**
+ * `capacity` comes off the same `member_availability` rule that decided
+ * `ok: true` — it is that rule's own `capacity` column, null already
+ * resolved to one (`resolveRuleShape`'s "one barber cuts one head"
+ * default). Carried here rather than re-read afterwards so the command can
+ * assign a seat without a second query re-resolving which rule covers this
+ * instant — the exact duplication this port exists to avoid one layer up.
+ */
 export type SlotValidityResult =
-  | { readonly ok: true }
+  | { readonly ok: true; readonly capacity: number }
   | { readonly ok: false; readonly reason: SlotValidityReason };
 
 export interface SlotValidityReaderPort {

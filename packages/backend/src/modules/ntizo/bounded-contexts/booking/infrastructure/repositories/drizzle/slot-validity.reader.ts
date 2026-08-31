@@ -150,11 +150,15 @@ export class DrizzleSlotValidityReader implements SlotValidityReaderPort {
     });
 
     const requestedMinute = minutesSinceLocalMidnight(timezone, input.startsAt, date);
-    if (!starts.has(requestedMinute)) {
+    // `.get`, not `.has` then a second lookup: the value already carries
+    // `capacity` off the same rule that decides whether this start exists
+    // at all, so one read answers both.
+    const startCapacity = starts.get(requestedMinute);
+    if (!startCapacity) {
       return { ok: false, reason: "slot_not_offered" };
     }
 
-    return { ok: true };
+    return { ok: true, capacity: startCapacity.capacity };
   }
 }
 

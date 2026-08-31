@@ -286,7 +286,7 @@ function setup(
   const platformSettingsReader = new FakePlatformSettingsReader(
     opts.paymentWindowMinutes ?? FAKE_PAYMENT_WINDOW_MINUTES,
   );
-  const slotValidityReader = new FakeSlotValidityReader(opts.slotValidity ?? { ok: true });
+  const slotValidityReader = new FakeSlotValidityReader(opts.slotValidity ?? { ok: true, capacity: 1 });
   const slotHold = new FakeSlotHold({ holdError: opts.holdError });
   const delayedJobs = new FakeDelayedJobs();
   const command = new CreateBookingCommand(
@@ -631,7 +631,7 @@ describe("CreateBookingCommand", () => {
     });
 
     it("still creates the booking on the happy path — the slot check is a gate, not a replacement for the write", async () => {
-      const { command, repo } = setup({ slotValidity: { ok: true } });
+      const { command, repo } = setup({ slotValidity: { ok: true, capacity: 1 } });
 
       const result = await command.execute(INPUT);
 
