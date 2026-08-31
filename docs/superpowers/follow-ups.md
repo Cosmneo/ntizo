@@ -2426,3 +2426,30 @@ is easy to not notice.
 
 **Trigger:** the next time this test fails in CI and somebody starts looking for a defect in
 `scheduled.ts` — the answer is here.
+
+## #100 — Domain-event tests do not pin their payload contracts
+
+`booking-events.test.ts` builds each event's payload as a separate `const` and passes it to the
+constructor. `BaseDomainEvent`'s payload is `unknown` at runtime and deep-clones whatever it is
+handed, and TypeScript's excess-property check does not apply to a named variable — only to a fresh
+object literal passed directly. So the test asserts an object survives a round trip through a
+constructor, which it would do whatever the class declared.
+
+Found by an implementer following a "watch the test fail first" instruction and discovering it could
+not: they added the new fields to the test and it passed, green, before the event classes were
+touched. A reviewer then reproduced it in an isolated file outside the repo and confirmed the control
+case — the same extra field as an inline literal raises `TS2353`, so the checker works and is
+specifically bypassed by this pattern.
+
+`satisfies ConstructorParameters<typeof X>[0]` restores the check without restructuring, because
+`satisfies` triggers excess-property checking on a variable declaration. That has been applied to the
+two events the seams plan touched.
+
+**Still unpinned:** `BookingCreated`'s payloads in the same file, plus the identical pattern in
+`catalog/__tests__/events-carry-actor.test.ts`, `provider/domain/events/__tests__/events.test.ts`,
+and any other bounded context's event tests. Events cross context boundaries without a shared
+transaction, so a payload field silently dropped is a bug nobody finds until a customer is not
+notified.
+
+**Trigger:** before another context starts consuming Booking's events, or the next time an event
+payload changes shape.
