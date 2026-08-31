@@ -233,6 +233,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-01T09:30:00.000Z"),
           }),
         ),
+        1,
       );
       const notYetDue = await repo.insert(
         Booking.create(
@@ -241,6 +242,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-01T23:00:00.000Z"),
           }),
         ),
+        1,
       );
       createdBookingIds.push(due.id as string, notYetDue.id as string);
 
@@ -290,6 +292,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-02T09:00:00.000Z"),
           }),
         ),
+        1,
       );
       createdBookingIds.push(inserted.id as string);
       const paid = inserted.markPaid("mpesa-sweep-test", new Date("2026-11-02T08:45:00.000Z"));
@@ -327,6 +330,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-03T09:00:00.000Z"),
           }),
         ),
+        1,
       );
       const middle = await repo.insert(
         Booking.create(
@@ -335,6 +339,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-03T09:15:00.000Z"),
           }),
         ),
+        1,
       );
       const newest = await repo.insert(
         Booking.create(
@@ -343,6 +348,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-03T09:30:00.000Z"),
           }),
         ),
+        1,
       );
       createdBookingIds.push(oldest.id as string, middle.id as string, newest.id as string);
 
@@ -383,6 +389,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-04T09:00:00.000Z"),
           }),
         ),
+        1,
       );
       const vanished = await repo.insert(
         Booking.create(
@@ -391,12 +398,13 @@ describe("ExpireDueBookingsInternalCommand", () => {
             expiresAt: new Date("2026-11-04T09:15:00.000Z"),
           }),
         ),
+        1,
       );
 
       const vanishedId = vanished.id as string;
       createdBookingIds.push(good.id as string, vanishedId);
       const flaky: BookingRepositoryPort = {
-        insert: (b) => repo.insert(b),
+        insert: (b) => repo.insert(b, 1),
         save: (b, expectedStatus) => repo.save(b, expectedStatus),
         appendChange: (c: BookingChangeRecord) => repo.appendChange(c),
         findDueForExpiry: (n, limit) => repo.findDueForExpiry(n, limit),

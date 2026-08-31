@@ -1,4 +1,5 @@
-import { and, asc, eq, isNotNull, lte } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { localDateAt } from "@ntizo/shared/datetime";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   booking,
@@ -6,13 +7,72 @@ import {
   type BookingRow,
   type NewBookingRow,
 } from "../../../../../shared/infrastructure/database/booking/schemas";
-import { BookingStatus } from "../../../../../shared/infrastructure/database/booking/enums";
+import { BookingStatus, SLOT_HOLDING_STATUSES } from "../../../../../shared/infrastructure/database/booking/enums";
+import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { Booking } from "../../../domain/aggregates/booking.aggregate";
 import { SlotAlreadyTakenError } from "../../../domain/exceptions";
 import type {
   BookingChangeRecord,
   BookingRepositoryPort,
 } from "../../../app/ports/outbound/booking.repository.port";
+
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * The civil day `instant` falls on in `timezone`, as an integer count of
+ * days since the epoch — small enough for `pg_advisory_xact_lock`'s `int`
+ * key, and derived through `localDateAt`, the same conversion
+ * `DrizzleBookingBusyAdapter` uses for its own civil-date splitting, so the
+ * two cannot silently disagree at a DST boundary or a fractional UTC offset.
+ * A lock keyed on a UTC day would serialise the wrong pairs of customers
+ * near local midnight — see `insert`'s own comment on the lock.
+ */
+function civilDayNumber(timezone: string, instant: Date): number {
+  const isoDate = localDateAt(timezone, instant);
+  return Math.floor(Date.parse(`${isoDate}T00:00:00.000Z`) / MS_PER_DAY);
+}
+
+/**
+ * The lowest seat number not occupied by an overlapping slot-holding booking
+ * on `providerMemberId` — see `booking.schema.ts`'s comment on the `seat`
+ * column for why lowest-free rather than any-free: it is what makes a
+ * capacity *reduction* self-correcting. Drop capacity from 3 to 1 while
+ * seats 2 and 3 are occupied, and the lowest free seat is still 2 — which
+ * exceeds the new capacity — so nothing new joins, while an any-free
+ * assignment could still have handed out seat 2 or 3 to a newcomer the
+ * moment either happened to look free.
+ *
+ * Must run after the advisory lock is held (see `insert`) and inside the
+ * same transaction as the write that follows it: reading occupancy before
+ * the lock, or in a different transaction than the insert, is exactly the
+ * window the lock exists to close.
+ */
+async function lowestFreeSeat(
+  db: ReturnType<typeof getDb>,
+  providerMemberId: string,
+  startsAt: Date,
+  endsAt: Date,
+): Promise<number> {
+  const occupied = await db
+    .select({ seat: booking.seat })
+    .from(booking)
+    .where(
+      and(
+        eq(booking.providerMemberId, providerMemberId),
+        // The same list the exclusion constraint's WHERE is built from (by
+        // hand, in the migration — see that constant's own comment): a
+        // status this misses is a status the constraint also stopped
+        // protecting.
+        inArray(booking.status, [...SLOT_HOLDING_STATUSES]),
+        lt(booking.startsAt, endsAt),
+        gt(booking.endsAt, startsAt),
+      ),
+    );
+  const takenSeats = new Set(occupied.map((row) => row.seat));
+  let seat = 1;
+  while (takenSeats.has(seat)) seat += 1;
+  return seat;
+}
 
 /**
  * The partial unique index Task 2 built. Superseded by
@@ -188,10 +248,67 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * reason: TypeScript doesn't require parameter names to match an
    * interface's, and a name here that shadowed the table import would make
    * the table unreachable inside the method body.
+   *
+   * **Assigns the seat under a transaction-scoped advisory lock.** Three
+   * statements, run in this exact order, all against `getDb()` — the active
+   * transaction handle, whichever one the caller already opened
+   * (`CreateBookingCommand`'s `unitOfWork.atomicExecute`). This method does
+   * *not* open its own transaction: a lock taken outside a real transaction
+   * releases the instant its own statement finishes, protecting nothing —
+   * see `booking-seat-assignment.test.ts`'s proof-of-life test for exactly
+   * that failure, captured with the lock removed.
+   *
+   * 1. `pg_advisory_xact_lock(hashtext(providerMemberId), civilDay)` —
+   *    taken *before* anything is read, so no window exists between
+   *    deciding a seat and taking it. Transaction-scoped (`_xact_`), so it
+   *    releases on commit or rollback with no `finally` to forget.
+   *    `hashtext` turns the member id into the `int` key the two-argument
+   *    form wants; the civil day needs no hash, it is already a small
+   *    integer. Keyed per member *per civil day*, not per member alone, so
+   *    two customers booking the same person on different days never wait
+   *    on each other — see `civilDayNumber` for why the day is read in the
+   *    provider's own timezone rather than UTC.
+   * 2. `lowestFreeSeat` reads current occupancy and refuses with
+   *    `SlotAlreadyTakenError` if the lowest free seat exceeds `capacity`.
+   * 3. The insert itself, with the assigned seat. `isSlotCollision` stays as
+   *    the backstop it always was: the lock is what stops the race from
+   *    happening, the exclusion constraint is what makes it impossible for
+   *    the race to matter if the lock is ever bypassed — a backfill, a
+   *    manual `INSERT`, or a future code path that forgets.
    */
-  async insert(entity: Booking): Promise<Booking> {
+  async insert(entity: Booking, capacity: number): Promise<Booking> {
+    const db = getDb();
+
+    // The provider's own clock, not UTC — read fresh per call rather than
+    // trusted from the caller, the same reasoning `DrizzleBookingBusyAdapter`
+    // gives for reading a provider's timezone per row rather than assuming
+    // one. `provider.timezone` is NOT NULL with a default, and
+    // `CreateBookingCommand` already resolved this exact provider through
+    // `ProviderSnapshotReaderPort` before `Booking.create` ever ran, so this
+    // row cannot really be missing here — the `"UTC"` fallback only guards
+    // against a broken foreign key degrading gracefully instead of throwing
+    // a `TypeError` deep inside `localDateAt`.
+    const [providerRow] = await db
+      .select({ timezone: provider.timezone })
+      .from(provider)
+      .where(eq(provider.id, entity.providerId))
+      .limit(1);
+    const timezone = providerRow?.timezone ?? "UTC";
+
+    await db.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${entity.providerMemberId}), ${civilDayNumber(timezone, entity.startsAt)})`,
+    );
+
+    const seat = await lowestFreeSeat(db, entity.providerMemberId, entity.startsAt, entity.endsAt);
+    if (seat > capacity) {
+      throw new SlotAlreadyTakenError(entity.providerMemberId, entity.startsAt);
+    }
+
     try {
-      const [row] = await getDb().insert(booking).values(toRow(entity)).returning();
+      const [row] = await db
+        .insert(booking)
+        .values({ ...toRow(entity), seat })
+        .returning();
       // `.returning()` with no column list always yields exactly one row for
       // exactly one values() row on a single-statement insert; the `!` is a
       // fact about that shape, not an assumption about the data.

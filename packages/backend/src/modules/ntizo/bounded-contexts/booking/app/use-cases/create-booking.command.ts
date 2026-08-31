@@ -49,8 +49,18 @@ export interface CreateBookingInput {
  * same reason `SERVICE_NOT_BOOKABLE_CODES` is one: a `switch` with no
  * `default` lets a fifth reason compile silently with nothing thrown at all,
  * while a `Record` missing a key is a compile error the moment that reason
- * is added to the union. Each entry returns `never` — it always throws — so
- * the call site below needs no `return` of its own.
+ * is added to the union. Each entry returns `never` — it always throws.
+ *
+ * The call site below still wraps the call in an explicit `throw`, even
+ * though every entry here throws its own error before ever returning to
+ * that `throw`. That is for the type checker, not the runtime: a `never`
+ * return reached through a `Record` index does not, by itself, prove to
+ * TypeScript that the branch calling it always exits — narrowing
+ * `validity` to `{ ok: true, capacity: number }` afterward needs a real
+ * `throw` (or `return`) statement at the call site, confirmed against a
+ * minimal repro before relying on it. Only the code after the `if` reads
+ * `validity.capacity`, which is why nothing caught this until Task 3 of
+ * the booking-seats plan needed to.
  */
 const RESULT_TO_REFUSAL: Record<
   SlotValidityReason,
@@ -171,8 +181,22 @@ export class CreateBookingCommand {
       durationMinutes: pricing.durationMinutes,
     });
     if (!validity.ok) {
-      RESULT_TO_REFUSAL[validity.reason](pricing.serviceId, input.providerMemberId, input.startsAt);
+      throw RESULT_TO_REFUSAL[validity.reason](
+        pricing.serviceId,
+        input.providerMemberId,
+        input.startsAt,
+      );
     }
+    // `validity` narrows to `{ ok: true, capacity: number }` here — see
+    // `RESULT_TO_REFUSAL`'s own doc comment for why the `throw` above is
+    // needed for that, not just for the (already-guaranteed) runtime
+    // behaviour. `capacity` is the same rule's own column
+    // `SlotValidityReaderPort` already read to decide this start was offered
+    // at all (null already coerced to one — see that port's
+    // `SlotValidityResult` doc comment); carried to `repo.insert` below
+    // rather than re-read, the same reasoning that port's own comment gives
+    // for not re-resolving the rule a second time.
+    const capacity = validity.capacity;
 
     // LIVE, not carried on the booking until it is: read fresh on every call,
     // so an administrator's change reaches the very next booking. See
@@ -214,7 +238,7 @@ export class CreateBookingCommand {
     });
 
     const created = await this.unitOfWork.atomicExecute(async () => {
-      const inserted = await this.repo.insert(booking);
+      const inserted = await this.repo.insert(booking, capacity);
 
       // `inserted.id` is never null here: `insert`'s contract (see
       // `BookingRepositoryPort`) is that the argument carries `id: null` and

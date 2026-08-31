@@ -246,7 +246,7 @@ describe("insert, then findById", () => {
   test("round-trips through Booking.restore with every snapshot field intact", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const created = Booking.create(bookingInput());
-      const inserted = await repo.insert(created);
+      const inserted = await repo.insert(created, 1);
 
       expect(inserted.id).toBeString();
       expectSameSnapshot(inserted, created);
@@ -278,11 +278,12 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
 
       const first = await repo.insert(
         Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        1,
       );
       expect(first.status).toBe("PENDING_PAYMENT");
 
       const second = Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires }));
-      const error = await repo.insert(second).catch((e: unknown) => e);
+      const error = await repo.insert(second, 1).catch((e: unknown) => e);
 
       // Not a substring match on a message — the class itself, the same
       // check `create-booking.command.test.ts` makes on the fake, and the
@@ -303,6 +304,7 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
 
       const first = await repo.insert(
         Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        1,
       );
 
       // `save` against the happy path here — its compare-and-swap guard
@@ -327,6 +329,7 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
 
       const second = await repo.insert(
         Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        1,
       );
       expect(second.id).toBeString();
       expect(second.status).toBe("PENDING_PAYMENT");
@@ -353,6 +356,7 @@ describe("save's expectedStatus guard", () => {
 
       const first = await repo.insert(
         Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        1,
       );
 
       // The row genuinely moves past PENDING_PAYMENT first — standing in
@@ -397,6 +401,7 @@ describe("findDueForExpiry", () => {
             expiresAt: new Date("2026-10-04T09:30:00.000Z"),
           }),
         ),
+        1,
       );
       const dueEarlier = await repo.insert(
         Booking.create(
@@ -405,6 +410,7 @@ describe("findDueForExpiry", () => {
             expiresAt: new Date("2026-10-04T09:15:00.000Z"),
           }),
         ),
+        1,
       );
 
       // Not due: still PENDING_PAYMENT, but the deadline is in the future.
@@ -415,6 +421,7 @@ describe("findDueForExpiry", () => {
             expiresAt: new Date("2026-10-04T23:00:00.000Z"),
           }),
         ),
+        1,
       );
 
       // Not due: expiresAt has passed, but the booking already left
@@ -432,6 +439,7 @@ describe("findDueForExpiry", () => {
             expiresAt: new Date("2026-10-04T09:00:00.000Z"),
           }),
         ),
+        1,
       );
       const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
       expect(paid.expiresAt).toEqual(paidStale.expiresAt);
@@ -488,6 +496,7 @@ describe("appendChange", () => {
             expiresAt: new Date("2026-10-05T09:30:00.000Z"),
           }),
         ),
+        1,
       );
 
       await repo.appendChange({
@@ -568,6 +577,7 @@ describe("a real atomicExecute rolling back", () => {
                   expiresAt: new Date("2026-10-06T09:30:00.000Z"),
                 }),
               ),
+              1,
             );
             // The insert has definitely executed by this line — its result
             // carries a database-assigned id, which only a row that really

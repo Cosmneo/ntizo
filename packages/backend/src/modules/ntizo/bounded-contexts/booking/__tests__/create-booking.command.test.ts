@@ -88,6 +88,15 @@ function validProvider(over: Partial<ProviderSnapshot> = {}): ProviderSnapshot {
 
 class FakeRepo implements BookingRepositoryPort {
   public insertedArg: Booking | null = null;
+  /**
+   * The `capacity` the command actually passed on the last `insert` call —
+   * separate from `insertedArg`, which is the booking, not the number. A
+   * real `DrizzleBookingRepository.insert` refuses above this number itself;
+   * this fake never does (see `insert` below), so the only thing a test can
+   * check here is that the command handed over the number
+   * `SlotValidityReaderPort` resolved, not a re-derived one.
+   */
+  public insertedCapacity: number | null = null;
   public insertCalls = 0;
   public nextId = "bk-1";
   /**
@@ -103,9 +112,10 @@ class FakeRepo implements BookingRepositoryPort {
     private readonly unitOfWork?: TrackingUnitOfWork,
   ) {}
 
-  async insert(booking: Booking): Promise<Booking> {
+  async insert(booking: Booking, capacity: number): Promise<Booking> {
     this.insertCalls += 1;
     this.insertedArg = booking;
+    this.insertedCapacity = capacity;
     if (this.opts.insertError) {
       throw this.opts.insertError;
     }
@@ -637,6 +647,46 @@ describe("CreateBookingCommand", () => {
 
       expect(result.bookingId).toBe("bk-1");
       expect(repo.insertCalls).toBe(1);
+    });
+
+    it("passes the capacity SlotValidityReaderPort resolved to insert, not a re-derived one", async () => {
+      const { command, repo } = setup({ slotValidity: { ok: true, capacity: 3 } });
+
+      await command.execute(INPUT);
+
+      // `capacity` comes off the same rule the slot check already read — see
+      // `SlotValidityResult`'s own doc comment. A command that re-resolved
+      // it (or hardcoded 1) would still pass every other test in this file;
+      // this is the one that fails if the number ever stops travelling
+      // through.
+      expect(repo.insertedCapacity).toBe(3);
+    });
+
+    it("a refusal above capacity surfaces SlotAlreadyTakenError and writes nothing", async () => {
+      // Stands in for what the real repository does once the lowest free
+      // seat exceeds the capacity it was handed — see
+      // `DrizzleBookingRepository.insert`'s own test,
+      // `booking-seat-assignment.test.ts`, for that refusal proven against
+      // real occupancy. This fake cannot compute a seat at all (it has no
+      // occupancy to read); what it *can* prove is that this command
+      // treats that refusal exactly like any other insert failure — nothing
+      // written before or after it, not merely "no booking came back".
+      const conflict = new SlotAlreadyTakenError(INPUT.providerMemberId, INPUT.startsAt);
+      const { command, repo, slotHold, outbox, delayedJobs } = setup({
+        slotValidity: { ok: true, capacity: 2 },
+        insertError: conflict,
+      });
+
+      await expect(command.execute(INPUT)).rejects.toBe(conflict);
+
+      // The capacity did reach `insert` before it refused — this is a
+      // capacity refusal, not merely `insert` throwing for some unrelated
+      // reason.
+      expect(repo.insertedCapacity).toBe(2);
+      expect(repo.committed).toEqual([]);
+      expect(slotHold.held).toEqual([]);
+      expect(outbox.published).toEqual([]);
+      expect(delayedJobs.scheduled).toEqual([]);
     });
   });
 

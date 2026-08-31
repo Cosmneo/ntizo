@@ -206,6 +206,7 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
             expiresAt: new Date("2026-12-02T09:30:00.000Z"),
           }),
         ),
+        1,
       );
       const newer = await writeRepo.insert(
         Booking.create(
@@ -215,6 +216,7 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
             expiresAt: new Date("2026-12-02T10:30:00.000Z"),
           }),
         ),
+        1,
       );
       // A booking belonging to a DIFFERENT customer. Without this row, the
       // fixture could not fail even if `listForCustomer`'s WHERE clause were
@@ -227,6 +229,7 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
             expiresAt: new Date("2026-12-02T11:30:00.000Z"),
           }),
         ),
+        1,
       );
 
       await pinCreatedAt(older.id as string, new Date("2026-12-01T08:00:00.000Z"));
@@ -261,6 +264,7 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
             expiresAt: new Date("2026-12-03T09:30:00.000Z"),
           }),
         ),
+        1,
       );
 
       const result = await projection.execute({ customerId: customerAId });

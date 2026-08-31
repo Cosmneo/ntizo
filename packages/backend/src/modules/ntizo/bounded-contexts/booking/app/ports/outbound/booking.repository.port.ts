@@ -35,8 +35,22 @@ export interface BookingRepositoryPort {
    * Store a new booking and return it with its id assigned by the database.
    *
    * The argument has `id: null`; the return value has the database-assigned id.
+   *
+   * **`capacity` is how many seats this call is allowed to fill on
+   * `booking.providerMemberId`'s calendar for this window — the same number
+   * `SlotValidityReaderPort` resolved off the availability rule that decided
+   * the start was offered at all (null already coerced to one upstream; see
+   * that port's own `SlotValidityResult` doc comment). Assigning the seat is
+   * this method's job, not the caller's, for the reason `booking.schema.ts`
+   * gives on the `seat` column: it needs the lock, the occupancy read, and
+   * the insert all inside one transaction, and a command computing a seat
+   * itself would reopen the exact race the lock exists to close. Refuses
+   * with `SlotAlreadyTakenError` when the lowest free seat exceeds
+   * `capacity` — see `DrizzleBookingRepository.insert` for the full
+   * mechanism, and its own test, `booking-seat-assignment.test.ts`, for why
+   * lowest-free is what makes a capacity reduction self-correcting.
    */
-  insert(booking: Booking): Promise<Booking>;
+  insert(booking: Booking, capacity: number): Promise<Booking>;
 
   findById(id: string): Promise<Booking | null>;
 
