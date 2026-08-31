@@ -5,8 +5,11 @@
  * might not actually be on the live table — the schema file can say whatever
  * it likes while a wrong migration, a hand-dropped constraint, or a generator
  * that silently skipped it leaves the real table unprotected. Only inserting
- * the row Postgres must refuse, and reading the index definition back from
- * `pg_indexes`, proves the constraint is really there.
+ * the row Postgres must refuse, and reading the constraint's own definition
+ * back from Postgres's catalogs (`pg_indexes` for a plain or partial index,
+ * `pg_constraint` for `booking_member_slot_no_overlap`'s `EXCLUDE`, which is
+ * not an index even though it is backed by one), proves the constraint is
+ * really there.
  *
  * Connects the same way: `postgres` + `drizzle-orm/postgres-js` against
  * `DEV_DB_URL`, which Bun loads automatically from `packages/backend/.env`.
