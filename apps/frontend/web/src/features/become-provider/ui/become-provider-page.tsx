@@ -275,11 +275,17 @@ function GridTexture() {
 }
 
 /**
- * The commission, stated as the page's loudest thing.
+ * The fee, stated as the page's loudest thing.
  *
- * It is the first question anyone asks and the strongest answer this product
- * has, so it is a full-bleed dark band rather than a card: the provider is paid
- * the price they set, and the ten percent is the customer's.
+ * It is the first question anyone asks, so it earns a full-bleed dark band
+ * rather than a card: the provider sets the price, the customer pays exactly
+ * that, and the platform's share is deducted from what the provider is paid.
+ *
+ * Until 2026-08-31 this band led with a giant "0%" and called it
+ * commission-free — the decision of 2026-08-30 made that false. No number
+ * replaces it: the rate is per provider (`commission_bps`) and
+ * administrator-set, not a platform-wide constant safe to print in JSX, so
+ * the headline carries the band alone now instead of completing a numeral.
  */
 function Pricing({ cta, t }: { cta: CtaTarget; t: T }) {
   return (
@@ -298,15 +304,8 @@ function Pricing({ cta, t }: { cta: CtaTarget; t: T }) {
         style={{ background: ACCENT }}
       />
 
-      <div className="page-shell grid items-center gap-12 md:grid-cols-[auto_minmax(0,1fr)]">
-        <span
-          className="font-rounded text-[clamp(6rem,16vw,12rem)] leading-[0.8] font-extrabold tracking-tighter tabular-nums"
-          style={{ color: ACCENT }}
-        >
-          0%
-        </span>
-
-        <div className="text-white">
+      <div className="page-shell">
+        <div className="max-w-[62ch] text-white">
           <Eyebrow onDark>{t("pricingEyebrow")}</Eyebrow>
           <h2 className="font-rounded mt-5 max-w-[20ch] text-[clamp(1.9rem,4vw,3rem)] leading-[1.05] font-extrabold tracking-[-0.03em] text-balance">
             {t("pricingTitle")}

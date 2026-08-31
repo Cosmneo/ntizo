@@ -128,7 +128,7 @@
   "providerDetailDecision": "Decisión",
   "providerDetailDecisionHint": "Solo se ofrecen los cambios de estado permitidos desde aquí.",
   "providerDetailNoActions": "Archivado es definitivo: no hay nada que decidir desde aquí.",
-  "providerDetailCommissionHint": "La tarifa que paga el cliente. El proveedor la ve pero no la cambia.",
+  "providerDetailCommissionHint": "El porcentaje descontado del pago a este proveedor. El proveedor lo ve pero no lo cambia.",
   "providerDetailCommissionSave": "Guardar comisión",
   "providerDetailCommissionRange": "Entre 0 y 100%.",
   "providerDetailWallet": "Cartera",

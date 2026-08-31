@@ -91,7 +91,7 @@
         "heading": "Boekingen, prijzen en de servicekosten",
         "body": [
           "De prijs van een dienst wordt door de dienstverlener bepaald en getoond voordat je bevestigt.",
-          "Daar bovenop komen servicekosten van het platform, betaald door jou, de klant. Op dit moment is dat 10%. Ze worden altijd getoond vóór je bevestigt, en worden nooit ingehouden op de dienstverlener: de prijs die hij bepaalt is de prijs die hij ontvangt.",
+          "Voor elke boeking gelden servicekosten van het platform, als percentage van de prijs die de dienstverlener bepaalt. Ze worden ingehouden op wat de dienstverlener ontvangt — niet toegevoegd aan wat jij als klant betaalt: de prijs die je te zien krijgt, is de prijs die je betaalt. Het percentage verschilt per dienstverlener en wordt aan hem getoond voordat hij een dienst aanbiedt.",
           "Voor annuleringen gelden de voorwaarden die bij de boeking zijn getoond."
         ]
       },

@@ -1,8 +1,8 @@
 {
   "eyebrow": "Ntizo providers",
   "title": "Offer your services.",
-  "titleAccent": "Keep the whole price.",
-  "subtitle": "Join the providers finding customers in Maputo, Matola and Beira — no monthly fee, and no commission on what you earn.",
+  "titleAccent": "Tú fijas el precio.",
+  "subtitle": "Únete a los proveedores que encuentran clientes en Maputo, Matola y Beira. Sin cuota mensual — solo un porcentaje fijo sobre lo que ganas, que se te muestra antes de publicar.",
   "cta": "Get started",
   "trustFree": "Free to join",
   "trustPaid": "Guaranteed payment",
@@ -21,8 +21,8 @@
       "tag": "One calendar per member of staff"
     }
   },
-  "pricingTitle": "Zero commission for you",
-  "pricingBody": "The price you set is the price you receive. The 10% service fee is paid by the customer, on top of your price — it never comes out of yours.",
+  "pricingTitle": "Un precio, que tú fijas",
+  "pricingBody": "El cliente paga exactamente el precio que fijas. La parte de la plataforma sale de lo que cobras — un porcentaje fijo, que se te muestra antes de publicar un servicio, y nunca una sorpresa al cobrar.",
   "stepsTitle": "How it works",
   "step": {
     "apply": {

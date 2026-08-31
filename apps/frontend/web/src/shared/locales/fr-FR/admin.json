@@ -128,7 +128,7 @@
   "providerDetailDecision": "Décision",
   "providerDetailDecisionHint": "Seuls les changements de statut autorisés d'ici sont proposés.",
   "providerDetailNoActions": "Archivé est définitif — il n'y a rien à décider d'ici.",
-  "providerDetailCommissionHint": "Les frais facturés au client. Le prestataire les voit mais ne les modifie pas.",
+  "providerDetailCommissionHint": "Le pourcentage prélevé sur les versements de ce prestataire. Le prestataire le voit mais ne le modifie pas.",
   "providerDetailCommissionSave": "Enregistrer la commission",
   "providerDetailCommissionRange": "Entre 0 et 100%.",
   "providerDetailWallet": "Portefeuille",

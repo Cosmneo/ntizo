@@ -128,7 +128,7 @@
   "providerDetailDecision": "Decision",
   "providerDetailDecisionHint": "Only the status changes allowed from here are offered.",
   "providerDetailNoActions": "Archived is final — there is nothing to decide from here.",
-  "providerDetailCommissionHint": "The fee charged to the customer. The provider sees it but cannot change it.",
+  "providerDetailCommissionHint": "The percentage deducted from this provider's payout. They see it but cannot change it.",
   "providerDetailCommissionSave": "Save commission",
   "providerDetailCommissionRange": "Between 0 and 100%.",
   "providerDetailWallet": "Wallet",

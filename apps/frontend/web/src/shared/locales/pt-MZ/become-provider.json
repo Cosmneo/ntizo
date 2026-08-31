@@ -1,8 +1,8 @@
 {
   "eyebrow": "Prestadores Ntizo",
   "title": "Ofereça os seus serviços.",
-  "titleAccent": "Receba o preço inteiro.",
-  "subtitle": "Junte-se aos prestadores que encontram clientes em Maputo, Matola e Beira — sem mensalidades e sem comissão sobre o que ganha.",
+  "titleAccent": "Define o preço.",
+  "subtitle": "Junte-se aos prestadores que encontram clientes em Maputo, Matola e Beira. Sem mensalidade — apenas uma percentagem fixa sobre o que ganha, mostrada antes de listar.",
   "cta": "Começar",
   "trustFree": "Inscrição gratuita",
   "trustPaid": "Pagamento garantido",
@@ -21,8 +21,8 @@
       "tag": "Uma agenda por funcionário"
     }
   },
-  "pricingTitle": "Zero de comissão para si",
-  "pricingBody": "O preço que define é o preço que recebe. A taxa de serviço de 10% é paga pelo cliente, por cima do seu preço — nunca sai do seu bolso.",
+  "pricingTitle": "Um preço, que define",
+  "pricingBody": "O cliente paga exactamente esse preço. A parte da plataforma sai do que recebe — uma percentagem fixa, mostrada antes de publicar um serviço, e nunca uma surpresa no pagamento.",
   "stepsTitle": "Como funciona",
   "step": {
     "apply": {

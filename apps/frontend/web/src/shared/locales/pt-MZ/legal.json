@@ -91,7 +91,7 @@
         "heading": "Reservas, preços e a taxa de serviço",
         "body": [
           "O preço de um serviço é definido pelo prestador e mostrado antes de confirmar.",
-          "Sobre esse preço acresce uma taxa de serviço da plataforma, paga por si, cliente. Actualmente é de 10%. É sempre mostrada antes de confirmar a reserva, e nunca é descontada ao prestador: o preço que ele define é o que recebe.",
+          "Uma taxa de serviço da plataforma aplica-se a cada reserva, como percentagem do preço que o prestador define. É descontada do que o prestador recebe — não é acrescentada ao que paga, cliente: o preço que lhe é mostrado é o preço que paga. A percentagem varia por prestador, e é mostrada a cada um antes de listar um serviço.",
           "Cancelamentos seguem as condições apresentadas no momento da reserva."
         ]
       },

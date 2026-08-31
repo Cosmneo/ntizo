@@ -289,10 +289,7 @@ export function ProviderCall() {
             aria-hidden="true"
             className="absolute -bottom-6 right-10 h-24 w-24 rounded-full bg-[color:var(--l-accent)] opacity-[.16]"
           />
-          <span className="font-rounded block text-6xl font-extrabold leading-none tracking-tighter text-[color:var(--l-accent)] tabular-nums sm:text-[6rem]">
-            0%
-          </span>
-          <h2 className="font-rounded mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
+          <h2 className="font-rounded text-3xl font-extrabold tracking-tight sm:text-5xl">
             {t("zeroFeeTitle")}
           </h2>
           <p className="mx-auto mt-4 max-w-[48ch] text-white/75">

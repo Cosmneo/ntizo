@@ -128,7 +128,7 @@
   "providerDetailDecision": "Entscheidung",
   "providerDetailDecisionHint": "Nur die von hier zulässigen Statuswechsel werden angeboten.",
   "providerDetailNoActions": "Archiviert ist endgültig — von hier gibt es nichts zu entscheiden.",
-  "providerDetailCommissionHint": "Die dem Kunden berechnete Gebühr. Der Anbieter sieht sie, ändert sie aber nicht.",
+  "providerDetailCommissionHint": "Der Prozentsatz, der von der Auszahlung dieses Anbieters abgezogen wird. Der Anbieter sieht ihn, ändert ihn aber nicht.",
   "providerDetailCommissionSave": "Provision speichern",
   "providerDetailCommissionRange": "Zwischen 0 und 100%.",
   "providerDetailWallet": "Guthaben",

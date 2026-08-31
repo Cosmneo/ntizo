@@ -91,7 +91,7 @@
         "heading": "Prenotazioni, prezzi e commissione di servizio",
         "body": [
           "Il prezzo di un servizio è stabilito dal fornitore e mostrato prima della conferma.",
-          "Su quel prezzo si aggiunge una commissione di servizio della piattaforma, pagata da te, cliente. Attualmente è del 10%. È sempre mostrata prima di confermare, e non viene mai trattenuta al fornitore: il prezzo che fissa è quello che riceve.",
+          "Una commissione di servizio della piattaforma si applica a ogni prenotazione, come percentuale del prezzo fissato dal fornitore. Viene trattenuta da quanto riceve il fornitore — non si aggiunge a quanto paghi tu, cliente: il prezzo che ti viene mostrato è il prezzo che paghi. La percentuale varia da fornitore a fornitore, ed è mostrata a ciascuno prima di pubblicare un servizio.",
           "Le cancellazioni seguono le condizioni mostrate al momento della prenotazione."
         ]
       },
