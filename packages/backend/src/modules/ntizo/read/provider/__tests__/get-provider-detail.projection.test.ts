@@ -18,6 +18,13 @@
  * with a DIFFERENT commission rate on purpose — a fixture holding only the
  * caller's own workspace could not fail even if `isMember`'s `WHERE` clause
  * were ever dropped.
+ *
+ * The fixture also seeds a `staff` member, not just owners. `staff` is
+ * excluded from every write `Provider.assertCanManage` gates — see the
+ * comment on `commissionBps` in `provider-detail.schema.ts` — and reading the
+ * rate is a deliberate exception to that, decided by the product owner after
+ * review, not a gap nobody noticed. Without this fixture, that decision would
+ * be true only by accident of every existing test happening to use an owner.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -51,12 +58,14 @@ const OTHER_COMMISSION_BPS = 700;
 
 let ownerAId: string;
 let ownerBId: string;
+let staffAId: string;
 let providerAId: string;
 let providerBId: string;
 
 beforeAll(async () => {
   ownerAId = crypto.randomUUID();
   ownerBId = crypto.randomUUID();
+  staffAId = crypto.randomUUID();
   await db.insert(user).values([
     {
       id: ownerAId,
@@ -67,6 +76,12 @@ beforeAll(async () => {
     {
       id: ownerBId,
       email: `get-provider-detail-owner-b-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: staffAId,
+      email: `get-provider-detail-staff-a-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -104,6 +119,15 @@ beforeAll(async () => {
     role: "owner",
   });
 
+  // A `staff` member of provider A. `Provider.assertCanManage` would refuse
+  // this role for every write in the context — the point of this fixture is
+  // that reading the rate is not gated the same way, on purpose.
+  await db.insert(providerMember).values({
+    providerId: providerAId,
+    userId: staffAId,
+    role: "staff",
+  });
+
   // Owner B is deliberately NOT made a member of provider A — the fixture
   // needs someone who exists but has no business reading provider A's rate.
   await db.insert(providerMember).values({
@@ -121,6 +145,7 @@ afterAll(async () => {
     () => db.delete(provider).where(eq(provider.id, providerBId)),
     () => db.delete(user).where(eq(user.id, ownerAId)),
     () => db.delete(user).where(eq(user.id, ownerBId)),
+    () => db.delete(user).where(eq(user.id, staffAId)),
     () => sql.end({ timeout: 5 }),
   ]);
 }, DEV_DB_COLD_START_TIMEOUT_MS);
@@ -165,6 +190,26 @@ describe("GetProviderDetailProjection, backed by DrizzleProviderReadRepository",
 
       expect(result.commissionBps).toBe(OTHER_COMMISSION_BPS);
       expect(result.commissionBps).not.toBe(OWN_COMMISSION_BPS);
+    });
+  });
+
+  // This is the decision, not the mechanism: `isMember` returning true for a
+  // `staff` role is unremarkable — the mechanism is exercised by every other
+  // test in this file too. What is asserted here is the product decision
+  // that a `staff` member — who `Provider.assertCanManage` refuses for every
+  // write in this context — is nonetheless allowed to READ the workspace's
+  // commission rate. Both existing fixtures were owners, so before this test
+  // that decision was true only by accident of who happened to be seeded.
+  // If somebody later "corrects" the asymmetry with `assertCanManage` by
+  // gating this field on it too, this is the test that must fail.
+  test("a staff member may read their workspace's commission rate, though they may manage nothing else in it", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const result = await projection.execute({
+        providerId: providerAId,
+        requestedByUserId: staffAId,
+      });
+
+      expect(result.commissionBps).toBe(OWN_COMMISSION_BPS);
     });
   });
 });

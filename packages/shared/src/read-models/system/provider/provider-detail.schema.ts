@@ -97,6 +97,15 @@ export const providerDetailReadModel = z.object({
    * here — name, members, invites — is descriptive; this one tells a
    * provider what the platform takes out of every payout, and it reaches
    * this model only through `provider.byId`, which is membership-guarded.
+   *
+   * Readable by every member, `staff` included — deliberately, not by
+   * oversight. `Provider.assertCanManage` (the domain aggregate) excludes
+   * `staff` from every write in this bounded context: a staff member can
+   * rename nothing, move nothing, change no payout destination. This field
+   * does not follow that line, because it isn't a management action being
+   * exposed — it's a fact about the business, the same category as its name
+   * or its address, and someone who works there may know what the business
+   * is charged even though they may not change it.
    */
   commissionBps: z.number().int(),
   ownerUserId: z.string().min(1),
