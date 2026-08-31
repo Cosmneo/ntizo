@@ -58,6 +58,41 @@ describe("startsForDay", () => {
     });
     expect([...starts.keys()]).toEqual([540, 570]);
     expect(starts.get(540)!.seatsLeft).toBe(5);
+    // Pinned beside `seatsLeft`: both come off the same winning rule, and
+    // nothing else ties them together — this is what would catch the two
+    // silently drifting apart.
+    expect(starts.get(540)!.capacity).toBe(5);
+  });
+
+  test("a custom exception that widens the day resolves capacity to the winning rule, not the rule whose own window happens to cover the start", () => {
+    // Rule A: 08:00-12:00, capacity 1. Rule B: 13:00-17:00, capacity 5. A
+    // `custom` exception widens the whole day to 08:00-17:00. Per
+    // `freeIntervals`, a custom exception *replaces* the weekly pattern
+    // rather than adding to it, and that replacement happens once per rule
+    // in this loop -- so both A and B generate starts across the full
+    // widened range, not just their own original hours.
+    //
+    // 10:00 sits inside A's own 08:00-12:00 and nowhere near B's
+    // 13:00-17:00, yet B still offers a start there (the exception, not A's
+    // bounds, is what free time B iterates over), and B wins the
+    // "whichever leaves more room" tie-break because its capacity is
+    // larger. An external check asking "which rule's own
+    // startMinute/endMinute contains this minute" would find only A and
+    // report capacity 1 -- wrong, and wrong precisely on the days a
+    // provider's exception changed their hours. That is why `capacity` has
+    // to come off the same winner-take-all comparison `seatsLeft` already
+    // goes through, not a second lookup against the rules' own windows.
+    const starts = startsForDay({
+      ...base,
+      exceptions: [{ kind: "custom", start: 480, end: 1020 }],
+      rules: [
+        rule(480, 720, { capacity: 1 }), // Rule A: 08:00-12:00
+        rule(780, 1020, { capacity: 5 }), // Rule B: 13:00-17:00
+      ],
+    });
+
+    expect(starts.get(600)!.seatsLeft).toBe(5);
+    expect(starts.get(600)!.capacity).toBe(5);
   });
 
   test("capacity defaults to one", () => {
