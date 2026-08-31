@@ -92,10 +92,10 @@ export function formatAmount(
  * mockup's "1 200 MZN".
  *
  * `formatAmount` above is not this function with two fewer digits — it stays
- * exactly as it is for `RailPriceSummary`'s breakdown lines and its total,
- * because a checkout total is what the customer actually pays and cannot be
- * rounded. A rail headline and a row price are headlines: an approximation
- * announcing itself as one, not a number anybody is charged.
+ * exactly as it is for `RailPriceSummary`'s own headline, because that one is
+ * a checkout total, what the customer actually pays, and cannot be rounded.
+ * A rail headline and a row price are headlines: an approximation announcing
+ * itself as one, not a number anybody is charged.
  */
 export function formatHeadlinePrice(
   amountMinor: number,

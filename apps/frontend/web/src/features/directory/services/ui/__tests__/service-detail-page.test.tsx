@@ -224,7 +224,7 @@ describe("ServiceDetailPage's right column", () => {
     // active options must still say what it costs and offer something to do
     // about it.
     renderPage(detailService());
-    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/550/);
+    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/500/);
     expect(screen.getByRole("button", { name: "See availability" })).toBeInTheDocument();
     expect(screen.queryByText(/priced by quote/i)).not.toBeInTheDocument();
   });
@@ -283,10 +283,10 @@ describe("ServiceDetailPage's body", () => {
         ],
       }),
     );
-    // 50000 -> 55000 total; 90000 -> 99000.
-    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/550/);
+    // The provider's price, unmarked up: 50000 -> 500; 90000 -> 900.
+    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/500/);
     await userEvent.click(screen.getByRole("radio", { name: /Longo/ }));
-    expect(screen.getByTestId("booking-total")).toHaveTextContent(/990/);
+    expect(screen.getByTestId("booking-total")).toHaveTextContent(/900/);
   });
 
   it("opens on the provider's marked default, not on the cheapest option", async () => {
@@ -308,8 +308,8 @@ describe("ServiceDetailPage's body", () => {
         ],
       }),
     );
-    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/990/);
-    expect(screen.getByTestId("booking-total")).not.toHaveTextContent(/550/);
+    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/900/);
+    expect(screen.getByTestId("booking-total")).not.toHaveTextContent(/500/);
     expect(screen.getByRole("radio", { name: /Longo/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: /Corte/ })).toHaveAttribute("aria-checked", "false");
   });

@@ -43,12 +43,16 @@ export const platformSettings = platformSchema.table("platform_settings", {
   // ── Money ────────────────────────────────────────────────────────────────
 
   /**
-   * SEED. The platform fee charged to the **customer**, in basis points.
+   * SEED. The default rate deducted from the **provider's** payout, in basis
+   * points, copied onto `provider.commission_bps` when a provider is created.
    *
-   * Charged to the customer and never deducted from the provider — that is a
-   * permanent commitment of this product, not a default. There is deliberately
-   * no provider-side rate anywhere in this table, because a field is an
-   * invitation and this is one nobody should be able to accept.
+   * The provider prices a service with this fee already in mind: the
+   * customer pays exactly the listed price, and the provider receives that
+   * price minus the commission. Copied at creation rather than read live so
+   * a provider who signed up under one rate is not moved onto another
+   * without agreeing to it — an administrator can still change a given
+   * provider's own `commission_bps` afterward, which is exactly the field
+   * this seed exists to initialize.
    *
    * Basis points as an integer, for the same reason money is: 1050 is 10.5%,
    * and no two machines disagree about it.

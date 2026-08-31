@@ -10,7 +10,6 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import type { ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
-import { NTIZO_COMMISSION_RATE, bookingTotal } from "../../domain/booking-total";
 import { RailPriceSummary } from "../rail-price-summary";
 
 const FIXED: ServiceDetailOptionDTO = {
@@ -67,16 +66,13 @@ function renderRail(
  * synchronously.
  */
 describe("RailPriceSummary", () => {
-  it("breaks the total into the price, the fee and the sum", async () => {
-    // The expected numbers come from the same function the component uses, so
-    // this pins the wiring rather than restating 10% in a second place.
-    const total = bookingTotal(FIXED.amountMinor);
-    expect(total.commissionMinor).toBe(Math.round(FIXED.amountMinor * NTIZO_COMMISSION_RATE));
-
+  it("charges exactly the price the provider set, with nothing added", async () => {
+    // 120000 minor units is 1200.00 — the provider's own price, unmarked up.
+    // The 2026-08-30 decision means this is what the customer pays, so there
+    // is no separate fee line to assert: the headline total *is* the price.
     renderRail(FIXED);
-    expect(await screen.findByText("Price")).toBeInTheDocument();
-    expect(screen.getByText(/Ntizo commission/)).toBeInTheDocument();
-    expect(screen.getByTestId("booking-total")).toHaveTextContent(/1[.,\s]?320/);
+    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/1[.,\s]?200/);
+    expect(screen.queryByText(/Ntizo commission/)).not.toBeInTheDocument();
   });
 
   it("says the bookings are not open yet", async () => {
