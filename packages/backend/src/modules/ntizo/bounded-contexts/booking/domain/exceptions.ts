@@ -184,23 +184,32 @@ export class PaymentReferenceMismatchError extends ConflictError {
 
 /**
  * Refused because another booking already holds this member's calendar at
- * this instant.
+ * an overlapping time.
  *
- * The check happens twice, on purpose. `booking_member_slot_active_uq` — the
- * partial unique index in `booking.schema.ts` — is the one that actually
- * prevents a double-booking: two requests can both read "free" before either
- * writes, and the database is the only party present for both writes at once.
- * The command that inserts a booking checks availability first too, but that
- * check is for the honest path (a good error message before anyone touches
- * the database), not the race — losing the race is not a bug, being told
- * about it silently would be.
+ * The check happens twice, on purpose. `booking_member_slot_no_overlap` —
+ * the `EXCLUDE USING gist` constraint in `booking.schema.ts` — is the one
+ * that actually prevents a double-booking: two requests can both read
+ * "free" before either writes, and the database is the only party present
+ * for both writes at once. It refuses any two active bookings on the same
+ * member whose time ranges overlap at all, not only two that share an
+ * identical start — its predecessor, the partial unique index
+ * `booking_member_slot_active_uq`, only ever compared `starts_at`, so a
+ * 90-minute booking and a later 30-minute one starting inside it could both
+ * be inserted (see the constraint's own comment in `booking.schema.ts` for
+ * that history). The command that inserts a booking checks availability
+ * first too, but that check is for the honest path (a good error message
+ * before anyone touches the database), not the race — losing the race is
+ * not a bug, being told about it silently would be.
  *
- * Raised by Task 7's repository when Postgres rejects the insert with that
- * index's unique-violation code, and caught by Task 8's booking command —
- * which needs to catch it without importing anything from `infrastructure/`.
- * It is declared here, in the domain, rather than in the repository that
- * detects it, because "this slot is already taken" is a fact about bookings,
- * not a fact about Postgres.
+ * Raised by the repository when Postgres rejects the insert with either
+ * constraint's own violation code — the exclusion constraint's or, until
+ * every stage's database has actually been migrated onto it, the old
+ * index's (see `booking.repository.ts`'s `isSlotCollision` for why both are
+ * still checked) — and caught by the booking command, which needs to catch
+ * it without importing anything from `infrastructure/`. It is declared
+ * here, in the domain, rather than in the repository that detects it,
+ * because "this slot is already taken" is a fact about bookings, not a fact
+ * about Postgres.
  */
 export class SlotAlreadyTakenError extends ConflictError {
   constructor(

@@ -26,7 +26,7 @@ import { booking } from "../booking/schemas/booking.schema";
 import type { NewBookingRow } from "../booking/schemas/booking.schema";
 import { bookingChange } from "../booking/schemas/booking-change.schema";
 import { platformSettings } from "../platform/schemas/platform-settings.schema";
-import { BookingStatus, SLOT_HOLDING_STATUSES } from "../booking/enums";
+import { BOOKING_STATUSES, BookingStatus, SLOT_HOLDING_STATUSES } from "../booking/enums";
 import {
   bestEffortCleanup,
   DEV_DB_COLD_START_TIMEOUT_MS,
@@ -320,7 +320,7 @@ describe("booking_member_slot_no_overlap", () => {
     expect(second?.id).toBeString();
   });
 
-  test("the constraint exists, is partial, and is built from every slot-holding status", async () => {
+  test("the constraint exists, is partial, and is built from exactly the slot-holding statuses", async () => {
     // `pg_constraint`, not `pg_indexes`: an `EXCLUDE` constraint is backed by
     // an index but is not itself one, and `pg_get_constraintdef` is the
     // catalog's own account of what the constraint says — an independent
@@ -336,8 +336,26 @@ describe("booking_member_slot_no_overlap", () => {
     expect(definition).toContain("EXCLUDE");
     expect(definition).toContain("gist");
     expect(definition).toContain("WHERE");
+
+    // Both directions matter, and only because this predicate is hand-typed
+    // into a migration file rather than generated from `SLOT_HOLDING_STATUSES`
+    // the way `booking_status_known` and the old index's predicate were
+    // (`booking.schema.ts`'s `statusList` helper needs a live TypeScript
+    // import a `.sql` file cannot have). A status added to the constant and
+    // forgotten here would silently stop preventing a double-booking for it;
+    // a status added here that is not in the constant — DISPUTED, say —
+    // would silently stop a slot from ever being released, so a provider
+    // could never be rebooked into it. Neither typo trips the compiler, so
+    // this test is the only thing that would catch either one. Plain
+    // `toContain` is safe both ways: no `BOOKING_STATUSES` member's name is
+    // a substring of another's.
     for (const status of SLOT_HOLDING_STATUSES) {
       expect(definition).toContain(status);
+    }
+    for (const status of BOOKING_STATUSES) {
+      if (!(SLOT_HOLDING_STATUSES as readonly string[]).includes(status)) {
+        expect(definition).not.toContain(status);
+      }
     }
   });
 
