@@ -20,6 +20,7 @@ export const bookingReadModel = z.object({
   id: z.string().min(1),
 
   status: z.enum([
+    "DRAFT",
     "PENDING_PAYMENT",
     "AWAITING_PROVIDER",
     "CONFIRMED",

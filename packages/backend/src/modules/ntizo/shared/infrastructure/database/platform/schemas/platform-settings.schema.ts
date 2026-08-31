@@ -89,7 +89,34 @@ export const platformSettings = platformSchema.table("platform_settings", {
   // ── Booking ──────────────────────────────────────────────────────────────
 
   /**
-   * LIVE. Minutes an unpaid booking holds its slot before expiring.
+   * LIVE. Minutes a DRAFT holds its slot before an abandoned checkout
+   * expires it and releases the calendar.
+   *
+   * The mockup's countdown — "Hora reservada 29:40" — runs on all three
+   * checkout steps, so the slot has to be held from the moment the customer
+   * picks it, not from the moment they finish; this is that hold's length.
+   * Read when the booking is created, same relationship to the row as
+   * `paymentWindowMinutes` below: a change applies to new bookings at once,
+   * and a `DRAFT` already in progress keeps the deadline it was given (this
+   * table's header comment on seed vs. live).
+   */
+  checkoutHoldMinutes: integer("checkout_hold_minutes").notNull().default(30),
+
+  /**
+   * LIVE. Minutes a provider has to accept or decline a request before it
+   * expires on them and the slot releases.
+   *
+   * The mockup states this one directly: "o prestador tem 2 horas para
+   * confirmar a hora." Read when the request reaches `AWAITING_PROVIDER`,
+   * same relationship to the row as `paymentWindowMinutes` below — a
+   * booking already waiting on a provider keeps the deadline it was given
+   * even if this setting changes underneath it.
+   */
+  providerResponseMinutes: integer("provider_response_minutes").notNull().default(120),
+
+  /**
+   * LIVE. Minutes an accepted booking holds its slot while payment is
+   * collected, before it expires unpaid.
    *
    * Read when the booking is created, so a change applies to new bookings at
    * once; bookings already made keep the deadline they were given — that is
@@ -103,6 +130,12 @@ export const platformSettings = platformSchema.table("platform_settings", {
    * they were paying for. M-Pesa's C2B is synchronous — approval takes a
    * minute or two, not half an hour — which is why the default here is 15,
    * not the mockup's 30.
+   *
+   * The name and the meaning both predate the reversal this file's siblings
+   * are part of: this still counts down "we are waiting for money," the same
+   * thing it always counted. Only where it sits in the flow moves — after
+   * the provider's yes rather than before it — and that move is a later
+   * task's business, not this column's.
    */
   paymentWindowMinutes: integer("payment_window_minutes").notNull().default(15),
 
@@ -152,10 +185,20 @@ export const platformSettings = platformSchema.table("platform_settings", {
 
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
-  // A zero-minute window creates bookings that are already expired, and a
-  // negative one creates bookings whose deadline is in the past — both are
-  // rows the expiry sweep would delete the instant they exist, and neither
-  // is a state anybody meant to configure.
+  // A zero-minute window creates something already expired — a DRAFT with no
+  // time to fill in the form, a request with no time for a provider to
+  // answer, a booking with no time to pay — and a negative one creates a
+  // deadline already in the past. Neither is a state anybody meant to
+  // configure; both are rows the expiry sweep would delete the instant they
+  // exist.
+  check(
+    "platform_settings_checkout_hold_minutes_positive",
+    sql`${t.checkoutHoldMinutes} >= 1`,
+  ),
+  check(
+    "platform_settings_provider_response_minutes_positive",
+    sql`${t.providerResponseMinutes} >= 1`,
+  ),
   check(
     "platform_settings_payment_window_minutes_positive",
     sql`${t.paymentWindowMinutes} >= 1`,

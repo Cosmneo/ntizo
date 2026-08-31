@@ -269,6 +269,39 @@ describe("platform_settings_payment_window_minutes_positive", () => {
   });
 });
 
+describe("platform_settings_checkout_hold_minutes_positive", () => {
+  // Same reasoning as payment_window_minutes above: a zero-minute hold is a
+  // DRAFT with no time to fill in the checkout form, i.e. already expired.
+  test("refuses a zero-minute hold", async () => {
+    await expect(insertPlatformSettingsRow({ checkoutHoldMinutes: 0 })).rejects.toThrow(
+      /platform_settings_checkout_hold_minutes_positive/,
+    );
+  });
+
+  test("refuses a negative hold", async () => {
+    await expect(insertPlatformSettingsRow({ checkoutHoldMinutes: -1 })).rejects.toThrow(
+      /platform_settings_checkout_hold_minutes_positive/,
+    );
+  });
+});
+
+describe("platform_settings_provider_response_minutes_positive", () => {
+  // Same reasoning again: a zero-minute window gives a provider no time to
+  // answer at all, which is not "must answer immediately" but "already
+  // expired before the request could be read."
+  test("refuses a zero-minute window", async () => {
+    await expect(insertPlatformSettingsRow({ providerResponseMinutes: 0 })).rejects.toThrow(
+      /platform_settings_provider_response_minutes_positive/,
+    );
+  });
+
+  test("refuses a negative window", async () => {
+    await expect(insertPlatformSettingsRow({ providerResponseMinutes: -1 })).rejects.toThrow(
+      /platform_settings_provider_response_minutes_positive/,
+    );
+  });
+});
+
 describe("booking_member_slot_no_overlap", () => {
   // These four hold what `booking_member_slot_active_uq` used to catch: two
   // active bookings sharing the exact same start instant. An identical start
@@ -295,6 +328,34 @@ describe("booking_member_slot_no_overlap", () => {
 
     await expect(
       insertBooking({ status: BookingStatus.MarkedDone, startsAt: slotStart, endsAt: slotEnd }),
+    ).rejects.toThrow(/booking_member_slot_no_overlap/);
+  });
+
+  // DRAFT is new: the checkout hold has to occupy the same calendar as
+  // every other slot-holding status, or two customers filling in the form
+  // at once for the same slot would not collide until one of them paid.
+  test("two overlapping DRAFT bookings on one member at the same seat are refused", async () => {
+    const slotStart = new Date("2026-09-11T09:00:00Z");
+    const slotEnd = new Date("2026-09-11T10:00:00Z");
+
+    await insertBooking({ status: BookingStatus.Draft, startsAt: slotStart, endsAt: slotEnd });
+
+    await expect(
+      insertBooking({ status: BookingStatus.Draft, startsAt: slotStart, endsAt: slotEnd }),
+    ).rejects.toThrow(/booking_member_slot_no_overlap/);
+  });
+
+  // A held slot is a held slot whichever end of the flow it is at: a
+  // checkout still being filled in must collide with a booking that already
+  // made it all the way to CONFIRMED, not just with another DRAFT.
+  test("a DRAFT and a CONFIRMED booking overlapping at the same seat are refused", async () => {
+    const slotStart = new Date("2026-09-12T09:00:00Z");
+    const slotEnd = new Date("2026-09-12T10:00:00Z");
+
+    await insertBooking({ status: BookingStatus.Confirmed, startsAt: slotStart, endsAt: slotEnd });
+
+    await expect(
+      insertBooking({ status: BookingStatus.Draft, startsAt: slotStart, endsAt: slotEnd }),
     ).rejects.toThrow(/booking_member_slot_no_overlap/);
   });
 
