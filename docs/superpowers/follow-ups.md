@@ -2472,3 +2472,26 @@ So the moment Plan 2 ships reschedule, an honest slot race on the update path be
 comment is currently a trap: it describes a route that is not defended.
 
 **Trigger:** before reschedule lands. It is a `try`/`catch` around one `UPDATE`.
+
+## #102 — A booking's seat lock covers only its start-day
+
+`DrizzleBookingRepository.insert` takes `pg_advisory_xact_lock(hashtext(providerMemberId), civilDay)`
+before assigning a seat, where `civilDay` is derived from `startsAt` alone. A booking whose window
+crosses local midnight therefore locks only the day it starts on.
+
+Concretely, in `Africa/Maputo`: booking A local 23:45–00:15 (day D into D+1) and booking B local
+00:00–00:30 on D+1 overlap by fifteen minutes but take different lock keys, so they compute occupancy
+concurrently and can choose the same lowest free seat. The exclusion constraint then refuses the
+second insert — `23P01`, surfaced as `SlotAlreadyTakenError`.
+
+**No data is corrupted**; the constraint backstop does exactly what the design says it is there for.
+What is wrong is the outcome: at capacity 2 or more, both bookings could have succeeded on different
+seats, and one customer is told the slot is taken when it was not.
+
+Not reachable today — no fixed-price option in the catalogue produces a booking spanning local
+midnight, and `DrizzleBookingBusyAdapter`'s own comment already rests on the same "well under a day"
+assumption without handling it either. The fix is to lock every civil day the booking's window
+touches, in a stable order to avoid deadlock between two bookings that span the same pair of days.
+
+**Trigger:** before an hourly or multi-hour option can produce a booking that crosses local midnight,
+or the first time a customer reports "already taken" on a slot that was free.
