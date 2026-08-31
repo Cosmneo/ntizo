@@ -2355,3 +2355,32 @@ singleton row is created by the migration that creates its table" an explicit ru
 
 **Trigger:** before the first deploy to an environment whose database has not run `0026`, or the
 next time a settings value reads as a default nobody set.
+
+## #97 — The availability modal sizes its grid off the default option only
+
+`ListServiceAvailability` resolves its offer from `info.defaultOption` alone, and
+`findServiceSchedulingInfo` hard-codes `WHERE is_default = true`. `ListServiceAvailabilityInput` has no
+`serviceOptionId` field, so there is currently no way for the modal to ask about any other option — while
+`manage-options.command.ts` happily allows several fixed-price options with different durations and one
+default among them.
+
+This sat harmless until the Booking context started checking availability before writing. It is now
+customer-facing. Concrete: a provider open 08:00–10:00, 30-minute grid, one member. Default option 60
+minutes, second option 90 minutes. The modal sizes the grid off 60 and offers 08:00, 08:30 and **09:00**.
+The customer picks the 90-minute option — the modal cannot resize for that choice — and submits 09:00.
+`SlotValidityReaderPort` sizes off the real 90 minutes, 09:00 + 90 runs past closing, and the booking is
+refused at checkout for a slot the page had just displayed as free.
+
+**Do not "fix" this by sizing the booking check off the default option instead.** That would match the
+modal and reintroduce a real double-booking hole: `booking_member_slot_active_uq` is on
+`(provider_member_id, starts_at)`, so it only catches two bookings at the *same instant* — a 90-minute
+booking at 09:00 overlapping a 60-minute one at 09:30 has a different `starts_at` and the index stays
+silent. Validating against the option actually being bought is the correct half; the modal is the wrong
+half.
+
+Smallest honest fix: thread an optional `serviceOptionId` (or `durationMinutes`) through
+`ListServiceAvailabilityInput` → `findServiceSchedulingInfo` → `resolveOffer`, selecting the requested
+option and falling back to the default when omitted, so existing public callers keep working.
+
+**Trigger:** before any provider publishes a second fixed-price option whose duration differs from their
+default — which no rule currently prevents.
