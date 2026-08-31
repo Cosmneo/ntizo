@@ -6,14 +6,13 @@ import {
   pgSchema,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "../../user/schemas/user.schema";
 import { provider } from "../../provider/schemas/provider.schema";
 import { providerMember } from "../../provider/schemas/provider-member.schema";
 import { service, serviceOption } from "../../catalog/schemas/service.schema";
-import { BOOKING_STATUSES, SLOT_HOLDING_STATUSES, type BookingStatus } from "../enums";
+import { BOOKING_STATUSES, BookingStatus } from "../enums";
 
 export const bookingSchema = pgSchema("ntizo_booking");
 
@@ -160,22 +159,58 @@ export const booking = bookingSchema.table(
     // requests can both read "free" before either writes — and the loser of
     // that race must be told, not quietly double-booked.
     //
-    // Partial: only statuses that still hold the slot. An expired or declined
-    // booking releases the time, and a provider who cannot rebook a slot that
-    // nobody holds would rightly call that a bug. Built from
-    // `SLOT_HOLDING_STATUSES` through `statusList` (see its doc comment above
-    // for why that helper exists, and not `inArray`) rather than a
-    // hand-written SQL list of the same four strings, so there is one list
-    // this index and the rest of the domain both read — a status added to the
-    // constant without being added here is the bug this exists to prevent,
-    // not to repeat.
-    uniqueIndex("booking_member_slot_active_uq")
-      .on(t.providerMemberId, t.startsAt)
-      .where(sql`${t.status} in (${statusList(SLOT_HOLDING_STATUSES)})`),
+    // What used to live here was `booking_member_slot_active_uq`, a unique
+    // index on `(provider_member_id, starts_at)`. It only ever caught two
+    // bookings sharing an exact start instant — a 90-minute booking at 14:00
+    // and a 30-minute one at 14:30 both inserted, and 14:30 is a grid start
+    // the availability modal legitimately offers (`slot_interval_minutes` is
+    // 30). It is replaced by `booking_member_slot_no_overlap`, an
+    // `EXCLUDE USING gist (provider_member_id WITH =, tstzrange(starts_at,
+    // ends_at) WITH &&)` constraint hand-added to the migration — Drizzle has
+    // no builder for `EXCLUDE`, so it cannot be declared here and will not
+    // show up in a `generate` diff. It subsumes the old index rather than
+    // sitting alongside it: an identical start is a degenerate case of two
+    // ranges overlapping, so nothing the unique index refused escapes this
+    // one, and keeping both would leave two constraints that can only
+    // disagree by one of them being wrong.
+    //
+    // Its `WHERE` clause is the same partial condition the old index used —
+    // only statuses that still hold the slot; an expired or declined booking
+    // releases the time — but, unlike this file's other predicates, it is
+    // *not* built from `SLOT_HOLDING_STATUSES` through `statusList`, because
+    // a hand-written migration statement cannot import a TypeScript
+    // constant. A status added to `SLOT_HOLDING_STATUSES` does not
+    // automatically reach it; see that constant's own comment.
+    //
+    // `booking.repository.ts`'s `isSlotCollision` still recognizes the old
+    // index's SQLSTATE (`23505`) and name alongside the new constraint's
+    // (`23P01`, `booking_member_slot_no_overlap`): migrations here are
+    // applied by hand per stage, so this code can deploy before the
+    // migration that drops the old index runs, and the live database keeps
+    // raising the old error until it does.
 
     // A provider's dashboard reads "my bookings in status X" — pending
     // payments to chase, confirmed jobs to prepare for, disputes to answer.
     index("booking_provider_status_idx").on(t.providerId, t.status),
+
+    // The expiry sweep (`findDueForExpiry`) runs
+    // `WHERE status = 'PENDING_PAYMENT' AND expires_at <= now() ORDER BY
+    // expires_at ASC LIMIT 200` every sixty seconds, forever, on a Worker's
+    // single connection to Neon. `booking_provider_status_idx`'s leading
+    // column is `provider_id`, so it cannot serve this — every sweep was a
+    // sequential scan plus a sort of the whole table. Partial on the same
+    // status this query filters to, so the predicate matches the query
+    // exactly and the index also hands back rows pre-sorted for
+    // `ORDER BY expires_at ASC LIMIT 200`.
+    index("booking_expiry_sweep_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.status} = ${statusList([BookingStatus.PendingPayment])}`),
+
+    // `booking.mine` (`DrizzleBookingReadRepository.listForCustomer`) runs
+    // `WHERE customer_id = $1 ORDER BY created_at DESC` with no index to
+    // serve it either. Ordered `desc` to match the query directly rather
+    // than relying on a backward index scan.
+    index("booking_customer_created_idx").on(t.customerId, t.createdAt.desc()),
 
     check("booking_status_known", sql`${t.status} in (${statusList(BOOKING_STATUSES)})`),
     check("booking_price_minor_non_negative", sql`${t.priceMinor} >= 0`),

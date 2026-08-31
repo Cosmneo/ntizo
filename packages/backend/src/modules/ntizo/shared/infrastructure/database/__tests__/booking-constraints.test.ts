@@ -39,8 +39,11 @@ const suffix = crypto.randomUUID();
 
 let customerId: string;
 let ownerUserId: string;
+let otherMemberUserId: string;
 let providerId: string;
 let memberId: string;
+/** A second member of the same provider — for proving an overlap only refuses the same calendar, not the whole provider. */
+let otherMemberId: string;
 let categoryId: string;
 let serviceId: string;
 let serviceOptionId: string;
@@ -48,6 +51,7 @@ let serviceOptionId: string;
 beforeAll(async () => {
   customerId = crypto.randomUUID();
   ownerUserId = crypto.randomUUID();
+  otherMemberUserId = crypto.randomUUID();
   await db.insert(user).values([
     {
       id: customerId,
@@ -58,6 +62,12 @@ beforeAll(async () => {
     {
       id: ownerUserId,
       email: `booking-owner-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: otherMemberUserId,
+      email: `booking-other-member-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -80,6 +90,12 @@ beforeAll(async () => {
     .values({ providerId, userId: ownerUserId, role: "owner" })
     .returning({ id: providerMember.id });
   memberId = memberRow!.id;
+
+  const [otherMemberRow] = await db
+    .insert(providerMember)
+    .values({ providerId, userId: otherMemberUserId, role: "staff" })
+    .returning({ id: providerMember.id });
+  otherMemberId = otherMemberRow!.id;
 
   const [categoryRow] = await db
     .insert(category)
@@ -128,9 +144,11 @@ afterAll(async () => {
     () => db.delete(service).where(eq(service.id, serviceId)),
     () => db.delete(category).where(eq(category.id, categoryId)),
     () => db.delete(providerMember).where(eq(providerMember.id, memberId)),
+    () => db.delete(providerMember).where(eq(providerMember.id, otherMemberId)),
     () => db.delete(provider).where(eq(provider.id, providerId)),
     () => db.delete(user).where(eq(user.id, customerId)),
     () => db.delete(user).where(eq(user.id, ownerUserId)),
+    () => db.delete(user).where(eq(user.id, otherMemberUserId)),
     () => sql.end({ timeout: 5 }),
   ]);
 });
@@ -248,7 +266,12 @@ describe("platform_settings_payment_window_minutes_positive", () => {
   });
 });
 
-describe("booking_member_slot_active_uq", () => {
+describe("booking_member_slot_no_overlap", () => {
+  // These four hold what `booking_member_slot_active_uq` used to catch: two
+  // active bookings sharing the exact same start instant. An identical start
+  // is a degenerate overlap (both ranges begin at the same point), so the
+  // exclusion constraint that replaced the index refuses it too — these
+  // prove that subsumption rather than assume it.
   test("two active bookings cannot hold the same member and slot", async () => {
     const slotStart = new Date("2026-09-02T09:00:00Z");
     const slotEnd = new Date("2026-09-02T10:00:00Z");
@@ -257,7 +280,7 @@ describe("booking_member_slot_active_uq", () => {
     expect(first?.id).toBeString();
 
     await expect(insertBooking({ startsAt: slotStart, endsAt: slotEnd })).rejects.toThrow(
-      /booking_member_slot_active_uq/,
+      /booking_member_slot_no_overlap/,
     );
   });
 
@@ -269,10 +292,10 @@ describe("booking_member_slot_active_uq", () => {
 
     await expect(
       insertBooking({ status: BookingStatus.MarkedDone, startsAt: slotStart, endsAt: slotEnd }),
-    ).rejects.toThrow(/booking_member_slot_active_uq/);
+    ).rejects.toThrow(/booking_member_slot_no_overlap/);
   });
 
-  test("a released slot can be rebooked — the index is partial, not total", async () => {
+  test("a released slot can be rebooked — the constraint is partial, not total", async () => {
     const slotStart = new Date("2026-09-04T09:00:00Z");
     const slotEnd = new Date("2026-09-04T10:00:00Z");
 
@@ -294,16 +317,90 @@ describe("booking_member_slot_active_uq", () => {
     expect(second?.id).toBeString();
   });
 
-  test("the index exists, is partial, and is built from every slot-holding status", async () => {
+  test("the constraint exists, is partial, and is built from every slot-holding status", async () => {
+    // `pg_constraint`, not `pg_indexes`: an `EXCLUDE` constraint is backed by
+    // an index but is not itself one, and `pg_get_constraintdef` is the
+    // catalog's own account of what the constraint says — an independent
+    // check that the migration this test predates (until it's applied)
+    // actually did what `booking.schema.ts`'s comment says it does.
     const rows = await sql`
-      SELECT indexdef FROM pg_indexes
-      WHERE schemaname = 'ntizo_booking' AND indexname = 'booking_member_slot_active_uq'`;
-    const indexdef = rows[0]?.["indexdef"] as string | undefined;
-    expect(indexdef).toBeDefined();
-    expect(indexdef).toContain("WHERE");
+      SELECT pg_get_constraintdef(oid) AS definition
+      FROM pg_constraint
+      WHERE conname = 'booking_member_slot_no_overlap'
+        AND connamespace = 'ntizo_booking'::regnamespace`;
+    const definition = rows[0]?.["definition"] as string | undefined;
+    expect(definition).toBeDefined();
+    expect(definition).toContain("EXCLUDE");
+    expect(definition).toContain("gist");
+    expect(definition).toContain("WHERE");
     for (const status of SLOT_HOLDING_STATUSES) {
-      expect(indexdef).toContain(status);
+      expect(definition).toContain(status);
     }
+  });
+
+  // The gap `booking_member_slot_active_uq` left: its key was
+  // `(provider_member_id, starts_at)`, so a 90-minute booking at 14:00 and a
+  // 30-minute one at 14:30 both inserted even though the member cannot be in
+  // two places at once — and 14:30 is a legal grid start the availability
+  // modal offers, because `slot_interval_minutes` is 30. Every test above
+  // collides on an identical `starts_at`; this is the first one that does
+  // not.
+  test("refuses a booking whose window overlaps another without sharing its start", async () => {
+    const slotStart = new Date("2026-09-06T14:00:00Z");
+    const slotEnd = new Date("2026-09-06T15:30:00Z");
+
+    const [first] = await insertBooking({ startsAt: slotStart, endsAt: slotEnd });
+    expect(first?.id).toBeString();
+
+    // 14:30–15:00: starts after 14:00, ends before 15:30, and shares no
+    // instant with either endpoint — a pure containment overlap, the
+    // shape `starts_at` alone could never catch.
+    await expect(
+      insertBooking({
+        startsAt: new Date("2026-09-06T14:30:00Z"),
+        endsAt: new Date("2026-09-06T15:00:00Z"),
+      }),
+    ).rejects.toThrow(/booking_member_slot_no_overlap/);
+  });
+
+  test("the same overlap is fine on a different member", async () => {
+    const slotStart = new Date("2026-09-07T14:00:00Z");
+    const slotEnd = new Date("2026-09-07T15:30:00Z");
+
+    const [first] = await insertBooking({ startsAt: slotStart, endsAt: slotEnd });
+    expect(first?.id).toBeString();
+
+    // Same overlapping window, but `otherMemberId` — the constraint's first
+    // key column is `provider_member_id`, so two different calendars never
+    // collide no matter how their times relate.
+    const [second] = await insertBooking({
+      providerMemberId: otherMemberId,
+      startsAt: new Date("2026-09-07T14:30:00Z"),
+      endsAt: new Date("2026-09-07T15:00:00Z"),
+    });
+    expect(second?.id).toBeString();
+  });
+
+  test("the same overlap is fine once the first booking is EXPIRED", async () => {
+    const slotStart = new Date("2026-09-08T14:00:00Z");
+    const slotEnd = new Date("2026-09-08T15:30:00Z");
+
+    const [first] = await insertBooking({ startsAt: slotStart, endsAt: slotEnd });
+    expect(first?.id).toBeString();
+
+    // EXPIRED is not in SLOT_HOLDING_STATUSES, so the constraint's partial
+    // WHERE no longer matches this row once it transitions — releasing the
+    // time the same way it releases the exact-start case above.
+    await db
+      .update(booking)
+      .set({ status: BookingStatus.Expired, expiredAt: new Date() })
+      .where(eq(booking.id, first!.id));
+
+    const [second] = await insertBooking({
+      startsAt: new Date("2026-09-08T14:30:00Z"),
+      endsAt: new Date("2026-09-08T15:00:00Z"),
+    });
+    expect(second?.id).toBeString();
   });
 });
 

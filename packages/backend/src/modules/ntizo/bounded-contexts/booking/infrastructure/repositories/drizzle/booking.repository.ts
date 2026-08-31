@@ -15,33 +15,57 @@ import type {
 } from "../../../app/ports/outbound/booking.repository.port";
 
 /**
- * The partial unique index Task 2 built, named rather than a string this
- * file only half-owns — see `isSlotCollision` for why the name has to match
- * exactly and why matching on it (instead of on Postgres's message text) is
- * the point.
+ * The partial unique index Task 2 built. Superseded by
+ * `SLOT_OVERLAP_CONSTRAINT` (see `booking.schema.ts` for why: it only ever
+ * caught two bookings sharing an exact start instant, not a genuine overlap),
+ * but still checked below alongside the new one — see `isSlotCollision`.
  */
 const SLOT_COLLISION_CONSTRAINT = "booking_member_slot_active_uq";
 
 /**
- * postgres.js surfaces a unique violation as SQLSTATE `23505` on the error,
- * with the violated index's name on `constraint_name` — both fields, not a
- * substring of the message. Message text is not an API: a Postgres upgrade
- * is free to reword it without changing the code or the constraint name, and
- * matching on it is how that turns a handled case into a 500.
+ * The `EXCLUDE USING gist` constraint that replaces the index above (Task 4
+ * of the booking-seams repair plan). Named rather than a string this file
+ * only half-owns, same reasoning as `SLOT_COLLISION_CONSTRAINT` — see
+ * `isSlotCollision` for why the name has to match exactly.
+ */
+const SLOT_OVERLAP_CONSTRAINT = "booking_member_slot_no_overlap";
+
+/**
+ * postgres.js surfaces a unique violation as SQLSTATE `23505` and an
+ * exclusion-constraint violation as `23P01` — different codes for a reason
+ * that matters here: a unique index and an `EXCLUDE` constraint are
+ * different Postgres objects, and the two-argument message ("could not
+ * create unique index" vs. "conflicts with existing key") is not an API
+ * either — a Postgres upgrade is free to reword it without changing the code
+ * or the constraint name, and matching on message text is how a handled case
+ * turns into a 500. Both fields — `code` and `constraint_name` — are checked
+ * together for both constraints, not a substring of either message.
  *
- * Checks the code *and* the name, not the name alone: `constraint_name` is
- * only meaningful once `code` has already established that this really is a
- * unique violation and not some other error that happens to mention the same
- * string. A `23505` from a different unique index (there is none on this
- * table today) is a real collision too, just not this one, and must surface
- * as itself rather than being relabelled `SlotAlreadyTakenError`.
+ * `booking.schema.ts`'s table config no longer declares
+ * `booking_member_slot_active_uq` — the exclusion constraint subsumes it,
+ * since an identical start is a degenerate overlap. It stays checked here
+ * anyway because migrations in this repository are applied by hand, per
+ * stage: this code can ship before the migration that drops the old index
+ * and adds the new constraint is actually run, and until it is, the live
+ * database still raises `23505` against the old name for exactly the
+ * collision this function exists to catch. Dropping this branch the day the
+ * schema file changed — rather than the day every stage's database is
+ * confirmed migrated — is how an honest race turns into a 500.
+ *
+ * Checks the code *and* the name for each constraint, not the name alone:
+ * `constraint_name` is only meaningful once `code` has already established
+ * which kind of violation this is. A `23505` or `23P01` from some other
+ * constraint (there is none on this table today) is a real conflict too,
+ * just not this one, and must surface as itself rather than being
+ * relabelled `SlotAlreadyTakenError`.
  */
 function isSlotCollision(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const code = (error as { code?: unknown }).code;
+  const constraintName = (error as { constraint_name?: unknown }).constraint_name;
   return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: unknown }).code === "23505" &&
-    (error as { constraint_name?: unknown }).constraint_name === SLOT_COLLISION_CONSTRAINT
+    (code === "23505" && constraintName === SLOT_COLLISION_CONSTRAINT) ||
+    (code === "23P01" && constraintName === SLOT_OVERLAP_CONSTRAINT)
   );
 }
 

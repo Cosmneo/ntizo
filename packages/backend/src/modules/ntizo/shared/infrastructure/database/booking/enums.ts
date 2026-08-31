@@ -11,9 +11,14 @@
  * that promises the opposite is a name the next reader has to unlearn.
  *
  * @see SLOT_HOLDING_STATUSES — the four statuses that still occupy a member's
- * time. The partial unique index `booking_member_slot_active_uq` is built
- * from this list in Task 2; adding a slot-holding status here without adding
- * it there silently stops preventing double-bookings.
+ * time. The partial unique index `booking_member_slot_active_uq` was built
+ * from this list in Task 2; that index has since been replaced by the
+ * `booking_member_slot_no_overlap` exclusion constraint (`booking.schema.ts`),
+ * whose predicate is the *same* four statuses but is hand-typed into the
+ * migration rather than read from this constant — Drizzle has no builder for
+ * `EXCLUDE`. Adding a slot-holding status here now requires a second, manual
+ * edit to that migration's `WHERE` clause, or double-booking goes back to
+ * being silently possible for the new status.
  */
 export const BookingStatus = {
   /** Created, slot held, waiting for the customer to pay. */
@@ -46,12 +51,16 @@ export const BOOKING_STATUSES = Object.values(BookingStatus);
  * These are the states that hold a slot — `pending_payment`, `awaiting_provider`,
  * `confirmed`, and `marked_done`. A new status added here without thought will
  * start blocking slots; a new status added without changing this will silently
- * stop blocking them. The partial unique index `booking_member_slot_active_uq`
- * is built from this list rather than a SQL string of its own, so both lists
- * become one list and stay in sync.
+ * stop blocking them.
  *
- * Task 2 of the booking core plan builds the index predicate from this constant
- * with Drizzle's `inArray`.
+ * Task 2 of the booking core plan built the (now-removed)
+ * `booking_member_slot_active_uq` index predicate from this constant through
+ * `booking.schema.ts`'s `statusList` helper, so that index and this list
+ * could not drift apart. Its replacement, the `booking_member_slot_no_overlap`
+ * exclusion constraint, cannot get the same guarantee — Drizzle cannot express
+ * `EXCLUDE`, so that constraint's `WHERE` clause is typed by hand directly
+ * into a migration file rather than generated from this constant. See
+ * `booking.schema.ts`'s comment where the old index used to be.
  */
 export const SLOT_HOLDING_STATUSES = [
   BookingStatus.PendingPayment,
