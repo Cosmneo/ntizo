@@ -47,7 +47,7 @@ describe("providerDetailReadModel", () => {
     const parsed = providerDetailReadModel.parse({
       id: "p1", name: "Org", slug: "org", type: "organization",
       status: "active", description: null, address: null,
-logo: null, photos: [], documents: [], reverificationRequestedAt: null, ownerUserId: "u1",
+logo: null, photos: [], documents: [], reverificationRequestedAt: null, commissionBps: 1200, ownerUserId: "u1",
       members: [{ userId: "u1", email: "a@b.c", name: "A B", role: "owner", joinedAt: "2026-08-07T00:00:00.000Z" }],
       invites: [{ id: "i1", email: "c@d.e", role: "staff", status: "pending" }],
     });

@@ -117,6 +117,10 @@ export class DrizzleProviderReadRepository implements ProviderReadRepositoryPort
       photos: (row.photoKeys ?? []).map((key) => ({ key, url: mediaUrl(key) })),
       documents,
       reverificationRequestedAt: row.reverificationRequestedAt?.toISOString() ?? null,
+      // Raw basis points straight off the row — the same column
+      // `findDetailForAdmin` reads, just reached through the membership guard
+      // instead of the admin-only one.
+      commissionBps: row.commissionBps,
       ownerUserId: row.ownerUserId,
       members: memberRows.map((m) => ({
         userId: m.userId,

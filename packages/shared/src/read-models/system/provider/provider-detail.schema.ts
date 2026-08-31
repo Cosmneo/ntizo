@@ -88,6 +88,17 @@ export const providerDetailReadModel = z.object({
    * changed, and it means a swap is never silent on either side of the screen.
    */
   reverificationRequestedAt: z.string().nullable(),
+  /**
+   * The platform's cut of this workspace's bookings, in basis points — 1200
+   * is 12%. Raw, not a formatted percentage: formatting is the view's job,
+   * and a number that arrives pre-formatted cannot be localised.
+   *
+   * The first commercially sensitive field on this model. Everything else
+   * here — name, members, invites — is descriptive; this one tells a
+   * provider what the platform takes out of every payout, and it reaches
+   * this model only through `provider.byId`, which is membership-guarded.
+   */
+  commissionBps: z.number().int(),
   ownerUserId: z.string().min(1),
   members: z.array(providerMemberReadModel),
   invites: z.array(providerInviteReadModel),
