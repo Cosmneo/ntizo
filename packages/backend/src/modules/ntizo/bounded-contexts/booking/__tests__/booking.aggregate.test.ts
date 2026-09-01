@@ -10,7 +10,10 @@ import {
   CommissionOutOfRangeError,
   PaymentReferenceMismatchError,
 } from "../domain/exceptions";
-import type { BookingStatus } from "../../../shared/infrastructure/database/booking/enums";
+import {
+  type BookingStatus,
+  SLOT_HOLDING_STATUSES,
+} from "../../../shared/infrastructure/database/booking/enums";
 
 const WHEN = new Date("2026-09-04T12:30:00.000Z");
 
@@ -755,4 +758,56 @@ describe("Booking.expire — every status", () => {
       expect(result).toBe(booking);
     }
   });
+});
+
+describe("every slot-holding status is classified as chargeable or not", () => {
+  // `CHARGEABLE_STATUSES` and `SLOT_HOLDING_STATUSES` are two lists that
+  // used to be one, and the reversal split them: a slot can now be held by a
+  // booking nothing has ever charged. Their doc comments cross-reference
+  // each other, but a comment is not a gate — add a sixth slot-holding
+  // status and nothing today asks whether a charge could have reached it,
+  // which is precisely how `markPaid` came to promise a refund on a `DRAFT`.
+  //
+  // This map is the gate. It is keyed by `SLOT_HOLDING_STATUSES` itself, so
+  // adding a member there is a type error here until somebody answers the
+  // question for it. The answer is then checked against what `markPaid`
+  // actually does, so a wrong answer fails too: the map cannot drift away
+  // from the behaviour it describes without one of the two going red.
+  const CHARGE_COULD_HAVE_LANDED: Record<(typeof SLOT_HOLDING_STATUSES)[number], boolean> = {
+    // Nothing charges the customer until the provider accepts, so neither of
+    // these can carry a payment reference, however long it holds the
+    // calendar.
+    DRAFT: false,
+    AWAITING_PROVIDER: false,
+    // The charge is pushed here, and every status after it is downstream of
+    // one that cleared.
+    PENDING_PAYMENT: true,
+    CONFIRMED: true,
+    MARKED_DONE: true,
+  };
+
+  const EXISTING_REF = "mpesa-existing";
+  const OTHER_REF = "mpesa-other";
+
+  it.each(Object.entries(CHARGE_COULD_HAVE_LANDED))(
+    "%s: markPaid's refusal matches its classification",
+    (status, chargeable) => {
+      // PENDING_PAYMENT transitions rather than refusing — it is the one
+      // member of this list `markPaid` moves — so no refusal is observable
+      // and there is nothing here to compare.
+      if (status === "PENDING_PAYMENT") {
+        return;
+      }
+
+      const booking = Booking.restore(
+        validProps({ status: status as BookingStatus, paymentRef: EXISTING_REF }),
+      );
+
+      // Only a *different* reference reaches the classification: a matching
+      // one is absorbed by identity before status is consulted at all.
+      expect(() => booking.markPaid(OTHER_REF, new Date())).toThrow(
+        chargeable ? PaymentReferenceMismatchError : BookingTransitionError,
+      );
+    },
+  );
 });
