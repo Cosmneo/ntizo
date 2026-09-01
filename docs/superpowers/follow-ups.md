@@ -2654,3 +2654,35 @@ testing the machine. The global change is a whole-suite behaviour change and wan
 
 **Trigger:** the next time a route or page suite fails on a `waitFor` timeout rather than on an
 assertion — and before adding a third route suite of this shape.
+
+## #113 — A booking's timezone is read live from the provider, not snapshotted
+
+`bookingReadModel.timezone` comes from an `innerJoin` on `provider`. Every other fact the customer
+agreed to — `serviceName`, `providerName`, `optionName`, `priceMinor`, `commissionBps` — is copied
+onto the booking at creation, precisely so a later edit cannot rewrite what was bought.
+`booking.schema.ts` argues that at length. A live join is the opposite of it.
+
+The analogy that made the join look safe is the weak part: `serviceId` is an *identity*, and the row
+it names is the same row forever, which is exactly why ids stay live while names are snapshotted.
+`provider.timezone` is a **mutable attribute**, in the same class as `provider.name` — and it is
+editable in the product, on the availability page a provider visits to manage their calendar.
+
+The case that decides it is a provider who relocates while still serving the same city. The instant
+does not move; `startsAt` is a `timestamptz`. The words do. A customer who agreed to "Sábado às
+14:00" in Maputo, whose provider has since moved to Lisbon, is shown 13:00 — a wall clock matching
+neither what was agreed nor where the work happens. Sharper still for an `at_customer` service,
+where the relevant civil clock was never the provider's to begin with: "the provider moved zone, so
+the appointment moved too" is true for a shopfront and false for a callout.
+
+**The cost is small and mostly already paid.** `ProviderSnapshotReaderPort.findForBooking` already
+fetches the provider row at creation for `commissionBps`, `name` and `slug`, so the snapshot gains
+one field and no new query. The column is `timezone text NOT NULL`, and its backfill is
+`UPDATE … FROM provider` — trivially total, since `provider_id` is `NOT NULL` and
+`provider.timezone` is `NOT NULL DEFAULT`. Then the two `innerJoin`s go.
+
+**`bookingReadModel.timezone` stays byte-identical**, which is why this can wait: the whole change
+is behind the read model, and no frontend file moves. The `Europe/Lisbon` fixture stays valid and
+gets stronger — it could then assert the rendered time survives changing the provider's zone.
+
+**Trigger:** before a provider can plausibly relocate — a second launch market, or the first support
+ticket about an appointment that changed time by itself.
