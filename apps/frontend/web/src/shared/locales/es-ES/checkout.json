@@ -1,0 +1,20 @@
+{
+  "stepsLabel": "Pasos de la reserva",
+  "stepOf": "Paso {{current}} de {{total}}",
+  "stepWhen": "Fecha y hora",
+  "stepDetails": "Detalles",
+  "stepConfirm": "Confirmar",
+  "chooseWhenTitle": "Elige la fecha y la hora",
+  "chooseWhenIntro": "Al continuar, te guardamos esta hora mientras completas el resto.",
+  "continueAction": "Continuar",
+  "backToService": "Volver al servicio",
+  "createError": {
+    "SLOT_ALREADY_TAKEN": "Otra persona acaba de reservar esa hora. Elige otra.",
+    "SLOT_NOT_OFFERED": "Esa hora ya no está disponible. Elige otra.",
+    "SLOT_IN_PAST": "Esa hora ya ha pasado. Elige otra."
+  },
+  "createErrorGeneric": "No hemos podido guardar esta hora ahora mismo. Inténtalo de nuevo.",
+  "holdExpired": "Se acabó el tiempo para terminar y la hora se liberó. Elige otra.",
+  "holdRemaining": "Hora reservada {{time}}",
+  "holdRemainingLabel": "Tiempo restante para terminar la reserva"
+}

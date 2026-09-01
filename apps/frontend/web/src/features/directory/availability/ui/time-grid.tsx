@@ -30,10 +30,13 @@ function lengthLadder(minMinutes: number | null, stepMinutes: number | null, max
  * The free times of one day, grouped under an hour heading each — and, once
  * a start on an hourly service is picked, the lengths bookable from it.
  *
- * There is no booking control here. Selecting a time (and, for an hourly
- * service, a length) only highlights it — booking itself is a later slice,
- * and a button that could never actually do anything would read as broken
- * software where its plain absence reads as "not built yet".
+ * There is still no booking control here, but the reason changed. It used to
+ * be that booking did not exist; it does now, and `ChooseWhenPage` — the
+ * routed page this grid moved into when `AvailabilitySheet` was deleted —
+ * carries the confirm that holds the slot. This component reports which time
+ * was picked and nothing else, which is what lets that page keep the choice
+ * in the URL rather than in state: one component owns the decision, and it is
+ * not this one.
  */
 export function TimeGrid({
   starts,

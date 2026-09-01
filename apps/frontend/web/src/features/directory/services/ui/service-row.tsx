@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Button } from "@ntizo/frontend-ui";
+import { buttonVariants } from "@ntizo/frontend-ui";
 import {
   formatHeadlinePrice,
   optionDurationMinutes,
@@ -34,12 +34,10 @@ export function ServiceRow({
   service,
   providerImageUrl,
   locale,
-  onSelect,
 }: {
   service: ServiceDTO;
   providerImageUrl: string | null;
   locale: string;
-  onSelect: (service: ServiceDTO) => void;
 }) {
   const { t } = useTranslation("directory");
   const cell = servicePriceCell(service);
@@ -74,7 +72,7 @@ export function ServiceRow({
     ? t(isHourly ? "pricingModeHourly" : "pricingModeFixed")
     : null;
 
-  const { price, cta } = servicePriceAndCta({ cell, locale, onSelect: () => onSelect(service), t });
+  const { price, cta } = servicePriceAndCta({ cell, locale, serviceId: service.id, t });
 
   return (
     // `first:border-t` closes the top of the list itself — every other row's
@@ -156,21 +154,31 @@ export function ServiceRow({
 function servicePriceAndCta({
   cell,
   locale,
-  onSelect,
+  serviceId,
   t,
 }: {
   cell: ReturnType<typeof servicePriceCell>;
   locale: string;
-  onSelect: () => void;
+  serviceId: string;
   t: (key: string, options?: Record<string, unknown>) => string;
 }): { price: ReactNode; cta: ReactNode } {
   if (cell.kind === "quote") {
     return {
       price: <p className="type-h3 text-[var(--color-muted-foreground)]">{t("quotePrice")}</p>,
+      // The service's own page, not checkout: a quote service has no priced
+      // option to book and `booking.create` takes one. That page is where
+      // `ServiceQuoteNotice` explains why there is no price yet and offers
+      // the message button that actually starts the conversation — which is
+      // the same place this button reached before, since the sheet it used to
+      // open only ever showed that one sentence for a quote service.
       cta: (
-        <Button type="button" variant="outline" size="sm" onClick={onSelect}>
+        <Link
+          to="/services/$id"
+          params={{ id: serviceId }}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
           {t("quoteAction")}
-        </Button>
+        </Link>
       ),
     };
   }
@@ -189,11 +197,7 @@ function servicePriceAndCta({
           {t("priceFrom", { amount: formatHeadlinePrice(cell.amountMinor, cell.currency, locale) })}
         </p>
       ),
-      cta: (
-        <Button type="button" size="sm" onClick={onSelect}>
-          {t("availabilityCheckAction")}
-        </Button>
-      ),
+      cta: <CheckAvailabilityLink serviceId={serviceId} label={t("availabilityCheckAction")} />,
     };
   }
 
@@ -211,10 +215,24 @@ function servicePriceAndCta({
         {suffix}
       </p>
     ),
-    cta: (
-      <Button type="button" size="sm" onClick={onSelect}>
-        {t("availabilityCheckAction")}
-      </Button>
-    ),
+    cta: <CheckAvailabilityLink serviceId={serviceId} label={t("availabilityCheckAction")} />,
   };
+}
+
+/**
+ * The row's call to action: step 1 of checkout, as a link.
+ *
+ * A link rather than a button, and a page rather than the dialog this used to
+ * open. `AvailabilitySheet` carried no booking control at all — booking did
+ * not exist when it was written, and its own doc comment said so — so "see
+ * availability" ended at a calendar somebody could only look at. It now
+ * starts a purchase, which is a destination: it deserves a URL somebody can
+ * open in a new tab, share, and be returned to after signing in.
+ */
+function CheckAvailabilityLink({ serviceId, label }: { serviceId: string; label: string }) {
+  return (
+    <Link to="/book/$serviceId" params={{ serviceId }} className={buttonVariants({ size: "sm" })}>
+      {label}
+    </Link>
+  );
 }

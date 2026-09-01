@@ -1,0 +1,20 @@
+{
+  "stepsLabel": "Stappen van de boeking",
+  "stepOf": "Stap {{current}} van {{total}}",
+  "stepWhen": "Datum en tijd",
+  "stepDetails": "Details",
+  "stepConfirm": "Bevestigen",
+  "chooseWhenTitle": "Kies een datum en tijd",
+  "chooseWhenIntro": "Als je doorgaat, houden we dit tijdstip voor je vast terwijl je de rest invult.",
+  "continueAction": "Doorgaan",
+  "backToService": "Terug naar de dienst",
+  "createError": {
+    "SLOT_ALREADY_TAKEN": "Iemand anders heeft dat tijdstip zojuist geboekt. Kies een ander tijdstip.",
+    "SLOT_NOT_OFFERED": "Dat tijdstip is niet meer beschikbaar. Kies een ander tijdstip.",
+    "SLOT_IN_PAST": "Dat tijdstip is al voorbij. Kies een ander tijdstip."
+  },
+  "createErrorGeneric": "We konden dit tijdstip nu niet vasthouden. Probeer het opnieuw.",
+  "holdExpired": "De tijd om af te ronden is verstreken en het tijdstip is vrijgegeven. Kies een ander tijdstip.",
+  "holdRemaining": "Tijdstip vastgehouden {{time}}",
+  "holdRemainingLabel": "Resterende tijd om deze boeking af te ronden"
+}

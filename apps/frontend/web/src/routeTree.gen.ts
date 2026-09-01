@@ -33,6 +33,7 @@ import { Route as AdminActivityRouteImport } from './routes/admin/activity'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as BookServiceIdRouteImport } from './routes/book.$serviceId'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
 import { Route as ProviderSlugRouteRouteImport } from './routes/provider/$slug/route'
 import { Route as ProviderNoProviderRouteImport } from './routes/provider/no-provider'
@@ -178,6 +179,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const BookServiceIdRoute = BookServiceIdRouteImport.update({
+  id: '/book/$serviceId',
+  path: '/book/$serviceId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ProviderIndexRoute = ProviderIndexRouteImport.update({
   id: '/',
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
+  '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/services/$id': typeof ServicesIdRoute
@@ -395,6 +402,7 @@ export interface FileRoutesByTo {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
+  '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/services/$id': typeof ServicesIdRoute
@@ -449,6 +457,7 @@ export interface FileRoutesById {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/users': typeof AdminUsersRoute
+  '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/services/$id': typeof ServicesIdRoute
@@ -502,6 +511,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
+    | '/book/$serviceId'
     | '/provider/no-provider'
     | '/providers/$slug'
     | '/services/$id'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
+    | '/book/$serviceId'
     | '/provider/no-provider'
     | '/providers/$slug'
     | '/services/$id'
@@ -603,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/dashboard'
     | '/admin/users'
+    | '/book/$serviceId'
     | '/provider/no-provider'
     | '/providers/$slug'
     | '/services/$id'
@@ -643,6 +655,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   VerifyPhoneRoute: typeof VerifyPhoneRoute
+  BookServiceIdRoute: typeof BookServiceIdRoute
   ProvidersSlugRoute: typeof ProvidersSlugRoute
   ServicesIdRoute: typeof ServicesIdRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
@@ -818,6 +831,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/book/$serviceId': {
+      id: '/book/$serviceId'
+      path: '/book/$serviceId'
+      fullPath: '/book/$serviceId'
+      preLoaderRoute: typeof BookServiceIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/provider/': {
       id: '/provider/'
@@ -1154,6 +1174,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   VerifyPhoneRoute: VerifyPhoneRoute,
+  BookServiceIdRoute: BookServiceIdRoute,
   ProvidersSlugRoute: ProvidersSlugRoute,
   ServicesIdRoute: ServicesIdRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,

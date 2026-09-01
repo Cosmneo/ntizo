@@ -372,12 +372,14 @@ describe("ProviderDetailPage", () => {
     ).toBeInTheDocument();
     // One row, one call to action, and the call to action is a calendar —
     // this is what reds if the section ever goes back to `ServiceCard`s,
-    // which offer no per-card availability button at all.
-    expect(screen.getAllByRole("button", { name: "See availability" })).toHaveLength(2);
+    // which offer no per-row availability control at all. A link since the
+    // availability sheet became a routed page: it is the start of checkout,
+    // which is a destination somebody can open in a new tab or return to.
+    expect(screen.getAllByRole("link", { name: "See availability" })).toHaveLength(2);
     expect(screen.queryByText("No services yet")).not.toBeInTheDocument();
   });
 
-  it("offers no booking anywhere on the page", async () => {
+  it("starts a booking from a row, and claims nothing more than that", async () => {
     // Rendered *with* services, priced and quote-only, because the rows are
     // exactly where a "Book" button would go: asserted against a provider
     // with no services this searched an empty page and proved nothing.
@@ -393,13 +395,22 @@ describe("ProviderDetailPage", () => {
       }),
     ]);
     await screen.findByRole("link", { name: "Avaria eléctrica urgente" });
+    // Nothing on this page says a reservation was made: the row's control
+    // opens checkout's first step, where a time is still to be chosen.
     expect(
       screen.queryByRole("button", { name: /^book$|reservar|pedir marca/i }),
     ).not.toBeInTheDocument();
-    // The two things the rows do offer instead, so the absence above is
-    // "no booking control" and not "no controls rendered at all".
-    expect(screen.getByRole("button", { name: "See availability" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request a quote" })).toBeInTheDocument();
+    // The priced row starts checkout; the quote row does not, because a
+    // quote service has no priced option for `booking.create` to take — it
+    // goes to the service's own page, where the conversation starts instead.
+    expect(screen.getByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/book/s1"),
+    );
+    expect(screen.getByRole("link", { name: "Request a quote" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/services/s2"),
+    );
   });
 
   it("reads as finished for a provider with no photos, no hours and no reviews", async () => {

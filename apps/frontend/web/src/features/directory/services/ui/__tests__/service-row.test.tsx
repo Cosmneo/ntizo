@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -48,23 +47,14 @@ const base: ServiceDTO = {
   isFallback: false,
 };
 
-function renderRow(
-  service: ServiceDTO,
-  providerImageUrl: string | null = null,
-  onSelect: (service: ServiceDTO) => void = () => {},
-) {
+function renderRow(service: ServiceDTO, providerImageUrl: string | null = null) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
       <ul>
-        <ServiceRow
-          service={service}
-          providerImageUrl={providerImageUrl}
-          locale="pt-MZ"
-          onSelect={onSelect}
-        />
+        <ServiceRow service={service} providerImageUrl={providerImageUrl} locale="pt-MZ" />
       </ul>
     ),
   });
@@ -94,11 +84,15 @@ describe("ServiceRow", () => {
     expect(screen.queryByText(/,00/)).not.toBeInTheDocument();
   });
 
-  it("offers the calendar for a priced service", async () => {
-    const onSelect = vi.fn();
-    renderRow(base, null, onSelect);
-    await userEvent.click(await screen.findByRole("button", { name: "See availability" }));
-    expect(onSelect).toHaveBeenCalledWith(base);
+  it("starts checkout for a priced service", async () => {
+    // A link to step 1, not a callback that opened a dialog: `/book/<id>` is
+    // where a time is chosen and the slot is held, and it is a URL precisely
+    // so it survives a new tab, a refresh, and the trip through sign-in.
+    renderRow(base);
+    expect(await screen.findByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/book/s1"),
+    );
   });
 
   it("prices an hourly service with its /h suffix, and shows the minimum booking rather than a duration", async () => {
@@ -141,8 +135,13 @@ describe("ServiceRow", () => {
     };
     renderRow(quote);
     expect(await screen.findByText("On request")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "See availability" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request a quote" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "See availability" })).not.toBeInTheDocument();
+    // Its own page, not checkout: `booking.create` takes a `serviceOptionId`
+    // and a quote service has none to give it.
+    expect(screen.getByRole("link", { name: "Request a quote" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/services/s1"),
+    );
   });
 
   it("falls back to the provider's photo when the service has none", async () => {

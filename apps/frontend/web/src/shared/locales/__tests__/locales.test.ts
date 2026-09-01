@@ -1,16 +1,39 @@
 import { describe, expect, it } from "vitest";
-import deDE from "../de-DE/directory.json";
-import enUS from "../en-US/directory.json";
-import esES from "../es-ES/directory.json";
-import frFR from "../fr-FR/directory.json";
-import itIT from "../it-IT/directory.json";
-import nlNL from "../nl-NL/directory.json";
-import ptMZ from "../pt-MZ/directory.json";
-import ptPT from "../pt-PT/directory.json";
+import deDEDirectory from "../de-DE/directory.json";
+import enUSDirectory from "../en-US/directory.json";
+import esESDirectory from "../es-ES/directory.json";
+import frFRDirectory from "../fr-FR/directory.json";
+import itITDirectory from "../it-IT/directory.json";
+import nlNLDirectory from "../nl-NL/directory.json";
+import ptMZDirectory from "../pt-MZ/directory.json";
+import ptPTDirectory from "../pt-PT/directory.json";
+import deDECheckout from "../de-DE/checkout.json";
+import enUSCheckout from "../en-US/checkout.json";
+import esESCheckout from "../es-ES/checkout.json";
+import frFRCheckout from "../fr-FR/checkout.json";
+import itITCheckout from "../it-IT/checkout.json";
+import nlNLCheckout from "../nl-NL/checkout.json";
+import ptMZCheckout from "../pt-MZ/checkout.json";
+import ptPTCheckout from "../pt-PT/checkout.json";
 
-const LOCALES = {
-  "de-DE": deDE, "en-US": enUS, "es-ES": esES, "fr-FR": frFR,
-  "it-IT": itIT, "nl-NL": nlNL, "pt-MZ": ptMZ, "pt-PT": ptPT,
+/**
+ * The namespaces this gate covers, each as its eight bundles keyed by locale.
+ *
+ * `checkout` joined `directory` when the availability modal became three
+ * routed pages. It is here rather than left to the reviewer's eye because
+ * this branch has already shipped the exact failure once: four keys
+ * translated into otherwise-English files produced a heading that read half
+ * in one language and half in the other, and nothing failed.
+ */
+const NAMESPACES: Record<string, Record<string, unknown>> = {
+  directory: {
+    "de-DE": deDEDirectory, "en-US": enUSDirectory, "es-ES": esESDirectory, "fr-FR": frFRDirectory,
+    "it-IT": itITDirectory, "nl-NL": nlNLDirectory, "pt-MZ": ptMZDirectory, "pt-PT": ptPTDirectory,
+  },
+  checkout: {
+    "de-DE": deDECheckout, "en-US": enUSCheckout, "es-ES": esESCheckout, "fr-FR": frFRCheckout,
+    "it-IT": itITCheckout, "nl-NL": nlNLCheckout, "pt-MZ": ptMZCheckout, "pt-PT": ptPTCheckout,
+  },
 };
 
 /**
@@ -55,22 +78,26 @@ function flattenToDottedPaths(
  * `factMemberSince`. This test catches that at any depth, including nested
  * keys like `filterWhereOption.at_customer`.
  */
-describe("directory namespace", () => {
-  const referencePaths = Array.from(flattenToDottedPaths(ptMZ).keys()).sort();
+for (const [namespace, locales] of Object.entries(NAMESPACES)) {
+  describe(`${namespace} namespace`, () => {
+    // pt-MZ is the reference because it is the launch market's language and
+    // the one every string is authored in first.
+    const referencePaths = Array.from(flattenToDottedPaths(locales["pt-MZ"]).keys()).sort();
 
-  for (const [locale, bundle] of Object.entries(LOCALES)) {
-    it(`${locale} declares exactly the same dotted paths as pt-MZ`, () => {
-      const localePaths = Array.from(flattenToDottedPaths(bundle).keys()).sort();
-      expect(localePaths).toEqual(referencePaths);
-    });
+    for (const [locale, bundle] of Object.entries(locales)) {
+      it(`${locale} declares exactly the same dotted paths as pt-MZ`, () => {
+        const localePaths = Array.from(flattenToDottedPaths(bundle).keys()).sort();
+        expect(localePaths).toEqual(referencePaths);
+      });
 
-    it(`${locale} leaves no leaf string empty`, () => {
-      const paths = flattenToDottedPaths(bundle);
-      for (const [path, value] of paths) {
-        if (typeof value === "string") {
-          expect(value.trim(), `${locale}/${path}`).not.toBe("");
+      it(`${locale} leaves no leaf string empty`, () => {
+        const paths = flattenToDottedPaths(bundle);
+        for (const [path, value] of paths) {
+          if (typeof value === "string") {
+            expect(value.trim(), `${locale}/${path}`).not.toBe("");
+          }
         }
-      }
-    });
-  }
-});
+      });
+    }
+  });
+}

@@ -1,0 +1,66 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { ChooseWhenPage } from "@/features/checkout/ui/choose-when-page";
+import { prefetchServiceDetail } from "@/features/directory/services/viewmodel/use-service-detail";
+
+/**
+ * Step 1 of checkout, at `/book/<serviceId>`: when.
+ *
+ * The id in this position is a *service*, and it is the only page of the
+ * three where that is true — steps 2 and 3 are `/booking/<bookingId>/…`,
+ * because by then a draft exists and it is the only thing they are about.
+ * Nothing here is addressed by a booking id, because there is no booking yet:
+ * creating one is what this page's confirm does.
+ *
+ * `ssr: false`, unlike the service page this is reached from. That page is
+ * built to be crawled; this one is a purchase in progress, it is useless to a
+ * crawler, and its only anonymous outcome is a trip to sign in. Rendering it
+ * on the server would buy nothing and would put a checkout URL in front of
+ * the prerenderer.
+ */
+export const Route = createFileRoute("/book/$serviceId")({
+  ssr: false,
+  /**
+   * The chosen slot lives in the URL, not in the page's state — see
+   * `ChooseWhenPage`'s own doc comment for why that is load-bearing rather
+   * than tidy. Narrowed the way `services.index.tsx` narrows its filters: an
+   * unrecognised value is dropped rather than passed through, and a key that
+   * was not supplied stays absent rather than becoming an explicit
+   * `undefined` in the URL.
+   *
+   * `expired` is a flag the checkout countdown sets when a draft's hold
+   * lapses on step 2 or 3 and it sends the customer back here. Only `true`
+   * is honoured: it exists to make the page say what happened, and any other
+   * value means somebody typed something.
+   */
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { memberId?: string; startsAt?: string; expired?: true } => {
+    const memberId = typeof search["memberId"] === "string" ? search["memberId"] : undefined;
+    const startsAt = typeof search["startsAt"] === "string" ? search["startsAt"] : undefined;
+    const expired = search["expired"] === true || search["expired"] === "true";
+    return {
+      ...(memberId ? { memberId } : {}),
+      ...(startsAt ? { startsAt } : {}),
+      ...(expired ? { expired: true as const } : {}),
+    };
+  },
+  // The service, not the availability: `useServiceDetail` is a suspense query
+  // and the page reads it before anything else (the option it will book, the
+  // price it shows). Primed here so the route arrives in one piece rather
+  // than suspending mid-render. The calendar itself is a plain `useQuery`
+  // with its own loading state, and its window depends on state this loader
+  // cannot know.
+  loader: ({ context, params }) => prefetchServiceDetail(context.queryClient, params.serviceId),
+  component: ChooseWhen,
+});
+
+function ChooseWhen() {
+  const { serviceId } = Route.useParams();
+  // Keyed by the service, so every piece of the page's own local state (the
+  // week it opened on, the day, the chosen length) starts over when the id
+  // does. The router reuses one match across a param change, so React would
+  // otherwise reconcile the same component instance and carry one service's
+  // calendar onto another's — the same fact `AvailabilitySheet` relied on a
+  // per-service `key` for, and the reason it needed no reset effect.
+  return <ChooseWhenPage key={serviceId} serviceId={serviceId} />;
+}

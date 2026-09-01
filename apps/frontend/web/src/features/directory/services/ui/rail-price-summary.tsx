@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Button } from "@ntizo/frontend-ui";
+import { Link } from "@tanstack/react-router";
+import { buttonVariants } from "@ntizo/frontend-ui";
 import type { ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
 import {
   formatAmount,
@@ -31,13 +32,19 @@ import { TrustList } from "@/features/directory/ui/trust-list";
  * selected, so this card cannot show a total for one package while the body
  * highlights another — the failure the split exists to make impossible.
  *
- * **Nothing here implies a booking was made.** The primary is the calendar,
- * which is the control that actually works today, and `packageBookingsClosed`
- * follows it saying in words why there is no reservation button under a total.
- * The Booking context does not exist: `ntizo_booking.booking` is a placeholder
- * table with four columns. The chooser's disabled "Reservar" is not carried
- * across — a disabled control still advertises a feature, where its absence
- * plus one sentence states the truth.
+ * **The primary now starts a booking, and no longer merely shows a calendar.**
+ * It links to `/book/<serviceId>`, checkout's step 1, where choosing a time
+ * and confirming creates a `DRAFT` that holds the slot. The label stays "see
+ * availability" because that is still honestly what the next screen shows
+ * first; nothing on this card claims a reservation has been made, because
+ * none has.
+ *
+ * `packageBookingsClosed` — "Bookings aren't open on Ntizo yet" — is the one
+ * line left over from when that was true, and it is now stale: the Booking
+ * context exists, and this button reaches it. It is deliberately not removed
+ * in the slice that built step 1, because steps 2 and 3 do not exist yet and
+ * a customer who followed this link would find the flow ends at a page that
+ * has not been written. It belongs with the slice that finishes them.
  *
  * **The verification bullet is conditional on a fact.** `providerVerified`
  * means an administrator accepted at least one of this business's documents.
@@ -48,15 +55,16 @@ import { TrustList } from "@/features/directory/ui/trust-list";
 export function RailPriceSummary({
   option,
   locale,
+  serviceId,
   providerId,
   providerVerified,
-  onCheckAvailability,
 }: {
   option: ServiceDetailOptionDTO;
   locale: string;
+  /** Where the primary goes: `/book/<serviceId>`, step 1 of checkout. */
+  serviceId: string;
   providerId: string;
   providerVerified: boolean;
-  onCheckAvailability: () => void;
 }) {
   const { t } = useTranslation("directory");
 
@@ -119,9 +127,18 @@ export function RailPriceSummary({
       )}
 
       <div className="mt-5 grid gap-2.5">
-        <Button type="button" className="w-full" onClick={onCheckAvailability}>
+        {/* A link, and to a page: this used to open a dialog over the page,
+            and a purchase behind a dialog cannot be linked to, opened in a
+            new tab, or survived a refresh — never mind the round trip
+            through sign-in an anonymous visitor has to make before a slot
+            can be held for them. */}
+        <Link
+          to="/book/$serviceId"
+          params={{ serviceId }}
+          className={buttonVariants({ className: "w-full" })}
+        >
           {t("availabilityCheckAction")}
-        </Button>
+        </Link>
         {/* Directly under the primary, not at the foot of the card: the
             sentence explains why the button beside a total is a calendar and
             not a reservation, and a qualifier printed after everything else

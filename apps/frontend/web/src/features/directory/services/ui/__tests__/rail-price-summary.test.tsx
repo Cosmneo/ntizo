@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -26,7 +25,7 @@ const FIXED: ServiceDetailOptionDTO = {
 
 function renderRail(
   option: ServiceDetailOptionDTO,
-  { onCheck = () => {}, verified = true }: { onCheck?: () => void; verified?: boolean } = {},
+  { verified = true }: { verified?: boolean } = {},
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const rootRoute = createRootRoute();
@@ -37,9 +36,9 @@ function renderRail(
       <RailPriceSummary
         option={option}
         locale="en-US"
+        serviceId="svc-1"
         providerId="p1"
         providerVerified={verified}
-        onCheckAvailability={onCheck}
       />
     ),
   });
@@ -80,20 +79,26 @@ describe("RailPriceSummary", () => {
     expect(await screen.findByText("Bookings aren't open on Ntizo yet.")).toBeInTheDocument();
   });
 
-  it("offers no control that implies a reservation was made", async () => {
+  it("offers no control that implies a reservation was already made", async () => {
     renderRail(FIXED);
     // The two controls the card does offer, awaited first, so the absence
     // below is asserted against a rendered card rather than an empty tree.
-    expect(await screen.findByRole("button", { name: "See availability" })).toBeInTheDocument();
+    // The primary starts checkout; it does not complete one.
+    expect(await screen.findByRole("link", { name: "See availability" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^book$/i })).not.toBeInTheDocument();
   });
 
-  it("opens the calendar when asked", async () => {
-    const onCheck = vi.fn();
-    renderRail(FIXED, { onCheck });
-    await userEvent.click(await screen.findByRole("button", { name: "See availability" }));
-    expect(onCheck).toHaveBeenCalledOnce();
+  it("sends the reader to this service's own checkout, not to a dialog", async () => {
+    // A link, and one carrying this service's id: the sheet this replaced
+    // could be opened over any page and left no URL behind, which is exactly
+    // what a purchase cannot afford — a refresh or a trip through sign-in
+    // lost the whole decision.
+    renderRail(FIXED);
+    expect(await screen.findByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/book/svc-1"),
+    );
   });
 
   it("labels an hourly option by its minimum, not by a duration it does not have", async () => {

@@ -1,0 +1,20 @@
+{
+  "stepsLabel": "Buchungsschritte",
+  "stepOf": "Schritt {{current}} von {{total}}",
+  "stepWhen": "Datum und Uhrzeit",
+  "stepDetails": "Details",
+  "stepConfirm": "Bestätigen",
+  "chooseWhenTitle": "Datum und Uhrzeit wählen",
+  "chooseWhenIntro": "Wenn Sie fortfahren, halten wir diese Uhrzeit für Sie frei, während Sie den Rest ausfüllen.",
+  "continueAction": "Weiter",
+  "backToService": "Zurück zur Leistung",
+  "createError": {
+    "SLOT_ALREADY_TAKEN": "Diese Uhrzeit wurde gerade von jemand anderem gebucht. Bitte wählen Sie eine andere.",
+    "SLOT_NOT_OFFERED": "Diese Uhrzeit ist nicht mehr verfügbar. Bitte wählen Sie eine andere.",
+    "SLOT_IN_PAST": "Diese Uhrzeit liegt bereits in der Vergangenheit. Bitte wählen Sie eine andere."
+  },
+  "createErrorGeneric": "Wir konnten diese Uhrzeit gerade nicht reservieren. Bitte versuchen Sie es erneut.",
+  "holdExpired": "Die Zeit zum Abschließen ist abgelaufen und die Uhrzeit wurde freigegeben. Bitte wählen Sie eine andere.",
+  "holdRemaining": "Uhrzeit reserviert {{time}}",
+  "holdRemainingLabel": "Verbleibende Zeit zum Abschließen der Buchung"
+}

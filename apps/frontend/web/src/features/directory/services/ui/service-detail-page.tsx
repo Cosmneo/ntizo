@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import type {
-  ProviderPublicDetailDTO,
-  ServiceDetailDTO,
-  ServiceDetailOptionDTO,
-} from "@ntizo/shared/read-models";
+import type { ServiceDetailDTO } from "@ntizo/shared/read-models";
 import { SiteHeader } from "@/shared/components/site-header";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { MapPin, PackageX } from "lucide-react";
@@ -30,91 +26,6 @@ import { DetailFacts } from "@/features/directory/ui/detail-facts";
 import { DetailGallery } from "@/features/directory/ui/detail-gallery";
 import { WeeklyHoursCard } from "@/features/directory/ui/weekly-hours-card";
 import { useProviderDetail, useProviderReviews } from "@/features/directory/viewmodel/use-directory";
-import { AvailabilitySheet } from "@/features/directory/availability/ui/availability-sheet";
-import type { ServiceDTO } from "@/features/directory/services/domain/types";
-
-/**
- * Bridges this page's `ServiceDetailDTO` to the `ServiceDTO` shape
- * `AvailabilitySheet` actually reads.
- *
- * The two are the same service described for two different questions.
- * `ServiceDTO` is `services-section.tsx`'s browse-card model: one price to
- * show, already resolved server-side to `defaultOption` /`fromAmountMinor` /
- * `optionCount`. `ServiceDetailDTO` is this page's own, fuller model: the
- * complete, cheapest-first `options` list the body's rows offer, not one
- * card's single price. Nothing priced here is invented —
- * `fromAmountMinor`/`optionCount` read off the list `AvailabilitySheet` never
- * sees in full.
- *
- * `defaultOption` is fed the option the reader currently has *selected*, not
- * a second guess at which one is marked default. The sheet reads
- * `minMinutes`/`stepMinutes` off it to build the hourly length picker, and
- * somebody who chose a package with a four-hour minimum must not be offered
- * one-hour lengths because a different package carries the default flag.
- * Nothing else in the sheet can tell the difference: it queries slots by
- * service id, and `servicePriceCell` prints "from the cheapest" whenever
- * there is more than one option, so this only ever narrows a disagreement.
- * Before the selection lived on this page there was nothing truthful to pass
- * here, which is why it used to re-derive the default itself.
- *
- * `providerVerified`, `providerRatingAverage` and `providerReviewCount` used
- * to be hardcoded to false/null/0, with a comment saying there was nothing
- * truthful to derive them from *and* nothing depending on the result. Only
- * the first half stopped being true: the page now reads the provider behind
- * the service for the rail's weekly hours, all three are fields on
- * `ProviderPublicDetailDTO`, so they are passed through rather than invented.
- * The second half still holds and is the load-bearing one — **nothing
- * consumes them.** Grep `availability/` for the three names and the only hits
- * are `availability-sheet.test.tsx`'s own fixture; the sheet queries slots by
- * service id and derives nothing else from this object but `servicePriceCell`.
- * They are supplied because `ServiceDTO` demands them, not because anything
- * reads them, which is also why the `null`-provider fallbacks below need no
- * defence beyond being the conservative direction.
- *
- * Kept as a local, unexported function in the one page that needs it rather
- * than moved into `domain/`, since nothing else in this feature converts
- * between these two shapes yet — a placement worth a reviewer's second look
- * rather than a settled one, because "nothing else needs it yet" is exactly
- * the kind of justification that stops holding the day a second caller shows
- * up.
- */
-function toAvailabilityService(
-  service: ServiceDetailDTO,
-  provider: ProviderPublicDetailDTO | null,
-  chosen: ServiceDetailOptionDTO | undefined,
-): ServiceDTO {
-  const cheapest = service.options[0] ?? null;
-  return {
-    id: service.id,
-    providerId: service.providerId,
-    providerName: service.providerName,
-    providerSlug: service.providerSlug,
-    providerType: service.providerType,
-    providerVerified: provider?.verified ?? false,
-    providerRatingAverage: provider?.ratingAverage ?? null,
-    providerReviewCount: provider?.reviewCount ?? 0,
-    categoryCode: service.categoryCode,
-    categoryName: service.categoryName,
-    name: service.name,
-    description: service.description,
-    locationType: service.locationType,
-    bookingMode: service.bookingMode,
-    imageUrls: service.imageUrls,
-    defaultOption: chosen
-      ? {
-          amountMinor: chosen.amountMinor,
-          currency: chosen.currency,
-          durationMinutes: chosen.durationMinutes,
-          minMinutes: chosen.minMinutes,
-          stepMinutes: chosen.stepMinutes,
-          pricingMode: chosen.pricingMode,
-        }
-      : null,
-    fromAmountMinor: cheapest?.amountMinor ?? null,
-    optionCount: service.options.length,
-    isFallback: service.isFallback,
-  };
-}
 
 /**
  * One service, in full.
@@ -192,7 +103,6 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
   const { t, i18n } = useTranslation("directory");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const provider = useProviderDetail(service.providerSlug, locale);
-  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // The provider's own default, falling back to the first option — the
@@ -311,11 +221,11 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
               </section>
             )}
 
-            {/* Keyed by id, like the sheet below: the route reuses this
-                component's instance across services, and while this list is
-                controlled and holds no state of its own today, a key costs
-                nothing and is what stops the next stateful thing added to it
-                from carrying one service's state onto another's page. The
+            {/* Keyed by id: the route reuses this component's instance across
+                services, and while this list is controlled and holds no state
+                of its own today, a key costs nothing and is what stops the
+                next stateful thing added to it from carrying one service's
+                state onto another's page. The
                 selection itself is protected by re-derivation above, which a
                 key could not do on its own. */}
             <ServiceOptions
@@ -344,12 +254,13 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
               if (panel.kind === "quote") {
                 // A quote service has nothing to check a calendar against yet
                 // — no price is fixed until the provider has seen the job, so
-                // there is no slot to offer a time for. `ServiceQuoteNotice`
-                // already carries the one sentence that explains this
-                // (`availabilityQuoteNotice`, the same key `AvailabilitySheet`
-                // itself falls back to for the identical fact); a "see
-                // availability" button that opened the sheet only to repeat
-                // that sentence would say the same thing to the reader twice.
+                // there is no slot to offer a time for, and no priced option
+                // for `booking.create` to be handed. `ServiceQuoteNotice`
+                // carries the one sentence that explains this
+                // (`availabilityQuoteNotice`, the same key checkout's own
+                // step 1 falls back to for the identical fact); a "see
+                // availability" link into a checkout that could not proceed
+                // would be a door onto a wall.
                 return <ServiceQuoteNotice providerId={service.providerId} />;
               }
               // A `priced` service with no active packages — see
@@ -371,13 +282,13 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
                 <RailPriceSummary
                   option={selected}
                   locale={locale}
+                  serviceId={service.id}
                   providerId={service.providerId}
                   // False for a provider that failed to resolve, which is the
                   // conservative direction: the sentence claims an
                   // administrator accepted this business's documents, and an
                   // absent answer is not a yes.
                   providerVerified={provider?.verified ?? false}
-                  onCheckAvailability={() => setAvailabilityOpen(true)}
                 />
               );
             })()}
@@ -392,23 +303,6 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
             <ServiceProviderCard service={service} />
           </aside>
         </div>
-
-        {/* Keyed by id and only ever mounted while open, so every piece of
-            the sheet's own local state (the selected week, day, member,
-            time…) starts fresh each time — the same reason
-            `services-section.tsx` keys its own mount by the selected
-            service's id. */}
-        {availabilityOpen && (
-          <AvailabilitySheet
-            key={service.id}
-            service={toAvailabilityService(service, provider, selected)}
-            performers={service.performers}
-            open
-            onOpenChange={(open) => {
-              if (!open) setAvailabilityOpen(false);
-            }}
-          />
-        )}
       </main>
     </>
   );

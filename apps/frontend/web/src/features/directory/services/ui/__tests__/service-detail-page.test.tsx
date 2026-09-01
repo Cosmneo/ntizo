@@ -225,7 +225,13 @@ describe("ServiceDetailPage's right column", () => {
     // about it.
     renderPage(detailService());
     expect(await screen.findByTestId("booking-total")).toHaveTextContent(/500/);
-    expect(screen.getByRole("button", { name: "See availability" })).toBeInTheDocument();
+    // A link into checkout's step 1 since the availability sheet became a
+    // routed page — the rail's primary is still a calendar, but it is now a
+    // place rather than a dialog.
+    expect(screen.getByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/book/svc-1"),
+    );
     expect(screen.queryByText(/priced by quote/i)).not.toBeInTheDocument();
   });
 
@@ -324,15 +330,17 @@ describe("ServiceDetailPage's body", () => {
     expect(within(facts()).getByText("Hair")).toBeInTheDocument();
   });
 
-  it("offers no booking anywhere on the page", async () => {
+  it("claims no reservation on the page itself, and offers the way to start one", async () => {
     renderPage(detailService());
     await screen.findByRole("heading", { level: 1 });
+    // Nothing here books anything: the rail's primary opens checkout's first
+    // step, where a time is still to be chosen and the slot still to be held.
     expect(
       screen.queryByRole("button", { name: /^book$|reservar|pedir marca/i }),
     ).not.toBeInTheDocument();
-    // The two things the rail does offer instead, so the absence above is
-    // "no booking control" and not "no controls rendered at all".
-    expect(screen.getByRole("button", { name: "See availability" })).toBeInTheDocument();
+    // The two things the rail does offer, so the absence above is "nothing
+    // claims a reservation" and not "no controls rendered at all".
+    expect(screen.getByRole("link", { name: "See availability" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
   });
 

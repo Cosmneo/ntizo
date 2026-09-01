@@ -13,14 +13,22 @@ import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
  * rather than off `options.length`.
  *
  * The explanation reuses `availabilityQuoteNotice` rather than introducing a
- * near-identical sentence: `AvailabilitySheet` already says "priced by quote,
- * contact the provider to get a price" for the same fact in the calendar
- * panel, and a second string saying the same thing in different words is a
- * second place for the two to drift apart. `priceByQuote` ("By quote") was
- * also considered and rejected — it is a price-tag label built for a browse
- * card, too terse to stand alone as the only content in this slot.
+ * near-identical sentence: checkout's own step 1 says "priced by quote,
+ * contact the provider to get a price" for the same fact if a quote service
+ * is ever reached there, and a second string saying the same thing in
+ * different words is a second place for the two to drift apart.
+ * `priceByQuote` ("By quote") was also considered and rejected — it is a
+ * price-tag label built for a browse card, too terse to stand alone as the
+ * only content in this slot.
  *
- * **The "contact provider" button now actually works.** A quote service can
+ * **There is deliberately no link into checkout here.** `booking.create`
+ * takes a `serviceOptionId` and a quote service has no priced option to hand
+ * it, so a "see availability" link beside this sentence would open a page
+ * that could only repeat the sentence and offer nothing to press. The
+ * routing change that deleted `AvailabilitySheet` did not change that: a
+ * quote service starts with a conversation, not with a held slot.
+ *
+ * **The "contact provider" button actually works.** A quote service can
  * be neither booked nor scheduled — there is no fixed price or duration to
  * check a calendar against — so this button is the only action its page
  * offers, and rendering it disabled behind a sentence claiming messaging
