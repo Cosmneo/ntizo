@@ -277,7 +277,7 @@ describe("Booking.submit — the address becomes required here", () => {
   }
 
   it("writes the address onto the booking it returns", () => {
-    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS);
+    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS, null);
     expect(submitted.status).toBe("AWAITING_PROVIDER");
     expect(submitted.addressLabel).toBe("Casa");
     expect(submitted.addressLine).toBe("Av. Julius Nyerere 812");
@@ -286,7 +286,7 @@ describe("Booking.submit — the address becomes required here", () => {
   });
 
   it.each(["label", "line", "city"] as const)("refuses a blank %s", (field) => {
-    expect(() => draftWithoutAddress().submit(AT, RESPOND_BY, { ...ADDRESS, [field]: "  " })).toThrow(
+    expect(() => draftWithoutAddress().submit(AT, RESPOND_BY, { ...ADDRESS, [field]: "  " }, null)).toThrow(
       BookingFieldBlankError,
     );
   });
@@ -294,8 +294,52 @@ describe("Booking.submit — the address becomes required here", () => {
   it("still replaces expiresAt with respondBy", () => {
     // Guarding the behaviour the address change sits next to: the provider's
     // window has to start here, not keep the checkout hold.
-    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS);
+    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS, null);
     expect(submitted.expiresAt).toEqual(RESPOND_BY);
+  });
+
+  // The description arrives on the same hop as the address, off the same
+  // page — step 2's optional "what needs doing". `create` normalises a blank
+  // one to null rather than refusing it, and these pin that `submit` does
+  // the same rather than storing whitespace a provider then reads as a note.
+  //
+  // Both halves matter, and `""` is reachable: `submitBooking`'s input types
+  // the field `.trim().max(1000).nullable().optional()` with no `.min(1)`,
+  // so an empty string is a payload the wire accepts. Without these,
+  // replacing the trim-and-nullify with a bare `description ?? null` turns
+  // nothing red.
+  it("writes the description onto the booking it returns, trimmed", () => {
+    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS, "  Sem energia  ");
+    expect(submitted.description).toBe("Sem energia");
+  });
+
+  it.each(["", "   "])("normalises a blank description (%p) to null", (blank) => {
+    expect(draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS, blank).description).toBeNull();
+  });
+
+  it("accepts a null description — the customer need not explain the job", () => {
+    expect(draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS, null).description).toBeNull();
+  });
+
+  it("writes the description even when the draft already carried one", () => {
+    // The unconditional assignment, stated as behaviour rather than left to
+    // the doc comment. `create` passes null today, so no draft reaches here
+    // with a description — but this method is what decides what happens the
+    // day one does, and "the caller's value wins" is the answer its required
+    // parameter exists to make explicit.
+    const draft = Booking.restore(
+      validProps({
+        status: "DRAFT",
+        addressLabel: null,
+        addressLine: null,
+        addressCity: null,
+        description: "Escrito antes",
+      }),
+    );
+    expect(draft.submit(AT, RESPOND_BY, ADDRESS, "Escrito no passo 2").description).toBe(
+      "Escrito no passo 2",
+    );
+    expect(draft.submit(AT, RESPOND_BY, ADDRESS, null).description).toBeNull();
   });
 });
 
@@ -401,7 +445,7 @@ describe("Booking.submit", () => {
 
   it("moves a draft booking to awaiting the provider", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    const submitted = draft.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS);
+    const submitted = draft.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS, null);
     expect(submitted.status).toBe("AWAITING_PROVIDER");
   });
 
@@ -415,23 +459,23 @@ describe("Booking.submit", () => {
     const draft = Booking.restore(
       validProps({ status: "DRAFT", expiresAt: new Date("2026-09-04T13:00:00.000Z") }),
     );
-    const submitted = draft.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS);
+    const submitted = draft.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS, null);
     expect(submitted.expiresAt).toEqual(RESPOND_BY);
   });
 
   it("refuses to submit a booking that already left DRAFT", () => {
     const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
-    expect(() => pending.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS)).toThrow(BookingTransitionError);
+    expect(() => pending.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS, null)).toThrow(BookingTransitionError);
   });
 
   it("refuses an at that does not name a real instant", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    expect(() => draft.submit(new Date("garbage"), RESPOND_BY, SUBMIT_ADDRESS)).toThrow(BookingDateInvalidError);
+    expect(() => draft.submit(new Date("garbage"), RESPOND_BY, SUBMIT_ADDRESS, null)).toThrow(BookingDateInvalidError);
   });
 
   it("refuses a respondBy that does not name a real instant", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    expect(() => draft.submit(new Date(), new Date("garbage"), SUBMIT_ADDRESS)).toThrow(BookingDateInvalidError);
+    expect(() => draft.submit(new Date(), new Date("garbage"), SUBMIT_ADDRESS, null)).toThrow(BookingDateInvalidError);
   });
 });
 
@@ -461,11 +505,11 @@ describe("Booking.submit — every status", () => {
     const booking = Booking.restore(validProps({ status, expiresAt: null }));
 
     if (outcome === "transitions") {
-      const result = booking.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS);
+      const result = booking.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS, null);
       expect(result.status).toBe("AWAITING_PROVIDER");
       expect(result.expiresAt).toEqual(RESPOND_BY);
     } else {
-      expect(() => booking.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS)).toThrow(BookingTransitionError);
+      expect(() => booking.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS, null)).toThrow(BookingTransitionError);
     }
   });
 });

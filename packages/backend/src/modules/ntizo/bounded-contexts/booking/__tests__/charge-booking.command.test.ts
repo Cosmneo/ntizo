@@ -88,7 +88,7 @@ function requiredAddress(b: Booking) {
 function pendingBooking(id = "bk-1", over = {}): Booking {
   const draft = Booking.create(bookingInput(over));
   return withId(
-    draft.submit(new Date(), DEADLINE, requiredAddress(draft)).accept(new Date(), DEADLINE),
+    draft.submit(new Date(), DEADLINE, requiredAddress(draft), null).accept(new Date(), DEADLINE),
     id,
   );
 }
@@ -96,7 +96,7 @@ function pendingBooking(id = "bk-1", over = {}): Booking {
 /** A stored `AWAITING_PROVIDER` booking — nothing here should ever charge one. */
 function awaitingBooking(id = "bk-1"): Booking {
   const draft = Booking.create(bookingInput());
-  return withId(draft.submit(new Date(), DEADLINE, requiredAddress(draft)), id);
+  return withId(draft.submit(new Date(), DEADLINE, requiredAddress(draft), null), id);
 }
 
 /**

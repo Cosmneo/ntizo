@@ -72,7 +72,7 @@ function requiredAddress(b: Booking) {
 function pendingBooking(id = "bk-1"): Booking {
   const draft = Booking.create(bookingInput());
   const deadline = draft.expiresAt as Date;
-  const submitted = draft.submit(new Date(), deadline, requiredAddress(draft));
+  const submitted = draft.submit(new Date(), deadline, requiredAddress(draft), null);
   const accepted = submitted.accept(new Date(), deadline);
   return withId(accepted, id);
 }
@@ -94,7 +94,7 @@ function draftBooking(id = "bk-1"): Booking {
  */
 function awaitingBooking(id = "bk-1"): Booking {
   const draft = Booking.create(bookingInput());
-  return withId(draft.submit(new Date(), draft.expiresAt as Date, requiredAddress(draft)), id);
+  return withId(draft.submit(new Date(), draft.expiresAt as Date, requiredAddress(draft), null), id);
 }
 
 /**

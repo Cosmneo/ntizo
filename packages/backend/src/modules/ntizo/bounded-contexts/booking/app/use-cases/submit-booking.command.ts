@@ -2,6 +2,7 @@ import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { BookingSubmitted } from "../../domain/events";
 import {
   BookingNotFoundError,
+  BookingTransitionError,
   CustomerPhoneMissingError,
   NotBookingCustomerError,
 } from "../../domain/exceptions";
@@ -33,12 +34,18 @@ export interface SubmitBookingInput {
     lng?: number | null;
   };
   /**
-   * What the customer wants done, in their own words — checkout's step 3.
+   * What the customer wants done, in their own words — checkout's step 2,
+   * the optional note beside the address on the same page.
    *
-   * It travels with the address for the same reason: `booking.create` no
-   * longer carries either, because step 1 has neither value to give. Passed
-   * straight through to `Booking.submit`, which normalises a blank one to
-   * null rather than refusing it.
+   * It travels with the address for that reason: `booking.create` carries
+   * neither, because step 1 has neither value to give. Passed straight
+   * through to `Booking.submit`, which normalises a blank one to null rather
+   * than refusing it.
+   *
+   * `string | null`, never optional. The GraphQL layer collapses an omitted
+   * key to `null` before this type is built, so "the customer wrote nothing"
+   * has exactly one spelling by the time it reaches the aggregate — see
+   * `Booking.submit` for why the parameter it hands this to is required.
    */
   description: string | null;
 }
@@ -104,11 +111,19 @@ const SUBMITTED_BY_CUSTOMER = "submitted_by_customer";
  * see `DRAFT` and both compute a real transition — `Booking.submit` has no
  * no-op story of its own for this (see its own doc comment: an unexpected
  * status is a bug to raise, not a race to absorb), so the write is the only
- * place this race is actually settled. `false` back means the other request
- * won it, and this command returns without publishing, without scheduling a
- * job, and without throwing — the same outcome the aggregate's own no-op
+ * place this race is actually settled. `false` back means somebody else's
+ * write moved the row first, and this command publishes nothing, appends
+ * nothing and schedules nothing — the same outcome the aggregate's own no-op
  * path produces in `MarkBookingPaidCommand` and `SweepBookingCommand`,
  * reached here by the repository's guard instead.
+ *
+ * **What it answers with then depends on who that other writer was**, and a
+ * twin submit is only one of three candidates — the sweep and
+ * `CreateBookingCommand`'s one-draft rule can both move a `DRAFT` too, and
+ * neither of them submitted anything. The re-read at the bottom of `execute`
+ * is where that is decided; see its own comment, which is the argument for
+ * why this command cannot simply report whatever deadline the row happens to
+ * be carrying.
  *
  * **`scheduleBookingDeadline` is called after the transaction resolves, with
  * `respondBy`** — mirroring `CreateBookingCommand`'s own discipline of
@@ -236,21 +251,54 @@ export class SubmitBookingCommand {
       return { bookingId: input.bookingId, respondBy: respondBy.toISOString() };
     }
 
-    // The losing compare-and-swap still has to answer with a deadline: the
-    // caller asked when the provider must respond, and there genuinely is
-    // one — the twin request that won the race stamped it, published the
-    // event and scheduled the job. So it is read back off the row rather
-    // than reported from the value this call computed and then discarded,
-    // which would tell the customer a deadline nothing is holding anyone to.
+    // The compare-and-swap found something other than the `DRAFT` this
+    // call's own read saw. **Three different writers can do that, and only
+    // one of them is another submit:**
+    //
+    //   - a twin submit — a double-tap, or a retry of a request whose
+    //     response never arrived — which really did send this booking, and
+    //     stamped the `respondBy` the provider is now held to;
+    //   - `SweepBookingCommand`, when the checkout hold ran out;
+    //   - `CreateBookingCommand`'s one-draft rule, which expires this draft
+    //     and releases its slot the moment the same customer opens step 1
+    //     again in another tab.
+    //
+    // The last is the reachable one, and it is why this branch cannot simply
+    // report whatever `expiresAt` holds. `Booking.expire` moves the status
+    // and sets `expiredAt`; it never touches `expiresAt`, so an expired
+    // draft still carries the checkout hold — now in the past. Reporting it
+    // would answer a submission that did not happen with a success and a
+    // dead countdown, under a slot that has already been released and a
+    // provider who was never asked.
+    //
+    // So the status is the guard, not the presence of a date: `expiresAt` is
+    // only a `respondBy` while the booking is actually in
+    // `AWAITING_PROVIDER`. Anything else means this call's submission did
+    // not happen, and the caller has to be told — the same
+    // `BookingTransitionError` the non-race path already raises when
+    // `findById` reads a booking that is no longer a `DRAFT`, so checkout's
+    // step 3 handles one outcome for one event rather than two that depend
+    // on which side of a settings round trip a concurrent write landed. See
+    // the design's failure table: the customer goes back to step 1 with the
+    // service kept.
     //
     // Outside the transaction, because nothing is written after it.
-    // `expiresAt` is set at `create` and only ever replaced, never cleared
-    // (see `Booking.submit` and `Booking.accept`), so a booking that is
-    // still there always has one; a null here means the row itself is gone.
+    //
+    // A literal rather than the `BookingStatus` const, matching
+    // `ChargeBookingCommand` and `SweepBookingCommand`: that const lives in
+    // `shared/infrastructure/database/booking/enums.ts`, and no use case in
+    // this bounded context reaches into `infrastructure/`. It is not a loose
+    // string either — `current.status` is that same union.
     const current = await this.repo.findById(input.bookingId);
-    if (!current?.expiresAt) {
+    if (!current) {
       throw new BookingNotFoundError(input.bookingId);
     }
-    return { bookingId: input.bookingId, respondBy: current.expiresAt.toISOString() };
+    if (current.status !== "AWAITING_PROVIDER") {
+      throw new BookingTransitionError(current.status, "AWAITING_PROVIDER");
+    }
+    // Never null on an `AWAITING_PROVIDER` row: `Booking.submit` is the only
+    // way into that status and it always writes `respondBy` here — the same
+    // reasoning `moved.id as string` above relies on.
+    return { bookingId: input.bookingId, respondBy: (current.expiresAt as Date).toISOString() };
   }
 }

@@ -55,7 +55,12 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
         // against the booking's own `customerId` and refuses a stranger.
         customerId: requireUser(ctx),
         address: args.input.address,
-        description: args.input.description,
+        // The wire has two ways to say "no description" — an explicit null
+        // and an omitted key — and the domain has one. Collapsing them is
+        // this boundary's job: `SubmitBookingInput.description` is
+        // `string | null` and `Booking.submit` requires the argument, so
+        // that a caller can never express "leave whatever was there".
+        description: args.input.description ?? null,
       }),
     )
     .build();

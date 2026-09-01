@@ -3,6 +3,7 @@ import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Booking } from "../domain/aggregates/booking.aggregate";
 import {
   BookingNotFoundError,
+  BookingTransitionError,
   CustomerPhoneMissingError,
   NotBookingCustomerError,
   NotProviderMemberError,
@@ -103,11 +104,19 @@ function awaitingBooking(
   // to borrow — that is the point of the flow. A literal here, so an
   // AWAITING_PROVIDER fixture carries a complete address the way every real
   // one does.
-  const submitted = draft.submit(new Date(), new Date(respondBy), {
-    label: "Casa",
-    line: "Av. Julius Nyerere 812",
-    city: "Maputo",
-  });
+  const submitted = draft.submit(
+    new Date(),
+    new Date(respondBy),
+    {
+      label: "Casa",
+      line: "Av. Julius Nyerere 812",
+      city: "Maputo",
+    },
+    // No description: this file's accept/decline tests never read one back,
+    // and `submit` requires the argument so that omitting it can never mean
+    // "leave whatever was there".
+    null,
+  );
   return withId(submitted, id);
 }
 
@@ -123,6 +132,17 @@ function awaitingBooking(
  * simpler than `booking-lifecycle.command.test.ts`'s `RacingFakeRepo`
  * because none of this file's tests need two full commands racing each
  * other, only one command discovering the row already moved.
+ *
+ * **`raceWinner` is the same idea carried one step further, and it exists
+ * because `currentStatusOverride` is not enough for a command that reads the
+ * row back.** The override moves only the status the CAS compares; every
+ * later `findById` still hands out the pre-race booking. A command whose
+ * losing branch re-reads the row would therefore be handed the draft it
+ * started from, and an assertion on what it reported could not tell "read
+ * back what the winner committed" from "reported its own stale value".
+ * Setting `raceWinner` makes the concurrent writer's commit land for real:
+ * the CAS compares against *its* status, and once the save has lost, the
+ * repository hands out *its* row.
  */
 class FakeRepo implements BookingRepositoryPort {
   public saveCalls = 0;
@@ -130,6 +150,7 @@ class FakeRepo implements BookingRepositoryPort {
   public lastApplied: boolean | null = null;
   public appendChangeCalls: BookingChangeRecord[] = [];
   public currentStatusOverride: BookingStatus | null = null;
+  public raceWinner: Booking | null = null;
   private current: Booking | null;
 
   constructor(
@@ -155,10 +176,18 @@ class FakeRepo implements BookingRepositoryPort {
     this.saveCalls += 1;
     this.savedArg = booking;
     this.unitOfWork?.order.push("save");
-    const actualStatus = this.currentStatusOverride ?? this.current?.status;
+    const actualStatus = this.raceWinner?.status ?? this.currentStatusOverride ?? this.current?.status;
     const applied = actualStatus === expectedStatus;
     this.lastApplied = applied;
     if (!applied) {
+      // The concurrent writer's commit really did land, so everything reading
+      // this repository from here on sees its row rather than the one the
+      // command under test started from — including that command's own
+      // re-read. Applied outside `unitOfWork.stage`, because this write is
+      // not the command's to roll back.
+      if (this.raceWinner) {
+        this.current = this.raceWinner;
+      }
       return false;
     }
     const commit = () => {
@@ -312,14 +341,28 @@ class CapturingOutbox implements OutboxPort {
  * user id so a test can hold a number for one customer and none for
  * another. Undefined and null both mean "no number on file" — the shape
  * `DrizzleCustomerPhoneReader` returns for a profile that has none.
+ *
+ * **`insideTransactionAtCall` is recorded here, at the moment of the call,
+ * because nothing observable afterwards can answer the question.**
+ * `TrackingUnitOfWork.atomicExecute` clears `insideTransaction` in its
+ * `finally` and resets `order` on entry, so after a refusal both read exactly
+ * as they would if the block had never run — asserting on either from the
+ * test body passes just as happily against a command that opened a
+ * transaction and threw inside it. Only a witness standing where the read
+ * happens can tell the two apart.
  */
 class FakePhoneReader implements CustomerPhoneReaderPort {
   public queries: string[] = [];
+  public insideTransactionAtCall: boolean[] = [];
 
-  constructor(private readonly numbers: Record<string, string | null> = {}) {}
+  constructor(
+    private readonly unitOfWork: TrackingUnitOfWork,
+    private readonly numbers: Record<string, string | null> = {},
+  ) {}
 
   async findPhoneNumber(userId: string): Promise<string | null> {
     this.queries.push(userId);
+    this.insideTransactionAtCall.push(this.unitOfWork.insideTransaction);
     return this.numbers[userId] ?? null;
   }
 }
@@ -337,6 +380,7 @@ function setupSubmit(
   // Every customer this file submits for has a number unless a test says
   // otherwise, so the happy paths are not silently testing the refusal.
   const phones = new FakePhoneReader(
+    unitOfWork,
     opts.phones ?? { "cust-1": "258841234567", "cust-2": "258851234567" },
   );
   const delayedJobs = new FakeDelayedJobs();
@@ -510,13 +554,18 @@ describe("SubmitBookingCommand", () => {
     expect(delayedJobs.scheduled).toEqual([]);
   });
 
-  it("a losing compare-and-swap publishes nothing, appends nothing, schedules nothing, and throws nothing", async () => {
+  it("reports the winning submit's own respondBy, and publishes, appends and schedules nothing", async () => {
     const stored = draftBooking();
     const { command, repo, outbox, delayedJobs } = setupSubmit(stored);
-    // Somebody else's write already moved the row past DRAFT before this
-    // command's own write reaches it — the ordinary case the CAS exists
-    // for, not an exotic one.
-    repo.currentStatusOverride = "AWAITING_PROVIDER";
+
+    // A twin submit — a double-tap, or a retry of a request whose response
+    // never arrived — got there first and committed a real
+    // `AWAITING_PROVIDER` row. Its deadline is deliberately not the draft's
+    // own checkout hold (`bookingInput` puts that 30 minutes out): the two
+    // have to be distinguishable, or "reports the winner's deadline" and
+    // "reports the stale value on the row it read" are the same assertion.
+    const winnersRespondBy = new Date(Date.now() + 120 * 60_000);
+    repo.raceWinner = withId(stored.submit(new Date(), winnersRespondBy, ADDRESS, null), "bk-1");
     const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS, description: null };
 
     const result = await command.execute(input);
@@ -529,15 +578,45 @@ describe("SubmitBookingCommand", () => {
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
 
-    // The loser still has to answer with a deadline, and it reports the one
-    // on the row rather than the one it computed and discarded — the winning
-    // request is what the provider is actually being held to. In this fake
-    // the row never moves, so what comes back is the stored booking's own
-    // `expiresAt`; against the real repository it is the winner's `respondBy`.
+    // The loser still has to answer with a deadline, and the honest one is
+    // the winner's: that is what the provider is actually being held to.
     expect(result).toEqual({
       bookingId: "bk-1",
-      respondBy: (stored.expiresAt as Date).toISOString(),
+      respondBy: winnersRespondBy.toISOString(),
     });
+    expect(result.respondBy).not.toBe((stored.expiresAt as Date).toISOString());
+  });
+
+  it("refuses when the draft was expired out from under it, rather than reporting a dead countdown", async () => {
+    const stored = draftBooking();
+    const { command, repo, outbox, delayedJobs } = setupSubmit(stored);
+
+    // **The reachable race, and the reason the losing branch checks a status
+    // rather than trusting a date.** The customer has step 3 open in one tab
+    // and goes back to step 1 in another: `CreateBookingCommand`'s one-draft
+    // rule expires this draft and releases its slot in the gap between this
+    // command's `findById` and its own `UPDATE`. `SweepBookingCommand`
+    // produces the identical row when the checkout hold runs out.
+    //
+    // `Booking.expire` moves the status and stamps `expiredAt` — it never
+    // touches `expiresAt`. So the row still carries the checkout hold, now in
+    // the past, and a re-read that trusted the date would answer this
+    // customer with a success and a dead countdown, for a slot already
+    // released and a provider who was never asked. The spec's failure table
+    // wants the opposite: back to step 1 with the service kept.
+    repo.raceWinner = withId(stored.expire(new Date()), "bk-1");
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS, description: null };
+
+    await expect(command.execute(input)).rejects.toThrow(BookingTransitionError);
+
+    // The same refusal the non-race path already gives when `findById` reads
+    // a booking that is no longer a DRAFT — one outcome for one event,
+    // whichever side of the settings round trip the concurrent write lands.
+    expect(repo.saveCalls).toBe(1);
+    expect(repo.lastApplied).toBe(false);
+    expect(repo.appendChangeCalls).toEqual([]);
+    expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
   });
 
   it("caps the provider's response window at the slot's own start when the slot begins before the window would close", async () => {
@@ -639,10 +718,15 @@ describe("SubmitBookingCommand", () => {
 
   it("reads the phone before opening a transaction, and asks about the requesting customer", async () => {
     // The refusal needs no transaction, and taking one out only to throw it
-    // away again is work nobody asked for. `TrackingUnitOfWork.order` is
-    // reset by `atomicExecute` on entry, so an empty order after a refusal is
-    // the proof that block never ran.
-    const { command, phones, unitOfWork } = setupSubmit(draftBooking(), {
+    // away again is work nobody asked for.
+    //
+    // The witness is inside the fake, not in this body, and that is the whole
+    // point of this test: `atomicExecute` clears `insideTransaction` in its
+    // `finally` and resets `order` on entry, so asserting either from out
+    // here passes just as readily against a command that opened a
+    // transaction and threw inside it. `insideTransactionAtCall` is recorded
+    // where the read actually happens — see `FakePhoneReader`.
+    const { command, phones } = setupSubmit(draftBooking(), {
       phones: { "cust-1": null },
     });
 
@@ -659,8 +743,7 @@ describe("SubmitBookingCommand", () => {
     // else: a reader keyed on the wrong id would still refuse, and would
     // still pass every assertion above.
     expect(phones.queries).toEqual(["cust-1"]);
-    expect(unitOfWork.insideTransaction).toBe(false);
-    expect(unitOfWork.order).toEqual([]);
+    expect(phones.insideTransactionAtCall).toEqual([false]);
   });
 
   it("submits when the customer has one", async () => {
@@ -676,6 +759,10 @@ describe("SubmitBookingCommand", () => {
     });
 
     expect(phones.queries).toEqual(["cust-1"]);
+    // Read outside the transaction on the path that succeeds too, not only on
+    // the one that refuses — the ordering is a property of the command, not
+    // of the refusal.
+    expect(phones.insideTransactionAtCall).toEqual([false]);
     expect(repo.savedArg?.status).toBe("AWAITING_PROVIDER");
     expect(repo.savedArg?.addressCity).toBe("Maputo");
   });

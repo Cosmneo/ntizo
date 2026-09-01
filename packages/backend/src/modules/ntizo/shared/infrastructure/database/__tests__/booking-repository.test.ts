@@ -199,7 +199,7 @@ function bookingInput(
  */
 function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
   const draft = Booking.create(input);
-  return draft.submit(new Date(), input.expiresAt, requiredAddress(draft)).accept(new Date(), input.expiresAt);
+  return draft.submit(new Date(), input.expiresAt, requiredAddress(draft), null).accept(new Date(), input.expiresAt);
 }
 
 /**
@@ -209,7 +209,7 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
  */
 function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
   const draft = Booking.create(input);
-  return draft.submit(new Date(), input.expiresAt, requiredAddress(draft));
+  return draft.submit(new Date(), input.expiresAt, requiredAddress(draft), null);
 }
 
 /**

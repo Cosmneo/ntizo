@@ -81,7 +81,8 @@ export const createBooking = defineMutation({
  * The address arrives here rather than on `createBooking` because the
  * customer supplies it on step 2, after the slot is already held — see the
  * design's own account of the conflict this resolves. `description` travels
- * with it, off step 3, for the same reason.
+ * with it because it is the same page's other field: step 2 is the address
+ * *and* the optional note about what needs doing.
  *
  * The bounds are the edge's cheap refusal, not the rule: `Booking.submit`
  * is where a blank or missing address component is actually refused, and
@@ -91,6 +92,15 @@ export const createBooking = defineMutation({
  * aggregate — the kit validates every input against this schema before the
  * handler runs (`validateInput` defaults to `true`), so an `undefined`
  * component cannot arrive from the wire.
+ *
+ * **`.optional()` sits beside `.nullable()` on every field that is genuinely
+ * optional, and the pair is not redundant.** Zod's `.nullable()` accepts
+ * `null` and rejects `undefined`; GraphQL lets a document simply omit a
+ * nullable input field, and an omitted key arrives as `undefined`. Without
+ * `.optional()` the omission is a validation failure rather than the null it
+ * plainly means — so a client would have to be told "send explicit nulls",
+ * which is exactly the kind of instruction that holds until it doesn't.
+ * Three clients are about to be written against this surface.
  */
 export const submitBooking = defineMutation({
   input: zodSchema(
@@ -100,12 +110,12 @@ export const submitBooking = defineMutation({
         label: z.string().trim().min(1),
         line: z.string().trim().min(1),
         city: z.string().trim().min(1),
-        district: z.string().trim().min(1).nullable(),
-        directions: z.string().trim().max(500).nullable(),
-        lat: z.number().nullable(),
-        lng: z.number().nullable(),
+        district: z.string().trim().min(1).nullable().optional(),
+        directions: z.string().trim().max(500).nullable().optional(),
+        lat: z.number().nullable().optional(),
+        lng: z.number().nullable().optional(),
       }),
-      description: z.string().trim().max(1000).nullable(),
+      description: z.string().trim().max(1000).nullable().optional(),
     }),
   ),
   output: zodSchema(z.object({ bookingId: z.string().min(1), respondBy: z.string() })),

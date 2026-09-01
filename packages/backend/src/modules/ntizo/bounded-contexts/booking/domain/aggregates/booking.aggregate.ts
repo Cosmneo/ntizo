@@ -698,15 +698,27 @@ export class Booking {
    * upstream or a caller that skipped the CAS, and `BookingTransitionError`
    * says so rather than absorbing it the way `expire`'s no-op does.
    *
-   * **`description` arrives here for the same reason the address does, and is
-   * assigned unconditionally.** It is checkout's step-3 field — what the
-   * customer wants done, in their own words — and `create` now passes `null`
-   * for it, because step 1 has no such value to pass. Nothing between the two
-   * hops can set one, so writing whatever this call carries (`null`
-   * included) cannot clear a description somebody else supplied. Blank is
-   * normalised to `null` rather than refused, matching `create`'s own
-   * treatment: "the customer typed nothing" is an everyday shape for this
-   * field in a way it is not for an address component.
+   * **`description` arrives here for the same reason the address does**, and
+   * off the same page: it is step 2's optional "what needs doing", beside
+   * the address, and `create` passes `null` for it because step 1 has no
+   * such value to pass.
+   *
+   * **It is required, not optional, and the assignment below is
+   * unconditional.** Those two facts hold each other up. An optional
+   * parameter with an unconditional write is the shape that silently wipes
+   * data: the day something *does* put a description on a `DRAFT` — a
+   * resumed checkout, an imported booking, a step-2 autosave — every caller
+   * that omitted the argument starts erasing it, with no compile error and
+   * no red test to say so. Required means the compiler asks each of them
+   * what they mean, and each of them then says it. The alternative, keeping
+   * it optional and writing only when present, buys nothing: `null` has to
+   * stay writable anyway, so `undefined` would be the one input that could
+   * not express "no description".
+   *
+   * Blank is normalised to `null` rather than refused, matching `create`'s
+   * own treatment: "the customer typed nothing" is an everyday shape for
+   * this field in a way it is not for an address component. The stored value
+   * is trimmed, again as `create` stores it.
    */
   submit(
     at: Date,
@@ -720,7 +732,7 @@ export class Booking {
       lat?: number | null;
       lng?: number | null;
     },
-    description?: string | null,
+    description: string | null,
   ): Booking {
     if (this.props.status !== BookingStatus.Draft) {
       throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);

@@ -78,11 +78,11 @@ describe("booking.create input", () => {
 });
 
 /**
- * The address the customer gave on step 2 and the description they gave on
- * step 3, arriving together. Same division of labour as `booking.create`'s
- * input: this refuses obvious nonsense before a round trip, and
- * `Booking.submit` is where the rule is defined — `SubmitBookingCommand`
- * keeps no second copy of it deliberately.
+ * Step 2's two fields — the address and the optional note about what needs
+ * doing — arriving together on the hop that sends the request. Same division
+ * of labour as `booking.create`'s input: this refuses obvious nonsense before
+ * a round trip, and `Booking.submit` is where the rule is defined —
+ * `SubmitBookingCommand` keeps no second copy of it deliberately.
  */
 describe("booking.submit input", () => {
   it("accepts a well-formed submission", () => {
@@ -131,6 +131,49 @@ describe("booking.submit input", () => {
 
   it("accepts a null description — the customer need not explain the job", () => {
     const result = submitBooking.input!.validate({ ...VALID_SUBMIT_INPUT, description: null });
+    expect(result.success).toBe(true);
+  });
+
+  /**
+   * **An omitted optional key is not the same input as an explicit null, and
+   * Zod treats them differently.** `.nullable()` on its own accepts `null`
+   * and rejects `undefined`; GraphQL lets a document leave a nullable input
+   * field out entirely, so a client that simply does not send `district`
+   * would have had its whole mutation refused. `.optional()` beside
+   * `.nullable()` is what makes the omission mean what it reads as.
+   *
+   * Every optional field on its own, not one example standing in for the
+   * set: dropping `.optional()` from a single one of them has to turn this
+   * red. Three clients are about to be written against this surface.
+   */
+  it("accepts a submission that omits every optional key", () => {
+    const result = submitBooking.input!.validate({
+      bookingId: "bk-1",
+      address: { label: "Casa", line: "Av. Julius Nyerere 812", city: "Maputo" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  for (const omitted of ["district", "directions", "lat", "lng"] as const) {
+    it(`accepts an address that omits ${omitted}`, () => {
+      const { [omitted]: _dropped, ...rest } = VALID_SUBMIT_INPUT.address;
+      const result = submitBooking.input!.validate({ ...VALID_SUBMIT_INPUT, address: rest });
+      expect(result.success).toBe(true);
+    });
+  }
+
+  it("accepts a submission that omits description", () => {
+    const { description: _description, ...withoutDescription } = VALID_SUBMIT_INPUT;
+    const result = submitBooking.input!.validate(withoutDescription);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an empty description — the aggregate is what normalises it to null", () => {
+    // `.max(1000)` with no `.min(1)`, so `""` is a payload the wire takes.
+    // That is deliberate — an empty note is the same fact as no note — and it
+    // is why `Booking.submit` has a blank-to-null branch with its own tests
+    // rather than relying on this schema to make one unreachable.
+    const result = submitBooking.input!.validate({ ...VALID_SUBMIT_INPUT, description: "" });
     expect(result.success).toBe(true);
   });
 

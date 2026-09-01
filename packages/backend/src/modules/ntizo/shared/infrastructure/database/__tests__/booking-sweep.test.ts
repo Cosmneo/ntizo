@@ -231,11 +231,19 @@ function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
   const draft = draftBooking(input);
   // `submit` now takes the address explicitly; every fixture here sets a
   // concrete one via `bookingInput`, so pulling it back off the draft is safe.
-  return draft.submit(new Date(), input.expiresAt, {
-    label: draft.addressLabel as string,
-    line: draft.addressLine as string,
-    city: draft.addressCity as string,
-  });
+  return draft.submit(
+    new Date(),
+    input.expiresAt,
+    {
+      label: draft.addressLabel as string,
+      line: draft.addressLine as string,
+      city: draft.addressCity as string,
+    },
+    // No description: nothing in this file reads one back, and `submit`
+    // requires the argument so that omitting it can never mean "leave
+    // whatever was there".
+    null,
+  );
 }
 
 /**
