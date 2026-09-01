@@ -17,6 +17,8 @@
   "descriptionLabel": "¿Qué hay que hacer?",
   "descriptionHint": "Opcional. Portón azul, tercer piso: lo que ayude al profesional a venir preparado.",
   "loadError": "No hemos podido abrir esta reserva. Comprueba la conexión e inténtalo de nuevo.",
+  "storageBlockedTitle": "Este navegador no guarda tus datos",
+  "storageBlockedBody": "Necesitamos guardar la dirección en esta pestaña hasta enviar la solicitud, y este navegador no lo permite. Abre la página en una ventana normal (no privada) o permite los datos del sitio. Tu hora sigue reservada.",
   "alreadySentTitle": "Esta solicitud ya se ha enviado",
   "alreadySentBody": "Aquí ya no queda nada por completar. Puedes seguirla en tus reservas.",
   "alreadySentAction": "Ver mis reservas",

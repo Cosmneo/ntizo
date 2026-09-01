@@ -89,9 +89,16 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
  * by oversight — see `CheckoutBooking`. The address columns are here because
  * a draft that has already been through step 2 once carries what the customer
  * chose, and `description` for the same reason.
+ *
+ * `serviceId` and `serviceOptionId` are what let steps 2 and 3 send a
+ * customer whose hold lapsed back to step 1 on the package they chose. They
+ * are read here rather than carried in the URL because two sources for one
+ * fact is one too many: a shared or bookmarked link could name a service that
+ * disagreed with the booking, and nothing would notice.
  */
 const BOOKING_FIELDS = `
       id status
+      serviceId serviceOptionId
       serviceName providerName providerSlug optionName durationMinutes
       priceMinor currency
       startsAt endsAt

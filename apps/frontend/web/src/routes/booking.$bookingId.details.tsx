@@ -29,35 +29,19 @@ export const Route = createFileRoute("/booking/$bookingId/details")({
     if (!session) throw redirect({ to: "/sign-in", search: { next: location.href } });
   },
   /**
-   * **`serviceId` is a search parameter because `bookingReadModel` has no
-   * service id in it.** The booking carries the service's *name* — it is a
-   * snapshot of what was agreed rather than a join — and this page has one
-   * job it must be able to do when the booking cannot be read at all: send
-   * the customer back to step 1 with the service kept, which is what the
-   * design's failure table asks for when a hold lapses. There is no other
-   * source for that id, so it travels the way step 1's slot does: in the URL,
-   * where a refresh and a shared link both keep it.
+   * **No search parameters, and that is a decision rather than an omission.**
    *
-   * `optionId` rides along for the reason it was put on step 1's route. A
-   * customer sent back without it re-books the service's cheapest option
-   * rather than the package whose price they read — the same silent downgrade
-   * that id exists to prevent, arriving one page later.
+   * This page needs to know which service and which package the draft was
+   * made from — it is where the countdown sends the customer when the hold
+   * lapses. Both used to travel here in the URL, because `bookingReadModel`
+   * carried neither. They are now fields on the booking itself
+   * (`serviceId`, `serviceOptionId`), which is the only honest source: a
+   * shared or bookmarked link carrying its own copy could name a service that
+   * disagreed with the booking, and nothing on either side would notice.
    *
-   * Every key is returned, and a rejected one is returned as `undefined`
-   * rather than omitted — see `book.$serviceId.tsx`, which spells out why:
-   * a match's search is `{ ...parentSearch, ...validated }` and the root
-   * validates nothing, so a key this function does not name keeps whatever
-   * raw value the URL had.
+   * The path parameter is the whole address, which is what the design says
+   * about this route — "steps 2 and 3 have nothing else".
    */
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { serviceId?: string; optionId?: string } => {
-    const text = (key: string): string | undefined => {
-      const raw = search[key];
-      return typeof raw === "string" && raw !== "" ? raw : undefined;
-    };
-    return { serviceId: text("serviceId"), optionId: text("optionId") };
-  },
   component: Details,
 });
 

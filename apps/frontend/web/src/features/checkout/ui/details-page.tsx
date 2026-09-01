@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowLeft, CalendarCheck, Plus } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, CalendarCheck, Plus, TriangleAlert } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
@@ -16,27 +16,11 @@ import type { CheckoutBooking } from "@/features/checkout/viewmodel/use-checkout
 import { useMyBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
-import { readDraftDetails, saveDraftDetails } from "@/features/checkout/domain/draft-store";
-
-/**
- * What `/booking/$bookingId/details` carries in its URL.
- *
- * **`serviceId` is here because `bookingReadModel` does not carry one.** The
- * booking knows its service's *name* — it is a snapshot of what was agreed,
- * not a join — so the one thing this page must be able to do without the
- * booking, send the customer back to step 1, has no other source. It travels
- * the same way step 1's slot does: in the URL, where a refresh and a shared
- * link both keep it.
- *
- * `optionId` rides along for the reason it was added to step 1 in the first
- * place. Going back without it drops the package the customer picked, and
- * they re-book the default one at a price they were never shown — the same
- * silent downgrade, one step later.
- */
-interface DetailsSearch {
-  serviceId?: string;
-  optionId?: string;
-}
+import {
+  canStoreDraftDetails,
+  readDraftDetails,
+  saveDraftDetails,
+} from "@/features/checkout/domain/draft-store";
 
 /**
  * The statuses on which the slot is no longer being held for this customer.
@@ -100,39 +84,44 @@ function openingAddressId(chosen: string | null, addresses: readonly AddressDTO[
 export function DetailsPage({ bookingId }: { bookingId: string }) {
   const { t } = useTranslation("checkout");
   const { booking, loading, failed } = useMyBooking(bookingId);
-  // `strict: false` rather than naming the route, so the component can be
-  // mounted and tested without the router's type registry having to agree
-  // with it first — the read `ChooseWhenPage` makes of its own search.
-  const search = useSearch({ strict: false }) as DetailsSearch;
   const navigate = useNavigate();
 
   // `loading` is checked first and cannot be folded in: on the very first
   // render there is no data yet, and a bare `booking === null` would read
   // that as "your draft is gone" and bounce every customer off the page
   // before their booking had finished loading.
-  const released = !loading && (booking === null || (!!booking && RELEASED_STATUSES.has(booking.status)));
+  const settled = !loading && !failed;
+  // **Two departures, because they know two different amounts.** A booking
+  // this customer can read names the service and the package to go back to;
+  // a `null` names nothing at all.
+  const released = settled && !!booking && RELEASED_STATUSES.has(booking.status);
+  const unreadable = settled && booking === null;
 
   useEffect(() => {
-    if (!released) return;
     // The design's failure table: "the slot was released; back to step 1 with
-    // the service kept". `replace`, so the back button does not walk the
-    // customer into a page whose booking is gone.
-    if (search.serviceId) {
+    // the service kept" — and the service is the booking's own, read off the
+    // row rather than carried alongside it, so there is no second copy for a
+    // shared link to disagree with. `replace`, so the back button does not
+    // walk the customer into a page whose booking is gone.
+    if (released && booking) {
       void navigate({
         to: "/book/$serviceId",
-        params: { serviceId: search.serviceId },
-        search: { expired: true, ...(search.optionId ? { optionId: search.optionId } : {}) },
+        params: { serviceId: booking.serviceId },
+        search: { expired: true, optionId: booking.serviceOptionId },
         replace: true,
       });
       return;
     }
-    // No service to go back to — a hand-typed or long-stale URL. Browsing is
-    // the honest destination; inventing a service id would send them to
-    // somebody else's page.
-    void navigate({ to: "/services", search: {}, replace: true });
-  }, [released, navigate, search.serviceId, search.optionId]);
+    // **`null` cannot mean "back to step 1 with the service kept", because
+    // there is no service to keep.** It is how the server answers for a
+    // booking that is not this customer's, or an id that never named one, and
+    // reconstructing step 1 from anything else on the page would be guessing
+    // at a booking we are not allowed to read. Browsing is the honest
+    // destination.
+    if (unreadable) void navigate({ to: "/services", search: {}, replace: true });
+  }, [released, unreadable, booking, navigate]);
 
-  if (loading || released) {
+  if (loading || released || unreadable) {
     return (
       <DetailsShell>
         <DetailsSkeleton />
@@ -175,7 +164,7 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
     );
   }
 
-  return <Details booking={booking} search={search} />;
+  return <Details booking={booking} />;
 }
 
 /** The header, the step marker and the page frame — everything that is true before the booking is. */
@@ -201,7 +190,7 @@ function DetailsSkeleton() {
   );
 }
 
-function Details({ booking, search }: { booking: CheckoutBooking; search: DetailsSearch }) {
+function Details({ booking }: { booking: CheckoutBooking }) {
   const { t, i18n } = useTranslation("checkout");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
@@ -216,6 +205,12 @@ function Details({ booking, search }: { booking: CheckoutBooking; search: Detail
   const [chosen, setChosen] = useState<string | null>(restored?.addressId ?? null);
   const [description, setDescription] = useState(restored?.description ?? "");
   const [adding, setAdding] = useState(false);
+  // Probed once, on mount, and by writing rather than reading — see
+  // `canStoreDraftDetails`. A tab that cannot keep this page's answers cannot
+  // hand them to step 3 either, and `sessionStorage` is the only channel
+  // between the two, so the page says so instead of collecting an address it
+  // is going to lose at the confirm.
+  const [storable] = useState(canStoreDraftDetails);
 
   const selectedId = openingAddressId(chosen, addresses);
   // The form IS the empty state. A list with nothing in it and nothing to do
@@ -240,13 +235,9 @@ function Details({ booking, search }: { booking: CheckoutBooking; search: Detail
     // book's default — and step 3 has to be given it.
     saveDraftDetails(booking.id, { addressId: selectedId, description });
     // `href` rather than a typed `to`: step 3 is the next slice and its route
-    // does not exist yet. `serviceId` travels because step 3 shows the same
-    // countdown, whose only way back to step 1 is that id.
-    const forward = new URLSearchParams();
-    if (search.serviceId) forward.set("serviceId", search.serviceId);
-    if (search.optionId) forward.set("optionId", search.optionId);
-    const query = forward.toString();
-    void navigate({ href: `/booking/${booking.id}/confirm${query ? `?${query}` : ""}` });
+    // does not exist yet. Nothing travels with it — step 3 reads the same
+    // booking, which carries its own service and option.
+    void navigate({ href: `/booking/${booking.id}/confirm` });
   }
 
   return (
@@ -254,17 +245,15 @@ function Details({ booking, search }: { booking: CheckoutBooking; search: Detail
       <SiteHeader current="services" />
 
       <main className="page-shell py-8">
-        {search.serviceId ? (
-          <Link
-            to="/book/$serviceId"
-            params={{ serviceId: search.serviceId }}
-            search={search.optionId ? { optionId: search.optionId } : {}}
-            className="type-caption inline-flex items-center gap-1.5 text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            {t("backToWhen")}
-          </Link>
-        ) : null}
+        <Link
+          to="/book/$serviceId"
+          params={{ serviceId: booking.serviceId }}
+          search={{ optionId: booking.serviceOptionId }}
+          className="type-caption inline-flex items-center gap-1.5 text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("backToWhen")}
+        </Link>
 
         <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="min-w-0">
@@ -274,6 +263,23 @@ function Details({ booking, search }: { booking: CheckoutBooking; search: Detail
               {t("detailsIntro")}
             </p>
 
+            {!storable ? (
+              // **Said, not worked around.** The address and the note reach
+              // step 3 through `sessionStorage` and through nothing else, so
+              // a tab that refuses to keep them cannot finish checkout — and
+              // a form rendered here would take an address only to lose it at
+              // the confirm, with nothing on screen to explain where it went.
+              // The slot is not lost with it: the draft goes on holding it
+              // for the rest of its thirty minutes, in whichever window the
+              // customer opens next.
+              <EmptyCard
+                framed
+                badge={TriangleAlert}
+                title={t("storageBlockedTitle")}
+                body={t("storageBlockedBody")}
+              />
+            ) : (
+            <>
             <fieldset className="mt-8 grid gap-3 border-0 p-0">
               <legend className="type-h3 font-semibold">{t("addressLegend")}</legend>
 
@@ -353,23 +359,24 @@ function Details({ booking, search }: { booking: CheckoutBooking; search: Detail
                 className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
               />
             </div>
+            </>
+            )}
           </div>
 
           {/* 100px, not 0: the site header is 84px and sticky, so a rail
               pinned to the top of the viewport would slide under it. */}
           <aside className="grid gap-4 lg:sticky lg:top-[100px]">
             <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
-              {/* Both conditions, not one. `expiresAt` is nullable because
-                  the column is; `serviceId` is what the countdown navigates
-                  *to* when the hold lapses, and a countdown with nowhere to
-                  send the customer would strand them under a stopped timer —
-                  worse than no timer at all. */}
-              {booking.expiresAt && search.serviceId ? (
+              {/* `expiresAt` is nullable because the column is. The service
+                  and the option are not: they come off the booking, so the
+                  countdown always has somewhere to send the customer when the
+                  hold lapses. */}
+              {booking.expiresAt ? (
                 <div className="mb-4">
                   <CheckoutCountdown
                     expiresAt={booking.expiresAt}
-                    serviceId={search.serviceId}
-                    optionId={search.optionId}
+                    serviceId={booking.serviceId}
+                    optionId={booking.serviceOptionId}
                   />
                 </div>
               ) : null}
@@ -392,10 +399,14 @@ function Details({ booking, search }: { booking: CheckoutBooking; search: Detail
                 {booking.optionName}
               </p>
 
+              {/* `storable` as well as an address: the notice on the left
+                  explains why there is nothing to fill in, and a live
+                  continue beside it would carry an empty answer to step 3
+                  anyway. */}
               <Button
                 type="button"
                 className="mt-4 w-full"
-                disabled={!selectedId}
+                disabled={!selectedId || !storable}
                 onClick={goToConfirm}
               >
                 {t("continueAction")}

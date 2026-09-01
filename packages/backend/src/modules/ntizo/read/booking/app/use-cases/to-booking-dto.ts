@@ -20,6 +20,8 @@ export function toBookingDTO(row: BookingListRow): BookingDTO {
   return {
     id: row.id,
     status: row.status,
+    serviceId: row.serviceId,
+    serviceOptionId: row.serviceOptionId,
     serviceName: row.serviceName,
     providerName: row.providerName,
     providerSlug: row.providerSlug,

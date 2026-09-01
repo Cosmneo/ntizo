@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readDraftDetails, saveDraftDetails } from "../draft-store";
+import { canStoreDraftDetails, readDraftDetails, saveDraftDetails } from "../draft-store";
 
 /**
  * The store is the tab's, so it survives between tests the way it survives
@@ -52,6 +52,27 @@ describe("the checkout draft store", () => {
       saveDraftDetails("bk-1", { addressId: "addr-2", description: "Portão azul" }),
     ).not.toThrow();
     expect(readDraftDetails("bk-1")).toBeNull();
+  });
+
+  it("probes with a write, because a store at its quota reads back perfectly", () => {
+    // The failure that matters is the write: step 3 has to read these details
+    // back later, and a browser that refuses `setItem` loses them at the
+    // confirm step with nothing on screen to explain it. A probe that only
+    // read would report this store as healthy.
+    expect(canStoreDraftDetails()).toBe(true);
+
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    expect(canStoreDraftDetails()).toBe(false);
+  });
+
+  it("leaves nothing of its own behind", () => {
+    // The probe key is removed, so a customer's tab does not accumulate one
+    // entry per page view, and nothing reading this prefix mistakes a probe
+    // for somebody's details.
+    canStoreDraftDetails();
+    expect(sessionStorage.length).toBe(0);
   });
 
   it("treats a rewritten entry as no entry", () => {

@@ -23,6 +23,13 @@ export interface DraftDetails {
  */
 const KEY_PREFIX = "ntizo.checkout.";
 
+/**
+ * Written and immediately removed by `canStoreDraftDetails`. Under the same
+ * prefix so it cannot collide with anything else the app stores, and never a
+ * booking id, so a probe cannot be mistaken for somebody's details.
+ */
+const PROBE_KEY = `${KEY_PREFIX}probe`;
+
 function keyFor(bookingId: string): string {
   return `${KEY_PREFIX}${bookingId}`;
 }
@@ -39,6 +46,33 @@ function tabStore(): Storage | null {
     return globalThis.sessionStorage ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether this browser will actually keep what step 2 collects.
+ *
+ * **Probed with a write, because a read proves nothing.** A private window
+ * throws on the access itself, but a store at its quota reads back perfectly
+ * and refuses the next `setItem` — and the failure that matters here is the
+ * write, since the whole point is that step 3 can read the details later. So
+ * this writes a probe value and removes it again.
+ *
+ * The caller uses this to *say so* rather than to degrade quietly. Letting a
+ * customer fill in an address on a page that cannot keep it means discovering
+ * the loss at the confirm step, with nothing to show for the typing; a
+ * sentence naming the cause is a worse experience than a working browser and
+ * a far better one than a form that silently forgets.
+ */
+export function canStoreDraftDetails(): boolean {
+  const store = tabStore();
+  if (!store) return false;
+  try {
+    store.setItem(PROBE_KEY, "1");
+    store.removeItem(PROBE_KEY);
+    return true;
+  } catch {
+    return false;
   }
 }
 

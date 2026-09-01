@@ -450,6 +450,8 @@ describe("bookingReadModel", () => {
   const base = {
     id: "b1",
     status: "PENDING_PAYMENT" as const,
+    serviceId: "svc-1",
+    serviceOptionId: "opt-1",
     serviceName: "Avaria eléctrica urgente",
     providerName: "Hélder Cossa",
     providerSlug: "helder-cossa-electricidade",
@@ -477,6 +479,16 @@ describe("bookingReadModel", () => {
 
   it("rejects a status outside the machine", () => {
     expect(() => bookingReadModel.parse({ ...base, status: "PAID" })).toThrow();
+  });
+
+  it("requires the service and option ids, because a reader has to link somewhere", () => {
+    // Both are `NOT NULL` on the table. They are what lets checkout's steps 2
+    // and 3 send a customer whose hold lapsed back to `/book/<the service>`
+    // on the package they chose — the fact those pages previously had to
+    // carry in the URL, where a shared link could disagree with the booking
+    // and nothing would notice.
+    expect(() => bookingReadModel.parse({ ...base, serviceId: "" })).toThrow();
+    expect(() => bookingReadModel.parse({ ...base, serviceOptionId: undefined })).toThrow();
   });
 
   it("rejects a negative price", () => {

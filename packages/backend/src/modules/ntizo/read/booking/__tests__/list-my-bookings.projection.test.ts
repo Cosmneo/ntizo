@@ -341,6 +341,13 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         // one field is enough to prove this went through it rather than
         // handing back a raw row.
         expect(own?.startsAt).toBe("2026-12-04T09:00:00.000Z");
+        // Read off the row rather than snapshotted: checkout's steps 2 and 3
+        // send a customer whose hold lapsed back to `/book/<this service>` on
+        // this option, and before these were on the read model they had to
+        // carry both in the URL, where a shared link could name a service
+        // that disagreed with the booking.
+        expect(own?.serviceId).toBe(serviceId);
+        expect(own?.serviceOptionId).toBe(serviceOptionId);
 
         // The assertion this test exists for: customer A asking for customer
         // B's booking, by its real id, gets nothing.

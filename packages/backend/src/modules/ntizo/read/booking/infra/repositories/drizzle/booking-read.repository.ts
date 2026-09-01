@@ -54,6 +54,8 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
 const SELECTED_COLUMNS = {
   id: booking.id,
   status: booking.status,
+  serviceId: booking.serviceId,
+  serviceOptionId: booking.serviceOptionId,
   serviceName: booking.serviceName,
   providerName: booking.providerName,
   providerSlug: booking.providerSlug,

@@ -15,6 +15,13 @@ export interface BookingListRow {
   /** A `BookingStatus` value — see that repository's own doc comment for why the cast off `booking.status` is safe. */
   status: BookingDTO["status"];
 
+  /**
+   * Identity, not snapshot — see `bookingReadModel`'s own comment on the
+   * pair. `NOT NULL` on the table, so never null in a row.
+   */
+  serviceId: string;
+  serviceOptionId: string;
+
   serviceName: string;
   providerName: string;
   providerSlug: string;

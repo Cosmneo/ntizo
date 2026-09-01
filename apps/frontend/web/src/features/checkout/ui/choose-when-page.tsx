@@ -338,28 +338,14 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
       startsAt: search.startsAt,
       locale,
     }).then(
-      // The draft holds the slot; steps 2 and 3 are addressed by its id.
-      //
-      // **The service and the package travel with it, because the booking
-      // does not carry them.** `bookingReadModel` snapshots the service's
-      // *name* rather than joining to it — deliberately, so a rename cannot
-      // rewrite what a customer booked — so there is no service id anywhere
-      // on the far side of this navigation. Steps 2 and 3 both need one: it
-      // is where the countdown sends the customer when the hold lapses, and
-      // the design's failure table asks for that trip to keep the service.
-      // The URL is the same place step 1 keeps the slot, and for the same
-      // reasons: a refresh and a shared link both keep it.
-      //
-      // `option.id`, not `search.optionId` — this is the package actually
-      // being held, which is the one a customer sent back here should find
-      // selected. The two differ only when the URL named an option that no
-      // longer resolves, and in that case the substitution is the truth.
+      // The draft holds the slot; steps 2 and 3 are addressed by its id and
+      // by nothing else. The service and the package do not travel with it:
+      // `bookingReadModel` carries `serviceId` and `serviceOptionId`, so the
+      // far side reads them off the booking it is already loading. Sending a
+      // second copy in the URL would be a second source for one fact, and the
+      // one a shared link can get wrong.
       ({ bookingId }) =>
-        void navigate({
-          to: "/booking/$bookingId/details",
-          params: { bookingId },
-          search: { serviceId: service.id, optionId: option.id },
-        }),
+        void navigate({ to: "/booking/$bookingId/details", params: { bookingId } }),
       // Swallowed on purpose: `errorCode` already carries the failure
       // reactively and the message below renders from it. Rethrowing here
       // would only add an unhandled rejection saying the same thing.

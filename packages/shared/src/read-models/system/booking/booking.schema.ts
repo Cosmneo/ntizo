@@ -11,6 +11,12 @@ import { z } from "zod";
  * customer booked; a customer correcting their street must not move where a
  * provider went last March.
  *
+ * `serviceId` and `serviceOptionId` are identity, not snapshot, and are
+ * carried for a reader that has to *link* somewhere rather than print
+ * something — see their own comment. They are not an invitation to join:
+ * a consumer that reads `serviceName` off the service instead of off the
+ * booking has reintroduced exactly the drift this model exists to prevent.
+ *
  * `commissionBps` travels with `commissionMinor` on purpose. The amount alone
  * cannot be checked, and the rate alone cannot be reconciled against money
  * that already moved — an administrator changing a provider's rate tomorrow
@@ -41,6 +47,26 @@ export const bookingReadModel = z.object({
     "CANCELLED",
     "EXPIRED",
   ]),
+
+  /**
+   * **The ids are not part of the snapshot, and the distinction is the whole
+   * reason they can be here.** What the snapshot protects is the *names* and
+   * the *money* — a provider renaming a service must not rewrite what a
+   * customer booked. An id names the same row forever; it cannot drift,
+   * because there is nothing about it to drift.
+   *
+   * They are here because checkout needs them. Steps 2 and 3 run a countdown
+   * whose only action is to send the customer back to step 1 — `/book/<the
+   * service>`, on the package they chose — when the hold lapses, and before
+   * this they had no way to know either. Carrying them in the URL instead
+   * made two sources for one fact: a shared or bookmarked link could name a
+   * service that disagreed with the booking, and nothing would notice.
+   *
+   * `NOT NULL` on the table, so never null here. A booking without a service
+   * option is not a booking.
+   */
+  serviceId: z.string().min(1),
+  serviceOptionId: z.string().min(1),
 
   serviceName: z.string(),
   providerName: z.string(),

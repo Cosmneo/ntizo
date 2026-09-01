@@ -77,8 +77,11 @@ export function CheckoutCountdown({
    * spent twenty-nine minutes on step 2 and let the hold lapse would restart
    * on the 500 one. The prop is here now, while the signature is still being
    * set, rather than after steps 2 and 3 are written against a shape that
-   * cannot express it. `booking.byId` carries the option the draft was made
-   * from, so those pages will have it in hand.
+   * cannot express it. `booking.byId` carries `serviceOptionId` — it did not
+   * when this comment was first written, and steps 2 and 3 had to carry both
+   * ids in the URL until it did — so those pages read the option off the
+   * booking they are already loading rather than off a link that could
+   * disagree with it.
    */
   optionId?: string;
 }) {

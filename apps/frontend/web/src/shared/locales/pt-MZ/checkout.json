@@ -17,6 +17,8 @@
   "descriptionLabel": "O que precisa de ser feito?",
   "descriptionHint": "Opcional. Portão azul, terceiro andar — o que ajudar o prestador a preparar-se.",
   "loadError": "Não foi possível abrir esta reserva. Verifique a ligação e tente de novo.",
+  "storageBlockedTitle": "Este navegador não guarda os seus dados",
+  "storageBlockedBody": "Precisamos de guardar a morada neste separador até enviar o pedido, e este navegador não permite. Abra a página numa janela normal (não anónima) ou permita os dados do site. A hora continua reservada para si.",
   "alreadySentTitle": "Este pedido já foi enviado",
   "alreadySentBody": "Já não há nada para preencher aqui. Pode acompanhá-lo nas suas reservas.",
   "alreadySentAction": "Ver as minhas reservas",

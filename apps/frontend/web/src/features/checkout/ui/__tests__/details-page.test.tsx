@@ -81,6 +81,8 @@ function bookingFixture(over: Partial<BookingDTO> = {}): unknown {
   return {
     id: "bk-1",
     status: "DRAFT",
+    serviceId: "svc-1",
+    serviceOptionId: "opt-2",
     serviceName: "Corte de cabelo",
     providerName: "Studio X",
     providerSlug: "studio-x",
@@ -126,14 +128,11 @@ function renderDetails({
   bookingId,
   booking = bookingFixture(),
   addresses = [addressFixture("addr-1", "Casa", { isDefault: true })],
-  at,
 }: {
   bookingId: string;
   /** `null` is what the server answers with for an id that is not this customer's. */
   booking?: unknown;
   addresses?: AddressDTO[];
-  /** Where to start, when a test needs a URL other than the flow's own. */
-  at?: string;
 }) {
   fakes.booking = booking;
   fakes.addresses = addresses;
@@ -147,8 +146,6 @@ function renderDetails({
   const detailsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/booking/$bookingId/details",
-    validateSearch: (search: Record<string, unknown>) =>
-      search as { serviceId?: string; optionId?: string },
     component: function DetailsRoute() {
       const params = detailsRoute.useParams();
       return <DetailsPage bookingId={params.bookingId} />;
@@ -170,7 +167,6 @@ function renderDetails({
   const confirmRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/booking/$bookingId/confirm",
-    validateSearch: (search: Record<string, unknown>) => search as { serviceId?: string },
     component: () => <p>confirm step</p>,
   });
   const servicesRoute = createRoute({
@@ -193,12 +189,10 @@ function renderDetails({
       servicesRoute,
       bookingsRoute,
     ]),
-    // The URL the flow actually arrives on: step 1 knows which service and
-    // which package this draft was made from, and puts both here because the
-    // booking read model carries neither.
-    history: createMemoryHistory({
-      initialEntries: [at ?? `/booking/${bookingId}/details?serviceId=svc-1&optionId=opt-2`],
-    }),
+    // The URL the flow actually arrives on. The booking id is the whole
+    // address: the service and the package come off the booking itself, so
+    // there is nothing else here for a shared link to get wrong.
+    history: createMemoryHistory({ initialEntries: [`/booking/${bookingId}/details`] }),
   });
 
   render(
@@ -230,6 +224,10 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.useRealTimers();
+  // The storage case spies on `Storage.prototype`, which is shared by every
+  // test in the file — left in place it would make the next one look like a
+  // private window.
+  vi.restoreAllMocks();
   await i18n.changeLanguage("en-US");
 });
 
@@ -242,16 +240,6 @@ describe("DetailsPage", () => {
   });
 
   it("sends the customer back to step 1 when the draft has expired", async () => {
-    const { router } = renderDetails({ bookingId: "bk-1", booking: null });
-    // `waitFor`, unlike the brief's line: the booking travels a promise and
-    // the redirect runs in an effect that reads it, so asserting the location
-    // in the same tick as `render` is a race the page loses on a fast
-    // machine. The choose-when suite awaits the identical redirect the same
-    // way.
-    await waitFor(() => expect(router.state.location.pathname).toBe("/book/svc-1"));
-  });
-
-  it("treats a lapsed draft the server still answers with as expired too", async () => {
     // **`null` is not how a hold running out arrives.** The sweep marks the
     // draft `EXPIRED` and it goes on belonging to its customer, so
     // `booking.byId` returns a row; `CreateBookingCommand` marks a superseded
@@ -263,24 +251,45 @@ describe("DetailsPage", () => {
       booking: bookingFixture({ status: "EXPIRED" }),
     });
 
+    // `waitFor`, unlike the brief's line: the booking travels a promise and
+    // the redirect runs in an effect that reads it, so asserting the location
+    // in the same tick as `render` is a race the page loses on a fast
+    // machine. The choose-when suite awaits the identical redirect the same
+    // way.
     await waitFor(() => expect(router.state.location.pathname).toBe("/book/svc-1"));
+    // Both off the booking. The URL this page was reached by carries neither,
+    // so a service or a package on the far side of this redirect can only
+    // have come from the row.
     expect(router.state.location.search).toMatchObject({ expired: true, optionId: "opt-2" });
   });
 
   it("keeps the customer's package when it sends them back", async () => {
-    // Going back without `optionId` restarts checkout on the service's
-    // cheapest option rather than the package whose price they read — the
-    // same silent downgrade step 1's own `optionId` exists to prevent.
-    const { router } = renderDetails({ bookingId: "bk-1", booking: null });
+    // Going back without the option restarts checkout on the service's
+    // cheapest package rather than the one whose price they read — the same
+    // silent downgrade step 1's own `optionId` exists to prevent. A distinct
+    // id here, so this cannot pass on the fixture's default.
+    const { router } = renderDetails({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "EXPIRED", serviceOptionId: "opt-9" }),
+    });
 
-    // Both inside one `waitFor`, and the path first. The URL this page
-    // *starts* on already carries `optionId=opt-2`, so a lone search
-    // assertion is satisfied before any navigation happens at all and would
-    // pass with the redirect dropping the parameter entirely.
+    // Both inside one `waitFor`, and the path first: a lone search assertion
+    // can be satisfied before any navigation has happened at all.
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/book/svc-1");
-      expect(router.state.location.search).toMatchObject({ optionId: "opt-2" });
+      expect(router.state.location.search).toMatchObject({ optionId: "opt-9" });
     });
+  });
+
+  it("browses rather than guessing when the booking is not the customer's to read", async () => {
+    // `null` is how the server answers for somebody else's booking and for an
+    // id that never named one, undistinguished on purpose. It cannot mean
+    // "back to step 1 with the service kept", because there is no service to
+    // keep — reconstructing step 1 for a booking we are not allowed to see is
+    // how a fallback becomes a leak.
+    const { router } = renderDetails({ bookingId: "bk-1", booking: null });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/services"));
   });
 
   it("carries the chosen address and the note to step 3 without writing them to the server", async () => {
@@ -306,19 +315,16 @@ describe("DetailsPage", () => {
     expect(fakes.addAddress).not.toHaveBeenCalled();
   });
 
-  it("moves on to step 3", async () => {
+  it("moves on to step 3 with the booking id and nothing else", async () => {
     const { router } = renderDetails({ bookingId: "bk-1" });
     await userEvent.click(await screen.findByRole("button", { name: /continuar/i }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/booking/bk-1/confirm"),
     );
-    // Step 3 renders the same countdown, whose only way back to step 1 is
-    // this id — the booking read model does not carry one.
-    expect(router.state.location.search).toMatchObject({
-      serviceId: "svc-1",
-      optionId: "opt-2",
-    });
+    // Step 3 loads the same booking, which carries its own service and
+    // option. A copy in the URL would be a second source for one fact.
+    expect(router.state.location.search).toEqual({});
   });
 
   it("keeps what the customer typed before they press anything", async () => {
@@ -369,6 +375,25 @@ describe("DetailsPage", () => {
     expect(screen.queryByText(/10\s*%/)).not.toBeInTheDocument();
   });
 
+  it("says so when the browser will not keep what is typed", async () => {
+    // A private window, or a store at its quota. `sessionStorage` is the only
+    // channel between this page and step 3, so a form here would take an
+    // address and lose it at the confirm with nothing on screen to explain
+    // where it went. The probe writes rather than reads — a read succeeds
+    // against a full store.
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+
+    renderDetails({ bookingId: "bk-1" });
+
+    expect(await screen.findByText(/não guarda os seus dados/i)).toBeInTheDocument();
+    // Not a warning printed above a form that still takes an answer.
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/o que precisa de ser feito/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
+  });
+
   it("shows the request rather than the form once it has been sent", async () => {
     // Reachable with the back button after step 3. `expiresAt` on a submitted
     // booking is the provider's response window, so a checkout countdown here
@@ -382,18 +407,5 @@ describe("DetailsPage", () => {
     expect(await screen.findByText(/já foi enviado/i)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
-  });
-
-  it("browses rather than guessing when the URL carries no service", async () => {
-    // A hand-typed or long-stale link. Sending the customer to `/book/` with
-    // an empty id, or picking a service for them, would both be worse than
-    // saying "here is everything".
-    const { router } = renderDetails({
-      bookingId: "bk-1",
-      booking: null,
-      at: "/booking/bk-1/details",
-    });
-
-    await waitFor(() => expect(router.state.location.pathname).toBe("/services"));
   });
 });

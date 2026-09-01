@@ -17,6 +17,8 @@
   "descriptionLabel": "Che cosa serve fare?",
   "descriptionHint": "Facoltativo. Cancello blu, terzo piano: tutto ciò che aiuta il professionista ad arrivare preparato.",
   "loadError": "Non siamo riusciti ad aprire questa prenotazione. Controlla la connessione e riprova.",
+  "storageBlockedTitle": "Questo browser non conserva i tuoi dati",
+  "storageBlockedBody": "Dobbiamo conservare l'indirizzo in questa scheda finché la richiesta non viene inviata, e questo browser non lo consente. Apri la pagina in una finestra normale (non in incognito) o consenti i dati del sito. Il tuo orario resta riservato.",
   "alreadySentTitle": "Questa richiesta è già stata inviata",
   "alreadySentBody": "Qui non c'è più nulla da compilare. Puoi seguirla nelle tue prenotazioni.",
   "alreadySentAction": "Vedi le mie prenotazioni",

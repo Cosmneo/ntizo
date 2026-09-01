@@ -342,8 +342,6 @@ function renderChooseWhen({
   const detailsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/booking/$bookingId/details",
-    validateSearch: (search: Record<string, unknown>) =>
-      search as { serviceId?: string; optionId?: string },
     component: () => <p>details step</p>,
   });
 
@@ -505,16 +503,11 @@ describe("ChooseWhenPage", () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/booking/bk-1/details"),
     );
-    // **The service and the package go with the booking id.**
-    // `bookingReadModel` snapshots the service's *name* and carries no id, so
-    // steps 2 and 3 have no other source for the one thing they must be able
-    // to do without reading the booking at all: send the customer back to
-    // step 1, with the service and the package they chose, when the hold
-    // lapses.
-    expect(router.state.location.search).toEqual({
-      serviceId: "svc-1",
-      optionId: "opt-1",
-    });
+    // **The booking id is the whole address.** Steps 2 and 3 read the service
+    // and the package off `booking.byId`, which carries `serviceId` and
+    // `serviceOptionId`, so a copy here would be a second source for one fact
+    // — and the one a shared link can get wrong.
+    expect(router.state.location.search).toEqual({});
     expect(create.calls).toEqual([
       {
         serviceOptionId: "opt-1",
