@@ -17,6 +17,16 @@
  * bookable again, and that — not the row's status column — is the thing the
  * rule exists for.
  *
+ * **Two connection styles, on purpose** — the same split
+ * `booking-seat-assignment.test.ts` documents, and for the same reason.
+ * Every test but the last binds this file's own `DEV_DB_URL` connection into
+ * `tx-context`'s AsyncLocalStorage, so `atomicExecute` joins it rather than
+ * opening a real transaction; that is fine for tests that call the command
+ * sequentially. The concurrency test at the bottom needs the opposite: two
+ * independent connections, each in a real transaction, because a
+ * transaction-scoped advisory lock taken outside a real transaction releases
+ * the instant its own statement finishes and protects nothing.
+ *
  * The four readers are faked and everything that writes is real. Those four
  * answer questions this rule does not ask (what does the option cost, does
  * the grid offer this start, how long is the checkout hold); standing up a
@@ -43,6 +53,11 @@ import { and, asc, eq, gt, inArray, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
+import { Db } from "../../../../../../shared/infrastructure/database/connection";
+import {
+  infraStore,
+  type InfraEnvBindings,
+} from "../../../../../../shared/infrastructure/stores/infra-store";
 import { DrizzleUnitOfWork } from "../../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../../shared/infrastructure/outbox/outbox.adapter";
 import { DrizzleOutboxEventRepository } from "../../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
@@ -103,8 +118,19 @@ const CHECKOUT_HOLD_MINUTES = 30;
 const NINE_AM = new Date("2027-03-01T09:00:00.000Z");
 const TEN_AM = new Date("2027-03-01T10:00:00.000Z");
 
+/**
+ * The concurrency test's own pair, and its own customer, so it cannot be
+ * read as depending on what any earlier test in this file left behind.
+ * Non-overlapping for the same reason `NINE_AM`/`TEN_AM` are: two racers on
+ * one slot would collide on `booking_member_slot_no_overlap` and the test
+ * would pass on the exclusion constraint instead of on the lock.
+ */
+const ELEVEN_AM = new Date("2027-03-01T11:00:00.000Z");
+const NOON = new Date("2027-03-01T12:00:00.000Z");
+
 let customerId: string;
 let otherCustomerId: string;
+let racingCustomerId: string;
 let ownerUserId: string;
 let providerId: string;
 let memberId: string;
@@ -123,6 +149,7 @@ const createdBookingIds: string[] = [];
 beforeAll(async () => {
   customerId = crypto.randomUUID();
   otherCustomerId = crypto.randomUUID();
+  racingCustomerId = crypto.randomUUID();
   ownerUserId = crypto.randomUUID();
   await db.insert(user).values([
     {
@@ -134,6 +161,12 @@ beforeAll(async () => {
     {
       id: otherCustomerId,
       email: `booking-supersede-other-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: racingCustomerId,
+      email: `booking-supersede-racing-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -216,6 +249,7 @@ afterAll(async () => {
     () => db.delete(provider).where(eq(provider.id, providerId)),
     () => db.delete(user).where(eq(user.id, customerId)),
     () => db.delete(user).where(eq(user.id, otherCustomerId)),
+    () => db.delete(user).where(eq(user.id, racingCustomerId)),
     () => db.delete(user).where(eq(user.id, ownerUserId)),
     () => sql.end({ timeout: 5 }),
   ]);
@@ -493,5 +527,131 @@ describe("CreateBookingCommand, one open draft per customer", () => {
         .where(eq(booking.id, theirs.id));
       expect(row?.status).toBe("DRAFT");
     });
+  });
+});
+
+/**
+ * A synchronisation barrier of exactly `count` arrivals — lifted from
+ * `booking-seat-assignment.test.ts`, which needed the same thing for the
+ * same reason. It starts both racers' critical sections as close to
+ * simultaneously as `Promise.all` scheduling allows, rather than trusting
+ * two independent `await`-chains to overlap on their own. The network round
+ * trips to Neon inside each transaction are what actually create the race
+ * once both are released together.
+ */
+function makeBarrier(count: number): { gate: Promise<void>; arrive: () => void } {
+  let arrived = 0;
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return {
+    gate,
+    arrive: () => {
+      arrived += 1;
+      if (arrived >= count) release();
+    },
+  };
+}
+
+const TEST_ENV: InfraEnvBindings = {
+  STAGE: "local",
+  LOG_LEVEL: "info",
+  DATABASE_URL: process.env["DEV_DB_URL"] as string,
+  BETTER_AUTH_SECRET: "s",
+  RESEND_API_KEY: "",
+  EMAIL_FROM: "a@b.c",
+  APP_URL: "https://ntizo.test",
+  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_SECRET: "",
+};
+
+/**
+ * One create, on its own connection and in its own real transaction.
+ *
+ * `infraStore.runAsync` gives it a fresh AsyncLocalStorage scope, so
+ * `Db.getDbConnection()` opens a brand-new socket independent of the other
+ * racer's and of this file's own bound client. The command then opens its
+ * own real transaction through the `DrizzleUnitOfWork` it was built with —
+ * the same class production wires — which is what lets
+ * `pg_advisory_xact_lock` hold across the read, the supersede and the
+ * insert. Closes its own connection in `finally`.
+ */
+async function createDraftInOwnTransaction(input: {
+  customerId: string;
+  startsAt: Date;
+}): Promise<{ id: string }> {
+  return infraStore.runAsync(TEST_ENV, async () => {
+    try {
+      return await createDraft(input);
+    } finally {
+      await Db.closeDbConnection();
+    }
+  });
+}
+
+describe("CreateBookingCommand: the one-draft rule under real concurrency", () => {
+  /**
+   * The test that decides whether the rule is a rule or a hope.
+   *
+   * Two genuinely separate connections, each opening a real transaction,
+   * both creating a draft for the *same customer* on *different* slots, both
+   * released from the barrier together. A sequential test proves nothing
+   * here: by the time a second call runs, the first has already committed,
+   * so its draft is visible and gets superseded whether or not a lock exists.
+   *
+   * Without the lock, `findOpenDraftForCustomer` is a plain `SELECT`: both
+   * racers read "no open draft" before either writes, both insert, and the
+   * customer ends up holding two slots — the exact state this rule's name
+   * says cannot happen. With it, the loser blocks until the winner commits,
+   * then reads the winner's draft and supersedes it.
+   *
+   * **Both racers succeed.** That is the property a lock buys over a partial
+   * unique index, which would have made the loser fail and the customer
+   * retry for doing nothing wrong.
+   */
+  test("two concurrent creates for one customer leave exactly one draft, and neither fails", async () => {
+    const barrier = makeBarrier(2);
+    const racer = async (startsAt: Date): Promise<{ id: string }> => {
+      barrier.arrive();
+      await barrier.gate;
+      return createDraftInOwnTransaction({ customerId: racingCustomerId, startsAt });
+    };
+
+    const created: string[] = [];
+    try {
+      const [a, b] = await Promise.all([racer(ELEVEN_AM), racer(NOON)]);
+      created.push(a.id, b.id);
+      createdBookingIds.push(a.id, b.id);
+
+      // Neither call failed, and they are two distinct bookings — not one
+      // call quietly losing its slot to the other.
+      expect(a.id).not.toBe(b.id);
+
+      const rows = await db
+        .select({ id: booking.id, status: booking.status })
+        .from(booking)
+        .where(eq(booking.customerId, racingCustomerId));
+
+      // The assertion the lock exists for. Without it this is two.
+      const drafts = rows.filter((r) => r.status === "DRAFT");
+      const expired = rows.filter((r) => r.status === "EXPIRED");
+      expect(rows).toHaveLength(2);
+      expect(drafts).toHaveLength(1);
+      expect(expired).toHaveLength(1);
+
+      // And the supersede really ran on the loser rather than the row simply
+      // never being written: the released slot is free, and the history row
+      // names why.
+      const expiredId = expired[0]!.id;
+      expect(await historyFor(expiredId)).toEqual([
+        { reason: "superseded_by_new_draft", changedByUserId: racingCustomerId },
+      ]);
+    } finally {
+      for (const id of created) {
+        await db.delete(bookingChange).where(eq(bookingChange.bookingId, id));
+        await db.delete(booking).where(eq(booking.id, id));
+      }
+    }
   });
 });

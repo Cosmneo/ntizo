@@ -23,6 +23,21 @@ import type {
 const MS_PER_DAY = 86_400_000;
 
 /**
+ * The second key of `pg_advisory_xact_lock`'s two-int form for
+ * `findOpenDraftForCustomer`'s lock — a namespace, not a value.
+ *
+ * Negative on purpose. The other advisory lock in this file, `insert`'s seat
+ * assignment, passes a civil day number in that position, and both share one
+ * key space. Day numbers are days since the epoch, so positive for every date
+ * this platform can book; a negative namespace therefore cannot be mistaken
+ * for one. Without that separation, a customer id that happened to hash to
+ * the same `int` as a provider member id would serialise two transactions
+ * with nothing to do with each other — harmless to correctness, invisible,
+ * and slow.
+ */
+const CUSTOMER_DRAFT_LOCK_NAMESPACE = -1;
+
+/**
  * The civil day `instant` falls on in `timezone`, as an integer count of
  * days since the epoch — small enough for `pg_advisory_xact_lock`'s `int`
  * key, and derived through `localDateAt`, the same conversion
@@ -343,9 +358,37 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * planner reached first — a query whose answer changes between runs. The
    * oldest is the honest one to expire first: it is the hold that has been
    * blocking a provider's calendar the longest.
+   *
+   * **Takes an advisory lock on the customer before reading**, the same
+   * mechanism and the same reasoning as `insert`'s seat assignment one file
+   * down: a `SELECT` with no lock behind it answers a question that can stop
+   * being true before the caller acts on it. Two concurrent creates for one
+   * customer would both read "no open draft" and both insert, and the
+   * customer would hold two slots — the exact state
+   * `CreateBookingCommand`'s rule is named for preventing. See
+   * `BookingRepositoryPort.findOpenDraftForCustomer` for why serialising is
+   * better than a unique index here, and why the caller's compare-and-swap
+   * is still needed anyway.
+   *
+   * `_xact_`, so it releases at commit rather than needing an explicit
+   * unlock — and so it protects nothing at all outside a real transaction,
+   * where every statement autocommits. `CreateBookingCommand` calls this as
+   * the first statement inside its `atomicExecute`, which is what makes the
+   * lock span the read, the supersede and the insert that follows.
+   *
+   * **Lock ordering is consistent with `insert`'s and cannot deadlock
+   * against it:** every path takes the customer lock here first and the
+   * member/day lock later, never the reverse, so two transactions can queue
+   * on each other but never form a cycle.
    */
   async findOpenDraftForCustomer(customerId: string): Promise<Booking | null> {
-    const [row] = await getDb()
+    const db = getDb();
+
+    await db.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${customerId}), ${CUSTOMER_DRAFT_LOCK_NAMESPACE})`,
+    );
+
+    const [row] = await db
       .select()
       .from(booking)
       .where(and(eq(booking.customerId, customerId), eq(booking.status, BookingStatus.Draft)))

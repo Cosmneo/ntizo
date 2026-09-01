@@ -70,6 +70,27 @@ export interface BookingRepositoryPort {
    *
    * Not a rate limit and not pretending to be one: a scripted caller can
    * still create, abandon and re-create in a loop. #108 stays open.
+   *
+   * **This read takes a lock, and the lock is the rule.** Called inside a
+   * transaction, it serialises every other caller asking about the *same
+   * customer* until that transaction ends. Without it the rule is optimistic
+   * and its own name is false: two concurrent creates — a double-click, or a
+   * retry racing the original — both read "no open draft", both insert, and
+   * the customer holds two slots. The lock makes the loser see the winner's
+   * draft and supersede it, so **both calls still succeed** and the race
+   * becomes the intended behaviour rather than an error.
+   *
+   * A lock rather than a partial unique index on `(customer_id) WHERE status
+   * = 'DRAFT'`, which was considered and rejected on what it does to the
+   * loser: a constraint violation this command would have to catch and the
+   * customer would have to retry, for doing nothing wrong. Serialising costs
+   * one waiting transaction and produces the right answer on its own.
+   *
+   * **It does not make the caller's compare-and-swap redundant.** The lock is
+   * keyed on the customer; a `submit` or a sweep touching that same draft
+   * holds no such lock and can still land between this read and the write
+   * that follows it. That is what `save`'s `expectedStatus` is for, and it
+   * stays.
    */
   findOpenDraftForCustomer(customerId: string): Promise<Booking | null>;
 

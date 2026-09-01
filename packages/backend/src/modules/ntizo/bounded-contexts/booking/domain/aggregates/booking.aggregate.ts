@@ -831,14 +831,28 @@ export class Booking {
   }
 
   /**
-   * A clock runs out on a booking nobody has committed money to yet.
+   * A booking ends before anybody committed money to it.
    *
-   * Moves `DRAFT` — a checkout the customer abandoned — and
-   * `AWAITING_PROVIDER` — a request the provider never answered — to
-   * `EXPIRED`. Both release the slot, and the two are the same transition
-   * with very different audiences; which one happened is not recoverable
-   * from the row afterwards, so the command carries it on the event instead
-   * (`BookingExpiredClock`).
+   * Moves `DRAFT` and `AWAITING_PROVIDER` to `EXPIRED`, releasing the slot.
+   * **Three routes reach it, and only two of them are clocks:**
+   *
+   * - `DRAFT` past its checkout hold — the customer opened the form and
+   *   walked away. `SweepBookingCommand`'s.
+   * - `AWAITING_PROVIDER` past the provider's response window — the customer
+   *   did everything asked of them and nobody answered. Also the sweep's.
+   * - `DRAFT` superseded — the customer started a second checkout, and
+   *   `CreateBookingCommand` ends the first before holding another slot.
+   *   **Nothing ran out here.** This route is not a deadline at all, which
+   *   is why the union its callers carry is `BookingExpiredCause` and no
+   *   longer the `BookingExpiredClock` it was named when the two clocks were
+   *   the only way in.
+   *
+   * The row is identical down all three — same status, same `expiredAt`, same
+   * released slot — so which route ran is not recoverable from it afterwards.
+   * Each caller carries that on the event instead (`BookingExpiredCause`)
+   * and writes its own `booking_change` row, because the three do not share
+   * an audience: two tell nobody, and the middle one owes the customer a
+   * message.
    *
    * **`PENDING_PAYMENT` is no longer one of them**, and that reversal is
    * this method's whole rewrite. An earlier version moved exactly that one
@@ -851,16 +865,18 @@ export class Booking {
    * that explains nothing to them. That case is `cancel`'s, which ends it
    * as `CANCELLED` carrying `customer_did_not_pay`.
    *
-   * **A no-op from every other status, and the reasoning for that has not
-   * changed — only the set of statuses it covers.** The sweep that calls
-   * this is watching a clock, not the booking: `findDueForSweep` selected
-   * the row on `expires_at`, and between that select and this call the
-   * booking may have been submitted, accepted, paid, or declined. That is
-   * an ordinary race, not a fault on either side, so a status this method
-   * does not govern is answered by handing the same instance back rather
-   * than raising something a human then has to read and dismiss. The
-   * opposite of `markPaid`'s refusal, and deliberately so: a stray payment
-   * is a fact somebody must see, a stray sweep is not.
+   * **A no-op from every other status, and the reasoning holds for both
+   * callers.** Neither is looking at the booking when it decides to expire
+   * one. The sweep selected the row on `expires_at`, and between that select
+   * and this call it may have been submitted, accepted, paid or declined;
+   * `CreateBookingCommand` read the customer's open draft a moment earlier
+   * and is exposed to exactly the same gap — the advisory lock it takes
+   * serialises two *creates* against each other, not a submit landing in
+   * between. That is an ordinary race, not a fault on either side, so a
+   * status this method does not govern is answered by handing the same
+   * instance back rather than raising something a human then has to read and
+   * dismiss. The opposite of `markPaid`'s refusal, and deliberately so: a
+   * stray payment is a fact somebody must see, a stray expiry is not.
    */
   expire(at: Date): Booking {
     if (!EXPIRABLE_STATUSES.includes(this.props.status)) {
