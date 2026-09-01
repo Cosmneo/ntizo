@@ -101,6 +101,18 @@ describe("RailPriceSummary", () => {
     );
   });
 
+  it("names the package it is quoting in the link, so checkout charges this total", async () => {
+    // This card is the only control on the platform that knows which option
+    // the reader is looking at. Drop `optionId` from the link and checkout
+    // falls back to the service's default — the reader agrees to the total
+    // printed above and is charged a different one, silently.
+    renderRail(FIXED);
+    expect(await screen.findByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("optionId=opt-1"),
+    );
+  });
+
   it("labels an hourly option by its minimum, not by a duration it does not have", async () => {
     renderRail({
       ...FIXED,

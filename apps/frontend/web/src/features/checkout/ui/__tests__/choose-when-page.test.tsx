@@ -73,6 +73,11 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
     locationType: "at_provider",
     bookingMode: "priced",
     imageUrls: [],
+    // **Two options, deliberately, and the expensive one is not the default.**
+    // A single-option fixture cannot tell "books the package the customer
+    // chose" apart from "books the only package there is", so it cannot fail
+    // if the choice is dropped on the way here — which is exactly the defect
+    // `optionId` was added to close.
     options: [
       {
         id: "opt-1",
@@ -84,6 +89,17 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
         stepMinutes: null,
         pricingMode: "fixed",
         isDefault: true,
+      },
+      {
+        id: "opt-2",
+        name: "Corte e barba",
+        amountMinor: 90000,
+        currency: "MZN",
+        durationMinutes: 90,
+        minMinutes: null,
+        stepMinutes: null,
+        pricingMode: "fixed",
+        isDefault: false,
       },
     ],
     performers: [],
@@ -362,6 +378,85 @@ describe("ChooseWhenPage", () => {
         locale: "pt-MZ",
       },
     ]);
+  });
+
+  it("holds the package the customer chose, not the service's default", async () => {
+    // The defect this closes: the chosen package used to be left on the
+    // service page, and this one re-derived "marked default, else the first"
+    // — so somebody who read 900 beside "Corte e barba", pressed the button
+    // under that price, and confirmed here got a draft for the 500 one. It is
+    // silent, it goes either way depending on which package carries the
+    // default flag, and the price they agreed to is not the price the booking
+    // carries.
+    const { create } = renderChooseWhen({
+      serviceId: "svc-1",
+      at: "/book/svc-1?optionId=opt-2",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    await waitFor(() => expect(create.calls).toHaveLength(1));
+    expect(create.calls[0]).toMatchObject({ serviceOptionId: "opt-2" });
+  });
+
+  it("quotes the package it is about to hold, so a substitution is never silent", async () => {
+    // The other half of the same rule: whatever this page ends up booking,
+    // it prints. That is what makes falling back to the default safe for a
+    // link that names no option (or names one since deactivated) — the
+    // customer sees the package and the price before they confirm, rather
+    // than discovering the swap afterwards.
+    renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?optionId=opt-2" });
+    // A regex, because the rail joins the package name and its length into
+    // one line ("Corte e barba · 90 min") out of two text nodes.
+    expect(await screen.findByText(/Corte e barba/)).toBeInTheDocument();
+    expect(screen.getByText(/900/)).toBeInTheDocument();
+    expect(screen.queryByText(/500/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the chosen package when the customer picks a time", async () => {
+    // Every slot rewrite replaces the whole search object, so an `optionId`
+    // not carried through `goToSlot` is the same silent downgrade one click
+    // later — green on arrival, wrong by the time anybody confirms.
+    const { router } = renderChooseWhen({
+      serviceId: "svc-1",
+      at: "/book/svc-1?optionId=opt-2",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+
+    await waitFor(() =>
+      expect(router.state.location.search).toMatchObject({
+        optionId: "opt-2",
+        memberId: "mem-1",
+        startsAt: NINE,
+      }),
+    );
+  });
+
+  it("falls back to the default package for a link that names none", async () => {
+    // The service row on a provider's page is handed a `ServiceDTO`, whose
+    // `defaultOption` carries no id at all, so it genuinely cannot name one.
+    // That link must still work.
+    const { create } = renderChooseWhen({ serviceId: "svc-1" });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    await waitFor(() => expect(create.calls).toHaveLength(1));
+    expect(create.calls[0]).toMatchObject({ serviceOptionId: "opt-1" });
+  });
+
+  it("falls back rather than breaking when the named package no longer exists", async () => {
+    // A bookmarked link whose option was deactivated since. Booking the
+    // default is the recoverable answer, and honest because the rail names
+    // what it is booking — see the quoting test above.
+    const { create } = renderChooseWhen({
+      serviceId: "svc-1",
+      at: "/book/svc-1?optionId=opt-gone",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    await waitFor(() => expect(create.calls).toHaveLength(1));
+    expect(create.calls[0]).toMatchObject({ serviceOptionId: "opt-1" });
   });
 
   it("will not hold anything until a time has been chosen", async () => {

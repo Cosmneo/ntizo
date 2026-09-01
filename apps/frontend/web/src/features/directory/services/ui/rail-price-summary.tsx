@@ -131,10 +131,19 @@ export function RailPriceSummary({
             and a purchase behind a dialog cannot be linked to, opened in a
             new tab, or survived a refresh — never mind the round trip
             through sign-in an anonymous visitor has to make before a slot
-            can be held for them. */}
+            can be held for them.
+
+            `optionId` is the package this card is quoting, and carrying it is
+            what makes the total above the total the booking charges. This is
+            the one control on the platform that knows which option a customer
+            is looking at — `ServiceOptions` puts the selection in
+            `ServiceDetailPage`, which hands it here — so if it does not say
+            so in the link, nothing downstream can, and checkout books the
+            service's default instead. */}
         <Link
           to="/book/$serviceId"
           params={{ serviceId }}
+          search={{ optionId: option.id }}
           className={buttonVariants({ className: "w-full" })}
         >
           {t("availabilityCheckAction")}

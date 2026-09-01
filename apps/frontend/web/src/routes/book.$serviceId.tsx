@@ -27,6 +27,16 @@ export const Route = createFileRoute("/book/$serviceId")({
    * was not supplied stays absent rather than becoming an explicit
    * `undefined` in the URL.
    *
+   * `optionId` is which package the customer is buying, and it is here for
+   * the same reason the slot is: it is a *choice*, made on the service page,
+   * and this route is the only thing standing between that choice and the
+   * price the booking will actually charge. Without it this page fell back to
+   * the service's default option, so somebody who picked the 900 package and
+   * pressed "see availability" got a draft for the 500 one — silently, and in
+   * either direction. It stays *optional*, because a caller that genuinely
+   * has no option in hand (a provider's service row is handed a `ServiceDTO`,
+   * whose `defaultOption` carries no id) must still be able to link here.
+   *
    * `expired` is a flag the checkout countdown sets when a draft's hold
    * lapses on step 2 or 3 and it sends the customer back here. Only `true`
    * is honoured: it exists to make the page say what happened, and any other
@@ -34,13 +44,15 @@ export const Route = createFileRoute("/book/$serviceId")({
    */
   validateSearch: (
     search: Record<string, unknown>,
-  ): { memberId?: string; startsAt?: string; expired?: true } => {
+  ): { memberId?: string; startsAt?: string; optionId?: string; expired?: true } => {
     const memberId = typeof search["memberId"] === "string" ? search["memberId"] : undefined;
     const startsAt = typeof search["startsAt"] === "string" ? search["startsAt"] : undefined;
+    const optionId = typeof search["optionId"] === "string" ? search["optionId"] : undefined;
     const expired = search["expired"] === true || search["expired"] === "true";
     return {
       ...(memberId ? { memberId } : {}),
       ...(startsAt ? { startsAt } : {}),
+      ...(optionId ? { optionId } : {}),
       ...(expired ? { expired: true as const } : {}),
     };
   },

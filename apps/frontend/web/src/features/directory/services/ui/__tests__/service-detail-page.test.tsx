@@ -291,8 +291,20 @@ describe("ServiceDetailPage's body", () => {
     );
     // The provider's price, unmarked up: 50000 -> 500; 90000 -> 900.
     expect(await screen.findByTestId("booking-total")).toHaveTextContent(/500/);
+    expect(screen.getByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("optionId=opt-1"),
+    );
     await userEvent.click(screen.getByRole("radio", { name: /Longo/ }));
     expect(screen.getByTestId("booking-total")).toHaveTextContent(/900/);
+    // The whole chain, end to end: the body's selection moves the rail's
+    // total *and* the link checkout reads its package from. Assert only the
+    // total and the two can drift — which is exactly how a customer came to
+    // agree to 900 and be booked for 500.
+    expect(screen.getByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("optionId=opt-2"),
+    );
   });
 
   it("opens on the provider's marked default, not on the cheapest option", async () => {

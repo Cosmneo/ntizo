@@ -27,8 +27,39 @@ import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 interface BookSearch {
   memberId?: string;
   startsAt?: string;
+  /** Which package the customer chose on the service page, when they chose one. */
+  optionId?: string;
   /** Set by the countdown when a draft's hold lapsed on step 2 or 3. */
   expired?: boolean;
+}
+
+/**
+ * The package this checkout is for.
+ *
+ * `optionId` first, because it is the customer's actual choice: they read a
+ * price on the service page and pressed the button beside it, and anything
+ * this page books other than that option charges them a number they were
+ * never shown. Before the id travelled, this function was just the fallback,
+ * and a service with a 500 default and a 900 selection quietly booked the
+ * 500 — the page even printed the right price on the service side and the
+ * wrong one here.
+ *
+ * The fallback stays for the callers that have no option id to give (a
+ * provider's service row is handed a `ServiceDTO`, whose `defaultOption`
+ * carries no id) and for a link whose option has since been deactivated.
+ * Falling back is safe *because this page prints what it is about to book* —
+ * the name, the price and the length are in the rail beside the confirm — so
+ * a customer whose id did not resolve sees the substitution rather than
+ * discovering it on the invoice.
+ */
+function chosenOption(
+  options: readonly ServiceDetailOptionDTO[],
+  optionId: string | undefined,
+): ServiceDetailOptionDTO | null {
+  const named = optionId ? options.find((o) => o.id === optionId) : undefined;
+  // Cheapest-first, since `serviceById` already orders them that way — the
+  // same "marked default, else the first" rule the service page opens on.
+  return named ?? options.find((o) => o.isDefault) ?? options[0] ?? null;
 }
 
 /**
@@ -146,12 +177,9 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
 
   const { create, pending, errorCode, failed, reset } = useCreateBooking();
 
-  // The provider's own default, falling back to the first — the cheapest,
-  // since `serviceById` already orders options cheapest first. The same rule
-  // the service page opens on, so a customer who read a price there and came
-  // here is being offered that same package.
-  const option: ServiceDetailOptionDTO | null =
-    service.options.find((o) => o.isDefault) ?? service.options[0] ?? null;
+  // Whichever package the customer was looking at when they left the service
+  // page — see `chosenOption` for why a guess is not good enough here.
+  const option = chosenOption(service.options, search.optionId);
 
   // A reasonable first guess at which week to open on: the slot already in
   // the URL, or the visitor's own device date. It is not necessarily the
@@ -202,6 +230,12 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
       search: {
         ...(next.memberId ? { memberId: next.memberId } : {}),
         ...(next.startsAt ? { startsAt: next.startsAt } : {}),
+        // Carried, never re-derived: every one of these rewrites replaces the
+        // whole search object, so an `optionId` left out here is an `optionId`
+        // dropped the moment the customer picks a time — which is the same
+        // silent downgrade to the default package that putting it in the URL
+        // exists to prevent, just one click later.
+        ...(search.optionId ? { optionId: search.optionId } : {}),
       },
       // Replaced rather than pushed: trying four times on the way to picking
       // one is not four places a customer wants their back button to visit.
