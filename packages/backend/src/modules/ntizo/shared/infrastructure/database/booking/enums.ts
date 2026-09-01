@@ -51,9 +51,23 @@ export const BookingStatus = {
   Disputed: "DISPUTED",
   /** The provider refused, or never answered in time. */
   Declined: "DECLINED",
-  /** Called off after it was confirmed. */
+  /**
+   * Called off for a named reason, after somebody had already committed
+   * something to it. Today that is one case, and it is not a confirmed
+   * booking: a `PENDING_PAYMENT` booking whose payment window closed with
+   * the money never arriving — the provider had blocked their calendar on
+   * the platform's own promise, so they are owed a cancellation carrying a
+   * reason rather than an expiry that explains nothing. See
+   * `BookingCancelledReason` and `Booking.cancel`. A cancellation policy,
+   * when one exists, will add its own reasons and its own source statuses.
+   */
   Cancelled: "CANCELLED",
-  /** Nobody paid before the payment window closed. */
+  /**
+   * A clock ran out before anybody had committed money to it: a `DRAFT`
+   * whose checkout hold passed, or an `AWAITING_PROVIDER` whose response
+   * window did. **Not** the payment window — that one ends in `CANCELLED`,
+   * above. See `Booking.expire` and `DEADLINE_BEARING_STATUSES` below.
+   */
   Expired: "EXPIRED",
 } as const;
 
@@ -126,7 +140,7 @@ export const SLOT_HOLDING_STATUSES = [
  * because by then a provider has committed their calendar and is owed an
  * explanation rather than a status change nobody narrates. Adding a fourth
  * member here without answering that question for it leaves
- * `ExpireBookingCommand` with nothing to do for the rows it now selects.
+ * `SweepBookingCommand` with nothing to do for the rows it now selects.
  */
 export const DEADLINE_BEARING_STATUSES = [
   BookingStatus.Draft,

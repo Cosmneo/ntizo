@@ -47,7 +47,7 @@ export interface SubmitBookingInput {
  * place this race is actually settled. `false` back means the other request
  * won it, and this command returns without publishing, without scheduling a
  * job, and without throwing — the same outcome the aggregate's own no-op
- * path produces in `MarkBookingPaidCommand` and `ExpireBookingCommand`,
+ * path produces in `MarkBookingPaidCommand` and `SweepBookingCommand`,
  * reached here by the repository's guard instead.
  *
  * **`scheduleBookingExpiry` is called after the transaction resolves, with

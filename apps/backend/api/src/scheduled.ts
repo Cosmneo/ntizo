@@ -76,9 +76,9 @@ export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
  * function already builds the one context a cron invocation needs — a
  * second `infraStore.runAsync` would mean a second `{ max: 1 }` connection
  * and a second close racing this one. Unlike the notification sweep,
- * `ExpireDueBookingsInternalCommand` defers nothing past its own `await`:
+ * `SweepDueBookingsInternalCommand` defers nothing past its own `await`:
  * each booking's transaction commits and its outbox dispatch runs
- * synchronously inside `ExpireBookingCommand.execute`, so it needs nothing
+ * synchronously inside `SweepBookingCommand.execute`, so it needs nothing
  * from `infraStore.waitUntil` — it only needs the DB context this scope
  * already set up.
  */
@@ -155,7 +155,7 @@ export async function scheduled(
         // with bookings.
         try {
           const booking = bootstrapBooking();
-          const { swept, failed: bookingFailed } = await booking.useCases.internal.expireDue.execute({
+          const { swept, failed: bookingFailed } = await booking.useCases.internal.sweepDue.execute({
             limit: BOOKING_EXPIRY_SWEEP_LIMIT,
           });
 
@@ -164,7 +164,7 @@ export async function scheduled(
             // exists for getRequestScopedLogger() to read. "swept", not
             // "expired": two of the three clocks end in `EXPIRED` and the
             // third ends in `CANCELLED`, and this line cannot tell them
-            // apart — see `ExpireDueBookingsInternalCommand.execute`.
+            // apart — see `SweepDueBookingsInternalCommand.execute`.
             console.error(
               `[scheduled] booking-expiry sweep: ${swept} swept, ${bookingFailed} failed`,
             );

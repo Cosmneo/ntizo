@@ -26,7 +26,12 @@ import { booking } from "../booking/schemas/booking.schema";
 import type { NewBookingRow } from "../booking/schemas/booking.schema";
 import { bookingChange } from "../booking/schemas/booking-change.schema";
 import { platformSettings } from "../platform/schemas/platform-settings.schema";
-import { BOOKING_STATUSES, BookingStatus, SLOT_HOLDING_STATUSES } from "../booking/enums";
+import {
+  BOOKING_STATUSES,
+  BookingStatus,
+  DEADLINE_BEARING_STATUSES,
+  SLOT_HOLDING_STATUSES,
+} from "../booking/enums";
 import {
   bestEffortCleanup,
   DEV_DB_COLD_START_TIMEOUT_MS,
@@ -423,6 +428,57 @@ describe("booking_member_slot_no_overlap", () => {
     }
     for (const status of BOOKING_STATUSES) {
       if (!(SLOT_HOLDING_STATUSES as readonly string[]).includes(status)) {
+        expect(definition).not.toContain(status);
+      }
+    }
+  });
+
+  test("the sweep index is partial on exactly the deadline-bearing statuses", async () => {
+    // `pg_indexes`, not `pg_constraint`: this one really is a plain partial
+    // index, and `indexdef` is the catalogue's own account of what is on the
+    // live table.
+    //
+    // **Why this test exists even though the predicate is generated.**
+    // Unlike the exclusion constraint above, `booking_expiry_sweep_idx`'s
+    // `WHERE` is built from `DEADLINE_BEARING_STATUSES` through
+    // `booking.schema.ts`'s `statusList`, so the schema file and the constant
+    // cannot drift. That guarantees nothing about the *database*, and the
+    // failure mode here is the quiet kind: a partial index whose predicate no
+    // longer implies the query's is not an error, it is simply never used.
+    // Postgres plans a sequential scan plus a sort of the whole `booking`
+    // table, every sixty seconds, for ever, and every test stays green. An
+    // unapplied migration is invisible without something that reads the live
+    // definition back — this.
+    const rows = await sql`
+      SELECT indexdef
+      FROM pg_indexes
+      WHERE schemaname = 'ntizo_booking'
+        AND tablename = 'booking'
+        AND indexname = 'booking_expiry_sweep_idx'`;
+    const definition = rows[0]?.["indexdef"] as string | undefined;
+    expect(definition).toBeDefined();
+    // Partial, and on the column the sweep both filters and orders by — an
+    // index that lost either is an index that cannot serve the query even
+    // with the right statuses.
+    expect(definition).toContain("expires_at");
+    expect(definition).toContain("WHERE");
+
+    // Both directions, the same discipline as the exclusion constraint
+    // above. A status in the constant but missing from the predicate means
+    // the sweep selects rows this index cannot serve — the sequential scan,
+    // silently. A status in the predicate but not in the constant means
+    // somebody widened the *index* instead of the query, which is the more
+    // dangerous mistake of the two: the index would then be inviting a
+    // future sweep to claim rows nothing has decided an ending for. Plain
+    // `toContain` is safe both ways: no `BOOKING_STATUSES` member's name is
+    // a substring of another's, and the statuses are upper-case where every
+    // identifier in an `indexdef` is not (so `EXPIRED` cannot match
+    // `expires_at`).
+    for (const status of DEADLINE_BEARING_STATUSES) {
+      expect(definition).toContain(status);
+    }
+    for (const status of BOOKING_STATUSES) {
+      if (!(DEADLINE_BEARING_STATUSES as readonly string[]).includes(status)) {
         expect(definition).not.toContain(status);
       }
     }

@@ -3,7 +3,7 @@
  * the booking is `PENDING_PAYMENT`. `PENDING_PAYMENT` is itself one of the
  * `SLOT_HOLDING_STATUSES`: the hold belongs to the booking from creation through
  * payment, expiry, or any later terminal state. This plan releases the slot in one
- * place: Task 9's `ExpireBookingCommand` when a booking expires unpaid.
+ * place: Task 9's `SweepBookingCommand` when a booking expires unpaid.
  *
  * Plan 2's reschedule command is the exception that needs `transfer`: it must move
  * a booking to a new slot without ever releasing the old one. If a reschedule
@@ -36,7 +36,7 @@ export interface SlotHoldPort {
   /**
    * Release a held slot back to the calendar, making it available again.
    *
-   * Called by Task 9's `ExpireBookingCommand` when a booking expires without payment.
+   * Called by Task 9's `SweepBookingCommand` when a booking expires without payment.
    */
   release(bookingId: string): Promise<void>;
 

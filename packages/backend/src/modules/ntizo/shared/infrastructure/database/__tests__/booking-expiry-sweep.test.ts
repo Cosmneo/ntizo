@@ -1,5 +1,5 @@
 /**
- * `ExpireDueBookingsInternalCommand` — the sweep behind `scheduled.ts` —
+ * `SweepDueBookingsInternalCommand` — the sweep behind `scheduled.ts` —
  * against the real dev database, same reason and same mechanism as
  * `booking-repository.test.ts`: every real adapter this sweep is built from
  * (`DrizzleBookingRepository`, `DrizzleUnitOfWork`, `OutboxAdapter`) reaches
@@ -54,8 +54,8 @@ import { outboxEvent } from "../outbox/schemas/outbox-event.schema";
 import { Booking } from "../../../../bounded-contexts/booking/domain/aggregates/booking.aggregate";
 import { DrizzleBookingRepository } from "../../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking.repository";
 import { BookingRowSlotHold } from "../../../../bounded-contexts/booking/infrastructure/adapters/booking-row-slot-hold.adapter";
-import { ExpireBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/expire-booking.command";
-import { ExpireDueBookingsInternalCommand } from "../../../../bounded-contexts/booking/app/use-cases/expire-due-bookings.internal.command";
+import { SweepBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/sweep-booking.command";
+import { SweepDueBookingsInternalCommand } from "../../../../bounded-contexts/booking/app/use-cases/sweep-due-bookings.internal.command";
 import type { BookingChangeRecord } from "../../../../bounded-contexts/booking/app/ports/outbound/booking.repository.port";
 import type { BookingRepositoryPort } from "../../../../bounded-contexts/booking/app/ports/outbound/booking.repository.port";
 import {
@@ -246,8 +246,8 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
 
 /**
  * A fresh sweep, wired exactly the way `bootstrapBooking()` wires it in
- * production — the same `ExpireBookingCommand` instance backs both
- * `useCases.expireBooking` and `useCases.internal.expireDue` there, and this
+ * production — the same `SweepBookingCommand` instance backs both
+ * `useCases.sweepBooking` and `useCases.internal.sweepDue` there, and this
  * mirrors that rather than constructing two independent commands that could
  * drift apart.
  */
@@ -258,8 +258,8 @@ function buildSweep(
   const slotHold = new BookingRowSlotHold();
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
-  const expireBooking = new ExpireBookingCommand(bookingRepo, slotHold, unitOfWork, outboxPort);
-  return new ExpireDueBookingsInternalCommand(bookingRepo, expireBooking, now);
+  const sweepBooking = new SweepBookingCommand(bookingRepo, slotHold, unitOfWork, outboxPort);
+  return new SweepDueBookingsInternalCommand(bookingRepo, sweepBooking, now);
 }
 
 /**
@@ -329,7 +329,30 @@ async function announcementsFor(
   }));
 }
 
-describe("ExpireDueBookingsInternalCommand", () => {
+/**
+ * The durable history the sweep left behind for one booking.
+ *
+ * The event above is a message; this is the record. If Notification drops
+ * `BookingCancelled`, or is written later, or a provider simply asks
+ * afterwards why their Saturday emptied, `booking_change` is the only thing
+ * that still answers — which is the whole reason the sweep writes a row at
+ * all, and the reason `changed_by_user_id` had to become nullable to let it.
+ */
+async function historyFor(
+  bookingId: string,
+): Promise<{ reason: string; changedByUserId: string | null }[]> {
+  const rows = await db
+    .select({
+      reason: bookingChange.reason,
+      changedByUserId: bookingChange.changedByUserId,
+    })
+    .from(bookingChange)
+    .where(eq(bookingChange.bookingId, bookingId))
+    .orderBy(asc(bookingChange.changedAt));
+  return rows;
+}
+
+describe("SweepDueBookingsInternalCommand", () => {
   test("expires a DRAFT past its checkout hold, and leaves one still inside it alone", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-05T12:00:00.000Z");
@@ -384,6 +407,12 @@ describe("ExpireDueBookingsInternalCommand", () => {
         providerMemberId: memberId,
         clock: "checkout_hold",
       });
+
+      // And the durable half: nobody made this change, so the actor is null
+      // rather than a sentinel that would read as a person.
+      expect(await historyFor(due.id as string)).toEqual([
+        { reason: "checkout_hold_expired", changedByUserId: null },
+      ]);
     });
   });
 
@@ -433,6 +462,10 @@ describe("ExpireDueBookingsInternalCommand", () => {
         clock: "provider_response",
       });
       expect(announced?.payload.clock).not.toBe("checkout_hold");
+
+      expect(await historyFor(due.id as string)).toEqual([
+        { reason: "provider_did_not_respond", changedByUserId: null },
+      ]);
     });
   });
 
@@ -508,6 +541,15 @@ describe("ExpireDueBookingsInternalCommand", () => {
         providerMemberId: memberId,
         reason: "customer_did_not_pay",
       });
+
+      // The reason the provider is owed does not live only on an event.
+      // `BookingCancelled` is a message a consumer can drop, arrive too
+      // late for, or not exist yet to receive; this row is the record that
+      // still answers "why did my Saturday empty?" afterwards. Null actor
+      // because nobody did it — a deadline passed.
+      expect(await historyFor(due.id as string)).toEqual([
+        { reason: "customer_did_not_pay", changedByUserId: null },
+      ]);
     });
   });
 
@@ -617,33 +659,46 @@ describe("ExpireDueBookingsInternalCommand", () => {
 
   /**
    * One booking that can no longer be settled — here, a row that vanished
-   * between `findDueForExpiry`'s select and `ExpireBookingCommand` reaching
+   * between `findDueForExpiry`'s select and `SweepBookingCommand` reaching
    * it, the same race the command's own doc comment names — must not take
    * the rest of the wave down with it. `findById` is intercepted for
    * exactly one booking id rather than faked outright: `findDueForExpiry`
    * still runs the real query against the real database, and only the one
    * lookup this test needs to fail is redirected.
+   *
+   * **The failing booking is deliberately the OLDEST deadline, so the sweep
+   * reaches it first.** An earlier version of this test had it second, and
+   * that version could not fail: `findDueForExpiry` returns oldest-first,
+   * so the throw landed on the last row of the batch and there was nothing
+   * left for a `break` to skip. Replacing the `console.error` with
+   * `console.error; break` — the exact bug this test exists to catch — left
+   * the file green. With the deadlines this way round, that mutation strands
+   * `good` at `PENDING_PAYMENT` and reddens both the count and the status
+   * assertion below.
    */
   test("one booking failing does not stop the rest of the wave", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-04T12:00:00.000Z");
 
-      const good = track(
+      // Oldest deadline: the sweep reaches this one first, and it throws.
+      const vanished = track(
         await repo.insert(
           pendingBooking(
             bookingInput({
-              startsAt: new Date("2026-11-04T09:00:00.000Z"),
+              startsAt: new Date("2026-11-04T10:00:00.000Z"),
               expiresAt: new Date("2026-11-04T09:00:00.000Z"),
             }),
           ),
           1,
         ),
       );
-      const vanished = track(
+      // Newer deadline: everything about this test is whether the sweep
+      // still gets here.
+      const good = track(
         await repo.insert(
           pendingBooking(
             bookingInput({
-              startsAt: new Date("2026-11-04T10:00:00.000Z"),
+              startsAt: new Date("2026-11-04T09:00:00.000Z"),
               expiresAt: new Date("2026-11-04T09:15:00.000Z"),
             }),
           ),
@@ -669,9 +724,11 @@ describe("ExpireDueBookingsInternalCommand", () => {
 
       expect(result).toEqual({ swept: 1, failed: 1 });
 
+      // The assertion the ordering above exists for: the wave carried on
+      // past the failure and settled the booking that came after it.
       expect((await repo.findById(good.id as string))?.status).toBe("CANCELLED");
 
-      // Untouched: ExpireBookingCommand threw before it ever reached
+      // Untouched: SweepBookingCommand threw before it ever reached
       // `repo.save` for this one, so the row is exactly as
       // `findDueForExpiry` found it — ready for the next sweep to retry.
       expect((await repo.findById(vanishedId))?.status).toBe("PENDING_PAYMENT");

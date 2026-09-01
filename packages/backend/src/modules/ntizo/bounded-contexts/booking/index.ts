@@ -8,10 +8,10 @@ export { AcceptBookingCommand } from "./app/use-cases/accept-booking.command";
 export type { AcceptBookingInput } from "./app/use-cases/accept-booking.command";
 export { DeclineBookingCommand } from "./app/use-cases/decline-booking.command";
 export type { DeclineBookingInput } from "./app/use-cases/decline-booking.command";
-export { ExpireBookingCommand } from "./app/use-cases/expire-booking.command";
-export type { ExpireBookingInput } from "./app/use-cases/expire-booking.command";
-export { ExpireDueBookingsInternalCommand } from "./app/use-cases/expire-due-bookings.internal.command";
-export type { ExpireDueBookingsInternalInput } from "./app/use-cases/expire-due-bookings.internal.command";
+export { SweepBookingCommand } from "./app/use-cases/sweep-booking.command";
+export type { SweepBookingInput } from "./app/use-cases/sweep-booking.command";
+export { SweepDueBookingsInternalCommand } from "./app/use-cases/sweep-due-bookings.internal.command";
+export type { SweepDueBookingsInternalInput } from "./app/use-cases/sweep-due-bookings.internal.command";
 export { MarkBookingPaidCommand } from "./app/use-cases/mark-booking-paid.command";
 export type { MarkBookingPaidInput } from "./app/use-cases/mark-booking-paid.command";
 export type {

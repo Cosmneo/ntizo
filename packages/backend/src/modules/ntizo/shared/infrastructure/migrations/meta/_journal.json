@@ -211,6 +211,13 @@
       "when": 1788219489526,
       "tag": "0029_charming_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1788260155751,
+      "tag": "0030_adorable_the_hood",
+      "breakpoints": true
     }
   ]
 }

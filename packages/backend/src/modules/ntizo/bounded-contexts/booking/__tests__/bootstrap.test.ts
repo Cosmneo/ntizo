@@ -4,8 +4,8 @@ import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
 import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
-import { ExpireBookingCommand } from "../app/use-cases/expire-booking.command";
-import { ExpireDueBookingsInternalCommand } from "../app/use-cases/expire-due-bookings.internal.command";
+import { SweepBookingCommand } from "../app/use-cases/sweep-booking.command";
+import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
 import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
@@ -23,15 +23,15 @@ import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-dela
  * shipped mounted-nowhere in an earlier phase of this project.
  *
  * `markBookingPaid` has no caller anywhere in this task — Payment's event
- * handler reaches for it later. `expireBooking` now does have a caller,
- * `useCases.internal.expireDue` (Task 12's sweep), asserted separately
+ * handler reaches for it later. `sweepBooking` now does have a caller,
+ * `useCases.internal.sweepDue` (Task 12's sweep), asserted separately
  * below. A bootstrap that silently dropped either would leave it with
  * nothing to call, and nothing today would notice: their own command tests
  * construct the class directly and never go through `bootstrapBooking()`.
  *
  * Note on count: `task-10-brief.md` and `task-10-decisions.md` both call for
  * asserting "all four" use cases. Only three command classes exist under
- * `app/use-cases/` — `CreateBookingCommand`, `ExpireBookingCommand`,
+ * `app/use-cases/` — `CreateBookingCommand`, `SweepBookingCommand`,
  * `MarkBookingPaidCommand` — so this test asserts those three. Reported as a
  * discrepancy in the two requirement files rather than resolved by
  * inventing a fourth command.
@@ -44,7 +44,7 @@ describe("bootstrapBooking", () => {
     expect(useCases.submitBooking).toBeInstanceOf(SubmitBookingCommand);
     expect(useCases.acceptBooking).toBeInstanceOf(AcceptBookingCommand);
     expect(useCases.declineBooking).toBeInstanceOf(DeclineBookingCommand);
-    expect(useCases.expireBooking).toBeInstanceOf(ExpireBookingCommand);
+    expect(useCases.sweepBooking).toBeInstanceOf(SweepBookingCommand);
     expect(useCases.markBookingPaid).toBeInstanceOf(MarkBookingPaidCommand);
   });
 
@@ -59,10 +59,10 @@ describe("bootstrapBooking", () => {
     expect(adapters.providerMemberReader).toBeInstanceOf(DrizzleProviderMemberReader);
   });
 
-  it("wires the expiry sweep Task 12's cron calls, over the same expireBooking instance", () => {
+  it("wires the expiry sweep Task 12's cron calls, over the same sweepBooking instance", () => {
     const { useCases } = bootstrapBooking();
 
-    expect(useCases.internal.expireDue).toBeInstanceOf(ExpireDueBookingsInternalCommand);
+    expect(useCases.internal.sweepDue).toBeInstanceOf(SweepDueBookingsInternalCommand);
   });
 
   it("builds the two real readers and the two no-op adapters — the whole point of this task", () => {

@@ -6,7 +6,7 @@ import {
   MarkBookingPaidCommand,
   type MarkBookingPaidInput,
 } from "../app/use-cases/mark-booking-paid.command";
-import { ExpireBookingCommand, type ExpireBookingInput } from "../app/use-cases/expire-booking.command";
+import { SweepBookingCommand, type SweepBookingInput } from "../app/use-cases/sweep-booking.command";
 import type {
   BookingChangeRecord,
   BookingRepositoryPort,
@@ -103,6 +103,7 @@ function awaitingBooking(id = "bk-1"): Booking {
 class FakeRepo implements BookingRepositoryPort {
   public saveCalls = 0;
   public savedArg: Booking | null = null;
+  public appendedChanges: BookingChangeRecord[] = [];
   public lastApplied: boolean | null = null;
   private current: Booking | null;
 
@@ -147,13 +148,24 @@ class FakeRepo implements BookingRepositoryPort {
     return true;
   }
 
-  // Neither command under test calls these — `BookingRepositoryPort` still
-  // requires them, the same way `FakeRepo` in `create-booking.command.test.ts`
+  /**
+   * Records the history rows `SweepBookingCommand` writes, and pushes
+   * `"append"` onto `unitOfWork.order` at the moment it writes them — the
+   * same treatment `save` gets, so a test can prove the append landed
+   * between the save and the release rather than merely that it happened.
+   * `MarkBookingPaidCommand` never calls this and asserts nothing about it.
+   */
+  async appendChange(change: BookingChangeRecord): Promise<void> {
+    this.appendedChanges.push(change);
+    this.unitOfWork?.order.push("append");
+  }
+
+  // Neither command under test calls this — `BookingRepositoryPort` still
+  // requires it, the same way `FakeRepo` in `create-booking.command.test.ts`
   // implements `findDueForExpiry` without exercising it.
   async insert(booking: Booking): Promise<Booking> {
     return booking;
   }
-  async appendChange(_change: BookingChangeRecord): Promise<void> {}
   async findDueForExpiry(): Promise<Booking[]> {
     return [];
   }
@@ -279,12 +291,12 @@ function setupMarkPaid(initial: Booking | null) {
   return { command, repo, unitOfWork, outbox };
 }
 
-function setupExpire(initial: Booking | null) {
+function setupSweep(initial: Booking | null) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(initial, unitOfWork);
   const slotHold = new FakeSlotHold(unitOfWork);
-  const command = new ExpireBookingCommand(repo, slotHold, unitOfWork, outbox);
+  const command = new SweepBookingCommand(repo, slotHold, unitOfWork, outbox);
   return { command, repo, slotHold, unitOfWork, outbox };
 }
 
@@ -339,7 +351,7 @@ describe("MarkBookingPaidCommand", () => {
   it("throws paying a booking that already expired, and publishes nothing", async () => {
     // Expired from AWAITING_PROVIDER: `expire` no longer moves
     // PENDING_PAYMENT at all — that clock ends in CANCELLED (see
-    // `ExpireBookingCommand` below).
+    // `SweepBookingCommand` below).
     const expired = awaitingBooking().expire(WHEN);
     const { command, repo, outbox } = setupMarkPaid(expired);
     const input: MarkBookingPaidInput = { bookingId: "bk-1", paymentRef: "mpesa-123" };
@@ -361,10 +373,10 @@ describe("MarkBookingPaidCommand", () => {
   });
 });
 
-describe("ExpireBookingCommand", () => {
+describe("SweepBookingCommand", () => {
   it("expires an abandoned DRAFT, releases the hold, and tells nobody but Scheduling — save before release before publish", async () => {
-    const { command, repo, slotHold, unitOfWork, outbox } = setupExpire(draftBooking());
-    const input: ExpireBookingInput = { bookingId: "bk-1" };
+    const { command, repo, slotHold, unitOfWork, outbox } = setupSweep(draftBooking());
+    const input: SweepBookingInput = { bookingId: "bk-1" };
 
     await command.execute(input);
 
@@ -373,10 +385,26 @@ describe("ExpireBookingCommand", () => {
 
     expect(slotHold.released).toEqual(["bk-1"]);
 
-    // The order decided in `task-9-decisions.md`: save first (so the release
-    // that follows is never releasing a slot a still-slot-holding row
-    // claims), then release, then publish.
-    expect(unitOfWork.order).toEqual(["save", "release"]);
+    // The order decided in `task-9-decisions.md`, plus the history row:
+    // save first (so the release that follows is never releasing a slot a
+    // still-slot-holding row claims), then append the change, then release,
+    // then publish.
+    expect(unitOfWork.order).toEqual(["save", "append", "release"]);
+
+    // Nobody made this change — a deadline passed — so the actor is null
+    // rather than a sentinel user. The reason names what happened, not
+    // which clock it was: a window is not a reason.
+    expect(repo.appendedChanges).toEqual([
+      {
+        bookingId: "bk-1",
+        changedByUserId: null,
+        reason: "checkout_hold_expired",
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      },
+    ]);
 
     expect(outbox.published).toHaveLength(1);
     const batch = outbox.published[0]!;
@@ -399,7 +427,7 @@ describe("ExpireBookingCommand", () => {
   });
 
   it("expires an AWAITING_PROVIDER request under the provider's own clock", async () => {
-    const { command, repo, slotHold, outbox } = setupExpire(awaitingBooking());
+    const { command, repo, slotHold, outbox } = setupSweep(awaitingBooking());
 
     await command.execute({ bookingId: "bk-1" });
 
@@ -416,6 +444,14 @@ describe("ExpireBookingCommand", () => {
       customerId: "cust-1",
       clock: "provider_response",
     });
+
+    // The history row names what happened, and it is not the same token the
+    // DRAFT above wrote — the two expiries are only interchangeable if you
+    // stop looking at why either one happened.
+    expect(repo.appendedChanges[0]).toMatchObject({
+      changedByUserId: null,
+      reason: "provider_did_not_respond",
+    });
   });
 
   /**
@@ -429,7 +465,7 @@ describe("ExpireBookingCommand", () => {
    * and asserts against `EXPIRED`/`booking.expired` directly.
    */
   it("cancels a PENDING_PAYMENT booking whose window closed — CANCELLED with a reason, not EXPIRED", async () => {
-    const { command, repo, slotHold, unitOfWork, outbox } = setupExpire(pendingBooking());
+    const { command, repo, slotHold, unitOfWork, outbox } = setupSweep(pendingBooking());
 
     await command.execute({ bookingId: "bk-1" });
 
@@ -443,7 +479,18 @@ describe("ExpireBookingCommand", () => {
     // gets their afternoon back, which is the one thing this failure can
     // still give them.
     expect(slotHold.released).toEqual(["bk-1"]);
-    expect(unitOfWork.order).toEqual(["save", "release"]);
+    expect(unitOfWork.order).toEqual(["save", "append", "release"]);
+
+    // The durable half of the explanation the provider is owed. The event
+    // below carries the same reason to Notification, but an event is a
+    // message: drop it, or add its consumer later, and this row is all that
+    // is left to answer why the booking died.
+    expect(repo.appendedChanges).toHaveLength(1);
+    expect(repo.appendedChanges[0]).toMatchObject({
+      bookingId: "bk-1",
+      changedByUserId: null,
+      reason: "customer_did_not_pay",
+    });
 
     expect(outbox.published).toHaveLength(1);
     const batch = outbox.published[0]!;
@@ -466,13 +513,13 @@ describe("ExpireBookingCommand", () => {
 
   it("expiring an already-paid booking publishes nothing and releases nothing", async () => {
     const paid = pendingBooking().markPaid("mpesa-123", WHEN);
-    const { command, repo, slotHold, outbox } = setupExpire(paid);
-    const input: ExpireBookingInput = { bookingId: "bk-1" };
+    const { command, repo, slotHold, outbox } = setupSweep(paid);
+    const input: SweepBookingInput = { bookingId: "bk-1" };
 
     await command.execute(input);
 
     // `CONFIRMED` is not one of the three statuses standing on a clock, so
-    // neither `expire` nor `cancel` governs it — see `ExpireBookingCommand`'s
+    // neither `expire` nor `cancel` governs it — see `SweepBookingCommand`'s
     // doc comment. The command's whole job here is to do nothing further: no
     // save, no release, no event. Releasing this booking's hold would hand
     // away a slot its customer already paid for.
@@ -482,8 +529,8 @@ describe("ExpireBookingCommand", () => {
   });
 
   it("throws BookingNotFoundError when the booking does not exist, and releases nothing", async () => {
-    const { command, repo, slotHold, outbox } = setupExpire(null);
-    const input: ExpireBookingInput = { bookingId: "missing" };
+    const { command, repo, slotHold, outbox } = setupSweep(null);
+    const input: SweepBookingInput = { bookingId: "missing" };
 
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 
@@ -510,16 +557,16 @@ describe("ExpireBookingCommand", () => {
  * live at the write, which is what these tests exercise directly rather
  * than through the aggregate.
  */
-describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale read", () => {
+describe("MarkBookingPaidCommand and SweepBookingCommand racing the same stale read", () => {
   it("the sweep writes first: expiry wins, the payment finds the row already moved and publishes nothing", async () => {
     const staleRead = pendingBooking();
     const row: { current: Booking | null } = { current: staleRead };
 
-    const uowExpire = new TrackingUnitOfWork();
-    const outboxExpire = new CapturingOutbox(uowExpire);
-    const repoExpire = new RacingFakeRepo(staleRead, row, uowExpire);
-    const slotHold = new FakeSlotHold(uowExpire);
-    const expireCmd = new ExpireBookingCommand(repoExpire, slotHold, uowExpire, outboxExpire);
+    const uowSweep = new TrackingUnitOfWork();
+    const outboxSweep = new CapturingOutbox(uowSweep);
+    const repoSweep = new RacingFakeRepo(staleRead, row, uowSweep);
+    const slotHold = new FakeSlotHold(uowSweep);
+    const sweepCmd = new SweepBookingCommand(repoSweep, slotHold, uowSweep, outboxSweep);
 
     const uowPay = new TrackingUnitOfWork();
     const outboxPay = new CapturingOutbox(uowPay);
@@ -527,17 +574,17 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
     const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
 
     // The sweep reaches the row first and commits its expiry.
-    await expireCmd.execute({ bookingId: "bk-1" });
+    await sweepCmd.execute({ bookingId: "bk-1" });
     // The webhook arrives against the very same PENDING_PAYMENT snapshot
     // the sweep started from — its own `findById` never saw the sweep's
     // write, because in the real race it ran before that write existed.
     await markPaid.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
 
-    expect(repoExpire.lastApplied).toBe(true);
-    expect(outboxExpire.published).toHaveLength(1);
+    expect(repoSweep.lastApplied).toBe(true);
+    expect(outboxSweep.published).toHaveLength(1);
     // `booking.cancelled`, not `booking.expired`: the racing status here is
     // PENDING_PAYMENT, whose clock ends in a cancellation with a reason.
-    expect(outboxExpire.published[0]?.events[0]?.eventName).toBe("booking.cancelled");
+    expect(outboxSweep.published[0]?.events[0]?.eventName).toBe("booking.cancelled");
 
     // The webhook's write found the row already moved: no second
     // transition, no second outbox row. The customer is never told they
@@ -560,14 +607,14 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
     const repoPay = new RacingFakeRepo(staleRead, row, uowPay);
     const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
 
-    const uowExpire = new TrackingUnitOfWork();
-    const outboxExpire = new CapturingOutbox(uowExpire);
-    const repoExpire = new RacingFakeRepo(staleRead, row, uowExpire);
-    const slotHold = new FakeSlotHold(uowExpire);
-    const expireCmd = new ExpireBookingCommand(repoExpire, slotHold, uowExpire, outboxExpire);
+    const uowSweep = new TrackingUnitOfWork();
+    const outboxSweep = new CapturingOutbox(uowSweep);
+    const repoSweep = new RacingFakeRepo(staleRead, row, uowSweep);
+    const slotHold = new FakeSlotHold(uowSweep);
+    const sweepCmd = new SweepBookingCommand(repoSweep, slotHold, uowSweep, outboxSweep);
 
     await markPaid.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
-    await expireCmd.execute({ bookingId: "bk-1" });
+    await sweepCmd.execute({ bookingId: "bk-1" });
 
     expect(repoPay.lastApplied).toBe(true);
     expect(outboxPay.published).toHaveLength(1);
@@ -577,10 +624,10 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
     // is not abandoned — the customer who paid is still holding it) and no
     // `BookingCancelled` telling Scheduling and Notification the opposite
     // of what the row now says, reason and all.
-    expect(repoExpire.saveCalls).toBe(1);
-    expect(repoExpire.lastApplied).toBe(false);
+    expect(repoSweep.saveCalls).toBe(1);
+    expect(repoSweep.lastApplied).toBe(false);
     expect(slotHold.released).toEqual([]);
-    expect(outboxExpire.published).toEqual([]);
+    expect(outboxSweep.published).toEqual([]);
 
     expect(row.current?.status).toBe("CONFIRMED");
   });

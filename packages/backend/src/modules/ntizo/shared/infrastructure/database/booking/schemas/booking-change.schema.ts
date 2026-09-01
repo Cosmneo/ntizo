@@ -33,9 +33,28 @@ export const bookingChange = bookingSchema.table(
     bookingId: uuid("booking_id")
       .notNull()
       .references(() => booking.id, { onDelete: "cascade" }),
-    changedByUserId: text("changed_by_user_id")
-      .notNull()
-      .references(() => user.id),
+    /**
+     * Who made this change, or **null when no human did**.
+     *
+     * Null is the honest encoding for a hop the platform itself made — today
+     * exactly one: the cron sweep ending a booking whose clock ran out
+     * (`SweepBookingCommand`). That hop has no requesting user, because
+     * nobody requested it; a deadline passed.
+     *
+     * The alternative was a sentinel "system user" row, and it was rejected
+     * on purpose. A synthetic id in this column would join cleanly to
+     * `user`, which is exactly the problem: every "changes by user X" query,
+     * every audit export and every future join would silently count machine
+     * hops as somebody's actions, and nothing would ever go red. Null cannot
+     * be mistaken for a person by anything that reads it.
+     *
+     * A reader wanting "who?" for a null row has `reason` — a machine token,
+     * never prose (see `DeclineBookingCommand`'s own constant) — which names
+     * what ended the booking. That pairing is why this column going nullable
+     * does not lose information: the row still says what happened and why,
+     * only not *who*, because there was no who.
+     */
+    changedByUserId: text("changed_by_user_id").references(() => user.id),
     changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
     reason: text("reason").notNull(),
 

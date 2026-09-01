@@ -10,8 +10,8 @@ import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
 import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
-import { ExpireBookingCommand } from "../app/use-cases/expire-booking.command";
-import { ExpireDueBookingsInternalCommand } from "../app/use-cases/expire-due-bookings.internal.command";
+import { SweepBookingCommand } from "../app/use-cases/sweep-booking.command";
+import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
@@ -21,8 +21,8 @@ import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructu
  * Constructs every use case this bounded context has built so far,
  * including two nothing outside this bootstrap constructs directly:
  * `markBookingPaid` (Payment's event handler reaches for it once Payment
- * lands) and `expireBooking`, which the expiry sweep no longer calls
- * directly — it goes through `useCases.internal.expireDue` below, the same
+ * lands) and `sweepBooking`, which the expiry sweep no longer calls
+ * directly — it goes through `useCases.internal.sweepDue` below, the same
  * way Communication's cron sweep goes through `useCases.internal.notifyUnread`
  * rather than touching `MessageRepositoryPort` itself. A bootstrap that
  * omitted either top-level use case would leave both with nothing to call —
@@ -49,7 +49,7 @@ export function bootstrapBooking() {
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
 
-  const expireBooking = new ExpireBookingCommand(bookingRepository, slotHold, unitOfWork, outboxPort);
+  const sweepBooking = new SweepBookingCommand(bookingRepository, slotHold, unitOfWork, outboxPort);
 
   return {
     adapters: {
@@ -98,7 +98,7 @@ export function bootstrapBooking() {
         unitOfWork,
         outboxPort,
       ),
-      expireBooking,
+      sweepBooking,
       markBookingPaid: new MarkBookingPaidCommand(bookingRepository, unitOfWork, outboxPort),
       internal: {
         // The three clocks a cron sweeps — nobody asks for this, something
@@ -107,7 +107,7 @@ export function bootstrapBooking() {
         // already stamped its own window onto `expires_at`, so the sweep
         // reads a deadline rather than recomputing one from a setting that
         // may have changed since.
-        expireDue: new ExpireDueBookingsInternalCommand(bookingRepository, expireBooking),
+        sweepDue: new SweepDueBookingsInternalCommand(bookingRepository, sweepBooking),
       },
     },
   };

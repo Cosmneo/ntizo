@@ -212,6 +212,44 @@ function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
 }
 
 /**
+ * Runs one test body inside this file's transaction context and deletes
+ * every booking it registered afterwards — **in a `finally`, so an assertion
+ * that throws mid-test still cleans up.**
+ *
+ * Every test here used to end with its own `db.delete(...)` calls after its
+ * last assertion, which is a cleanup any earlier assertion can skip. That
+ * shape has already cost this branch once: a leaked `PENDING_PAYMENT` row
+ * with a non-null `expires_at` was picked up by `findDueForExpiry` in two
+ * later, unrelated-looking tests. It matters more now than it did then,
+ * because that query no longer selects one status — a leaked `DRAFT` or
+ * `AWAITING_PROVIDER` row is claimed by it too, here and in
+ * `booking-expiry-sweep.test.ts`.
+ *
+ * `afterAll`'s delete-by-`providerId` is not the same net: it runs once, at
+ * the end of the file, long after the tests a leak would have poisoned.
+ *
+ * Deleting the booking is enough for its `booking_change` rows —
+ * `booking_change.booking_id` is `ON DELETE CASCADE` (see its schema).
+ */
+async function withBookings(
+  body: (track: (created: Booking) => Booking) => Promise<void>,
+): Promise<void> {
+  const ids: string[] = [];
+  await __runWithTransactionContextForTests(db, async () => {
+    try {
+      await body((created) => {
+        ids.push(created.id as string);
+        return created;
+      });
+    } finally {
+      for (const id of ids) {
+        await db.delete(booking).where(eq(booking.id, id));
+      }
+    }
+  });
+}
+
+/**
  * Every field `Booking.restore` did not derive — i.e. every field a round
  * trip could lose.
  *
@@ -284,13 +322,13 @@ function expectSameSnapshot(actual: Booking, expected: Booking): void {
 
 describe("insert, then findById", () => {
   test("round-trips through Booking.restore with every snapshot field intact", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    await withBookings(async (track) => {
       // `pendingBooking`, not a bare `Booking.create`: this is the fixture
       // that gives `confirmedAt` a real, non-null value to round-trip — see
       // `expectSameSnapshot`'s own doc comment for why that closes a gap
       // this test used to leave open.
       const created = pendingBooking(bookingInput());
-      const inserted = await repo.insert(created, 1);
+      const inserted = track(await repo.insert(created, 1));
 
       expect(inserted.id).toBeString();
       expectSameSnapshot(inserted, created);
@@ -301,8 +339,6 @@ describe("insert, then findById", () => {
       // Includes the id: this is the one field `create` never has and a
       // round trip through the database is the only thing that assigns.
       expect(found?.id).toBe(inserted.id);
-
-      await db.delete(booking).where(eq(booking.id, inserted.id as string));
     });
   });
 
@@ -316,13 +352,15 @@ describe("insert, then findById", () => {
 
 describe("booking_member_slot_active_uq, from behind the repository", () => {
   test("a second insert on the same (member, startsAt) is refused as SlotAlreadyTakenError while the first is PENDING_PAYMENT", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    await withBookings(async (track) => {
       const slotStart = new Date("2026-10-02T09:00:00.000Z");
       const slotExpires = new Date("2026-10-02T09:30:00.000Z");
 
-      const first = await repo.insert(
-        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
-        1,
+      const first = track(
+        await repo.insert(
+          pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+          1,
+        ),
       );
       expect(first.status).toBe("PENDING_PAYMENT");
 
@@ -336,13 +374,11 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       expect(error).toBeInstanceOf(SlotAlreadyTakenError);
       expect((error as SlotAlreadyTakenError).providerMemberId).toBe(memberId);
       expect((error as SlotAlreadyTakenError).startsAt).toEqual(slotStart);
-
-      await db.delete(booking).where(eq(booking.id, first.id as string));
     });
   });
 
   test("the same slot can be rebooked once the first booking is EXPIRED — the partial index earning its keep", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    await withBookings(async (track) => {
       const slotStart = new Date("2026-10-03T09:00:00.000Z");
       const slotExpires = new Date("2026-10-03T09:30:00.000Z");
 
@@ -352,9 +388,11 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       // of the three clocks ends. A `PENDING_PAYMENT` past its window ends
       // as `CANCELLED` instead (see `save`'s guard test below, which uses
       // that path).
-      const first = await repo.insert(
-        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
-        1,
+      const first = track(
+        await repo.insert(
+          Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+          1,
+        ),
       );
       expect(first.status).toBe("DRAFT");
 
@@ -378,15 +416,14 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       expect(reread?.expiredAt).not.toBeNull();
       expect(reread?.expiredAt?.toISOString()).toBe(expired.expiredAt?.toISOString());
 
-      const second = await repo.insert(
-        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
-        1,
+      const second = track(
+        await repo.insert(
+          pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+          1,
+        ),
       );
       expect(second.id).toBeString();
       expect(second.status).toBe("PENDING_PAYMENT");
-
-      await db.delete(booking).where(eq(booking.id, first.id as string));
-      await db.delete(booking).where(eq(booking.id, second.id as string));
     });
   });
 });
@@ -401,13 +438,15 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
  */
 describe("save's expectedStatus guard", () => {
   test("a write whose expectedStatus no longer matches the row applies nothing and returns false", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    await withBookings(async (track) => {
       const slotStart = new Date("2026-10-03T15:00:00.000Z");
       const slotExpires = new Date("2026-10-03T15:30:00.000Z");
 
-      const first = await repo.insert(
-        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
-        1,
+      const first = track(
+        await repo.insert(
+          pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+          1,
+        ),
       );
 
       // The row genuinely moves past PENDING_PAYMENT first — standing in
@@ -440,8 +479,6 @@ describe("save's expectedStatus guard", () => {
       const reread = await repo.findById(first.id as string);
       expect(reread?.status).toBe("CONFIRMED");
       expect(reread?.paymentRef).toBe("mpesa-race-winner");
-
-      await db.delete(booking).where(eq(booking.id, first.id as string));
     });
   });
 });
@@ -453,182 +490,177 @@ describe("findDueForExpiry", () => {
    * query runs the only thing left to ask is `expires_at <= now AND status
    * IN (DEADLINE_BEARING_STATUSES)`.
    *
-   * Every insert is cleaned up in a `finally`, not after the last assertion.
-   * A `DRAFT` or `AWAITING_PROVIDER` row leaked by an assertion that threw
-   * early would now be picked up by *this very query* in every later test
-   * and in `booking-expiry-sweep.test.ts` — the widened status filter is
-   * exactly what turns one skipped cleanup into several unrelated-looking
-   * failures.
+   * Runs through `withBookings`, like every other DB-backed test here, so
+   * its inserts are cleaned up in a `finally` rather than after the last
+   * assertion. That matters most for this test: a `DRAFT` or
+   * `AWAITING_PROVIDER` row leaked by an assertion that threw early would be
+   * picked up by *this very query* in every later test and in
+   * `booking-expiry-sweep.test.ts`.
    */
   test("selects every status standing on a clock whose deadline has passed, oldest first, up to the limit", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    await withBookings(async (track) => {
       const now = new Date("2026-10-04T12:00:00.000Z");
-      const inserted: string[] = [];
 
-      try {
-        // Due: one booking on each of the three clocks, past its own
-        // deadline, at different slots so they don't collide with each
-        // other. `DRAFT` and `AWAITING_PROVIDER` are what the widened
-        // predicate added — before it, both of these rows sat here for ever
-        // holding a member's calendar.
-        const dueLater = await repo.insert(
-          pendingBooking(
-            bookingInput({
-              startsAt: new Date("2026-10-04T09:00:00.000Z"),
-              expiresAt: new Date("2026-10-04T09:30:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(dueLater.id as string);
+      // Due: one booking on each of the three clocks, past its own
+      // deadline, at different slots so they don't collide with each
+      // other. `DRAFT` and `AWAITING_PROVIDER` are what the widened
+      // predicate added — before it, both of these rows sat here for ever
+      // holding a member's calendar.
+      const dueLater = await repo.insert(
+        pendingBooking(
+          bookingInput({
+            startsAt: new Date("2026-10-04T09:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T09:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(dueLater);
 
-        const dueEarlier = await repo.insert(
-          pendingBooking(
-            bookingInput({
-              startsAt: new Date("2026-10-04T10:00:00.000Z"),
-              expiresAt: new Date("2026-10-04T09:15:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(dueEarlier.id as string);
+      const dueEarlier = await repo.insert(
+        pendingBooking(
+          bookingInput({
+            startsAt: new Date("2026-10-04T10:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T09:15:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(dueEarlier);
 
-        const dueDraft = await repo.insert(
-          Booking.create(
-            bookingInput({
-              startsAt: new Date("2026-10-04T14:00:00.000Z"),
-              expiresAt: new Date("2026-10-04T09:45:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(dueDraft.id as string);
-        expect(dueDraft.status).toBe("DRAFT");
+      const dueDraft = await repo.insert(
+        Booking.create(
+          bookingInput({
+            startsAt: new Date("2026-10-04T14:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T09:45:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(dueDraft);
+      expect(dueDraft.status).toBe("DRAFT");
 
-        const dueAwaiting = await repo.insert(
-          awaitingBooking(
-            bookingInput({
-              startsAt: new Date("2026-10-04T15:00:00.000Z"),
-              expiresAt: new Date("2026-10-04T10:00:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(dueAwaiting.id as string);
-        expect(dueAwaiting.status).toBe("AWAITING_PROVIDER");
+      const dueAwaiting = await repo.insert(
+        awaitingBooking(
+          bookingInput({
+            startsAt: new Date("2026-10-04T15:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T10:00:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(dueAwaiting);
+      expect(dueAwaiting.status).toBe("AWAITING_PROVIDER");
 
-        // Not due: on a clock, but the deadline is still in the future. One
-        // per status the widening added, so a predicate that dropped the
-        // time comparison while gaining statuses fails here.
-        const notYetDue = await repo.insert(
-          pendingBooking(
-            bookingInput({
-              startsAt: new Date("2026-10-04T11:00:00.000Z"),
-              expiresAt: new Date("2026-10-04T23:00:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(notYetDue.id as string);
+      // Not due: on a clock, but the deadline is still in the future. One
+      // per status the widening added, so a predicate that dropped the
+      // time comparison while gaining statuses fails here.
+      const notYetDue = await repo.insert(
+        pendingBooking(
+          bookingInput({
+            startsAt: new Date("2026-10-04T11:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T23:00:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(notYetDue);
 
-        const draftNotYetDue = await repo.insert(
-          Booking.create(
-            bookingInput({
-              startsAt: new Date("2026-10-04T16:00:00.000Z"),
-              expiresAt: new Date("2026-10-04T23:30:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(draftNotYetDue.id as string);
+      const draftNotYetDue = await repo.insert(
+        Booking.create(
+          bookingInput({
+            startsAt: new Date("2026-10-04T16:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T23:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(draftNotYetDue);
 
-        // Not due: expiresAt has passed, but the booking already left every
-        // status with a clock on it. The status filter is what excludes it,
-        // and has to be: `expiresAt` is no longer nulled on the way out of
-        // PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
-        // deadline is a fact a disputed booking needs, not a stale value to
-        // erase), so this row's `expires_at` is still in the past, still
-        // non-null, and only its absence from `DEADLINE_BEARING_STATUSES`
-        // keeps it out of the result below. Expiring it would cancel a sale
-        // that already happened.
-        const paidStale = await repo.insert(
-          pendingBooking(
-            bookingInput({
-              startsAt: new Date("2026-10-04T12:30:00.000Z"),
-              expiresAt: new Date("2026-10-04T09:00:00.000Z"),
-            }),
-          ),
-          1,
-        );
-        inserted.push(paidStale.id as string);
-        const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
-        expect(paid.expiresAt).toEqual(paidStale.expiresAt);
-        const paidApplied = await repo.save(paid, "PENDING_PAYMENT");
-        expect(paidApplied).toBe(true);
+      // Not due: expiresAt has passed, but the booking already left every
+      // status with a clock on it. The status filter is what excludes it,
+      // and has to be: `expiresAt` is no longer nulled on the way out of
+      // PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
+      // deadline is a fact a disputed booking needs, not a stale value to
+      // erase), so this row's `expires_at` is still in the past, still
+      // non-null, and only its absence from `DEADLINE_BEARING_STATUSES`
+      // keeps it out of the result below. Expiring it would cancel a sale
+      // that already happened.
+      const paidStale = await repo.insert(
+        pendingBooking(
+          bookingInput({
+            startsAt: new Date("2026-10-04T12:30:00.000Z"),
+            expiresAt: new Date("2026-10-04T09:00:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      track(paidStale);
+      const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
+      expect(paid.expiresAt).toEqual(paidStale.expiresAt);
+      const paidApplied = await repo.save(paid, "PENDING_PAYMENT");
+      expect(paidApplied).toBe(true);
 
-        // This booking is already being built for the exclusion check below;
-        // reading it back costs one query and is the only place in this file
-        // that proves `paidAt` and `paymentRef` survive a round trip with a
-        // real value — `expectSameSnapshot` never sees a paid booking, since
-        // `Booking.create` always starts both null.
-        const paidReread = await repo.findById(paidStale.id as string);
-        expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
-        expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
-        // And the other half of the same write: `expiresAt` is preserved, not
-        // cleared, on the way out of `PENDING_PAYMENT` — this confirms that
-        // survival itself persisted, not only that the two new fields did.
-        expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
+      // This booking is already being built for the exclusion check below;
+      // reading it back costs one query and is the only place in this file
+      // that proves `paidAt` and `paymentRef` survive a round trip with a
+      // real value — `expectSameSnapshot` never sees a paid booking, since
+      // `Booking.create` always starts both null.
+      const paidReread = await repo.findById(paidStale.id as string);
+      expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
+      expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
+      // And the other half of the same write: `expiresAt` is preserved, not
+      // cleared, on the way out of `PENDING_PAYMENT` — this confirms that
+      // survival itself persisted, not only that the two new fields did.
+      expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
 
-        const due = await repo.findDueForExpiry(now, 10);
-        const dueIds = due.map((b) => b.id);
+      const due = await repo.findDueForExpiry(now, 10);
+      const dueIds = due.map((b) => b.id);
 
-        expect(dueIds).toContain(dueDraft.id);
-        expect(dueIds).toContain(dueAwaiting.id);
-        expect(dueIds).not.toContain(notYetDue.id);
-        expect(dueIds).not.toContain(draftNotYetDue.id);
-        expect(dueIds).not.toContain(paidStale.id);
+      expect(dueIds).toContain(dueDraft.id);
+      expect(dueIds).toContain(dueAwaiting.id);
+      expect(dueIds).not.toContain(notYetDue.id);
+      expect(dueIds).not.toContain(draftNotYetDue.id);
+      expect(dueIds).not.toContain(paidStale.id);
 
-        const dueLaterIndex = dueIds.indexOf(dueLater.id);
-        const dueEarlierIndex = dueIds.indexOf(dueEarlier.id);
-        expect(dueLaterIndex).toBeGreaterThanOrEqual(0);
-        expect(dueEarlierIndex).toBeGreaterThanOrEqual(0);
-        // Oldest deadline first.
-        expect(dueEarlierIndex).toBeLessThan(dueLaterIndex);
-        // And oldest-first across the whole result, not only among this
-        // file's own rows — the dev database is shared, so the result can
-        // legitimately carry rows nothing here inserted, and the ordering
-        // has to hold over those too.
-        const deadlines = due.map((b) => (b.expiresAt as Date).getTime());
-        expect(deadlines).toEqual([...deadlines].sort((a, b) => a - b));
+      const dueLaterIndex = dueIds.indexOf(dueLater.id);
+      const dueEarlierIndex = dueIds.indexOf(dueEarlier.id);
+      expect(dueLaterIndex).toBeGreaterThanOrEqual(0);
+      expect(dueEarlierIndex).toBeGreaterThanOrEqual(0);
+      // Oldest deadline first.
+      expect(dueEarlierIndex).toBeLessThan(dueLaterIndex);
+      // And oldest-first across the whole result, not only among this
+      // file's own rows — the dev database is shared, so the result can
+      // legitimately carry rows nothing here inserted, and the ordering
+      // has to hold over those too.
+      const deadlines = due.map((b) => (b.expiresAt as Date).getTime());
+      expect(deadlines).toEqual([...deadlines].sort((a, b) => a - b));
 
-        const limited = await repo.findDueForExpiry(now, 1);
-        expect(limited).toHaveLength(1);
-        // The limit is applied *after* the ordering: the one row a limit of
-        // one returns is the same row the unlimited query returns first.
-        // Asserted against `due[0]` rather than against a fixture of this
-        // file's own, because the query is global and another session's row
-        // may legitimately be older than anything here.
-        expect(limited[0]?.id).toBe(due[0]?.id);
-      } finally {
-        for (const id of inserted) {
-          await db.delete(booking).where(eq(booking.id, id));
-        }
-      }
+      const limited = await repo.findDueForExpiry(now, 1);
+      expect(limited).toHaveLength(1);
+      // The limit is applied *after* the ordering: the one row a limit of
+      // one returns is the same row the unlimited query returns first.
+      // Asserted against `due[0]` rather than against a fixture of this
+      // file's own, because the query is global and another session's row
+      // may legitimately be older than anything here.
+      expect(limited[0]?.id).toBe(due[0]?.id);
     });
   });
 });
 
 describe("appendChange", () => {
   test("writes an audit row a plain read can see", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
-      const created = await repo.insert(
-        Booking.create(
-          bookingInput({
-            startsAt: new Date("2026-10-05T09:00:00.000Z"),
-            expiresAt: new Date("2026-10-05T09:30:00.000Z"),
-          }),
+    await withBookings(async (track) => {
+      const created = track(
+        await repo.insert(
+          Booking.create(
+            bookingInput({
+              startsAt: new Date("2026-10-05T09:00:00.000Z"),
+              expiresAt: new Date("2026-10-05T09:30:00.000Z"),
+            }),
+          ),
+          1,
         ),
-        1,
       );
 
       await repo.appendChange({
@@ -650,8 +682,54 @@ describe("appendChange", () => {
       expect(row?.changedByUserId).toBe(ownerUserId);
       expect(row?.previousStartsAt?.toISOString()).toBe("2026-10-05T08:00:00.000Z");
       expect(row?.previousProviderMemberId).toBeNull();
+    });
+  });
 
-      await db.delete(booking).where(eq(booking.id, created.id as string));
+  test("accepts a change nobody made — the sweep's own hop, with a null actor", async () => {
+    // The live-database half of the same argument the column's doc comment
+    // makes: a cron sweep ending a booking whose clock ran out has no
+    // requesting user, and null is how that is recorded rather than a
+    // sentinel "system user" that would join to `user` and quietly count as
+    // somebody's action in every audit query.
+    //
+    // This is also the guard against the migration that makes it nullable
+    // never being applied. Without it, `SweepBookingCommand` writing this
+    // row would fail on a `NOT NULL` violation against the live table while
+    // the schema file happily says otherwise — and the sweep swallows and
+    // logs per-booking failures by design, so the only visible symptom
+    // would be bookings that never settle.
+    await withBookings(async (track) => {
+      const created = track(
+        await repo.insert(
+          Booking.create(
+            bookingInput({
+              startsAt: new Date("2026-10-05T11:00:00.000Z"),
+              expiresAt: new Date("2026-10-05T11:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+
+      await repo.appendChange({
+        bookingId: created.id as string,
+        changedByUserId: null,
+        reason: "customer_did_not_pay",
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      });
+
+      const [row] = await db
+        .select()
+        .from(bookingChange)
+        .where(eq(bookingChange.bookingId, created.id as string));
+
+      expect(row?.changedByUserId).toBeNull();
+      // The row still answers "why", which is what makes the missing "who"
+      // acceptable rather than a hole.
+      expect(row?.reason).toBe("customer_did_not_pay");
     });
   });
 });

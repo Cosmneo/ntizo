@@ -348,7 +348,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
   async save(entity: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
     // Never null here: `BookingRepositoryPort.save`'s contract is that the
     // aggregate it is handed already has an id — every caller loads it
-    // through `findById` first (see `ExpireBookingCommand`,
+    // through `findById` first (see `SweepBookingCommand`,
     // `MarkBookingPaidCommand`), which only ever returns a booking the
     // database already assigned one to.
     const id = entity.id as string;

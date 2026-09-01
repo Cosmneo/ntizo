@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { infraStore } from "@ntizo/backend/shared/infra";
 import { Db } from "@ntizo/backend/shared/infra/database";
 import { NotifyUnreadInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
-import { ExpireDueBookingsInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import { SweepDueBookingsInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
 import { scheduled, SWEEP_LIMIT, BOOKING_EXPIRY_SWEEP_LIMIT } from "../scheduled";
 import handler from "../index";
 import type { AppBindings } from "../types";
@@ -160,11 +160,35 @@ describe("the scheduled worker", () => {
     Db.closeDbConnection = async () => {
       order.push("close");
     };
+
+    // Fix round 2: the deferred work now finishes when *this test* says so,
+    // never on a timer.
+    //
+    // The previous version resolved it from a 20ms `setTimeout` and then
+    // asserted `order` was still empty the moment `scheduled()` returned —
+    // which quietly assumed `scheduled()` returns in under 20ms. That held
+    // while the only real work in it was one sweep against an empty table;
+    // it stopped holding once a second sweep joined, because the booking
+    // sweep is a live round trip to Neon. The timer then elapsed *during*
+    // `scheduled()`, `order` already read `["delivery", "close"]` at the
+    // first assertion, and the test failed consistently — against behaviour
+    // that was entirely correct. The assertion was racing the code under
+    // test rather than measuring it.
+    //
+    // A promise this test resolves itself, after it has checked `order` is
+    // empty, cannot lose that race however long `scheduled()` takes. The
+    // final assertion is untouched and is still the whole point: the close
+    // is chained BEHIND the delivery, not registered beside it.
+    let letDeliveryFinish!: () => void;
+    const deliveryHeld = new Promise<void>((resolve) => {
+      letDeliveryFinish = resolve;
+    });
+
     const executeSpy = spyOn(NotifyUnreadInternalCommand.prototype, "execute").mockImplementation(
       async () => {
         infraStore.waitUntil(
           (async () => {
-            await new Promise((resolve) => setTimeout(resolve, 20));
+            await deliveryHeld;
             order.push("delivery");
           })(),
         );
@@ -175,12 +199,15 @@ describe("the scheduled worker", () => {
     const { ctx, scheduledPromises } = fakeExecutionContext();
     await scheduled(fakeController(), ENV, ctx);
 
-    // The run itself did not pay for the delivery — it is still in flight.
+    // The run itself did not pay for the delivery — it is still in flight,
+    // and now provably so: nothing but the line below can finish it.
     expect(order).toEqual([]);
+
+    letDeliveryFinish();
 
     await Promise.all(scheduledPromises);
     // The close is registered as a SECOND task chained behind the first, not
-    // beside it: it must not run before the 20ms delivery finishes.
+    // beside it: it must not run before the delivery finishes.
     expect(order).toEqual(["delivery", "close"]);
 
     executeSpy.mockRestore();
@@ -212,7 +239,7 @@ describe("the scheduled worker", () => {
         throw new Error("notify-unread sweep blew up");
       },
     );
-    const expireDueSpy = spyOn(ExpireDueBookingsInternalCommand.prototype, "execute");
+    const sweepDueSpy = spyOn(SweepDueBookingsInternalCommand.prototype, "execute");
 
     const { ctx, scheduledPromises } = fakeExecutionContext();
 
@@ -221,18 +248,22 @@ describe("the scheduled worker", () => {
     // failure instead of letting it propagate past the other sweep.
     await scheduled(fakeController(), ENV, ctx);
 
-    expect(expireDueSpy).toHaveBeenCalledTimes(1);
-    expect(expireDueSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_EXPIRY_SWEEP_LIMIT });
+    expect(sweepDueSpy).toHaveBeenCalledTimes(1);
+    expect(sweepDueSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_EXPIRY_SWEEP_LIMIT });
     // Resolved, not merely called — the dev database holds zero due
-    // bookings, so this is always { expired: 0, failed: 0 }, same reasoning
-    // as test 1's assertion on the notify-unread sweep's own result.
-    await expect(expireDueSpy.mock.results[0]?.value).resolves.toEqual({
-      expired: 0,
+    // bookings, so this is always { swept: 0, failed: 0 }, same reasoning as
+    // test 1's assertion on the notify-unread sweep's own result. `swept`,
+    // not `expired`: the sweep gives two of its three clocks an expiry and
+    // the third a cancellation, so a count named for one of the two endings
+    // would be wrong for whichever bookings got the other — see
+    // `SweepDueBookingsInternalCommand.execute`.
+    await expect(sweepDueSpy.mock.results[0]?.value).resolves.toEqual({
+      swept: 0,
       failed: 0,
     });
 
     await Promise.all(scheduledPromises);
     notifySpy.mockRestore();
-    expireDueSpy.mockRestore();
+    sweepDueSpy.mockRestore();
   });
 });

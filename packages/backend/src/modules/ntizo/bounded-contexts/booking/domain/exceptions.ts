@@ -251,7 +251,7 @@ export class ServiceOptionNotFoundError extends NotFoundError {
  * Both of Task 9's commands throw this rather than returning silently, even
  * though neither is ever called by a person waiting on a response.
  * `MarkBookingPaidCommand` is driven by Payment's event and
- * `ExpireBookingCommand` by a sweep job — but a payment event naming a
+ * `SweepBookingCommand` by a sweep job — but a payment event naming a
  * booking that does not exist means the money and the booking have come
  * apart, and an expiry job naming one means the job outlived its row.
  * Neither is routine, and a command that shrugs at both leaves nothing

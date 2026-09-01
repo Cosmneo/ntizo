@@ -10,7 +10,7 @@ import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { SlotHoldPort } from "../ports/outbound/slot-hold.port";
 
-export interface ExpireBookingInput {
+export interface SweepBookingInput {
   bookingId: string;
 }
 
@@ -24,7 +24,33 @@ export interface ExpireBookingInput {
 const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
 
 /**
+ * What `booking_change.reason` records for the two endings that expire.
+ *
+ * Machine tokens, not sentences — the same contract `DeclineBookingCommand`'s
+ * `DECLINED_WITHOUT_REASON` keeps, and for the same reason: whatever renders
+ * a booking's history renders it into eight locales, and a locale key can be
+ * switched on where English prose can only be shown verbatim.
+ *
+ * Named for what happened, not for which clock it was: `checkout_hold` and
+ * `provider_response` (the `BookingExpiredClock` members) name *windows*, and
+ * a window is not a reason. The third ending reuses `CUSTOMER_DID_NOT_PAY`
+ * above rather than declaring a fourth token, because `BookingCancelled`
+ * already publishes that exact string and a history row disagreeing with the
+ * event about why the same hop happened would be worse than no row at all.
+ */
+const CHECKOUT_HOLD_EXPIRED = "checkout_hold_expired";
+const PROVIDER_DID_NOT_RESPOND = "provider_did_not_respond";
+
+/**
  * A clock ran out on one booking. Which clock decides what that means.
+ *
+ * **Not `ExpireBookingCommand`, which is what this was called.** That name
+ * was accurate while a payment window was the only deadline a booking could
+ * miss. Under the design's three clocks one of the three endings is a
+ * cancellation, so a name covering only the other two describes this class
+ * a third of the time — the same argument that renamed this sweep's counter
+ * from `expired` to `swept`, and it applies harder to a type name, which is
+ * read far more often than a field.
  *
  * **This command is internal.** It is driven by the expiry sweep, which
  * selects rows on `expires_at` with no way to know whether a booking
@@ -90,7 +116,8 @@ const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
  * aggregate's own no-op, below: no release, no publish, because the slot
  * this sweep read as abandoned is not abandoned anymore.
  *
- * **Order inside the transaction: save, then release, then publish.** The
+ * **Order inside the transaction: save, then append the change, then
+ * release, then publish** — matching `DeclineBookingCommand`. The
  * save is what makes the release correct — releasing the hold while the row
  * still says whichever slot-holding status this sweep found it in would
  * leave a window where the slot reads as free while the booking still
@@ -103,7 +130,7 @@ const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
  * command's own write never actually took would hand away a slot on nothing
  * but a stale read.
  */
-export class ExpireBookingCommand {
+export class SweepBookingCommand {
   constructor(
     private readonly repo: BookingRepositoryPort,
     private readonly slotHold: SlotHoldPort,
@@ -111,7 +138,7 @@ export class ExpireBookingCommand {
     private readonly outboxPort: OutboxPort,
   ) {}
 
-  async execute(input: ExpireBookingInput): Promise<void> {
+  async execute(input: SweepBookingInput): Promise<void> {
     // Computed once, before the transition — the instant this sweep run
     // reached this booking, not the instant its deadline actually passed.
     // Those differ by up to the sweep interval; if that difference ever
@@ -134,12 +161,13 @@ export class ExpireBookingCommand {
 
       let moved: Booking;
       let announcement: BookingExpired | BookingCancelled;
+      let changeReason: string;
 
-      // The design's three-row table, in code. The transition and the fact
-      // its event has to carry are decided together, off the one status
-      // read, because they are the same decision: which clock this booking
-      // was standing on. `expiresAt` says when the deadline was, never
-      // which window set it.
+      // The design's three-row table, in code. The transition, the fact its
+      // event has to carry, and the reason its history row records are
+      // decided together, off the one status read, because they are the same
+      // decision: which clock this booking was standing on. `expiresAt` says
+      // when the deadline was, never which window set it.
       //
       // Literals rather than the `BookingStatus` const: that const lives in
       // `shared/infrastructure/database/booking/enums.ts`, and no use case
@@ -160,6 +188,7 @@ export class ExpireBookingCommand {
             startsAt: booking.startsAt,
             clock: "checkout_hold",
           });
+          changeReason = CHECKOUT_HOLD_EXPIRED;
           break;
 
         case "AWAITING_PROVIDER":
@@ -171,6 +200,7 @@ export class ExpireBookingCommand {
             startsAt: booking.startsAt,
             clock: "provider_response",
           });
+          changeReason = PROVIDER_DID_NOT_RESPOND;
           break;
 
         case "PENDING_PAYMENT":
@@ -186,6 +216,7 @@ export class ExpireBookingCommand {
             startsAt: booking.startsAt,
             reason: CUSTOMER_DID_NOT_PAY,
           });
+          changeReason = CUSTOMER_DID_NOT_PAY;
           break;
 
         default:
@@ -215,6 +246,31 @@ export class ExpireBookingCommand {
         // above cannot catch this on its own.
         return;
       }
+
+      // The durable answer to "why did this booking die?", written before
+      // anything is announced, so it survives a consumer that never runs.
+      // `BookingCancelled` carries the reason to Notification, but an event
+      // is a message, not a record: if Notification drops it, or is added
+      // later, or is asked afterwards by a provider who wants to know why
+      // their Saturday emptied, the only thing left is this table.
+      //
+      // `changedByUserId: null` — nobody did this. A deadline passed. See
+      // the column's own doc comment for why null rather than a sentinel
+      // system user, and `DeclineBookingCommand` for the same
+      // save-then-append ordering.
+      //
+      // Every `previous*` field is null because this hop moved none of
+      // them: it changed the status, and the status is on the booking, not
+      // here.
+      await this.repo.appendChange({
+        bookingId,
+        changedByUserId: null,
+        reason: changeReason,
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      });
 
       await this.slotHold.release(bookingId);
 

@@ -22,7 +22,13 @@ import type { Booking } from "../../../domain/aggregates/booking.aggregate";
  */
 export interface BookingChangeRecord {
   bookingId: string;
-  changedByUserId: string;
+  /**
+   * Null when no human made this change — the cron sweep ending a booking
+   * whose clock ran out is the only such hop today. See the column's own doc
+   * comment in `booking-change.schema.ts` for why null rather than a
+   * sentinel "system user".
+   */
+  changedByUserId: string | null;
   reason: string;
   previousStartsAt: Date | null;
   previousEndsAt: Date | null;
@@ -61,7 +67,7 @@ export interface BookingRepositoryPort {
    * applied.
    *
    * **This is a compare-and-swap, not a plain `UPDATE`.** `MarkBookingPaidCommand`
-   * and `ExpireBookingCommand` both read a booking, transition it, and write
+   * and `SweepBookingCommand` both read a booking, transition it, and write
    * it back inside their own `atomicExecute` — and both are driven by
    * something that can legitimately fire within moments of the other: a
    * payment webhook and the expiry sweep are watching the *same* deadline
@@ -124,7 +130,7 @@ export interface BookingRepositoryPort {
    * alone.
    *
    * The caller decides what each returned booking's status *becomes* — the
-   * three do not share an ending (see `ExpireBookingCommand`). This method
+   * three do not share an ending (see `SweepBookingCommand`). This method
    * only answers which rows are past their own clock.
    *
    * Oldest first, with a limit, so a sweep that can only drain part of a

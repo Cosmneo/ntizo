@@ -1,18 +1,18 @@
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
-import type { ExpireBookingCommand } from "./expire-booking.command";
+import type { SweepBookingCommand } from "./sweep-booking.command";
 
-export interface ExpireDueBookingsInternalInput {
+export interface SweepDueBookingsInternalInput {
   /** How many due bookings one sweep may claim. The cron caller's budget, not this command's. */
   limit: number;
 }
 
 /**
  * The sweep that turns "a clock ran out and nobody moved" into "the slot is
- * free again" — the only caller of `ExpireBookingCommand`.
+ * free again" — the only caller of `SweepBookingCommand`.
  *
  * One question against three clocks: `findDueForExpiry` asks which bookings
  * are past their own deadline, whichever of the design's three windows
- * stamped it, and hands each one to `ExpireBookingCommand`, which decides
+ * stamped it, and hands each one to `SweepBookingCommand`, which decides
  * what that particular status's clock running out actually means. **Two of
  * the three endings are an expiry and the third is a cancellation** — see
  * that command's doc comment; this class deliberately knows none of that,
@@ -36,17 +36,17 @@ export interface ExpireDueBookingsInternalInput {
  * gives for leaving a failed message unmarked.
  *
  * **Idempotency is not this class's job.** `Booking.expire` and
- * `Booking.cancel` (via `ExpireBookingCommand`) are both no-ops from a
+ * `Booking.cancel` (via `SweepBookingCommand`) are both no-ops from a
  * status neither governs, so a booking this sweep claims twice — this run
  * and a concurrent or overlapping one — costs an extra no-op call, never a
  * double ending. Nothing here re-checks status for the same reason
- * `ExpireBookingCommand`'s own doc comment gives: that decision belongs to
+ * `SweepBookingCommand`'s own doc comment gives: that decision belongs to
  * the aggregate, once.
  */
-export class ExpireDueBookingsInternalCommand {
+export class SweepDueBookingsInternalCommand {
   constructor(
     private readonly bookings: BookingRepositoryPort,
-    private readonly expireBooking: ExpireBookingCommand,
+    private readonly sweepBooking: SweepBookingCommand,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -54,12 +54,12 @@ export class ExpireDueBookingsInternalCommand {
    * `swept`, not `expired`: two of the three clocks end in `EXPIRED` and
    * the third ends in `CANCELLED`, and this class cannot tell which of them
    * a given booking got without re-deriving a decision that belongs to
-   * `ExpireBookingCommand`. A count named for one of the two endings would
+   * `SweepBookingCommand`. A count named for one of the two endings would
    * be wrong for whichever bookings got the other. What this number honestly
    * says is how many due bookings were settled without throwing.
    */
   async execute(
-    input: ExpireDueBookingsInternalInput,
+    input: SweepDueBookingsInternalInput,
   ): Promise<{ swept: number; failed: number }> {
     const due = await this.bookings.findDueForExpiry(this.now(), input.limit);
 
@@ -70,7 +70,7 @@ export class ExpireDueBookingsInternalCommand {
       try {
         // findDueForExpiry only ever returns rows the database already
         // assigned an id to.
-        await this.expireBooking.execute({ bookingId: booking.id as string });
+        await this.sweepBooking.execute({ bookingId: booking.id as string });
         swept++;
       } catch (error) {
         // A slot leak avoided for every other booking in the wave is worse

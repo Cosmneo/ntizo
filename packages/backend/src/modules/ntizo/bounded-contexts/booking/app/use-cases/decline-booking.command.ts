@@ -63,7 +63,7 @@ const DECLINED_WITHOUT_REASON = "declined_without_reason";
  * exists, and none of those three actions would be true of the row anymore.
  *
  * **Order inside the transaction: save, then append the change, then
- * release the slot, then publish** — matching `ExpireBookingCommand`'s own
+ * release the slot, then publish** — matching `SweepBookingCommand`'s own
  * ordering discipline. The save is what makes the release correct:
  * releasing the hold while the row still said `AWAITING_PROVIDER` would
  * leave a window where the slot reads as free while the booking still

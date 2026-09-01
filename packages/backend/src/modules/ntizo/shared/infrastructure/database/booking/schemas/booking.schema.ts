@@ -12,7 +12,7 @@ import { user } from "../../user/schemas/user.schema";
 import { provider } from "../../provider/schemas/provider.schema";
 import { providerMember } from "../../provider/schemas/provider-member.schema";
 import { service, serviceOption } from "../../catalog/schemas/service.schema";
-import { BOOKING_STATUSES, BookingStatus } from "../enums";
+import { BOOKING_STATUSES, BookingStatus, DEADLINE_BEARING_STATUSES } from "../enums";
 
 export const bookingSchema = pgSchema("ntizo_booking");
 
@@ -215,18 +215,33 @@ export const booking = bookingSchema.table(
     // payments to chase, confirmed jobs to prepare for, disputes to answer.
     index("booking_provider_status_idx").on(t.providerId, t.status),
 
-    // The expiry sweep (`findDueForExpiry`) runs
-    // `WHERE status = 'PENDING_PAYMENT' AND expires_at <= now() ORDER BY
-    // expires_at ASC LIMIT 200` every sixty seconds, forever, on a Worker's
-    // single connection to Neon. `booking_provider_status_idx`'s leading
-    // column is `provider_id`, so it cannot serve this — every sweep was a
-    // sequential scan plus a sort of the whole table. Partial on the same
-    // status this query filters to, so the predicate matches the query
-    // exactly and the index also hands back rows pre-sorted for
-    // `ORDER BY expires_at ASC LIMIT 200`.
+    // The sweep (`findDueForExpiry`) runs
+    // `WHERE status IN (…) AND expires_at <= now() ORDER BY expires_at ASC
+    // LIMIT 200` every sixty seconds, forever, on a Worker's single
+    // connection to Neon. `booking_provider_status_idx`'s leading column is
+    // `provider_id`, so it cannot serve this — every sweep was a sequential
+    // scan plus a sort of the whole table. Partial on the same statuses that
+    // query filters to, so the predicate implies the query's and the index
+    // also hands back rows pre-sorted for `ORDER BY expires_at ASC LIMIT 200`.
+    //
+    // **The predicate widened from `PENDING_PAYMENT` alone to all three
+    // `DEADLINE_BEARING_STATUSES`** when the sweep did. A partial index whose
+    // predicate does not imply the query's is simply not used, so leaving
+    // this at one status would not have broken anything — it would have
+    // silently put the sweep back to the sequential scan this index was
+    // added to remove. **Nothing goes red for that**, which is exactly why
+    // `booking-constraints.test.ts` reads this predicate back out of
+    // `pg_indexes` and compares it to `DEADLINE_BEARING_STATUSES` in both
+    // directions: an unapplied migration here is invisible without it.
+    //
+    // Built from the constant through `statusList`, unlike the exclusion
+    // constraint's hand-typed predicate — Drizzle can express a partial
+    // index, so this one cannot drift from the list it is generated from.
+    // The catalogue test still earns its keep: it proves the *live database*
+    // agrees with what this file generates, which is a different claim.
     index("booking_expiry_sweep_idx")
       .on(t.expiresAt)
-      .where(sql`${t.status} = ${statusList([BookingStatus.PendingPayment])}`),
+      .where(sql`${t.status} in (${statusList(DEADLINE_BEARING_STATUSES)})`),
 
     // `booking.mine` (`DrizzleBookingReadRepository.listForCustomer`) runs
     // `WHERE customer_id = $1 ORDER BY created_at DESC` with no index to

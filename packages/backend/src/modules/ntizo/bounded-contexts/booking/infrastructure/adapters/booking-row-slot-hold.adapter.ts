@@ -33,7 +33,7 @@ import type { SlotHoldPort, SlotWindow } from "../../app/ports/outbound/slot-hol
  * as their own rows — for example, to let a slot be held before a booking
  * exists, or to hold time no booking will ever occupy — these three methods
  * are where that write lands. The port exists so that day's change touches
- * this file and not `CreateBookingCommand`, `ExpireBookingCommand`, or the
+ * this file and not `CreateBookingCommand`, `SweepBookingCommand`, or the
  * reschedule command Plan 2 adds: they already call `hold`, `release`, and
  * `transfer` as if the write happened, because from their side of the port it
  * always has.
