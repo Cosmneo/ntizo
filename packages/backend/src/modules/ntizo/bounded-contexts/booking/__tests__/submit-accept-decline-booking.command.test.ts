@@ -333,6 +333,11 @@ function setupDecline(initial: Booking | null) {
 }
 
 describe("SubmitBookingCommand", () => {
+  // What the customer gave on checkout's step 2. None of this describe
+  // block's assertions read address content back — `BookingSubmitted`'s
+  // payload does not carry it — so one shared, valid value is enough.
+  const ADDRESS = { label: "Casa", line: "Av. Julius Nyerere 812", city: "Maputo" };
+
   it("submits a draft booking for its own customer, computing respondBy from provider_response_minutes, and publishes BookingSubmitted exactly once", async () => {
     // 45, not 90: `bookingInput()`'s own `durationMinutes` is 90, and using
     // the same number for `providerResponseMinutes` would make `endsAt`
@@ -343,7 +348,7 @@ describe("SubmitBookingCommand", () => {
       draftBooking(),
       { providerResponseMinutes: 45 },
     );
-    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1" };
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS };
 
     const before = Date.now();
     await command.execute(input);
@@ -424,7 +429,7 @@ describe("SubmitBookingCommand", () => {
     // ("cust-1", from `bookingInput()`). A fixture where every input used
     // "cust-1" could not fail here if the check were dropped, because
     // there would be nobody foreign to refuse.
-    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-2" };
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-2", address: ADDRESS };
 
     await expect(command.execute(input)).rejects.toThrow(NotBookingCustomerError);
 
@@ -442,7 +447,7 @@ describe("SubmitBookingCommand", () => {
     // command's own write reaches it — the ordinary case the CAS exists
     // for, not an exotic one.
     repo.currentStatusOverride = "AWAITING_PROVIDER";
-    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1" };
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS };
 
     await command.execute(input);
 
@@ -464,7 +469,7 @@ describe("SubmitBookingCommand", () => {
       providerResponseMinutes: 120,
     });
 
-    await command.execute({ bookingId: "bk-1", customerId: "cust-1" });
+    await command.execute({ bookingId: "bk-1", customerId: "cust-1", address: ADDRESS });
 
     // Equal to `startsAt` exactly, not merely "shorter than 120 minutes": an
     // implementation shortening the window by some other rule would still
@@ -485,7 +490,7 @@ describe("SubmitBookingCommand", () => {
     });
 
     const before = Date.now();
-    await command.execute({ bookingId: "bk-1", customerId: "cust-1" });
+    await command.execute({ bookingId: "bk-1", customerId: "cust-1", address: ADDRESS });
     const after = Date.now();
 
     const respondBy = repo.savedArg?.expiresAt as Date;
@@ -496,7 +501,7 @@ describe("SubmitBookingCommand", () => {
 
   it("throws BookingNotFoundError when the booking does not exist, and publishes nothing", async () => {
     const { command, repo, outbox, delayedJobs } = setupSubmit(null);
-    const input: SubmitBookingInput = { bookingId: "missing", customerId: "cust-1" };
+    const input: SubmitBookingInput = { bookingId: "missing", customerId: "cust-1", address: ADDRESS };
 
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 

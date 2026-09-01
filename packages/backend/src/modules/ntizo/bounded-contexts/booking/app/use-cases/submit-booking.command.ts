@@ -11,6 +11,22 @@ export interface SubmitBookingInput {
   bookingId: string;
   /** From `requireUser` at the GraphQL layer, never from the client. */
   customerId: string;
+  /**
+   * What the customer gave on checkout's step 2. Same shape `Booking.submit`
+   * takes, and passed straight through to it — this command does not
+   * duplicate the aggregate's own blank/missing checks, because a second
+   * copy of that rule here is a second place for it to drift from the one
+   * `Booking.submit` actually enforces.
+   */
+  address: {
+    label: string;
+    line: string;
+    city: string;
+    district?: string | null;
+    directions?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+  };
 }
 
 /**
@@ -124,7 +140,7 @@ export class SubmitBookingCommand {
         booking.startsAt,
       );
 
-      const moved = booking.submit(at, respondByDeadline);
+      const moved = booking.submit(at, respondByDeadline, input.address);
 
       const applied = await this.repo.save(moved, booking.status);
       if (!applied) {
