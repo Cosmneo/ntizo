@@ -18,6 +18,7 @@ import { constants, generateKeyPairSync, privateDecrypt } from "node:crypto";
 import {
   MPESA_LOCAL_CODES,
   MpesaClient,
+  MpesaLiveShortcodeInSandboxError,
   MpesaSandboxShortcodeInProductionError,
   type MpesaConfig,
 } from "../mpesa.client";
@@ -224,6 +225,122 @@ describe("MpesaClient.c2b", () => {
     });
   });
 
+  /**
+   * **The expensive unknown, made survivable.**
+   *
+   * `output_ResponseCode` and `output_ResponseDesc` were read off real
+   * answers from the live sandbox. `output_TransactionID` was not — no
+   * `INS-0` was ever obtained, so that spelling comes from the predecessor's
+   * PHP and a stub built to match it. If it is wrong, every successful charge
+   * downgrades to a refusal: the customer debited up to three times, and the
+   * booking then cancelled telling the provider nobody paid. The worst
+   * outcome this system can produce, caused by a capital letter.
+   *
+   * So the id is read leniently — but the documented key is still tried
+   * first, so a correct response is never resolved by a fuzzy match.
+   */
+  it.each([
+    ["the documented key", { output_TransactionID: "7SHV1" }, "7SHV1"],
+    ["a different casing", { output_TransactionId: "7SHV2" }, "7SHV2"],
+    ["no underscore at all", { outputTransactionID: "7SHV3" }, "7SHV3"],
+    ["a name nobody predicted", { transaction_id: "7SHV4" }, "7SHV4"],
+  ])("reads the transaction id from %s", async (_label, extra, expected) => {
+    const { fetchImpl } = stub(() => json({ output_ResponseCode: "INS-0", ...extra }));
+
+    const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
+
+    expect(result).toMatchObject({ outcome: "paid", transactionId: expected });
+  });
+
+  it("prefers the documented key over anything else present", async () => {
+    const { fetchImpl } = stub(() =>
+      json({
+        output_ResponseCode: "INS-0",
+        output_TransactionID: "the-real-one",
+        transaction_id: "a-decoy",
+      }),
+    );
+
+    const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
+
+    expect(result).toMatchObject({ outcome: "paid", transactionId: "the-real-one" });
+  });
+
+  /**
+   * `input_TransactionReference` is *ours*, echoed back. Recording our own
+   * reference as the processor's receipt would be worse than admitting we
+   * could not find one: `markPaid` deduplicates on it, and a refund would
+   * name it to a processor that has never heard of it.
+   */
+  it("never mistakes our own echoed reference for a transaction id", async () => {
+    const { fetchImpl } = stub(() =>
+      json({
+        output_ResponseCode: "INS-0",
+        output_TransactionReference: REQUEST.transactionReference,
+        output_ThirdPartyReference: REQUEST.thirdPartyReference,
+      }),
+    );
+
+    const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
+
+    expect(result).toMatchObject({
+      outcome: "refused",
+      code: MPESA_LOCAL_CODES.missingTransactionId,
+    });
+  });
+
+  /**
+   * By the time an `INS-0` is read, the customer's money has moved. Every
+   * step after this line can fail — a field name we guessed wrong, a
+   * compare-and-swap lost to the deadline sweep, an evicted Worker — and each
+   * leaves a debited customer whose receipt exists nowhere. The log line is
+   * the difference between reconciling that by hand and not being able to.
+   */
+  it("logs the whole response body on INS-0, before extracting anything", async () => {
+    const logged: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    try {
+      const { fetchImpl } = stub(() =>
+        json({ output_ResponseCode: "INS-0", output_TransactionID: "7SHV1234567" }),
+      );
+      await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
+    } finally {
+      console.error = original;
+    }
+
+    const line = JSON.stringify(logged);
+    expect(line).toContain("7SHV1234567");
+    expect(line).toContain(REQUEST.transactionReference);
+  });
+
+  it("logs the body even when it cannot find a transaction id in it", async () => {
+    const logged: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    let result;
+    try {
+      const { fetchImpl } = stub(() =>
+        json({ output_ResponseCode: "INS-0", output_Surprise: "something else entirely" }),
+      );
+      result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
+    } finally {
+      console.error = original;
+    }
+
+    // Refused, because an unidentifiable payment must not be recorded as
+    // one — but the receipt is in the log, which is the whole point.
+    expect(result).toMatchObject({
+      outcome: "refused",
+      code: MPESA_LOCAL_CODES.missingTransactionId,
+    });
+    expect(JSON.stringify(logged)).toContain("something else entirely");
+  });
+
   it("turns a rejected fetch into a refusal, not a throw", async () => {
     const fetchImpl = async () => {
       throw new Error("The operation timed out.");
@@ -308,6 +425,37 @@ describe("MpesaClient.c2b", () => {
     ).c2b(REQUEST);
 
     expect(result.outcome).toBe("paid");
+  });
+
+  /**
+   * The mirror of the gate above, and the one the config defaults make easy
+   * to hit: `resolveMpesaConfig` defaults `MPESA_ENVIRONMENT` to
+   * `development`, so a stage issued a real shortcode that sets it and
+   * forgets the environment talks to the **sandbox host with a live
+   * shortcode**.
+   *
+   * Harmless to money, and that is exactly why it needs a gate: every charge
+   * comes back "unknown shortcode", which from outside is indistinguishable
+   * from a platform where every customer ignores their prompt. Bookings
+   * exhaust their retry bound and are cancelled telling providers the
+   * customer did not pay. A silent failure that costs providers their
+   * Saturdays is not better than one that costs money, only harder to find.
+   */
+  it("refuses to charge when the sandbox is handed a live shortcode", async () => {
+    const { calls, fetchImpl } = stub(() =>
+      json({ output_ResponseCode: "INS-0", output_TransactionID: "T1" }),
+    );
+    const client = new MpesaClient(
+      config({ environment: "development", serviceProviderCode: "900123" }),
+      fetchImpl,
+    );
+
+    await expect(client.c2b(REQUEST)).rejects.toThrow(MpesaLiveShortcodeInSandboxError);
+    expect(calls).toHaveLength(0);
+
+    const error = (await client.c2b(REQUEST).catch((e: unknown) => e)) as Error;
+    expect(error.message).toContain("development");
+    expect(error.message).toContain("900123");
   });
 
   it("allows production once it carries a shortcode of its own", async () => {

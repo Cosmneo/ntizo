@@ -172,7 +172,7 @@ class FakeRepo implements BookingRepositoryPort {
   async findAwaitingCharge(): Promise<Booking[]> {
     return [];
   }
-  async recordChargeAttempt(): Promise<number> {
+  async recordChargeAttempt(): Promise<number | null> {
     return 1;
   }
 }
@@ -237,7 +237,7 @@ class RacingFakeRepo implements BookingRepositoryPort {
   async findAwaitingCharge(): Promise<Booking[]> {
     return [];
   }
-  async recordChargeAttempt(): Promise<number> {
+  async recordChargeAttempt(): Promise<number | null> {
     return 1;
   }
 }

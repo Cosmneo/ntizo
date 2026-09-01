@@ -14,7 +14,7 @@ import {
 } from "../../../../../shared/infrastructure/database/booking/enums";
 import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { Booking } from "../../../domain/aggregates/booking.aggregate";
-import { BookingNotFoundError, SlotAlreadyTakenError } from "../../../domain/exceptions";
+import { SlotAlreadyTakenError } from "../../../domain/exceptions";
 import type {
   BookingChangeRecord,
   BookingRepositoryPort,
@@ -433,7 +433,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * query exists to find.
    */
   async findAwaitingCharge(criteria: {
-    now: Date;
+    deadlineAfter: Date;
     limit: number;
     maxAttempts: number;
     notAttemptedSince: Date;
@@ -450,7 +450,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
             lte(booking.lastChargeAttemptAt, criteria.notAttemptedSince),
           ),
           isNotNull(booking.expiresAt),
-          gt(booking.expiresAt, criteria.now),
+          gt(booking.expiresAt, criteria.deadlineAfter),
         ),
       )
       .orderBy(asc(booking.expiresAt))
@@ -459,32 +459,58 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
   }
 
   /**
-   * `charge_attempts = charge_attempts + 1` in the database, not in this
-   * process. Two waves overlapping on one booking — which the cooldown makes
-   * unlikely and does not make impossible — each get their own number, where
-   * a read-then-write would have both read the same value and written the
-   * same one back.
+   * The claim, and the reason it is an `UPDATE … WHERE <the whole selection
+   * predicate>` rather than `WHERE id = $1`.
    *
-   * `.returning()` rather than a follow-up `SELECT`: the caller needs the new
-   * total for this attempt's payment reference, and a second round trip could
-   * only return a number some other writer had moved on since.
+   * The three conditions below are the same three `findAwaitingCharge`
+   * selected on, re-evaluated at the moment of the write. Under READ
+   * COMMITTED an `UPDATE` carrying them blocks on the row lock if a
+   * concurrent wave got there first, then re-evaluates against the row that
+   * wave actually committed — so the loser's `WHERE` no longer matches, it
+   * updates zero rows, and `null` comes back instead of a second prompt on a
+   * handset that is already showing one. Exactly the mechanism
+   * `save(booking, expectedStatus)` uses, applied to a different predicate;
+   * see this method's own port comment for the two-wave trace that makes it
+   * necessary rather than defensive.
+   *
+   * `charge_attempts = charge_attempts + 1` in the database, not in this
+   * process, so the number that comes back is genuinely this attempt's and
+   * two waves can never derive the same payment reference.
+   *
+   * **Zero rows is not an error here**, which is why this no longer raises
+   * `BookingNotFoundError`. It is the ordinary answer to "somebody else has
+   * this booking" — the row moved on, was charged by another wave, or
+   * exhausted its bound between the select and now — and the caller treats it
+   * the same way it treats a losing `save`: return, silently, having charged
+   * nobody. A vanished row is indistinguishable from those and equally not
+   * worth a throw: the caller has already read the booking through `findById`
+   * one statement earlier.
    */
-  async recordChargeAttempt(bookingId: string, at: Date): Promise<number> {
+  async recordChargeAttempt(claim: {
+    bookingId: string;
+    at: Date;
+    maxAttempts: number;
+    notAttemptedSince: Date;
+  }): Promise<number | null> {
     const [row] = await getDb()
       .update(booking)
       .set({
         chargeAttempts: sql`${booking.chargeAttempts} + 1`,
-        lastChargeAttemptAt: at,
-        updatedAt: at,
+        lastChargeAttemptAt: claim.at,
+        updatedAt: claim.at,
       })
-      .where(eq(booking.id, bookingId))
+      .where(
+        and(
+          eq(booking.id, claim.bookingId),
+          eq(booking.status, BookingStatus.PendingPayment),
+          lt(booking.chargeAttempts, claim.maxAttempts),
+          or(
+            isNull(booking.lastChargeAttemptAt),
+            lte(booking.lastChargeAttemptAt, claim.notAttemptedSince),
+          ),
+        ),
+      )
       .returning({ chargeAttempts: booking.chargeAttempts });
-    // Zero rows means the booking vanished between the caller's `findById`
-    // and this write — a row deleted under a running sweep, which nothing in
-    // the product does. Raising here rather than returning a made-up count
-    // keeps the caller from charging against a reference derived from a
-    // number that was never written.
-    if (!row) throw new BookingNotFoundError(bookingId);
-    return row.chargeAttempts;
+    return row?.chargeAttempts ?? null;
   }
 }

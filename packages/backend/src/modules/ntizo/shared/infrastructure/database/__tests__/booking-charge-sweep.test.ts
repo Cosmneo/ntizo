@@ -55,6 +55,7 @@ import { MarkBookingPaidCommand } from "../../../../bounded-contexts/booking/app
 import { ChargeBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/charge-booking.command";
 import {
   BOOKING_CHARGE_ATTEMPT_LIMIT,
+  BOOKING_CHARGE_MIN_WINDOW_MS,
   BOOKING_CHARGE_RETRY_MINUTES,
   ChargeAcceptedBookingsInternalCommand,
 } from "../../../../bounded-contexts/booking/app/use-cases/charge-accepted-bookings.internal.command";
@@ -254,16 +255,42 @@ class FixedCharge implements PaymentChargePort {
  * processor swapped for a fake — the one substitution this file makes, and
  * the only one it can make without moving money.
  */
-function buildSweep(paymentCharge: PaymentChargePort, now: () => Date) {
+/**
+ * `now` reaches the per-booking command as well as the wave, and it has to:
+ * the command stamps `last_charge_attempt_at` from its own clock (see its
+ * constructor), so a test driving a fictional 2027 wave against a command
+ * still reading the real 2026 wall clock would write a stamp a year in the
+ * past — and every cooldown assertion in this file would pass for the wrong
+ * reason. That is exactly how the stale-wave test below first failed.
+ */
+function buildChargeBooking(paymentCharge: PaymentChargePort, now: () => Date) {
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
-  const chargeBooking = new ChargeBookingCommand(
+  return new ChargeBookingCommand(
     repo,
     new DrizzleCustomerPhoneReader(),
     paymentCharge,
     new MarkBookingPaidCommand(repo, unitOfWork, outboxPort),
+    now,
   );
-  return new ChargeAcceptedBookingsInternalCommand(repo, chargeBooking, now);
+}
+
+function buildSweep(paymentCharge: PaymentChargePort, now: () => Date) {
+  return new ChargeAcceptedBookingsInternalCommand(
+    repo,
+    buildChargeBooking(paymentCharge, now),
+    now,
+  );
+}
+
+/** The criteria a wave running at `now` would compute — selection and claim alike. */
+function criteriaAt(now: Date) {
+  return {
+    deadlineAfter: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
+    limit: 10,
+    maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+    notAttemptedSince: new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+  };
 }
 
 /** See `booking-sweep.test.ts`'s own `withBookings` for why the cleanup is a `finally`. */
@@ -638,6 +665,245 @@ describe("findAwaitingCharge, through the sweep", () => {
 
       expect(result).toEqual({ attempted: 0, failed: 0 });
       expect(charge.requests).toEqual([]);
+    });
+  });
+
+  /**
+   * A booking whose payment window closes mid-call must not be charged: the
+   * call blocks for up to 110 seconds, and the next invocation's *deadline*
+   * sweep runs first — it would cancel the booking and tell the provider the
+   * customer did not pay, and then the charge would return `INS-0`. A debited
+   * customer, a cancelled booking, and a provider told the opposite of what
+   * happened.
+   *
+   * Two bookings a minute apart, either side of `BOOKING_CHARGE_MIN_WINDOW_MS`,
+   * so the boundary is proven in both directions rather than the safe one
+   * only.
+   */
+  test("does not charge a booking that cannot survive the call", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2027-06-15T12:00:00.000Z");
+
+      const tooLate = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-15T14:00:00.000Z"),
+              // Inside the window, so `expires_at > now` — and still too
+              // close to survive a call that can take nearly two minutes.
+              expiresAt: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS - 60_000),
+            }),
+          ),
+          1,
+        ),
+      );
+      const roomy = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-15T16:00:00.000Z"),
+              expiresAt: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS + 60_000),
+            }),
+          ),
+          1,
+        ),
+      );
+
+      const charge = new FixedCharge({
+        outcome: "failed",
+        code: "INS-9",
+        description: "Request timeout",
+      });
+      const result = await buildSweep(charge, () => now).execute({ limit: 10 });
+
+      expect(result).toEqual({ attempted: 1, failed: 0 });
+      expect(charge.requests.map((r) => r.bookingId)).toEqual([roomy.id as string]);
+      // Untouched — not even an attempt counted against it. It will run out
+      // and be cancelled, which is where it was heading anyway.
+      expect((await chargeStateOf(tooLate.id as string))?.chargeAttempts).toBe(0);
+    });
+  });
+
+  /**
+   * **The two-wave race, and the reason `recordChargeAttempt` carries the
+   * selection predicate rather than being a counter.**
+   *
+   * Waves overlap by construction: a wave charges up to five bookings one at
+   * a time, an unanswered C2B blocks for about sixty seconds, and the cron
+   * fires every sixty. So wave 2 starts while wave 1 is still blocked on its
+   * first booking, and wave 2's candidate list is read *before* wave 1
+   * reaches the bookings further down its own list.
+   *
+   * That stale list is exactly what this test reconstructs: wave 2 selects,
+   * wave 1 then runs to completion, and only afterwards does wave 2 act on
+   * what it selected. With the predicate only in the `SELECT`, wave 2 pushes
+   * a second prompt at a handset already showing one — one second apart —
+   * and a customer who accepts both is debited twice. With it in the
+   * `UPDATE`, wave 2's claim matches zero rows and it charges nobody.
+   */
+  test("a second wave acting on a stale candidate list charges nobody", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2027-06-16T12:00:00.000Z");
+      const contested = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-16T14:00:00.000Z"),
+              expiresAt: new Date("2027-06-16T12:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const id = contested.id as string;
+      const criteria = criteriaAt(now);
+
+      // Wave 2 reads its candidates first — before wave 1 has touched
+      // anything. This is the whole setup: a list that is about to go stale.
+      const waveTwoCandidates = await repo.findAwaitingCharge(criteria);
+      expect(waveTwoCandidates.map((b) => b.id)).toContain(id);
+
+      // Wave 1 runs to completion and prompts the customer.
+      const charge = new FixedCharge({
+        outcome: "failed",
+        code: "INS-9",
+        description: "Request timeout",
+      });
+      await buildSweep(charge, () => now).execute({ limit: 10 });
+      expect(charge.requests).toHaveLength(1);
+
+      // Wave 2 now acts on the list it read a minute ago.
+      await buildChargeBooking(charge, () => now).execute({
+        bookingId: id,
+        maxAttempts: criteria.maxAttempts,
+        notAttemptedSince: criteria.notAttemptedSince,
+      });
+
+      // Still one. The second prompt never happened.
+      expect(charge.requests).toHaveLength(1);
+      expect((await chargeStateOf(id))?.chargeAttempts).toBe(1);
+    });
+  });
+
+  /**
+   * The bound, re-asserted at the write rather than only at the select. A
+   * wave holding a stale list of a booking that has since exhausted its
+   * attempts must not be the fourth charge against a limit of three.
+   */
+  test("the claim refuses a booking that spent its bound after the select", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2027-06-17T12:00:00.000Z");
+      const booking1 = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-17T14:00:00.000Z"),
+              expiresAt: new Date("2027-06-17T12:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const id = booking1.id as string;
+      const criteria = criteriaAt(now);
+
+      // Selected while it still had attempts left...
+      expect((await repo.findAwaitingCharge(criteria)).map((b) => b.id)).toContain(id);
+
+      // ...and spent them before the claim ran.
+      await setChargeState(id, {
+        chargeAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+        lastChargeAttemptAt: new Date(now.getTime() - 60 * 60_000),
+      });
+
+      const claimed = await repo.recordChargeAttempt({
+        bookingId: id,
+        at: now,
+        maxAttempts: criteria.maxAttempts,
+        notAttemptedSince: criteria.notAttemptedSince,
+      });
+
+      expect(claimed).toBeNull();
+      // And the losing claim wrote nothing — not even the attempt it was
+      // refused for.
+      expect((await chargeStateOf(id))?.chargeAttempts).toBe(BOOKING_CHARGE_ATTEMPT_LIMIT);
+    });
+  });
+
+  test("the claim returns this attempt's own number, so two waves cannot share a reference", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2027-06-18T12:00:00.000Z");
+      const booking1 = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-18T14:00:00.000Z"),
+              expiresAt: new Date("2027-06-18T12:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const id = booking1.id as string;
+
+      // Two claims far enough apart that the cooldown lets the second
+      // through: the numbers must differ, because a repeated payment
+      // reference is refused by the processor as a duplicate.
+      const first = await repo.recordChargeAttempt({
+        bookingId: id,
+        at: now,
+        maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+        notAttemptedSince: new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+      });
+      const later = new Date(now.getTime() + (BOOKING_CHARGE_RETRY_MINUTES + 1) * 60_000);
+      const second = await repo.recordChargeAttempt({
+        bookingId: id,
+        at: later,
+        maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+        notAttemptedSince: new Date(later.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+      });
+
+      expect(first).toBe(1);
+      expect(second).toBe(2);
+    });
+  });
+
+  test("the claim refuses a booking prompted a moment ago, even from a stale select", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2027-06-19T12:00:00.000Z");
+      const booking1 = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-19T14:00:00.000Z"),
+              expiresAt: new Date("2027-06-19T12:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const id = booking1.id as string;
+
+      const first = await repo.recordChargeAttempt({
+        bookingId: id,
+        at: now,
+        maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+        notAttemptedSince: new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+      });
+      expect(first).toBe(1);
+
+      // A second wave one minute later — the very next cron tick, still well
+      // inside the cooldown, and the exact case the column exists for.
+      const nextTick = new Date(now.getTime() + 60_000);
+      const second = await repo.recordChargeAttempt({
+        bookingId: id,
+        at: nextTick,
+        maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+        notAttemptedSince: new Date(nextTick.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+      });
+
+      expect(second).toBeNull();
+      expect((await chargeStateOf(id))?.chargeAttempts).toBe(1);
     });
   });
 

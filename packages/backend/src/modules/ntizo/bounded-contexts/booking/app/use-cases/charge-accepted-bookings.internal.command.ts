@@ -40,6 +40,29 @@ export const BOOKING_CHARGE_ATTEMPT_LIMIT = 3;
  */
 export const BOOKING_CHARGE_RETRY_MINUTES = 5;
 
+/**
+ * How much payment window a booking must have left before it is worth
+ * charging at all.
+ *
+ * A C2B blocks for up to `C2B_TIMEOUT_MS` (110 s, see `MpesaClient`). Select
+ * a booking with thirty seconds left on its window and the call is still
+ * blocking when its deadline passes — the next invocation's *deadline* sweep
+ * runs first, cancels it, and tells the provider the customer did not pay —
+ * and then the charge returns `INS-0`. A debited customer, a cancelled
+ * booking, and a provider who has been told the opposite of what happened.
+ *
+ * So the charge sweep asks for bookings whose deadline is further away than
+ * one whole call plus the write that follows it. Bookings inside that last
+ * window are not charged; they simply run out and are cancelled, which is the
+ * outcome they were heading for anyway.
+ *
+ * Must exceed `C2B_TIMEOUT_MS`, and a test in
+ * `charge-booking.command.test.ts` asserts exactly that rather than trusting
+ * this comment — the two numbers live in different layers and nothing else
+ * would notice them drifting.
+ */
+export const BOOKING_CHARGE_MIN_WINDOW_MS = 180_000;
+
 const MS_PER_MINUTE = 60_000;
 
 export interface ChargeAcceptedBookingsInternalInput {
@@ -72,11 +95,19 @@ export interface ChargeAcceptedBookingsInternalInput {
  * **One bad booking does not stop the wave.** Each is charged inside its own
  * `try`; a throw is counted and logged with its booking id, and the booking
  * is left as `findAwaitingCharge` found it — except for the attempt already
- * counted against it, which is the point: a booking that throws every time
+ * claimed against it, which is the point: a booking that throws every time
  * exhausts its bound and reaches the cancellation like any other, rather than
  * being retried for ever. Same shape and same reasoning as
  * `SweepDueBookingsInternalCommand`, which is where this pattern is argued
  * out in full.
+ *
+ * **What this query returns is a candidate list, not a claim.** Waves overlap
+ * by construction — five bookings at up to two minutes each against a
+ * sixty-second cron — so by the time this loop reaches its last booking,
+ * another wave has been and gone. The bound and the cooldown are therefore
+ * re-asserted at the write, in `recordChargeAttempt`, which is what actually
+ * decides who charges whom; the criteria computed below are passed down so
+ * both halves test the identical predicate against the identical instant.
  *
  * **Charged one at a time, not in parallel.** The cron's Postgres pool is
  * `{ max: 1 }`, so concurrent charges would interleave transactions on one
@@ -98,16 +129,32 @@ export class ChargeAcceptedBookingsInternalCommand {
    * money are not failures of this command at all — a customer who lets a
    * prompt time out is the ordinary case. `failed` counts only what threw,
    * which is the number `scheduled.ts` has a reason to shout about.
+   *
+   * `attempted` counts bookings this wave *handed to* `chargeBooking`, which
+   * is not the same as bookings it charged: one whose claim lost to a
+   * concurrent wave is counted here and prompted nobody. That is the honest
+   * reading of a number this loop can actually know, and the alternative —
+   * threading the claim's outcome back up — would be a return value invented
+   * for a log line.
    */
   async execute(
     input: ChargeAcceptedBookingsInternalInput,
   ): Promise<{ attempted: number; failed: number }> {
     const now = this.now();
+    // Computed once, here, and used twice: to select the candidates and — by
+    // being handed to each `chargeBooking.execute` — to claim them. One
+    // instant, so the two predicates cannot disagree by however long the
+    // wave takes to run.
+    const notAttemptedSince = new Date(
+      now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * MS_PER_MINUTE,
+    );
     const due = await this.bookings.findAwaitingCharge({
-      now,
+      // Not `now`: a booking must have a whole call's worth of window left.
+      // See `BOOKING_CHARGE_MIN_WINDOW_MS`.
+      deadlineAfter: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
       limit: input.limit,
       maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
-      notAttemptedSince: new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * MS_PER_MINUTE),
+      notAttemptedSince,
     });
 
     let attempted = 0;
@@ -117,7 +164,11 @@ export class ChargeAcceptedBookingsInternalCommand {
       try {
         // findAwaitingCharge only ever returns rows the database already
         // assigned an id to.
-        await this.chargeBooking.execute({ bookingId: booking.id as string });
+        await this.chargeBooking.execute({
+          bookingId: booking.id as string,
+          maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+          notAttemptedSince,
+        });
         attempted++;
       } catch (error) {
         // Every other booking in this wave is worth more than the one that

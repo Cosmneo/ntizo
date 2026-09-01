@@ -1,5 +1,6 @@
 import { infraStore } from "../../../../../../shared/infrastructure/stores/infra-store";
 import {
+  type FetchLike,
   MpesaClient,
   type MpesaConfig,
   toMpesaMsisdn,
@@ -23,6 +24,9 @@ const SETTLEMENT_CURRENCY = "MZN";
 
 /** The metical has two decimal places, like every currency this platform prices in today. */
 const MINOR_UNITS_PER_MAJOR = 100;
+
+/** M-Pesa's own limit on both reference fields. Alphanumeric, no longer than this. */
+const MPESA_REFERENCE_MAX_CHARS = 20;
 
 /**
  * Failures this adapter names before the client is ever called. Same
@@ -57,8 +61,29 @@ export const CHARGE_LOCAL_CODES = {
  * in `graphql/private.ts` — resolving eagerly would blow up a GraphQL
  * bootstrap that never charges anything. Same shape and same reasoning as
  * `LazyEmailServiceAdapter`.
+ *
+ * **`fetchImpl` is threaded through to the client, and that seam is the
+ * difference between these eight lines being tested and not.** Without it
+ * `new MpesaClient(config)` was unreachable from every test — the adapter's
+ * own tests all returned before it, the command and sweep tests substitute
+ * this whole class at the port, and the client's tests build their own
+ * request by hand. Replacing `toMajorUnits(request.amountMinor)` below with
+ * `request.amountMinor` left all 68 charge tests green: every customer
+ * charged a hundred times the price, nothing red. The conversion, the
+ * MSISDN, both references and the `paid → paymentRef` mapping all live in
+ * that gap, and they are the only lines here where money is actually
+ * decided.
  */
 export class MpesaPaymentCharge implements PaymentChargePort {
+  constructor(
+    /**
+     * Handed to `MpesaClient` so a test can watch what reaches the wire.
+     * Defaulted, so production wiring (`bootstrapBooking`) passes nothing and
+     * reads the same as before.
+     */
+    private readonly fetchImpl?: FetchLike,
+  ) {}
+
   async charge(request: PaymentChargeRequest): Promise<PaymentChargeResult> {
     if (request.currency !== SETTLEMENT_CURRENCY) {
       return {
@@ -98,11 +123,15 @@ export class MpesaPaymentCharge implements PaymentChargePort {
       };
     }
 
-    const response = await new MpesaClient(config).c2b({
+    const client = this.fetchImpl
+      ? new MpesaClient(config, this.fetchImpl)
+      : new MpesaClient(config);
+
+    const response = await client.c2b({
       msisdn,
       amount: toMajorUnits(request.amountMinor),
       transactionReference: request.reference,
-      thirdPartyReference: thirdPartyReference(),
+      thirdPartyReference: thirdPartyReferenceFor(request.reference),
     });
 
     if (response.outcome === "paid") {
@@ -135,28 +164,48 @@ export function toMajorUnits(amountMinor: number): number {
 }
 
 /**
- * The second reference the gateway wants, distinct from ours.
+ * The second reference the gateway wants, derived from the first.
  *
  * M-Pesa takes two: `input_TransactionReference`, which is what the customer
- * sees and which `ChargeBookingCommand` derives from the booking, and
- * `input_ThirdPartyReference`, which it only echoes back. Random, because
- * nothing reads it: giving it the same value as the transaction reference
- * would invite a reader to believe one of them means something it does not.
- * Twenty characters is the field's limit.
+ * sees, and `input_ThirdPartyReference`, which it echoes back. They must
+ * differ, and this one used to be a fresh `crypto.randomUUID()` — which made
+ * it **unreconstructible**, and that was a real hole rather than an
+ * aesthetic one. The whole point of deriving the transaction reference from
+ * `bookingId` + `attempt` (see `chargeReference`) is that a later
+ * reconciliation can name an attempt whose answer never came back. If
+ * `queryTransactionStatus` keys on the third-party reference — which is
+ * plausible, and unconfirmed — then a random one means the handle for the
+ * attempt you need to ask about does not exist anywhere. A UUID that is
+ * generated, sent, and then dropped on the floor is not a reference.
+ *
+ * `T` + the transaction reference: distinct from it, deterministic in
+ * exactly the same inputs, and rebuildable from the row by rebuilding the
+ * transaction reference first. Nineteen characters against the field's limit
+ * of twenty (`chargeReference` produces eighteen), and sliced anyway so a
+ * longer reference can never silently produce an over-long field.
  */
-function thirdPartyReference(): string {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 20).toUpperCase();
+export function thirdPartyReferenceFor(reference: string): string {
+  return `T${reference}`.slice(0, MPESA_REFERENCE_MAX_CHARS);
 }
 
 /**
  * The stage's M-Pesa settings, or `null` when the two secrets are missing.
  *
- * The three non-secret values have defaults so a stage that forgot them still
- * talks to the sandbox rather than to nothing; the two secrets have none, and
- * their absence is the whole reason this can return `null`. `null` rather
- * than a throw so an unconfigured stage produces a named charge failure —
- * counted, logged, bounded by the retry limit — instead of an exception the
- * sweep has to catch and re-describe.
+ * The three non-secret values keep their defaults so a stage that forgot them
+ * still talks to the sandbox rather than to nothing; the two secrets have
+ * none, and their absence is the whole reason this can return `null`. `null`
+ * rather than a throw so an unconfigured stage produces a named charge
+ * failure — counted, logged, bounded by the retry limit — instead of an
+ * exception the sweep has to catch and re-describe.
+ *
+ * **The defaults are also how the two misconfigurations `MpesaClient` gates
+ * become reachable**, and they are deliberately left in place rather than
+ * removed. Defaulting the environment to the sandbox is the safe direction —
+ * a forgotten variable talks to a test gateway, never to a live one. What
+ * makes it safe is that the client refuses the two mismatches outright rather
+ * than proceeding: sandbox host with a live shortcode, and live host with the
+ * sandbox shortcode. Removing the defaults would trade a loud, named refusal
+ * for a stage that simply reports itself unconfigured, which says less.
  */
 function resolveMpesaConfig(): MpesaConfig | null {
   const env = infraStore.getEnv();

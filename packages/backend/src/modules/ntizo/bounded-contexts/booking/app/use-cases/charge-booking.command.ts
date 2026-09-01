@@ -5,6 +5,19 @@ import type { MarkBookingPaidCommand } from "./mark-booking-paid.command";
 
 export interface ChargeBookingInput {
   bookingId: string;
+  /**
+   * The attempt bound and the cooldown boundary this booking was *selected*
+   * under, carried down so the claim below re-asserts the very same
+   * predicate rather than a freshly-computed approximation of it. See
+   * `BookingRepositoryPort.recordChargeAttempt`.
+   *
+   * Passed in rather than read from the constants next door on purpose: the
+   * cooldown boundary is derived from the wave's own `now`, and a second
+   * `new Date()` here would be a slightly different instant with no reason
+   * to be.
+   */
+  maxAttempts: number;
+  notAttemptedSince: Date;
 }
 
 /**
@@ -62,10 +75,15 @@ export function chargeReference(bookingId: string, attempt: number): string {
  * the processor, then record the outcome. The middle step is the only slow
  * one and it touches no database at all.
  *
- * **The attempt is counted before the call, not after.** See
- * `BookingRepositoryPort.recordChargeAttempt` for the argument: recording
- * afterwards means a Worker evicted mid-call never consumes an attempt, and a
- * booking whose charge always dies that way is retried for ever.
+ * **The attempt is claimed before the call, not counted after it.** See
+ * `BookingRepositoryPort.recordChargeAttempt` for both halves of that:
+ * recording afterwards means a Worker evicted mid-call never consumes an
+ * attempt, and a booking whose charge always dies that way is retried for
+ * ever; and the write is a compare-and-swap rather than a counter, because
+ * two waves of this sweep overlap by construction and the loser must charge
+ * nobody. `null` back is handled exactly the way a losing `save` is handled
+ * elsewhere in this context — return, silently, having written and announced
+ * nothing.
  *
  * **A customer with no phone number is an ordinary failure.**
  * `profile.phone_number` is nullable and nothing in the shipped product
@@ -91,6 +109,27 @@ export class ChargeBookingCommand {
     private readonly customerPhone: CustomerPhoneReaderPort,
     private readonly paymentCharge: PaymentChargePort,
     private readonly markBookingPaid: MarkBookingPaidCommand,
+    /**
+     * The instant this attempt is stamped with — injected, matching
+     * `ChargeAcceptedBookingsInternalCommand` and
+     * `SweepDueBookingsInternalCommand`, which both take a clock for the
+     * same reason.
+     *
+     * **Deliberately not the wave's `now`.** The wave's instant is when it
+     * *selected* candidates; this is when the prompt is actually pushed, and
+     * those differ by however long the wave has spent on the bookings ahead
+     * of this one — up to `BOOKING_CHARGE_LIMIT` blocking calls, which is
+     * minutes. `last_charge_attempt_at` answers "when was this customer last
+     * prompted", so the later instant is the correct one: stamping the
+     * wave's start would understate the elapsed time and let the next wave
+     * re-prompt sooner than the cooldown intends.
+     *
+     * The *predicate* instants are the opposite case and come from the wave
+     * (`input.notAttemptedSince`), so selection and claim test the identical
+     * boundary. One clock for what is written, one for what is compared, and
+     * the two are different questions.
+     */
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async execute(input: ChargeBookingInput): Promise<void> {
@@ -122,9 +161,23 @@ export class ChargeBookingCommand {
       return;
     }
 
-    // Committed before the call below, and the reference is built from what
-    // it returns. See this class's doc comment for both.
-    const attempt = await this.repo.recordChargeAttempt(input.bookingId, new Date());
+    // Committed before the call below, and both references are built from
+    // what it returns. See this class's doc comment for both.
+    const attempt = await this.repo.recordChargeAttempt({
+      bookingId: input.bookingId,
+      at: this.now(),
+      maxAttempts: input.maxAttempts,
+      notAttemptedSince: input.notAttemptedSince,
+    });
+    if (attempt === null) {
+      // Another wave holds this booking — it claimed the attempt while this
+      // one was blocked on an earlier booking's minute-long call, or the row
+      // moved on, or the bound went with it. The same outcome a losing
+      // compare-and-swap produces anywhere else here: nothing charged,
+      // nothing written, nothing thrown, and no log line, because nothing
+      // went wrong.
+      return;
+    }
 
     const phone = await this.customerPhone.findPhoneNumber(booking.customerId);
     if (phone === null) {
@@ -160,6 +213,30 @@ export class ChargeBookingCommand {
       });
       return;
     }
+
+    // **Logged before it is recorded, because recording it can fail.**
+    //
+    // The money has moved by this line. `MarkBookingPaidCommand` has two
+    // silent exits on the way to writing it down — a losing compare-and-swap
+    // against the deadline sweep, and a `BookingTransitionError` whose
+    // message carries statuses rather than the receipt — and either leaves a
+    // debited customer with the processor's reference held nowhere but in a
+    // local variable that is about to go out of scope.
+    //
+    // That is reachable, not theoretical: the deadline sweep runs first in
+    // the same invocation and cancels bookings whose window has closed, so a
+    // charge that returns late enough can land on a booking already called
+    // off. `BOOKING_CHARGE_MIN_WINDOW_MS` is what makes that unlikely; this
+    // line is what makes it recoverable when it happens anyway.
+    //
+    // console.error for the reason the rest of this file gives — no request
+    // scope exists for `getRequestScopedLogger()` — and on the error channel
+    // deliberately, so no log level can filter away a receipt.
+    console.error("[booking] a charge landed", {
+      bookingId: input.bookingId,
+      attempt,
+      paymentRef: result.paymentRef,
+    });
 
     await this.markBookingPaid.execute({
       bookingId: input.bookingId,

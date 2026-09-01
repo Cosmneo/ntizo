@@ -30,10 +30,19 @@ export const MPESA_LOCAL_CODES = {
    */
   unreadable: "NTIZO-UNREADABLE-RESPONSE",
   /**
-   * `INS-0` with no `output_TransactionID`. Success without the one field
-   * that identifies what succeeded is not something to record as a payment:
-   * `paymentRef` is what `Booking.markPaid` deduplicates on and what a
-   * refund would have to name, so an empty one is worse than a failure.
+   * `INS-0` with nothing in it this client could read as a transaction id.
+   *
+   * Success without the one field that identifies what succeeded is not
+   * something to record as a payment: `paymentRef` is what
+   * `Booking.markPaid` deduplicates on and what a refund would have to name,
+   * so an empty one is worse than a failure.
+   *
+   * **Reaching this is the most expensive way this client can be wrong**, so
+   * it is deliberately hard to reach — `readTransactionId` tries the
+   * documented key, then any spelling of it, before giving up, and the whole
+   * response body is logged on every `INS-0` regardless. See both for why:
+   * the field name is the one part of this integration never confirmed
+   * against a live success.
    */
   missingTransactionId: "NTIZO-MISSING-TRANSACTION-ID",
 } as const;
@@ -48,8 +57,15 @@ export const MPESA_LOCAL_CODES = {
  * deadline racing the provider's own. Without any limit a hung socket would
  * hold the cron invocation until the platform killed it, taking every
  * booking queued behind it in the same wave with it.
+ *
+ * **Exported because the sweep has to budget for it.** A booking whose
+ * payment window is shorter than this call cannot survive being charged —
+ * the deadline sweep would cancel it while the call is still blocking, and
+ * the customer would be debited for a booking already called off. So
+ * `BOOKING_CHARGE_MIN_WINDOW_MS` has to be larger than this number, and a
+ * test asserts it: see `charge-booking.command.test.ts`.
  */
-const C2B_TIMEOUT_MS = 110_000;
+export const C2B_TIMEOUT_MS = 110_000;
 
 /**
  * The environment string that selects the sandbox host. Anything else is the
@@ -98,6 +114,38 @@ export class MpesaSandboxShortcodeInProductionError extends Error {
         `merchant. Set this stage's own shortcode, or set MPESA_ENVIRONMENT="${SANDBOX_ENVIRONMENT}".`,
     );
     this.name = "MpesaSandboxShortcodeInProductionError";
+  }
+}
+
+/**
+ * The mirror of the error above, and harmless to money rather than
+ * catastrophic — which is exactly why it needs a gate of its own.
+ *
+ * A stage that is issued a real shortcode and sets it, but forgets to move
+ * `MPESA_ENVIRONMENT` off its default, talks to the **sandbox host with a
+ * live shortcode**. Vodacom's sandbox knows one merchant, `171717`, so every
+ * charge answers `INS-13 Invalid Shortcode Used` — and from the outside that
+ * is indistinguishable from a platform where every customer happens to be
+ * ignoring their prompt. Bookings quietly exhaust their retry bound and get
+ * cancelled telling providers the customer did not pay.
+ *
+ * Loud, therefore, on the same reasoning as its opposite: a silent failure
+ * that costs providers their Saturdays is not better than one that costs
+ * money, it is only harder to find.
+ */
+export class MpesaLiveShortcodeInSandboxError extends Error {
+  constructor(
+    readonly environment: string,
+    readonly serviceProviderCode: string,
+  ) {
+    super(
+      `Refusing to charge: MPESA_ENVIRONMENT="${environment}" points at the sandbox, whose only ` +
+        `merchant is the shared shortcode "${SANDBOX_SERVICE_PROVIDER_CODE}", but ` +
+        `MPESA_SERVICE_PROVIDER_CODE="${serviceProviderCode}". Every charge on this configuration ` +
+        `would fail as an unknown shortcode. Set MPESA_ENVIRONMENT to this stage's real ` +
+        `environment, or use the sandbox shortcode.`,
+    );
+    this.name = "MpesaLiveShortcodeInSandboxError";
   }
 }
 
@@ -232,7 +280,7 @@ export class MpesaClient {
     // and checked in code rather than promised in a comment, because a
     // comment in `wrangler.jsonc` saying the shortcode must be replaced
     // before production is exactly as strong as whoever reads it next.
-    assertNotSandboxShortcodeInProduction(this.config);
+    assertEnvironmentMatchesShortcode(this.config);
 
     const url = `https://${host(this.config.environment)}:${C2B_PORT}${C2B_PATH}`;
 
@@ -272,9 +320,10 @@ export class MpesaClient {
     // envelope — so branching on the status would only re-derive, less
     // reliably, what `output_ResponseCode` already says. The status is kept
     // for the one case where there is no envelope to read: see below.
+    const body = await response.text();
     let payload: unknown;
     try {
-      payload = JSON.parse(await response.text());
+      payload = JSON.parse(body);
     } catch {
       return {
         outcome: "refused",
@@ -303,12 +352,36 @@ export class MpesaClient {
       };
     }
 
-    const transactionId = readString(payload, "output_TransactionID");
-    if (transactionId === null || transactionId.length === 0) {
+    // **The whole body, verbatim, before anything is extracted from it.**
+    //
+    // This is the one moment in the flow where a customer's money has
+    // definitely moved. Everything after it can fail — the field name could
+    // be wrong (see `readTransactionId`), the write that records the payment
+    // can lose a race, the Worker can be evicted — and every one of those
+    // failures leaves a debited customer whose receipt exists nowhere. A log
+    // line costs nothing and is the difference between reconciling that by
+    // hand and not being able to.
+    //
+    // `console.error`, not `info`: `getRequestScopedLogger()` throws where
+    // this runs (a cron sets no request scope), and the error channel is the
+    // one nothing filters out by level. A success on the error channel reads
+    // oddly for a second and is worth it.
+    //
+    // Safe to log in full: this envelope carries references, a code, a
+    // description and a transaction id. The customer's MSISDN is in the
+    // *request*, not here.
+    console.error("[mpesa] a charge succeeded — full response follows", {
+      transactionReference: request.transactionReference,
+      thirdPartyReference: request.thirdPartyReference,
+      body,
+    });
+
+    const transactionId = readTransactionId(payload);
+    if (transactionId === null) {
       return {
         outcome: "refused",
         code: MPESA_LOCAL_CODES.missingTransactionId,
-        description: `${MPESA_SUCCESS_CODE} with no output_TransactionID to record as a payment reference`,
+        description: `${MPESA_SUCCESS_CODE} with nothing readable as a transaction id — the money moved; see the logged response body`,
       };
     }
 
@@ -347,16 +420,61 @@ function host(environment: string): string {
  * whoever is on call to read two files; one that names the environment and
  * the shortcode it objects to is the whole diagnosis.
  */
-function assertNotSandboxShortcodeInProduction(config: MpesaConfig): void {
-  if (
-    config.environment !== SANDBOX_ENVIRONMENT &&
-    config.serviceProviderCode === SANDBOX_SERVICE_PROVIDER_CODE
-  ) {
+function assertEnvironmentMatchesShortcode(config: MpesaConfig): void {
+  const isSandbox = config.environment === SANDBOX_ENVIRONMENT;
+  const isSandboxShortcode = config.serviceProviderCode === SANDBOX_SERVICE_PROVIDER_CODE;
+
+  if (!isSandbox && isSandboxShortcode) {
     throw new MpesaSandboxShortcodeInProductionError(
       config.environment,
       config.serviceProviderCode,
     );
   }
+  if (isSandbox && !isSandboxShortcode) {
+    throw new MpesaLiveShortcodeInSandboxError(config.environment, config.serviceProviderCode);
+  }
+}
+
+/**
+ * The transaction id off an `INS-0`, tried three ways before giving up.
+ *
+ * **This exists because the field name is the one thing in this integration
+ * never confirmed against a live success.** `output_ResponseCode` and
+ * `output_ResponseDesc` were read off real answers from the sandbox;
+ * `output_TransactionID` comes from the predecessor platform's PHP and from a
+ * stub built to match it. If that spelling is wrong, every successful charge
+ * would downgrade to a refusal — the customer debited, up to three times, and
+ * the booking then cancelled telling the provider nobody paid. That is the
+ * worst outcome this system can produce, and it would be produced by a
+ * capital letter.
+ *
+ * So: the documented key, then the same key under any casing, then any key
+ * that reads as a transaction id at all. A guess about a field name should
+ * cost a log line, not a customer's money. The exact key is still tried
+ * first, so a correct response is never resolved by a fuzzy match.
+ */
+function readTransactionId(payload: unknown): string | null {
+  const exact = readString(payload, "output_TransactionID");
+  if (exact !== null && exact.length > 0) return exact;
+
+  if (typeof payload !== "object" || payload === null) return null;
+  const entries = Object.entries(payload as Record<string, unknown>).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length > 0,
+  );
+
+  const normalise = (key: string) => key.toLowerCase().replace(/[^a-z]/g, "");
+  const sameKey = entries.find(([key]) => normalise(key) === "outputtransactionid");
+  if (sameKey) return sameKey[1];
+
+  // Last resort, and deliberately not `transaction` alone: `input_`/`output_`
+  // `TransactionReference` is *ours*, echoed back, and recording our own
+  // reference as the processor's receipt would be worse than admitting we
+  // could not find one. Requiring "id" excludes it.
+  const anyId = entries.find(([key]) => {
+    const n = normalise(key);
+    return n.includes("transaction") && n.includes("id") && !n.includes("reference");
+  });
+  return anyId ? anyId[1] : null;
 }
 
 /**

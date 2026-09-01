@@ -16,6 +16,7 @@ export { ChargeBookingCommand, chargeReference } from "./app/use-cases/charge-bo
 export type { ChargeBookingInput } from "./app/use-cases/charge-booking.command";
 export {
   BOOKING_CHARGE_ATTEMPT_LIMIT,
+  BOOKING_CHARGE_MIN_WINDOW_MS,
   BOOKING_CHARGE_RETRY_MINUTES,
   ChargeAcceptedBookingsInternalCommand,
 } from "./app/use-cases/charge-accepted-bookings.internal.command";

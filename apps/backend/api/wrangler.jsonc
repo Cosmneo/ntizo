@@ -23,6 +23,18 @@
     // is on the sandbox except prod. Not inheritable — like `r2_buckets` and
     // `triggers`, a named env that omits a `vars` key gets nothing rather
     // than this one — so each stage repeats all three.
+    //
+    // **This value and the shortcode below it must agree, and `MpesaClient`
+    // refuses to charge if they do not** — in both directions, because both
+    // mismatches are reachable from one forgotten edit here:
+    //
+    //   production + 171717   -> MpesaSandboxShortcodeInProductionError
+    //                            (real money to Vodacom's shared test merchant)
+    //   development + any other shortcode
+    //                         -> MpesaLiveShortcodeInSandboxError
+    //                            (every charge fails as an unknown shortcode,
+    //                             silently, looking exactly like customers
+    //                             ignoring their prompts)
     "MPESA_ENVIRONMENT": "development",
     "MPESA_ORIGIN": "developer.mpesa.vm.co.mz",
     "MPESA_SERVICE_PROVIDER_CODE": "171717"

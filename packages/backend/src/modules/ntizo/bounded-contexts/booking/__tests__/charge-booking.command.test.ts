@@ -20,9 +20,11 @@ import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.comma
 import { ChargeBookingCommand, chargeReference } from "../app/use-cases/charge-booking.command";
 import {
   BOOKING_CHARGE_ATTEMPT_LIMIT,
+  BOOKING_CHARGE_MIN_WINDOW_MS,
   BOOKING_CHARGE_RETRY_MINUTES,
   ChargeAcceptedBookingsInternalCommand,
 } from "../app/use-cases/charge-accepted-bookings.internal.command";
+import { C2B_TIMEOUT_MS } from "../../../shared/infrastructure/payments/mpesa";
 import type {
   BookingChangeRecord,
   BookingRepositoryPort,
@@ -37,6 +39,8 @@ import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
 import { TrackingUnitOfWork, withId } from "./support/fakes";
 
 const WHEN = new Date("2026-09-04T12:30:00.000Z");
+/** The cooldown boundary a wave would have computed; only its identity matters here. */
+const NOT_ATTEMPTED_SINCE = new Date("2026-09-04T11:55:00.000Z");
 const DEADLINE = new Date("2026-09-04T13:00:00.000Z");
 
 function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) {
@@ -87,6 +91,14 @@ function awaitingBooking(id = "bk-1"): Booking {
  */
 class FakeRepo implements BookingRepositoryPort {
   public attemptCalls: { bookingId: string; at: Date }[] = [];
+  public claims: {
+    bookingId: string;
+    at: Date;
+    maxAttempts: number;
+    notAttemptedSince: Date;
+  }[] = [];
+  /** Makes every claim lose, the way a concurrent wave's would. */
+  public claimLoses = false;
   public awaiting: Booking[] = [];
   public lastCriteria: Parameters<BookingRepositoryPort["findAwaitingCharge"]>[0] | null = null;
   public savedArg: Booking | null = null;
@@ -119,9 +131,21 @@ class FakeRepo implements BookingRepositoryPort {
     return true;
   }
 
-  async recordChargeAttempt(bookingId: string, at: Date): Promise<number> {
+  async recordChargeAttempt(claim: {
+    bookingId: string;
+    at: Date;
+    maxAttempts: number;
+    notAttemptedSince: Date;
+  }): Promise<number | null> {
     this.order.push("recordChargeAttempt");
-    this.attemptCalls.push({ bookingId, at });
+    this.claims.push(claim);
+    this.attemptCalls.push({ bookingId: claim.bookingId, at: claim.at });
+    // `null` is what a real losing claim returns — the row already moved on,
+    // or another wave got there first. Modelled as a switch rather than by
+    // simulating a second wave, because what is under test here is the
+    // command's reaction to losing, not the SQL that decides it (that is
+    // `booking-charge-sweep.test.ts`, against real Postgres).
+    if (this.claimLoses) return null;
     return this.nextAttempt++;
   }
 
@@ -173,6 +197,19 @@ class CapturingOutbox implements OutboxPort {
   }
 }
 
+/**
+ * What a wave hands one booking: its id plus the exact bound and cooldown
+ * boundary the wave selected it under, so the claim re-asserts the same
+ * predicate. See `BookingRepositoryPort.recordChargeAttempt`.
+ */
+function chargeInput(bookingId: string) {
+  return {
+    bookingId,
+    maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+    notAttemptedSince: NOT_ATTEMPTED_SINCE,
+  };
+}
+
 /** The real `MarkBookingPaidCommand`, over the same fake repository. */
 function markPaid(repo: BookingRepositoryPort, uow: TrackingUnitOfWork, outbox: OutboxPort) {
   return new MarkBookingPaidCommand(repo, uow, outbox);
@@ -222,7 +259,7 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader("+258841234567"),
       charge,
       markPaid(repo, uow, new CapturingOutbox()),
-    ).execute({ bookingId: "bk-1" });
+    ).execute(chargeInput("bk-1"));
 
     // The whole point: a Worker evicted during the minute the charge blocks
     // must still have consumed an attempt, or a booking that always dies
@@ -244,7 +281,7 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader("+258841234567"),
       charge,
       markPaid(repo, uow, new CapturingOutbox()),
-    ).execute({ bookingId: "bk-1" });
+    ).execute(chargeInput("bk-1"));
 
     expect(charge.requests).toEqual([
       {
@@ -254,7 +291,11 @@ describe("ChargeBookingCommand", () => {
         // wants is the adapter's job, and this is where that boundary is.
         amountMinor: 150000,
         currency: "MZN",
-        reference: chargeReference("bk-1", 1),
+        // The literal, not `chargeReference("bk-1", 1)`: an assertion written
+        // in terms of the function under test passes whatever that function
+        // does. `chargeReference`'s own suite pins the format; this pins that
+        // the command actually sends it.
+        reference: "BK101",
       },
     ]);
   });
@@ -269,7 +310,7 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader("+258841234567"),
       new PaymentChargeSpy({ outcome: "paid", paymentRef: "7SHV1234567" }),
       markPaid(repo, uow, outbox),
-    ).execute({ bookingId: "bk-1" });
+    ).execute(chargeInput("bk-1"));
 
     // The real command did the transition, so this is the whole contract:
     // `CONFIRMED`, carrying the processor's own reference — not ours.
@@ -288,7 +329,7 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader("+258841234567"),
       new PaymentChargeSpy({ outcome: "failed", code: "INS-9", description: "Request timeout" }),
       markPaid(repo, uow, outbox),
-    ).execute({ bookingId: "bk-1" });
+    ).execute(chargeInput("bk-1"));
 
     // No write and no announcement. A mistyped PIN is not a cancellation:
     // the booking keeps its slot until its payment window closes, and only
@@ -320,13 +361,66 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader(null),
       charge,
       markPaid(repo, uow, new CapturingOutbox()),
-    ).execute({ bookingId: "bk-1" });
+    ).execute(chargeInput("bk-1"));
 
     expect(charge.requests).toEqual([]);
     expect(repo.savedArg).toBeNull();
     // Consumed, not skipped. Skipping it is what would make this booking
     // retry every sixty seconds until its window closed.
     expect(repo.attemptCalls).toHaveLength(1);
+  });
+
+  /**
+   * **Two waves of this sweep overlap by construction**, so losing the claim
+   * is the ordinary case rather than an exotic one: five bookings at up to
+   * two minutes each, against a cron that fires every sixty seconds. Wave 1
+   * blocks on B1 while wave 2 charges B2; wave 1 then reaches B2 with a
+   * candidate list minutes out of date. `recordChargeAttempt` is where that
+   * is settled, and `null` is how it says so.
+   *
+   * The reaction has to be *silent*: nothing charged, nothing written,
+   * nothing thrown, no log line — exactly what a losing `save` produces
+   * elsewhere in this context, because nothing went wrong.
+   */
+  it("charges nobody when another wave has already claimed the booking", async () => {
+    const uow = new TrackingUnitOfWork();
+    const repo = new FakeRepo(pendingBooking("bk-1"), [], uow);
+    repo.claimLoses = true;
+    const charge = new PaymentChargeSpy({ outcome: "paid", paymentRef: "NEVER" });
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      charge,
+      markPaid(repo, uow, new CapturingOutbox()),
+    ).execute(chargeInput("bk-1"));
+
+    expect(charge.requests).toEqual([]);
+    expect(repo.savedArg).toBeNull();
+  });
+
+  /**
+   * The claim must re-assert the *same* predicate the wave selected on, not a
+   * freshly-computed approximation — otherwise the two disagree by however
+   * long the wave has been running, which for a five-booking wave is minutes.
+   */
+  it("claims under the very bound and cooldown the wave selected on", async () => {
+    const repo = new FakeRepo(pendingBooking("bk-1"));
+    const uow = new TrackingUnitOfWork();
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      new PaymentChargeSpy({ outcome: "failed", code: "INS-9", description: "Request timeout" }),
+      markPaid(repo, uow, new CapturingOutbox()),
+    ).execute(chargeInput("bk-1"));
+
+    expect(repo.claims).toHaveLength(1);
+    expect(repo.claims[0]).toMatchObject({
+      bookingId: "bk-1",
+      maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+      notAttemptedSince: NOT_ATTEMPTED_SINCE,
+    });
   });
 
   it("does not charge a booking that is not PENDING_PAYMENT", async () => {
@@ -339,7 +433,7 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader("+258841234567"),
       charge,
       markPaid(repo, uow, new CapturingOutbox()),
-    ).execute({ bookingId: "bk-1" });
+    ).execute(chargeInput("bk-1"));
 
     // The ordinary race — the sweep selected a row that moved on before this
     // call reached it. Nothing charged, and nothing counted against a booking
@@ -358,10 +452,28 @@ describe("ChargeBookingCommand", () => {
       new FakePhoneReader("+258841234567"),
       charge,
       markPaid(repo, uow, new CapturingOutbox()),
-    ).execute({ bookingId: "gone" });
+    ).execute(chargeInput("gone"));
 
     expect(charge.requests).toEqual([]);
     expect(repo.attemptCalls).toEqual([]);
+  });
+});
+
+describe("BOOKING_CHARGE_MIN_WINDOW_MS", () => {
+  /**
+   * These two numbers live in different layers — the window is the sweep's
+   * policy, the timeout is the M-Pesa client's — and nothing but this test
+   * would notice them drifting apart.
+   *
+   * If the window ever shrinks below the timeout, the sweep starts selecting
+   * bookings whose payment deadline passes while the C2B is still blocking:
+   * the next invocation's deadline sweep cancels the booking and tells the
+   * provider the customer did not pay, and then the charge returns `INS-0`.
+   * A debited customer, a cancelled booking, and a provider told the
+   * opposite of what happened.
+   */
+  it("leaves room for a whole C2B call, plus the write that follows it", () => {
+    expect(BOOKING_CHARGE_MIN_WINDOW_MS).toBeGreaterThan(C2B_TIMEOUT_MS);
   });
 });
 
@@ -377,7 +489,10 @@ describe("ChargeAcceptedBookingsInternalCommand", () => {
     ).execute({ limit: 5 });
 
     expect(repo.lastCriteria).toEqual({
-      now,
+      // Not `now`. A booking whose window closes mid-call would be cancelled
+      // by the deadline sweep while its customer was being asked to pay for
+      // it — see `BOOKING_CHARGE_MIN_WINDOW_MS`.
+      deadlineAfter: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
       limit: 5,
       maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
       // The cooldown, computed backwards from now. It exists because the cron
@@ -390,19 +505,37 @@ describe("ChargeAcceptedBookingsInternalCommand", () => {
   it("charges every booking in the wave and counts them", async () => {
     const repo = new FakeRepo(null);
     repo.awaiting = [pendingBooking("bk-1"), pendingBooking("bk-2"), pendingBooking("bk-3")];
-    const charged: string[] = [];
+    const handed: { bookingId: string; maxAttempts: number; notAttemptedSince: Date }[] = [];
     const chargeBooking = {
-      execute: async ({ bookingId }: { bookingId: string }) => {
-        charged.push(bookingId);
+      execute: async (input: {
+        bookingId: string;
+        maxAttempts: number;
+        notAttemptedSince: Date;
+      }) => {
+        handed.push(input);
       },
     } as ChargeBookingCommand;
+    const now = new Date("2026-09-04T12:00:00.000Z");
 
-    const result = await new ChargeAcceptedBookingsInternalCommand(repo, chargeBooking).execute({
-      limit: 5,
-    });
+    const result = await new ChargeAcceptedBookingsInternalCommand(
+      repo,
+      chargeBooking,
+      () => now,
+    ).execute({ limit: 5 });
 
-    expect(charged).toEqual(["bk-1", "bk-2", "bk-3"]);
+    expect(handed.map((h) => h.bookingId)).toEqual(["bk-1", "bk-2", "bk-3"]);
     expect(result).toEqual({ attempted: 3, failed: 0 });
+
+    // Every booking is handed the criteria the query used, computed once —
+    // the same object identity for `notAttemptedSince` across the wave, so
+    // the claim cannot drift from the selection as the wave takes minutes to
+    // run.
+    const expectedCooldown = new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000);
+    for (const h of handed) {
+      expect(h.maxAttempts).toBe(BOOKING_CHARGE_ATTEMPT_LIMIT);
+      expect(h.notAttemptedSince).toEqual(expectedCooldown);
+      expect(h.notAttemptedSince).toEqual(repo.lastCriteria!.notAttemptedSince);
+    }
   });
 
   /**
@@ -416,7 +549,13 @@ describe("ChargeAcceptedBookingsInternalCommand", () => {
     repo.awaiting = [pendingBooking("bk-1"), pendingBooking("bk-2"), pendingBooking("bk-3")];
     const charged: string[] = [];
     const chargeBooking = {
-      execute: async ({ bookingId }: { bookingId: string }) => {
+      execute: async ({
+        bookingId,
+      }: {
+        bookingId: string;
+        maxAttempts: number;
+        notAttemptedSince: Date;
+      }) => {
         if (bookingId === "bk-2") throw new Error("simulated: the gateway is misconfigured");
         charged.push(bookingId);
       },

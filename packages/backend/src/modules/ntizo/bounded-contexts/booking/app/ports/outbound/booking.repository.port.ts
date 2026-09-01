@@ -174,9 +174,23 @@ export interface BookingRepositoryPort {
    * Oldest deadline first, so a wave too small to drain a backlog spends
    * itself on the bookings closest to losing their slot rather than on
    * whichever rows the planner happened to reach.
+   *
+   * **Every criterion here is re-asserted by `recordChargeAttempt`**, which
+   * is what actually claims a booking. This query is a candidate list read
+   * from a snapshot; by the time a wave reaches its fifth booking, minutes
+   * have passed and another wave may have charged it. See that method.
    */
   findAwaitingCharge(criteria: {
-    now: Date;
+    /**
+     * A booking's `expires_at` must be strictly after this instant — **not
+     * simply after "now"**.
+     *
+     * The caller pushes this into the future by however long a charge can
+     * take, because a booking whose payment window closes mid-call is one
+     * the deadline sweep will cancel while the customer is being asked to
+     * pay for it. See `BOOKING_CHARGE_MIN_WINDOW_MS`.
+     */
+    deadlineAfter: Date;
     limit: number;
     /** A booking that has already been attempted this many times is left to its payment window. */
     maxAttempts: number;
@@ -185,7 +199,30 @@ export interface BookingRepositoryPort {
   }): Promise<Booking[]>;
 
   /**
-   * Count one charge attempt against a booking and return the new total.
+   * **Claim** one booking for a charge: count the attempt and return its new
+   * number, or `null` if this caller may not charge it after all.
+   *
+   * **This is a compare-and-swap, not a counter**, and the difference is the
+   * whole reason it takes criteria. It carries the same predicate
+   * `findAwaitingCharge` selected on — status, the attempt bound, the
+   * cooldown — into the `UPDATE`'s own `WHERE`, exactly as `save` carries
+   * `expectedStatus`. Whichever wave writes first wins; the loser matches
+   * zero rows, gets `null`, and charges nobody.
+   *
+   * **Without that, the bound and the cooldown are advisory**, because two
+   * waves overlap here *by construction*. A wave charges up to
+   * `BOOKING_CHARGE_LIMIT` bookings one at a time and an unanswered C2B
+   * blocks for about sixty seconds — against a cron that fires every sixty.
+   * With two due bookings: wave 1 selects `[B1, B2]` and blocks on B1; at
+   * T+60 wave 2 correctly skips B1 (its attempt is recorded) but selects B2,
+   * whose `last_charge_attempt_at` is still null, and prompts it; at T+62
+   * wave 1 finishes B1, reaches B2, and prompts it **a second time, one
+   * second later**. That is precisely the stacked prompt
+   * `last_charge_attempt_at` exists to prevent, and a customer who accepts
+   * both is debited twice. With three or more due bookings the bound itself
+   * is exceeded — four charges against a limit of three. A predicate that
+   * only ever runs in the `SELECT` cannot see any of this; one in the
+   * `UPDATE` settles it.
    *
    * **Called before the charge, not after it.** A C2B blocks for up to a
    * minute; if the attempt were recorded on the way back, a Worker evicted
@@ -194,15 +231,27 @@ export interface BookingRepositoryPort {
    * for ever, since the bound would never be reached. Recording first makes
    * the crash cost a retry instead of costing the bound.
    *
-   * The returned total is what `ChargeBookingCommand` builds this attempt's
-   * payment reference from, so the reference is reconstructible from the row
+   * The returned number is what `ChargeBookingCommand` builds this attempt's
+   * payment references from, so they are reconstructible from the row
    * afterwards — the thing any later reconciliation needs in order to ask the
-   * processor what became of an attempt whose answer we never heard.
+   * processor what became of an attempt whose answer we never heard. It is
+   * the *claimed* number rather than a read-back one for the same reason the
+   * write is a CAS: two waves reading the same value and writing the same
+   * value back would give two attempts the same reference, and a processor
+   * refuses a repeated reference as a duplicate.
    *
    * Deliberately not routed through the aggregate. `charge_attempts` is not
    * part of the sale (see its column comment), and an atomic
    * `SET charge_attempts = charge_attempts + 1` cannot lose an increment the
    * way a read-transition-write through `Booking` could.
    */
-  recordChargeAttempt(bookingId: string, at: Date): Promise<number>;
+  recordChargeAttempt(claim: {
+    bookingId: string;
+    /** Stamped onto `last_charge_attempt_at`, and what starts this booking's cooldown. */
+    at: Date;
+    /** The same bound `findAwaitingCharge` selected on, re-asserted at the write. */
+    maxAttempts: number;
+    /** The same cooldown boundary `findAwaitingCharge` selected on, re-asserted at the write. */
+    notAttemptedSince: Date;
+  }): Promise<number | null>;
 }
