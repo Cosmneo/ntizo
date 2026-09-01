@@ -334,7 +334,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * `expectedStatus` in the `WHERE`, not just `id` — see
    * `BookingRepositoryPort.save`'s own comment for the race this defends
    * against. Without it this was a plain `UPDATE … WHERE id = $1`: whichever
-   * of a payment webhook and the expiry sweep wrote second would win
+   * of a payment webhook and the sweep wrote second would win
    * unconditionally, silently overwriting the first writer's transition
    * (and its already-drained outbox row) with its own.
    *
@@ -378,7 +378,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * this one column, so the three windows are already baked into
    * `expires_at` by the time this query sees the row and the whole
    * difference between them is which status the row is in. One predicate
-   * answers all three — see `BookingRepositoryPort.findDueForExpiry` for
+   * answers all three — see `BookingRepositoryPort.findDueForSweep` for
    * why that is not three queries, and `DEADLINE_BEARING_STATUSES` for why
    * that list is not `SLOT_HOLDING_STATUSES`.
    *
@@ -399,7 +399,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
    * backlog drains it in the order it accumulated rather than starving
    * whichever booking has been waiting longest.
    */
-  async findDueForExpiry(now: Date, limit: number): Promise<Booking[]> {
+  async findDueForSweep(now: Date, limit: number): Promise<Booking[]> {
     const rows = await getDb()
       .select()
       .from(booking)

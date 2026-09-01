@@ -144,7 +144,7 @@ class FakeRepo implements BookingRepositoryPort {
 
   async appendChange(_change: BookingChangeRecord): Promise<void> {}
 
-  async findDueForExpiry(): Promise<Booking[]> {
+  async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
 }

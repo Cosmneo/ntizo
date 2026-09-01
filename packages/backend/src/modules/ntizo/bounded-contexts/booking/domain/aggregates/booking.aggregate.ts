@@ -112,14 +112,14 @@ export interface BookingProps {
    * takes the deadline as an argument, because `domain/` reaches for no
    * configuration and all three lengths are `platform_settings` columns.
    * One column, three meanings, and the status is what says which — which
-   * is exactly what lets `findDueForExpiry` ask one question
+   * is exactly what lets `findDueForSweep` ask one question
    * (`expires_at <= now AND status IN (…)`) instead of three.
    *
    * Left alone by every transition that is not one of those three hops.
    * `markPaid` and `expire` used to null it out on the way past
    * `PENDING_PAYMENT`, on the theory that a stale deadline invited some
    * later query to act on it. That theory was wrong in practice:
-   * `findDueForExpiry` (see `booking.repository.ts`) filters on status
+   * `findDueForSweep` (see `booking.repository.ts`) filters on status
    * before it ever looks at this column — `DEADLINE_BEARING_STATUSES`, the
    * three that still have a clock running — so the null bought no
    * protection a status check wasn't already giving for free. What it did
@@ -377,7 +377,7 @@ export class Booking {
    * A booking as the repository reconstitutes it from a stored row.
    *
    * This is Task 7's reconstitution seam, not test scaffolding: `findById`
-   * and `findDueForExpiry` both need to turn a row into an aggregate, and
+   * and `findDueForSweep` both need to turn a row into an aggregate, and
    * this is the only place that does it.
    *
    * It re-runs every guard `create` runs — the blank-string checks, the
@@ -778,7 +778,7 @@ export class Booking {
    *
    * **A no-op from every other status, and the reasoning for that has not
    * changed — only the set of statuses it covers.** The sweep that calls
-   * this is watching a clock, not the booking: `findDueForExpiry` selected
+   * this is watching a clock, not the booking: `findDueForSweep` selected
    * the row on `expires_at`, and between that select and this call the
    * booking may have been submitted, accepted, paid, or declined. That is
    * an ordinary race, not a fault on either side, so a status this method

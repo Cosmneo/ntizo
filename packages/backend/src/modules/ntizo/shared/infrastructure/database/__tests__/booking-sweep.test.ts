@@ -95,13 +95,13 @@ beforeAll(async () => {
   await db.insert(user).values([
     {
       id: customerId,
-      email: `booking-expiry-sweep-customer-${suffix}@ntizo.test`,
+      email: `booking-sweep-customer-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
     {
       id: ownerUserId,
-      email: `booking-expiry-sweep-owner-${suffix}@ntizo.test`,
+      email: `booking-sweep-owner-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -112,8 +112,8 @@ beforeAll(async () => {
     .values({
       ownerUserId,
       type: "individual",
-      name: "Booking Expiry Sweep Test Provider",
-      slug: `booking-expiry-sweep-test-${suffix}`,
+      name: "Booking Sweep Test Provider",
+      slug: `booking-sweep-test-${suffix}`,
       status: "active",
     })
     .returning({ id: provider.id });
@@ -127,7 +127,7 @@ beforeAll(async () => {
 
   const [categoryRow] = await db
     .insert(category)
-    .values({ code: `booking-expiry-sweep-test-${suffix}` })
+    .values({ code: `booking-sweep-test-${suffix}` })
     .returning({ id: category.id });
   categoryId = categoryRow!.id;
 
@@ -196,8 +196,8 @@ function bookingInput(
     commissionBps: 1000,
     currency: "MZN",
     serviceName: "Corte de Cabelo",
-    providerName: "Booking Expiry Sweep Test Provider",
-    providerSlug: `booking-expiry-sweep-test-${suffix}`,
+    providerName: "Booking Sweep Test Provider",
+    providerSlug: `booking-sweep-test-${suffix}`,
     optionName: "Standard",
     addressLabel: "Salão",
     addressLine: "Av. Julius Nyerere 123",
@@ -650,7 +650,7 @@ describe("SweepDueBookingsInternalCommand", () => {
       expect((await repo.findById(oldest.id as string))?.status).toBe("EXPIRED");
       expect((await repo.findById(middle.id as string))?.status).toBe("EXPIRED");
       // Left for the next sweep run — proves the limit was actually
-      // forwarded to `findDueForExpiry`, not silently dropped or hardcoded.
+      // forwarded to `findDueForSweep`, not silently dropped or hardcoded.
       // Still `PENDING_PAYMENT`, so its own ending is still ahead of it.
       expect((await repo.findById(newest.id as string))?.status).toBe("PENDING_PAYMENT");
       expect(await announcementsFor(newest.id as string)).toEqual([]);
@@ -659,16 +659,16 @@ describe("SweepDueBookingsInternalCommand", () => {
 
   /**
    * One booking that can no longer be settled — here, a row that vanished
-   * between `findDueForExpiry`'s select and `SweepBookingCommand` reaching
+   * between `findDueForSweep`'s select and `SweepBookingCommand` reaching
    * it, the same race the command's own doc comment names — must not take
    * the rest of the wave down with it. `findById` is intercepted for
-   * exactly one booking id rather than faked outright: `findDueForExpiry`
+   * exactly one booking id rather than faked outright: `findDueForSweep`
    * still runs the real query against the real database, and only the one
    * lookup this test needs to fail is redirected.
    *
    * **The failing booking is deliberately the OLDEST deadline, so the sweep
    * reaches it first.** An earlier version of this test had it second, and
-   * that version could not fail: `findDueForExpiry` returns oldest-first,
+   * that version could not fail: `findDueForSweep` returns oldest-first,
    * so the throw landed on the last row of the batch and there was nothing
    * left for a `break` to skip. Replacing the `console.error` with
    * `console.error; break` — the exact bug this test exists to catch — left
@@ -711,7 +711,7 @@ describe("SweepDueBookingsInternalCommand", () => {
         insert: (b) => repo.insert(b, 1),
         save: (b, expectedStatus) => repo.save(b, expectedStatus),
         appendChange: (c: BookingChangeRecord) => repo.appendChange(c),
-        findDueForExpiry: (n, limit) => repo.findDueForExpiry(n, limit),
+        findDueForSweep: (n, limit) => repo.findDueForSweep(n, limit),
         findById: (id) => {
           if (id === vanishedId) {
             throw new Error("simulated: row vanished between select and expire");
@@ -730,7 +730,7 @@ describe("SweepDueBookingsInternalCommand", () => {
 
       // Untouched: SweepBookingCommand threw before it ever reached
       // `repo.save` for this one, so the row is exactly as
-      // `findDueForExpiry` found it — ready for the next sweep to retry.
+      // `findDueForSweep` found it — ready for the next sweep to retry.
       expect((await repo.findById(vanishedId))?.status).toBe("PENDING_PAYMENT");
     });
   });

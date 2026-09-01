@@ -10,7 +10,7 @@ export interface SweepDueBookingsInternalInput {
  * The sweep that turns "a clock ran out and nobody moved" into "the slot is
  * free again" — the only caller of `SweepBookingCommand`.
  *
- * One question against three clocks: `findDueForExpiry` asks which bookings
+ * One question against three clocks: `findDueForSweep` asks which bookings
  * are past their own deadline, whichever of the design's three windows
  * stamped it, and hands each one to `SweepBookingCommand`, which decides
  * what that particular status's clock running out actually means. **Two of
@@ -31,7 +31,7 @@ export interface SweepDueBookingsInternalInput {
  *
  * **One bad row does not stop the sweep.** Each booking is settled inside
  * its own `try`; a failure is counted and logged with its booking id, and
- * the booking is left exactly as `findDueForExpiry` found it, so the next
+ * the booking is left exactly as `findDueForSweep` found it, so the next
  * sweep picks it up again — the same reasoning `NotifyUnreadInternalCommand`
  * gives for leaving a failed message unmarked.
  *
@@ -61,14 +61,14 @@ export class SweepDueBookingsInternalCommand {
   async execute(
     input: SweepDueBookingsInternalInput,
   ): Promise<{ swept: number; failed: number }> {
-    const due = await this.bookings.findDueForExpiry(this.now(), input.limit);
+    const due = await this.bookings.findDueForSweep(this.now(), input.limit);
 
     let swept = 0;
     let failed = 0;
 
     for (const booking of due) {
       try {
-        // findDueForExpiry only ever returns rows the database already
+        // findDueForSweep only ever returns rows the database already
         // assigned an id to.
         await this.sweepBooking.execute({ bookingId: booking.id as string });
         swept++;

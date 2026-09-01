@@ -59,7 +59,7 @@ describe("bootstrapBooking", () => {
     expect(adapters.providerMemberReader).toBeInstanceOf(DrizzleProviderMemberReader);
   });
 
-  it("wires the expiry sweep Task 12's cron calls, over the same sweepBooking instance", () => {
+  it("wires the sweep Task 12's cron calls, over the same sweepBooking instance", () => {
     const { useCases } = bootstrapBooking();
 
     expect(useCases.internal.sweepDue).toBeInstanceOf(SweepDueBookingsInternalCommand);

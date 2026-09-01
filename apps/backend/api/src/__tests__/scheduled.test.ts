@@ -3,7 +3,7 @@ import { infraStore } from "@ntizo/backend/shared/infra";
 import { Db } from "@ntizo/backend/shared/infra/database";
 import { NotifyUnreadInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import { SweepDueBookingsInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
-import { scheduled, SWEEP_LIMIT, BOOKING_EXPIRY_SWEEP_LIMIT } from "../scheduled";
+import { scheduled, SWEEP_LIMIT, BOOKING_SWEEP_LIMIT } from "../scheduled";
 import handler from "../index";
 import type { AppBindings } from "../types";
 
@@ -35,9 +35,9 @@ import type { AppBindings } from "../types";
  *    Guarded by "wires `scheduled` into the worker's default export" below.
  * 4. `scheduled` used to run both sweeps under one shared `try`, notification
  *    first — so anything `notifyUnread.execute` threw skipped the
- *    booking-expiry sweep entirely, silently reinstating the permanent slot
+ *    booking sweep entirely, silently reinstating the permanent slot
  *    leak that sweep exists to prevent, from a context that has nothing to
- *    do with bookings. Guarded by "runs the booking-expiry sweep even when
+ *    do with bookings. Guarded by "runs the booking sweep even when
  *    the notify-unread sweep throws" below (Task 5 of the booking-seams
  *    repair plan), which forces the notify-unread sweep to throw and proves
  *    the booking sweep still ran to completion regardless.
@@ -48,7 +48,7 @@ import type { AppBindings } from "../types";
  * a real `getDb()` call — a fake repository would never notice a missing
  * `infraStore.runAsync`. This is safe to run repeatedly: the messaging and
  * booking tables hold zero due rows, so `claimDueForNotice` and
- * `findDueForExpiry` always return `[]` and neither sweep raises a
+ * `findDueForSweep` always return `[]` and neither sweep raises a
  * notification, sends an email, expires a booking, or writes anything.
  */
 
@@ -226,7 +226,7 @@ describe("the scheduled worker", () => {
     await Promise.all(scheduledPromises);
   });
 
-  it("runs the booking-expiry sweep even when the notify-unread sweep throws", async () => {
+  it("runs the booking sweep even when the notify-unread sweep throws", async () => {
     // Before Task 5 of the booking-seams repair plan, both sweeps ran under
     // one shared `try`, notification first — so a throw here never even
     // reached the booking sweep below it, and `scheduled()` itself rejected.
@@ -249,7 +249,7 @@ describe("the scheduled worker", () => {
     await scheduled(fakeController(), ENV, ctx);
 
     expect(sweepDueSpy).toHaveBeenCalledTimes(1);
-    expect(sweepDueSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_EXPIRY_SWEEP_LIMIT });
+    expect(sweepDueSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_SWEEP_LIMIT });
     // Resolved, not merely called — the dev database holds zero due
     // bookings, so this is always { swept: 0, failed: 0 }, same reasoning as
     // test 1's assertion on the notify-unread sweep's own result. `swept`,

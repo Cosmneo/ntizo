@@ -116,9 +116,9 @@ export const SLOT_HOLDING_STATUSES = [
  * Each is stamped by the hop that enters the status, from its own
  * `platform_settings` column: `Booking.create` writes the checkout hold,
  * `submit` overwrites it with the provider's response window, `accept`
- * overwrites that with the payment window. By the time the expiry sweep
+ * overwrites that with the payment window. By the time the sweep
  * reads the row, whichever clock applies is already *in* the column — which
- * is why `findDueForExpiry` is one predicate (`expires_at <= now AND status
+ * is why `findDueForSweep` is one predicate (`expires_at <= now AND status
  * IN (…)`) and not three queries, and why nothing in the repository has to
  * join `platform_settings` to ask how long a window was.
  *

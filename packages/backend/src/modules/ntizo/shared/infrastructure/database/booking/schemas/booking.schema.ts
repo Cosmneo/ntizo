@@ -215,7 +215,7 @@ export const booking = bookingSchema.table(
     // payments to chase, confirmed jobs to prepare for, disputes to answer.
     index("booking_provider_status_idx").on(t.providerId, t.status),
 
-    // The sweep (`findDueForExpiry`) runs
+    // The sweep (`findDueForSweep`) runs
     // `WHERE status IN (…) AND expires_at <= now() ORDER BY expires_at ASC
     // LIMIT 200` every sixty seconds, forever, on a Worker's single
     // connection to Neon. `booking_provider_status_idx`'s leading column is

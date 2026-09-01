@@ -36,7 +36,7 @@ export interface MarkBookingPaidInput {
  * **A lost update is a different problem from a duplicate, and the
  * aggregate cannot solve it.** The identity check above only ever reasons
  * about the value `findById` returned — it has nothing to say about a write
- * that lands on the row *after* that read. The expiry sweep reads and
+ * that lands on the row *after* that read. The sweep reads and
  * writes the same row this command does, on the same deadline, from the
  * opposite direction: M-Pesa's C2B is synchronous against a fifteen-minute
  * window, so a webhook landing within moments of the sweep claiming the
@@ -88,8 +88,8 @@ export class MarkBookingPaidCommand {
 
       const applied = await this.repo.save(moved, booking.status);
       if (!applied) {
-        // The row no longer holds the status this read saw — the expiry
-        // sweep reached it first and already committed. `moved` describes a
+        // The row no longer holds the status this read saw — the sweep
+        // reached it first and already committed. `moved` describes a
         // world that no longer exists; saving it would silently overwrite
         // whatever the sweep just wrote, and publishing `BookingPaid` would
         // tell the customer they hold a slot the sweep just gave away. See

@@ -6,7 +6,7 @@ import type { DelayedJobsPort } from "../../app/ports/outbound/delayed-jobs.port
  *
  * `booking.expires_at` is already on the row `CreateBookingCommand` just
  * wrote, inside the same transaction. Task 12's cron sweep reads it every
- * minute — `findDueForExpiry(now, limit)` on `BookingRepositoryPort` — the
+ * minute — `findDueForSweep(now, limit)` on `BookingRepositoryPort` — the
  * same way the existing notification sweep reads `notify_due_at` rather than
  * depending on anything having been enqueued for it. A `WHERE expires_at <=
  * now` a sweep already runs is a job an actual queue would only duplicate:

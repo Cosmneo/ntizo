@@ -189,8 +189,8 @@ export const platformSettings = platformSchema.table("platform_settings", {
   // time to fill in the form, a request with no time for a provider to
   // answer, a booking with no time to pay — and a negative one creates a
   // deadline already in the past. Neither is a state anybody meant to
-  // configure; both are rows the expiry sweep would delete the instant they
-  // exist.
+  // configure; both are rows the sweep would end — expire or cancel,
+  // depending on which clock — the instant they exist.
   check(
     "platform_settings_checkout_hold_minutes_positive",
     sql`${t.checkoutHoldMinutes} >= 1`,

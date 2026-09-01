@@ -268,7 +268,7 @@ describe("Booking.markPaid", () => {
   });
 
   it("keeps the payment deadline on the row, rather than erasing the fact a dispute might need", () => {
-    // A stale query cannot act on this: `findDueForExpiry` filters on
+    // A stale query cannot act on this: `findDueForSweep` filters on
     // `status = 'PENDING_PAYMENT'` before it ever looks at `expiresAt` (see
     // `booking.repository.ts`), so a paid booking is already excluded by
     // status alone. Nulling the deadline bought no protection — it only
@@ -851,7 +851,7 @@ describe("Booking.cancel", () => {
 });
 
 describe("every deadline-bearing status has exactly one ending", () => {
-  // `DEADLINE_BEARING_STATUSES` is what `findDueForExpiry` selects on, and
+  // `DEADLINE_BEARING_STATUSES` is what `findDueForSweep` selects on, and
   // `expire`/`cancel` are the only two things that can end what it selects.
   // A status added to that list without a transition that governs it would
   // be swept every sixty seconds, for ever, and never move — the sweep

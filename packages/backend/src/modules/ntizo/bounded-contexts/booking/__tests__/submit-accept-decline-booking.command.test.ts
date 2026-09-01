@@ -135,12 +135,12 @@ class FakeRepo implements BookingRepositoryPort {
 
   // None of this file's commands call these — `BookingRepositoryPort` still
   // requires them, the same way `booking-lifecycle.command.test.ts`'s
-  // `FakeRepo` implements `insert` and `findDueForExpiry` without
+  // `FakeRepo` implements `insert` and `findDueForSweep` without
   // exercising either.
   async insert(booking: Booking): Promise<Booking> {
     return booking;
   }
-  async findDueForExpiry(): Promise<Booking[]> {
+  async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
 }

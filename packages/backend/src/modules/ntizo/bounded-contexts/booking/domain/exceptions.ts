@@ -253,7 +253,7 @@ export class ServiceOptionNotFoundError extends NotFoundError {
  * `MarkBookingPaidCommand` is driven by Payment's event and
  * `SweepBookingCommand` by a sweep job — but a payment event naming a
  * booking that does not exist means the money and the booking have come
- * apart, and an expiry job naming one means the job outlived its row.
+ * apart, and a sweep naming one means the job outlived its row.
  * Neither is routine, and a command that shrugs at both leaves nothing
  * behind for anyone to find them by.
  */

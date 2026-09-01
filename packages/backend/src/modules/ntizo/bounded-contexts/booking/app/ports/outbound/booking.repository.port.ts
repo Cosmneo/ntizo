@@ -13,11 +13,11 @@ import type { Booking } from "../../../domain/aggregates/booking.aggregate";
  * a status transition without a time change leaves `previousStartsAt` and `previousEndsAt`
  * as null. This prevents a change from claiming facts that are not true.
  *
- * `findDueForExpiry` is declared here, on this port, but not implemented here:
+ * `findDueForSweep` is declared here, on this port, but not implemented here:
  * a class must satisfy every member of the interface it implements, so once
  * Task 7's repository exists it has to implement whatever this port declares,
  * whether or not the task that will call it has been written yet. Task 12
- * (the expiry sweep) is the caller, not the implementer — Task 7 already
+ * (the sweep) is the caller, not the implementer — Task 7 already
  * implemented it, against the specification Task 12 used to carry.
  */
 export interface BookingChangeRecord {
@@ -70,7 +70,7 @@ export interface BookingRepositoryPort {
    * and `SweepBookingCommand` both read a booking, transition it, and write
    * it back inside their own `atomicExecute` — and both are driven by
    * something that can legitimately fire within moments of the other: a
-   * payment webhook and the expiry sweep are watching the *same* deadline
+   * payment webhook and the sweep are watching the *same* deadline
    * from opposite sides. Without a status predicate in the `WHERE` clause, a
    * webhook landing as the sweep is mid-flight (M-Pesa's C2B is synchronous
    * against a fifteen-minute window, so approvals routinely land near the
@@ -133,9 +133,16 @@ export interface BookingRepositoryPort {
    * three do not share an ending (see `SweepBookingCommand`). This method
    * only answers which rows are past their own clock.
    *
+   * **Not `findDueForExpiry`, which is what this was called.** Two of the
+   * three statuses it returns are destined to expire and the third to be
+   * cancelled, so a name promising expiry describes a third of its own
+   * result wrongly — the same defect that renamed `SweepBookingCommand`,
+   * and a port method carries it further than a command does, because every
+   * implementer and every fake repeats the name.
+   *
    * Oldest first, with a limit, so a sweep that can only drain part of a
    * backlog drains it in the order it accumulated rather than starving
    * whichever booking has been waiting longest.
    */
-  findDueForExpiry(now: Date, limit: number): Promise<Booking[]>;
+  findDueForSweep(now: Date, limit: number): Promise<Booking[]>;
 }

@@ -16,7 +16,7 @@ export interface DelayedJobsPort {
   /**
    * Schedule a booking to expire at a given time.
    *
-   * The booking row stores `expires_at` and the expiry sweep (Task 12) reads it.
+   * The booking row stores `expires_at` and the sweep (Task 12) reads it.
    * This method lets the command express what it means in the code; the adapter
    * decides how (or whether) to realize that meaning in the platform.
    *

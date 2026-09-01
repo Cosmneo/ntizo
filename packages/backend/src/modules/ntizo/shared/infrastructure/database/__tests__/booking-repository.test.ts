@@ -219,11 +219,11 @@ function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
  * Every test here used to end with its own `db.delete(...)` calls after its
  * last assertion, which is a cleanup any earlier assertion can skip. That
  * shape has already cost this branch once: a leaked `PENDING_PAYMENT` row
- * with a non-null `expires_at` was picked up by `findDueForExpiry` in two
+ * with a non-null `expires_at` was picked up by `findDueForSweep` in two
  * later, unrelated-looking tests. It matters more now than it did then,
  * because that query no longer selects one status — a leaked `DRAFT` or
  * `AWAITING_PROVIDER` row is claimed by it too, here and in
- * `booking-expiry-sweep.test.ts`.
+ * `booking-sweep.test.ts`.
  *
  * `afterAll`'s delete-by-`providerId` is not the same net: it runs once, at
  * the end of the file, long after the tests a leak would have poisoned.
@@ -450,7 +450,7 @@ describe("save's expectedStatus guard", () => {
       );
 
       // The row genuinely moves past PENDING_PAYMENT first — standing in
-      // for whichever of a payment webhook and the expiry sweep wins the
+      // for whichever of a payment webhook and the sweep wins the
       // race this guard exists to settle.
       const paid = first.markPaid("mpesa-race-winner", new Date("2026-10-03T15:05:00.000Z"));
       const winnerApplied = await repo.save(paid, "PENDING_PAYMENT");
@@ -483,7 +483,7 @@ describe("save's expectedStatus guard", () => {
   });
 });
 
-describe("findDueForExpiry", () => {
+describe("findDueForSweep", () => {
   /**
    * One predicate over three statuses, not three queries: each hop already
    * stamped its own clock's deadline onto `expires_at`, so by the time this
@@ -495,7 +495,7 @@ describe("findDueForExpiry", () => {
    * assertion. That matters most for this test: a `DRAFT` or
    * `AWAITING_PROVIDER` row leaked by an assertion that threw early would be
    * picked up by *this very query* in every later test and in
-   * `booking-expiry-sweep.test.ts`.
+   * `booking-sweep.test.ts`.
    */
   test("selects every status standing on a clock whose deadline has passed, oldest first, up to the limit", async () => {
     await withBookings(async (track) => {
@@ -614,7 +614,7 @@ describe("findDueForExpiry", () => {
       // survival itself persisted, not only that the two new fields did.
       expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
 
-      const due = await repo.findDueForExpiry(now, 10);
+      const due = await repo.findDueForSweep(now, 10);
       const dueIds = due.map((b) => b.id);
 
       expect(dueIds).toContain(dueDraft.id);
@@ -636,7 +636,7 @@ describe("findDueForExpiry", () => {
       const deadlines = due.map((b) => (b.expiresAt as Date).getTime());
       expect(deadlines).toEqual([...deadlines].sort((a, b) => a - b));
 
-      const limited = await repo.findDueForExpiry(now, 1);
+      const limited = await repo.findDueForSweep(now, 1);
       expect(limited).toHaveLength(1);
       // The limit is applied *after* the ordering: the one row a limit of
       // one returns is the same row the unlimited query returns first.

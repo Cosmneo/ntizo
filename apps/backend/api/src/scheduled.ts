@@ -18,7 +18,7 @@ import type { AppBindings } from "./types";
 export const SWEEP_LIMIT = 200;
 
 /**
- * How many due bookings one expiry sweep may claim.
+ * How many due bookings one sweep may claim.
  *
  * The cron runs every minute (see `wrangler.jsonc`) against three
  * administrator-configured windows, not one: the checkout hold a `DRAFT`
@@ -35,7 +35,7 @@ export const SWEEP_LIMIT = 200;
  * budgeting against different windows on different tables and have no reason
  * to share a number just because it currently matches.
  */
-export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
+export const BOOKING_SWEEP_LIMIT = 200;
 
 /**
  * The worker that wakes up to check for unread messages.
@@ -69,7 +69,7 @@ export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
  * hand-copying that chain a second time — see that function's own doc
  * comment for the full argument.
  *
- * **The booking expiry sweep runs in this same scope, not a second one of
+ * **The booking sweep runs in this same scope, not a second one of
  * its own.** A booking's `expires_at` — whichever of the three windows
  * stamped it — is the same shape of question against the same clock as a
  * message's `notifyDueAt`, and this
@@ -116,7 +116,7 @@ export async function scheduled(
         // Its own try, not shared with the booking sweep below (see that
         // block's own comment for why): a throw here — Communication down,
         // a DB error before `notifyUnread`'s own per-message try/catch even
-        // starts — must not skip booking expiry, an unrelated context with
+        // starts — must not skip the booking sweep, an unrelated context with
         // its own permanent-slot-leak problem to prevent.
         try {
           const notification = bootstrapNotification();
@@ -150,13 +150,13 @@ export async function scheduled(
         // own outcome — whether or not the one above threw. Before Task 5 of
         // the booking-seams repair plan, both sweeps shared one `try` with
         // notification first, so anything Communication threw skipped
-        // booking expiry entirely, reinstating the permanent slot leak this
+        // the booking sweep entirely, reinstating the permanent slot leak that
         // sweep exists to prevent, from a context that has nothing to do
         // with bookings.
         try {
           const booking = bootstrapBooking();
           const { swept, failed: bookingFailed } = await booking.useCases.internal.sweepDue.execute({
-            limit: BOOKING_EXPIRY_SWEEP_LIMIT,
+            limit: BOOKING_SWEEP_LIMIT,
           });
 
           if (bookingFailed > 0) {
@@ -166,11 +166,11 @@ export async function scheduled(
             // third ends in `CANCELLED`, and this line cannot tell them
             // apart — see `SweepDueBookingsInternalCommand.execute`.
             console.error(
-              `[scheduled] booking-expiry sweep: ${swept} swept, ${bookingFailed} failed`,
+              `[scheduled] booking sweep: ${swept} swept, ${bookingFailed} failed`,
             );
           }
         } catch (error) {
-          console.error("[scheduled] booking-expiry sweep threw", error);
+          console.error("[scheduled] booking sweep threw", error);
         }
       } finally {
         // Workers run nothing after this function returns unless scheduled —

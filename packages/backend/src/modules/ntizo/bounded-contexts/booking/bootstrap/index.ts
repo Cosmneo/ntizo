@@ -21,7 +21,7 @@ import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructu
  * Constructs every use case this bounded context has built so far,
  * including two nothing outside this bootstrap constructs directly:
  * `markBookingPaid` (Payment's event handler reaches for it once Payment
- * lands) and `sweepBooking`, which the expiry sweep no longer calls
+ * lands) and `sweepBooking`, which the sweep no longer calls
  * directly — it goes through `useCases.internal.sweepDue` below, the same
  * way Communication's cron sweep goes through `useCases.internal.notifyUnread`
  * rather than touching `MessageRepositoryPort` itself. A bootstrap that

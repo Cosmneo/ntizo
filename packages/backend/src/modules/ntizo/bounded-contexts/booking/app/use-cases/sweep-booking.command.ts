@@ -52,7 +52,7 @@ const PROVIDER_DID_NOT_RESPOND = "provider_did_not_respond";
  * from `expired` to `swept`, and it applies harder to a type name, which is
  * read far more often than a field.
  *
- * **This command is internal.** It is driven by the expiry sweep, which
+ * **This command is internal.** It is driven by the sweep, which
  * selects rows on `expires_at` with no way to know whether a booking
  * already moved on — submitted, accepted, paid, declined — between that
  * select and this call. That is an ordinary race, not a fault on either
@@ -149,7 +149,7 @@ export class SweepBookingCommand {
     await this.unitOfWork.atomicExecute(async () => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
-        // An expiry job naming a booking that does not exist means the job
+        // A sweep naming a booking that does not exist means the job
         // outlived its row — not routine, and worth a fact left behind to
         // find it by.
         throw new BookingNotFoundError(input.bookingId);

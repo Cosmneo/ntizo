@@ -162,11 +162,11 @@ class FakeRepo implements BookingRepositoryPort {
 
   // Neither command under test calls this — `BookingRepositoryPort` still
   // requires it, the same way `FakeRepo` in `create-booking.command.test.ts`
-  // implements `findDueForExpiry` without exercising it.
+  // implements `findDueForSweep` without exercising it.
   async insert(booking: Booking): Promise<Booking> {
     return booking;
   }
-  async findDueForExpiry(): Promise<Booking[]> {
+  async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
 }
@@ -174,7 +174,7 @@ class FakeRepo implements BookingRepositoryPort {
 /**
  * Stands in for two workers racing the same row from the same stale read —
  * exactly the scenario `BookingRepositoryPort.save`'s `expectedStatus` guard
- * exists for: a payment webhook and the expiry sweep both `findById` the
+ * exists for: a payment webhook and the sweep both `findById` the
  * same `PENDING_PAYMENT` booking before either has written anything back.
  *
  * `findById` always hands back `staleRead` — the one snapshot both racers
@@ -225,7 +225,7 @@ class RacingFakeRepo implements BookingRepositoryPort {
     return booking;
   }
   async appendChange(_change: BookingChangeRecord): Promise<void> {}
-  async findDueForExpiry(): Promise<Booking[]> {
+  async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
 }
@@ -542,7 +542,7 @@ describe("SweepBookingCommand", () => {
 
 /**
  * The lost-update race Task 5 of the booking-seams repair plan closes: the
- * payment window closes at T, the expiry sweep selects the booking as
+ * payment window closes at T, the sweep selects the booking as
  * `PENDING_PAYMENT` at T+0.4s, and the M-Pesa webhook selects the same row,
  * also `PENDING_PAYMENT`, at T+0.5s. Both commands compute a real
  * transition from that identical stale read. Before the `expectedStatus`
@@ -558,7 +558,7 @@ describe("SweepBookingCommand", () => {
  * than through the aggregate.
  */
 describe("MarkBookingPaidCommand and SweepBookingCommand racing the same stale read", () => {
-  it("the sweep writes first: expiry wins, the payment finds the row already moved and publishes nothing", async () => {
+  it("the sweep writes first: the sweep wins, the payment finds the row already moved and publishes nothing", async () => {
     const staleRead = pendingBooking();
     const row: { current: Booking | null } = { current: staleRead };
 
@@ -573,7 +573,7 @@ describe("MarkBookingPaidCommand and SweepBookingCommand racing the same stale r
     const repoPay = new RacingFakeRepo(staleRead, row, uowPay);
     const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
 
-    // The sweep reaches the row first and commits its expiry.
+    // The sweep reaches the row first and commits its cancellation.
     await sweepCmd.execute({ bookingId: "bk-1" });
     // The webhook arrives against the very same PENDING_PAYMENT snapshot
     // the sweep started from — its own `findById` never saw the sweep's
