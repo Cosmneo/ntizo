@@ -37,7 +37,12 @@ export interface BookingListRow {
 
   description: string | null;
 
-  /** Null once the booking is no longer waiting to be paid — see `bookingReadModel`. */
+  /**
+   * Whichever of the three clocks this booking's status is standing on, never
+   * cleared once it stops applying — read straight off `booking.expires_at`.
+   * See `bookingReadModel` for which status carries which clock, and for why
+   * a consumer must check the status before trusting the date.
+   */
   expiresAt: Date | null;
 
   createdAt: Date;

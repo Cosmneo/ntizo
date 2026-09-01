@@ -277,9 +277,10 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
       expect(typeof item?.startsAt).toBe("string");
       expect(typeof item?.endsAt).toBe("string");
       expect(typeof item?.createdAt).toBe("string");
-      // PENDING_PAYMENT (this fixture's status) always carries a real
-      // expiresAt — see `Booking.create` — so this also proves the non-null
-      // branch is a string, not merely that a null one passes trivially.
+      // DRAFT — this fixture's status, since the reversal made that what
+      // `Booking.create` produces — always carries a real expiresAt: the
+      // checkout hold. So this also proves the non-null branch is a string,
+      // not merely that a null one passes trivially.
       expect(item?.expiresAt).not.toBeNull();
       expect(typeof item?.expiresAt).toBe("string");
       expect(item?.startsAt).toBe("2026-12-03T09:00:00.000Z");

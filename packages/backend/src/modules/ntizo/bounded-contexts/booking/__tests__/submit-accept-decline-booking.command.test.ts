@@ -26,7 +26,18 @@ import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
 import type { BookingStatus } from "../../../shared/infrastructure/database/booking/enums";
 import { TrackingUnitOfWork, withId } from "./support/fakes";
 
-const WHEN = new Date("2026-09-04T12:30:00.000Z");
+/**
+ * The slot every fixture in this file books, far enough out that
+ * `cappedToSlotStart` never bites on it.
+ *
+ * Relative to `now`, not a pinned calendar date, and that is load-bearing
+ * since the cap landed: `submit` and `accept` now hold their deadlines to
+ * `startsAt`, so a fixed date would silently start capping every deadline
+ * assertion in this file on the day it went past — a green suite that turns
+ * red on a calendar boundary rather than on a change. The cap's own tests
+ * below pin their starts deliberately, close in.
+ */
+const WHEN = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
 /** A freshly-created, never-persisted booking's `Booking.create` input. */
 function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) {
@@ -53,14 +64,16 @@ function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) 
     addressLat: null,
     addressLng: null,
     description: null,
-    expiresAt: new Date("2026-09-04T13:00:00.000Z"),
+    // A checkout hold, so relative to `now` rather than to the slot — and,
+    // like `WHEN`, not a pinned date.
+    expiresAt: new Date(Date.now() + 30 * 60_000),
     ...over,
   };
 }
 
 /** A stored, `DRAFT` booking with an id, as `findById` would return it. */
-function draftBooking(id = "bk-1"): Booking {
-  return withId(Booking.create(bookingInput()), id);
+function draftBooking(id = "bk-1", over: Partial<Parameters<typeof Booking.create>[0]> = {}): Booking {
+  return withId(Booking.create(bookingInput(over)), id);
 }
 
 /**
@@ -69,9 +82,16 @@ function draftBooking(id = "bk-1"): Booking {
  * tests read it back — not the value `SubmitBookingCommand` would actually
  * compute from `provider_response_minutes`.
  */
-function awaitingBooking(id = "bk-1"): Booking {
-  const draft = Booking.create(bookingInput());
-  const submitted = draft.submit(new Date(), new Date("2026-09-04T14:30:00.000Z"));
+function awaitingBooking(
+  id = "bk-1",
+  over: Partial<Parameters<typeof Booking.create>[0]> = {},
+): Booking {
+  const draft = Booking.create(bookingInput(over));
+  // Held to the slot's start the way `SubmitBookingCommand` would hold it, so
+  // a fixture built with a start minutes away is not one no command could
+  // ever have produced.
+  const respondBy = Math.min(Date.now() + 120 * 60_000, draft.startsAt.getTime());
+  const submitted = draft.submit(new Date(), new Date(respondBy));
   return withId(submitted, id);
 }
 
@@ -312,7 +332,7 @@ describe("SubmitBookingCommand", () => {
     // (derived from the duration) and `respondBy` (derived from this
     // window) land on the same instant by coincidence — indistinguishable
     // from a bug that derived one from the other.
-    const { command, repo, outbox, delayedJobs, platformSettingsReader } = setupSubmit(
+    const { command, repo, outbox, delayedJobs, platformSettingsReader, unitOfWork } = setupSubmit(
       draftBooking(),
       { providerResponseMinutes: 45 },
     );
@@ -344,6 +364,27 @@ describe("SubmitBookingCommand", () => {
     // a command that stamps a deadline and stays silent about it is a bug
     // waiting for a real job queue to expose.
     expect(delayedJobs.scheduled).toEqual([{ bookingId: "bk-1", at: respondBy }]);
+
+    // The hop's own history row. `booking` has no column saying who sent this
+    // request or when, and `BookingSubmitted` is a message rather than a
+    // record — a consumer that never runs leaves this table as the only
+    // answer. Exhaustive rather than a partial match, matching
+    // `DeclineBookingCommand`'s own assertion.
+    expect(repo.appendChangeCalls).toEqual([
+      {
+        bookingId: "bk-1",
+        changedByUserId: "cust-1",
+        reason: "submitted_by_customer",
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      },
+    ]);
+    // Save, then append, then publish — `DeclineBookingCommand`'s ordering,
+    // minus the release it has and this hop does not: `AWAITING_PROVIDER`
+    // still holds the slot.
+    expect(unitOfWork.order).toEqual(["save", "appendChange"]);
 
     expect(outbox.published).toHaveLength(1);
     const batch = outbox.published[0]!;
@@ -383,11 +424,12 @@ describe("SubmitBookingCommand", () => {
     // The assertion this test exists for: a command that wrote and then
     // threw would still pass a weaker "no booking came back" check.
     expect(repo.saveCalls).toBe(0);
+    expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
   });
 
-  it("a losing compare-and-swap publishes nothing, schedules nothing, and throws nothing", async () => {
+  it("a losing compare-and-swap publishes nothing, appends nothing, schedules nothing, and throws nothing", async () => {
     const { command, repo, outbox, delayedJobs } = setupSubmit(draftBooking());
     // Somebody else's write already moved the row past DRAFT before this
     // command's own write reaches it — the ordinary case the CAS exists
@@ -399,8 +441,50 @@ describe("SubmitBookingCommand", () => {
 
     expect(repo.saveCalls).toBe(1);
     expect(repo.lastApplied).toBe(false);
+    // A history row for a transition that never landed would claim a hop
+    // that did not happen.
+    expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
+  });
+
+  it("caps the provider's response window at the slot's own start when the slot begins before the window would close", async () => {
+    // Thirty minutes out against a 120-minute window: the cap bites. Without
+    // it, a provider could be given until 15:45 to answer for a service due
+    // at 14:00 — see `cappedToSlotStart`.
+    const startsAt = new Date(Date.now() + 30 * 60_000);
+    const { command, repo, delayedJobs } = setupSubmit(draftBooking("bk-1", { startsAt }), {
+      providerResponseMinutes: 120,
+    });
+
+    await command.execute({ bookingId: "bk-1", customerId: "cust-1" });
+
+    // Equal to `startsAt` exactly, not merely "shorter than 120 minutes": an
+    // implementation shortening the window by some other rule would still
+    // pass the weaker assertion.
+    expect(repo.savedArg?.expiresAt).toEqual(startsAt);
+    // The scheduled deadline follows the capped value, not the uncapped one.
+    expect(delayedJobs.scheduled).toEqual([{ bookingId: "bk-1", at: startsAt }]);
+  });
+
+  it("leaves the provider's response window alone when the slot starts after the window would close", async () => {
+    // Four hours out against the same 120-minute window: the cap must not
+    // bite. Without this pair, a cap that clamped every submission to its
+    // own `startsAt` would look exactly as correct as one that clamps only
+    // when it has to.
+    const startsAt = new Date(Date.now() + 240 * 60_000);
+    const { command, repo } = setupSubmit(draftBooking("bk-1", { startsAt }), {
+      providerResponseMinutes: 120,
+    });
+
+    const before = Date.now();
+    await command.execute({ bookingId: "bk-1", customerId: "cust-1" });
+    const after = Date.now();
+
+    const respondBy = repo.savedArg?.expiresAt as Date;
+    expect(respondBy.getTime()).toBeGreaterThanOrEqual(before + 120 * 60_000);
+    expect(respondBy.getTime()).toBeLessThanOrEqual(after + 120 * 60_000);
+    expect(respondBy.getTime()).toBeLessThan(startsAt.getTime());
   });
 
   it("throws BookingNotFoundError when the booking does not exist, and publishes nothing", async () => {
@@ -410,6 +494,7 @@ describe("SubmitBookingCommand", () => {
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 
     expect(repo.saveCalls).toBe(0);
+    expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
   });
@@ -417,8 +502,15 @@ describe("SubmitBookingCommand", () => {
 
 describe("AcceptBookingCommand", () => {
   it("accepts an awaiting-provider booking for a caller who belongs to its provider, computing payBy from payment_window_minutes, and publishes BookingAccepted exactly once", async () => {
-    const { command, repo, outbox, delayedJobs, providerMemberReader, platformSettingsReader } =
-      setupAccept(awaitingBooking(), { paymentWindowMinutes: 20 });
+    const {
+      command,
+      repo,
+      outbox,
+      delayedJobs,
+      providerMemberReader,
+      platformSettingsReader,
+      unitOfWork,
+    } = setupAccept(awaitingBooking(), { paymentWindowMinutes: 20 });
     const input: AcceptBookingInput = { bookingId: "bk-1", requesterUserId: "user-right-1" };
 
     const before = Date.now();
@@ -441,6 +533,26 @@ describe("AcceptBookingCommand", () => {
     // Scheduled after the transaction resolves, against the deadline this
     // command just stamped.
     expect(delayedJobs.scheduled).toEqual([{ bookingId: "bk-1", at: payBy }]);
+
+    // Which member committed the calendar. `booking.confirmedAt` says a
+    // provider said yes and when; for an Organization with several members
+    // this row is the only place that could ever say which of them — and the
+    // decline this mirrors has been attributable since it was written.
+    expect(repo.appendChangeCalls).toEqual([
+      {
+        bookingId: "bk-1",
+        changedByUserId: "user-right-1",
+        reason: "accepted_by_provider",
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      },
+    ]);
+    // Save, then append, then publish — `DeclineBookingCommand`'s ordering,
+    // minus the release it has and this hop does not: `PENDING_PAYMENT`
+    // still holds the slot.
+    expect(unitOfWork.order).toEqual(["save", "appendChange"]);
 
     expect(outbox.published).toHaveLength(1);
     const batch = outbox.published[0]!;
@@ -477,11 +589,12 @@ describe("AcceptBookingCommand", () => {
     // The assertion this test exists for: a command that wrote and then
     // threw would still pass a weaker "no booking came back" check.
     expect(repo.saveCalls).toBe(0);
+    expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
   });
 
-  it("a losing compare-and-swap publishes nothing, schedules nothing, and throws nothing", async () => {
+  it("a losing compare-and-swap publishes nothing, appends nothing, schedules nothing, and throws nothing", async () => {
     const { command, repo, outbox, delayedJobs } = setupAccept(awaitingBooking());
     // Two members of the same provider hitting "Aceitar" at once: this
     // command's own write finds the row already moved by the other one.
@@ -492,8 +605,47 @@ describe("AcceptBookingCommand", () => {
 
     expect(repo.saveCalls).toBe(1);
     expect(repo.lastApplied).toBe(false);
+    // A history row naming a member who did not, in the end, commit this
+    // calendar would be worse than no row at all.
+    expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
+  });
+
+  it("caps the payment window at the slot's own start when the slot begins before the window would close", async () => {
+    // Five minutes out against a 20-minute window: the cap bites. Without it
+    // the charge sweep would push an M-Pesa prompt for work whose time had
+    // already passed — see `cappedToSlotStart`.
+    const startsAt = new Date(Date.now() + 5 * 60_000);
+    const { command, repo, delayedJobs } = setupAccept(awaitingBooking("bk-1", { startsAt }), {
+      paymentWindowMinutes: 20,
+    });
+
+    await command.execute({ bookingId: "bk-1", requesterUserId: "user-right-1" });
+
+    // Equal to `startsAt` exactly, not merely "shorter than 20 minutes".
+    expect(repo.savedArg?.expiresAt).toEqual(startsAt);
+    expect(delayedJobs.scheduled).toEqual([{ bookingId: "bk-1", at: startsAt }]);
+  });
+
+  it("leaves the payment window alone when the slot starts after the window would close", async () => {
+    // Ninety minutes out against the same 20-minute window: the cap must not
+    // bite. Without this pair, a cap that clamped every acceptance to its own
+    // `startsAt` would look exactly as correct as one that clamps only when
+    // it has to.
+    const startsAt = new Date(Date.now() + 90 * 60_000);
+    const { command, repo } = setupAccept(awaitingBooking("bk-1", { startsAt }), {
+      paymentWindowMinutes: 20,
+    });
+
+    const before = Date.now();
+    await command.execute({ bookingId: "bk-1", requesterUserId: "user-right-1" });
+    const after = Date.now();
+
+    const payBy = repo.savedArg?.expiresAt as Date;
+    expect(payBy.getTime()).toBeGreaterThanOrEqual(before + 20 * 60_000);
+    expect(payBy.getTime()).toBeLessThanOrEqual(after + 20 * 60_000);
+    expect(payBy.getTime()).toBeLessThan(startsAt.getTime());
   });
 
   it("throws BookingNotFoundError when the booking does not exist, and publishes nothing", async () => {
@@ -503,6 +655,7 @@ describe("AcceptBookingCommand", () => {
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 
     expect(repo.saveCalls).toBe(0);
+    expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
   });

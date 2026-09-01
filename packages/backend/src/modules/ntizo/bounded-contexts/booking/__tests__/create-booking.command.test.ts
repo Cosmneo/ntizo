@@ -38,11 +38,24 @@ import type { DelayedJobsPort } from "../app/ports/outbound/delayed-jobs.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
 import { TrackingUnitOfWork, withId } from "./support/fakes";
 
+/**
+ * The slot the shared fixture books, far enough out that
+ * `cappedToSlotStart` never bites on it.
+ *
+ * Relative to `now`, not a pinned calendar date, and that is load-bearing
+ * since the cap landed: every deadline this command stamps is now held to
+ * `startsAt`, so a fixed date would silently start capping every expiry
+ * assertion in this file on the day it went past — a green suite that turns
+ * red on a calendar boundary rather than on a change. The cap's own tests
+ * below pin their starts deliberately, close in.
+ */
+const SLOT_STARTS_AT = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
 const INPUT: CreateBookingInput = {
   customerId: "cust-1",
   serviceOptionId: "opt-1",
   providerMemberId: "member-1",
-  startsAt: new Date("2026-09-04T12:30:00.000Z"),
+  startsAt: SLOT_STARTS_AT,
   locale: "pt-MZ",
   address: {
     label: "Casa",
@@ -387,6 +400,46 @@ describe("CreateBookingCommand", () => {
     expect(expiresAtMs).toBeGreaterThanOrEqual(before + FAKE_CHECKOUT_HOLD_MINUTES * 60_000);
     expect(expiresAtMs).toBeLessThanOrEqual(after + FAKE_CHECKOUT_HOLD_MINUTES * 60_000);
     expect(platformSettingsReader.calls).toBe(1);
+  });
+
+  it("caps the checkout hold at the slot's own start when the slot begins before the window would close", async () => {
+    const { command, repo, delayedJobs } = setup({
+      checkoutHoldMinutes: FAKE_CHECKOUT_HOLD_MINUTES,
+    });
+    // Ten minutes out against a 42-minute hold: the cap bites. A hold
+    // outliving the slot it holds would be a countdown promising a customer
+    // time that no longer exists — see `cappedToSlotStart`.
+    const startsAt = new Date(Date.now() + 10 * 60_000);
+
+    const result = await command.execute({ ...INPUT, startsAt });
+
+    // Equal to `startsAt` exactly, not merely "before now + 42 minutes": an
+    // implementation that shortened the hold by some other rule would still
+    // pass the weaker assertion.
+    expect(result.expiresAt).toBe(startsAt.toISOString());
+    expect(repo.insertedArg?.expiresAt).toEqual(startsAt);
+    // The scheduled deadline follows the capped value, not the uncapped one —
+    // a job firing after the slot began would be a job for nothing.
+    expect(delayedJobs.scheduled[0]?.at.toISOString()).toBe(startsAt.toISOString());
+  });
+
+  it("leaves the checkout hold alone when the slot starts after the window would close", async () => {
+    const { command, repo } = setup({ checkoutHoldMinutes: FAKE_CHECKOUT_HOLD_MINUTES });
+    // Two hours out against the same 42-minute hold: the cap must not bite.
+    // Without this pair, a cap that clamped every booking to its own
+    // `startsAt` would look exactly as correct as one that clamps only when
+    // it has to.
+    const startsAt = new Date(Date.now() + 120 * 60_000);
+
+    const before = Date.now();
+    const result = await command.execute({ ...INPUT, startsAt });
+    const after = Date.now();
+
+    const expiresAtMs = new Date(result.expiresAt).getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + FAKE_CHECKOUT_HOLD_MINUTES * 60_000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + FAKE_CHECKOUT_HOLD_MINUTES * 60_000);
+    expect(expiresAtMs).toBeLessThan(startsAt.getTime());
+    expect(repo.insertedArg?.expiresAt).not.toEqual(startsAt);
   });
 
   it("holds the slot for the member and window that was actually booked", async () => {

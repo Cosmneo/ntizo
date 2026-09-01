@@ -2,6 +2,7 @@ import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { BookingSubmitted } from "../../domain/events";
 import { BookingNotFoundError, NotBookingCustomerError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
+import { cappedToSlotStart } from "./capped-to-slot-start";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
@@ -11,6 +12,22 @@ export interface SubmitBookingInput {
   /** From `requireUser` at the GraphQL layer, never from the client. */
   customerId: string;
 }
+
+/**
+ * What `booking_change.reason` records for this hop.
+ *
+ * A machine token, not a sentence — the same contract
+ * `DeclineBookingCommand`'s `DECLINED_WITHOUT_REASON` and
+ * `SweepBookingCommand`'s `BookingExpiredReason` keep, and for the same
+ * reason: whatever renders a booking's history renders it into eight locales,
+ * and a locale key can be switched on where English prose can only be shown
+ * verbatim.
+ *
+ * Named for what happened, and by whom, because that is the whole of what this
+ * hop records. There is no free-text alternative here the way there is on a
+ * decline: a customer sending their own request has nothing to explain.
+ */
+const SUBMITTED_BY_CUSTOMER = "submitted_by_customer";
 
 /**
  * The customer finishes the checkout form: `DRAFT` becomes `AWAITING_PROVIDER`,
@@ -34,7 +51,20 @@ export interface SubmitBookingInput {
  * `CreateBookingCommand` already has with `checkout_hold_minutes`: a change
  * an administrator makes reaches the very next booking to submit, and a
  * booking already submitted keeps the deadline it was given regardless of
- * what this returns afterward.
+ * what this returns afterward. It is then **capped at the slot's own start**
+ * — a provider cannot be given until 15:45 to answer for a service that was
+ * due at 14:00 — see `cappedToSlotStart` for the full argument, and for why
+ * a slot booked at short notice getting a short window is honest rather than
+ * a bug.
+ *
+ * **This command writes a `booking_change` row.** `changedByUserId` is the
+ * customer who submitted — the same party the authorisation check above just
+ * confirmed. `DeclineBookingCommand` and `SweepBookingCommand` both record
+ * their hop, and a hop that is left out reads as an oversight rather than a
+ * decision: the row is the only place that says *who* sent this request and
+ * *when*, and `booking` carries no column for either. Same ordering the other
+ * two use — save, then append, then publish (there is no hold to release
+ * here: `AWAITING_PROVIDER` still holds the slot).
  *
  * **This command uses the compare-and-swap.** `save(booking, expectedStatus)`
  * only writes if the row is still at the status this command's own read
@@ -84,9 +114,15 @@ export class SubmitBookingCommand {
         throw new NotBookingCustomerError();
       }
 
-      // LIVE: read fresh on every call, per this class's own doc comment.
+      // LIVE: read fresh on every call, per this class's own doc comment,
+      // then held to the slot it protects — a response window running past
+      // `startsAt` would let a provider commit a calendar the service had
+      // already been due on.
       const providerResponseMinutes = await this.platformSettingsReader.findProviderResponseMinutes();
-      const respondByDeadline = new Date(at.getTime() + providerResponseMinutes * 60_000);
+      const respondByDeadline = cappedToSlotStart(
+        new Date(at.getTime() + providerResponseMinutes * 60_000),
+        booking.startsAt,
+      );
 
       const moved = booking.submit(at, respondByDeadline);
 
@@ -100,13 +136,31 @@ export class SubmitBookingCommand {
         return null;
       }
 
+      // Never null here: `moved` was loaded through `findById`, which only
+      // ever returns a booking the database already assigned an id to.
+      const bookingId = moved.id as string;
+
+      // The durable record of who sent this request and when, written before
+      // anything is announced so it survives a consumer that never runs — the
+      // same argument `SweepBookingCommand` makes for its own three endings.
+      // `BookingSubmitted` is a message; this is the record.
+      //
+      // Every `previous*` field is null because this hop moved none of them:
+      // it changed the status, and the status is on the booking, not here.
+      await this.repo.appendChange({
+        bookingId,
+        changedByUserId: input.customerId,
+        reason: SUBMITTED_BY_CUSTOMER,
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      });
+
       await this.outboxPort.publish(
         [
           new BookingSubmitted({
-            // Never null here: `moved` was loaded through `findById`, which
-            // only ever returns a booking the database already assigned an
-            // id to.
-            bookingId: moved.id as string,
+            bookingId,
             customerId: moved.customerId,
             providerId: moved.providerId,
             providerMemberId: moved.providerMemberId,

@@ -56,9 +56,28 @@ export const bookingReadModel = z.object({
   description: z.string().nullable(),
 
   /**
-   * When the payment window closes. Null once the booking is no longer
-   * waiting to be paid — a deadline that has stopped applying is absent,
-   * not a date in the past somebody has to compare against `now`.
+   * The deadline currently running against this booking — **whichever of the
+   * design's three clocks its status is standing on**, not the payment window
+   * in particular. Each hop stamps this column with its own clock's deadline:
+   * `DRAFT` carries the checkout hold, `AWAITING_PROVIDER` the provider's
+   * response window, `PENDING_PAYMENT` the payment window. Those three are
+   * the only statuses on which this field means anything, and every one of
+   * them caps its deadline at `startsAt` — a slot is never held past its own
+   * start.
+   *
+   * **It is never cleared, so read the status first.** No transition nulls
+   * this: a `CONFIRMED` or `MARKED_DONE` booking still carries the deadline
+   * it was last given, now in the past, deliberately — see
+   * `BookingProps.expiresAt` in the backend for the argument, which is that
+   * a customer disputing "you gave my slot away" needs the deadline they
+   * were actually given, and the three window lengths are live settings that
+   * cannot reconstruct it afterwards. A countdown driven off this field
+   * ("Hora reservada 29:40") must therefore check `status` against those
+   * three before rendering anything; a consumer that trusts the date alone
+   * will show an expired timer on a booking that is paid and confirmed.
+   *
+   * Null only ever means the column was never stamped, which nothing writes
+   * today. It stays nullable because the column is.
    */
   expiresAt: z.string().nullable(),
 

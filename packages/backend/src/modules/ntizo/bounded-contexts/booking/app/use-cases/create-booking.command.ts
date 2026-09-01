@@ -10,6 +10,7 @@ import {
   SlotNotOfferedError,
 } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
+import { cappedToSlotStart } from "./capped-to-slot-start";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
@@ -139,6 +140,15 @@ export class CreateBookingCommand {
   ) {}
 
   async execute(input: CreateBookingInput): Promise<{ bookingId: string; expiresAt: string }> {
+    // Computed once, at the top, before any of the reads below — the instant
+    // this command ran, not the instant it happened to reach the line that
+    // needed a clock. `submit`, `accept`, `decline` and the sweep all capture
+    // `at` this way; this one read `Date.now()` inline down beside the
+    // checkout hold, several awaits later. Harmless while there was one
+    // reading of the clock, and this branch has already had one real bug from
+    // there being two.
+    const at = new Date();
+
     const pricing = await this.pricingReader.findOption(input.serviceOptionId, input.locale);
     if (!pricing) {
       throw new ServiceOptionNotFoundError(input.serviceOptionId);
@@ -212,8 +222,17 @@ export class CreateBookingCommand {
     // slot mid-checkout; `submit` replaces it with the provider's response
     // window, and `accept` replaces it again with the actual payment
     // deadline — see both methods' own doc comments.
+    //
+    // Capped at the slot's own start: a hold that outlived the slot it holds
+    // would be a countdown offering a customer time that no longer exists. A
+    // slot starting in ten minutes gets a ten-minute hold, not a thirty-minute
+    // one — see `cappedToSlotStart` for why that is honest rather than a bug,
+    // and for the minimum-lead-time rule that is the actual remedy.
     const checkoutHoldMinutes = await this.platformSettingsReader.findCheckoutHoldMinutes();
-    const expiresAt = new Date(Date.now() + checkoutHoldMinutes * 60_000);
+    const expiresAt = cappedToSlotStart(
+      new Date(at.getTime() + checkoutHoldMinutes * 60_000),
+      input.startsAt,
+    );
 
     // The address arrives as a value, not a reference: `input.address`'s
     // fields are copied onto individually-typed `Booking.create` parameters

@@ -489,13 +489,31 @@ describe("bookingReadModel", () => {
     expect(() => bookingReadModel.parse({ ...base, commissionBps: 10001 })).toThrow();
   });
 
-  it("allows expiresAt to be null once the booking is no longer waiting to be paid", () => {
+  it("allows a null expiresAt, because the column is nullable — not because any status clears it", () => {
+    // Nothing writes null today: every deadline-bearing hop stamps this, and
+    // no transition clears it afterwards. The DTO stays nullable because
+    // `booking.expires_at` is — see `bookingReadModel`'s own comment on the
+    // field, which no longer promises a null once a booking stops waiting to
+    // be paid.
     const parsed = bookingReadModel.parse({
       ...base,
       status: "AWAITING_PROVIDER",
       expiresAt: null,
     });
     expect(parsed.expiresAt).toBeNull();
+  });
+
+  it("keeps a past expiresAt on a CONFIRMED booking, which is why a consumer must read the status first", () => {
+    // The half of the old contract that was most wrong: a confirmed booking
+    // still carries the deadline it was last given. A countdown driven off
+    // this field alone would render an expired timer on a booking that is
+    // paid and done.
+    const parsed = bookingReadModel.parse({
+      ...base,
+      status: "CONFIRMED",
+      expiresAt: "2026-09-01T10:15:00.000Z",
+    });
+    expect(parsed.expiresAt).toBe("2026-09-01T10:15:00.000Z");
   });
 });
 
