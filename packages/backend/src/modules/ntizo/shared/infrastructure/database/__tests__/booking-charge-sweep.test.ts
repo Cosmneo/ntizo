@@ -55,12 +55,13 @@ import { MarkBookingPaidCommand } from "../../../../bounded-contexts/booking/app
 import { ChargeBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/charge-booking.command";
 import {
   BOOKING_CHARGE_ATTEMPT_LIMIT,
-  BOOKING_CHARGE_MIN_WINDOW_MS,
   BOOKING_CHARGE_RETRY_MINUTES,
   ChargeAcceptedBookingsInternalCommand,
 } from "../../../../bounded-contexts/booking/app/use-cases/charge-accepted-bookings.internal.command";
+import { BOOKING_CHARGE_MIN_WINDOW_MS } from "../../../../bounded-contexts/booking/app/use-cases/charge-booking.command";
 import type {
   PaymentChargePort,
+  PaymentChargeReadiness,
   PaymentChargeRequest,
   PaymentChargeResult,
 } from "../../../../bounded-contexts/booking/app/ports/outbound/payment-charge.port";
@@ -244,6 +245,9 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
 class FixedCharge implements PaymentChargePort {
   public requests: PaymentChargeRequest[] = [];
   constructor(private readonly result: PaymentChargeResult) {}
+  readiness(): PaymentChargeReadiness {
+    return { ready: true };
+  }
   async charge(request: PaymentChargeRequest): Promise<PaymentChargeResult> {
     this.requests.push(request);
     return this.result;
@@ -364,7 +368,7 @@ describe("findAwaitingCharge, through the sweep", () => {
       expect(due.status).toBe("PENDING_PAYMENT");
 
       const charge = new FixedCharge({
-        outcome: "failed",
+        outcome: "refused",
         code: "INS-9",
         description: "Request timeout",
       });
@@ -408,7 +412,7 @@ describe("findAwaitingCharge, through the sweep", () => {
       expect((await chargeStateOf(id))?.chargeAttempts).toBe(0);
 
       await buildSweep(
-        new FixedCharge({ outcome: "failed", code: "INS-9", description: "Request timeout" }),
+        new FixedCharge({ outcome: "refused", code: "INS-9", description: "Request timeout" }),
         () => now,
       ).execute({ limit: 10 });
 
@@ -548,7 +552,7 @@ describe("findAwaitingCharge, through the sweep", () => {
       });
 
       const charge = new FixedCharge({
-        outcome: "failed",
+        outcome: "refused",
         code: "INS-9",
         description: "Request timeout",
       });
@@ -622,7 +626,7 @@ describe("findAwaitingCharge, through the sweep", () => {
       });
 
       const charge = new FixedCharge({
-        outcome: "failed",
+        outcome: "refused",
         code: "INS-9",
         description: "Request timeout",
       });
@@ -710,7 +714,7 @@ describe("findAwaitingCharge, through the sweep", () => {
       );
 
       const charge = new FixedCharge({
-        outcome: "failed",
+        outcome: "refused",
         code: "INS-9",
         description: "Request timeout",
       });
@@ -765,7 +769,7 @@ describe("findAwaitingCharge, through the sweep", () => {
 
       // Wave 1 runs to completion and prompts the customer.
       const charge = new FixedCharge({
-        outcome: "failed",
+        outcome: "refused",
         code: "INS-9",
         description: "Request timeout",
       });
@@ -821,6 +825,7 @@ describe("findAwaitingCharge, through the sweep", () => {
         at: now,
         maxAttempts: criteria.maxAttempts,
         notAttemptedSince: criteria.notAttemptedSince,
+        deadlineAfter: criteria.deadlineAfter,
       });
 
       expect(claimed).toBeNull();
@@ -854,6 +859,7 @@ describe("findAwaitingCharge, through the sweep", () => {
         at: now,
         maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
         notAttemptedSince: new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+        deadlineAfter: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
       });
       const later = new Date(now.getTime() + (BOOKING_CHARGE_RETRY_MINUTES + 1) * 60_000);
       const second = await repo.recordChargeAttempt({
@@ -861,6 +867,7 @@ describe("findAwaitingCharge, through the sweep", () => {
         at: later,
         maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
         notAttemptedSince: new Date(later.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+        deadlineAfter: new Date(later.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
       });
 
       expect(first).toBe(1);
@@ -889,6 +896,7 @@ describe("findAwaitingCharge, through the sweep", () => {
         at: now,
         maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
         notAttemptedSince: new Date(now.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+        deadlineAfter: new Date(now.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
       });
       expect(first).toBe(1);
 
@@ -900,10 +908,104 @@ describe("findAwaitingCharge, through the sweep", () => {
         at: nextTick,
         maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
         notAttemptedSince: new Date(nextTick.getTime() - BOOKING_CHARGE_RETRY_MINUTES * 60_000),
+        deadlineAfter: new Date(nextTick.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
       });
 
       expect(second).toBeNull();
       expect((await chargeStateOf(id))?.chargeAttempts).toBe(1);
+    });
+  });
+
+  /**
+   * **The criterion the claim was missing, and the only one whose absence
+   * could lose a customer's money outright.**
+   *
+   * A wave of five bookings at ~62 s each runs past five minutes. It selects
+   * against a floor computed at 12:00:00, reaches its last booking at
+   * 12:04:08, and — with only the status, the bound and the cooldown in the
+   * claim — charges a booking whose window closes at 12:04:30. At 12:05:00
+   * the deadline sweep cancels it and tells the provider the customer did not
+   * pay; at 12:05:05 the customer types their PIN. `INS-0`, and the money
+   * exists nowhere in the database.
+   *
+   * The selection cannot catch this: its floor was true when it ran and is
+   * stale by the time the booking is reached. Only the claim can, which is
+   * why the claim computes its floor from its own instant.
+   *
+   * This is also what protects the property that makes "refunds are out of
+   * scope" survivable — that a `CANCELLED` booking has never been charged.
+   */
+  test("the claim refuses a booking whose window closed after the select", async () => {
+    await withBookings(async (track) => {
+      const selectedAt = new Date("2027-06-20T12:00:00.000Z");
+      // Comfortably clear of the floor when the wave selected it...
+      const expiresAt = new Date(selectedAt.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS + 90_000);
+      const contested = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({ startsAt: new Date("2027-06-20T14:00:00.000Z"), expiresAt }),
+          ),
+          1,
+        ),
+      );
+      const id = contested.id as string;
+      const criteria = criteriaAt(selectedAt);
+
+      expect((await repo.findAwaitingCharge(criteria)).map((b) => b.id)).toContain(id);
+
+      // ...and no longer clear by the time the wave, four minutes into its
+      // own blocking calls, actually reaches it.
+      const claimedAt = new Date(selectedAt.getTime() + 4 * 60_000);
+      const claimed = await repo.recordChargeAttempt({
+        bookingId: id,
+        at: claimedAt,
+        maxAttempts: criteria.maxAttempts,
+        notAttemptedSince: criteria.notAttemptedSince,
+        deadlineAfter: new Date(claimedAt.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
+      });
+
+      expect(claimed).toBeNull();
+      // Nothing written: the booking is left exactly as the deadline sweep
+      // will find it.
+      expect((await chargeStateOf(id))?.chargeAttempts).toBe(0);
+    });
+  });
+
+  /**
+   * An outcome we could not read takes the booking out of the sweep's reach
+   * for good, whatever its attempt count — see `ChargeBookingCommand`'s
+   * `ambiguous` branch for why a retry is the one thing that must not happen.
+   * It leaves by the ordinary door: the bound is spent and the payment window
+   * cancels it.
+   */
+  test("an abandoned booking is never selected again", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2027-06-21T12:00:00.000Z");
+      const abandoned = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2027-06-21T14:00:00.000Z"),
+              expiresAt: new Date("2027-06-21T12:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const id = abandoned.id as string;
+
+      await repo.abandonCharge({
+        bookingId: id,
+        at: now,
+        maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
+      });
+
+      expect((await chargeStateOf(id))?.chargeAttempts).toBe(BOOKING_CHARGE_ATTEMPT_LIMIT);
+      expect((await repo.findAwaitingCharge(criteriaAt(now))).map((b) => b.id)).not.toContain(id);
+      // And it cannot be revived by a bound lowered in a later deploy —
+      // `GREATEST`, not an assignment.
+      await repo.abandonCharge({ bookingId: id, at: now, maxAttempts: 1 });
+      expect((await chargeStateOf(id))?.chargeAttempts).toBe(BOOKING_CHARGE_ATTEMPT_LIMIT);
     });
   });
 
@@ -925,7 +1027,7 @@ describe("findAwaitingCharge, through the sweep", () => {
       }
 
       const charge = new FixedCharge({
-        outcome: "failed",
+        outcome: "refused",
         code: "INS-9",
         description: "Request timeout",
       });

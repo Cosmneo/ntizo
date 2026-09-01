@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { infraStore } from "@ntizo/backend/shared/infra";
 import { Db } from "@ntizo/backend/shared/infra/database";
 import { NotifyUnreadInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
@@ -51,17 +51,37 @@ import type { AppBindings } from "../types";
  *    only thing on this platform that collects money. Guarded by "runs the
  *    charge sweep even when both sweeps before it throw" below.
  *
- * Tests 1, 3, 4 and 5 run the real sweep(s) against the real dev database (via
- * `process.env.DATABASE_URL`, which `bun test` loads from `.env`) rather than
- * a fake repository, because the whole point is to prove the *wiring* down to
- * a real `getDb()` call — a fake repository would never notice a missing
- * `infraStore.runAsync`. This is safe to run repeatedly: the messaging and
- * booking tables hold zero due rows, so `claimDueForNotice`,
- * `findDueForSweep` and `findAwaitingCharge` always return `[]` — no
- * notification is raised, no email sent, no booking expired, **and no
- * customer is charged**: with an empty result the charge sweep never reaches
- * `PaymentChargePort` at all, which is what makes running this file against
- * the live gateway's credentials harmless.
+ * Tests 1, 3, 4 and 5 run the real notification and deadline sweeps against
+ * the real dev database (via `process.env.DATABASE_URL`, which `bun test`
+ * loads from `.env`) rather than a fake repository, because the whole point is
+ * to prove the *wiring* down to a real `getDb()` call — a fake repository
+ * would never notice a missing `infraStore.runAsync`. Those two are safe to
+ * run repeatedly: the messaging and booking tables hold zero *due* rows, so
+ * `claimDueForNotice` and `findDueForSweep` return `[]` and nothing is
+ * notified, emailed or expired.
+ *
+ * **The charge sweep is stubbed for every test in this file, and that is not
+ * belt-and-braces.** Two things made running it for real wrong:
+ *
+ * 1. `findAwaitingCharge` selects `PENDING_PAYMENT` rows with a *future*
+ *    deadline — the one predicate in this codebase that points forward. The
+ *    backend suite's `booking-charge-sweep.test.ts` inserts exactly such rows
+ *    into this same shared database, and `turbo run test` runs the two
+ *    workspaces concurrently. This sweep would select the other suite's
+ *    fixtures, write `charge_attempts` and `last_charge_attempt_at` onto them,
+ *    and return `{ attempted: 1 }` — a CI gate that is a coin flip, and a red
+ *    in the other suite that looks like a bug in `recordChargeAttempt`.
+ * 2. The safety of the first point used to be asserted as "the sweep never
+ *    reaches `PaymentChargePort`". It does reach it; it only dies at
+ *    `resolveMpesaConfig` returning null because `ENV` below carries no M-Pesa
+ *    keys. Anyone adding those keys to `ENV` — an obvious thing to do when
+ *    debugging a charge — would turn `bun run test` into a real USSD push at
+ *    a real handset.
+ *
+ * So `beforeEach` stubs `ChargeAcceptedBookingsInternalCommand.prototype.execute`
+ * outright. Nothing is lost: what these tests need to prove about the third
+ * sweep is that `scheduled` *calls* it, with the right limit, in its own
+ * `try` — all of which a spy shows better than a live run.
  */
 
 const ENV = {
@@ -104,8 +124,23 @@ function fakeExecutionContext() {
 }
 
 const originalClose = Db.closeDbConnection;
+
+/**
+ * Stubbed for every test, restored after every test. See this file's header
+ * for why a live charge sweep here corrupts the backend suite's fixtures and
+ * is one env var away from pushing a real payment prompt.
+ */
+let chargeSpy: ReturnType<typeof spyOn<ChargeAcceptedBookingsInternalCommand, "execute">>;
+
+beforeEach(() => {
+  chargeSpy = spyOn(ChargeAcceptedBookingsInternalCommand.prototype, "execute").mockImplementation(
+    async () => ({ attempted: 0, failed: 0 }),
+  );
+});
+
 afterEach(() => {
   Db.closeDbConnection = originalClose;
+  chargeSpy.mockRestore();
 });
 
 describe("the scheduled worker", () => {
@@ -299,7 +334,6 @@ describe("the scheduled worker", () => {
         throw new Error("booking deadline sweep blew up");
       },
     );
-    const chargeSpy = spyOn(ChargeAcceptedBookingsInternalCommand.prototype, "execute");
 
     const { ctx, scheduledPromises } = fakeExecutionContext();
 
@@ -313,18 +347,13 @@ describe("the scheduled worker", () => {
     // `BOOKING_SWEEP_LIMIT` here by copy-paste would budget two hundred
     // minute-long calls into one cron invocation.
     expect(chargeSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_CHARGE_LIMIT });
-    // Resolved, not merely called. The dev database holds no booking
-    // awaiting a charge, so this is always { attempted: 0, failed: 0 } — and
-    // that zero is also what guarantees no real charge is attempted by
-    // running this file.
-    await expect(chargeSpy.mock.results[0]?.value).resolves.toEqual({
-      attempted: 0,
-      failed: 0,
-    });
+    // Called, with the right budget, after both sweeps ahead of it threw —
+    // which is the whole claim. What it *returns* is this file's own stub
+    // (see the header), so asserting on the value would be asserting on the
+    // stub rather than on `scheduled`.
 
     await Promise.all(scheduledPromises);
     notifySpy.mockRestore();
     sweepDueSpy.mockRestore();
-    chargeSpy.mockRestore();
   });
 });

@@ -20,6 +20,21 @@ export const MPESA_LOCAL_CODES = {
   /** `fetch` itself rejected — DNS, TLS, a dropped connection, or our own abort. */
   transport: "NTIZO-TRANSPORT",
   /**
+   * The bearer token could not be minted: the public key would not parse, or
+   * this runtime cannot do PKCS#1 v1.5 encryption.
+   *
+   * **Its own code rather than `transport`, and that is the entire point of
+   * it.** Both used to come back as `NTIZO-TRANSPORT`, which made a platform
+   * whose crypto does not work indistinguishable in the logs from a platform
+   * where every customer ignored their prompt. Nothing in this path has ever
+   * run inside workerd; if `publicEncrypt` turns out not to work there, this
+   * is the code that says so on the first charge instead of a month later.
+   *
+   * A `refused`, not an `ambiguous`: the request never left, so no prompt is
+   * live and nothing could have been debited.
+   */
+  crypto: "NTIZO-CRYPTO-FAILED",
+  /**
    * A response arrived and was not the JSON envelope this client understands.
    *
    * Not hypothetical: the sandbox sits behind Imperva, which answers with an
@@ -46,6 +61,31 @@ export const MPESA_LOCAL_CODES = {
    */
   missingTransactionId: "NTIZO-MISSING-TRANSACTION-ID",
 } as const;
+
+/**
+ * The three outcomes that mean **we do not know whether the customer's money
+ * moved**, as opposed to knowing it did not.
+ *
+ * The distinction decides whether a retry is safe, and it is the difference
+ * between one debit and two. `chargeReference` is deliberately different on
+ * every attempt so the processor cannot refuse a retry as a duplicate — which
+ * means nothing about a retry is idempotent, and pushing a second prompt over
+ * a possibly-live first one is a customer who can accept both.
+ *
+ * - `transport` — the socket died, or our own abort fired at 110s. The prompt
+ *   may well still be on the handset.
+ * - `unreadable` — the WAF answered HTML. **Measured**, not theoretical: the
+ *   sandbox's Imperva front end returns a `504` at ~31s while Vodacom is
+ *   still waiting for the customer. The prompt is definitely still live.
+ * - `missingTransactionId` — `INS-0` with nothing readable as a receipt. Here
+ *   we know the money *did* move; what is ambiguous is only whether we can
+ *   ever name it. Retrying is the worst of the three.
+ */
+export const MPESA_AMBIGUOUS_CODES: readonly string[] = [
+  MPESA_LOCAL_CODES.transport,
+  MPESA_LOCAL_CODES.unreadable,
+  MPESA_LOCAL_CODES.missingTransactionId,
+];
 
 /**
  * How long to wait on one C2B before giving up.
@@ -213,10 +253,25 @@ export type MpesaC2BResponse =
       readonly conversationId: string | null;
     }
   | {
+      /**
+       * Vodacom answered, and the answer was no. Safe to attempt again: no
+       * prompt is live, and nothing was debited.
+       */
       readonly outcome: "refused";
-      /** `INS-<n>` from the provider, or one of `MPESA_LOCAL_CODES`. */
+      /** `INS-<n>` from the provider, or `MPESA_LOCAL_CODES.crypto`. */
       readonly code: string;
       /** The provider's own description where there is one — never a sentence of ours put in its mouth. */
+      readonly description: string;
+    }
+  | {
+      /**
+       * We do not know what happened. **Never attempt again** — see
+       * `MPESA_AMBIGUOUS_CODES`, and `ChargeBookingCommand` for what the
+       * caller does about it.
+       */
+      readonly outcome: "ambiguous";
+      /** One of `MPESA_AMBIGUOUS_CODES`. */
+      readonly code: string;
       readonly description: string;
     };
 
@@ -284,6 +339,22 @@ export class MpesaClient {
 
     const url = `https://${host(this.config.environment)}:${C2B_PORT}${C2B_PATH}`;
 
+    // Minted **outside** the `try` below, in one of its own. Both used to sit
+    // together, so a runtime that cannot do PKCS#1 v1.5 encryption reported
+    // itself as `NTIZO-TRANSPORT` — the same code a dropped socket gets, and
+    // therefore invisible among the ordinary failures of a cron that talks to
+    // a flaky gateway. Nothing in this path has ever run inside workerd.
+    let authorization: string;
+    try {
+      authorization = `Bearer ${bearerToken(this.config)}`;
+    } catch (error) {
+      return {
+        outcome: "refused",
+        code: MPESA_LOCAL_CODES.crypto,
+        description: error instanceof Error ? error.message : String(error),
+      };
+    }
+
     let response: Response;
     try {
       response = await this.fetchImpl(url, {
@@ -295,7 +366,7 @@ export class MpesaClient {
           // here is only for a reader.
           Origin: this.config.origin,
           "User-Agent": USER_AGENT,
-          Authorization: `Bearer ${bearerToken(this.config)}`,
+          Authorization: authorization,
         },
         body: JSON.stringify({
           input_TransactionReference: request.transactionReference,
@@ -307,8 +378,11 @@ export class MpesaClient {
         signal: AbortSignal.timeout(C2B_TIMEOUT_MS),
       });
     } catch (error) {
+      // `ambiguous`, not `refused`: the request left. Vodacom may be pushing
+      // a prompt to the handset right now, and our abort at 110s says nothing
+      // about what the customer does with it.
       return {
-        outcome: "refused",
+        outcome: "ambiguous",
         code: MPESA_LOCAL_CODES.transport,
         description: error instanceof Error ? error.message : String(error),
       };
@@ -326,7 +400,7 @@ export class MpesaClient {
       payload = JSON.parse(body);
     } catch {
       return {
-        outcome: "refused",
+        outcome: "ambiguous",
         code: MPESA_LOCAL_CODES.unreadable,
         description: `HTTP ${response.status} with a body this client could not read as JSON`,
       };
@@ -335,7 +409,7 @@ export class MpesaClient {
     const code = readString(payload, "output_ResponseCode");
     if (code === null) {
       return {
-        outcome: "refused",
+        outcome: "ambiguous",
         code: MPESA_LOCAL_CODES.unreadable,
         description: `HTTP ${response.status} with JSON carrying no output_ResponseCode`,
       };
@@ -367,19 +441,23 @@ export class MpesaClient {
     // one nothing filters out by level. A success on the error channel reads
     // oddly for a second and is worth it.
     //
-    // Safe to log in full: this envelope carries references, a code, a
-    // description and a transaction id. The customer's MSISDN is in the
-    // *request*, not here.
+    // **The MSISDN is masked first.** This is a payment receipt going into
+    // Worker logs, which are retained and widely readable, and the response
+    // envelope is not ours — a field carrying the payer's number back could
+    // be added at Vodacom's end without anybody here noticing. Masking on the
+    // way out costs nothing and does not depend on knowing today's schema.
     console.error("[mpesa] a charge succeeded — full response follows", {
       transactionReference: request.transactionReference,
       thirdPartyReference: request.thirdPartyReference,
-      body,
+      body: maskMsisdns(body, request.msisdn),
     });
 
     const transactionId = readTransactionId(payload);
     if (transactionId === null) {
       return {
-        outcome: "refused",
+        // The one `ambiguous` where we know the money *did* move. Retrying is
+        // not a risk of a second debit, it is a near-certainty of one.
+        outcome: "ambiguous",
         code: MPESA_LOCAL_CODES.missingTransactionId,
         description: `${MPESA_SUCCESS_CODE} with nothing readable as a transaction id — the money moved; see the logged response body`,
       };
@@ -391,6 +469,27 @@ export class MpesaClient {
       conversationId: readString(payload, "output_ConversationID"),
     };
   }
+}
+
+/**
+ * Hides the payer's number in text on its way to a log.
+ *
+ * Two passes, because either alone leaves a gap. The first masks the exact
+ * number we sent, wherever it appears and however the response spells the
+ * field. The second masks *any* Mozambican MSISDN-shaped run of digits, which
+ * covers a number we did not send — a payer different from the handset we
+ * prompted, say — without needing to know which key carried it.
+ *
+ * Digits only, anchored on the `258` country code: a transaction id like
+ * `7SHV1234567` is alphanumeric and cannot match, so the receipt this log
+ * exists for survives the masking.
+ */
+export function maskMsisdns(text: string, msisdn: string): string {
+  const mask = (value: string) => `${value.slice(0, 5)}****${value.slice(-3)}`;
+  const escaped = msisdn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text
+    .replace(new RegExp(escaped, "g"), mask(msisdn))
+    .replace(/(?<!\d)258\d{9}(?!\d)/g, (found) => mask(found));
 }
 
 /**
@@ -420,7 +519,7 @@ function host(environment: string): string {
  * whoever is on call to read two files; one that names the environment and
  * the shortcode it objects to is the whole diagnosis.
  */
-function assertEnvironmentMatchesShortcode(config: MpesaConfig): void {
+export function assertEnvironmentMatchesShortcode(config: MpesaConfig): void {
   const isSandbox = config.environment === SANDBOX_ENVIRONMENT;
   const isSandboxShortcode = config.serviceProviderCode === SANDBOX_SERVICE_PROVIDER_CODE;
 

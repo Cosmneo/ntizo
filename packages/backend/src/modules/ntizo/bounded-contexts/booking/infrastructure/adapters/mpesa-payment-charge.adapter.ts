@@ -1,5 +1,6 @@
 import { infraStore } from "../../../../../../shared/infrastructure/stores/infra-store";
 import {
+  assertEnvironmentMatchesShortcode,
   type FetchLike,
   MpesaClient,
   type MpesaConfig,
@@ -7,6 +8,7 @@ import {
 } from "../../../../shared/infrastructure/payments/mpesa";
 import type {
   PaymentChargePort,
+  PaymentChargeReadiness,
   PaymentChargeRequest,
   PaymentChargeResult,
 } from "../../app/ports/outbound/payment-charge.port";
@@ -84,10 +86,31 @@ export class MpesaPaymentCharge implements PaymentChargePort {
     private readonly fetchImpl?: FetchLike,
   ) {}
 
+  /**
+   * Configuration only, and answered before any customer's retry budget is
+   * spent. The shortcode gate is *the same function* `MpesaClient.c2b` runs —
+   * imported rather than reimplemented, so the check that stops real money
+   * reaching a test merchant has exactly one definition. It throws here for
+   * the same reason it throws there: a deployment that must not charge
+   * anybody is not a charge that failed.
+   */
+  readiness(): PaymentChargeReadiness {
+    const config = resolveMpesaConfig();
+    if (config === null) {
+      return {
+        ready: false,
+        code: CHARGE_LOCAL_CODES.notConfigured,
+        description: "MPESA_API_KEY or MPESA_PUBLIC_KEY is not set on this stage",
+      };
+    }
+    assertEnvironmentMatchesShortcode(config);
+    return { ready: true };
+  }
+
   async charge(request: PaymentChargeRequest): Promise<PaymentChargeResult> {
     if (request.currency !== SETTLEMENT_CURRENCY) {
       return {
-        outcome: "failed",
+        outcome: "refused",
         code: CHARGE_LOCAL_CODES.unsupportedCurrency,
         description: `M-Pesa Moçambique settles ${SETTLEMENT_CURRENCY}; this booking is priced in ${request.currency}`,
       };
@@ -95,7 +118,7 @@ export class MpesaPaymentCharge implements PaymentChargePort {
 
     if (!Number.isInteger(request.amountMinor) || request.amountMinor <= 0) {
       return {
-        outcome: "failed",
+        outcome: "refused",
         code: CHARGE_LOCAL_CODES.invalidAmount,
         description: `${request.amountMinor} is not a chargeable amount in minor units`,
       };
@@ -104,7 +127,7 @@ export class MpesaPaymentCharge implements PaymentChargePort {
     const msisdn = toMpesaMsisdn(request.phone);
     if (msisdn === null) {
       return {
-        outcome: "failed",
+        outcome: "refused",
         code: CHARGE_LOCAL_CODES.unusablePhone,
         // The number itself is deliberately not in the description: this
         // string reaches a log line, and a log line is not where a
@@ -114,10 +137,13 @@ export class MpesaPaymentCharge implements PaymentChargePort {
       };
     }
 
+    // Already answered by `readiness()` before the attempt was claimed; kept
+    // because `charge` must be correct when called on its own, and because a
+    // `null` here would otherwise be a crash rather than a refusal.
     const config = resolveMpesaConfig();
     if (config === null) {
       return {
-        outcome: "failed",
+        outcome: "refused",
         code: CHARGE_LOCAL_CODES.notConfigured,
         description: "MPESA_API_KEY or MPESA_PUBLIC_KEY is not set on this stage",
       };
@@ -137,7 +163,14 @@ export class MpesaPaymentCharge implements PaymentChargePort {
     if (response.outcome === "paid") {
       return { outcome: "paid", paymentRef: response.transactionId };
     }
-    return { outcome: "failed", code: response.code, description: response.description };
+    // The client's own split, carried through unchanged. Collapsing the two
+    // here would be the whole point of the distinction thrown away one line
+    // from where it is decided.
+    return {
+      outcome: response.outcome,
+      code: response.code,
+      description: response.description,
+    };
   }
 }
 

@@ -175,6 +175,7 @@ class FakeRepo implements BookingRepositoryPort {
   async recordChargeAttempt(): Promise<number | null> {
     return 1;
   }
+  async abandonCharge(): Promise<void> {}
 }
 
 /**
@@ -240,6 +241,7 @@ class RacingFakeRepo implements BookingRepositoryPort {
   async recordChargeAttempt(): Promise<number | null> {
     return 1;
   }
+  async abandonCharge(): Promise<void> {}
 }
 
 /**

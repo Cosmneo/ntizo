@@ -20,10 +20,10 @@ import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.comma
 import { ChargeBookingCommand, chargeReference } from "../app/use-cases/charge-booking.command";
 import {
   BOOKING_CHARGE_ATTEMPT_LIMIT,
-  BOOKING_CHARGE_MIN_WINDOW_MS,
   BOOKING_CHARGE_RETRY_MINUTES,
   ChargeAcceptedBookingsInternalCommand,
 } from "../app/use-cases/charge-accepted-bookings.internal.command";
+import { BOOKING_CHARGE_MIN_WINDOW_MS } from "../app/use-cases/charge-booking.command";
 import { C2B_TIMEOUT_MS } from "../../../shared/infrastructure/payments/mpesa";
 import type {
   BookingChangeRecord,
@@ -32,6 +32,7 @@ import type {
 import type { CustomerPhoneReaderPort } from "../app/ports/outbound/customer-phone.reader.port";
 import type {
   PaymentChargePort,
+  PaymentChargeReadiness,
   PaymentChargeRequest,
   PaymentChargeResult,
 } from "../app/ports/outbound/payment-charge.port";
@@ -96,7 +97,9 @@ class FakeRepo implements BookingRepositoryPort {
     at: Date;
     maxAttempts: number;
     notAttemptedSince: Date;
+    deadlineAfter: Date;
   }[] = [];
+  public abandoned: { bookingId: string; at: Date; maxAttempts: number }[] = [];
   /** Makes every claim lose, the way a concurrent wave's would. */
   public claimLoses = false;
   public awaiting: Booking[] = [];
@@ -136,6 +139,7 @@ class FakeRepo implements BookingRepositoryPort {
     at: Date;
     maxAttempts: number;
     notAttemptedSince: Date;
+    deadlineAfter: Date;
   }): Promise<number | null> {
     this.order.push("recordChargeAttempt");
     this.claims.push(claim);
@@ -163,6 +167,14 @@ class FakeRepo implements BookingRepositoryPort {
     return booking;
   }
   async appendChange(_change: BookingChangeRecord): Promise<void> {}
+  async abandonCharge(abandonment: {
+    bookingId: string;
+    at: Date;
+    maxAttempts: number;
+  }): Promise<void> {
+    this.order.push("abandonCharge");
+    this.abandoned.push(abandonment);
+  }
   async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
@@ -179,10 +191,16 @@ class FakePhoneReader implements CustomerPhoneReaderPort {
 
 class PaymentChargeSpy implements PaymentChargePort {
   public requests: PaymentChargeRequest[] = [];
+  /** Flipped by the readiness tests; every other test runs against a configured stage. */
+  public notReady: { code: string; description: string } | null = null;
   constructor(
     private readonly result: PaymentChargeResult | (() => PaymentChargeResult),
     private readonly order: string[] = [],
   ) {}
+  readiness(): PaymentChargeReadiness {
+    this.order.push("readiness");
+    return this.notReady ? { ready: false, ...this.notReady } : { ready: true };
+  }
   async charge(request: PaymentChargeRequest): Promise<PaymentChargeResult> {
     this.order.push("charge");
     this.requests.push(request);
@@ -250,7 +268,7 @@ describe("ChargeBookingCommand", () => {
     const repo = new FakeRepo(pendingBooking(), order);
     const uow = new TrackingUnitOfWork();
     const charge = new PaymentChargeSpy(
-      { outcome: "failed", code: "INS-9", description: "Request timeout" },
+      { outcome: "refused", code: "INS-9", description: "Request timeout" },
       order,
     );
 
@@ -264,14 +282,14 @@ describe("ChargeBookingCommand", () => {
     // The whole point: a Worker evicted during the minute the charge blocks
     // must still have consumed an attempt, or a booking that always dies
     // that way is retried for ever.
-    expect(order).toEqual(["recordChargeAttempt", "charge"]);
+    expect(order).toEqual(["readiness", "recordChargeAttempt", "charge"]);
   });
 
   it("hands the processor the booking's own money and the attempt's reference", async () => {
     const repo = new FakeRepo(pendingBooking("bk-1"));
     const uow = new TrackingUnitOfWork();
     const charge = new PaymentChargeSpy({
-      outcome: "failed",
+      outcome: "refused",
       code: "INS-9",
       description: "Request timeout",
     });
@@ -327,7 +345,7 @@ describe("ChargeBookingCommand", () => {
     await new ChargeBookingCommand(
       repo,
       new FakePhoneReader("+258841234567"),
-      new PaymentChargeSpy({ outcome: "failed", code: "INS-9", description: "Request timeout" }),
+      new PaymentChargeSpy({ outcome: "refused", code: "INS-9", description: "Request timeout" }),
       markPaid(repo, uow, outbox),
     ).execute(chargeInput("bk-1"));
 
@@ -411,7 +429,7 @@ describe("ChargeBookingCommand", () => {
     await new ChargeBookingCommand(
       repo,
       new FakePhoneReader("+258841234567"),
-      new PaymentChargeSpy({ outcome: "failed", code: "INS-9", description: "Request timeout" }),
+      new PaymentChargeSpy({ outcome: "refused", code: "INS-9", description: "Request timeout" }),
       markPaid(repo, uow, new CapturingOutbox()),
     ).execute(chargeInput("bk-1"));
 
@@ -421,6 +439,133 @@ describe("ChargeBookingCommand", () => {
       maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT,
       notAttemptedSince: NOT_ATTEMPTED_SINCE,
     });
+  });
+
+  /**
+   * **A configuration fault must not spend a customer's retry budget.**
+   *
+   * With a three-attempt bound and a five-minute cooldown, twelve minutes of
+   * a stage deployed with the wrong shortcode used to permanently kill every
+   * booking accepted in that window — and then tell each provider the
+   * customer did not pay. Fixing the configuration at minute twenty rescued
+   * none of them, because the attempts were already spent.
+   *
+   * So readiness is asked first, and a stage that cannot charge anybody
+   * claims nothing.
+   */
+  it("spends no attempt when the processor is not configured", async () => {
+    const uow = new TrackingUnitOfWork();
+    const repo = new FakeRepo(pendingBooking("bk-1"), [], uow);
+    const charge = new PaymentChargeSpy({ outcome: "paid", paymentRef: "NEVER" });
+    charge.notReady = {
+      code: "NTIZO-MPESA-NOT-CONFIGURED",
+      description: "MPESA_API_KEY or MPESA_PUBLIC_KEY is not set on this stage",
+    };
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      charge,
+      markPaid(repo, uow, new CapturingOutbox()),
+    ).execute(chargeInput("bk-1"));
+
+    // Nothing claimed, nothing charged. The booking is untouched and will be
+    // picked up again the moment the stage is fixed.
+    expect(repo.attemptCalls).toEqual([]);
+    expect(charge.requests).toEqual([]);
+  });
+
+  it("asks readiness before it claims, not after", async () => {
+    const order: string[] = [];
+    const repo = new FakeRepo(pendingBooking(), order);
+    const uow = new TrackingUnitOfWork();
+    const charge = new PaymentChargeSpy({ outcome: "paid", paymentRef: "X" }, order);
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      charge,
+      markPaid(repo, uow, new CapturingOutbox()),
+    ).execute(chargeInput("bk-1"));
+
+    expect(order.indexOf("readiness")).toBeLessThan(order.indexOf("recordChargeAttempt"));
+  });
+
+  /**
+   * **An outcome we cannot read is never retried**, and the trigger is
+   * measured rather than hypothetical: the WAF in front of the sandbox
+   * answers an HTML 504 at ~31 s while Vodacom is still waiting for the
+   * customer's PIN. Every attempt carries a fresh reference so the processor
+   * will not refuse a retry as a duplicate, which means a second prompt over
+   * a live first one is a customer who can accept both — and there is no
+   * refund path.
+   *
+   * So the booking is abandoned: its bound is spent, the sweep stops
+   * selecting it, and its payment window cancels it and tells the provider.
+   * No new status, no special case.
+   */
+  it.each([
+    ["NTIZO-UNREADABLE-RESPONSE", "HTTP 504 with a body this client could not read as JSON"],
+    ["NTIZO-TRANSPORT", "The operation timed out."],
+    ["NTIZO-MISSING-TRANSACTION-ID", "INS-0 with nothing readable as a transaction id"],
+  ])("abandons the booking rather than retrying after %s", async (code, description) => {
+    const uow = new TrackingUnitOfWork();
+    const repo = new FakeRepo(pendingBooking("bk-1"), [], uow);
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      new PaymentChargeSpy({ outcome: "ambiguous", code, description }),
+      markPaid(repo, uow, new CapturingOutbox()),
+    ).execute(chargeInput("bk-1"));
+
+    expect(repo.abandoned).toEqual([
+      { bookingId: "bk-1", at: expect.any(Date), maxAttempts: BOOKING_CHARGE_ATTEMPT_LIMIT },
+    ]);
+    // Not confirmed, and not announced: we do not know that any money moved.
+    expect(repo.savedArg).toBeNull();
+  });
+
+  it("does NOT abandon a booking the processor merely refused", async () => {
+    const uow = new TrackingUnitOfWork();
+    const repo = new FakeRepo(pendingBooking("bk-1"), [], uow);
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      new PaymentChargeSpy({ outcome: "refused", code: "INS-9", description: "Request timeout" }),
+      markPaid(repo, uow, new CapturingOutbox()),
+    ).execute(chargeInput("bk-1"));
+
+    // Vodacom answered: no prompt is standing and nothing was debited, so the
+    // ordinary bound-and-cooldown retry applies. Abandoning here would throw
+    // away two perfectly good attempts on the commonest failure there is.
+    expect(repo.abandoned).toEqual([]);
+    expect(repo.attemptCalls).toHaveLength(1);
+  });
+
+  /**
+   * The claim's deadline floor comes from the **claim** instant, not the
+   * wave's — the wave's is minutes stale by the time a later booking is
+   * reached, and that staleness is precisely what this criterion exists to
+   * catch.
+   */
+  it("claims against a deadline floor measured from the claim instant", async () => {
+    const at = new Date("2026-09-04T12:00:00.000Z");
+    const repo = new FakeRepo(pendingBooking("bk-1"));
+    const uow = new TrackingUnitOfWork();
+
+    await new ChargeBookingCommand(
+      repo,
+      new FakePhoneReader("+258841234567"),
+      new PaymentChargeSpy({ outcome: "refused", code: "INS-9", description: "Request timeout" }),
+      markPaid(repo, uow, new CapturingOutbox()),
+      () => at,
+    ).execute(chargeInput("bk-1"));
+
+    expect(repo.claims[0]?.deadlineAfter).toEqual(
+      new Date(at.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
+    );
   });
 
   it("does not charge a booking that is not PENDING_PAYMENT", async () => {

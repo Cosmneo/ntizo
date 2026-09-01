@@ -162,7 +162,7 @@ describe("MpesaPaymentCharge.charge", () => {
     const result = await new MpesaPaymentCharge().charge(request({ currency: "ZAR" }));
 
     expect(result).toMatchObject({
-      outcome: "failed",
+      outcome: "refused",
       code: CHARGE_LOCAL_CODES.unsupportedCurrency,
     });
   });
@@ -171,7 +171,7 @@ describe("MpesaPaymentCharge.charge", () => {
     const result = await new MpesaPaymentCharge().charge(request({ amountMinor }));
 
     expect(result).toMatchObject({
-      outcome: "failed",
+      outcome: "refused",
       code: CHARGE_LOCAL_CODES.invalidAmount,
     });
   });
@@ -189,7 +189,7 @@ describe("MpesaPaymentCharge.charge", () => {
   ])("refuses %s as an unusable phone", async (_label, phone) => {
     const result = await new MpesaPaymentCharge().charge(request({ phone }));
 
-    expect(result).toMatchObject({ outcome: "failed", code: CHARGE_LOCAL_CODES.unusablePhone });
+    expect(result).toMatchObject({ outcome: "refused", code: CHARGE_LOCAL_CODES.unusablePhone });
     // The number itself must not travel into a log line via the description:
     // a failed charge is diagnosed by its booking id, and the booking is what
     // leads back to the number. Skipped for the empty case, where
@@ -211,7 +211,7 @@ describe("MpesaPaymentCharge.charge", () => {
       new MpesaPaymentCharge().charge(request()),
     );
 
-    expect(result).toMatchObject({ outcome: "failed", code: CHARGE_LOCAL_CODES.notConfigured });
+    expect(result).toMatchObject({ outcome: "refused", code: CHARGE_LOCAL_CODES.notConfigured });
   });
 });
 
@@ -308,10 +308,65 @@ describe("MpesaPaymentCharge at the wire", () => {
     );
 
     expect(result).toEqual({
-      outcome: "failed",
+      outcome: "refused",
       code: "INS-9",
       description: "Request timeout",
     });
+  });
+
+  /**
+   * The client's refused/ambiguous split has to survive the adapter, because
+   * the adapter is the only thing Booking sees. Collapsing them one line from
+   * where they are decided would throw away the distinction that stops a
+   * second prompt going out over a live one.
+   */
+  it("carries an unreadable response through as ambiguous, not refused", async () => {
+    const { result } = await chargeAtTheWire(
+      {},
+      () =>
+        new Response("<html><body><h1>504 Gateway Time-out</h1></body></html>", {
+          status: 504,
+          headers: { "Content-Type": "text/html" },
+        }),
+    );
+
+    expect(result).toMatchObject({
+      outcome: "ambiguous",
+      code: "NTIZO-UNREADABLE-RESPONSE",
+    });
+  });
+
+  it("reports an unconfigured stage as not ready, without touching the network", async () => {
+    const { bodies, fetchImpl } = wireStub(() => ins0());
+
+    const readiness = await infraStore.runAsync(BARE_ENV, async () =>
+      new MpesaPaymentCharge(fetchImpl).readiness(),
+    );
+
+    expect(readiness).toMatchObject({ ready: false, code: CHARGE_LOCAL_CODES.notConfigured });
+    expect(bodies).toHaveLength(0);
+  });
+
+  it("reports a configured stage as ready", async () => {
+    const readiness = await infraStore.runAsync(configuredEnv(), async () =>
+      new MpesaPaymentCharge().readiness(),
+    );
+
+    expect(readiness).toEqual({ ready: true });
+  });
+
+  /**
+   * Readiness runs the *same* shortcode gate the client runs, so a
+   * deployment that must not charge anybody is caught before a customer's
+   * retry budget is touched rather than after.
+   */
+  it("throws from readiness when the environment and the shortcode disagree", async () => {
+    await expect(
+      infraStore.runAsync(
+        configuredEnv({ MPESA_ENVIRONMENT: "production", MPESA_SERVICE_PROVIDER_CODE: "171717" }),
+        async () => new MpesaPaymentCharge().readiness(),
+      ),
+    ).rejects.toThrow(MpesaSandboxShortcodeInProductionError);
   });
 
   /**

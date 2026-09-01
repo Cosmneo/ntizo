@@ -176,9 +176,11 @@ export interface BookingRepositoryPort {
    * whichever rows the planner happened to reach.
    *
    * **Every criterion here is re-asserted by `recordChargeAttempt`**, which
-   * is what actually claims a booking. This query is a candidate list read
-   * from a snapshot; by the time a wave reaches its fifth booking, minutes
-   * have passed and another wave may have charged it. See that method.
+   * is what actually claims a booking — the status, the bound, the cooldown
+   * and the deadline floor alike. This query is a candidate list read from a
+   * snapshot; by the time a wave reaches its fifth booking, minutes have
+   * passed, another wave may have charged it, and its payment window may have
+   * closed underneath it. See that method.
    */
   findAwaitingCharge(criteria: {
     /**
@@ -253,5 +255,53 @@ export interface BookingRepositoryPort {
     maxAttempts: number;
     /** The same cooldown boundary `findAwaitingCharge` selected on, re-asserted at the write. */
     notAttemptedSince: Date;
+    /**
+     * The booking's `expires_at` must still be strictly after this instant.
+     *
+     * **Computed from the claim instant, not from the wave's** — unlike the
+     * two criteria above it, and the asymmetry is the point. Those two exist
+     * so the claim tests the identical boundary the select tested; this one
+     * exists because the select's boundary has *gone stale*, and re-testing
+     * it would be re-asking a question whose answer expired.
+     *
+     * Without it, this is the sequence that loses a customer's money
+     * outright. A wave of five bookings at ~62s each runs past five minutes.
+     * It selects B1…B5 at 12:00:00 against a 12:03:00 floor; B5's deadline is
+     * 12:04:30, comfortably clear. The wave reaches B5 at 12:04:08, the claim
+     * passes, and a prompt goes out. At 12:05:00 the deadline sweep cancels
+     * B5, releases the slot and tells the provider *the customer did not
+     * pay*. At 12:05:05 the customer types their PIN — `INS-0`. The money is
+     * gone and exists nowhere in the database: `paid_at` null, `payment_ref`
+     * null, one line in a log.
+     *
+     * It also protects the property that makes "refunds are out of scope"
+     * survivable at all — that a `CANCELLED` booking has never been charged.
+     * This is the only hole in it.
+     */
+    deadlineAfter: Date;
   }): Promise<number | null>;
+
+  /**
+   * Stop charging this booking, whatever its attempt count — the answer to an
+   * outcome we cannot interpret.
+   *
+   * Used for exactly one thing: a charge whose result was `ambiguous`. The
+   * prompt may still be live on the customer's handset, or the money may
+   * already have moved, and every attempt carries a fresh reference so the
+   * processor will not refuse a second one as a duplicate. There is no safe
+   * retry, so the booking is taken out of the sweep's reach and left to its
+   * payment window — which cancels it and tells the provider, the same ending
+   * a customer who never answers gets.
+   *
+   * Raises the count to `maxAttempts` rather than nulling anything, so the
+   * booking leaves by the ordinary door: `findAwaitingCharge` simply stops
+   * selecting it, with no new status and no special case anywhere. `GREATEST`
+   * rather than an assignment so a bound lowered between deploys cannot
+   * accidentally *revive* a booking this was called for.
+   */
+  abandonCharge(abandonment: {
+    bookingId: string;
+    at: Date;
+    maxAttempts: number;
+  }): Promise<void>;
 }

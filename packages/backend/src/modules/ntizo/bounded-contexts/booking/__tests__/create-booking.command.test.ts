@@ -153,6 +153,7 @@ class FakeRepo implements BookingRepositoryPort {
   async recordChargeAttempt(): Promise<number | null> {
     return 1;
   }
+  async abandonCharge(): Promise<void> {}
 }
 
 class FakePricingReader implements ServicePricingReaderPort {

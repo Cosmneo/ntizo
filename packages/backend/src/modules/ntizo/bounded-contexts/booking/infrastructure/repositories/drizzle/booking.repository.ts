@@ -491,6 +491,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
     at: Date;
     maxAttempts: number;
     notAttemptedSince: Date;
+    deadlineAfter: Date;
   }): Promise<number | null> {
     const [row] = await getDb()
       .update(booking)
@@ -508,9 +509,41 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
             isNull(booking.lastChargeAttemptAt),
             lte(booking.lastChargeAttemptAt, claim.notAttemptedSince),
           ),
+          // The criterion the first version of this method left out, and the
+          // only one whose absence could lose a customer's money outright:
+          // a booking whose payment window closes while the call is still
+          // blocking is cancelled by the deadline sweep, and then paid for.
+          // See the port's own comment for the minute-by-minute sequence.
+          isNotNull(booking.expiresAt),
+          gt(booking.expiresAt, claim.deadlineAfter),
         ),
       )
       .returning({ chargeAttempts: booking.chargeAttempts });
     return row?.chargeAttempts ?? null;
+  }
+
+  /**
+   * `GREATEST`, not an assignment — see the port. A bound lowered between
+   * deploys must not turn "never charge this again" back into "charge it
+   * once more".
+   *
+   * Unconditional on purpose: this is called after a charge whose outcome we
+   * could not read, and it has to take effect whatever the row now says. A
+   * predicate here could only ever leave a booking retryable that must not
+   * be.
+   */
+  async abandonCharge(abandonment: {
+    bookingId: string;
+    at: Date;
+    maxAttempts: number;
+  }): Promise<void> {
+    await getDb()
+      .update(booking)
+      .set({
+        chargeAttempts: sql`greatest(${booking.chargeAttempts}, ${abandonment.maxAttempts})`,
+        lastChargeAttemptAt: abandonment.at,
+        updatedAt: abandonment.at,
+      })
+      .where(eq(booking.id, abandonment.bookingId));
   }
 }

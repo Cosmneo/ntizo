@@ -719,6 +719,7 @@ describe("SweepDueBookingsInternalCommand", () => {
         // Nothing in this file calls either.
         findAwaitingCharge: (criteria) => repo.findAwaitingCharge(criteria),
         recordChargeAttempt: (claim) => repo.recordChargeAttempt(claim),
+        abandonCharge: (abandonment) => repo.abandonCharge(abandonment),
         findById: (id) => {
           if (id === vanishedId) {
             throw new Error("simulated: row vanished between select and expire");

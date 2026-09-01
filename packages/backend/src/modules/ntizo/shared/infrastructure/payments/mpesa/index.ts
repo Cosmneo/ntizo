@@ -1,8 +1,11 @@
 export {
+  assertEnvironmentMatchesShortcode,
   C2B_TIMEOUT_MS,
+  maskMsisdns,
   MpesaClient,
   MpesaLiveShortcodeInSandboxError,
   MpesaSandboxShortcodeInProductionError,
+  MPESA_AMBIGUOUS_CODES,
   MPESA_LOCAL_CODES,
   MPESA_SUCCESS_CODE,
   type FetchLike,

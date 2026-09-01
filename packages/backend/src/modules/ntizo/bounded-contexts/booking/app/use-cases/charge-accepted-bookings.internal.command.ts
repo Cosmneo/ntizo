@@ -1,5 +1,8 @@
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
-import type { ChargeBookingCommand } from "./charge-booking.command";
+import {
+  BOOKING_CHARGE_MIN_WINDOW_MS,
+  type ChargeBookingCommand,
+} from "./charge-booking.command";
 
 /**
  * How many times one booking may be charged before it is left alone.
@@ -41,27 +44,12 @@ export const BOOKING_CHARGE_ATTEMPT_LIMIT = 3;
 export const BOOKING_CHARGE_RETRY_MINUTES = 5;
 
 /**
- * How much payment window a booking must have left before it is worth
- * charging at all.
- *
- * A C2B blocks for up to `C2B_TIMEOUT_MS` (110 s, see `MpesaClient`). Select
- * a booking with thirty seconds left on its window and the call is still
- * blocking when its deadline passes — the next invocation's *deadline* sweep
- * runs first, cancels it, and tells the provider the customer did not pay —
- * and then the charge returns `INS-0`. A debited customer, a cancelled
- * booking, and a provider who has been told the opposite of what happened.
- *
- * So the charge sweep asks for bookings whose deadline is further away than
- * one whole call plus the write that follows it. Bookings inside that last
- * window are not charged; they simply run out and are cancelled, which is the
- * outcome they were heading for anyway.
- *
- * Must exceed `C2B_TIMEOUT_MS`, and a test in
- * `charge-booking.command.test.ts` asserts exactly that rather than trusting
- * this comment — the two numbers live in different layers and nothing else
- * would notice them drifting.
+ * Re-exported from `charge-booking.command.ts`, where it is defined, because
+ * that is where it is *enforced* — the claim, not this query, is what stops a
+ * booking being charged into its own cancellation. This command uses it only
+ * to avoid selecting candidates it would have to drop.
  */
-export const BOOKING_CHARGE_MIN_WINDOW_MS = 180_000;
+export { BOOKING_CHARGE_MIN_WINDOW_MS };
 
 const MS_PER_MINUTE = 60_000;
 

@@ -32,6 +32,28 @@ export interface ChargeBookingInput {
 const REFERENCE_ID_CHARS = 16;
 
 /**
+ * How much payment window a booking must have left before it may be charged.
+ *
+ * A C2B blocks for up to `C2B_TIMEOUT_MS` (110 s). Charge a booking with
+ * thirty seconds left and the call is still blocking when its deadline
+ * passes: the next invocation's *deadline* sweep cancels it, releases the
+ * slot and tells the provider the customer did not pay — and then the charge
+ * returns `INS-0`. The money is gone and exists nowhere in the database.
+ *
+ * **It lives here, not with the wave, because the claim is what enforces
+ * it.** The wave uses it too, to avoid selecting bookings it will only have
+ * to drop; but a wave takes minutes to walk five blocking calls, so by the
+ * time a booking is reached its window may have closed underneath the
+ * selection. Only the value tested at the moment of the claim is
+ * load-bearing — see `BookingRepositoryPort.recordChargeAttempt`.
+ *
+ * Must exceed `C2B_TIMEOUT_MS`, and a test asserts exactly that rather than
+ * trusting this comment: the two numbers live in different layers and nothing
+ * else would notice them drifting.
+ */
+export const BOOKING_CHARGE_MIN_WINDOW_MS = 180_000;
+
+/**
  * This attempt's reference: the booking, and which try this is.
  *
  * Two properties matter and neither is cosmetic. It must be **different on
@@ -161,13 +183,38 @@ export class ChargeBookingCommand {
       return;
     }
 
+    // **Before the claim, never after it.** A stage with no credentials, or
+    // one pointed at the live gateway while still carrying a sandbox
+    // shortcode, cannot charge anybody — and that is categorically not this
+    // customer's doing. Discovering it inside `charge` meant every booking
+    // accepted during the outage spent an attempt on it: with a three-attempt
+    // bound and a five-minute cooldown, twelve minutes of misconfiguration
+    // permanently killed every booking accepted in that window, and then told
+    // their providers the customer did not pay. Fixing the config at minute
+    // twenty rescued none of them.
+    const readiness = this.paymentCharge.readiness();
+    if (!readiness.ready) {
+      console.error("[booking] cannot charge: the payment processor is not configured", {
+        bookingId: input.bookingId,
+        code: readiness.code,
+        description: readiness.description,
+      });
+      return;
+    }
+
+    const at = this.now();
+
     // Committed before the call below, and both references are built from
     // what it returns. See this class's doc comment for both.
     const attempt = await this.repo.recordChargeAttempt({
       bookingId: input.bookingId,
-      at: this.now(),
+      at,
       maxAttempts: input.maxAttempts,
       notAttemptedSince: input.notAttemptedSince,
+      // From the claim instant, not the wave's — the wave's floor is minutes
+      // stale by the time a later booking is reached, and it is exactly that
+      // staleness this criterion exists to catch.
+      deadlineAfter: new Date(at.getTime() + BOOKING_CHARGE_MIN_WINDOW_MS),
     });
     if (attempt === null) {
       // Another wave holds this booking — it claimed the attempt while this
@@ -199,12 +246,47 @@ export class ChargeBookingCommand {
       reference: chargeReference(input.bookingId, attempt),
     });
 
-    if (result.outcome === "failed") {
+    if (result.outcome === "ambiguous") {
+      // **We do not know whether the customer's money moved, so nobody will
+      // ever ask them again.** The prompt may still be live on their handset
+      // — the WAF in front of the gateway answers an HTML 504 at ~31s while
+      // Vodacom is still waiting for a PIN — and every attempt carries a
+      // fresh reference precisely so the processor will not refuse a retry as
+      // a duplicate. A second prompt over a live first one is a customer who
+      // can accept both.
+      //
+      // The trade, written down once so nobody optimises it back: we would
+      // rather miss a charge than take one twice. A missed charge ends in a
+      // cancelled booking the customer can make again; a double debit is
+      // unrecoverable, because there is no refund path and will not be one
+      // until the Payment context exists.
+      //
+      // The booking leaves by the ordinary door — the bound is spent, the
+      // sweep stops selecting it, and its payment window cancels it and tells
+      // the provider. No new status, no special case.
+      console.error("[booking] a charge came back unreadable — abandoning it, NOT retrying", {
+        bookingId: input.bookingId,
+        attempt,
+        code: result.code,
+        description: result.description,
+      });
+      await this.repo.abandonCharge({
+        bookingId: input.bookingId,
+        at,
+        maxAttempts: input.maxAttempts,
+      });
+      return;
+    }
+
+    if (result.outcome === "refused") {
       // console.error, not the logger: getRequestScopedLogger() throws when
       // no scope is set and a cron invocation sets none — the same reason
       // `SweepDueBookingsInternalCommand` and `notify-unread.internal.command.ts`
       // do this. The processor's own code and words, not a summary of them:
       // this line is the only record of why a charge did not land.
+      //
+      // Retryable, unlike the branch above: the processor answered, so no
+      // prompt is standing and nothing was debited.
       console.error("[booking] a charge did not land", {
         bookingId: input.bookingId,
         attempt,

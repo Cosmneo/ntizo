@@ -16,6 +16,8 @@ import { beforeAll, describe, expect, it } from "bun:test";
 import { Buffer } from "node:buffer";
 import { constants, generateKeyPairSync, privateDecrypt } from "node:crypto";
 import {
+  maskMsisdns,
+  MPESA_AMBIGUOUS_CODES,
   MPESA_LOCAL_CODES,
   MpesaClient,
   MpesaLiveShortcodeInSandboxError,
@@ -119,6 +121,63 @@ const REQUEST = {
   thirdPartyReference: "0123456789ABCDEF0123",
 };
 
+describe("maskMsisdns", () => {
+  /**
+   * The `INS-0` log is a payment receipt going into Worker logs, which are
+   * retained and widely readable. The response envelope is not ours — a field
+   * carrying the payer's number back could appear at Vodacom's end without
+   * anybody here noticing — so the masking does not depend on knowing today's
+   * schema.
+   */
+  it("masks the number we sent, wherever it appears", () => {
+    const body = '{"output_CustomerMSISDN":"258841234567","x":"258841234567"}';
+
+    const masked = maskMsisdns(body, "258841234567");
+
+    expect(masked).not.toContain("258841234567");
+    expect(masked).toContain("25884****567");
+  });
+
+  it("masks a Mozambican number we did not send", () => {
+    const masked = maskMsisdns('{"payer":"258859998888"}', "258841234567");
+
+    expect(masked).not.toContain("258859998888");
+  });
+
+  /**
+   * The whole reason this log exists is the transaction id. Masking that
+   * would defeat the point, so the pattern is anchored on digits after the
+   * `258` country code — a receipt like `7SHV1234567` is alphanumeric and
+   * cannot match.
+   */
+  it("leaves the transaction id alone", () => {
+    const body = '{"output_TransactionID":"7SHV1234567","output_ResponseCode":"INS-0"}';
+
+    expect(maskMsisdns(body, "258841234567")).toContain("7SHV1234567");
+  });
+});
+
+describe("MPESA_AMBIGUOUS_CODES", () => {
+  /**
+   * The list is what `ChargeBookingCommand` acts on to decide never to retry.
+   * A code added to `MPESA_LOCAL_CODES` and forgotten here would be retried
+   * over a possibly-live prompt — so this pins the membership in both
+   * directions rather than merely asserting the list is non-empty.
+   */
+  it("holds exactly the three outcomes where we cannot tell what happened", () => {
+    expect([...MPESA_AMBIGUOUS_CODES].sort()).toEqual(
+      [
+        MPESA_LOCAL_CODES.transport,
+        MPESA_LOCAL_CODES.unreadable,
+        MPESA_LOCAL_CODES.missingTransactionId,
+      ].sort(),
+    );
+    // A crypto failure is NOT ambiguous: the request never left, so nothing
+    // could have been debited and a retry is safe.
+    expect(MPESA_AMBIGUOUS_CODES).not.toContain(MPESA_LOCAL_CODES.crypto);
+  });
+});
+
 describe("MpesaClient.c2b", () => {
   it("treats INS-0 as the money having moved, and keeps M-Pesa's own transaction id", async () => {
     const { fetchImpl } = stub(() =>
@@ -189,7 +248,7 @@ describe("MpesaClient.c2b", () => {
 
     const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
 
-    expect(result.outcome).toBe("refused");
+    expect(result.outcome).toBe("ambiguous");
     expect(result).toMatchObject({ code: MPESA_LOCAL_CODES.unreadable });
     // The status survives into the description: without it, "could not read
     // the body" says nothing about which body.
@@ -201,7 +260,7 @@ describe("MpesaClient.c2b", () => {
 
     const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
 
-    expect(result).toMatchObject({ outcome: "refused", code: MPESA_LOCAL_CODES.unreadable });
+    expect(result).toMatchObject({ outcome: "ambiguous", code: MPESA_LOCAL_CODES.unreadable });
   });
 
   /**
@@ -220,7 +279,7 @@ describe("MpesaClient.c2b", () => {
     const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
 
     expect(result).toMatchObject({
-      outcome: "refused",
+      outcome: "ambiguous",
       code: MPESA_LOCAL_CODES.missingTransactionId,
     });
   });
@@ -284,7 +343,7 @@ describe("MpesaClient.c2b", () => {
     const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
 
     expect(result).toMatchObject({
-      outcome: "refused",
+      outcome: "ambiguous",
       code: MPESA_LOCAL_CODES.missingTransactionId,
     });
   });
@@ -335,10 +394,61 @@ describe("MpesaClient.c2b", () => {
     // Refused, because an unidentifiable payment must not be recorded as
     // one — but the receipt is in the log, which is the whole point.
     expect(result).toMatchObject({
-      outcome: "refused",
+      outcome: "ambiguous",
       code: MPESA_LOCAL_CODES.missingTransactionId,
     });
     expect(JSON.stringify(logged)).toContain("something else entirely");
+  });
+
+  /**
+   * **A platform whose crypto does not work must not look like a platform
+   * whose customers ignore their prompts.** Minting the bearer token used to
+   * sit inside the same `try` as `fetch`, so a runtime that cannot do PKCS#1
+   * v1.5 encryption reported `NTIZO-TRANSPORT` — the code a dropped socket
+   * gets, and therefore invisible among the ordinary failures of a cron that
+   * talks to a flaky gateway. Nothing in this path has ever run inside
+   * workerd.
+   *
+   * `refused`, not `ambiguous`: the request never left, so no prompt is live
+   * and nothing could have been debited.
+   */
+  it("reports a crypto failure as its own code, and never reaches the network", async () => {
+    const { calls, fetchImpl } = stub(() =>
+      json({ output_ResponseCode: "INS-0", output_TransactionID: "T1" }),
+    );
+
+    const result = await new MpesaClient(
+      config({ publicKey: "not-a-key" }),
+      fetchImpl,
+    ).c2b(REQUEST);
+
+    expect(result).toMatchObject({ outcome: "refused", code: MPESA_LOCAL_CODES.crypto });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("masks the payer's number in the INS-0 receipt log", async () => {
+    const logged: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    try {
+      const { fetchImpl } = stub(() =>
+        json({
+          output_ResponseCode: "INS-0",
+          output_TransactionID: "7SHV1234567",
+          output_CustomerMSISDN: REQUEST.msisdn,
+        }),
+      );
+      await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
+    } finally {
+      console.error = original;
+    }
+
+    const line = JSON.stringify(logged);
+    expect(line).not.toContain(REQUEST.msisdn);
+    // The receipt itself survives — masking it would defeat the log.
+    expect(line).toContain("7SHV1234567");
   });
 
   it("turns a rejected fetch into a refusal, not a throw", async () => {
@@ -348,8 +458,11 @@ describe("MpesaClient.c2b", () => {
 
     const result = await new MpesaClient(config(), fetchImpl).c2b(REQUEST);
 
+    // `ambiguous`: the request left, so Vodacom may be prompting the handset
+    // right now and our own abort says nothing about what the customer does
+    // with it.
     expect(result).toEqual({
-      outcome: "refused",
+      outcome: "ambiguous",
       code: MPESA_LOCAL_CODES.transport,
       description: "The operation timed out.",
     });
