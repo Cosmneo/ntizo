@@ -379,7 +379,7 @@ describe("save's expectedStatus guard", () => {
       // The row still says what the winner wrote — the loser's write did
       // not silently overwrite it.
       const reread = await repo.findById(first.id as string);
-      expect(reread?.status).toBe("AWAITING_PROVIDER");
+      expect(reread?.status).toBe("CONFIRMED");
       expect(reread?.paymentRef).toBe("mpesa-race-winner");
 
       await db.delete(booking).where(eq(booking.id, first.id as string));

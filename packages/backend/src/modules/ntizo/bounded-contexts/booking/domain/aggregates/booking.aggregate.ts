@@ -17,7 +17,7 @@ import {
  * `SLOT_HOLDING_STATUSES` is a tuple of literal strings, narrower than the
  * full `BookingStatus` union its members belong to — so `.includes` needs
  * the widened type to accept an arbitrary `BookingStatus` as its argument
- * rather than only the four literals the tuple was built from.
+ * rather than only the five literals the tuple was built from.
  */
 const SLOT_HOLDING_STATUS_SET: readonly BookingStatus[] = SLOT_HOLDING_STATUSES;
 
@@ -62,7 +62,17 @@ export interface BookingProps {
   readonly paidAt: Date | null;
   /** The payment processor's reference for this booking — e.g. an M-Pesa transaction id. Null until `markPaid`. */
   readonly paymentRef: string | null;
+  /**
+   * When the provider said yes — set by `accept`, which moves the booking to
+   * `PENDING_PAYMENT`, not to `CONFIRMED`. The name predates the reversal:
+   * this column has meant "the provider confirmed" since before `markPaid`
+   * moved to after that answer, and renaming it would touch the schema for
+   * no gain a reader doesn't already get from this comment. Do not read this
+   * as "the instant the booking reached `CONFIRMED`" — that instant is
+   * `paidAt`, stamped by `markPaid`, once money has actually moved.
+   */
   readonly confirmedAt: Date | null;
+  /** When the provider said no — set by `decline`, which moves the booking to `DECLINED`. */
   readonly declinedAt: Date | null;
   readonly cancelledAt: Date | null;
   readonly markedDoneAt: Date | null;
@@ -113,9 +123,9 @@ export interface BookingProps {
  * consistent for it to be an accident.
  *
  * **The snapshot is immutable after creation.** Nothing here mutates a
- * `Booking` — every transition (`markPaid`, `expire`, and later `confirm`,
- * …) returns a new instance, matching how `Review.revise` never touches the
- * `Review` it was called on.
+ * `Booking` — every transition (`markPaid`, `expire`, `submit`, `accept`,
+ * `decline`) returns a new instance, matching how `Review.revise` never
+ * touches the `Review` it was called on.
  */
 export class Booking {
   private constructor(private readonly props: BookingProps) {}
@@ -490,7 +500,10 @@ export class Booking {
   /**
    * A payment lands on the slot this booking is holding.
    *
-   * `PENDING_PAYMENT` is the only status this actually moves.
+   * `PENDING_PAYMENT` is the only status this actually moves — straight to
+   * `CONFIRMED`, not `AWAITING_PROVIDER`. The provider already said yes
+   * before a charge was ever attempted (see `accept`); this is the moment
+   * the money that promise depended on actually arrives.
    *
    * **The discriminator for everything else is the payment reference, not
    * the status.** The first version of this method asked "does the booking
@@ -521,7 +534,7 @@ export class Booking {
     if (this.props.status === BookingStatus.PendingPayment) {
       return new Booking({
         ...this.props,
-        status: BookingStatus.AwaitingProvider,
+        status: BookingStatus.Confirmed,
         paidAt: at,
         paymentRef,
       });
@@ -535,7 +548,89 @@ export class Booking {
       throw new PaymentReferenceMismatchError(this.props.paymentRef, paymentRef);
     }
 
-    throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
+    throw new BookingTransitionError(this.props.status, BookingStatus.Confirmed);
+  }
+
+  /**
+   * The customer finishes the checkout form and sends the request on to the
+   * provider — the provider's response window starts here, not at `create`.
+   * Before this, the slot is held by a customer who might still abandon the
+   * form; after it, the same hold is a request nobody has answered yet.
+   *
+   * Unlike `markPaid` and `expire`, nothing races this transition: it is a
+   * customer's single deliberate action, and the command that calls it uses
+   * the same compare-and-swap every other command here does, so a stale
+   * concurrent write is caught before this method ever runs a second time
+   * against the same read. A status this method does not expect is
+   * therefore not an ordinary race to shrug off — it is either a bug
+   * upstream or a caller that skipped the CAS, and `BookingTransitionError`
+   * says so rather than absorbing it the way `expire`'s no-op does.
+   */
+  submit(at: Date): Booking {
+    if (this.props.status !== BookingStatus.Draft) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.AwaitingProvider,
+    });
+  }
+
+  /**
+   * The provider says yes. **This is the reversal this whole plan exists
+   * for:** the booking moves to `PENDING_PAYMENT`, not `CONFIRMED` — the
+   * provider has committed their calendar, and no money has moved yet.
+   * `markPaid` is the only thing that can still take this booking to
+   * `CONFIRMED`, once a charge actually clears.
+   *
+   * Stamps `confirmedAt`, not a new field, because that column has named
+   * "the provider said yes" since before this reversal — see its own doc
+   * comment on `BookingProps`.
+   */
+  accept(at: Date): Booking {
+    if (this.props.status !== BookingStatus.AwaitingProvider) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.PendingPayment);
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.PendingPayment,
+      confirmedAt: at,
+    });
+  }
+
+  /**
+   * The provider says no. `reason` is optional and, unlike every other
+   * field on this snapshot, is never stored on `BookingProps` — there is no
+   * column for it (see `booking.schema.ts`). It still passes through
+   * `requireNonBlank` when present: a caller that bothers to supply a
+   * present-but-empty reason has the same bug `addressDistrict` and
+   * `addressDirections` guard against elsewhere in this class, and this
+   * method is the only place positioned to catch it before it reaches
+   * whichever event a command builds from it. The command already holds
+   * the same `reason` value it passed in here, so it does not need this
+   * method to hand it back.
+   */
+  decline(at: Date, reason?: string): Booking {
+    if (this.props.status !== BookingStatus.AwaitingProvider) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.Declined);
+    }
+
+    Booking.requireValidDate(at, "at");
+    if (reason != null) {
+      Booking.requireNonBlank(reason, "reason");
+    }
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.Declined,
+      declinedAt: at,
+    });
   }
 
   /**

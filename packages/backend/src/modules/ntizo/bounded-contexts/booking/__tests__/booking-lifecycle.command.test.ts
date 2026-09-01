@@ -262,7 +262,7 @@ describe("MarkBookingPaidCommand", () => {
     await command.execute(input);
 
     expect(repo.saveCalls).toBe(1);
-    expect(repo.savedArg?.status).toBe("AWAITING_PROVIDER");
+    expect(repo.savedArg?.status).toBe("CONFIRMED");
     expect(repo.savedArg?.paymentRef).toBe("mpesa-123");
 
     expect(outbox.published).toHaveLength(1);
@@ -472,6 +472,6 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
     expect(slotHold.released).toEqual([]);
     expect(outboxExpire.published).toEqual([]);
 
-    expect(row.current?.status).toBe("AWAITING_PROVIDER");
+    expect(row.current?.status).toBe("CONFIRMED");
   });
 });

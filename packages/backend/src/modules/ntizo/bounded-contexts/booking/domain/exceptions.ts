@@ -99,14 +99,14 @@ export class BookingDateInvalidError extends UnprocessableError {
 
 /**
  * Refused because the move it was asked to make is not a legal one from the
- * status the booking is actually in — confirming a booking that was never
- * paid, marking done a booking nobody confirmed, and so on.
+ * status the booking is actually in — accepting a booking nobody submitted,
+ * marking done a booking that was never confirmed, and so on.
  *
- * Defined here in Task 3, alongside the aggregate whose invariant this is,
- * even though nothing in this task throws it yet: Task 5 adds the
- * transitions (`pay`, `confirm`, `decline`, `cancel`, `markDone`, `complete`,
- * `dispute`, `expire`) that do. Declaring it now means that work extends this
- * file instead of reopening it.
+ * Thrown by `Booking.submit`, `Booking.accept`, `Booking.decline` and
+ * `Booking.markPaid` today. `expire` deliberately does not: a timer racing
+ * the booking's own writes is an ordinary event, not a broken one, and
+ * throwing here would turn every ordinary race into an error somebody has
+ * to read (see `Booking.expire`'s own doc comment).
  */
 export class BookingTransitionError extends UnprocessableError {
   constructor(

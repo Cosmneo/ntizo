@@ -247,9 +247,9 @@ describe("Booking.create — commission boundaries", () => {
 });
 
 describe("Booking.markPaid", () => {
-  it("moves a pending booking to awaiting the provider", () => {
+  it("moves a pending booking to confirmed — the money that accept's promise depended on has now arrived", () => {
     const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
-    expect(paid.status).toBe("AWAITING_PROVIDER");
+    expect(paid.status).toBe("CONFIRMED");
     expect(paid.paymentRef).toBe("mpesa-123");
   });
 
@@ -271,7 +271,7 @@ describe("Booking.markPaid", () => {
     // wrong quietly.
     const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
     const second = first.markPaid("mpesa-123", new Date());
-    expect(second.status).toBe("AWAITING_PROVIDER");
+    expect(second.status).toBe("CONFIRMED");
     expect(second.paymentRef).toBe("mpesa-123");
     expect(second.paidAt).toEqual(first.paidAt);
   });
@@ -295,6 +295,182 @@ describe("Booking.markPaid", () => {
     const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
     expect(() => first.markPaid("mpesa-456", new Date())).toThrow(/mpesa-123/);
     expect(() => first.markPaid("mpesa-456", new Date())).toThrow(/mpesa-456/);
+  });
+});
+
+describe("Booking.submit", () => {
+  it("moves a draft booking to awaiting the provider", () => {
+    const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
+    const submitted = draft.submit(new Date());
+    expect(submitted.status).toBe("AWAITING_PROVIDER");
+  });
+
+  it("refuses to submit a booking that already left DRAFT", () => {
+    const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
+    expect(() => pending.submit(new Date())).toThrow(BookingTransitionError);
+  });
+
+  it("refuses an at that does not name a real instant", () => {
+    const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
+    expect(() => draft.submit(new Date("garbage"))).toThrow(BookingDateInvalidError);
+  });
+});
+
+describe("Booking.submit — every status", () => {
+  // Table-driven for the same reason as markPaid's and expire's: a future
+  // status added to BookingStatus should fail this test, not fall through
+  // silently. Unlike markPaid and expire, submit has no idempotency story —
+  // it is a customer's single deliberate click, guarded against a race by
+  // the command's compare-and-swap, not by this method being forgiving — so
+  // every one of the nine statuses besides DRAFT itself throws.
+  const cases: Array<[BookingStatus, "transitions" | "throws"]> = [
+    ["DRAFT", "transitions"],
+    ["PENDING_PAYMENT", "throws"],
+    ["AWAITING_PROVIDER", "throws"],
+    ["CONFIRMED", "throws"],
+    ["MARKED_DONE", "throws"],
+    ["COMPLETED", "throws"],
+    ["DISPUTED", "throws"],
+    ["DECLINED", "throws"],
+    ["CANCELLED", "throws"],
+    ["EXPIRED", "throws"],
+  ];
+
+  it.each(cases)("from %s it %s", (status, outcome) => {
+    const booking = Booking.restore(validProps({ status, expiresAt: null }));
+
+    if (outcome === "transitions") {
+      const result = booking.submit(new Date());
+      expect(result.status).toBe("AWAITING_PROVIDER");
+    } else {
+      expect(() => booking.submit(new Date())).toThrow(BookingTransitionError);
+    }
+  });
+});
+
+describe("Booking.accept", () => {
+  it("moves an awaiting-provider booking to pending payment — the provider said yes and no money has moved", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    const accepted = awaiting.accept(new Date());
+    expect(accepted.status).toBe("PENDING_PAYMENT");
+    // This is the reversal, proven, not just asserted: accepting must not
+    // touch paidAt or paymentRef. If it ever does, the booking would be
+    // holding a slot on the strength of money that never arrived.
+    expect(accepted.paidAt).toBeNull();
+    expect(accepted.paymentRef).toBeNull();
+  });
+
+  it("stamps confirmedAt with the instant the provider answered", () => {
+    const when = new Date("2026-09-04T13:00:00.000Z");
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    const accepted = awaiting.accept(when);
+    expect(accepted.confirmedAt).toEqual(when);
+  });
+
+  it("refuses to accept a booking that was never submitted", () => {
+    const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
+    expect(() => draft.accept(new Date())).toThrow(BookingTransitionError);
+  });
+
+  it("refuses an at that does not name a real instant", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.accept(new Date("garbage"))).toThrow(BookingDateInvalidError);
+  });
+});
+
+describe("Booking.accept — every status", () => {
+  // Same shape as submit's table, same reasoning: no idempotency story here
+  // either, so every status but the one origin throws.
+  const cases: Array<[BookingStatus, "transitions" | "throws"]> = [
+    ["DRAFT", "throws"],
+    ["PENDING_PAYMENT", "throws"],
+    ["AWAITING_PROVIDER", "transitions"],
+    ["CONFIRMED", "throws"],
+    ["MARKED_DONE", "throws"],
+    ["COMPLETED", "throws"],
+    ["DISPUTED", "throws"],
+    ["DECLINED", "throws"],
+    ["CANCELLED", "throws"],
+    ["EXPIRED", "throws"],
+  ];
+
+  it.each(cases)("from %s it %s", (status, outcome) => {
+    const booking = Booking.restore(validProps({ status, expiresAt: null }));
+
+    if (outcome === "transitions") {
+      const result = booking.accept(new Date());
+      expect(result.status).toBe("PENDING_PAYMENT");
+    } else {
+      expect(() => booking.accept(new Date())).toThrow(BookingTransitionError);
+    }
+  });
+});
+
+describe("Booking.decline", () => {
+  it("moves an awaiting-provider booking to declined", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    const declined = awaiting.decline(new Date());
+    expect(declined.status).toBe("DECLINED");
+  });
+
+  it("stamps declinedAt with the instant the provider answered", () => {
+    const when = new Date("2026-09-04T13:00:00.000Z");
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    const declined = awaiting.decline(when);
+    expect(declined.declinedAt).toEqual(when);
+  });
+
+  it("accepts a decline with no reason given", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.decline(new Date())).not.toThrow();
+  });
+
+  it("accepts a decline with a reason", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.decline(new Date(), "Fora da minha zona de cobertura")).not.toThrow();
+  });
+
+  it("refuses a reason that is present but blank — the same bug requireNonBlank catches elsewhere", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.decline(new Date(), "   ")).toThrow(BookingFieldBlankError);
+  });
+
+  it("refuses to decline a booking that was never submitted", () => {
+    const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
+    expect(() => draft.decline(new Date())).toThrow(BookingTransitionError);
+  });
+
+  it("refuses an at that does not name a real instant", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.decline(new Date("garbage"))).toThrow(BookingDateInvalidError);
+  });
+});
+
+describe("Booking.decline — every status", () => {
+  // Same shape again: decline shares accept's origin status and the same
+  // absence of an idempotency story.
+  const cases: Array<[BookingStatus, "transitions" | "throws"]> = [
+    ["DRAFT", "throws"],
+    ["PENDING_PAYMENT", "throws"],
+    ["AWAITING_PROVIDER", "transitions"],
+    ["CONFIRMED", "throws"],
+    ["MARKED_DONE", "throws"],
+    ["COMPLETED", "throws"],
+    ["DISPUTED", "throws"],
+    ["DECLINED", "throws"],
+    ["CANCELLED", "throws"],
+    ["EXPIRED", "throws"],
+  ];
+
+  it.each(cases)("from %s it %s", (status, outcome) => {
+    const booking = Booking.restore(validProps({ status, expiresAt: null }));
+
+    if (outcome === "transitions") {
+      const result = booking.decline(new Date());
+      expect(result.status).toBe("DECLINED");
+    } else {
+      expect(() => booking.decline(new Date())).toThrow(BookingTransitionError);
+    }
   });
 });
 
@@ -394,7 +570,7 @@ describe("Booking.markPaid — every status", () => {
 
     if (outcome === "transitions") {
       const result = booking.markPaid(PAID_REF, new Date());
-      expect(result.status).toBe("AWAITING_PROVIDER");
+      expect(result.status).toBe("CONFIRMED");
       expect(result.paymentRef).toBe(PAID_REF);
     } else if (outcome === "no-op") {
       const result = booking.markPaid(PAID_REF, new Date());
@@ -460,7 +636,7 @@ describe("Booking.expire", () => {
     // status has moved, expiry has nothing to say — and throwing here would
     // turn an ordinary race into an error somebody has to read.
     const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
-    expect(paid.expire(new Date()).status).toBe("AWAITING_PROVIDER");
+    expect(paid.expire(new Date()).status).toBe("CONFIRMED");
   });
 });
 

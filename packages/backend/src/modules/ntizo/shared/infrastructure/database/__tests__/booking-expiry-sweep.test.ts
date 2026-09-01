@@ -296,7 +296,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       );
       createdBookingIds.push(inserted.id as string);
       const paid = inserted.markPaid("mpesa-sweep-test", new Date("2026-11-02T08:45:00.000Z"));
-      expect(paid.status).toBe("AWAITING_PROVIDER");
+      expect(paid.status).toBe("CONFIRMED");
       expect(paid.expiresAt).toEqual(inserted.expiresAt);
       const applied = await repo.save(paid, "PENDING_PAYMENT");
       expect(applied).toBe(true);
@@ -311,7 +311,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       expect(result).toEqual({ expired: 0, failed: 0 });
 
       const reread = await repo.findById(inserted.id as string);
-      expect(reread?.status).toBe("AWAITING_PROVIDER");
+      expect(reread?.status).toBe("CONFIRMED");
       expect(reread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
       expect(reread?.paymentRef).toBe("mpesa-sweep-test");
 
