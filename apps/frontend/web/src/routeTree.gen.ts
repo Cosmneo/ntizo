@@ -51,6 +51,7 @@ import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
+import { Route as BookingBookingIdDetailsRouteImport } from './routes/booking.$bookingId.details'
 import { Route as ProviderSlugActivityRouteImport } from './routes/provider/$slug/activity'
 import { Route as ProviderSlugAvailabilityRouteImport } from './routes/provider/$slug/availability'
 import { Route as ProviderSlugMembersRouteImport } from './routes/provider/$slug/members'
@@ -275,6 +276,11 @@ const AdminProvidersProviderIdRoute =
     path: '/providers/$providerId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const BookingBookingIdDetailsRoute = BookingBookingIdDetailsRouteImport.update({
+  id: '/booking/$bookingId/details',
+  path: '/booking/$bookingId/details',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProviderSlugActivityRoute = ProviderSlugActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -369,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/booking/$bookingId/details': typeof BookingBookingIdDetailsRoute
   '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
@@ -418,6 +425,7 @@ export interface FileRoutesByTo {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/booking/$bookingId/details': typeof BookingBookingIdDetailsRoute
   '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/_customer/account/security': typeof CustomerAccountSecurityRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
+  '/booking/$bookingId/details': typeof BookingBookingIdDetailsRoute
   '/provider/$slug/activity': typeof ProviderSlugActivityRoute
   '/provider/$slug/availability': typeof ProviderSlugAvailabilityRoute
   '/provider/$slug/members': typeof ProviderSlugMembersRoute
@@ -527,6 +536,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/booking/$bookingId/details'
     | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
@@ -576,6 +586,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/booking/$bookingId/details'
     | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
@@ -630,6 +641,7 @@ export interface FileRouteTypes {
     | '/_customer/account/security'
     | '/_public/accept-invite/$token'
     | '/admin/providers/$providerId'
+    | '/booking/$bookingId/details'
     | '/provider/$slug/activity'
     | '/provider/$slug/availability'
     | '/provider/$slug/members'
@@ -660,6 +672,7 @@ export interface RootRouteChildren {
   ServicesIdRoute: typeof ServicesIdRoute
   ProvidersIndexRoute: typeof ProvidersIndexRoute
   ServicesIndexRoute: typeof ServicesIndexRoute
+  BookingBookingIdDetailsRoute: typeof BookingBookingIdDetailsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -958,6 +971,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProvidersProviderIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/booking/$bookingId/details': {
+      id: '/booking/$bookingId/details'
+      path: '/booking/$bookingId/details'
+      fullPath: '/booking/$bookingId/details'
+      preLoaderRoute: typeof BookingBookingIdDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/provider/$slug/activity': {
       id: '/provider/$slug/activity'
       path: '/activity'
@@ -1179,6 +1199,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesIdRoute: ServicesIdRoute,
   ProvidersIndexRoute: ProvidersIndexRoute,
   ServicesIndexRoute: ServicesIndexRoute,
+  BookingBookingIdDetailsRoute: BookingBookingIdDetailsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

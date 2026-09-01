@@ -1,10 +1,22 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import {
+  bookingQueries,
   createBooking,
+  type CheckoutBooking,
   type CreateBookingInput,
   type CreatedBooking,
 } from "@/features/checkout/data/checkout.repository";
+
+/**
+ * Re-exported so a checkout screen can name what it renders.
+ *
+ * `ui` may not import from `data` — `boundaries/dependencies` forbids the
+ * edge, and rightly: a page that knows where a booking is stored is a page
+ * that can fetch one itself. The viewmodel is the one layer allowed to see
+ * both, so the type comes through here rather than the rule being loosened.
+ */
+export type { CheckoutBooking };
 
 /**
  * The domain code a checkout screen branches on — never `.message`, and
@@ -54,5 +66,30 @@ export function useCreateBooking() {
     errorCode: checkoutErrorCode(mutation.error),
     failed: mutation.isError,
     reset: mutation.reset,
+  };
+}
+
+/**
+ * The draft steps 2 and 3 are about.
+ *
+ * A plain query rather than a suspense one, because `null` is an *answer*
+ * here and not an absence to render past: it is how the server says the id
+ * names nothing this customer holds, and the page turns it into a trip back
+ * to step 1. Suspending would make that answer arrive as a rendered page
+ * rather than as data the page can branch on.
+ *
+ * `loading` is `isPending` and nothing else. It has to be checked before
+ * `booking === null` is believed, or the first frame — data not yet
+ * fetched — reads as "your draft is gone" and bounces every customer off the
+ * page before their booking has finished loading.
+ */
+export function useMyBooking(bookingId: string) {
+  const query = useQuery(bookingQueries.byId(bookingId));
+
+  return {
+    /** The booking, `null` when it is not the caller's to read, `undefined` while loading or failed. */
+    booking: query.data,
+    loading: query.isPending,
+    failed: query.isError,
   };
 }

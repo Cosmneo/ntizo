@@ -128,6 +128,7 @@
     "nl-NL": "Nederlands"
   },
   "addrAdd": "Ajouter une adresse",
+  "addrEditTitle": "Modifier l'adresse",
   "addrLabel": "Libellé",
   "addrLabelPlaceholder": "Domicile, Bureau…",
   "addrCountry": "Pays",
