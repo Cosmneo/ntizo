@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { booking } from "../../../../../shared/infrastructure/database/booking/schemas";
+import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
 import type {
   BookingListRow,
   BookingReadRepositoryPort,
@@ -17,6 +18,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     const rows = await getDb()
       .select(SELECTED_COLUMNS)
       .from(booking)
+      .innerJoin(provider, eq(provider.id, booking.providerId))
       .where(eq(booking.customerId, customerId))
       // Newest booking first, ties (two bookings made in the same instant)
       // broken by id so the order is total and stable across calls — the
@@ -30,6 +32,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     const rows = await getDb()
       .select(SELECTED_COLUMNS)
       .from(booking)
+      .innerJoin(provider, eq(provider.id, booking.providerId))
       // Both halves in the `WHERE`, never an id lookup followed by an
       // ownership `if` — see `BookingReadRepositoryPort.findForCustomer` for
       // why that is the point of this method. A booking belonging to
@@ -50,6 +53,13 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
  * about what a row is: a column added to the read model and wired into only
  * one of them would give the same booking different content depending on
  * whether the customer reached it through the list or through its own page.
+ *
+ * **One column is not `booking`'s.** `provider.timezone` is joined in — the
+ * booking table has no zone of its own, and the instants below mean nothing
+ * without one. An `innerJoin` rather than a left one because
+ * `booking.provider_id` is `NOT NULL` and references `provider.id`, so the
+ * join can never drop a row; a `LEFT JOIN` would only be a nullable column
+ * standing in for a case the schema forbids.
  */
 const SELECTED_COLUMNS = {
   id: booking.id,
@@ -67,6 +77,7 @@ const SELECTED_COLUMNS = {
   currency: booking.currency,
   startsAt: booking.startsAt,
   endsAt: booking.endsAt,
+  timezone: provider.timezone,
   addressLabel: booking.addressLabel,
   addressLine: booking.addressLine,
   addressCity: booking.addressCity,

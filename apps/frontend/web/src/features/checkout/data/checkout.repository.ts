@@ -95,13 +95,20 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
  * are read here rather than carried in the URL because two sources for one
  * fact is one too many: a shared or bookmarked link could name a service that
  * disagreed with the booking, and nothing would notice.
+ *
+ * `timezone` is asked for because `startsAt` and `endsAt` are instants and
+ * step 3 prints them. Without it the only clock a browser has is its own, and
+ * a service in `Africa/Maputo` read on a device clocked to UTC would tell the
+ * customer a different appointment to the one the provider is expecting them
+ * for — the same substitution that drew step 1 an empty grid before
+ * `chosenCivilDate` took the zone off the availability response.
  */
 const BOOKING_FIELDS = `
       id status
       serviceId serviceOptionId
       serviceName providerName providerSlug optionName durationMinutes
       priceMinor currency
-      startsAt endsAt
+      startsAt endsAt timezone
       addressLabel addressLine addressCity addressDistrict addressDirections
       description expiresAt createdAt`;
 
@@ -118,6 +125,76 @@ const BY_ID = `
     bookingById(input: $input) {${BOOKING_FIELDS}
     }
   }`;
+
+/**
+ * Flat on the wire — `bookingSubmit`, never `booking { submit }` — for the
+ * reason spelled out above `bookingCreate`.
+ *
+ * **There is no phone number in this input, and that is the design rather
+ * than an omission.** Setting a phone number is the User context's job; a
+ * booking command reaching across to write a profile would need a writer port
+ * that exists for no other reason. Step 3 therefore calls
+ * `user.updateMyProfile` first and this second — two mutations, in that
+ * order. `submit` then *refuses* a customer with no number on file, reading
+ * through the same `CustomerPhoneReaderPort` the charge sweep uses, which is
+ * what makes the requirement a rule instead of a form convention: a UI can be
+ * skipped by anything that calls this mutation directly.
+ *
+ * `respondBy` on the way back is the provider's deadline, computed server-side
+ * from the live `provider_response_minutes` setting and capped at the slot's
+ * own start. It is not sent, and it is not guessed at on this side: a window
+ * an administrator can change is not a number a client may hardcode.
+ */
+const SUBMIT = `
+  mutation BookingSubmit($input: BookingSubmitInput!) {
+    bookingSubmit(input: $input) { bookingId respondBy }
+  }`;
+
+/**
+ * Where the work happens, in the shape `booking.submit` takes.
+ *
+ * Deliberately *not* an `AddressDTO` and deliberately not an address id. The
+ * booking stores a snapshot — a customer correcting their street next March
+ * must not move where a provider went last week — so the components travel by
+ * value, and the aggregate keeps its own copy. `label`, `line` and `city` are
+ * required because `Booking.submit` refuses a booking past `DRAFT` without
+ * all three.
+ */
+export interface SubmitBookingAddress {
+  label: string;
+  line: string;
+  city: string;
+  district?: string | null;
+  directions?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+export interface SubmitBookingInput {
+  bookingId: string;
+  address: SubmitBookingAddress;
+  /** What the customer wrote about the job, or `null` when they wrote nothing. */
+  description?: string | null;
+}
+
+export interface SubmittedBooking {
+  bookingId: string;
+  /** ISO 8601. When the provider's window to answer runs out. */
+  respondBy: string;
+}
+
+/**
+ * Turns the customer's `DRAFT` into a request a provider has to answer.
+ *
+ * The second and last write of this checkout. Nothing between `booking.create`
+ * and this one touches the server, which is why the address and the note
+ * arrive here as arguments rather than as a row somebody already saved.
+ */
+export function submitBooking(input: SubmitBookingInput): Promise<SubmittedBooking> {
+  return sessionGraphql<{ bookingSubmit: SubmittedBooking }>(SUBMIT, { input }).then(
+    (d) => d.bookingSubmit,
+  );
+}
 
 export const bookingQueries = {
   /**

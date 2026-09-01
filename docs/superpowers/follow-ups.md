@@ -2632,14 +2632,3 @@ No other route has one.
 
 **Trigger:** any bug traced to a search param, a loader or a route-level guard — and before adding
 route-level logic that a page's own tests cannot see.
-
-## #111 — "Bookings aren't open on Ntizo yet" is false once step 3 lands
-
-`rail-price-summary.tsx` carries a `packageBookingsClosed` string telling the customer bookings are
-not open. It was true when written and is still true today, because checkout dead-ends at the
-unbuilt confirm page — deleting the caveat while the flow goes nowhere would be a different lie.
-
-It becomes false the moment step 3 can send a request, and it is recorded here rather than only in
-that component's doc comment because carried-forward work lives in this file.
-
-**Trigger:** the commit that makes `/booking/$bookingId/confirm` reachable.

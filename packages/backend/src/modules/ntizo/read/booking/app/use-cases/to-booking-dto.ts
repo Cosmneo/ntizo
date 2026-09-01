@@ -33,6 +33,7 @@ export function toBookingDTO(row: BookingListRow): BookingDTO {
     currency: row.currency,
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
+    timezone: row.timezone,
     addressLabel: row.addressLabel,
     addressLine: row.addressLine,
     addressCity: row.addressCity,

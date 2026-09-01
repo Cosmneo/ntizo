@@ -131,7 +131,6 @@
   "reviewsAboutProvider": "The provider's reviews, across every service they offer.",
   "packagesTitle": "Packages",
   "packageBook": "Book",
-  "packageBookingsClosed": "Bookings aren't open on Ntizo yet.",
   "packageContactProvider": "Contact provider",
   "availabilityCheckAction": "See availability",
   "ratingCount": "{{count}} review",

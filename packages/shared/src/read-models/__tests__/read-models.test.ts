@@ -463,6 +463,7 @@ describe("bookingReadModel", () => {
     currency: "MZN",
     startsAt: "2026-09-04T12:30:00.000Z",
     endsAt: "2026-09-04T13:30:00.000Z",
+    timezone: "Africa/Maputo",
     addressLabel: "Casa",
     addressLine: "Av. Julius Nyerere 812",
     addressCity: "Maputo",
@@ -489,6 +490,15 @@ describe("bookingReadModel", () => {
     // and nothing would notice.
     expect(() => bookingReadModel.parse({ ...base, serviceId: "" })).toThrow();
     expect(() => bookingReadModel.parse({ ...base, serviceOptionId: undefined })).toThrow();
+  });
+
+  it("requires a timezone, because the instants above mean nothing without one", () => {
+    // A reader with no zone has only the device's, and a service in
+    // `Africa/Maputo` read on a device clocked to UTC then shows a customer
+    // an appointment on the wrong day. Blank is refused as well as missing:
+    // `""` is a zone `Intl.DateTimeFormat` throws on, not a zone.
+    expect(() => bookingReadModel.parse({ ...base, timezone: undefined })).toThrow();
+    expect(() => bookingReadModel.parse({ ...base, timezone: "" })).toThrow();
   });
 
   it("rejects a negative price", () => {

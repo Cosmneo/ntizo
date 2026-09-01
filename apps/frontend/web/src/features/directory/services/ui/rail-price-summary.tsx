@@ -39,12 +39,14 @@ import { TrustList } from "@/features/directory/ui/trust-list";
  * first; nothing on this card claims a reservation has been made, because
  * none has.
  *
- * `packageBookingsClosed` — "Bookings aren't open on Ntizo yet" — is the one
- * line left over from when that was true, and it is now stale: the Booking
- * context exists, and this button reaches it. It is deliberately not removed
- * in the slice that built step 1, because steps 2 and 3 do not exist yet and
- * a customer who followed this link would find the flow ends at a page that
- * has not been written. It belongs with the slice that finishes them.
+ * **`packageBookingsClosed` is gone with the slice that made it false.** That
+ * line — "Bookings aren't open on Ntizo yet" — was true when written and was
+ * kept through the slice that built step 1, because a customer who followed
+ * this link would have found the flow ending at a page nobody had written.
+ * All three steps now exist and the third one sends a real request to a real
+ * provider, so the caveat is simply untrue; a warning that is no longer true
+ * costs more than the one it used to save, because it teaches a reader to
+ * ignore the next one.
  *
  * **The verification bullet is conditional on a fact.** `providerVerified`
  * means an administrator accepted at least one of this business's documents.
@@ -148,13 +150,6 @@ export function RailPriceSummary({
         >
           {t("availabilityCheckAction")}
         </Link>
-        {/* Directly under the primary, not at the foot of the card: the
-            sentence explains why the button beside a total is a calendar and
-            not a reservation, and a qualifier printed after everything else
-            is read by whoever was already convinced. */}
-        <p className="type-caption text-center text-[var(--color-muted-foreground)]">
-          {t("packageBookingsClosed")}
-        </p>
         <MessageProviderButton providerId={providerId} variant="outline" />
       </div>
 

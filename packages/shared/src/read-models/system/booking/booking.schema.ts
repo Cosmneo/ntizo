@@ -82,6 +82,32 @@ export const bookingReadModel = z.object({
   startsAt: z.string(),
   endsAt: z.string(),
 
+  /**
+   * The IANA zone `startsAt` and `endsAt` mean anything in — the provider's
+   * own, which is the authority on when a slot is, everywhere else in the
+   * platform (`availability.forService` answers with the same field off the
+   * same column, and `SlotValidityReaderPort` decides what is on the grid
+   * with it).
+   *
+   * **Without it a reader can only fall back to the device's zone, and that
+   * is a defect with a history.** A service in `Africa/Maputo` viewed from a
+   * device clocked to UTC drew checkout's step-1 grid on the wrong civil
+   * date, under a confirm button that stayed live — fixed by taking the zone
+   * from the response rather than from the browser. Steps 2 and 3 read the
+   * booking instead of the calendar, so the same fact has to be on the
+   * booking or the same defect comes back one page later, printing a
+   * customer a different appointment to the one they will get.
+   *
+   * **Not part of the snapshot**, and read live off `provider.timezone`
+   * rather than copied onto the row. It is the same class of field as
+   * `serviceId`: what it identifies cannot drift the way a name or a price
+   * can, because a provider that moves zone has moved the appointment too —
+   * the instant in `startsAt` is unchanged and the civil time it is spoken
+   * of in follows the provider, which is the honest answer rather than a
+   * stale one.
+   */
+  timezone: z.string().min(1),
+
   // Null on a DRAFT and only on a DRAFT: the customer holds the slot from
   // step 1 and gives the address on step 2, so a draft that has not reached
   // step 2 has no address to report. `submit` refuses without one, so any

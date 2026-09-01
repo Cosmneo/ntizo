@@ -74,9 +74,16 @@ describe("RailPriceSummary", () => {
     expect(screen.queryByText(/Ntizo commission/)).not.toBeInTheDocument();
   });
 
-  it("says the bookings are not open yet", async () => {
+  it("no longer says bookings are closed, because they are not", async () => {
+    // The caveat this card carried while checkout dead-ended at an unbuilt
+    // confirm page. All three steps exist now and the third sends a real
+    // request to a real provider, so the sentence is false — and a warning
+    // that is no longer true costs more than the one it used to save.
+    // Awaited on a control that IS here, so the absence below is asserted
+    // against a rendered card rather than an empty tree.
     renderRail(FIXED);
-    expect(await screen.findByText("Bookings aren't open on Ntizo yet.")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "See availability" })).toBeInTheDocument();
+    expect(screen.queryByText(/bookings aren't open/i)).not.toBeInTheDocument();
   });
 
   it("offers no control that implies a reservation was already made", async () => {

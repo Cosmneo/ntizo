@@ -21,21 +21,7 @@ import {
   readDraftDetails,
   saveDraftDetails,
 } from "@/features/checkout/domain/draft-store";
-
-/**
- * The statuses on which the slot is no longer being held for this customer.
- *
- * **A lapsed draft is a row, not a `null`.** The sweep marks it `EXPIRED` and
- * it goes on belonging to its customer, so `booking.byId` answers with it;
- * `CreateBookingCommand` marks a superseded draft the same way when the
- * customer starts a second checkout in another tab. Reading only `null` as
- * "expired" would leave the commonest case — the thirty minutes ran out —
- * rendering a form under a countdown that is already at zero.
- */
-const RELEASED_STATUSES: ReadonlySet<CheckoutBooking["status"]> = new Set([
-  "EXPIRED",
-  "CANCELLED",
-]);
+import { RELEASED_STATUSES } from "@/features/checkout/domain/released-statuses";
 
 /** One address as a single line: enough to tell two of them apart, not the whole record. */
 function addressSummary(address: AddressDTO): string {
@@ -234,10 +220,11 @@ function Details({ booking }: { booking: CheckoutBooking }) {
     // customer who touched neither field still has a selection — the address
     // book's default — and step 3 has to be given it.
     saveDraftDetails(booking.id, { addressId: selectedId, description });
-    // `href` rather than a typed `to`: step 3 is the next slice and its route
-    // does not exist yet. Nothing travels with it — step 3 reads the same
-    // booking, which carries its own service and option.
-    void navigate({ href: `/booking/${booking.id}/confirm` });
+    // A typed `to` now that step 3's route exists — this was an untyped
+    // `href` for exactly as long as it named a page nobody had written.
+    // Nothing travels with it: step 3 reads the same booking, which carries
+    // its own service, option, price and zone.
+    void navigate({ to: "/booking/$bookingId/confirm", params: { bookingId: booking.id } });
   }
 
   return (

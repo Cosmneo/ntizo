@@ -1,11 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
+import { useUpdateMyProfile } from "@/features/account/viewmodel/use-update-profile";
 import {
   bookingQueries,
   createBooking,
+  submitBooking,
   type CheckoutBooking,
   type CreateBookingInput,
   type CreatedBooking,
+  type SubmitBookingAddress,
+  type SubmitBookingInput,
+  type SubmittedBooking,
 } from "@/features/checkout/data/checkout.repository";
 
 /**
@@ -16,7 +21,7 @@ import {
  * that can fetch one itself. The viewmodel is the one layer allowed to see
  * both, so the type comes through here rather than the rule being loosened.
  */
-export type { CheckoutBooking };
+export type { CheckoutBooking, SubmitBookingAddress };
 
 /**
  * The domain code a checkout screen branches on — never `.message`, and
@@ -91,5 +96,70 @@ export function useMyBooking(bookingId: string) {
     booking: query.data,
     loading: query.isPending,
     failed: query.isError,
+  };
+}
+
+/** Everything step 3 sends, across both of its writes. */
+export interface SendBookingRequestInput extends SubmitBookingInput {
+  /**
+   * The handset M-Pesa will push its payment prompt to, already normalised —
+   * the page validates with `toMpesaMsisdn` before it gets here, so this is
+   * never a number the charge would later refuse.
+   */
+  phoneNumber: string;
+}
+
+/**
+ * Sending the request: step 3's writes, and the last two of this checkout.
+ *
+ * **Two mutations, in this order, and not one.** `user.updateMyProfile` with
+ * the phone number, then `booking.submit`. Setting a phone number is the User
+ * context's job — a booking command reaching across to write a profile would
+ * need a writer port that exists for no other reason — and `submit` refuses a
+ * customer who has none on file, so the profile write is not a convenience
+ * beside the submit but a precondition of it.
+ *
+ * The order is what makes a half-failure recoverable rather than wrong. If
+ * the submit fails the phone is still saved: the customer presses again and
+ * the second attempt has everything it needs. Reversed, a submit that
+ * succeeded against a stale number would have sent a request that cannot be
+ * paid for, which is precisely the failure `CustomerPhoneMissingError` exists
+ * to prevent.
+ *
+ * Awaited rather than fired together, for the same reason: `Promise.all` here
+ * would let the submit reach the server before the profile write committed,
+ * and refuse for a number the customer had just supplied.
+ *
+ * `useUpdateMyProfile` rather than the repository function directly, because
+ * the cache invalidation belongs with the write: the header, the account menu
+ * and the account page all read `user.me`, and a phone number set here has to
+ * reach them.
+ */
+export function useSendBookingRequest() {
+  const profile = useUpdateMyProfile();
+
+  const mutation = useMutation({
+    mutationFn: async (input: SendBookingRequestInput): Promise<SubmittedBooking> => {
+      await profile.mutateAsync({ phoneNumber: input.phoneNumber });
+      return submitBooking({
+        bookingId: input.bookingId,
+        address: input.address,
+        description: input.description ?? null,
+      });
+    },
+  });
+
+  return {
+    /**
+     * Rejects as well as reporting through `errorCode`, so a caller can
+     * decline to navigate — the same contract `useCreateBooking` offers, and
+     * for the same reason: the page has to know whether the request actually
+     * went before it sends the customer to their bookings.
+     */
+    send: (input: SendBookingRequestInput): Promise<SubmittedBooking> =>
+      mutation.mutateAsync(input),
+    pending: mutation.isPending,
+    errorCode: checkoutErrorCode(mutation.error),
+    failed: mutation.isError,
   };
 }

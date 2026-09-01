@@ -104,6 +104,12 @@ beforeAll(async () => {
       name: "List My Bookings Test Provider",
       slug: `list-my-bookings-test-${suffix}`,
       status: "active",
+      // Deliberately NOT `Africa/Maputo`, which is both the column's own
+      // default and this platform's launch market. A fixture on the default
+      // could not fail the timezone assertion below: a reader that ignored
+      // the join and hardcoded the market, or fell back to the machine's
+      // own zone in CI, would still answer "Africa/Maputo" and look right.
+      timezone: "Europe/Lisbon",
     })
     .returning({ id: provider.id });
   providerId = providerRow!.id;
@@ -294,6 +300,12 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
       expect(typeof item?.expiresAt).toBe("string");
       expect(item?.startsAt).toBe("2026-12-03T09:00:00.000Z");
       expect(item?.endsAt).toBe("2026-12-03T10:00:00.000Z");
+      // The joined column, and the reason the two instants above are worth
+      // anything to a reader: `booking` has no zone of its own, so this can
+      // only have come from `provider.timezone`. The fixture's provider is
+      // on `Europe/Lisbon` precisely so this cannot pass on the column
+      // default — see the insert's own comment.
+      expect(item?.timezone).toBe("Europe/Lisbon");
 
       await db.delete(booking).where(eq(booking.id, created.id as string));
     });

@@ -36,6 +36,14 @@ export interface BookingListRow {
   startsAt: Date;
   endsAt: Date;
 
+  /**
+   * The provider's IANA zone, joined rather than read off `booking` — there
+   * is no such column, and this is deliberately not part of the snapshot.
+   * See `bookingReadModel.timezone` for the argument, and for the defect a
+   * reader that has to fall back to the device's zone reproduces.
+   */
+  timezone: string;
+
   // Nullable for the same reason `bookingReadModel` widened: null on a
   // DRAFT means the customer has not reached checkout's step 2 yet, and
   // `Booking.submit` refuses to move a booking past DRAFT without one.
