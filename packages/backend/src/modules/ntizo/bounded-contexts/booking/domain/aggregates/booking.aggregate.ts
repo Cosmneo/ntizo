@@ -1,7 +1,4 @@
-import {
-  BookingStatus,
-  SLOT_HOLDING_STATUSES,
-} from "../../../../shared/infrastructure/database/booking/enums";
+import { BookingStatus } from "../../../../shared/infrastructure/database/booking/enums";
 import {
   BookingDateInvalidError,
   BookingDurationInvalidError,
@@ -14,12 +11,38 @@ import {
 } from "../exceptions";
 
 /**
- * `SLOT_HOLDING_STATUSES` is a tuple of literal strings, narrower than the
- * full `BookingStatus` union its members belong to — so `.includes` needs
- * the widened type to accept an arbitrary `BookingStatus` as its argument
- * rather than only the five literals the tuple was built from.
+ * The statuses a charge could actually have landed at — `PENDING_PAYMENT`
+ * itself, and everything reachable only by leaving it paid: `CONFIRMED` and
+ * `MARKED_DONE`. `markPaid`'s mismatch branch (below) uses this to decide
+ * whether a second, different payment reference means somebody is owed a
+ * refund.
+ *
+ * Deliberately **not** `SLOT_HOLDING_STATUSES`
+ * (`shared/infrastructure/database/booking/enums.ts`), even though every
+ * member of this list is also a member of that one. The two lists used to
+ * be the same list, before the reversal this plan is named for: when
+ * payment came before the provider's answer, every slot-holding status
+ * *was* a status a charge could have reached, because `PENDING_PAYMENT` was
+ * the first stop after `create`. It no longer is. `DRAFT` and
+ * `AWAITING_PROVIDER` now sit *before* `PENDING_PAYMENT` in the machine — a
+ * booking cannot leave either one carrying a payment reference, because
+ * nothing charges the customer until the provider accepts — but both are
+ * still in `SLOT_HOLDING_STATUSES`, because they still occupy the member's
+ * calendar. A single list cannot answer both "does this hold the slot" and
+ * "could this have been charged" once those two questions stopped agreeing,
+ * which is exactly what happened here: an earlier version of `markPaid`
+ * read `SLOT_HOLDING_STATUSES` straight through the reversal and started
+ * telling a `DRAFT` or `AWAITING_PROVIDER` booking hit with a mismatched
+ * reference that a refund was probably owed on one of two payments — a
+ * refund nobody is owed, because neither status has ever been charged once.
+ * The honest refusal for both is `BookingTransitionError`: this transition
+ * was never legal to begin with, the same as `EXPIRED`.
  */
-const SLOT_HOLDING_STATUS_SET: readonly BookingStatus[] = SLOT_HOLDING_STATUSES;
+const CHARGEABLE_STATUSES: readonly BookingStatus[] = [
+  BookingStatus.PendingPayment,
+  BookingStatus.Confirmed,
+  BookingStatus.MarkedDone,
+];
 
 /** A commission rate is basis points: 0 is free, 10000 is the whole price. */
 const COMMISSION_BPS_MAX = 10_000;
@@ -153,6 +176,15 @@ export class Booking {
    * A booking as the checkout flow assembles it: a slot held, a price
    * agreed, and nothing yet paid.
    *
+   * Starts life as `DRAFT`, not `PENDING_PAYMENT` — the reversal this whole
+   * plan is named for. `expiresAt` here is the checkout hold
+   * (`checkout_hold_minutes`), a customer still filling in the form's
+   * protection against losing the slot mid-checkout; it is not the payment
+   * window, which does not exist yet at this point in the flow. `submit`
+   * replaces it with the provider's response window, and `accept` replaces
+   * it again with the actual payment deadline — see both methods' own doc
+   * comments.
+   *
    * `id` is null for one that has never been stored — the repository assigns
    * it, the same way `Review.create` leaves a new review id-less until saved.
    * `endsAt` is derived from `startsAt` and `durationMinutes` rather than
@@ -256,7 +288,7 @@ export class Booking {
       startsAt: input.startsAt,
       endsAt,
       durationMinutes: input.durationMinutes,
-      status: BookingStatus.PendingPayment,
+      status: BookingStatus.Draft,
       expiresAt: input.expiresAt,
       paidAt: null,
       paymentRef: null,
@@ -517,18 +549,24 @@ export class Booking {
    * case guaranteed to raise instead of absorb.
    *
    * So the reference is compared first, against every status but
-   * `PENDING_PAYMENT`, before anything asks whether the slot is still held:
-   * the *same* reference is always a duplicate of a payment that already
-   * landed, whatever the booking has done since, and is absorbed silently.
-   * A *different* reference is always a second, genuinely distinct
-   * transaction — never a duplicate to shrug off, whatever the status —
-   * but *how* that gets reported still depends on whether the slot is still
-   * held: a still-held slot (`SLOT_HOLDING_STATUSES`) means somebody is
-   * probably owed a refund on one of the two payments, which is what
-   * `PaymentReferenceMismatchError` names; a slot already released
-   * (`EXPIRED`, `DECLINED`, `CANCELLED`) or a job already finished
-   * (`COMPLETED`, `DISPUTED`) means this transition was never legal to
-   * begin with, which is what `BookingTransitionError` names.
+   * `PENDING_PAYMENT`, before anything asks whether a charge could have
+   * landed here at all: the *same* reference is always a duplicate of a
+   * payment that already landed, whatever the booking has done since, and
+   * is absorbed silently. A *different* reference is always a second,
+   * genuinely distinct transaction — never a duplicate to shrug off,
+   * whatever the status — but *how* that gets reported depends on whether
+   * this status is one a charge could actually have reached
+   * (`CHARGEABLE_STATUSES`: `CONFIRMED` or `MARKED_DONE`, alongside
+   * `PENDING_PAYMENT` itself, which never reaches this branch): reaching
+   * one of those two means somebody is probably owed a refund on one of the
+   * two payments, which is what `PaymentReferenceMismatchError` names.
+   * Every other status means this transition was never legal to begin
+   * with — `DRAFT` and `AWAITING_PROVIDER` because nothing charges the
+   * customer until the provider accepts (see `CHARGEABLE_STATUSES`'s own
+   * comment for why this is not the same list as `SLOT_HOLDING_STATUSES`
+   * any more), `EXPIRED`/`DECLINED`/`CANCELLED` because the slot already
+   * released, `COMPLETED`/`DISPUTED` because the job already finished —
+   * and `BookingTransitionError` is what names all five.
    */
   markPaid(paymentRef: string, at: Date): Booking {
     if (this.props.status === BookingStatus.PendingPayment) {
@@ -544,7 +582,7 @@ export class Booking {
       return this;
     }
 
-    if (SLOT_HOLDING_STATUS_SET.includes(this.props.status)) {
+    if (CHARGEABLE_STATUSES.includes(this.props.status)) {
       throw new PaymentReferenceMismatchError(this.props.paymentRef, paymentRef);
     }
 
@@ -557,6 +595,17 @@ export class Booking {
    * Before this, the slot is held by a customer who might still abandon the
    * form; after it, the same hold is a request nobody has answered yet.
    *
+   * `respondBy` replaces `expiresAt` outright — the same shape `accept`
+   * already uses for `payBy`, and for the same reason: the aggregate has no
+   * way to read `provider_response_minutes`, a `platform_settings` value,
+   * and `domain/` reaches for no configuration. The command that already
+   * knows the window (Task 3) computes the deadline and hands it in. Before
+   * this call, `expiresAt` was the checkout hold `create` set — the 30
+   * minutes that protected a customer still filling in the form, not the
+   * 2 hours the provider now has to answer. Skipping the replacement would
+   * leave that stale, too-short deadline on the row, with nothing here to
+   * catch it, and the provider's window would never actually start.
+   *
    * Unlike `markPaid` and `expire`, nothing races this transition: it is a
    * customer's single deliberate action, and the command that calls it uses
    * the same compare-and-swap every other command here does, so a stale
@@ -566,16 +615,18 @@ export class Booking {
    * upstream or a caller that skipped the CAS, and `BookingTransitionError`
    * says so rather than absorbing it the way `expire`'s no-op does.
    */
-  submit(at: Date): Booking {
+  submit(at: Date, respondBy: Date): Booking {
     if (this.props.status !== BookingStatus.Draft) {
       throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
     }
 
     Booking.requireValidDate(at, "at");
+    Booking.requireValidDate(respondBy, "respondBy");
 
     return new Booking({
       ...this.props,
       status: BookingStatus.AwaitingProvider,
+      expiresAt: respondBy,
     });
   }
 

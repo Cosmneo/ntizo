@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import {
   BookingCreated,
+  BookingSubmitted,
   BookingPaid,
   BookingExpired,
   BookingAccepted,
@@ -45,6 +46,46 @@ describe("BookingCreated", () => {
     };
 
     const event = new BookingCreated(payload);
+
+    expect(event.payload).toEqual(payload);
+  });
+});
+
+describe("BookingSubmitted", () => {
+  it("publishes as booking.submitted with the booking id as aggregate id", () => {
+    // `satisfies` pins this literal to the constructor's payload type
+    // without widening it — see `BookingAccepted`'s test above for why that
+    // matters for an event crossing into Notification: a field silently
+    // dropped here would still pass `tsc`, and would only surface as a
+    // provider never told a request needs an answer.
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      providerMemberId: "m2",
+      startsAt: new Date("2026-09-04T12:30:00.000Z"),
+      endsAt: new Date("2026-09-04T13:30:00.000Z"),
+      respondBy: new Date("2026-09-04T14:30:00.000Z"),
+    } satisfies ConstructorParameters<typeof BookingSubmitted>[0];
+
+    const event = new BookingSubmitted(payload);
+
+    expect(event.eventName).toBe("booking.submitted");
+    expect(event.aggregateId).toBe("b1");
+  });
+
+  it("round-trips the payload", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      providerMemberId: "m2",
+      startsAt: new Date("2026-09-04T12:30:00.000Z"),
+      endsAt: new Date("2026-09-04T13:30:00.000Z"),
+      respondBy: new Date("2026-09-04T14:30:00.000Z"),
+    } satisfies ConstructorParameters<typeof BookingSubmitted>[0];
+
+    const event = new BookingSubmitted(payload);
 
     expect(event.payload).toEqual(payload);
   });
@@ -227,7 +268,7 @@ describe("BookingCancelled", () => {
       providerId: "p1",
       providerMemberId: "m9",
       startsAt: new Date("2026-09-05T08:00:00.000Z"),
-      reason: "payment_not_received",
+      reason: "customer_did_not_pay",
     } satisfies ConstructorParameters<typeof BookingCancelled>[0];
 
     const event = new BookingCancelled(payload);
@@ -243,7 +284,7 @@ describe("BookingCancelled", () => {
       providerId: "p1",
       providerMemberId: "m9",
       startsAt: new Date("2026-09-05T08:00:00.000Z"),
-      reason: "payment_not_received",
+      reason: "customer_did_not_pay",
     } satisfies ConstructorParameters<typeof BookingCancelled>[0];
 
     const event = new BookingCancelled(payload);
@@ -251,18 +292,13 @@ describe("BookingCancelled", () => {
     expect(event.payload).toEqual(payload);
   });
 
-  // Table-driven over the closed union rather than one hard-coded literal:
-  // `BookingCancelledReason` is a compile-time guarantee, but a test that
-  // only ever constructs the event with "payment_not_received" would not
-  // notice a typo in either of the other two members — they would still
-  // satisfy `string`, just not the value anything ever checks.
-  const reasons: BookingCancelledReason[] = [
-    "payment_not_received",
-    "customer_cancelled",
-    "provider_cancelled",
-  ];
-
-  it.each(reasons)("accepts %s as a valid reason", (reason) => {
+  it("accepts customer_did_not_pay as a valid reason", () => {
+    // `BookingCancelledReason` narrowed to one member (see that type's own
+    // doc comment: the other two never had a producer and were trimmed,
+    // not merely left undocumented) — this pins the literal itself rather
+    // than only its type, so a rename of the string value would fail here
+    // even though it would still satisfy the type.
+    const reason: BookingCancelledReason = "customer_did_not_pay";
     const payload = {
       bookingId: "b1",
       customerId: "u1",
@@ -274,6 +310,6 @@ describe("BookingCancelled", () => {
 
     const event = new BookingCancelled(payload);
 
-    expect(event.payload.reason).toBe(reason);
+    expect(event.payload.reason).toBe("customer_did_not_pay");
   });
 });

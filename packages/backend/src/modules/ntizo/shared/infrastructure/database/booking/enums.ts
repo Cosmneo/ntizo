@@ -29,11 +29,19 @@ export const BookingStatus = {
    * for the same slot and only one of them find out.
    */
   Draft: "DRAFT",
-  /** Created, slot held, waiting for the customer to pay. */
+  /**
+   * The provider accepted. Slot held, waiting for the customer to pay —
+   * this is the reversal this plan is named for: `create` no longer
+   * produces this status, and it is now reached *after* the provider's
+   * yes (`accept`), not before it.
+   */
   PendingPayment: "PENDING_PAYMENT",
-  /** Paid. The platform holds the money; the provider has not answered. */
+  /**
+   * Sent to the provider. Slot held, waiting for their answer — accept or
+   * decline. Nothing has been charged yet.
+   */
   AwaitingProvider: "AWAITING_PROVIDER",
-  /** The provider accepted. */
+  /** Paid — the charge `accept`'s promise depended on has landed. */
   Confirmed: "CONFIRMED",
   /** The provider says the work is done; the customer's dispute window is open. */
   MarkedDone: "MARKED_DONE",

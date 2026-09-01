@@ -97,8 +97,11 @@ function validProps(over: Partial<BookingProps> = {}): BookingProps {
 }
 
 describe("Booking.create", () => {
-  it("starts life waiting to be paid", () => {
-    expect(Booking.create(validInput()).status).toBe("PENDING_PAYMENT");
+  it("starts life as a draft, not yet sent to the provider", () => {
+    // The reversal this whole plan is named for: `create` used to produce
+    // PENDING_PAYMENT directly. It now produces DRAFT, and only `submit`
+    // moves the booking on to AWAITING_PROVIDER.
+    expect(Booking.create(validInput()).status).toBe("DRAFT");
   });
 
   it("derives the end from the start and the duration", () => {
@@ -247,8 +250,15 @@ describe("Booking.create — commission boundaries", () => {
 });
 
 describe("Booking.markPaid", () => {
+  // `Booking.restore(validProps())`, not `Booking.create(validInput())`:
+  // `create` now produces DRAFT (see "Booking.create — starts life as a
+  // draft" above), and `markPaid` only ever transitions from
+  // PENDING_PAYMENT. These tests are about `markPaid` itself, not about how
+  // a booking gets to PENDING_PAYMENT, so they start from a restored row
+  // already at that status — the same fixture shape `Booking.accept` and
+  // `Booking.decline`'s own tests use below.
   it("moves a pending booking to confirmed — the money that accept's promise depended on has now arrived", () => {
-    const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    const paid = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
     expect(paid.status).toBe("CONFIRMED");
     expect(paid.paymentRef).toBe("mpesa-123");
   });
@@ -260,7 +270,7 @@ describe("Booking.markPaid", () => {
     // status alone. Nulling the deadline bought no protection — it only
     // destroyed the one fact a customer disputing "you gave my slot away"
     // needs: the deadline they were actually given.
-    const before = Booking.create(validInput());
+    const before = Booking.restore(validProps());
     const paid = before.markPaid("mpesa-123", new Date());
     expect(paid.expiresAt).toEqual(before.expiresAt);
   });
@@ -269,7 +279,7 @@ describe("Booking.markPaid", () => {
     // A webhook that arrives twice must not book twice. The command layer
     // guards this too, but the aggregate is the last place it can be got
     // wrong quietly.
-    const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    const first = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
     const second = first.markPaid("mpesa-123", new Date());
     expect(second.status).toBe("CONFIRMED");
     expect(second.paymentRef).toBe("mpesa-123");
@@ -277,7 +287,7 @@ describe("Booking.markPaid", () => {
   });
 
   it("refuses to pay a booking that already expired", () => {
-    const expired = Booking.create(validInput()).expire(new Date());
+    const expired = Booking.restore(validProps()).expire(new Date());
     expect(() => expired.markPaid("mpesa-123", new Date())).toThrow(BookingTransitionError);
   });
 
@@ -287,32 +297,53 @@ describe("Booking.markPaid", () => {
     // distinct transaction against a booking that was already paid for
     // once, and somebody is owed a refund on one of the two. That is not
     // something this method gets to decide quietly.
-    const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    const first = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
     expect(() => first.markPaid("mpesa-456", new Date())).toThrow(PaymentReferenceMismatchError);
   });
 
   it("names both references in the error, so a duplicate payment can be traced", () => {
-    const first = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    const first = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
     expect(() => first.markPaid("mpesa-456", new Date())).toThrow(/mpesa-123/);
     expect(() => first.markPaid("mpesa-456", new Date())).toThrow(/mpesa-456/);
   });
 });
 
 describe("Booking.submit", () => {
+  const RESPOND_BY = new Date("2026-09-04T14:30:00.000Z");
+
   it("moves a draft booking to awaiting the provider", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    const submitted = draft.submit(new Date());
+    const submitted = draft.submit(new Date(), RESPOND_BY);
     expect(submitted.status).toBe("AWAITING_PROVIDER");
+  });
+
+  it("replaces expiresAt with respondBy — the checkout hold is over, the provider's window starts here", () => {
+    // The whole reason submit takes respondBy as an input: without this
+    // assertion, expiresAt could silently keep create's 30-minute checkout
+    // hold instead of the provider's 2-hour response window, and nothing
+    // else here would catch it. Asserting the value, not merely that the
+    // field is non-null, is the point — a non-null check alone would still
+    // pass against the stale hold.
+    const draft = Booking.restore(
+      validProps({ status: "DRAFT", expiresAt: new Date("2026-09-04T13:00:00.000Z") }),
+    );
+    const submitted = draft.submit(new Date(), RESPOND_BY);
+    expect(submitted.expiresAt).toEqual(RESPOND_BY);
   });
 
   it("refuses to submit a booking that already left DRAFT", () => {
     const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
-    expect(() => pending.submit(new Date())).toThrow(BookingTransitionError);
+    expect(() => pending.submit(new Date(), RESPOND_BY)).toThrow(BookingTransitionError);
   });
 
   it("refuses an at that does not name a real instant", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    expect(() => draft.submit(new Date("garbage"))).toThrow(BookingDateInvalidError);
+    expect(() => draft.submit(new Date("garbage"), RESPOND_BY)).toThrow(BookingDateInvalidError);
+  });
+
+  it("refuses a respondBy that does not name a real instant", () => {
+    const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
+    expect(() => draft.submit(new Date(), new Date("garbage"))).toThrow(BookingDateInvalidError);
   });
 });
 
@@ -323,6 +354,8 @@ describe("Booking.submit — every status", () => {
   // it is a customer's single deliberate click, guarded against a race by
   // the command's compare-and-swap, not by this method being forgiving — so
   // every one of the nine statuses besides DRAFT itself throws.
+  const RESPOND_BY = new Date("2026-09-04T14:30:00.000Z");
+
   const cases: Array<[BookingStatus, "transitions" | "throws"]> = [
     ["DRAFT", "transitions"],
     ["PENDING_PAYMENT", "throws"],
@@ -340,10 +373,11 @@ describe("Booking.submit — every status", () => {
     const booking = Booking.restore(validProps({ status, expiresAt: null }));
 
     if (outcome === "transitions") {
-      const result = booking.submit(new Date());
+      const result = booking.submit(new Date(), RESPOND_BY);
       expect(result.status).toBe("AWAITING_PROVIDER");
+      expect(result.expiresAt).toEqual(RESPOND_BY);
     } else {
-      expect(() => booking.submit(new Date())).toThrow(BookingTransitionError);
+      expect(() => booking.submit(new Date(), RESPOND_BY)).toThrow(BookingTransitionError);
     }
   });
 });
@@ -547,24 +581,30 @@ describe("Booking.restore", () => {
 
 describe("Booking.markPaid — every status", () => {
   // Table-driven so a future addition to BookingStatus fails loudly here
-  // instead of silently falling through markPaid's default case.
+  // instead of silently falling through markPaid's default case — ten rows
+  // for ten statuses, DRAFT included.
   //
   // Every status but PENDING_PAYMENT and EXPIRED is "no-op" here, not just
-  // the three that still hold their slot: the discriminator is the payment
-  // reference, not whether the booking still holds its slot (see
-  // `markPaid`'s own doc comment for why that changed). A duplicate webhook
-  // carrying the same reference that already paid this booking is absorbed
-  // silently whatever the booking has done since — including COMPLETED and
-  // DISPUTED, which the pre-Task-5 version of this method got backwards: it
-  // threw for exactly those two, on exactly the retry that is *most* likely
-  // to arrive late, because a webhook retries on a timer that has no idea
-  // the booking finished. EXPIRED is the one status that is genuinely
-  // never a duplicate of anything: nothing ever set a paymentRef on the way
-  // there, so a matching reference is impossible by construction, and
-  // every payment reaching an expired booking is a second, distinct one.
+  // the three that still hold their slot: the discriminator for a *matching*
+  // reference is the reference itself, checked by identity before anything
+  // asks about status at all (see `markPaid`'s own doc comment), so it
+  // absorbs uniformly whether or not this particular status could
+  // realistically carry a stored reference — DRAFT and AWAITING_PROVIDER
+  // included, even though neither can actually reach here with one set by a
+  // real charge (see `CHARGEABLE_STATUSES`'s own comment). A duplicate
+  // webhook carrying the same reference that already paid this booking is
+  // absorbed silently whatever the booking has done since — including
+  // COMPLETED and DISPUTED, which the pre-Task-5 version of this method got
+  // backwards: it threw for exactly those two, on exactly the retry that is
+  // *most* likely to arrive late, because a webhook retries on a timer that
+  // has no idea the booking finished. EXPIRED is the one status that is
+  // genuinely never a duplicate of anything: nothing ever set a paymentRef
+  // on the way there, so a matching reference is impossible by construction,
+  // and every payment reaching an expired booking is a second, distinct one.
   const PAID_REF = "mpesa-existing";
 
   const cases: Array<[BookingStatus, "transitions" | "no-op" | "throws"]> = [
+    ["DRAFT", "no-op"],
     ["PENDING_PAYMENT", "transitions"],
     ["AWAITING_PROVIDER", "no-op"],
     ["CONFIRMED", "no-op"],
@@ -577,9 +617,14 @@ describe("Booking.markPaid — every status", () => {
   ];
 
   it.each(cases)("from %s it %s", (status, outcome) => {
-    // Every status past PENDING_PAYMENT other than EXPIRED can only be
-    // reached by having already been paid — EXPIRED is the one way to
-    // leave PENDING_PAYMENT without paying.
+    // `alreadyPaid` only ever decides whether this fixture's stored
+    // `paymentRef` matches the incoming one — a test device for exercising
+    // the identity check uniformly, not a claim that every one of these
+    // statuses is realistically reachable carrying a real charge (DRAFT and
+    // AWAITING_PROVIDER are not; see `CHARGEABLE_STATUSES`'s own comment).
+    // EXPIRED is the one status excluded on purpose: nothing ever sets a
+    // paymentRef on the way there, so it is the one genuine "never paid"
+    // case this table has to cover.
     const alreadyPaid = status !== "PENDING_PAYMENT" && status !== "EXPIRED";
     const booking = Booking.restore(
       validProps({
@@ -609,16 +654,21 @@ describe("Booking.markPaid — a different reference throws at every status but 
   // The companion table to the one above: a *matching* reference is always
   // absorbed past PENDING_PAYMENT, but a *different* one is never a
   // duplicate to shrug off — whatever the status, it names a second,
-  // genuinely distinct transaction. Which exception it throws still depends
-  // on whether the slot is still held (see `markPaid`'s own doc comment):
+  // genuinely distinct transaction. Which exception it throws depends on
+  // whether this status is one a charge could actually have reached
+  // (`CHARGEABLE_STATUSES`, not `SLOT_HOLDING_STATUSES` — see that
+  // constant's own comment for why the two parted ways under the reversal):
   // `PaymentReferenceMismatchError` where a refund is probably owed on one
-  // of two payments against a slot still in play, `BookingTransitionError`
-  // where the transition was never legal to begin with.
+  // of two payments against a status a charge could have landed at,
+  // `BookingTransitionError` where the transition was never legal to begin
+  // with — DRAFT and AWAITING_PROVIDER included, because nothing charges
+  // the customer until the provider accepts.
   const EXISTING_REF = "mpesa-existing";
   const OTHER_REF = "mpesa-other";
 
   const cases: Array<[BookingStatus, "PaymentReferenceMismatchError" | "BookingTransitionError"]> = [
-    ["AWAITING_PROVIDER", "PaymentReferenceMismatchError"],
+    ["DRAFT", "BookingTransitionError"],
+    ["AWAITING_PROVIDER", "BookingTransitionError"],
     ["CONFIRMED", "PaymentReferenceMismatchError"],
     ["MARKED_DONE", "PaymentReferenceMismatchError"],
     ["COMPLETED", "BookingTransitionError"],
@@ -646,7 +696,11 @@ describe("Booking.markPaid — a different reference throws at every status but 
 
 describe("Booking.expire", () => {
   it("moves a pending booking to expired and keeps the deadline it was given", () => {
-    const before = Booking.create(validInput());
+    // `Booking.restore(validProps())`, not `Booking.create(validInput())`:
+    // `create` produces DRAFT now, and `expire` only ever transitions from
+    // PENDING_PAYMENT — see the same note on `describe("Booking.markPaid")`
+    // above.
+    const before = Booking.restore(validProps());
     const expired = before.expire(new Date());
     expect(expired.status).toBe("EXPIRED");
     expect(expired.expiresAt).toEqual(before.expiresAt);
@@ -656,7 +710,7 @@ describe("Booking.expire", () => {
     // The delayed job fires whether or not the payment landed first. If the
     // status has moved, expiry has nothing to say — and throwing here would
     // turn an ordinary race into an error somebody has to read.
-    const paid = Booking.create(validInput()).markPaid("mpesa-123", new Date());
+    const paid = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
     expect(paid.expire(new Date()).status).toBe("CONFIRMED");
   });
 });
