@@ -2,10 +2,14 @@ import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
 import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
+import { DrizzleProviderMemberReader } from "../infrastructure/repositories/drizzle/provider-member.reader";
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
 import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
+import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
+import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
+import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
 import { ExpireBookingCommand } from "../app/use-cases/expire-booking.command";
 import { ExpireDueBookingsInternalCommand } from "../app/use-cases/expire-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
@@ -14,28 +18,31 @@ import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbo
 import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
 
 /**
- * Constructs every use case Task 8 and Task 9 built, including the two
- * nothing outside this bootstrap constructs directly: `markBookingPaid`
- * (Payment's event handler reaches for it once Payment lands) and
- * `expireBooking`, which Task 12's sweep no longer calls directly — it goes
- * through `useCases.internal.expireDue` below, the same way Communication's
- * cron sweep goes through `useCases.internal.notifyUnread` rather than
- * touching `MessageRepositoryPort` itself. A bootstrap that omitted either
- * top-level use case would leave both with nothing to call — an omission
- * that surfaces only when somebody tries, the same failure mode
+ * Constructs every use case this bounded context has built so far,
+ * including two nothing outside this bootstrap constructs directly:
+ * `markBookingPaid` (Payment's event handler reaches for it once Payment
+ * lands) and `expireBooking`, which the expiry sweep no longer calls
+ * directly — it goes through `useCases.internal.expireDue` below, the same
+ * way Communication's cron sweep goes through `useCases.internal.notifyUnread`
+ * rather than touching `MessageRepositoryPort` itself. A bootstrap that
+ * omitted either top-level use case would leave both with nothing to call —
+ * an omission that surfaces only when somebody tries, the same failure mode
  * `bootstrap-wiring.test.ts` guards against for Notification.
  *
- * `task-10-decisions.md` describes this as "all four use cases", but only
- * three command classes exist under `app/use-cases/` —
- * `CreateBookingCommand`, `ExpireBookingCommand`, `MarkBookingPaidCommand`.
- * That count is carried over from the brief unchanged rather than resolved
- * silently; see the Task 10 report for the same note.
+ * `submitBooking`, `acceptBooking` and `declineBooking` are the three
+ * commands the payment-and-confirmation-order plan's Task 3 added, moving a
+ * booking `DRAFT → AWAITING_PROVIDER → PENDING_PAYMENT` (or `DECLINED`).
+ * `acceptBooking` and `declineBooking` share `providerMemberReader` — both
+ * exist to authorise the same fact, that the caller belongs to the
+ * booking's own provider — the same way `createBooking` and `acceptBooking`
+ * already shared `platformSettingsReader` before this task.
  */
 export function bootstrapBooking() {
   const bookingRepository = new DrizzleBookingRepository();
   const pricingReader = new DrizzleServicePricingReader();
   const providerReader = new DrizzleProviderSnapshotReader();
   const platformSettingsReader = new DrizzlePlatformSettingsReader();
+  const providerMemberReader = new DrizzleProviderMemberReader();
   const slotValidityReader = new DrizzleSlotValidityReader();
   const slotHold = new BookingRowSlotHold();
   const delayedJobs = new ExpiresAtDelayedJobs();
@@ -50,6 +57,7 @@ export function bootstrapBooking() {
       pricingReader,
       providerReader,
       platformSettingsReader,
+      providerMemberReader,
       slotValidityReader,
       slotHold,
       delayedJobs,
@@ -65,6 +73,26 @@ export function bootstrapBooking() {
         slotValidityReader,
         slotHold,
         delayedJobs,
+        unitOfWork,
+        outboxPort,
+      ),
+      submitBooking: new SubmitBookingCommand(
+        bookingRepository,
+        platformSettingsReader,
+        unitOfWork,
+        outboxPort,
+      ),
+      acceptBooking: new AcceptBookingCommand(
+        bookingRepository,
+        providerMemberReader,
+        platformSettingsReader,
+        unitOfWork,
+        outboxPort,
+      ),
+      declineBooking: new DeclineBookingCommand(
+        bookingRepository,
+        providerMemberReader,
+        slotHold,
         unitOfWork,
         outboxPort,
       ),

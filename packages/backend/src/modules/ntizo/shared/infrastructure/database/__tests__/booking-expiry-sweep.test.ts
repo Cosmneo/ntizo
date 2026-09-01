@@ -204,6 +204,24 @@ function bookingInput(
 }
 
 /**
+ * A `PENDING_PAYMENT` booking, with `expiresAt` fixed to exactly the value
+ * the caller configured — what every fixture in this file needs, since the
+ * sweep it exercises only ever selects `PENDING_PAYMENT` rows.
+ *
+ * `Booking.create` alone no longer reaches `PENDING_PAYMENT` — it produces
+ * `DRAFT` now, the reversal Task 3 of the payment-and-confirmation-order
+ * plan built — so this threads through `submit` and `accept` the way a
+ * real booking does. Neither transition's own deadline argument is what
+ * this file's assertions read; `input.expiresAt` is reused for both so the
+ * value that actually lands is the one every fixture below already
+ * configures.
+ */
+function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
+  const draft = Booking.create(input);
+  return draft.submit(new Date(), input.expiresAt).accept(new Date(), input.expiresAt);
+}
+
+/**
  * A fresh sweep, wired exactly the way `bootstrapBooking()` wires it in
  * production — the same `ExpireBookingCommand` instance backs both
  * `useCases.expireBooking` and `useCases.internal.expireDue` there, and this
@@ -227,7 +245,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       const now = new Date("2026-11-01T12:00:00.000Z");
 
       const due = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-01T09:00:00.000Z"),
             expiresAt: new Date("2026-11-01T09:30:00.000Z"),
@@ -236,7 +254,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
         1,
       );
       const notYetDue = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-01T10:00:00.000Z"),
             expiresAt: new Date("2026-11-01T23:00:00.000Z"),
@@ -286,7 +304,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       const now = new Date("2026-11-02T12:00:00.000Z");
 
       const inserted = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-02T09:00:00.000Z"),
             expiresAt: new Date("2026-11-02T09:00:00.000Z"),
@@ -324,7 +342,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       const now = new Date("2026-11-03T12:00:00.000Z");
 
       const oldest = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-03T09:00:00.000Z"),
             expiresAt: new Date("2026-11-03T09:00:00.000Z"),
@@ -333,7 +351,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
         1,
       );
       const middle = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-03T10:00:00.000Z"),
             expiresAt: new Date("2026-11-03T09:15:00.000Z"),
@@ -342,7 +360,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
         1,
       );
       const newest = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-03T11:00:00.000Z"),
             expiresAt: new Date("2026-11-03T09:30:00.000Z"),
@@ -383,7 +401,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
       const now = new Date("2026-11-04T12:00:00.000Z");
 
       const good = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-04T09:00:00.000Z"),
             expiresAt: new Date("2026-11-04T09:00:00.000Z"),
@@ -392,7 +410,7 @@ describe("ExpireDueBookingsInternalCommand", () => {
         1,
       );
       const vanished = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-11-04T10:00:00.000Z"),
             expiresAt: new Date("2026-11-04T09:15:00.000Z"),

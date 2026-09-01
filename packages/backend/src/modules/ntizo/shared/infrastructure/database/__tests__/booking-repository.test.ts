@@ -184,6 +184,27 @@ function bookingInput(
 }
 
 /**
+ * A booking as this file needs it for everything below `insert, then
+ * findById`: `PENDING_PAYMENT`, with `expiresAt` fixed to exactly the value
+ * the caller configured.
+ *
+ * `Booking.create` alone no longer reaches `PENDING_PAYMENT` — it produces
+ * `DRAFT` now, the reversal Task 3 of the payment-and-confirmation-order
+ * plan built — and this file's own fixtures (the exclusion constraint, the
+ * compare-and-swap guard, `findDueForExpiry`) are all specifically about
+ * `PENDING_PAYMENT` rows, not about the state machine that gets a booking
+ * there. `submit`'s `respondBy` and `accept`'s `payBy` are both meaningless
+ * to this file's assertions, so `input.expiresAt` is reused for both rather
+ * than inventing two dates nothing here reads back — only the final,
+ * post-`accept` value matters, and it lands exactly where `bookingInput`
+ * put it.
+ */
+function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
+  const draft = Booking.create(input);
+  return draft.submit(new Date(), input.expiresAt).accept(new Date(), input.expiresAt);
+}
+
+/**
  * Every field `Booking.restore` did not derive — i.e. every field a round
  * trip could lose.
  *
@@ -277,7 +298,7 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       const slotExpires = new Date("2026-10-02T09:30:00.000Z");
 
       const first = await repo.insert(
-        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
         1,
       );
       expect(first.status).toBe("PENDING_PAYMENT");
@@ -303,7 +324,7 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       const slotExpires = new Date("2026-10-03T09:30:00.000Z");
 
       const first = await repo.insert(
-        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
         1,
       );
 
@@ -328,7 +349,7 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       expect(reread?.expiredAt?.toISOString()).toBe(expired.expiredAt?.toISOString());
 
       const second = await repo.insert(
-        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
         1,
       );
       expect(second.id).toBeString();
@@ -355,7 +376,7 @@ describe("save's expectedStatus guard", () => {
       const slotExpires = new Date("2026-10-03T15:30:00.000Z");
 
       const first = await repo.insert(
-        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
         1,
       );
 
@@ -395,7 +416,7 @@ describe("findDueForExpiry", () => {
       // Due: two PENDING_PAYMENT bookings whose expiresAt is already past
       // `now`, at different slots so they don't collide with each other.
       const dueLater = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-10-04T09:00:00.000Z"),
             expiresAt: new Date("2026-10-04T09:30:00.000Z"),
@@ -404,7 +425,7 @@ describe("findDueForExpiry", () => {
         1,
       );
       const dueEarlier = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-10-04T10:00:00.000Z"),
             expiresAt: new Date("2026-10-04T09:15:00.000Z"),
@@ -415,7 +436,7 @@ describe("findDueForExpiry", () => {
 
       // Not due: still PENDING_PAYMENT, but the deadline is in the future.
       const notYetDue = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-10-04T11:00:00.000Z"),
             expiresAt: new Date("2026-10-04T23:00:00.000Z"),
@@ -433,7 +454,7 @@ describe("findDueForExpiry", () => {
       // non-null, and only `status <> 'PENDING_PAYMENT'` keeps it out of
       // the result below.
       const paidStale = await repo.insert(
-        Booking.create(
+        pendingBooking(
           bookingInput({
             startsAt: new Date("2026-10-04T12:30:00.000Z"),
             expiresAt: new Date("2026-10-04T09:00:00.000Z"),

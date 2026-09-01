@@ -47,9 +47,23 @@ function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) 
   };
 }
 
-/** A stored, `PENDING_PAYMENT` booking with an id, as `findById` would return it. */
+/**
+ * A stored, `PENDING_PAYMENT` booking with an id, as `findById` would
+ * return it.
+ *
+ * `Booking.create` alone no longer reaches `PENDING_PAYMENT` — it produces
+ * `DRAFT` now (the reversal Task 3 built) — so this fixture threads through
+ * `submit` and `accept` the same way a real booking does. Neither
+ * transition's deadline argument carries meaning for the tests in this
+ * file (none of them assert on `expiresAt`); `bookingInput().expiresAt` is
+ * reused for both purely so this helper needs no second date to invent.
+ */
 function pendingBooking(id = "bk-1"): Booking {
-  return withId(Booking.create(bookingInput()), id);
+  const draft = Booking.create(bookingInput());
+  const deadline = draft.expiresAt as Date;
+  const submitted = draft.submit(new Date(), deadline);
+  const accepted = submitted.accept(new Date(), deadline);
+  return withId(accepted, id);
 }
 
 /**

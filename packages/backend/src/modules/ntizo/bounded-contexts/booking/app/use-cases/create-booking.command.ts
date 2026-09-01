@@ -202,8 +202,18 @@ export class CreateBookingCommand {
     // so an administrator's change reaches the very next booking. See
     // `PlatformSettingsReaderPort` and `platform_settings`'s own header
     // comment for why that is not the same thing as a seed.
-    const paymentWindowMinutes = await this.platformSettingsReader.findPaymentWindowMinutes();
-    const expiresAt = new Date(Date.now() + paymentWindowMinutes * 60_000);
+    //
+    // `checkout_hold_minutes`, not `payment_window_minutes`: this booking is
+    // about to be `DRAFT`, not `PENDING_PAYMENT` — the reversal this task
+    // builds. No provider has been asked yet and nothing has a price the
+    // customer has agreed to pay for sure, so a payment deadline would be a
+    // number with nothing behind it. This is the checkout-hold clock, the
+    // one protecting a customer still filling in the form from losing the
+    // slot mid-checkout; `submit` replaces it with the provider's response
+    // window, and `accept` replaces it again with the actual payment
+    // deadline — see both methods' own doc comments.
+    const checkoutHoldMinutes = await this.platformSettingsReader.findCheckoutHoldMinutes();
+    const expiresAt = new Date(Date.now() + checkoutHoldMinutes * 60_000);
 
     // The address arrives as a value, not a reference: `input.address`'s
     // fields are copied onto individually-typed `Booking.create` parameters
@@ -263,8 +273,10 @@ export class CreateBookingCommand {
             endsAt: inserted.endsAt,
             priceMinor: inserted.priceMinor,
             currency: inserted.currency,
-            // Real while PENDING_PAYMENT — which `inserted` always is here,
-            // this command never creates anything else.
+            // Real while DRAFT — which `inserted` always is here, this
+            // command never creates anything else. It is the checkout-hold
+            // deadline, not a payment deadline; see the comment on
+            // `checkoutHoldMinutes` above.
             expiresAt: inserted.expiresAt as Date,
           }),
         ],

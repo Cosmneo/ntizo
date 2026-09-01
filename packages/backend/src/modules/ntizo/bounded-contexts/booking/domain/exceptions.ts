@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
+import { ConflictError, ForbiddenError, NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
 
 /**
  * The booking context's refusals.
@@ -264,6 +264,37 @@ export class BookingNotFoundError extends NotFoundError {
       code: "BOOKING_NOT_FOUND",
     });
     this.name = "BookingNotFoundError";
+  }
+}
+
+/**
+ * Refused because the caller trying to accept or decline a booking does not
+ * belong to the provider it is for.
+ *
+ * Same `code` as scheduling's and catalog's own `NotProviderMemberError` —
+ * all three name the one thing "the caller has no `provider_member` row
+ * here" means — but declared separately here rather than imported across
+ * bounded contexts, the same shape this codebase already uses for
+ * `ServiceMemberCannotPerformError` above (see scheduling's own
+ * `domain/exceptions.ts`). Do not "fix" this back into an import.
+ *
+ * Deliberately not `NotFoundError`: whether `providerId` names a real
+ * provider is a fact `AcceptBookingCommand` and `DeclineBookingCommand`
+ * never even have to ask — they already have the booking's own
+ * `providerId`, read off a row that exists. What is missing is a
+ * relationship between the caller and that provider, and refusing to
+ * disclose which of the two is absent is the same reasoning
+ * `NotProviderMemberError` uses everywhere else it appears: telling an
+ * unrelated caller "no such provider" would leak whether a given id is
+ * real.
+ */
+export class NotProviderMemberError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "This workspace is not one you belong to",
+      code: "NOT_PROVIDER_MEMBER",
+    });
+    this.name = "NotProviderMemberError";
   }
 }
 

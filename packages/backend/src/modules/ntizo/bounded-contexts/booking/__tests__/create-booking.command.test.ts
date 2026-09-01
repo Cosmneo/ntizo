@@ -174,18 +174,34 @@ class FakeProviderReader implements ProviderSnapshotReaderPort {
 /**
  * Returns a fixed value rather than reading a settings row, matching every
  * other fake in this file. The value handed to `setup()` below is
- * deliberately neither the schema's new default (15) nor the constant this
- * command used to carry (30) — a command that ignored this reader and fell
- * back to either number would still pass every other test in this file, so
- * this is the fake the "reads the payment window" test depends on to fail.
+ * deliberately neither the schema's default for `checkout_hold_minutes` (30)
+ * nor the constant this command used to carry before `PlatformSettingsReaderPort`
+ * existed — a command that ignored this reader and fell back to either
+ * number would still pass every other test in this file, so this is the
+ * fake the "reads the checkout hold window" test depends on to fail.
+ *
+ * Only `findCheckoutHoldMinutes` is tracked: `CreateBookingCommand` produces
+ * a `DRAFT` now, whose deadline is the checkout hold, not the payment
+ * window — see that command's own comment. `findProviderResponseMinutes`
+ * and `findPaymentWindowMinutes` are implemented only because the interface
+ * requires them; `SubmitBookingCommand` and `AcceptBookingCommand` have
+ * their own fakes and their own tests for those.
  */
 class FakePlatformSettingsReader implements PlatformSettingsReaderPort {
   public calls = 0;
 
   constructor(private readonly minutes: number) {}
 
-  async findPaymentWindowMinutes(): Promise<number> {
+  async findCheckoutHoldMinutes(): Promise<number> {
     this.calls += 1;
+    return this.minutes;
+  }
+
+  async findProviderResponseMinutes(): Promise<number> {
+    return this.minutes;
+  }
+
+  async findPaymentWindowMinutes(): Promise<number> {
     return this.minutes;
   }
 }
@@ -269,10 +285,11 @@ class CapturingOutbox implements OutboxPort {
 }
 
 /**
- * Neither the schema's default (15) nor the constant this command used to
- * hardcode (30) — see `FakePlatformSettingsReader`'s own comment.
+ * Neither the schema's default for `checkout_hold_minutes` (30) nor its
+ * default for `payment_window_minutes` (15) — see `FakePlatformSettingsReader`'s
+ * own comment.
  */
-const FAKE_PAYMENT_WINDOW_MINUTES = 42;
+const FAKE_CHECKOUT_HOLD_MINUTES = 42;
 
 function setup(
   opts: {
@@ -281,7 +298,7 @@ function setup(
     slotValidity?: SlotValidityResult;
     insertError?: Error;
     holdError?: Error;
-    paymentWindowMinutes?: number;
+    checkoutHoldMinutes?: number;
   } = {},
 ) {
   const unitOfWork = new TrackingUnitOfWork();
@@ -294,7 +311,7 @@ function setup(
     opts.provider === undefined ? validProvider() : opts.provider,
   );
   const platformSettingsReader = new FakePlatformSettingsReader(
-    opts.paymentWindowMinutes ?? FAKE_PAYMENT_WINDOW_MINUTES,
+    opts.checkoutHoldMinutes ?? FAKE_CHECKOUT_HOLD_MINUTES,
   );
   const slotValidityReader = new FakeSlotValidityReader(opts.slotValidity ?? { ok: true, capacity: 1 });
   const slotHold = new FakeSlotHold({ holdError: opts.holdError });
@@ -337,9 +354,9 @@ describe("CreateBookingCommand", () => {
     expect(providerReader.queries).toEqual(["prov-1"]);
   });
 
-  it("reads the payment window from PlatformSettingsReaderPort, not a hard-coded constant", async () => {
+  it("reads the checkout hold window from PlatformSettingsReaderPort, not the payment window", async () => {
     const { command, platformSettingsReader } = setup({
-      paymentWindowMinutes: FAKE_PAYMENT_WINDOW_MINUTES,
+      checkoutHoldMinutes: FAKE_CHECKOUT_HOLD_MINUTES,
     });
 
     const before = Date.now();
@@ -350,12 +367,13 @@ describe("CreateBookingCommand", () => {
     // call, rather than pinned to one instant, because `expiresAt` is
     // computed from `Date.now()` inside `execute` and this test cannot see
     // that exact moment. Both bounds move by the configured window (42
-    // minutes) — neither the schema's new default (15) nor the constant this
-    // command used to carry (30) — so a command that ignored the reader and
-    // kept either number would land outside this range and fail here.
+    // minutes) — neither the schema's default for `checkout_hold_minutes`
+    // (30) nor its default for `payment_window_minutes` (15) — so a command
+    // that ignored the reader, or read the wrong column, would land outside
+    // this range and fail here.
     const expiresAtMs = new Date(result.expiresAt).getTime();
-    expect(expiresAtMs).toBeGreaterThanOrEqual(before + FAKE_PAYMENT_WINDOW_MINUTES * 60_000);
-    expect(expiresAtMs).toBeLessThanOrEqual(after + FAKE_PAYMENT_WINDOW_MINUTES * 60_000);
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + FAKE_CHECKOUT_HOLD_MINUTES * 60_000);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + FAKE_CHECKOUT_HOLD_MINUTES * 60_000);
     expect(platformSettingsReader.calls).toBe(1);
   });
 

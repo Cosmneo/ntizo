@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { bootstrapBooking } from "../bootstrap";
 import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
+import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
+import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
+import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
 import { ExpireBookingCommand } from "../app/use-cases/expire-booking.command";
 import { ExpireDueBookingsInternalCommand } from "../app/use-cases/expire-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
@@ -8,6 +11,7 @@ import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
 import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
+import { DrizzleProviderMemberReader } from "../infrastructure/repositories/drizzle/provider-member.reader";
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
@@ -37,8 +41,22 @@ describe("bootstrapBooking", () => {
     const { useCases } = bootstrapBooking();
 
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
+    expect(useCases.submitBooking).toBeInstanceOf(SubmitBookingCommand);
+    expect(useCases.acceptBooking).toBeInstanceOf(AcceptBookingCommand);
+    expect(useCases.declineBooking).toBeInstanceOf(DeclineBookingCommand);
     expect(useCases.expireBooking).toBeInstanceOf(ExpireBookingCommand);
     expect(useCases.markBookingPaid).toBeInstanceOf(MarkBookingPaidCommand);
+  });
+
+  // The payment-and-confirmation-order plan's Task 3: without this,
+  // `acceptBooking` and `declineBooking` would still type-check against a
+  // provider-membership reader nothing real backs, and every accept or
+  // decline would silently skip the one check that closes off a stranger
+  // acting on somebody else's provider.
+  it("wires the provider-membership reader acceptBooking and declineBooking share", () => {
+    const { adapters } = bootstrapBooking();
+
+    expect(adapters.providerMemberReader).toBeInstanceOf(DrizzleProviderMemberReader);
   });
 
   it("wires the expiry sweep Task 12's cron calls, over the same expireBooking instance", () => {
