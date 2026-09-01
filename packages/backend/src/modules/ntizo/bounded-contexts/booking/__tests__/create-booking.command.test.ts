@@ -147,6 +147,12 @@ class FakeRepo implements BookingRepositoryPort {
   async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
+  async findAwaitingCharge(): Promise<Booking[]> {
+    return [];
+  }
+  async recordChargeAttempt(): Promise<number> {
+    return 1;
+  }
 }
 
 class FakePricingReader implements ServicePricingReaderPort {

@@ -145,4 +145,64 @@ export interface BookingRepositoryPort {
    * whichever booking has been waiting longest.
    */
   findDueForSweep(now: Date, limit: number): Promise<Booking[]>;
+
+  /**
+   * Find accepted bookings that still owe a charge — the charge sweep's
+   * question, and a different one from `findDueForSweep`'s.
+   *
+   * That method asks *what has run out of time*; this one asks *what has
+   * been promised and not yet paid for*. They read the same column from
+   * opposite ends: a booking is due for the deadline sweep once
+   * `expires_at <= now`, and eligible for a charge only while
+   * `expires_at > now`. The two results are therefore disjoint by
+   * construction, which is what keeps one sweep from pushing a payment
+   * prompt at a booking the other is about to cancel.
+   *
+   * `PENDING_PAYMENT` is the whole status filter, and it is also the whole
+   * "not yet charged" test: a charge that lands moves the booking to
+   * `CONFIRMED` (`Booking.markPaid`), so a booking still at this status is
+   * one no charge has succeeded against. There is no separate "charged"
+   * flag to go stale.
+   *
+   * `maxAttempts` and `notAttemptedSince` are the caller's policy, passed in
+   * rather than known here, for the same reason `findDueForSweep` takes
+   * `now`: a repository that decided how many retries a charge gets, or how
+   * long to wait between them, would be a repository making a product
+   * decision. See `ChargeAcceptedBookingsInternalCommand`, which owns both
+   * numbers and explains why the second one exists at all.
+   *
+   * Oldest deadline first, so a wave too small to drain a backlog spends
+   * itself on the bookings closest to losing their slot rather than on
+   * whichever rows the planner happened to reach.
+   */
+  findAwaitingCharge(criteria: {
+    now: Date;
+    limit: number;
+    /** A booking that has already been attempted this many times is left to its payment window. */
+    maxAttempts: number;
+    /** Only bookings whose last attempt started at or before this instant — or that have none. */
+    notAttemptedSince: Date;
+  }): Promise<Booking[]>;
+
+  /**
+   * Count one charge attempt against a booking and return the new total.
+   *
+   * **Called before the charge, not after it.** A C2B blocks for up to a
+   * minute; if the attempt were recorded on the way back, a Worker evicted
+   * mid-call would leave the count untouched and the next wave would push a
+   * second prompt at a handset already showing one — and would keep doing it
+   * for ever, since the bound would never be reached. Recording first makes
+   * the crash cost a retry instead of costing the bound.
+   *
+   * The returned total is what `ChargeBookingCommand` builds this attempt's
+   * payment reference from, so the reference is reconstructible from the row
+   * afterwards — the thing any later reconciliation needs in order to ask the
+   * processor what became of an attempt whose answer we never heard.
+   *
+   * Deliberately not routed through the aggregate. `charge_attempts` is not
+   * part of the sale (see its column comment), and an atomic
+   * `SET charge_attempts = charge_attempts + 1` cannot lose an increment the
+   * way a read-transition-write through `Booking` could.
+   */
+  recordChargeAttempt(bookingId: string, at: Date): Promise<number>;
 }

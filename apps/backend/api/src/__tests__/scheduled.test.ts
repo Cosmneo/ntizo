@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import { infraStore } from "@ntizo/backend/shared/infra";
 import { Db } from "@ntizo/backend/shared/infra/database";
 import { NotifyUnreadInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
-import { SweepDueBookingsInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
-import { scheduled, SWEEP_LIMIT, BOOKING_SWEEP_LIMIT } from "../scheduled";
+import {
+  ChargeAcceptedBookingsInternalCommand,
+  SweepDueBookingsInternalCommand,
+} from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import { scheduled, SWEEP_LIMIT, BOOKING_SWEEP_LIMIT, BOOKING_CHARGE_LIMIT } from "../scheduled";
 import handler from "../index";
 import type { AppBindings } from "../types";
 
@@ -42,14 +45,23 @@ import type { AppBindings } from "../types";
  *    repair plan), which forces the notify-unread sweep to throw and proves
  *    the booking sweep still ran to completion regardless.
  *
- * Tests 1, 3 and 4 run the real sweep(s) against the real dev database (via
+ * 5. `scheduled` runs the charge sweep — the cron's third question, added by
+ *    Task 5 of the payment-and-confirmation-order plan — under one of the
+ *    other two sweeps' `try`, so anything either of them throws skips the
+ *    only thing on this platform that collects money. Guarded by "runs the
+ *    charge sweep even when both sweeps before it throw" below.
+ *
+ * Tests 1, 3, 4 and 5 run the real sweep(s) against the real dev database (via
  * `process.env.DATABASE_URL`, which `bun test` loads from `.env`) rather than
  * a fake repository, because the whole point is to prove the *wiring* down to
  * a real `getDb()` call — a fake repository would never notice a missing
  * `infraStore.runAsync`. This is safe to run repeatedly: the messaging and
- * booking tables hold zero due rows, so `claimDueForNotice` and
- * `findDueForSweep` always return `[]` and neither sweep raises a
- * notification, sends an email, expires a booking, or writes anything.
+ * booking tables hold zero due rows, so `claimDueForNotice`,
+ * `findDueForSweep` and `findAwaitingCharge` always return `[]` — no
+ * notification is raised, no email sent, no booking expired, **and no
+ * customer is charged**: with an empty result the charge sweep never reaches
+ * `PaymentChargePort` at all, which is what makes running this file against
+ * the live gateway's credentials harmless.
  */
 
 const ENV = {
@@ -265,5 +277,54 @@ describe("the scheduled worker", () => {
     await Promise.all(scheduledPromises);
     notifySpy.mockRestore();
     sweepDueSpy.mockRestore();
+  });
+
+  it("runs the charge sweep even when both sweeps before it throw", async () => {
+    // The same shape as the test above, one sweep further along. The charge
+    // sweep is last in `scheduled`, which makes it the one with the most
+    // `try` blocks upstream of it that could swallow it — and it is the only
+    // one of the three whose failing silently means a provider blocks their
+    // Saturday for a booking nobody was ever asked to pay for.
+    //
+    // Both predecessors are forced to throw at once, because either of them
+    // sharing a `try` with this one would produce the same visible symptom:
+    // `chargeAccepted.execute` never called.
+    const notifySpy = spyOn(NotifyUnreadInternalCommand.prototype, "execute").mockImplementation(
+      async () => {
+        throw new Error("notify-unread sweep blew up");
+      },
+    );
+    const sweepDueSpy = spyOn(SweepDueBookingsInternalCommand.prototype, "execute").mockImplementation(
+      async () => {
+        throw new Error("booking deadline sweep blew up");
+      },
+    );
+    const chargeSpy = spyOn(ChargeAcceptedBookingsInternalCommand.prototype, "execute");
+
+    const { ctx, scheduledPromises } = fakeExecutionContext();
+
+    // Still no rejection out of `scheduled()` itself: a cron invocation has
+    // nobody to report one to.
+    await scheduled(fakeController(), ENV, ctx);
+
+    expect(chargeSpy).toHaveBeenCalledTimes(1);
+    // Its own limit, two orders of magnitude below the sweeps' — a charge is
+    // a blocking round trip to a handset, not a database write. Passing
+    // `BOOKING_SWEEP_LIMIT` here by copy-paste would budget two hundred
+    // minute-long calls into one cron invocation.
+    expect(chargeSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_CHARGE_LIMIT });
+    // Resolved, not merely called. The dev database holds no booking
+    // awaiting a charge, so this is always { attempted: 0, failed: 0 } — and
+    // that zero is also what guarantees no real charge is attempted by
+    // running this file.
+    await expect(chargeSpy.mock.results[0]?.value).resolves.toEqual({
+      attempted: 0,
+      failed: 0,
+    });
+
+    await Promise.all(scheduledPromises);
+    notifySpy.mockRestore();
+    sweepDueSpy.mockRestore();
+    chargeSpy.mockRestore();
   });
 });

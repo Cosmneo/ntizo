@@ -38,6 +38,30 @@ export const SWEEP_LIMIT = 200;
 export const BOOKING_SWEEP_LIMIT = 200;
 
 /**
+ * How many accepted bookings one wave may charge.
+ *
+ * **Two orders of magnitude below the two limits above, and the arithmetic is
+ * the reason.** Those sweeps do database work: two hundred rows is two
+ * hundred short transactions and a wave finishes in well under a second. A
+ * charge is an M-Pesa C2B, which *blocks* — it pushes a prompt to a handset
+ * and does not answer until the customer accepts, refuses, or about sixty
+ * seconds pass (measured: `INS-9 Request timeout` at 62s against the live
+ * sandbox). They cannot be run in parallel either: this scope's Postgres pool
+ * is `{ max: 1 }`, so concurrent charges would interleave transactions on one
+ * connection. So a wave costs roughly `limit × 60s`, and five is what fits
+ * comfortably inside a scheduled invocation's wall-clock budget with room for
+ * the two sweeps that ran before it.
+ *
+ * A backlog is not lost, only spread: the cron wakes again in sixty seconds,
+ * and `ChargeAcceptedBookingsInternalCommand`'s own cooldown means the next
+ * wave picks up different bookings rather than re-prompting these. Five per
+ * minute is three hundred bookings an hour, against a payment window measured
+ * in minutes — far past anything this platform's volume requires, and the
+ * number to revisit first if it ever isn't.
+ */
+export const BOOKING_CHARGE_LIMIT = 5;
+
+/**
  * The worker that wakes up to check for unread messages.
  *
  * Nothing calls `NotifyUnreadInternalCommand` unless something schedules it —
@@ -81,6 +105,16 @@ export const BOOKING_SWEEP_LIMIT = 200;
  * synchronously inside `SweepBookingCommand.execute`, so it needs nothing
  * from `infraStore.waitUntil` — it only needs the DB context this scope
  * already set up.
+ *
+ * **So does the charge sweep, which is the third question this handler
+ * asks.** The first two are about clocks — is a message still unread, has a
+ * booking's deadline passed. The third is about money: which accepted
+ * bookings still owe a charge (`ChargeAcceptedBookingsInternalCommand`). It
+ * needs the same DB context and, like the booking sweep, nothing from
+ * `waitUntil`; unlike either of the others it also needs the M-Pesa
+ * credentials carried into the env below, and it is the only one of the three
+ * whose runtime is measured in minutes rather than milliseconds — see
+ * `BOOKING_CHARGE_LIMIT`.
  */
 export async function scheduled(
   controller: ScheduledController,
@@ -100,6 +134,16 @@ export async function scheduled(
       APP_URL: env.APP_URL ?? "http://localhost:3000",
       GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ?? "",
       GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET ?? "",
+      // No `?? ""` on these, unlike every binding above: the adapter that
+      // reads them distinguishes "absent" from "present", and an empty string
+      // would be a value that fails at the gateway instead of a stage that
+      // says it is not configured. This is the one scope that actually needs
+      // them — the charge runs from this cron and nowhere else today.
+      MPESA_API_KEY: env.MPESA_API_KEY,
+      MPESA_PUBLIC_KEY: env.MPESA_PUBLIC_KEY,
+      MPESA_ENVIRONMENT: env.MPESA_ENVIRONMENT,
+      MPESA_ORIGIN: env.MPESA_ORIGIN,
+      MPESA_SERVICE_PROVIDER_CODE: env.MPESA_SERVICE_PROVIDER_CODE,
     },
     async () => {
       infraStore.setHyperdrive(
@@ -171,6 +215,45 @@ export async function scheduled(
           }
         } catch (error) {
           console.error("[scheduled] booking sweep threw", error);
+        }
+
+        // The cron's third question, and its own `try` for the same reason
+        // the second one has one: it must run whether or not either sweep
+        // above threw, and it must be judged on its own outcome. It is also
+        // the only one of the three that spends real time — see
+        // `BOOKING_CHARGE_LIMIT` — so it goes last, after the two cheap
+        // questions have already been answered. Ordering it after the
+        // deadline sweep is not only about cost: that sweep cancels bookings
+        // whose payment window has closed, and running it first means this
+        // one never pushes a prompt at a booking that was about to be
+        // cancelled anyway. (The two queries are disjoint on `expires_at`
+        // regardless — see `findAwaitingCharge` — so the ordering is a
+        // second line of defence, not the only one.)
+        //
+        // A fresh `bootstrapBooking()` rather than reusing the one above:
+        // both are cheap object graphs over the same request-scoped `getDb()`,
+        // and reaching across the two `try` blocks for a binding declared
+        // inside one of them would tie their failure modes back together,
+        // which is exactly what splitting them undid.
+        try {
+          const booking = bootstrapBooking();
+          const { attempted, failed: chargeFailed } =
+            await booking.useCases.internal.chargeAccepted.execute({
+              limit: BOOKING_CHARGE_LIMIT,
+            });
+
+          if (chargeFailed > 0) {
+            // Same reasoning as the two logs above: no request scope exists
+            // for getRequestScopedLogger() to read. "attempted", not
+            // "charged": most attempts that do not become money are the
+            // ordinary case (a customer who never answers), and only a throw
+            // counts as failed here — see that command's own doc comment.
+            console.error(
+              `[scheduled] booking charge sweep: ${attempted} attempted, ${chargeFailed} failed`,
+            );
+          }
+        } catch (error) {
+          console.error("[scheduled] booking charge sweep threw", error);
         }
       } finally {
         // Workers run nothing after this function returns unless scheduled —

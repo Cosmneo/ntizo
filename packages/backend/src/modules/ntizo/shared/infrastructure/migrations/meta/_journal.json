@@ -225,6 +225,13 @@
       "when": 1788262315888,
       "tag": "0031_petite_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788265317342,
+      "tag": "0032_ambiguous_zarda",
+      "breakpoints": true
     }
   ]
 }

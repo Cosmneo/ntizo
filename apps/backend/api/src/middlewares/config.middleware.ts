@@ -26,6 +26,17 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       APP_URL: env.APP_URL ?? "http://localhost:3000",
       GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID ?? "",
       GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET ?? "",
+      // Nothing reachable from a request charges anybody today — the charge
+      // runs from the cron (see `scheduled.ts`). Carried anyway so the two
+      // scopes hold the same env: the moment a "Pagar agora" mutation exists,
+      // a customer retrying from their own booking would otherwise reach an
+      // adapter that reports the stage as unconfigured, and the cause would
+      // be this omission rather than anything in the charge itself.
+      MPESA_API_KEY: env.MPESA_API_KEY,
+      MPESA_PUBLIC_KEY: env.MPESA_PUBLIC_KEY,
+      MPESA_ENVIRONMENT: env.MPESA_ENVIRONMENT,
+      MPESA_ORIGIN: env.MPESA_ORIGIN,
+      MPESA_SERVICE_PROVIDER_CODE: env.MPESA_SERVICE_PROVIDER_CODE,
     },
     async () => {
       // Carried so signup can create the profile in the language the person is

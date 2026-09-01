@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { localDateAt } from "@ntizo/shared/datetime";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
@@ -14,7 +14,7 @@ import {
 } from "../../../../../shared/infrastructure/database/booking/enums";
 import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { Booking } from "../../../domain/aggregates/booking.aggregate";
-import { SlotAlreadyTakenError } from "../../../domain/exceptions";
+import { BookingNotFoundError, SlotAlreadyTakenError } from "../../../domain/exceptions";
 import type {
   BookingChangeRecord,
   BookingRepositoryPort,
@@ -413,5 +413,78 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
       .orderBy(asc(booking.expiresAt))
       .limit(limit);
     return rows.map(toAggregate);
+  }
+
+  /**
+   * `expires_at > now`, and that inequality is the whole relationship
+   * between this query and `findDueForSweep` above.
+   *
+   * The two run in the same cron invocation against the same column, and
+   * they must never both claim the same row: one is about to cancel the
+   * booking and tell the provider the customer never paid, the other is
+   * about to ask that customer for money. Written as strict `>` against the
+   * other's `<=`, so the boundary instant belongs to exactly one of them —
+   * the deadline sweep, which is the right answer, because a booking whose
+   * window has closed is not one to charge.
+   *
+   * `isNull(lastChargeAttemptAt)` is a real branch here, unlike
+   * `findDueForSweep`'s belt-and-braces null guard: a booking accepted and
+   * never yet charged genuinely has none, and it is the common case this
+   * query exists to find.
+   */
+  async findAwaitingCharge(criteria: {
+    now: Date;
+    limit: number;
+    maxAttempts: number;
+    notAttemptedSince: Date;
+  }): Promise<Booking[]> {
+    const rows = await getDb()
+      .select()
+      .from(booking)
+      .where(
+        and(
+          eq(booking.status, BookingStatus.PendingPayment),
+          lt(booking.chargeAttempts, criteria.maxAttempts),
+          or(
+            isNull(booking.lastChargeAttemptAt),
+            lte(booking.lastChargeAttemptAt, criteria.notAttemptedSince),
+          ),
+          isNotNull(booking.expiresAt),
+          gt(booking.expiresAt, criteria.now),
+        ),
+      )
+      .orderBy(asc(booking.expiresAt))
+      .limit(criteria.limit);
+    return rows.map(toAggregate);
+  }
+
+  /**
+   * `charge_attempts = charge_attempts + 1` in the database, not in this
+   * process. Two waves overlapping on one booking — which the cooldown makes
+   * unlikely and does not make impossible — each get their own number, where
+   * a read-then-write would have both read the same value and written the
+   * same one back.
+   *
+   * `.returning()` rather than a follow-up `SELECT`: the caller needs the new
+   * total for this attempt's payment reference, and a second round trip could
+   * only return a number some other writer had moved on since.
+   */
+  async recordChargeAttempt(bookingId: string, at: Date): Promise<number> {
+    const [row] = await getDb()
+      .update(booking)
+      .set({
+        chargeAttempts: sql`${booking.chargeAttempts} + 1`,
+        lastChargeAttemptAt: at,
+        updatedAt: at,
+      })
+      .where(eq(booking.id, bookingId))
+      .returning({ chargeAttempts: booking.chargeAttempts });
+    // Zero rows means the booking vanished between the caller's `findById`
+    // and this write — a row deleted under a running sweep, which nothing in
+    // the product does. Raising here rather than returning a made-up count
+    // keeps the caller from charging against a reference derived from a
+    // number that was never written.
+    if (!row) throw new BookingNotFoundError(bookingId);
+    return row.chargeAttempts;
   }
 }

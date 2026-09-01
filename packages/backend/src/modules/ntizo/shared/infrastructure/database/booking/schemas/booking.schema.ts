@@ -163,6 +163,43 @@ export const booking = bookingSchema.table(
 
     // Payment linkage.
     paymentRef: text("payment_ref"),
+    /**
+     * How many times the charge sweep has pushed a payment prompt for this
+     * booking.
+     *
+     * **Not on the `Booking` aggregate, deliberately.** Every other column
+     * here is either part of what was bought or a fact about how the sale
+     * moved; this one is bookkeeping about how many times infrastructure
+     * tried to collect, and nothing in the domain branches on it — the bound
+     * is a sweep policy, and a booking past it simply stops being selected
+     * and falls to its payment window like any other unpaid one. Putting it
+     * in `BookingProps` would also mean a read-modify-write through the
+     * aggregate where an atomic `SET charge_attempts = charge_attempts + 1`
+     * is both correct and shorter (`recordChargeAttempt`).
+     *
+     * It exists so a permanent failure is *visible* rather than infinite: a
+     * customer whose handset is off is retried a few times and then left to
+     * the cancellation that tells the provider why, instead of being prompted
+     * every sixty seconds until the window closes.
+     */
+    chargeAttempts: integer("charge_attempts").notNull().default(0),
+    /**
+     * When the last of those attempts started.
+     *
+     * The bound alone is not enough, and the reason is the cron interval. A
+     * C2B call **blocks until the customer answers or ~60 seconds pass**, and
+     * the sweep wakes every minute — so without a cooldown the second wave
+     * starts before the first wave's call has returned, and the customer gets
+     * a second prompt on top of a live one. Three attempts would land in
+     * three consecutive minutes and then never again. This column is what
+     * spaces them out across the payment window instead, and it is why
+     * `findAwaitingCharge` takes a `notAttemptedSince` rather than only a
+     * maximum.
+     *
+     * Null until the first attempt, which is what "never tried" looks like in
+     * the query.
+     */
+    lastChargeAttemptAt: timestamp("last_charge_attempt_at", { withTimezone: true }),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -256,7 +293,46 @@ export const booking = bookingSchema.table(
     // than relying on a backward index scan.
     index("booking_customer_created_idx").on(t.customerId, t.createdAt.desc()),
 
+    // The charge sweep (`findAwaitingCharge`) asks a different question of
+    // the same table every sixty seconds: not "whose clock ran out" but
+    // "which accepted booking still owes a charge" — `status =
+    // 'PENDING_PAYMENT' AND charge_attempts < N AND (last_charge_attempt_at
+    // IS NULL OR last_charge_attempt_at <= …) AND expires_at > now()
+    // ORDER BY expires_at ASC`.
+    //
+    // `booking_sweep_idx` above can technically serve it — `PENDING_PAYMENT`
+    // is one of its three statuses, so this predicate implies that one — but
+    // it would serve it badly. That index's rows are every booking whose
+    // deadline has *not* yet passed across all three clocks, which is nearly
+    // every live booking on the platform; this one holds only the bookings a
+    // provider has accepted and nobody has paid for, which at any instant is
+    // a handful. Same column, deliberately narrower predicate, and the two
+    // scans run against opposite ends of it (`<= now()` there, `> now()`
+    // here).
+    //
+    // Through `statusList`, even though this predicate is a single status
+    // rather than a list, and **the first attempt at it did not**. Writing
+    // `sql`${t.status} = ${BookingStatus.PendingPayment}`` reads correctly,
+    // compiles, and generates
+    // `WHERE "status" = $1` into the migration file — an unbound placeholder
+    // in static SQL, which fails on apply with `there is no parameter $1`
+    // (42P02). That is precisely the trap `statusList`'s own doc comment
+    // above records for `inArray`, and it is not specific to `inArray`: any
+    // interpolated *value* is parameterised. `statusList` goes through
+    // `sql.raw`, which is what puts a literal in the file, and its
+    // `readonly BookingStatus[]` parameter is what keeps `sql.raw` safe.
+    // A list of one renders as `'PENDING_PAYMENT'`, which is exactly what
+    // `=` wants.
+    index("booking_charge_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.status} = ${statusList([BookingStatus.PendingPayment])}`),
+
     check("booking_status_known", sql`${t.status} in (${statusList(BOOKING_STATUSES)})`),
+    // A negative attempt count would make `charge_attempts < N` true for ever
+    // — an unbounded retry loop written as an off-by-one. Cheap to forbid,
+    // and true for a backfill or a manual `UPDATE` that never goes through
+    // `recordChargeAttempt`.
+    check("booking_charge_attempts_non_negative", sql`${t.chargeAttempts} >= 0`),
     check("booking_price_minor_non_negative", sql`${t.priceMinor} >= 0`),
     check(
       "booking_commission_bps_range",

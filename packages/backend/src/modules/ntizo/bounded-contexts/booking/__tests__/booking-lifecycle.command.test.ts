@@ -169,6 +169,12 @@ class FakeRepo implements BookingRepositoryPort {
   async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
+  async findAwaitingCharge(): Promise<Booking[]> {
+    return [];
+  }
+  async recordChargeAttempt(): Promise<number> {
+    return 1;
+  }
 }
 
 /**
@@ -227,6 +233,12 @@ class RacingFakeRepo implements BookingRepositoryPort {
   async appendChange(_change: BookingChangeRecord): Promise<void> {}
   async findDueForSweep(): Promise<Booking[]> {
     return [];
+  }
+  async findAwaitingCharge(): Promise<Booking[]> {
+    return [];
+  }
+  async recordChargeAttempt(): Promise<number> {
+    return 1;
   }
 }
 

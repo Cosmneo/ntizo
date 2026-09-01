@@ -712,6 +712,13 @@ describe("SweepDueBookingsInternalCommand", () => {
         save: (b, expectedStatus) => repo.save(b, expectedStatus),
         appendChange: (c: BookingChangeRecord) => repo.appendChange(c),
         findDueForSweep: (n, limit) => repo.findDueForSweep(n, limit),
+        // The charge sweep's half of the port, forwarded rather than stubbed
+        // for the same reason every other method here is: this object stands
+        // in for the real repository with exactly one method made flaky, and
+        // a stub would be a second way for it to differ from the real one.
+        // Nothing in this file calls either.
+        findAwaitingCharge: (criteria) => repo.findAwaitingCharge(criteria),
+        recordChargeAttempt: (id, at) => repo.recordChargeAttempt(id, at),
         findById: (id) => {
           if (id === vanishedId) {
             throw new Error("simulated: row vanished between select and expire");

@@ -216,6 +216,20 @@ describe("booking money and status CHECK constraints", () => {
     );
   });
 
+  /**
+   * A negative attempt count makes `charge_attempts < N` true for ever — an
+   * unbounded retry loop written as an off-by-one, and the one thing on this
+   * column that would be genuinely dangerous. Nothing in the product writes
+   * one (`recordChargeAttempt` only ever increments), which is exactly why
+   * the constraint has to be on the table rather than in the command: it is
+   * still true for a backfill or a hand-written `UPDATE`.
+   */
+  test("refuses a negative charge_attempts", async () => {
+    await expect(insertBooking({ chargeAttempts: -1 })).rejects.toThrow(
+      /booking_charge_attempts_non_negative/,
+    );
+  });
+
   test("refuses a negative commission_minor", async () => {
     await expect(insertBooking({ commissionMinor: -1 })).rejects.toThrow(
       /booking_commission_minor_non_negative/,
@@ -479,6 +493,43 @@ describe("booking_member_slot_no_overlap", () => {
     }
     for (const status of BOOKING_STATUSES) {
       if (!(DEADLINE_BEARING_STATUSES as readonly string[]).includes(status)) {
+        expect(definition).not.toContain(status);
+      }
+    }
+  });
+
+  /**
+   * The charge sweep's own index, checked the same way and for the same
+   * reason as the deadline sweep's above: a partial index whose predicate
+   * does not imply the query's is not an error, it is simply never used, and
+   * every test stays green while Postgres sequentially scans `booking` once a
+   * minute for ever.
+   *
+   * Narrower than `booking_sweep_idx` on purpose — one status, not three.
+   * `booking_sweep_idx` could technically serve this query (`PENDING_PAYMENT`
+   * is one of its statuses) but its rows are every live booking on the
+   * platform, where these are only the ones a provider has accepted and
+   * nobody has paid for. Both directions again: `PENDING_PAYMENT` must be in
+   * the predicate, and no other status may be, because a widened predicate
+   * here would quietly invite the charge sweep to prompt customers for
+   * bookings nobody has accepted.
+   */
+  test("the charge index is partial on PENDING_PAYMENT alone", async () => {
+    const rows = await sql`
+      SELECT indexdef
+      FROM pg_indexes
+      WHERE schemaname = 'ntizo_booking'
+        AND tablename = 'booking'
+        AND indexname = 'booking_charge_idx'`;
+    const definition = rows[0]?.["indexdef"] as string | undefined;
+    expect(definition).toBeDefined();
+    // The column the charge sweep both filters and orders by.
+    expect(definition).toContain("expires_at");
+    expect(definition).toContain("WHERE");
+    expect(definition).toContain(BookingStatus.PendingPayment);
+
+    for (const status of BOOKING_STATUSES) {
+      if (status !== BookingStatus.PendingPayment) {
         expect(definition).not.toContain(status);
       }
     }
