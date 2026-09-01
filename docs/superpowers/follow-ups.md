@@ -2568,26 +2568,48 @@ past attempt is rebuildable from the row; the call is the only missing piece.
 **Trigger:** the first real customer payment, or any report of a booking cancelled for non-payment
 by a customer who says they paid.
 
-## #108 — `submit`, `accept` and `decline` exist but are not mounted, and the calendar hold got 10× longer
+## #108 — `create` and `submit` are mounted and unthrottled; `accept` and `decline` are still not mounted
 
-`write/booking/graphql/schema/mutations.ts` exposes only `booking.create`. The three commands the
-confirm-first flow turns on — with their authorisation, their compare-and-swap and their tests —
-have no caller, so nothing in the reversed flow is reachable end to end and a booking can only be
-moved along by hand. That is the original booking spec's slicing rule, not an accident: the customer
-screens and the provider's list and detail page are their own work.
+**Rewritten after the checkout-pages branch, which falsified the old title and tripped the old
+trigger.** This entry used to open "`write/booking/graphql/schema/mutations.ts` exposes only
+`booking.create`" and to title itself "`submit`, `accept` and `decline` exist but are not mounted".
+`booking.submit` is mounted now, and `/booking/$bookingId/confirm` calls it. The trigger said the
+rate limit belonged in the same change as mounting; one of the three was mounted and no throttle
+landed. **That omission is deliberate and stays deliberate** — a throttle is a platform concern with
+its own shape, and the checkout branch was not the place to invent one — but the register has to
+describe the world as it is or it cannot be used to judge urgency.
 
-Carry one consequence with it. `DRAFT` joined `SLOT_HOLDING_STATUSES`, so `booking.create` — an
-authenticated mutation with no cost and no throttle anywhere in this repo — now blocks a provider's
-seat for `checkout_hold_minutes` (30), and once `submit` is mounted for a further
+Where things actually stand:
+
+- **`booking.create` — mounted.** Step 1's confirm calls it.
+- **`booking.submit` — mounted.** Step 3's send calls it.
+- **`accept` and `decline` — written, tested, not mounted.** They belong to the provider inbox,
+  which has its own spec. Until it exists, a submitted request can only be accepted by hand, and
+  the ordinary end state of a request is its response window lapsing. The customer pages are built
+  to say so rather than to treat it as an anomaly.
+- **No rate limit anywhere in this repo**, on any of it.
+
+The hold consequence is unchanged and is now live rather than prospective. `DRAFT` is in
+`SLOT_HOLDING_STATUSES`, so `booking.create` — authenticated, free, unthrottled — blocks a
+provider's seat for `checkout_hold_minutes` (30), and `booking.submit` extends that by
 `provider_response_minutes` (120). Before this branch the longest free hold was
 `payment_window_minutes` (15). One signed-in account can hold every slot on a provider's grid and
 repeat it as each expires; the exclusion constraint, the seat assignment and the availability engine
 all honour the hold, correctly, which is exactly what makes it effective.
 
+Two things blunt it and neither closes it. `CreateBookingCommand` expires a customer's existing
+`DRAFT` before creating the next, so one account holds one slot at a time through the ordinary UI —
+but a scripted caller creating and abandoning in a loop still walks the grid, and `submit` turns a
+30-minute hold into a 150-minute one that the one-draft rule does not touch (it filters
+`status = 'DRAFT'`).
+
 The spec's "trade being accepted" paragraph names the payment risk moving to the provider. It does
 not name this one.
 
-**Trigger:** mounting the three mutations — the rate limit belongs in the same change, not after it.
+**Trigger:** mounting `accept` or `decline`, opening the platform to accounts that are not
+hand-created, or the first provider report of slots held by somebody who never books. Whichever
+comes first — and the throttle now belongs in a change of its own, since the mounting it was
+supposed to ride along with has already happened.
 
 ### #104, the durable fix
 
@@ -2686,3 +2708,38 @@ gets stronger — it could then assert the rendered time survives changing the p
 
 **Trigger:** before a provider can plausibly relocate — a second launch market, or the first support
 ticket about an appointment that changed time by itself.
+
+## #114 — `booking.byId` puts the commission on the wire, and the design says the customer never sees it
+
+`bookingById` reuses `bookingReadModel`, which carries `commissionBps` and `commissionMinor`. It is
+the customer's own booking, read by the customer's own session, so both numbers are served to the
+browser on every checkout page load.
+
+**Pre-existing, and identical in kind to `booking.mine`'s**, which has exposed the same two fields
+since the read tier was built — which is why the checkout branch did not fix it there. What the
+branch changed is who is looking: the commission now travels to the three pages the design singles
+out as the ones a customer may not be shown a fee on.
+
+Checkout's own client defends itself twice and neither defence reaches the wire's other end.
+`CheckoutBooking` is `Omit<BookingDTO, "commissionBps" | "commissionMinor">`, so a page reading one
+is a compile error; `BOOKING_FIELDS` never selects them, so the current query genuinely does not ask
+(and `checkout.repository.test.ts` now holds that document to it, after six reviews in which the
+claim could not fail). Both are properties of *this* consumer. Any other caller of `bookingById` —
+another feature, a devtools panel, somebody reading the network tab over a customer's shoulder —
+gets the split.
+
+"The commission is deducted from the provider's payout and is never shown to the customer" is a
+stated global constraint. Today it is enforced by client-side selection sets, which is a convention
+rather than a rule: the honest fix is a customer-facing projection of `bookingReadModel` that does
+not carry the fields at all, so `bookingById` and `bookingMine` cannot serve them to a customer
+session whatever a client asks for. It is the same shape as `booking.byId` already filtering on the
+session's customer id *inside* the query rather than returning a row plus a check.
+
+Not fixed on the checkout branch because it is a read-tier change touching a shared read model and
+two mounted fields, and because nothing in the product renders it — the exposure is real and the
+harm is not yet.
+
+**Trigger:** the second consumer of `bookingById` or `bookingMine`, the provider inbox reusing this
+read model for the *other* audience (where the split is legitimately visible and the customer's
+side then differs by convention alone), or any commission-visibility review that treats "the
+customer never sees it" as an enforced property.

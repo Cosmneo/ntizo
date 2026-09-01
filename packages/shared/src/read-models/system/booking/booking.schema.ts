@@ -98,13 +98,28 @@ export const bookingReadModel = z.object({
    * booking or the same defect comes back one page later, printing a
    * customer a different appointment to the one they will get.
    *
-   * **Not part of the snapshot**, and read live off `provider.timezone`
-   * rather than copied onto the row. It is the same class of field as
-   * `serviceId`: what it identifies cannot drift the way a name or a price
-   * can, because a provider that moves zone has moved the appointment too —
-   * the instant in `startsAt` is unchanged and the civil time it is spoken
-   * of in follows the provider, which is the honest answer rather than a
-   * stale one.
+   * **Not part of the snapshot today: it is an `innerJoin` on `provider`,
+   * read live. That is a gap, not a decision — see follow-up #113.**
+   *
+   * The argument that put it here was that this is the same class of field as
+   * `serviceId`, whose identity cannot drift. It is not. `serviceId` names a
+   * row; `provider.timezone` is a *mutable attribute* of one, in the same
+   * class as `provider.name` — which this schema snapshots, and which a
+   * provider edits on the very page they manage their calendar from.
+   *
+   * The case that decides it is a provider who relocates while still serving
+   * the same city. The instant does not move; `startsAt` is a `timestamptz`.
+   * The words do. A customer who agreed to "Sábado às 14:00" in Maputo, whose
+   * provider has since moved to Lisbon, is shown 13:00 — a wall clock
+   * matching neither what was agreed nor where the work happens. Sharper
+   * still for an `at_customer` service, where the relevant civil clock was
+   * never the provider's to begin with: "the provider moved zone, so the
+   * appointment moved too" is true for a shopfront and false for a callout.
+   *
+   * Snapshotting it is #113's own work and is deliberately not done here. The
+   * value this field carries is byte-identical either way, which is what
+   * makes the change safe to defer — and why nobody notices it is outstanding
+   * unless this comment says so.
    */
   timezone: z.string().min(1),
 
