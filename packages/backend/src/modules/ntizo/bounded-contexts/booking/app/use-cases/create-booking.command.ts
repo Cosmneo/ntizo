@@ -11,6 +11,7 @@ import {
 } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import { cappedToSlotStart } from "./capped-to-slot-start";
+import type { BookingExpiredReason } from "./sweep-booking.command";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
@@ -82,6 +83,18 @@ const RESULT_TO_REFUSAL: Record<
 };
 
 /**
+ * What `booking_change.reason` records for the draft a customer replaced.
+ *
+ * Typed against `BookingExpiredReason` rather than written as a loose
+ * string, which is the whole reason that union is closed: this hop and the
+ * sweep's two are the same hop — `DRAFT` becoming `EXPIRED` — and a rename
+ * on either side of the cause/reason pairing has to break something. See
+ * that type, which is declared beside the sweep because the sweep produces
+ * two of its three members.
+ */
+const SUPERSEDED_BY_NEW_DRAFT: BookingExpiredReason = "superseded_by_new_draft";
+
+/**
  * Turning a customer's checkout into a held slot and a debt they have not yet
  * paid.
  *
@@ -114,8 +127,9 @@ const RESULT_TO_REFUSAL: Record<
  * free" would be the exact defect this task exists to close, one layer up.
  *
  * **A customer holds one draft at a time.** Whatever draft this customer was
- * already holding is expired, its slot released and a `BookingExpired`
- * carrying `superseded` published, before the new one is inserted. Without
+ * already holding is expired, its history row written, its slot released and
+ * a `BookingExpired` carrying `superseded` published, before the new one is
+ * inserted. Without
  * that rule a customer who abandons step 2 three times leaves three of a
  * provider's slots held for thirty minutes each — follow-up #108's
  * calendar-hold problem arriving by accident rather than by attack. It is not
@@ -288,6 +302,30 @@ export class CreateBookingCommand {
         const expired = previous.expire(at);
         const applied = await this.repo.save(expired, previous.status);
         if (applied) {
+          // Save, then append, then release, then publish — the order every
+          // other command that ends a booking uses. The durable answer to
+          // "why did this draft die?" is written before anything is
+          // announced, so it survives a consumer that never runs.
+          //
+          // The sweep writes this row for the *other* route from `DRAFT` to
+          // `EXPIRED`; a command writing history for one route and not the
+          // other would leave `booking_change` answering the same question
+          // differently depending on which code retired the draft.
+          //
+          // `changedByUserId` is the customer, not null: unlike the sweep's
+          // row, somebody did do this — deliberately, seconds ago, by
+          // picking a different time. Every `previous*` field is null
+          // because this hop moved none of them.
+          await this.repo.appendChange({
+            bookingId: previous.id,
+            changedByUserId: input.customerId,
+            reason: SUPERSEDED_BY_NEW_DRAFT,
+            previousStartsAt: null,
+            previousEndsAt: null,
+            previousProviderMemberId: null,
+            previousPriceMinor: null,
+          });
+
           await this.slotHold.release(previous.id);
           await this.outboxPort.publish(
             [

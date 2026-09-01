@@ -25,7 +25,8 @@ export interface SweepBookingInput {
 const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
 
 /**
- * What `booking_change.reason` records for the two endings that expire.
+ * What `booking_change.reason` records for every ending that expires — this
+ * command's two, and `CreateBookingCommand`'s one.
  *
  * Machine tokens, not sentences — the same contract `DeclineBookingCommand`'s
  * `DECLINED_WITHOUT_REASON` keeps, and for the same reason: whatever renders
@@ -37,15 +38,29 @@ const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
  * command can produce — name *windows*, and a window is not a reason: a
  * column that promises a cause and answers with a clock is a column that
  * lies. So these are their own vocabulary rather than a reuse of that one.
+ * `superseded_by_new_draft` keeps that separation honest from the other
+ * side: its cause, `superseded`, names no window at all.
  *
- * A closed union rather than two loose strings, and that is the half of this
+ * **`superseded_by_new_draft` is produced elsewhere**, by
+ * `CreateBookingCommand` expiring the draft a customer replaced. It is
+ * declared here rather than there because this is one vocabulary for one
+ * hop — `DRAFT`/`AWAITING_PROVIDER` becoming `EXPIRED` — and a second union
+ * next to the second producer would be two vocabularies for it, which is the
+ * exact drift this type was closed to prevent. A command writing history for
+ * one route into `EXPIRED` and not the other reads as an oversight rather
+ * than a decision, so all three routes write a row.
+ *
+ * A closed union rather than loose strings, and that is the half of this
  * that took a second pass to get right. The cancellation ending has
  * `BookingCancelledReason` holding it to a contract; before this type, these
- * two had nothing, so a rename on either side of the clock/reason pairing
+ * had nothing, so a rename on either side of the cause/reason pairing
  * would have gone unnoticed and the two vocabularies could drift apart in
  * silence.
  */
-export type BookingExpiredReason = "checkout_hold_expired" | "provider_did_not_respond";
+export type BookingExpiredReason =
+  | "checkout_hold_expired"
+  | "provider_did_not_respond"
+  | "superseded_by_new_draft";
 
 /**
  * The `BookingExpiredCause` members that really are clocks — the only ones a
@@ -74,6 +89,12 @@ type BookingExpiredClock = Exclude<BookingExpiredCause, "superseded">;
  * the same one `booking.aggregate.test.ts` puts on a new slot-holding status.
  * Renaming a clock member breaks this map's key; renaming a reason breaks its
  * value. Neither can move alone.
+ *
+ * `superseded_by_new_draft` has no key here, and cannot: its cause is not a
+ * clock, so `BookingExpiredClock` above excludes it and this sweep can never
+ * reach it. That one cause/reason pairing lives beside its own producer, in
+ * `CreateBookingCommand` — the map is total over what a *deadline* can
+ * produce, not over the reason vocabulary.
  *
  * The cancellation ending is deliberately not in here. It reuses
  * `CUSTOMER_DID_NOT_PAY` above rather than declaring a token of its own,

@@ -393,6 +393,29 @@ async function announcementsFor(
   }));
 }
 
+/**
+ * The durable history the command left behind for one booking.
+ *
+ * The event above is a message; this is the record. If Notification drops
+ * `BookingExpired`, or a customer asks afterwards why the slot they were
+ * holding is gone, `booking_change` is the only thing that still answers —
+ * and the sweep already writes one for the other route from `DRAFT` to
+ * `EXPIRED`, so this path writing none would leave the table answering the
+ * same question differently depending on which code retired the draft.
+ */
+async function historyFor(
+  bookingId: string,
+): Promise<{ reason: string; changedByUserId: string | null }[]> {
+  return db
+    .select({
+      reason: bookingChange.reason,
+      changedByUserId: bookingChange.changedByUserId,
+    })
+    .from(bookingChange)
+    .where(eq(bookingChange.bookingId, bookingId))
+    .orderBy(asc(bookingChange.changedAt));
+}
+
 describe("CreateBookingCommand, one open draft per customer", () => {
   test("expires the customer's previous draft, and releases its slot", async () => {
     // The fixture that makes this able to fail: the customer already holds a
@@ -451,6 +474,15 @@ describe("CreateBookingCommand, one open draft per customer", () => {
         .orderBy(asc(outboxEvent.createdAt))
         .limit(1);
       expect(row?.aggregateType).toBe("booking");
+
+      // And the durable half, against the real column: the actor is the
+      // customer rather than the sweep's null, because somebody did do this.
+      expect(await historyFor(first.id)).toEqual([
+        { reason: "superseded_by_new_draft", changedByUserId: customerId },
+      ]);
+      // The draft that survived has no history at all — creation is not a
+      // hop `booking_change` records.
+      expect(await historyFor(second.id)).toEqual([]);
     });
   });
 

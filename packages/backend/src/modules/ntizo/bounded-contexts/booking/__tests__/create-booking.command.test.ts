@@ -128,6 +128,7 @@ class FakeRepo implements BookingRepositoryPort {
   public openDraftQueries: string[] = [];
   public savedArg: Booking | null = null;
   public savedExpectedStatus: string | null = null;
+  public appendedChanges: BookingChangeRecord[] = [];
   /** What the compare-and-swap answers: false is "somebody moved it first". */
   public saveApplies = true;
 
@@ -179,7 +180,13 @@ class FakeRepo implements BookingRepositoryPort {
     return true;
   }
 
-  async appendChange(_change: BookingChangeRecord): Promise<void> {}
+  // Recorded, and `order`-stamped like `insert` and `save`, so a test can
+  // tell that the history row was written before the slot was released
+  // rather than merely that both happened.
+  async appendChange(change: BookingChangeRecord): Promise<void> {
+    this.appendedChanges.push(change);
+    this.unitOfWork?.order.push("append");
+  }
 
   async findDueForSweep(): Promise<Booking[]> {
     return [];
@@ -849,6 +856,25 @@ describe("CreateBookingCommand", () => {
       expect(repo.savedExpectedStatus).toBe("DRAFT");
       expect(slotHold.released).toEqual(["bk-old"]);
 
+      // The durable half. An event is a message; this is the record, and the
+      // sweep already writes one for the other route from DRAFT to EXPIRED —
+      // so this path writing none would leave `booking_change` answering the
+      // same question differently depending on which code retired the draft.
+      //
+      // `changedByUserId` is the customer rather than the sweep's null:
+      // somebody did do this, deliberately.
+      expect(repo.appendedChanges).toEqual([
+        {
+          bookingId: "bk-old",
+          changedByUserId: INPUT.customerId,
+          reason: "superseded_by_new_draft",
+          previousStartsAt: null,
+          previousEndsAt: null,
+          previousProviderMemberId: null,
+          previousPriceMinor: null,
+        },
+      ]);
+
       const [expiry, creation] = outbox.published;
       expect(expiry?.events[0]?.eventName).toBe("booking.expired");
       expect(creation?.events[0]?.eventName).toBe("booking.created");
@@ -882,6 +908,10 @@ describe("CreateBookingCommand", () => {
       await command.execute(INPUT);
 
       expect(slotHold.released).toEqual([]);
+      // Nothing written either: a history row for a transition this command
+      // never actually applied would be a record of something that did not
+      // happen.
+      expect(repo.appendedChanges).toEqual([]);
       expect(outbox.published).toHaveLength(1);
       expect(outbox.published[0]?.events[0]?.eventName).toBe("booking.created");
     });
@@ -892,6 +922,7 @@ describe("CreateBookingCommand", () => {
       await command.execute(INPUT);
 
       expect(repo.savedArg).toBeNull();
+      expect(repo.appendedChanges).toEqual([]);
       expect(slotHold.released).toEqual([]);
       expect(outbox.published).toHaveLength(1);
     });
