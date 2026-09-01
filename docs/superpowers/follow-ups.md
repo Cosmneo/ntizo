@@ -2495,3 +2495,96 @@ touches, in a stable order to avoid deadlock between two bookings that span the 
 
 **Trigger:** before an hourly or multi-hour option can produce a booking that crosses local midnight,
 or the first time a customer reports "already taken" on a slot that was free.
+
+## #103 — A slot can be offered with less notice than the three clocks need
+
+The checkout hold (30 min), the provider response window (120 min) and the payment window (15 min)
+sum to 165 minutes, and the only lead-time rule anywhere is `slot-validity.reader.ts`'s
+`startsAt > Date.now()` at creation. Deadlines are now capped at the slot's own start, so nothing
+can be charged for a service whose time has passed — but a slot booked ten minutes out gets a
+ten-minute hold and may leave the provider no window at all to answer. The cap makes the outcome
+honest; it does not make the booking useful.
+
+The remedy is on the other side: Scheduling should not *offer* a slot that starts inside the run-up
+the clocks need. That is a decision about what a customer is shown, not about what the booking
+aggregate accepts, which is why the cap was the right thing to build first.
+
+**Trigger:** the first customer complaint that a booking "expired immediately", or before same-day
+booking is promoted anywhere in the product.
+
+## #104 — Test fixtures pinned to future dates go red on a calendar boundary
+
+Two command test files pinned their fixture slot to `2026-09-04T12:30:00.000Z`. Once deadlines were
+capped at the slot's start, every deadline assertion in both files was three days from failing —
+not on a change, but on the date arriving, and whoever met it would have been debugging a cap that
+was working correctly. Both are now relative.
+
+A fixture that merely needs a stable value is fine pinned. The ones that matter are those whose
+*correctness depends on the date still being in the future*; those are a suite that fails for a
+reason unrelated to the code.
+
+**Trigger:** any test failing on a date nobody changed anything on — and re-check whenever a new
+rule compares a fixture's date to `now`.
+
+## #105 — `prettier --check` fails on files nobody has touched
+
+There is no prettier config at the repo root, so `bunx prettier --check` runs at its 80-column
+default against a codebase written to about 100 and fails on untouched files. It is not wired into
+any gate, and nothing depends on it — but a check that fails on work you did not do teaches
+everybody to ignore it, which is worse than not having one.
+
+Either add a config matching the codebase's actual width and make it a gate, or remove the illusion
+that running it means anything.
+
+**Trigger:** anyone proposing to add formatting to CI, or the next time someone runs it and wastes
+time on the output.
+
+## #106 — Five transitions in the booking state machine have no code, and `COMPLETED` is unreachable
+
+The design's diagram draws `CONFIRMED → MARKED_DONE`, `MARKED_DONE → COMPLETED`,
+`MARKED_DONE → DISPUTED`, `CONFIRMED → CANCELLED` and reschedule. None is implemented. `CONFIRMED`
+became reachable for the first time when `markPaid` was retargeted, and it is terminal.
+
+The consequence worth writing down: `booking-review-eligibility.adapter.ts` requires `COMPLETED`, so
+it can never return true. Reviews cannot be left on any booking, and nothing says so — the adapter
+looks correct and simply has no reachable input.
+
+This is the original booking spec's own slicing rather than an omission, but the plans that
+implemented the reversal do not say so anywhere a reader of the diagram would find it.
+
+**Trigger:** before anyone builds the review flow, or the first "why can't I review this?" report.
+
+## #107 — An ambiguous charge is abandoned rather than reconciled
+
+A charge whose outcome we do not know — the WAF's HTML 504 while the prompt is still live, our own
+transport timeout, an `INS-0` carrying no transaction id — now stops the booking rather than
+retrying it, because a second prompt can land on a live first one and refunds do not exist. That
+trades a possible missed charge for a possible double debit, deliberately and in the safe direction.
+
+The real answer is `queryTransactionStatus` against attempt N−1 before pushing attempt N.
+`chargeReference` and the third-party reference are both derived from `bookingId` + attempt so any
+past attempt is rebuildable from the row; the call is the only missing piece.
+
+**Trigger:** the first real customer payment, or any report of a booking cancelled for non-payment
+by a customer who says they paid.
+
+## #108 — `submit`, `accept` and `decline` exist but are not mounted, and the calendar hold got 10× longer
+
+`write/booking/graphql/schema/mutations.ts` exposes only `booking.create`. The three commands the
+confirm-first flow turns on — with their authorisation, their compare-and-swap and their tests —
+have no caller, so nothing in the reversed flow is reachable end to end and a booking can only be
+moved along by hand. That is the original booking spec's slicing rule, not an accident: the customer
+screens and the provider's list and detail page are their own work.
+
+Carry one consequence with it. `DRAFT` joined `SLOT_HOLDING_STATUSES`, so `booking.create` — an
+authenticated mutation with no cost and no throttle anywhere in this repo — now blocks a provider's
+seat for `checkout_hold_minutes` (30), and once `submit` is mounted for a further
+`provider_response_minutes` (120). Before this branch the longest free hold was
+`payment_window_minutes` (15). One signed-in account can hold every slot on a provider's grid and
+repeat it as each expires; the exclusion constraint, the seat assignment and the availability engine
+all honour the hold, correctly, which is exactly what makes it effective.
+
+The spec's "trade being accepted" paragraph names the payment risk moving to the provider. It does
+not name this one.
+
+**Trigger:** mounting the three mutations — the rate limit belongs in the same change, not after it.
