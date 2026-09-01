@@ -62,6 +62,7 @@ export function CheckoutCountdown({
   expiresAt,
   serviceId,
   optionId,
+  sending = false,
 }: {
   /** ISO 8601, straight off the draft. */
   expiresAt: string;
@@ -84,6 +85,26 @@ export function CheckoutCountdown({
    * disagree with it.
    */
   optionId?: string;
+  /**
+   * A write is in flight for this booking, so **do not navigate at zero**.
+   *
+   * The send is two sequential round trips (the profile, then the submit) and
+   * this is a Mozambican mobile connection: pressing "Enviar pedido" in the
+   * last seconds of the hold is not a rare accident. The server accepts that
+   * submit — the checkout-hold sweep runs on a one-minute cadence, so a draft
+   * a second past its deadline is still a `DRAFT` — and without this guard
+   * the countdown fires mid-flight and tells the customer their slot was
+   * released while their request is landing. They then book a second slot,
+   * and the one-draft rule does not clean up the first: `findOpenDraftForCustomer`
+   * filters `status = 'DRAFT'` and a sent request is not one. The provider
+   * gets two requests for one job.
+   *
+   * The navigation is deferred, not cancelled. If the send fails, this goes
+   * back to `false` with `remainingMs` still at zero and the effect below
+   * runs — the hold really did lapse, and by then that is the true thing to
+   * say.
+   */
+  sending?: boolean;
 }) {
   const { t } = useTranslation("checkout");
   const navigate = useNavigate();
@@ -96,7 +117,7 @@ export function CheckoutCountdown({
   }, [expiresAt]);
 
   useEffect(() => {
-    if (remainingMs > 0) return;
+    if (remainingMs > 0 || sending) return;
     // `replace`, so the back button does not walk the customer into the page
     // whose hold has just lapsed.
     void navigate({
@@ -105,7 +126,7 @@ export function CheckoutCountdown({
       search: { expired: true, ...(optionId ? { optionId } : {}) },
       replace: true,
     });
-  }, [remainingMs, navigate, serviceId, optionId]);
+  }, [remainingMs, sending, navigate, serviceId, optionId]);
 
   if (remainingMs <= 0) return null;
 

@@ -99,11 +99,26 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
     locationType: "at_provider",
     bookingMode: "priced",
     imageUrls: [],
-    // **Two options, deliberately, and the expensive one is not the default.**
-    // A single-option fixture cannot tell "books the package the customer
-    // chose" apart from "books the only package there is", so it cannot fail
-    // if the choice is dropped on the way here — which is exactly the defect
-    // `optionId` was added to close.
+    // **Three options, and the three roles are held by three different rows.**
+    //
+    // `opt-1` is the cheapest and `options[0]`, which is what `chosenOption`
+    // falls back to; `opt-3` carries the `isDefault` flag, which is what the
+    // *old* fallback used; `opt-2` is neither, which is what a customer
+    // chooses. Nothing here is decoration:
+    //
+    // - a single-option fixture cannot tell "books the package the customer
+    //   chose" from "books the only package there is";
+    // - with the flag on the cheapest row, the fallback tests pass under
+    //   either the old default-flag rule or the current cheapest one, so
+    //   reverting that rule leaves them green — and the fallback is what a
+    //   provider's service row links to, whose price column reads "a partir
+    //   de 500";
+    // - with the customer's choice on the *default* row, the "books what they
+    //   chose" test passes even when `optionId` is ignored entirely, which is
+    //   the defect it exists for.
+    //
+    // Ordered by price ascending because `serviceById` orders them that way
+    // and the page deliberately does not sort again.
     options: [
       {
         id: "opt-1",
@@ -114,18 +129,29 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
         minMinutes: null,
         stepMinutes: null,
         pricingMode: "fixed",
-        isDefault: true,
+        isDefault: false,
       },
       {
         id: "opt-2",
         name: "Corte e barba",
-        amountMinor: 90000,
+        amountMinor: 70000,
         currency: "MZN",
         durationMinutes: 90,
         minMinutes: null,
         stepMinutes: null,
         pricingMode: "fixed",
         isDefault: false,
+      },
+      {
+        id: "opt-3",
+        name: "Corte, barba e lavagem",
+        amountMinor: 90000,
+        currency: "MZN",
+        durationMinutes: 105,
+        minMinutes: null,
+        stepMinutes: null,
+        pricingMode: "fixed",
+        isDefault: true,
       },
     ],
     performers: [],
@@ -521,11 +547,15 @@ describe("ChooseWhenPage", () => {
   it("holds the package the customer chose, not the service's default", async () => {
     // The defect this closes: the chosen package used to be left on the
     // service page, and this one re-derived "marked default, else the first"
-    // — so somebody who read 900 beside "Corte e barba", pressed the button
-    // under that price, and confirmed here got a draft for the 500 one. It is
-    // silent, it goes either way depending on which package carries the
-    // default flag, and the price they agreed to is not the price the booking
-    // carries.
+    // — so somebody who read 700 beside "Corte e barba", pressed the button
+    // under that price, and confirmed here got a draft for a package they
+    // never saw. It is silent, it goes either way depending on which package
+    // carries the default flag, and the price they agreed to is not the price
+    // the booking carries.
+    //
+    // `opt-2` is deliberately neither the default (`opt-3`) nor the cheapest
+    // (`opt-1`), so this fails whichever of the two an `optionId`-ignoring
+    // page falls back to.
     const { create } = renderChooseWhen({
       serviceId: "svc-1",
       at: "/book/svc-1?optionId=opt-2",
@@ -547,8 +577,11 @@ describe("ChooseWhenPage", () => {
     // A regex, because the rail joins the package name and its length into
     // one line ("Corte e barba · 90 min") out of two text nodes.
     expect(await screen.findByText(/Corte e barba/)).toBeInTheDocument();
-    expect(screen.getByText(/900/)).toBeInTheDocument();
+    expect(screen.getByText(/700/)).toBeInTheDocument();
+    // Neither of the two prices a substitution would have printed: the
+    // cheapest, and the one carrying the default flag.
     expect(screen.queryByText(/500/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/900/)).not.toBeInTheDocument();
   });
 
   it("keeps the chosen package when the customer picks a time", async () => {
@@ -570,10 +603,12 @@ describe("ChooseWhenPage", () => {
     );
   });
 
-  it("falls back to the default package for a link that names none", async () => {
+  it("falls back to the cheapest package for a link that names none", async () => {
     // The service row on a provider's page is handed a `ServiceDTO`, whose
     // `defaultOption` carries no id at all, so it genuinely cannot name one.
-    // That link must still work.
+    // That link must still work — and it must land on the package the row's
+    // own price column promised, which reads "a partir de 500". The default
+    // flag sits on `opt-3` precisely so falling back to it fails here.
     const { create } = renderChooseWhen({ serviceId: "svc-1" });
     await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
@@ -584,7 +619,7 @@ describe("ChooseWhenPage", () => {
 
   it("falls back rather than breaking when the named package no longer exists", async () => {
     // A bookmarked link whose option was deactivated since. Booking the
-    // default is the recoverable answer, and honest because the rail names
+    // cheapest is the recoverable answer, and honest because the rail names
     // what it is booking — see the quoting test above.
     const { create } = renderChooseWhen({
       serviceId: "svc-1",
@@ -670,6 +705,41 @@ describe("ChooseWhenPage", () => {
     expect(screen.getByRole("button", { name: "300 min" })).toBeInTheDocument();
     // The default package's own minimum, which this customer did not choose.
     expect(screen.queryByRole("button", { name: "60 min" })).not.toBeInTheDocument();
+  });
+
+  it("will not offer to hold a slot on an hourly service, and says why", async () => {
+    // **`booking.create` refuses an hourly option and nothing stops a
+    // provider publishing one** — `canPublish` checks the member count and
+    // the option count and says nothing about pricing mode. So an hourly
+    // service is listed, its rail says "Ver disponibilidade", this page draws
+    // the grid, and Continuar used to be live over a mutation that could only
+    // throw `ServiceNotBookableError("hourly")`.
+    //
+    // The cost was two things at once. An entire published category could not
+    // be booked, and `SERVICE_NOT_BOOKABLE_HOURLY` has no key under
+    // `createError`, so the refusal read "Não foi possível guardar esta hora
+    // agora. Tente novamente." — a permanent refusal in a transient one's
+    // words, which makes the honest response to it *keep pressing*.
+    //
+    // **The click is the whole test.** The suite already rendered this
+    // fixture to assert the length ladder and never pressed the button, which
+    // is how every gate stayed green over a control that could only fail.
+    const { create } = renderChooseWhen({
+      serviceId: "svc-1",
+      service: hourlyService("svc-1"),
+      availability: hourlyAvailability("svc-1"),
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+
+    const confirm = screen.getByRole("button", { name: /continuar/i });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(confirm);
+
+    expect(create.calls).toEqual([]);
+    // Said, rather than left as a greyed button with no explanation — and
+    // said *instead of* the generic retry sentence, not beside it.
+    expect(screen.getByText(/cobrado à hora/i)).toBeInTheDocument();
+    expect(screen.queryByText(/tente novamente/i)).not.toBeInTheDocument();
   });
 
   it("will not hold anything until a time has been chosen", async () => {

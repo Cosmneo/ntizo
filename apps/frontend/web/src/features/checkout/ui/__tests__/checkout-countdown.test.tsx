@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { act, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
@@ -18,14 +19,31 @@ function expiresIn(seconds: number): string {
   return new Date(Date.parse(NOW) + seconds * 1000).toISOString();
 }
 
-function renderCountdown(expiresAt: string, optionId?: string) {
+function renderCountdown(expiresAt: string, optionId?: string, sending = false) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => (
-      <CheckoutCountdown expiresAt={expiresAt} serviceId="svc-1" optionId={optionId} />
-    ),
+    // A host owning `sending` as state, so a test can end the flight the way
+    // step 3 does — a mutation settling — rather than by re-rendering the
+    // whole router with a different closure. "Land" is what makes the
+    // deferral assertable as a deferral rather than as a cancellation.
+    component: function Host() {
+      const [inFlight, setInFlight] = useState(sending);
+      return (
+        <>
+          <CheckoutCountdown
+            expiresAt={expiresAt}
+            serviceId="svc-1"
+            optionId={optionId}
+            sending={inFlight}
+          />
+          <button type="button" onClick={() => setInFlight(false)}>
+            land
+          </button>
+        </>
+      );
+    },
   });
   // Step 1, the destination a lapsed hold sends the customer back to.
   const bookRoute = createRoute({
@@ -116,6 +134,45 @@ describe("CheckoutCountdown", () => {
     });
 
     expect(router.state.location.search).toMatchObject({ expired: true, optionId: "opt-2" });
+  });
+
+  it("does not navigate out from under a request that is being sent", async () => {
+    // **The send is two sequential round trips on a Mozambican mobile
+    // connection**, and the server accepts a submit a second past the
+    // deadline — the checkout-hold sweep runs on a one-minute cadence. So
+    // pressing "Enviar pedido" in the last seconds ends with the request
+    // landing while this component navigates away saying the slot was
+    // released. The customer then books a second slot, the one-draft rule
+    // does not clean up the first (`findOpenDraftForCustomer` filters
+    // `status = 'DRAFT'` and a sent request is not one), and the provider
+    // gets two requests for one job.
+    const { router } = renderCountdown(expiresIn(5), undefined, true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("goes back once the send has settled and the hold really is gone", async () => {
+    // The other half: this is a deferral, not a cancellation. A send that
+    // *failed* in the last seconds leaves a customer holding nothing, and by
+    // the time it has failed "the slot was released" is the true thing to
+    // say.
+    const { router } = renderCountdown(expiresIn(5), undefined, true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(router.state.location.pathname).toBe("/");
+
+    await act(async () => {
+      screen.getByRole("button", { name: "land" }).click();
+    });
+
+    expect(router.state.location.pathname).toBe("/book/svc-1");
+    expect(router.state.location.search).toMatchObject({ expired: true });
   });
 
   it("treats an expiry that has already passed as expired, not as a negative clock", async () => {

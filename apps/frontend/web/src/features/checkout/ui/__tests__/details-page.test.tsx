@@ -34,6 +34,8 @@ import { readDraftDetails } from "@/features/checkout/domain/draft-store";
 const fakes = vi.hoisted(() => ({
   booking: null as unknown,
   addresses: [] as AddressDTO[],
+  /** The address book refusing to answer — a transient failure, not an empty list. */
+  addressesFail: false,
   addAddress: vi.fn(),
   updateAddress: vi.fn(),
   deleteAddress: vi.fn(),
@@ -51,7 +53,13 @@ vi.mock("@/features/checkout/data/checkout.repository", () => ({
 
 vi.mock("@/features/account/data/address.repository", () => ({
   addressQueries: {
-    mine: () => ({ queryKey: ["user", "addresses"], queryFn: async () => fakes.addresses }),
+    mine: () => ({
+      queryKey: ["user", "addresses"],
+      queryFn: async () => {
+        if (fakes.addressesFail) throw new Error("address book unreachable");
+        return fakes.addresses;
+      },
+    }),
   },
   addAddress: fakes.addAddress,
   updateAddress: fakes.updateAddress,
@@ -94,6 +102,11 @@ function bookingFixture(over: Partial<BookingDTO> = {}): unknown {
     currency: "MZN",
     startsAt: "2026-09-04T13:00:00.000Z",
     endsAt: "2026-09-04T14:30:00.000Z",
+    // The service's own zone. This page prints no slot, but the panel it
+    // shows for a booking that has already been sent prints the provider's
+    // deadline — and a deadline formatted in the machine's zone is a test
+    // whose answer depends on where it runs.
+    timezone: "Africa/Maputo",
     addressLabel: null,
     addressLine: null,
     addressCity: null,
@@ -128,14 +141,18 @@ function renderDetails({
   bookingId,
   booking = bookingFixture(),
   addresses = [addressFixture("addr-1", "Casa", { isDefault: true })],
+  addressesFail = false,
 }: {
   bookingId: string;
   /** `null` is what the server answers with for an id that is not this customer's. */
   booking?: unknown;
   addresses?: AddressDTO[];
+  /** The address book refusing to answer, which is not the same as answering with nothing. */
+  addressesFail?: boolean;
 }) {
   fakes.booking = booking;
   fakes.addresses = addresses;
+  fakes.addressesFail = addressesFail;
   fakes.addAddress.mockReset();
 
   const queryClient = new QueryClient({
@@ -399,12 +416,18 @@ describe("DetailsPage", () => {
     // booking is the provider's response window, so a checkout countdown here
     // would be counting somebody else's deadline, and a continue button would
     // lead to a mutation that has already run.
+    //
+    // **The same panel step 3 shows, with the same deadline in it.** 12:30 UTC
+    // is 14:30 in Maputo. The two steps are one back-press apart and used to
+    // answer this booking differently — step 3 named the deadline, step 2 said
+    // only that the provider would answer "assim que puder".
     renderDetails({
       bookingId: "bk-1",
-      booking: bookingFixture({ status: "AWAITING_PROVIDER" }),
+      booking: bookingFixture({ status: "AWAITING_PROVIDER", addressLabel: "Casa" }),
     });
 
-    expect(await screen.findByText(/já foi enviado/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
+    expect(screen.getByText(/14:30/)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
   });
@@ -419,13 +442,16 @@ describe("DetailsPage", () => {
     // Step 3 is where that case is normally met, but this page is one
     // back-press from it, and with `accept` and `decline` unmounted this
     // phase a lapsed response window is the ordinary end state of a request
-    // rather than an unusual one. Same case, met from the other side.
+    // rather than an unusual one. **Same case, and now the same answer**: this
+    // page used to catch it and then hand it step 3's opposite sentence, so a
+    // customer who read "o prestador não respondeu a tempo" and pressed back
+    // was told "o prestador responde-lhe assim que puder" about the same row.
     //
     // The discriminator is the address: null on a DRAFT and only on a DRAFT,
     // because `Booking.submit` refuses to leave DRAFT without one. So this
     // fixture — expired *with* an address — is the one the whole distinction
-    // rests on, and without it reverting `holdLapsedUnsent` to a bare
-    // `["EXPIRED","CANCELLED"].includes(status)` leaves this file green.
+    // rests on, and without it reverting `checkoutOutcome`'s `EXPIRED` case to
+    // a bare "released" leaves this file green.
     const { router } = renderDetails({
       bookingId: "bk-1",
       booking: bookingFixture({
@@ -436,11 +462,95 @@ describe("DetailsPage", () => {
       }),
     });
 
-    expect(await screen.findByText(/já foi enviado/i)).toBeInTheDocument();
+    expect(await screen.findByText(/não respondeu a tempo/i)).toBeInTheDocument();
+    // Word for word what step 3 says about the identical booking.
+    expect(screen.getByText(/não foi cobrado nada/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /escolher outra hora/i })).toBeInTheDocument();
     // Stays put. The redirect is what made the loss invisible, and the
     // sibling assertions above prove this same page *does* redirect a draft
     // whose hold genuinely lapsed.
     expect(router.state.location.pathname).toBe("/booking/bk-1/details");
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("tells a customer whose provider accepted that the payment prompt is waiting", async () => {
+    // **The sharp one.** An operator hand-accepts a request — the stated mode
+    // this phase — the charge sweep pushes an M-Pesa prompt, and the payment
+    // window starts. This page used to answer that with "já não há nada para
+    // preencher aqui; o prestador responde-lhe assim que puder". A customer
+    // who believes it does nothing, the window closes, the booking is
+    // CANCELLED, and the provider is told the customer did not pay.
+    renderDetails({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "PENDING_PAYMENT", addressLabel: "Casa" }),
+    });
+
+    expect(await screen.findByText(/falta pagar/i)).toBeInTheDocument();
+    expect(screen.getByText(/M-Pesa/)).toBeInTheDocument();
+    // Not "the provider will answer as soon as they can" — they already have.
+    expect(screen.queryByText(/assim que puder/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("says the provider declined rather than that they are still thinking", async () => {
+    renderDetails({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "DECLINED", addressLabel: "Casa" }),
+    });
+
+    expect(await screen.findByText(/não aceitou o pedido/i)).toBeInTheDocument();
+    expect(screen.getByText(/não foi cobrado nada/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /escolher outra hora/i })).toBeInTheDocument();
+  });
+
+  it("falls back to a real address when the stored one has been deleted", async () => {
+    // Pick an address on this page, delete it from `/account/addresses` in the
+    // same tab, come back. The stored id survives in `sessionStorage` and
+    // names nothing the list can draw, so the radio group rendered with
+    // **nothing checked beside a live continue** — which sent the customer to
+    // step 3, which found no address and sent them straight back here, which
+    // restored the same dead id. Escapable only by noticing they had to click
+    // a radio, with nothing on screen saying so and the hold counting down.
+    sessionStorage.setItem(
+      "ntizo.checkout.bk-1",
+      JSON.stringify({ addressId: "addr-gone", description: "Portão azul" }),
+    );
+
+    renderDetails({
+      bookingId: "bk-1",
+      addresses: [
+        addressFixture("addr-1", "Casa", { isDefault: true }),
+        addressFixture("addr-2", "Escritório", { line1: "Rua da Sé 42" }),
+      ],
+    });
+
+    // The address book's default, which is the answer the customer already
+    // gave for "assume this one".
+    expect(await screen.findByRole("radio", { name: /Casa/ })).toBeChecked();
+    const proceed = screen.getByRole("button", { name: /continuar/i });
+    expect(proceed).toBeEnabled();
+
+    await userEvent.click(proceed);
+    // And the dead id is gone from the store, so step 3 is handed something
+    // it can actually send.
+    expect(readDraftDetails("bk-1")).toEqual({
+      addressId: "addr-1",
+      description: "Portão azul",
+    });
+  });
+
+  it("says the address book could not be read rather than offering to add one", async () => {
+    // **An errored list is not an empty one.** A customer with three saved
+    // addresses hitting a transient failure was shown the add-address form —
+    // the empty state — and either typed a duplicate of an address they
+    // already had or pressed a continue that bounced them off step 3.
+    renderDetails({ bookingId: "bk-1", addressesFail: true });
+
+    expect(await screen.findByText(/não foi possível carregar as suas moradas/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tentar de novo/i })).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: /nova morada/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /acrescentar morada/i })).not.toBeInTheDocument();
+    // Nothing to select, so nothing to continue with.
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
   });
 });

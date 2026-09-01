@@ -360,6 +360,32 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   // or by coming back from sign-in is already selected on arrival.
   const selectedStart = day?.starts.find((s) => s.startsAt === search.startsAt) ?? null;
   /**
+   * **`booking.create` refuses an hourly option, and nothing stops a provider
+   * publishing one.** `canPublish` checks the member count and the option
+   * count and says nothing about pricing mode, so an hourly service is a real,
+   * published, listed thing whose service page renders "Ver disponibilidade"
+   * and lands here.
+   *
+   * The command's refusal is `ServiceNotBookableError("hourly")`, which is
+   * permanent: it is a fact about the option, and pressing the button again
+   * cannot change it. `SERVICE_NOT_BOOKABLE_HOURLY` has no key under
+   * `createError`, so the customer read the generic "Tente novamente" — a
+   * permanent refusal wearing a transient one's words, which makes the honest
+   * reaction to it *keep pressing*.
+   *
+   * So the refusal is moved forward to where it can be explained. Adding the
+   * missing error string would have been the smaller change and the worse
+   * one: the customer would still choose a time, still choose a length off
+   * the ladder (which `booking.create` has no field to carry — it is a
+   * control that changes nothing), and still learn at the end.
+   *
+   * The calendar stays. This page is reached from a button that says "see
+   * availability", and seeing it is exactly what an hourly service can still
+   * offer; what it cannot offer is the confirm, and that now says so.
+   * Follow-up #94 is where hourly booking itself lives.
+   */
+  const isHourly = option?.pricingMode === "hourly";
+  /**
    * `selectedStart`, not `search.startsAt`.
    *
    * The URL is the customer's *claim* about which slot they want; the grid is
@@ -379,7 +405,8 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
    * three at once, and keeps a rule worth stating plainly: this page never
    * offers to book something it is not showing.
    */
-  const canConfirm = Boolean(option && selectedStart && search.memberId) && !pending;
+  const canConfirm =
+    Boolean(option && selectedStart && search.memberId) && !isHourly && !pending;
 
   let body: React.ReactNode;
   if (panel.kind === "quote") {
@@ -469,7 +496,6 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   }
 
   const minutes = option ? optionDurationMinutes(option) : null;
-  const isHourly = option?.pricingMode === "hourly";
 
   return (
     <>
@@ -546,10 +572,24 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
                 </p>
               )}
 
+              {/* Directly above the button, because it is the answer to why
+                  the button is dead — and referenced by it, so a screen
+                  reader that reaches a disabled control is given the reason
+                  rather than silence. */}
+              {isHourly && (
+                <p
+                  id="checkout-hourly-notice"
+                  className="type-caption mt-4 text-[var(--color-muted-foreground)]"
+                >
+                  {t("hourlyNotBookable")}
+                </p>
+              )}
+
               <Button
                 type="button"
                 className="mt-4 w-full"
                 disabled={!canConfirm}
+                {...(isHourly ? { "aria-describedby": "checkout-hourly-notice" } : {})}
                 onClick={confirm}
               >
                 {t("continueAction")}

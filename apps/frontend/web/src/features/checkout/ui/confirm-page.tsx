@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CalendarCheck, CalendarX, Send, Smartphone } from "lucide-react";
+import { ArrowLeft, Smartphone } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { Button, Input, Label, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
-import { EmptyCard } from "@/shared/components/empty-card";
 import { useMyAddresses } from "@/features/account/viewmodel/use-addresses";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { formatAmount } from "@/features/directory/services/domain/service-card";
@@ -18,11 +17,12 @@ import { useMyBooking, useSendBookingRequest } from "@/features/checkout/viewmod
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import { readDraftDetails } from "@/features/checkout/domain/draft-store";
+import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
+import { slotWording } from "@/features/checkout/domain/slot-wording";
 import {
-  holdLapsedUnsent,
-  requestWentUnanswered,
-} from "@/features/checkout/domain/released-statuses";
-import { momentWording, slotWording } from "@/features/checkout/domain/slot-wording";
+  BookingOutcomePanel,
+  SentPanel,
+} from "@/features/checkout/ui/booking-outcome-panel";
 
 /** Why the phone field is refusing, or `null` when it is not. */
 type PhoneRefusal = "required" | "notVodacom";
@@ -97,16 +97,14 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
   // that as "your draft is gone" and bounce every customer off the page
   // before their booking had finished loading.
   const settled = !loading && !failed;
+  // **One reading of the booking, shared with step 2.** `checkoutOutcome`
+  // owns the whole mapping — including the two halves of `EXPIRED`, which
+  // need opposite answers and which the two pages used to disagree about.
+  const outcome = booking ? checkoutOutcome(booking) : null;
   // **Two departures, because they know two different amounts.** A booking
   // this customer can read names the service and the package to go back to;
   // a `null` names nothing at all.
-  //
-  // `holdLapsedUnsent` rather than "the status is EXPIRED": that status also
-  // covers a request that *was* sent and whose provider never answered, and
-  // this is the only page in the flow that can be looking at one. See the
-  // predicate's doc comment, and `requestWentUnanswered` below for where the
-  // other half goes.
-  const released = settled && !!booking && holdLapsedUnsent(booking);
+  const released = settled && outcome === "released";
   const unreadable = settled && booking === null;
 
   useEffect(() => {
@@ -131,7 +129,11 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
     if (unreadable) void navigate({ to: "/services", search: {}, replace: true });
   }, [released, unreadable, booking, navigate]);
 
-  if (loading || released || unreadable) {
+  // `outcome === "released"` rather than the `released` alias: the alias is a
+  // conjunction, so a reader — and the compiler — cannot conclude from its
+  // being false that the outcome is not `"released"`, and the panel below
+  // must be unreachable for the one outcome that has no panel.
+  if (loading || unreadable || outcome === "released") {
     return (
       <ConfirmShell>
         <ConfirmSkeleton />
@@ -139,7 +141,7 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
     );
   }
 
-  if (failed || !booking) {
+  if (failed || !booking || outcome === null) {
     return (
       <ConfirmShell>
         <p role="alert" className="text-sm text-[var(--color-destructive)]">
@@ -149,132 +151,20 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
     );
   }
 
-  // **The expected end state of very nearly every request this phase**, not a
-  // rarity: `accept` and `decline` belong to the provider inbox's own spec and
-  // are not mounted, so almost every request sent runs its window out. Before
-  // the sweep writes `EXPIRED` the same booking reads `AWAITING_PROVIDER` and
-  // shows the panel below it — so this branch has to say what actually
-  // happened, or the story the customer is told flips on a background job
-  // they cannot see.
-  if (requestWentUnanswered(booking)) {
+  if (outcome !== "draft") {
+    // Everything past `DRAFT`, each with an answer that is true of it — see
+    // `BookingOutcomePanel`. **The unanswered request is the expected end
+    // state of very nearly every request this phase**, not a rarity: `accept`
+    // and `decline` belong to the provider inbox's own spec and are not
+    // mounted, so almost every request sent runs its window out.
     return (
       <ConfirmShell>
-        <EmptyCard
-          framed
-          badge={CalendarX}
-          title={t("unansweredTitle")}
-          body={t("unansweredBody")}
-          action={
-            <Link
-              to="/book/$serviceId"
-              params={{ serviceId: booking.serviceId }}
-              search={{ optionId: booking.serviceOptionId }}
-              className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              {t("unansweredAction")}
-            </Link>
-          }
-        />
-      </ConfirmShell>
-    );
-  }
-
-  // A refresh, or the back button, after this page sent the request. The
-  // deadline comes off `expiresAt`, which on an `AWAITING_PROVIDER` booking
-  // *is* the `respondBy` the send answered with — `bookingReadModel` says so —
-  // which is how this branch tells the same story as the just-sent one
-  // without keeping anything of its own.
-  if (booking.status === "AWAITING_PROVIDER") {
-    return <SentPanel booking={booking} deadline={booking.expiresAt} />;
-  }
-
-  if (booking.status !== "DRAFT") {
-    // Every other status past `DRAFT` — accepted, paid, done, declined. There
-    // is nothing left to send here and no countdown to run: `expiresAt` past
-    // `DRAFT` is somebody else's deadline.
-    return (
-      <ConfirmShell>
-        <EmptyCard
-          framed
-          badge={CalendarCheck}
-          title={t("alreadySentTitle")}
-          body={t("alreadySentBody")}
-          action={<BrowseMoreLink />}
-        />
+        <BookingOutcomePanel booking={booking} outcome={outcome} />
       </ConfirmShell>
     );
   }
 
   return <Confirm booking={booking} />;
-}
-
-/**
- * Where a customer goes from a page whose errand is finished.
- *
- * **Not `/bookings`.** That route is a six-line placeholder rendering "Ainda
- * não há reservas." — nothing in this app queries `booking.mine` yet — so
- * sending somebody there straight after they successfully committed would
- * have the platform deny the thing they had just done, and the obvious
- * reaction to that is to book it again. It becomes the right destination the
- * day that page reads its own rows, and not before.
- */
-function BrowseMoreLink() {
-  const { t } = useTranslation("checkout");
-  return (
-    <Link
-      to="/services"
-      search={{}}
-      className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-    >
-      {t("browseMoreAction")}
-    </Link>
-  );
-}
-
-/**
- * The request is with the provider — the screen checkout actually ends on.
- *
- * **It ends here rather than navigating**, which is the point: this is the
- * only page that knows what was sent and by when it has to be answered, and
- * the obvious destination denies the booking exists at all. So the customer
- * reads back the commitment they just made and the deadline the other side is
- * now held to.
- *
- * `deadline` is nullable because `expiresAt` is — the column is. Every path
- * into `AWAITING_PROVIDER` stamps it (`SubmitBookingCommand` computes it and
- * `Booking.submit` writes it), so this is a shape the type permits and the
- * flow does not produce: the sentence loses its deadline rather than gaining
- * an invented one.
- */
-function SentPanel({
-  booking,
-  deadline,
-}: {
-  booking: CheckoutBooking;
-  deadline: string | null;
-}) {
-  const { t, i18n } = useTranslation("checkout");
-  const locale = i18n.resolvedLanguage ?? i18n.language;
-  // The service's zone, exactly as the slot was rendered in. A deadline in
-  // the browser's zone beside a slot in the provider's would put two clocks
-  // on one page, and make whichever the customer checked look wrong.
-  const by = deadline ? momentWording(deadline, locale, booking.timezone) : null;
-
-  return (
-    <ConfirmShell>
-      <EmptyCard
-        framed
-        badge={Send}
-        title={t("sentTitle")}
-        body={
-          by
-            ? t("sentBody", { provider: booking.providerName, date: by.date, time: by.time })
-            : t("sentBodyNoDeadline", { provider: booking.providerName })
-        }
-        action={<BrowseMoreLink />}
-      />
-    </ConfirmShell>
-  );
 }
 
 /** The header, the step marker and the page frame — everything true before the booking is. */
@@ -406,7 +296,13 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
   // branch — this is what holds the screen steady in the meantime, and what
   // makes the deadline the one the mutation actually answered with rather
   // than one a refetch has yet to confirm.
-  if (sent) return <SentPanel booking={booking} deadline={respondBy} />;
+  if (sent) {
+    return (
+      <ConfirmShell>
+        <SentPanel booking={booking} deadline={respondBy} />
+      </ConfirmShell>
+    );
+  }
 
   return (
     <>
@@ -556,13 +452,20 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
                 {/* `expiresAt` is nullable because the column is. The service
                     and the option are not: they come off the booking, so the
                     countdown always has somewhere to send the customer when
-                    the hold lapses. */}
+                    the hold lapses.
+
+                    `sending` is what stops the last seconds of the hold from
+                    navigating out from under a request that is landing — see
+                    the prop's own doc comment. This is the only page that can
+                    have a write in flight, which is why step 2 passes
+                    nothing. */}
                 {booking.expiresAt ? (
                   <div className="mb-4">
                     <CheckoutCountdown
                       expiresAt={booking.expiresAt}
                       serviceId={booking.serviceId}
                       optionId={booking.serviceOptionId}
+                      sending={request.pending}
                     />
                   </div>
                 ) : null}

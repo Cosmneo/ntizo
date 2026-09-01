@@ -24,8 +24,11 @@ import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
  *
  * `expiresAt` on the way back is when the hold lapses — the clock the
  * checkout countdown runs on across all three pages.
+ *
+ * Exported for `__tests__/checkout.repository.test.ts` — see `BOOKING_FIELDS`
+ * for why a document nothing can read is a document nothing can check.
  */
-const CREATE = `
+export const CREATE = `
   mutation BookingCreate($input: BookingCreateInput!) {
     bookingCreate(input: $input) { bookingId expiresAt }
   }`;
@@ -79,6 +82,11 @@ export function createBooking(input: CreateBookingInput): Promise<CreatedBooking
  * fee they are not charged. The query below never asks for either field, so
  * neither is on the wire; this type is what turns a page reaching for one
  * into a compile error rather than an `undefined` on screen.
+ *
+ * The two levels are checked by two different things, and neither covers the
+ * other: this one by the compiler, the wire one by
+ * `__tests__/checkout.repository.test.ts` reading the document itself. It
+ * went six reviews without the second.
  */
 export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMinor">;
 
@@ -102,8 +110,18 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
  * customer a different appointment to the one the provider is expecting them
  * for — the same substitution that drew step 1 an empty grid before
  * `chosenCivilDate` took the zone off the availability response.
+ *
+ * **Exported because until it was, the omission could not fail.** The
+ * commission's absence is described everywhere as a two-level protection:
+ * `CheckoutBooking` omits both fields, so a page reading one is a compile
+ * error, and this selection never asks for them, so neither is on the wire.
+ * The first level is real. The second was a template string no test in this
+ * repo ever evaluated — every checkout suite `vi.mock`s this module whole —
+ * and adding `commissionBps commissionMinor` to this very line left the
+ * entire web suite green: 139 files, 1526 tests. A type cannot read a string,
+ * so the string has to be readable by something that can.
  */
-const BOOKING_FIELDS = `
+export const BOOKING_FIELDS = `
       id status
       serviceId serviceOptionId
       serviceName providerName providerSlug optionName durationMinutes
@@ -119,8 +137,11 @@ const BOOKING_FIELDS = `
  * There is no `customerId` in the input: the server resolves it from the
  * session and filters on it *inside* the query, so somebody else's id comes
  * back as `null` rather than as a row plus a check.
+ *
+ * Exported for the same reason `BOOKING_FIELDS` is: this is the document that
+ * actually goes on the wire for the page the design singles out as money.
  */
-const BY_ID = `
+export const BY_ID = `
   query BookingById($input: BookingByIdInput!) {
     bookingById(input: $input) {${BOOKING_FIELDS}
     }
@@ -144,8 +165,10 @@ const BY_ID = `
  * from the live `provider_response_minutes` setting and capped at the slot's
  * own start. It is not sent, and it is not guessed at on this side: a window
  * an administrator can change is not a number a client may hardcode.
+ *
+ * Exported for the same reason `BOOKING_FIELDS` is.
  */
-const SUBMIT = `
+export const SUBMIT = `
   mutation BookingSubmit($input: BookingSubmitInput!) {
     bookingSubmit(input: $input) { bookingId respondBy }
   }`;

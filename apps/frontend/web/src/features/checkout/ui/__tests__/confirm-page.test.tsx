@@ -532,18 +532,89 @@ describe("ConfirmPage", () => {
 
   it("never points a customer at a bookings page that denies the booking", async () => {
     // The claim this task removed from `rail-price-summary` and must not
-    // reintroduce: `alreadySentBody` used to say "Pode acompanhá-lo nas suas
-    // reservas", about a page that renders "Ainda não há reservas."
+    // reintroduce: the sent panel's body used to say "Pode acompanhá-lo nas
+    // suas reservas", about a page that renders "Ainda não há reservas."
     renderConfirm({
       bookingId: "bk-1",
       booking: bookingFixture({ status: "COMPLETED", addressLabel: "Casa" }),
     });
 
-    await screen.findByText(/j[áa] foi enviado/i);
+    // A completed booking is paid for, and saying so is the one true thing
+    // checkout can say about all four statuses past the charge. It used to
+    // read "este pedido já foi enviado — o prestador responde-lhe assim que
+    // puder", about work that has already been done.
+    await screen.findByText(/j[áa] está paga/i);
+    expect(screen.queryByText(/assim que puder/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/nas suas reservas/i)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /ver as minhas reservas/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("tells a customer whose provider accepted that the payment prompt is waiting", async () => {
+    // **The status a wrong answer costs money on.** An operator hand-accepts
+    // the request — the stated mode this phase — the charge sweep pushes an
+    // M-Pesa prompt, and the payment window starts. The old catch-all told
+    // this customer there was nothing left to do and the provider would
+    // answer soon; believing it costs them the booking, and the provider is
+    // then told the customer did not pay.
+    renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "PENDING_PAYMENT", addressLabel: "Casa" }),
+    });
+
+    expect(await screen.findByText(/falta pagar/i)).toBeInTheDocument();
+    expect(screen.queryByText(/assim que puder/i)).not.toBeInTheDocument();
+    // No send button and no countdown: the errand here is finished, and
+    // `expiresAt` on this booking is the payment window rather than a
+    // checkout hold.
+    expect(screen.queryByRole("button", { name: /enviar pedido/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+  });
+
+  it("says the provider declined rather than that they are still thinking", async () => {
+    renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "DECLINED", addressLabel: "Casa" }),
+    });
+
+    expect(await screen.findByText(/não aceitou o pedido/i)).toBeInTheDocument();
+    expect(screen.getByText(/não foi cobrado nada/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /escolher outra hora/i })).toBeInTheDocument();
+  });
+
+  it("does not say the slot was released while the request is still landing", async () => {
+    // **The last-seconds race, end to end.** The send is two sequential round
+    // trips; the server accepts a submit a little past the deadline because
+    // the checkout-hold sweep runs on a one-minute cadence. Without the guard
+    // the countdown reaches zero mid-flight and navigates to step 1 saying
+    // the slot was released — while the request lands. The customer books a
+    // second slot, the one-draft rule does not clean up the first (it filters
+    // `status = 'DRAFT'` and a sent request is not one), and the provider
+    // gets two requests for one job.
+    let land!: (result: { bookingId: string; respondBy: string }) => void;
+    submitSpy.mockImplementationOnce(
+      () => new Promise((resolve) => { land = resolve; }),
+    );
+
+    const { router } = renderConfirm({ bookingId: "bk-1" });
+    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
+    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+
+    // The hold runs out with the mutation still in flight. `setSystemTime`
+    // moves the clock the countdown reads; its own one-second interval is
+    // real, so the disappearing timer is what says it has noticed.
+    vi.setSystemTime(new Date(Date.parse(NOW) + 60 * 60 * 1000));
+    await waitFor(() => expect(screen.queryByRole("timer")).not.toBeInTheDocument(), {
+      timeout: 4000,
+    });
+
+    expect(router.state.location.pathname).toBe("/booking/bk-1/confirm");
+
+    land({ bookingId: "bk-1", respondBy: "2026-09-04T14:00:00.000Z" });
+    expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
+    // And never the sentence that would have contradicted it.
+    expect(screen.queryByText(/a hora foi libertada/i)).not.toBeInTheDocument();
   });
 
   it("offers one payment method rather than a chooser with disabled options", async () => {

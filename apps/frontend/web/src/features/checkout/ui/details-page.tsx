@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CalendarCheck, Plus, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Plus, TriangleAlert } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
@@ -21,7 +21,8 @@ import {
   readDraftDetails,
   saveDraftDetails,
 } from "@/features/checkout/domain/draft-store";
-import { holdLapsedUnsent } from "@/features/checkout/domain/released-statuses";
+import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
+import { BookingOutcomePanel } from "@/features/checkout/ui/booking-outcome-panel";
 
 /** One address as a single line: enough to tell two of them apart, not the whole record. */
 function addressSummary(address: AddressDTO): string {
@@ -39,13 +40,29 @@ function addressSummary(address: AddressDTO): string {
  * not empty always has something chosen and the continue button is never
  * disabled for a reason nobody can see.
  *
- * Deliberately does *not* check that `chosen` is still in the list. It is
- * called on every render, including the ones where the list has not arrived
- * yet, and a membership test would drop the customer's choice to `null` on
- * each of those and put it back afterwards.
+ * **`settled` is why the membership test is safe.** The stored choice is
+ * honoured unconditionally while the list is still in flight — a bare
+ * membership test would drop it to `null` on every render before the query
+ * answers and put it back afterwards, which is the reason this check was left
+ * out to begin with. Once the list *has* answered, an id that is not in it is
+ * an id nothing on this page can render: the customer deleted that address in
+ * another tab, or another device did. Returning it anyway left the radio
+ * group with nothing checked beside a live continue, which sent them to step
+ * 3, which found no address and sent them straight back — a loop escapable
+ * only by noticing they had to click a radio, with nothing on screen saying
+ * so and the hold counting down.
+ *
+ * A list that answered with an *error* is settled too, and falls through to
+ * `null`: there is no list to check the id against and no row to draw, so the
+ * continue is disabled and the page says why rather than carrying a choice it
+ * cannot show.
  */
-function openingAddressId(chosen: string | null, addresses: readonly AddressDTO[]): string | null {
-  if (chosen) return chosen;
+function openingAddressId(
+  chosen: string | null,
+  addresses: readonly AddressDTO[],
+  settled: boolean,
+): string | null {
+  if (chosen && (!settled || addresses.some((a) => a.id === chosen))) return chosen;
   return addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id ?? null;
 }
 
@@ -77,17 +94,17 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
   // that as "your draft is gone" and bounce every customer off the page
   // before their booking had finished loading.
   const settled = !loading && !failed;
+  // **One reading of the booking, shared with step 3.** This page is one
+  // back-press from that one, and they used to answer the identical row two
+  // different ways: an `EXPIRED` request read "the provider did not answer
+  // you" there and "the provider will answer as soon as they can" here. See
+  // `checkoutOutcome` for the whole mapping, including why `EXPIRED` needs
+  // splitting at all.
+  const outcome = booking ? checkoutOutcome(booking) : null;
   // **Two departures, because they know two different amounts.** A booking
   // this customer can read names the service and the package to go back to;
   // a `null` names nothing at all.
-  // `holdLapsedUnsent`, not merely "the status is EXPIRED": that status also
-  // covers a *sent* request whose provider window closed, and this page is
-  // reachable by the back button after step 3 has sent one. Telling that
-  // customer to pick a new time would be answering "nobody replied to you"
-  // with "choose another slot". Step 2 cannot meet the case on its own, but
-  // it is one back-press from the page that can. See the predicate's own doc
-  // comment for the invariant that separates them.
-  const released = settled && !!booking && holdLapsedUnsent(booking);
+  const released = settled && outcome === "released";
   const unreadable = settled && booking === null;
 
   useEffect(() => {
@@ -114,7 +131,11 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
     if (unreadable) void navigate({ to: "/services", search: {}, replace: true });
   }, [released, unreadable, booking, navigate]);
 
-  if (loading || released || unreadable) {
+  // `outcome === "released"` rather than the `released` alias: the alias is a
+  // conjunction, so a reader — and the compiler — cannot conclude from its
+  // being false that the outcome is not `"released"`, and the panel below
+  // must be unreachable for the one outcome that has no panel.
+  if (loading || unreadable || outcome === "released") {
     return (
       <DetailsShell>
         <DetailsSkeleton />
@@ -122,7 +143,7 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
     );
   }
 
-  if (failed || !booking) {
+  if (failed || !booking || outcome === null) {
     return (
       <DetailsShell>
         <p role="alert" className="text-sm text-[var(--color-destructive)]">
@@ -132,34 +153,16 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
     );
   }
 
-  if (booking.status !== "DRAFT") {
-    // Reachable by the back button after step 3 has sent the request. There
-    // is nothing to fill in and nothing to hold: `expiresAt` on a submitted
-    // booking is the *provider's* response window, so a countdown here would
-    // be a checkout timer counting somebody else's deadline.
+  if (outcome !== "draft") {
+    // Reachable by the back button after step 3 has sent the request, and by
+    // a bookmark long after. There is nothing to fill in and nothing to hold:
+    // `expiresAt` past `DRAFT` is somebody else's clock, so a countdown here
+    // would be a checkout timer counting the provider's deadline or the
+    // payment window. What the panel *says* is decided in one place shared
+    // with step 3 — see `BookingOutcomePanel`.
     return (
       <DetailsShell>
-        <EmptyCard
-          framed
-          badge={CalendarCheck}
-          title={t("alreadySentTitle")}
-          body={t("alreadySentBody")}
-          action={
-            // **Not `/bookings`.** That route is a placeholder rendering
-            // "Ainda não há reservas." — nothing queries `booking.mine`
-            // yet — so pointing a customer whose request has gone at a page
-            // that denies it exists is the platform contradicting itself.
-            // It becomes the right destination the day that page reads its
-            // own rows.
-            <Link
-              to="/services"
-              search={{}}
-              className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              {t("browseMoreAction")}
-            </Link>
-          }
-        />
+        <BookingOutcomePanel booking={booking} outcome={outcome} />
       </DetailsShell>
     );
   }
@@ -195,7 +198,12 @@ function Details({ booking }: { booking: CheckoutBooking }) {
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
 
-  const { data: addresses = [], isPending: addressesLoading, refetch } = useMyAddresses();
+  const {
+    data: addresses = [],
+    isPending: addressesLoading,
+    isError: addressesFailed,
+    refetch,
+  } = useMyAddresses();
   const { add } = useAddressMutations();
 
   // Read once, on mount. After that the page's own state is the truth and the
@@ -212,11 +220,15 @@ function Details({ booking }: { booking: CheckoutBooking }) {
   // is going to lose at the confirm.
   const [storable] = useState(canStoreDraftDetails);
 
-  const selectedId = openingAddressId(chosen, addresses);
+  const selectedId = openingAddressId(chosen, addresses, !addressesLoading);
   // The form IS the empty state. A list with nothing in it and nothing to do
   // next reads as broken software, and the customer genuinely cannot go on
   // without an address — so the thing they have to do is already on screen
   // rather than one button away.
+  //
+  // This asks only "is the list empty". **Whether it is readable at all is a
+  // different question**, asked once beside the fieldset, because it has to
+  // suppress the add button as well as the form.
   const formOpen = adding || (!addressesLoading && addresses.length === 0);
 
   function chooseAddress(addressId: string) {
@@ -286,6 +298,21 @@ function Details({ booking }: { booking: CheckoutBooking }) {
 
               {addressesLoading ? (
                 <Skeleton className="h-24 w-full" />
+              ) : addressesFailed ? (
+                // Not the add-address form. The addresses exist; something
+                // stopped us reading them, and offering to create one more
+                // answers a transient failure with a permanent duplicate.
+                <div
+                  role="alert"
+                  className="grid justify-items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
+                >
+                  <p className="type-body text-[var(--color-destructive)]">
+                    {t("addressesLoadError")}
+                  </p>
+                  <Button type="button" variant="outline" onClick={() => void refetch()}>
+                    {t("addressesRetryAction")}
+                  </Button>
+                </div>
               ) : (
                 addresses.map((address) => (
                   <label
@@ -310,7 +337,15 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                 ))
               )}
 
-              {formOpen ? (
+              {/* **A list that failed to load is not an empty one**, and
+                  neither the form nor the offer of one belongs under a
+                  failure. A customer with three saved addresses hitting a
+                  transient error was shown the empty state — "add an
+                  address" — and either typed a duplicate of one they already
+                  had or pressed a continue that bounced them off step 3 and
+                  straight back here. Retrying is the only thing that can
+                  actually help, so it is the only thing offered. */}
+              {addressesFailed ? null : formOpen ? (
                 <AddressForm
                   ariaLabel={t("newAddressTitle")}
                   submitting={add.isPending}
