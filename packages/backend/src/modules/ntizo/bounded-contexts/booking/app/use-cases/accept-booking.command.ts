@@ -47,7 +47,7 @@ export interface AcceptBookingInput {
  * `SweepBookingCommand` reach through the aggregate's own no-op path,
  * reached here through the repository's guard instead.
  *
- * **`scheduleBookingExpiry` is called after the transaction resolves, with
+ * **`scheduleBookingDeadline` is called after the transaction resolves, with
  * `payBy`** — mirroring `CreateBookingCommand`'s own discipline. `payBy`
  * comes back `null` from `atomicExecute` exactly when nothing happened (a
  * losing compare-and-swap), so nothing gets scheduled for a transition that
@@ -123,7 +123,7 @@ export class AcceptBookingCommand {
     // `atomicExecute`: a job queued for a write that then rolled back, or
     // that lost the compare-and-swap above, would be a job for nothing.
     if (payBy) {
-      await this.delayedJobs.scheduleBookingExpiry(input.bookingId, payBy);
+      await this.delayedJobs.scheduleBookingDeadline(input.bookingId, payBy);
     }
   }
 }

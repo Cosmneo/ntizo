@@ -218,6 +218,13 @@
       "when": 1788260155751,
       "tag": "0030_adorable_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788262315888,
+      "tag": "0031_petite_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

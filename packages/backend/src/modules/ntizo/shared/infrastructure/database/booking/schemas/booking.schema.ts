@@ -239,7 +239,14 @@ export const booking = bookingSchema.table(
     // index, so this one cannot drift from the list it is generated from.
     // The catalogue test still earns its keep: it proves the *live database*
     // agrees with what this file generates, which is a different claim.
-    index("booking_expiry_sweep_idx")
+    //
+    // `booking_sweep_idx`, not `booking_expiry_sweep_idx`: two of the three
+    // statuses this index serves are destined to expire and the third to be
+    // cancelled, so the old name described a third of its own rows wrongly —
+    // the same defect that renamed `SweepBookingCommand` and
+    // `findDueForSweep`. The rename is its own migration because the
+    // predicate change had already been applied by the time it was decided.
+    index("booking_sweep_idx")
       .on(t.expiresAt)
       .where(sql`${t.status} in (${statusList(DEADLINE_BEARING_STATUSES)})`),
 

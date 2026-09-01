@@ -250,7 +250,7 @@ class FakeSlotHold implements SlotHoldPort {
 class FakeDelayedJobs implements DelayedJobsPort {
   public scheduled: { bookingId: string; at: Date }[] = [];
 
-  async scheduleBookingExpiry(bookingId: string, at: Date): Promise<void> {
+  async scheduleBookingDeadline(bookingId: string, at: Date): Promise<void> {
     this.scheduled.push({ bookingId, at });
   }
 }
@@ -395,7 +395,7 @@ describe("CreateBookingCommand", () => {
     expect(held.slot.endsAt).toEqual(new Date(INPUT.startsAt.getTime() + 90 * 60_000));
   });
 
-  it("schedules the expiry job after the transaction, for the booking that was created", async () => {
+  it("registers the deadline after the transaction, for the booking that was created", async () => {
     const { command, delayedJobs } = setup();
 
     const result = await command.execute(INPUT);

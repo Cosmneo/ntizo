@@ -220,11 +220,11 @@ class FakeSlotHold implements SlotHoldPort {
   async transfer(_bookingId: string, _to: SlotWindow): Promise<void> {}
 }
 
-/** Records every `scheduleBookingExpiry` call, matching `create-booking.command.test.ts`'s own fake. */
+/** Records every `scheduleBookingDeadline` call, matching `create-booking.command.test.ts`'s own fake. */
 class FakeDelayedJobs implements DelayedJobsPort {
   public scheduled: { bookingId: string; at: Date }[] = [];
 
-  async scheduleBookingExpiry(bookingId: string, at: Date): Promise<void> {
+  async scheduleBookingDeadline(bookingId: string, at: Date): Promise<void> {
     this.scheduled.push({ bookingId, at });
   }
 }

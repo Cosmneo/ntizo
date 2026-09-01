@@ -121,7 +121,7 @@ const RESULT_TO_REFUSAL: Record<
  * a double-booking waiting to happen, and a hold without its booking would
  * block a slot nobody could ever use.
  *
- * The expiry job is scheduled *after* the transaction returns, not inside it
+ * The deadline is registered *after* the transaction returns, not inside it
  * — a job queued inside a block that then rolls back would be a job for a
  * booking that does not exist.
  */
@@ -291,7 +291,7 @@ export class CreateBookingCommand {
 
     // Scheduled after the transaction resolves, not inside it: a job queued
     // for a booking that then rolled back would be a job for nothing.
-    await this.delayedJobs.scheduleBookingExpiry(bookingId, createdExpiresAt);
+    await this.delayedJobs.scheduleBookingDeadline(bookingId, createdExpiresAt);
 
     return { bookingId, expiresAt: createdExpiresAt.toISOString() };
   }

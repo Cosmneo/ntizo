@@ -4,6 +4,7 @@ import {
   BookingCancelled,
   type BookingCancelledReason,
   BookingExpired,
+  type BookingExpiredClock,
 } from "../../domain/events";
 import { BookingNotFoundError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
@@ -31,15 +32,44 @@ const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
  * a booking's history renders it into eight locales, and a locale key can be
  * switched on where English prose can only be shown verbatim.
  *
- * Named for what happened, not for which clock it was: `checkout_hold` and
- * `provider_response` (the `BookingExpiredClock` members) name *windows*, and
- * a window is not a reason. The third ending reuses `CUSTOMER_DID_NOT_PAY`
- * above rather than declaring a fourth token, because `BookingCancelled`
- * already publishes that exact string and a history row disagreeing with the
- * event about why the same hop happened would be worse than no row at all.
+ * **Named for what happened, not for which clock it was.** `checkout_hold`
+ * and `provider_response` — the `BookingExpiredClock` members — name
+ * *windows*, and a window is not a reason: a column that promises a cause
+ * and answers with a clock is a column that lies. So these are their own
+ * vocabulary rather than a reuse of that one.
+ *
+ * A closed union rather than two loose strings, and that is the half of this
+ * that took a second pass to get right. The cancellation ending has
+ * `BookingCancelledReason` holding it to a contract; before this type, these
+ * two had nothing, so a rename on either side of the clock/reason pairing
+ * would have gone unnoticed and the two vocabularies could drift apart in
+ * silence.
  */
-const CHECKOUT_HOLD_EXPIRED = "checkout_hold_expired";
-const PROVIDER_DID_NOT_RESPOND = "provider_did_not_respond";
+export type BookingExpiredReason = "checkout_hold_expired" | "provider_did_not_respond";
+
+/**
+ * Which reason each clock produces — total over `BookingExpiredClock`, which
+ * is what ties the two vocabularies together without merging them.
+ *
+ * `Record`, not `Partial<Record>`: a clock added to `BookingExpiredClock` is
+ * a type error here until somebody says what its running out actually *means*
+ * — the same gate `CANCELLABLE_FROM` puts on a new cancellation reason, and
+ * the same one `booking.aggregate.test.ts` puts on a new slot-holding status.
+ * Renaming a clock member breaks this map's key; renaming a reason breaks its
+ * value. Neither can move alone.
+ *
+ * The cancellation ending is deliberately not in here. It reuses
+ * `CUSTOMER_DID_NOT_PAY` above rather than declaring a token of its own,
+ * because `BookingCancelled` already publishes that exact string and a
+ * history row disagreeing with the event about why the same hop happened
+ * would be worse than no row at all. The asymmetry is the point: the
+ * cancellation's reason *is* an event field, so the event owns it; the
+ * expiries' reasons are not carried on any event, so they are owned here.
+ */
+const EXPIRED_REASON_BY_CLOCK: Record<BookingExpiredClock, BookingExpiredReason> = {
+  checkout_hold: "checkout_hold_expired",
+  provider_response: "provider_did_not_respond",
+};
 
 /**
  * A clock ran out on one booking. Which clock decides what that means.
@@ -161,7 +191,11 @@ export class SweepBookingCommand {
 
       let moved: Booking;
       let announcement: BookingExpired | BookingCancelled;
-      let changeReason: string;
+      // Narrowed to the two closed unions rather than `string`, so nothing
+      // here can hand `appendChange` a token no vocabulary declares — even
+      // though the column itself is `text` and legitimately holds a
+      // provider's own free-text decline reason too.
+      let changeReason: BookingExpiredReason | BookingCancelledReason;
 
       // The design's three-row table, in code. The transition, the fact its
       // event has to carry, and the reason its history row records are
@@ -179,29 +213,38 @@ export class SweepBookingCommand {
       // union, so a `case` naming a status that stopped existing is a
       // compile error here, not a branch that silently stops matching.
       switch (booking.status) {
-        case "DRAFT":
+        // The two expiry branches name their clock **once**, in `clock`, and
+        // derive both the event field and the history reason from that one
+        // name. Writing the clock twice — once into the payload, once into a
+        // lookup — would be two places for the same fact to disagree, which
+        // is exactly what `EXPIRED_REASON_BY_CLOCK` exists to prevent.
+        case "DRAFT": {
+          const clock: BookingExpiredClock = "checkout_hold";
           moved = booking.expire(at);
           announcement = new BookingExpired({
             bookingId,
             customerId: booking.customerId,
             providerMemberId: booking.providerMemberId,
             startsAt: booking.startsAt,
-            clock: "checkout_hold",
+            clock,
           });
-          changeReason = CHECKOUT_HOLD_EXPIRED;
+          changeReason = EXPIRED_REASON_BY_CLOCK[clock];
           break;
+        }
 
-        case "AWAITING_PROVIDER":
+        case "AWAITING_PROVIDER": {
+          const clock: BookingExpiredClock = "provider_response";
           moved = booking.expire(at);
           announcement = new BookingExpired({
             bookingId,
             customerId: booking.customerId,
             providerMemberId: booking.providerMemberId,
             startsAt: booking.startsAt,
-            clock: "provider_response",
+            clock,
           });
-          changeReason = PROVIDER_DID_NOT_RESPOND;
+          changeReason = EXPIRED_REASON_BY_CLOCK[clock];
           break;
+        }
 
         case "PENDING_PAYMENT":
           // Not an expiry. See this class's doc comment: a provider blocked

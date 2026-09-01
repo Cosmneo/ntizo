@@ -5,7 +5,7 @@ import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/dr
 import { DrizzleProviderMemberReader } from "../infrastructure/repositories/drizzle/provider-member.reader";
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
-import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
+import { BookingRowDelayedJobs } from "../infrastructure/adapters/booking-row-delayed-jobs.adapter";
 import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
@@ -45,7 +45,7 @@ export function bootstrapBooking() {
   const providerMemberReader = new DrizzleProviderMemberReader();
   const slotValidityReader = new DrizzleSlotValidityReader();
   const slotHold = new BookingRowSlotHold();
-  const delayedJobs = new ExpiresAtDelayedJobs();
+  const delayedJobs = new BookingRowDelayedJobs();
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
 

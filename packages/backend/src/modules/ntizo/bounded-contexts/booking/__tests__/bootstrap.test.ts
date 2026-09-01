@@ -14,7 +14,7 @@ import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/dr
 import { DrizzleProviderMemberReader } from "../infrastructure/repositories/drizzle/provider-member.reader";
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
-import { ExpiresAtDelayedJobs } from "../infrastructure/adapters/expires-at-delayed-jobs.adapter";
+import { BookingRowDelayedJobs } from "../infrastructure/adapters/booking-row-delayed-jobs.adapter";
 
 /**
  * The wiring is the feature — see notification's `bootstrap-wiring.test.ts`
@@ -74,7 +74,7 @@ describe("bootstrapBooking", () => {
     // Empty methods, but a real class in the graph — not the port type
     // itself and not a bare object literal standing in for one.
     expect(adapters.slotHold).toBeInstanceOf(BookingRowSlotHold);
-    expect(adapters.delayedJobs).toBeInstanceOf(ExpiresAtDelayedJobs);
+    expect(adapters.delayedJobs).toBeInstanceOf(BookingRowDelayedJobs);
   });
 
   // Task 13: the payment window moved from a hardcoded constant in

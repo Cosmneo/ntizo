@@ -50,7 +50,7 @@ export interface SubmitBookingInput {
  * path produces in `MarkBookingPaidCommand` and `SweepBookingCommand`,
  * reached here by the repository's guard instead.
  *
- * **`scheduleBookingExpiry` is called after the transaction resolves, with
+ * **`scheduleBookingDeadline` is called after the transaction resolves, with
  * `respondBy`** — mirroring `CreateBookingCommand`'s own discipline of
  * scheduling only once its write has actually committed, against whichever
  * deadline it just stamped rather than a stale one. `respondBy` comes back
@@ -129,7 +129,7 @@ export class SubmitBookingCommand {
     // `atomicExecute`: a job queued for a write that then rolled back, or
     // that lost the compare-and-swap above, would be a job for nothing.
     if (respondBy) {
-      await this.delayedJobs.scheduleBookingExpiry(input.bookingId, respondBy);
+      await this.delayedJobs.scheduleBookingDeadline(input.bookingId, respondBy);
     }
   }
 }

@@ -439,7 +439,7 @@ describe("booking_member_slot_no_overlap", () => {
     // live table.
     //
     // **Why this test exists even though the predicate is generated.**
-    // Unlike the exclusion constraint above, `booking_expiry_sweep_idx`'s
+    // Unlike the exclusion constraint above, `booking_sweep_idx`'s
     // `WHERE` is built from `DEADLINE_BEARING_STATUSES` through
     // `booking.schema.ts`'s `statusList`, so the schema file and the constant
     // cannot drift. That guarantees nothing about the *database*, and the
@@ -454,7 +454,7 @@ describe("booking_member_slot_no_overlap", () => {
       FROM pg_indexes
       WHERE schemaname = 'ntizo_booking'
         AND tablename = 'booking'
-        AND indexname = 'booking_expiry_sweep_idx'`;
+        AND indexname = 'booking_sweep_idx'`;
     const definition = rows[0]?.["indexdef"] as string | undefined;
     expect(definition).toBeDefined();
     // Partial, and on the column the sweep both filters and orders by — an
