@@ -360,6 +360,13 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         // that disagreed with the booking.
         expect(own?.serviceId).toBe(serviceId);
         expect(own?.serviceOptionId).toBe(serviceOptionId);
+        // **Asserted here as well as on the list, because this is the query
+        // checkout actually reads.** `SELECTED_COLUMNS` is shared by both, so
+        // they are hard to make disagree — but "hard to break" is not the
+        // same as covered, and the page that prints a time to a customer
+        // loads its booking through *this* projection. `Europe/Lisbon` rather
+        // than the column default, for the reason the provider fixture gives.
+        expect(own?.timezone).toBe("Europe/Lisbon");
 
         // The assertion this test exists for: customer A asking for customer
         // B's booking, by its real id, gets nothing.

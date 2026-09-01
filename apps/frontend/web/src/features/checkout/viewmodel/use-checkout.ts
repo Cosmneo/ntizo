@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import { useUpdateMyProfile } from "@/features/account/viewmodel/use-update-profile";
 import {
@@ -137,6 +137,7 @@ export interface SendBookingRequestInput extends SubmitBookingInput {
  */
 export function useSendBookingRequest() {
   const profile = useUpdateMyProfile();
+  const qc = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: async (input: SendBookingRequestInput): Promise<SubmittedBooking> => {
@@ -146,6 +147,16 @@ export function useSendBookingRequest() {
         address: input.address,
         description: input.description ?? null,
       });
+    },
+    onSuccess: (_result, input) => {
+      // The booking has left `DRAFT`, and the cached copy still says it has
+      // not. Step 2 is one back-button press away and reads the same key —
+      // without this it would render its form, and its continue button, for
+      // a request that has already gone. Invalidated here rather than at the
+      // call site for the reason `useUpdateMyProfile` invalidates `user.me`
+      // there: the staleness is a consequence of the write, so it belongs
+      // with the write.
+      void qc.invalidateQueries({ queryKey: bookingQueries.byId(input.bookingId).queryKey });
     },
   });
 

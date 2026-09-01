@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CalendarCheck, Smartphone } from "lucide-react";
+import { ArrowLeft, CalendarCheck, CalendarX, Send, Smartphone } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { Button, Input, Label, Skeleton } from "@ntizo/frontend-ui";
@@ -18,8 +18,11 @@ import { useMyBooking, useSendBookingRequest } from "@/features/checkout/viewmod
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import { readDraftDetails } from "@/features/checkout/domain/draft-store";
-import { RELEASED_STATUSES } from "@/features/checkout/domain/released-statuses";
-import { slotWording } from "@/features/checkout/domain/slot-wording";
+import {
+  holdLapsedUnsent,
+  requestWentUnanswered,
+} from "@/features/checkout/domain/released-statuses";
+import { momentWording, slotWording } from "@/features/checkout/domain/slot-wording";
 
 /** Why the phone field is refusing, or `null` when it is not. */
 type PhoneRefusal = "required" | "notVodacom";
@@ -97,7 +100,13 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
   // **Two departures, because they know two different amounts.** A booking
   // this customer can read names the service and the package to go back to;
   // a `null` names nothing at all.
-  const released = settled && !!booking && RELEASED_STATUSES.has(booking.status);
+  //
+  // `holdLapsedUnsent` rather than "the status is EXPIRED": that status also
+  // covers a request that *was* sent and whose provider never answered, and
+  // this is the only page in the flow that can be looking at one. See the
+  // predicate's doc comment, and `requestWentUnanswered` below for where the
+  // other half goes.
+  const released = settled && !!booking && holdLapsedUnsent(booking);
   const unreadable = settled && booking === null;
 
   useEffect(() => {
@@ -140,24 +149,29 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
     );
   }
 
-  if (booking.status !== "DRAFT") {
-    // The back button, after this page has already sent the request — and the
-    // page a double-tap lands on. There is nothing left to send: `expiresAt`
-    // on a submitted booking is the *provider's* response window, so a
-    // checkout countdown here would be counting somebody else's deadline.
+  // **The expected end state of very nearly every request this phase**, not a
+  // rarity: `accept` and `decline` belong to the provider inbox's own spec and
+  // are not mounted, so almost every request sent runs its window out. Before
+  // the sweep writes `EXPIRED` the same booking reads `AWAITING_PROVIDER` and
+  // shows the panel below it — so this branch has to say what actually
+  // happened, or the story the customer is told flips on a background job
+  // they cannot see.
+  if (requestWentUnanswered(booking)) {
     return (
       <ConfirmShell>
         <EmptyCard
           framed
-          badge={CalendarCheck}
-          title={t("alreadySentTitle")}
-          body={t("alreadySentBody")}
+          badge={CalendarX}
+          title={t("unansweredTitle")}
+          body={t("unansweredBody")}
           action={
             <Link
-              to="/bookings"
+              to="/book/$serviceId"
+              params={{ serviceId: booking.serviceId }}
+              search={{ optionId: booking.serviceOptionId }}
               className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
             >
-              {t("alreadySentAction")}
+              {t("unansweredAction")}
             </Link>
           }
         />
@@ -165,7 +179,102 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
     );
   }
 
+  // A refresh, or the back button, after this page sent the request. The
+  // deadline comes off `expiresAt`, which on an `AWAITING_PROVIDER` booking
+  // *is* the `respondBy` the send answered with — `bookingReadModel` says so —
+  // which is how this branch tells the same story as the just-sent one
+  // without keeping anything of its own.
+  if (booking.status === "AWAITING_PROVIDER") {
+    return <SentPanel booking={booking} deadline={booking.expiresAt} />;
+  }
+
+  if (booking.status !== "DRAFT") {
+    // Every other status past `DRAFT` — accepted, paid, done, declined. There
+    // is nothing left to send here and no countdown to run: `expiresAt` past
+    // `DRAFT` is somebody else's deadline.
+    return (
+      <ConfirmShell>
+        <EmptyCard
+          framed
+          badge={CalendarCheck}
+          title={t("alreadySentTitle")}
+          body={t("alreadySentBody")}
+          action={<BrowseMoreLink />}
+        />
+      </ConfirmShell>
+    );
+  }
+
   return <Confirm booking={booking} />;
+}
+
+/**
+ * Where a customer goes from a page whose errand is finished.
+ *
+ * **Not `/bookings`.** That route is a six-line placeholder rendering "Ainda
+ * não há reservas." — nothing in this app queries `booking.mine` yet — so
+ * sending somebody there straight after they successfully committed would
+ * have the platform deny the thing they had just done, and the obvious
+ * reaction to that is to book it again. It becomes the right destination the
+ * day that page reads its own rows, and not before.
+ */
+function BrowseMoreLink() {
+  const { t } = useTranslation("checkout");
+  return (
+    <Link
+      to="/services"
+      search={{}}
+      className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+    >
+      {t("browseMoreAction")}
+    </Link>
+  );
+}
+
+/**
+ * The request is with the provider — the screen checkout actually ends on.
+ *
+ * **It ends here rather than navigating**, which is the point: this is the
+ * only page that knows what was sent and by when it has to be answered, and
+ * the obvious destination denies the booking exists at all. So the customer
+ * reads back the commitment they just made and the deadline the other side is
+ * now held to.
+ *
+ * `deadline` is nullable because `expiresAt` is — the column is. Every path
+ * into `AWAITING_PROVIDER` stamps it (`SubmitBookingCommand` computes it and
+ * `Booking.submit` writes it), so this is a shape the type permits and the
+ * flow does not produce: the sentence loses its deadline rather than gaining
+ * an invented one.
+ */
+function SentPanel({
+  booking,
+  deadline,
+}: {
+  booking: CheckoutBooking;
+  deadline: string | null;
+}) {
+  const { t, i18n } = useTranslation("checkout");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  // The service's zone, exactly as the slot was rendered in. A deadline in
+  // the browser's zone beside a slot in the provider's would put two clocks
+  // on one page, and make whichever the customer checked look wrong.
+  const by = deadline ? momentWording(deadline, locale, booking.timezone) : null;
+
+  return (
+    <ConfirmShell>
+      <EmptyCard
+        framed
+        badge={Send}
+        title={t("sentTitle")}
+        body={
+          by
+            ? t("sentBody", { provider: booking.providerName, date: by.date, time: by.time })
+            : t("sentBodyNoDeadline", { provider: booking.providerName })
+        }
+        action={<BrowseMoreLink />}
+      />
+    </ConfirmShell>
+  );
 }
 
 /** The header, the step marker and the page frame — everything true before the booking is. */
@@ -207,6 +316,19 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
   const [details] = useState(() => readDraftDetails(booking.id));
   const [typedPhone, setTypedPhone] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<PhoneRefusal | null>(null);
+  /**
+   * The deadline the send came back with — and, by being set at all, the fact
+   * that this page's errand is done.
+   *
+   * Held here rather than read back off the booking: the mutation already
+   * answered with `respondBy`, and waiting for a refetch to say the same
+   * thing would leave the customer looking at a live send button for a
+   * request that has already gone. The query is invalidated as well (see
+   * `useSendBookingRequest`), so a later visit tells the same story from the
+   * server rather than from this state.
+   */
+  const [respondBy, setRespondBy] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   // Derived rather than seeded by an effect: the profile arrives a render or
   // two after this component mounts, and an effect that copied it into state
@@ -261,15 +383,30 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
         description: details?.description.trim() || null,
       })
       .then(
-        // Where the request now appears, waiting for the provider. Nothing
-        // travels with it: the bookings list reads its own rows.
-        () => void navigate({ to: "/bookings" }),
+        // **Stays on this page.** The obvious destination, `/bookings`, is a
+        // placeholder rendering "no bookings yet" — so navigating there would
+        // answer a successful commitment by denying it happened, and the
+        // obvious reaction to that is to book it again. This screen is also
+        // the only one holding `respondBy`, which is the one fact the
+        // customer now wants.
+        ({ respondBy: deadline }) => {
+          setRespondBy(deadline);
+          setSent(true);
+        },
         // Swallowed on purpose — `errorCode` already carries the failure
         // reactively and the message below renders from it. Rethrowing would
         // add an unhandled rejection saying the same thing.
         () => {},
       );
   }
+
+  // The errand is finished, and this page is where it finishes. The cache
+  // invalidation fired by the send will bring the booking back as
+  // `AWAITING_PROVIDER` and reach the same panel through `ConfirmPage`'s own
+  // branch — this is what holds the screen steady in the meantime, and what
+  // makes the deadline the one the mutation actually answered with rather
+  // than one a refetch has yet to confirm.
+  if (sent) return <SentPanel booking={booking} deadline={respondBy} />;
 
   return (
     <>

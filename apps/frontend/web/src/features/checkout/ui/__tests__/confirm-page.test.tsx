@@ -319,7 +319,14 @@ describe("ConfirmPage", () => {
     renderConfirm({ bookingId: "bk-1", priceMinor: 150000, commissionMinor: 18000 });
     expect(await screen.findByText("1500,00 MTn")).toBeInTheDocument();
     expect(screen.queryByText(/comiss/i)).not.toBeInTheDocument();
-    expect(screen.queryByText("180,00")).not.toBeInTheDocument();
+    // A regex, not the exact string. `queryByText("180,00")` matches a node
+    // whose whole text is "180,00" and cannot see "180,00 MTn" — which is
+    // what a commission line would actually render, because it would use the
+    // page's own `formatAmount`. Demonstrated rather than reasoned: with the
+    // exact-match version, injecting a real commission line into the rail
+    // left all 17 tests in this file green. `/comiss/i` does not cover it
+    // either, since a bare figure in a breakdown carries no label.
+    expect(screen.queryByText(/180,00/)).not.toBeInTheDocument();
   });
 
   it("says nothing is charged now", async () => {
@@ -438,12 +445,105 @@ describe("ConfirmPage", () => {
     expect(submitSpy).not.toHaveBeenCalled();
   });
 
-  it("moves on to the bookings list once the request has gone", async () => {
+  it("ends on this page, telling the customer what happens next", async () => {
+    // **It must not navigate to `/bookings`.** That route is a placeholder
+    // rendering "Ainda não há reservas.", and nothing in this app queries
+    // `booking.mine` — so the last thing a customer saw after successfully
+    // committing was the platform denying the booking exists, and the
+    // obvious reaction is to book it again. This page is also the only one
+    // holding `respondBy`.
     const { router } = renderConfirm({ bookingId: "bk-1" });
     await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
     await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe("/bookings"));
+    expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/booking/bk-1/confirm");
+    // The form is gone with it: a live send button beside a sent request is
+    // an invitation to send it twice.
+    expect(screen.queryByRole("button", { name: /enviar pedido/i })).not.toBeInTheDocument();
+  });
+
+  it("names the deadline the provider is held to, in the service's zone", async () => {
+    // `respondBy` comes back from the mutation — it is computed server-side
+    // from the live `provider_response_minutes` setting and capped at the
+    // slot's own start, so it is the one thing this page cannot work out for
+    // itself. 12:45 UTC is 14:45 in Maputo; a deadline printed in the
+    // browser's zone beside a slot printed in the provider's would put two
+    // clocks on one page.
+    submitSpy.mockResolvedValueOnce({
+      bookingId: "bk-1",
+      respondBy: "2026-09-04T12:45:00.000Z",
+    });
+
+    renderConfirm({ bookingId: "bk-1" });
+    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
+    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+
+    expect(await screen.findByText(/14:45/)).toBeInTheDocument();
+  });
+
+  it("tells a customer whose provider never answered, rather than sending them back to step 1", async () => {
+    // **`EXPIRED` means two different things**, and this page is the only one
+    // that can meet the second: `BookingStatus.Expired` covers a DRAFT whose
+    // checkout hold passed *and* an AWAITING_PROVIDER whose response window
+    // did, and `SweepBookingCommand` writes it for both. With `accept` and
+    // `decline` unmounted this phase, the second is the expected end state of
+    // nearly every request sent.
+    //
+    // Treated as the first, the customer is silently redirected to step 1 and
+    // told to pick a new time, never learning the provider did not answer —
+    // and the behaviour flips on a sweep they cannot see, because the same
+    // booking read "já foi enviado" a minute earlier.
+    //
+    // The discriminator is `addressLabel`, which is null on a DRAFT and only
+    // on a DRAFT: `Booking.submit` refuses to leave DRAFT without one.
+    const { router } = renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({
+        status: "EXPIRED",
+        addressLabel: "Casa",
+        addressLine: "Av. Julius Nyerere 1234",
+        addressCity: "Maputo",
+      }),
+    });
+
+    expect(await screen.findByText(/n[ãa]o respondeu a tempo/i)).toBeInTheDocument();
+    // Stays put. The old behaviour was a redirect, and a redirect is what
+    // made the loss invisible.
+    expect(router.state.location.pathname).toBe("/booking/bk-1/confirm");
+    // Offered, not imposed: picking another time is a choice they make.
+    expect(screen.getByRole("link", { name: /escolher outra hora/i })).toBeInTheDocument();
+  });
+
+  it("still sends a lapsed *unsent* draft back to step 1", async () => {
+    // The other half of `EXPIRED`, and the reason the discriminator has to be
+    // the address rather than the status. This booking never reached step 2,
+    // so there is nothing to report and the slot is genuinely gone.
+    const { router } = renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "EXPIRED", serviceOptionId: "opt-9" }),
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/book/svc-1");
+      expect(router.state.location.search).toMatchObject({ expired: true, optionId: "opt-9" });
+    });
+  });
+
+  it("never points a customer at a bookings page that denies the booking", async () => {
+    // The claim this task removed from `rail-price-summary` and must not
+    // reintroduce: `alreadySentBody` used to say "Pode acompanhá-lo nas suas
+    // reservas", about a page that renders "Ainda não há reservas."
+    renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ status: "COMPLETED", addressLabel: "Casa" }),
+    });
+
+    await screen.findByText(/j[áa] foi enviado/i);
+    expect(screen.queryByText(/nas suas reservas/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /ver as minhas reservas/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers one payment method rather than a chooser with disabled options", async () => {
@@ -499,17 +599,24 @@ describe("ConfirmPage", () => {
     expect(submitSpy).not.toHaveBeenCalled();
   });
 
-  it("shows the request rather than the form once it has been sent", async () => {
-    // Reachable with the back button, and where a double-tap on send lands.
-    // `expiresAt` on a submitted booking is the provider's response window,
-    // so a checkout countdown here would be counting somebody else's
-    // deadline, and a send button would call a mutation that has already run.
+  it("tells the same story on a refresh as it did on sending", async () => {
+    // Reachable with the back button or a reload, and where a double-tap on
+    // send lands. `expiresAt` on an `AWAITING_PROVIDER` booking *is* the
+    // `respondBy` the mutation answered with, so the server can retell the
+    // whole thing — which is what stops the page saying one thing in the
+    // moment and something vaguer a minute later.
+    //
+    // 12:30 UTC is 14:30 in Maputo, and the fixture's `expiresAt` is the
+    // response window here rather than a checkout hold: no countdown, because
+    // a checkout timer on this booking would be counting somebody else's
+    // deadline.
     renderConfirm({
       bookingId: "bk-1",
-      booking: bookingFixture({ status: "AWAITING_PROVIDER" }),
+      booking: bookingFixture({ status: "AWAITING_PROVIDER", addressLabel: "Casa" }),
     });
 
-    expect(await screen.findByText(/já foi enviado/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
+    expect(screen.getByText(/14:30/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /enviar pedido/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
   });
@@ -537,5 +644,19 @@ describe("ConfirmPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
 
     expect(await screen.findByText(/confirme o n[uú]mero acima/i)).toBeInTheDocument();
+
+    // **The half-failure, and what makes "recoverable and not wrong" true.**
+    // The profile write landed and the submit did not. The number has to
+    // survive on screen for the retry to be one press rather than a retype —
+    // and it does because the field is derived (`typed ?? profile ?? ""`)
+    // rather than seeded by an effect, which matters here specifically:
+    // `updateMyProfile`'s own `onSuccess` invalidates `user.me`, so an effect
+    // copying the profile into state would fire again mid-failure.
+    expect(screen.getByLabelText(/telem[oó]vel/i)).toHaveValue("841234567");
+
+    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+
+    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
   });
 });

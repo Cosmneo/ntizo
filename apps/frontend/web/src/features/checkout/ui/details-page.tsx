@@ -21,7 +21,7 @@ import {
   readDraftDetails,
   saveDraftDetails,
 } from "@/features/checkout/domain/draft-store";
-import { RELEASED_STATUSES } from "@/features/checkout/domain/released-statuses";
+import { holdLapsedUnsent } from "@/features/checkout/domain/released-statuses";
 
 /** One address as a single line: enough to tell two of them apart, not the whole record. */
 function addressSummary(address: AddressDTO): string {
@@ -80,7 +80,14 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
   // **Two departures, because they know two different amounts.** A booking
   // this customer can read names the service and the package to go back to;
   // a `null` names nothing at all.
-  const released = settled && !!booking && RELEASED_STATUSES.has(booking.status);
+  // `holdLapsedUnsent`, not merely "the status is EXPIRED": that status also
+  // covers a *sent* request whose provider window closed, and this page is
+  // reachable by the back button after step 3 has sent one. Telling that
+  // customer to pick a new time would be answering "nobody replied to you"
+  // with "choose another slot". Step 2 cannot meet the case on its own, but
+  // it is one back-press from the page that can. See the predicate's own doc
+  // comment for the invariant that separates them.
+  const released = settled && !!booking && holdLapsedUnsent(booking);
   const unreadable = settled && booking === null;
 
   useEffect(() => {
@@ -138,11 +145,18 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
           title={t("alreadySentTitle")}
           body={t("alreadySentBody")}
           action={
+            // **Not `/bookings`.** That route is a placeholder rendering
+            // "Ainda não há reservas." — nothing queries `booking.mine`
+            // yet — so pointing a customer whose request has gone at a page
+            // that denies it exists is the platform contradicting itself.
+            // It becomes the right destination the day that page reads its
+            // own rows.
             <Link
-              to="/bookings"
+              to="/services"
+              search={{}}
               className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
             >
-              {t("alreadySentAction")}
+              {t("browseMoreAction")}
             </Link>
           }
         />

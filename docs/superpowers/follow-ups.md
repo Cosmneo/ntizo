@@ -2632,3 +2632,25 @@ No other route has one.
 
 **Trigger:** any bug traced to a search param, a loader or a route-level guard — and before adding
 route-level logic that a page's own tests cannot see.
+
+## #112 — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
+
+`waitFor`'s default timeout is one second. The first render in either checkout route suite costs
+**~450ms measured on an idle machine** — the route's async `beforeLoad`, then the booking query, then
+the effect that reads it, on top of a first mount that processes the app's CSS (`vite.config.ts` sets
+`css: true`). Alone that is comfortable; beside 138 other web files and a database-backed backend
+suite running concurrently under `turbo run test`, it is not.
+
+`booking.$bookingId.confirm.test.tsx` went red twice that way and now passes an explicit
+`SETTLES_IN = { timeout: 4000 }` to every wait that depends on a navigation.
+`booking.$bookingId.details.test.tsx` has the identical shape and the identical 450ms first render and
+still uses the default. It has not gone red yet; nothing about it is safer, and the commit that added
+the confirm suite added a second file racing the same budget.
+
+Two candidate fixes, and the second is probably the right one: pass the same explicit timeout in that
+file, or raise `asyncUtilTimeout` once in `vite.config.ts` — these assertions are about *where* a
+route sends somebody and never about how quickly, so a bound that fails on a loaded machine is
+testing the machine. The global change is a whole-suite behaviour change and wants its own decision.
+
+**Trigger:** the next time a route or page suite fails on a `waitFor` timeout rather than on an
+assertion — and before adding a third route suite of this shape.
