@@ -2588,3 +2588,14 @@ The spec's "trade being accepted" paragraph names the payment risk moving to the
 not name this one.
 
 **Trigger:** mounting the three mutations — the rate limit belongs in the same change, not after it.
+
+### #104, the durable fix
+
+The rot has one cause. `slot-validity.reader.ts` reads the real clock inline, and it is the last
+place in this area that does — every other consumer takes `now` as a parameter
+(`findDueForSweep(now)`, `criteriaAt(now)`, `buildSweep(repo, () => now)`, `Booking.submit(at, …)`),
+which is precisely why twenty-six files could keep readable pinned dates and one could not.
+
+Give that check a `now` parameter and the category ends: the fixture goes back to a literal, and no
+test in the repo has to care what today's date is. It changes a port signature and every implementer
+and fake with it, which is why it was not done inside a review fix round.
