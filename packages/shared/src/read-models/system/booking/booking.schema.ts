@@ -19,6 +19,16 @@ import { z } from "zod";
 export const bookingReadModel = z.object({
   id: z.string().min(1),
 
+  /**
+   * **A set, not a sequence.** The members mirror the backend's
+   * `BookingStatus`, whose order stopped describing the flow when payment and
+   * confirmation swapped places — `PENDING_PAYMENT` is listed above
+   * `AWAITING_PROVIDER` and reached after it. Zod validates membership and
+   * ignores order, so nothing here depends on the arrangement; a consumer that
+   * wants the flow wants the state machine, not this list. See
+   * `BookingStatus`'s own header for why the claim was deleted rather than the
+   * order rewritten.
+   */
   status: z.enum([
     "DRAFT",
     "PENDING_PAYMENT",

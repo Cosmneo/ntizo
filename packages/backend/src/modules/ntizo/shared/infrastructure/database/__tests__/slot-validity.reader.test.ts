@@ -9,19 +9,32 @@
  *
  * Everything is created fresh under a random `suffix` in `beforeAll`, so this
  * run cannot collide with another worktree's or another session's concurrent
- * run — and every date used below is a fixed, far-future civil date
- * (`TARGET_DATE`), never "today", so "in the past" stays true forever and
- * "in the future" never flips false.
+ * run — and no date below is "today". The two directions are built
+ * differently, on purpose:
+ *
+ * - **"In the past" is a fixed date** (`2020-01-01`). A date that was in the
+ *   past stays in the past forever, so pinning it is safe and readable.
+ * - **"In the future" is computed from today** (`TARGET_DATE`, a year out).
+ *   A *fixed* future date is precisely the one that stops being true.
+ *   `DrizzleSlotValidityReader` refuses `startsAt <= Date.now()` against the
+ *   real clock, with nothing to inject, so a pinned `TARGET_DATE` would turn
+ *   every "this slot is real" test in this file red on the day it went past —
+ *   red on a calendar boundary rather than on a change, and pointing at the
+ *   reader rather than at the fixture that actually rotted. This file used to
+ *   claim that a fixed far-future date meant "'in the future' never flips
+ *   false". It flips; that is the whole reason this one is derived.
  *
  * `TARGET_DATE`'s weekday is read with `weekdayOf` rather than picked by eye
  * — the `member_availability` fixture's `weekday` column is derived from it,
- * so this file never has to be right about which day of the week a
- * particular date fell on.
+ * so this file never has to be right about which day of the week a particular
+ * date fell on. That was tidiness while the date was fixed and is
+ * **load-bearing now that it moves**: the weekday genuinely differs from run
+ * to run, and any fixture that assumed one would fail on six days in seven.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { addDays, localDateTimeToInstant, weekdayOf } from "@ntizo/shared/datetime";
+import { addDays, localDateAt, localDateTimeToInstant, weekdayOf } from "@ntizo/shared/datetime";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
 import { category } from "../catalog/schemas/category.schema";
@@ -50,7 +63,14 @@ const reader = new DrizzleSlotValidityReader();
 const suffix = crypto.randomUUID();
 
 const TIMEZONE = "Africa/Maputo"; // UTC+2 year-round — no DST to complicate the arithmetic below.
-const TARGET_DATE = "2027-06-14";
+/**
+ * A year out from whenever this runs, in `TIMEZONE` — derived, not pinned.
+ * See this file's header for why the future direction cannot be a literal:
+ * the reader compares `startsAt` to the real `Date.now()`, so a fixed date is
+ * a countdown to a red suite. A year is far past any window this file
+ * exercises and keeps the fixture visibly "far future" to a reader.
+ */
+const TARGET_DATE = addDays(localDateAt(TIMEZONE, new Date()), 365);
 const TARGET_WEEKDAY = weekdayOf(TARGET_DATE);
 // A different civil date only so its weekday necessarily differs from
 // `TARGET_DATE`'s — read with `weekdayOf` for the same reason `TARGET_DATE`
@@ -511,7 +531,10 @@ describe("busy time feeds the same grid, not a second one", () => {
   });
 
   test("a busy booking on a different civil date does not block this one — busy is scoped per date, not per member", async () => {
-    const otherDate = "2027-06-21"; // one week later, same weekday, no rule needed for the assertion below
+    // One week after `TARGET_DATE`, so same weekday and no rule needed for
+    // the assertion below. Derived from it rather than written out, or it
+    // would drift the moment `TARGET_DATE` moved with the calendar.
+    const otherDate = addDays(TARGET_DATE, 7);
     const otherStartsAt = localDateTimeToInstant(TIMEZONE, otherDate, 540);
     await db.insert(booking).values(
       bookingValues({

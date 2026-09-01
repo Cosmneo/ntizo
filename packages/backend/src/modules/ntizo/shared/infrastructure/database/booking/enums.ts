@@ -1,5 +1,23 @@
 /**
- * The whole of a booking's life, in the order it happens.
+ * Every status a booking can hold. **The members are a set, not a sequence —
+ * do not read an order into this list, and do not maintain one.**
+ *
+ * It did claim one. This was written "in the order it happens" under
+ * pay-first, and the reversal falsified that sentence without moving a line:
+ * `PENDING_PAYMENT` still sits above `AWAITING_PROVIDER` here while a booking
+ * now meets them the other way round. Deleting the claim is the fix, not
+ * reordering to chase it — every consumer is set membership (`inArray`,
+ * `in (…)` through `statusList`, `includes`, `for…of`, `it.each`), nothing
+ * reads this positionally, and Postgres does not care what order a CHECK
+ * constraint lists its values in. A reorder would be churn no test could
+ * catch if it went wrong, in exchange for a promise this comment should not
+ * have been making.
+ *
+ * Where the flow actually lives: `Booking`'s own transition methods, which
+ * are the only things that can move a booking from one of these to another;
+ * `DEADLINE_BEARING_STATUSES` below, whose three members *are* in the order a
+ * booking meets them and say so; and the design spec's state-machine diagram.
+ * Change those when the flow changes.
  *
  * A const object rather than a TypeScript `enum`, matching this codebase's
  * other status sets: the values are what Postgres stores and what GraphQL
