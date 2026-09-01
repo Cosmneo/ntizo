@@ -102,12 +102,34 @@ export interface BookingRepositoryPort {
   appendChange(change: BookingChangeRecord): Promise<void>;
 
   /**
-   * Find bookings that are due for expiry (whose `expires_at` is in the past)
-   * up to a limit.
+   * Find bookings standing past a deadline — any of the design's three
+   * clocks — oldest deadline first, up to a limit.
    *
-   * Used by Task 12's sweep job to find and expire bookings whose payment
-   * deadline has passed. The order (oldest first) and limit let the sweep
-   * process in batches and resume from where it left off.
+   * **One question, not three.** Each hop stamps `expires_at` with its own
+   * clock's deadline as it enters the status (`create` the checkout hold,
+   * `submit` the provider's response window, `accept` the payment window),
+   * so by the time this query runs the right deadline is already in the
+   * column and the status is what says which clock put it there. That makes
+   * the whole predicate `expires_at <= now AND status IN
+   * (DEADLINE_BEARING_STATUSES)` — no per-status branch, and nothing here
+   * reads `platform_settings` to ask how long any window was. An
+   * implementation that joined that table to recompute a deadline would be
+   * answering with today's setting a question the booking already answered
+   * when it was created.
+   *
+   * The status filter is load-bearing on its own: `expires_at` is not
+   * cleared when a booking leaves a deadline-bearing status (see
+   * `BookingProps.expiresAt`), so a paid, confirmed booking still carries a
+   * deadline long in the past and is kept out of this result by its status
+   * alone.
+   *
+   * The caller decides what each returned booking's status *becomes* — the
+   * three do not share an ending (see `ExpireBookingCommand`). This method
+   * only answers which rows are past their own clock.
+   *
+   * Oldest first, with a limit, so a sweep that can only drain part of a
+   * backlog drains it in the order it accumulated rather than starving
+   * whichever booking has been waiting longest.
    */
   findDueForExpiry(now: Date, limit: number): Promise<Booking[]>;
 }

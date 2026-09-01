@@ -67,6 +67,26 @@ function pendingBooking(id = "bk-1"): Booking {
 }
 
 /**
+ * A stored `DRAFT` booking — a checkout the customer is still filling in,
+ * standing on the checkout hold. The first of the design's three clocks, and
+ * the one whose expiry tells nobody.
+ */
+function draftBooking(id = "bk-1"): Booking {
+  return withId(Booking.create(bookingInput()), id);
+}
+
+/**
+ * A stored `AWAITING_PROVIDER` booking — a request sent, standing on the
+ * provider's response window. The second clock: its expiry tells the
+ * customer, which is why it and `draftBooking` above cannot share an event
+ * payload without `clock` to separate them.
+ */
+function awaitingBooking(id = "bk-1"): Booking {
+  const draft = Booking.create(bookingInput());
+  return withId(draft.submit(new Date(), draft.expiresAt as Date), id);
+}
+
+/**
  * A transactional fake tracking every `save` call — mirrors
  * `create-booking.command.test.ts`'s `FakeRepo`, except it stands in for the
  * "load an existing row, then update it" half of `BookingRepositoryPort`
@@ -317,7 +337,10 @@ describe("MarkBookingPaidCommand", () => {
   });
 
   it("throws paying a booking that already expired, and publishes nothing", async () => {
-    const expired = pendingBooking().expire(WHEN);
+    // Expired from AWAITING_PROVIDER: `expire` no longer moves
+    // PENDING_PAYMENT at all — that clock ends in CANCELLED (see
+    // `ExpireBookingCommand` below).
+    const expired = awaitingBooking().expire(WHEN);
     const { command, repo, outbox } = setupMarkPaid(expired);
     const input: MarkBookingPaidInput = { bookingId: "bk-1", paymentRef: "mpesa-123" };
 
@@ -339,8 +362,8 @@ describe("MarkBookingPaidCommand", () => {
 });
 
 describe("ExpireBookingCommand", () => {
-  it("expires a pending booking, releases the hold, and publishes BookingExpired — save before release before publish", async () => {
-    const { command, repo, slotHold, unitOfWork, outbox } = setupExpire(pendingBooking());
+  it("expires an abandoned DRAFT, releases the hold, and tells nobody but Scheduling — save before release before publish", async () => {
+    const { command, repo, slotHold, unitOfWork, outbox } = setupExpire(draftBooking());
     const input: ExpireBookingInput = { bookingId: "bk-1" };
 
     await command.execute(input);
@@ -351,7 +374,7 @@ describe("ExpireBookingCommand", () => {
     expect(slotHold.released).toEqual(["bk-1"]);
 
     // The order decided in `task-9-decisions.md`: save first (so the release
-    // that follows is never releasing a slot a still-PENDING_PAYMENT row
+    // that follows is never releasing a slot a still-slot-holding row
     // claims), then release, then publish.
     expect(unitOfWork.order).toEqual(["save", "release"]);
 
@@ -368,6 +391,76 @@ describe("ExpireBookingCommand", () => {
       bookingId: "bk-1",
       providerMemberId: "member-1",
       startsAt: WHEN,
+      // The checkout hold, not the provider's window: the customer walked
+      // away from their own form, and this is the field that lets
+      // Notification stay silent about it.
+      clock: "checkout_hold",
+    });
+  });
+
+  it("expires an AWAITING_PROVIDER request under the provider's own clock", async () => {
+    const { command, repo, slotHold, outbox } = setupExpire(awaitingBooking());
+
+    await command.execute({ bookingId: "bk-1" });
+
+    expect(repo.savedArg?.status).toBe("EXPIRED");
+    expect(slotHold.released).toEqual(["bk-1"]);
+
+    const event = outbox.published[0]!.events[0]!;
+    expect(event.eventName).toBe("booking.expired");
+    // Same status, same event class, same transition as the DRAFT above —
+    // and a different obligation. Nothing but `clock` separates them, which
+    // is why the two tests exist rather than one.
+    expect(event.payload).toMatchObject({
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      clock: "provider_response",
+    });
+  });
+
+  /**
+   * The row the design's failure section was written for, and the one this
+   * whole task exists to get right: a provider accepted, blocked their
+   * calendar, and the customer never paid. That is **not** an expiry. It is
+   * a cancellation, and the provider is owed the reason.
+   *
+   * Written so that it cannot pass if somebody flattens the three clocks
+   * into one ending: it pins the status, the event name, and the reason,
+   * and asserts against `EXPIRED`/`booking.expired` directly.
+   */
+  it("cancels a PENDING_PAYMENT booking whose window closed — CANCELLED with a reason, not EXPIRED", async () => {
+    const { command, repo, slotHold, unitOfWork, outbox } = setupExpire(pendingBooking());
+
+    await command.execute({ bookingId: "bk-1" });
+
+    expect(repo.saveCalls).toBe(1);
+    expect(repo.savedArg?.status).toBe("CANCELLED");
+    expect(repo.savedArg?.status).not.toBe("EXPIRED");
+    expect(repo.savedArg?.cancelledAt).not.toBeNull();
+    expect(repo.savedArg?.expiredAt).toBeNull();
+
+    // The slot goes back regardless of which ending applied — the provider
+    // gets their afternoon back, which is the one thing this failure can
+    // still give them.
+    expect(slotHold.released).toEqual(["bk-1"]);
+    expect(unitOfWork.order).toEqual(["save", "release"]);
+
+    expect(outbox.published).toHaveLength(1);
+    const batch = outbox.published[0]!;
+    expect(batch.afterSave).toBe(true);
+    expect(batch.afterRelease).toBe(true);
+    const event = batch.events[0]!;
+    expect(event.eventName).toBe("booking.cancelled");
+    expect(event.eventName).not.toBe("booking.expired");
+    expect(event.payload).toMatchObject({
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      // The provider is the audience here, unlike either expiry, so the
+      // event has to name them and the member whose calendar was blocked.
+      providerId: "prov-1",
+      providerMemberId: "member-1",
+      startsAt: WHEN,
+      reason: "customer_did_not_pay",
     });
   });
 
@@ -378,10 +471,11 @@ describe("ExpireBookingCommand", () => {
 
     await command.execute(input);
 
-    // `Booking.expire` is a no-op from every status but `PENDING_PAYMENT` —
-    // see its doc comment. The command's whole job here is to trust that and
-    // do nothing further: no save, no release, no event. Releasing this
-    // booking's hold would hand away a slot its customer already paid for.
+    // `CONFIRMED` is not one of the three statuses standing on a clock, so
+    // neither `expire` nor `cancel` governs it — see `ExpireBookingCommand`'s
+    // doc comment. The command's whole job here is to do nothing further: no
+    // save, no release, no event. Releasing this booking's hold would hand
+    // away a slot its customer already paid for.
     expect(repo.saveCalls).toBe(0);
     expect(slotHold.released).toEqual([]);
     expect(outbox.published).toEqual([]);
@@ -441,7 +535,9 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
 
     expect(repoExpire.lastApplied).toBe(true);
     expect(outboxExpire.published).toHaveLength(1);
-    expect(outboxExpire.published[0]?.events[0]?.eventName).toBe("booking.expired");
+    // `booking.cancelled`, not `booking.expired`: the racing status here is
+    // PENDING_PAYMENT, whose clock ends in a cancellation with a reason.
+    expect(outboxExpire.published[0]?.events[0]?.eventName).toBe("booking.cancelled");
 
     // The webhook's write found the row already moved: no second
     // transition, no second outbox row. The customer is never told they
@@ -452,7 +548,7 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
 
     // Exactly one status survives, and it is the winner's — not a status
     // that reflects whichever command happened to run last.
-    expect(row.current?.status).toBe("EXPIRED");
+    expect(row.current?.status).toBe("CANCELLED");
   });
 
   it("the webhook writes first: the payment wins, the sweep finds the row already moved and releases nothing", async () => {
@@ -479,8 +575,8 @@ describe("MarkBookingPaidCommand and ExpireBookingCommand racing the same stale 
 
     // The sweep's write found the row already moved: no release (the slot
     // is not abandoned — the customer who paid is still holding it) and no
-    // `BookingExpired` telling Scheduling and Notification the opposite of
-    // what the row now says.
+    // `BookingCancelled` telling Scheduling and Notification the opposite
+    // of what the row now says, reason and all.
     expect(repoExpire.saveCalls).toBe(1);
     expect(repoExpire.lastApplied).toBe(false);
     expect(slotHold.released).toEqual([]);

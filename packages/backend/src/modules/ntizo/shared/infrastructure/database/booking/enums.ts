@@ -93,3 +93,43 @@ export const SLOT_HOLDING_STATUSES = [
   BookingStatus.Confirmed,
   BookingStatus.MarkedDone,
 ] as const;
+
+/**
+ * The statuses in which `expires_at` is a deadline somebody is still
+ * standing on — the design's three clocks, in the order a booking meets
+ * them.
+ *
+ * Each is stamped by the hop that enters the status, from its own
+ * `platform_settings` column: `Booking.create` writes the checkout hold,
+ * `submit` overwrites it with the provider's response window, `accept`
+ * overwrites that with the payment window. By the time the expiry sweep
+ * reads the row, whichever clock applies is already *in* the column — which
+ * is why `findDueForExpiry` is one predicate (`expires_at <= now AND status
+ * IN (…)`) and not three queries, and why nothing in the repository has to
+ * join `platform_settings` to ask how long a window was.
+ *
+ * A subset of `SLOT_HOLDING_STATUSES`, and not by coincidence: a live
+ * deadline is the platform holding somebody's calendar while it waits for
+ * an answer. But not the same list, and the two must not be merged.
+ * `CONFIRMED` and `MARKED_DONE` also hold the slot and also still carry the
+ * `expires_at` they were given — `markPaid` deliberately stopped nulling it
+ * (see `BookingProps.expiresAt`) — so the only thing keeping a paid booking
+ * out of the sweep is its absence from *this* list. Add a status to
+ * `SLOT_HOLDING_STATUSES` and forget this one and the new status simply
+ * never expires; add it here without meaning to and the sweep starts
+ * cancelling sales that already happened.
+ *
+ * **Membership here is not the whole answer — it is only the question.**
+ * What each of the three becomes when its clock runs out is different:
+ * `DRAFT` and `AWAITING_PROVIDER` expire (`Booking.expire`), while
+ * `PENDING_PAYMENT` is *cancelled* with a reason (`Booking.cancel`),
+ * because by then a provider has committed their calendar and is owed an
+ * explanation rather than a status change nobody narrates. Adding a fourth
+ * member here without answering that question for it leaves
+ * `ExpireBookingCommand` with nothing to do for the rows it now selects.
+ */
+export const DEADLINE_BEARING_STATUSES = [
+  BookingStatus.Draft,
+  BookingStatus.AwaitingProvider,
+  BookingStatus.PendingPayment,
+] as const;

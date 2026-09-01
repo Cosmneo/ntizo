@@ -1,4 +1,5 @@
 import { BookingStatus } from "../../../../shared/infrastructure/database/booking/enums";
+import type { BookingCancelledReason } from "../events";
 import {
   BookingDateInvalidError,
   BookingDurationInvalidError,
@@ -44,6 +45,44 @@ const CHARGEABLE_STATUSES: readonly BookingStatus[] = [
   BookingStatus.MarkedDone,
 ];
 
+/**
+ * The statuses `expire` moves — the two of the design's three clocks whose
+ * ending is an expiry.
+ *
+ * `PENDING_PAYMENT` is deliberately absent, and that absence is the whole
+ * point of the spec this method was rewritten for: a payment window that
+ * runs out ends in `CANCELLED` with a reason, not in `EXPIRED`. See
+ * `expire` and `cancel` for the argument.
+ */
+const EXPIRABLE_STATUSES: readonly BookingStatus[] = [
+  BookingStatus.Draft,
+  BookingStatus.AwaitingProvider,
+];
+
+/**
+ * Which statuses each cancellation reason is allowed to cancel from.
+ *
+ * Keyed by `BookingCancelledReason` rather than listing statuses on their
+ * own, because "may this booking be cancelled?" has no answer without the
+ * reason: `customer_did_not_pay` is only ever true of a booking sitting in
+ * `PENDING_PAYMENT` past its window, and a reason invented later for a
+ * cancellation *policy* — a customer calling off a `CONFIRMED` job the day
+ * before — would be true of statuses this one never touches. A flat list of
+ * cancellable statuses would have to be the union of every reason's, which
+ * is how a policy reason ends up quietly authorising the sweep to cancel a
+ * confirmed, paid booking.
+ *
+ * `Record`, not `Partial<Record>`: adding a member to
+ * `BookingCancelledReason` is a type error here until somebody says which
+ * statuses it may cancel from, which is exactly the moment that question is
+ * cheapest to answer. That is the gate `BookingCancelledReason`'s own doc
+ * comment promises when it says a future reason will "name its own reasons
+ * against real rules it can actually enforce".
+ */
+const CANCELLABLE_FROM: Record<BookingCancelledReason, readonly BookingStatus[]> = {
+  customer_did_not_pay: [BookingStatus.PendingPayment],
+};
+
 /** A commission rate is basis points: 0 is free, 10000 is the whole price. */
 const COMMISSION_BPS_MAX = 10_000;
 
@@ -66,20 +105,31 @@ export interface BookingProps {
   // State: which status is current, and when each transition happened.
   readonly status: BookingStatus;
   /**
-   * The payment deadline — set once at creation, and left alone by every
-   * transition after that. `markPaid` and `expire` used to null it out on
-   * the way past `PENDING_PAYMENT`, on the theory that a stale deadline
-   * invited some later query to act on it. That theory was wrong in
-   * practice: `findDueForExpiry` (see `booking.repository.ts`) already
-   * filters on `status = 'PENDING_PAYMENT'` before it ever looks at this
-   * column, so the null bought no protection a status check wasn't already
-   * giving for free. What it did cost is real — the one fact a customer
-   * disputing "you gave my slot away" needs is the deadline they were
-   * actually given, and `PlatformSettingsReaderPort.findPaymentWindowMinutes`
-   * is deliberately LIVE on the promise that "a booking already created
-   * keeps the `expiresAt` it was given regardless of what this returns
-   * afterward" (see that port's own comment) — a promise nulling this out
-   * quietly broke the moment the booking moved on.
+   * The deadline currently running against this booking — **whichever of
+   * the design's three clocks its status is standing on.** `create` stamps
+   * the checkout hold, `submit` overwrites it with the provider's response
+   * window, `accept` overwrites that with the payment window; each hop
+   * takes the deadline as an argument, because `domain/` reaches for no
+   * configuration and all three lengths are `platform_settings` columns.
+   * One column, three meanings, and the status is what says which — which
+   * is exactly what lets `findDueForExpiry` ask one question
+   * (`expires_at <= now AND status IN (…)`) instead of three.
+   *
+   * Left alone by every transition that is not one of those three hops.
+   * `markPaid` and `expire` used to null it out on the way past
+   * `PENDING_PAYMENT`, on the theory that a stale deadline invited some
+   * later query to act on it. That theory was wrong in practice:
+   * `findDueForExpiry` (see `booking.repository.ts`) filters on status
+   * before it ever looks at this column — `DEADLINE_BEARING_STATUSES`, the
+   * three that still have a clock running — so the null bought no
+   * protection a status check wasn't already giving for free. What it did
+   * cost is real: the one fact a customer disputing "you gave my slot away"
+   * needs is the deadline they were actually given, and
+   * `PlatformSettingsReaderPort`'s three windows are deliberately LIVE on
+   * the promise that "a booking already created keeps the `expiresAt` it
+   * was given regardless of what this returns afterward" (see that port's
+   * own comments) — a promise nulling this out quietly broke the moment the
+   * booking moved on.
    */
   readonly expiresAt: Date | null;
   readonly paidAt: Date | null;
@@ -97,6 +147,11 @@ export interface BookingProps {
   readonly confirmedAt: Date | null;
   /** When the provider said no — set by `decline`, which moves the booking to `DECLINED`. */
   readonly declinedAt: Date | null;
+  /**
+   * When the booking was called off for a named reason — set by `cancel`.
+   * The reason itself is not here: `booking_change` carries it, one row per
+   * hop, the same as `decline`'s (see `cancel`'s own doc comment).
+   */
   readonly cancelledAt: Date | null;
   readonly markedDoneAt: Date | null;
   readonly completedAt: Date | null;
@@ -146,9 +201,9 @@ export interface BookingProps {
  * consistent for it to be an accident.
  *
  * **The snapshot is immutable after creation.** Nothing here mutates a
- * `Booking` — every transition (`markPaid`, `expire`, `submit`, `accept`,
- * `decline`) returns a new instance, matching how `Review.revise` never
- * touches the `Review` it was called on.
+ * `Booking` — every transition (`markPaid`, `expire`, `cancel`, `submit`,
+ * `accept`, `decline`) returns a new instance, matching how `Review.revise`
+ * never touches the `Review` it was called on.
  */
 export class Booking {
   private constructor(private readonly props: BookingProps) {}
@@ -701,28 +756,94 @@ export class Booking {
   }
 
   /**
-   * The payment window closes without a payment arriving.
+   * A clock runs out on a booking nobody has committed money to yet.
    *
-   * A no-op everywhere except `PENDING_PAYMENT`. The job that calls this
-   * fires on a timer set at creation, with no way to know whether the
-   * booking already moved on — paid, or moved on some other way — by the
-   * time it does. That is an ordinary race, not a bug: the timer is
-   * watching a clock, not the booking, so it firing late says nothing
-   * about whether the payment arrived first. Throwing here would turn that
-   * ordinary race into an error somebody has to read and dismiss, for
-   * every booking that simply got paid before its deadline — the opposite
-   * of `markPaid`'s refusal, and deliberately so: a stray payment is a fact
-   * someone must see, a stray timer is not.
+   * Moves `DRAFT` — a checkout the customer abandoned — and
+   * `AWAITING_PROVIDER` — a request the provider never answered — to
+   * `EXPIRED`. Both release the slot, and the two are the same transition
+   * with very different audiences; which one happened is not recoverable
+   * from the row afterwards, so the command carries it on the event instead
+   * (`BookingExpiredClock`).
+   *
+   * **`PENDING_PAYMENT` is no longer one of them**, and that reversal is
+   * this method's whole rewrite. An earlier version moved exactly that one
+   * status and no other, back when it was the only status with a deadline
+   * on it: the customer paid first, so nothing but a payment window could
+   * ever lapse. Under the design's three clocks the two statuses *before*
+   * payment carry deadlines too, and the one *at* payment stopped belonging
+   * here — by then a provider has blocked their calendar on the strength of
+   * a promise the platform's own ordering made, and `EXPIRED` is a status
+   * that explains nothing to them. That case is `cancel`'s, which ends it
+   * as `CANCELLED` carrying `customer_did_not_pay`.
+   *
+   * **A no-op from every other status, and the reasoning for that has not
+   * changed — only the set of statuses it covers.** The sweep that calls
+   * this is watching a clock, not the booking: `findDueForExpiry` selected
+   * the row on `expires_at`, and between that select and this call the
+   * booking may have been submitted, accepted, paid, or declined. That is
+   * an ordinary race, not a fault on either side, so a status this method
+   * does not govern is answered by handing the same instance back rather
+   * than raising something a human then has to read and dismiss. The
+   * opposite of `markPaid`'s refusal, and deliberately so: a stray payment
+   * is a fact somebody must see, a stray sweep is not.
    */
   expire(at: Date): Booking {
-    if (this.props.status !== BookingStatus.PendingPayment) {
+    if (!EXPIRABLE_STATUSES.includes(this.props.status)) {
       return this;
     }
+
+    Booking.requireValidDate(at, "at");
 
     return new Booking({
       ...this.props,
       status: BookingStatus.Expired,
       expiredAt: at,
+    });
+  }
+
+  /**
+   * A booking is called off for a named reason, after somebody had already
+   * committed something to it.
+   *
+   * Today that is one case: the payment window closed on a
+   * `PENDING_PAYMENT` booking and the money never arrived. It is the
+   * failure the design exists to answer — the provider accepted, blocked
+   * four hours of their Saturday, and the customer never typed the PIN —
+   * and it must not be dressed up as an expiry. `EXPIRED` says a deadline
+   * passed; `CANCELLED` with `customer_did_not_pay` says which deadline,
+   * whose it was, and why the provider is looking at an empty afternoon.
+   * The reason is what `BookingCancelled` carries so Notification can tell
+   * them that without reading the booking back.
+   *
+   * **`reason` is never stored on `BookingProps`** — there is no
+   * `cancelReason` column and there should not be one, the same argument
+   * `decline` makes for its own reason. `booking_change` already has a
+   * `reason` column built for exactly this, one row per hop, append-only;
+   * persisting it there is the command's job. Here the reason is the thing
+   * that decides whether the transition is legal at all — see
+   * `CANCELLABLE_FROM` — so it does real work even though nothing keeps it.
+   *
+   * **A no-op from a status this reason does not govern**, matching
+   * `expire` rather than `decline`, because it has `expire`'s caller: the
+   * sweep, selecting on a deadline it read before any of this ran. A
+   * booking that got paid in the seconds between the select and this call
+   * is an ordinary race, and the honest answer to it is the instance back
+   * unchanged. Note the asymmetry with `submit`, `accept` and `decline`,
+   * which *do* throw: those are one person's single deliberate action, and
+   * a wrong status there is a bug upstream rather than a clock that fired
+   * late.
+   */
+  cancel(at: Date, reason: BookingCancelledReason): Booking {
+    if (!CANCELLABLE_FROM[reason].includes(this.props.status)) {
+      return this;
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.Cancelled,
+      cancelledAt: at,
     });
   }
 }

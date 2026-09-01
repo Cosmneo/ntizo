@@ -101,8 +101,12 @@ export function bootstrapBooking() {
       expireBooking,
       markBookingPaid: new MarkBookingPaidCommand(bookingRepository, unitOfWork, outboxPort),
       internal: {
-        // The delayed cancellation a cron sweeps — nobody asks for this,
-        // something schedules it. See scheduled.ts.
+        // The three clocks a cron sweeps — nobody asks for this, something
+        // schedules it. See scheduled.ts. It takes no
+        // `platformSettingsReader`, and that absence is the design: each hop
+        // already stamped its own window onto `expires_at`, so the sweep
+        // reads a deadline rather than recomputing one from a setting that
+        // may have changed since.
         expireDue: new ExpireDueBookingsInternalCommand(bookingRepository, expireBooking),
       },
     },

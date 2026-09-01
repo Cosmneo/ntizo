@@ -7,7 +7,11 @@ import {
   type BookingRow,
   type NewBookingRow,
 } from "../../../../../shared/infrastructure/database/booking/schemas";
-import { BookingStatus, SLOT_HOLDING_STATUSES } from "../../../../../shared/infrastructure/database/booking/enums";
+import {
+  BookingStatus,
+  DEADLINE_BEARING_STATUSES,
+  SLOT_HOLDING_STATUSES,
+} from "../../../../../shared/infrastructure/database/booking/enums";
 import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { Booking } from "../../../domain/aggregates/booking.aggregate";
 import { SlotAlreadyTakenError } from "../../../domain/exceptions";
@@ -369,17 +373,27 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
   }
 
   /**
-   * `PENDING_PAYMENT` only, not every slot-holding status: a paid booking
-   * (`AWAITING_PROVIDER`, `CONFIRMED`, `MARKED_DONE`) still holds its slot
-   * but has already taken the customer's money, and expiring it would
-   * cancel a sale that already happened. `expires_at IS NOT NULL` is
-   * belt-and-braces on top of the status filter, not a second filter doing
-   * real work: `Booking.create` always sets `expiresAt`, and no transition
-   * nulls it afterward (see `markPaid` and `expire`, and `expiresAt`'s own
-   * doc comment on `BookingProps` for why it now stays put permanently, as
-   * a deadline the row itself is the audit trail for) — so a
-   * `PENDING_PAYMENT` row can never actually have a null `expiresAt` for
-   * this filter to need. The guard exists in case one somehow does anyway.
+   * `DEADLINE_BEARING_STATUSES`, not every slot-holding status and no
+   * longer `PENDING_PAYMENT` alone: the design's three clocks all stamp
+   * this one column, so the three windows are already baked into
+   * `expires_at` by the time this query sees the row and the whole
+   * difference between them is which status the row is in. One predicate
+   * answers all three — see `BookingRepositoryPort.findDueForExpiry` for
+   * why that is not three queries, and `DEADLINE_BEARING_STATUSES` for why
+   * that list is not `SLOT_HOLDING_STATUSES`.
+   *
+   * `CONFIRMED` and `MARKED_DONE` are what the status filter is keeping
+   * out, and it is the only thing keeping them out: both still hold the
+   * slot, and both still carry the `expires_at` they were given, because
+   * `markPaid` deliberately stopped nulling it (see `BookingProps.expiresAt`).
+   * A sweep that trusted `expires_at` alone would cancel sales that already
+   * completed.
+   *
+   * `expires_at IS NOT NULL` is belt-and-braces on top of that, not a
+   * second filter doing real work: `Booking.create` always sets it and no
+   * transition nulls it afterward, so a deadline-bearing row can never
+   * actually have a null here for this filter to need. The guard exists in
+   * case one somehow does anyway.
    *
    * Oldest deadline first, so a sweep that can only process part of a
    * backlog drains it in the order it accumulated rather than starving
@@ -391,7 +405,7 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
       .from(booking)
       .where(
         and(
-          eq(booking.status, BookingStatus.PendingPayment),
+          inArray(booking.status, [...DEADLINE_BEARING_STATUSES]),
           isNotNull(booking.expiresAt),
           lte(booking.expiresAt, now),
         ),

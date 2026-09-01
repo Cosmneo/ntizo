@@ -1,5 +1,10 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
-import { BookingExpired } from "../../domain/events";
+import type { Booking } from "../../domain/aggregates/booking.aggregate";
+import {
+  BookingCancelled,
+  type BookingCancelledReason,
+  BookingExpired,
+} from "../../domain/events";
 import { BookingNotFoundError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
@@ -10,24 +15,59 @@ export interface ExpireBookingInput {
 }
 
 /**
- * The payment window closed without a payment ever arriving.
+ * The one reason this command ever cancels for, named once rather than
+ * repeated at the two places that need it — the `Booking.cancel` call that
+ * decides the transition is legal, and the `BookingCancelled` payload that
+ * tells the provider why their Saturday is empty. The two must agree; a
+ * literal typed twice is a way for them not to.
+ */
+const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
+
+/**
+ * A clock ran out on one booking. Which clock decides what that means.
  *
- * **This command is internal.** It is driven by Task 12's expiry sweep, which
- * fires on a timer set at booking creation with no way to know whether the
- * booking already moved on — paid, or moved on some other way — by the time
- * it does. That is an ordinary race against payment, not a fault on either
- * side, which is exactly why `Booking.expire` is a silent no-op everywhere
- * but `PENDING_PAYMENT` rather than a refusal. No authorisation check for the
- * same reason as `MarkBookingPaidCommand`: there is no requesting user here,
- * only a job that outlived (or didn't) its target's deadline.
+ * **This command is internal.** It is driven by the expiry sweep, which
+ * selects rows on `expires_at` with no way to know whether a booking
+ * already moved on — submitted, accepted, paid, declined — between that
+ * select and this call. That is an ordinary race, not a fault on either
+ * side, which is exactly why `Booking.expire` and `Booking.cancel` are
+ * silent no-ops from a status neither governs rather than refusals. No
+ * authorisation check for the same reason as `MarkBookingPaidCommand`:
+ * there is no requesting user here, only a job that outlived (or didn't)
+ * its target's deadline.
  *
- * **Idempotency is the aggregate's decision, not this command's.**
- * `Booking.expire` returns the very same instance back from every status
- * other than `PENDING_PAYMENT` — a booking that already paid, or that an
- * earlier sweep run already expired, is left alone. That identity, read
- * below with `===`, is what decides whether anything gets saved, released,
- * or announced; a status comparison written a second time here would only be
- * a second place for that decision to drift from the aggregate's.
+ * **Three clocks, two endings, and the third row is the point.** The design
+ * gives every deadline-bearing status its own outcome, and they are not one
+ * outcome under different labels:
+ *
+ * - `DRAFT` past its checkout hold becomes `EXPIRED`, and **nobody is
+ *   told** — the only person who could be told is the customer who walked
+ *   away from their own checkout.
+ * - `AWAITING_PROVIDER` past the provider's window becomes `EXPIRED`, and
+ *   **the customer is told** — they did everything asked of them and the
+ *   provider never answered. Same status, same transition, different
+ *   obligation; `BookingExpired.clock` is what carries the difference to
+ *   Notification.
+ * - `PENDING_PAYMENT` past the payment window becomes **`CANCELLED`, not
+ *   `EXPIRED`**, and **the provider is told, with the reason**. This is the
+ *   failure the design was written for: the provider accepted, blocked
+ *   their calendar, the customer never paid, and the platform's own choice
+ *   of ordering is what cost them the slot. `EXPIRED` explains none of
+ *   that. `BookingCancelled` carrying `customer_did_not_pay` does.
+ *
+ * The status is read here, once, because it is the only place the *which
+ * clock* still exists: all three windows are stamped onto the same
+ * `expiresAt` column by the hop that enters the status, so the column says
+ * when and the status says which. Reading it does not move the transition
+ * decision out of the aggregate — `expire` and `cancel` still refuse (by
+ * no-op) anything they do not govern, and the identity check below is what
+ * this command actually acts on.
+ *
+ * **Idempotency is the aggregate's decision, not this command's.** Both
+ * transitions return the very same instance back from a status they do not
+ * govern — a booking that already paid, or that an earlier sweep run
+ * already ended, is left alone. That identity, read below with `===`, is
+ * what decides whether anything gets saved, released, or announced.
  *
  * **A lost update is a different problem, and the aggregate cannot see it.**
  * The identity check above only ever reasons about the value `findById`
@@ -38,9 +78,10 @@ export interface ExpireBookingInput {
  * enforcing, so approvals landing near the deadline are routine, not a
  * theoretical edge case. Without a guard at the write, whichever of the two
  * writes second would silently overwrite the first's transition — the row
- * would say `EXPIRED` and the slot handed to someone else while the payment
- * actually cleared, or the row would say paid while `BookingExpired` had
- * already told Scheduling and Notification the opposite. `repo.save`'s
+ * would say `CANCELLED` and the slot handed to someone else while the
+ * payment actually cleared, or the row would say paid while
+ * `BookingCancelled` had already told Scheduling and Notification the
+ * opposite, reason and all. `repo.save`'s
  * `expectedStatus` parameter guards against exactly this: it carries the
  * status this read saw, and the repository only writes if the row is still
  * at that status when the write actually runs (see
@@ -51,8 +92,11 @@ export interface ExpireBookingInput {
  *
  * **Order inside the transaction: save, then release, then publish.** The
  * save is what makes the release correct — releasing the hold while the row
- * still says `PENDING_PAYMENT` would leave a window where the slot reads as
- * free while the booking still claims it. One transaction makes that window
+ * still says whichever slot-holding status this sweep found it in would
+ * leave a window where the slot reads as free while the booking still
+ * claims it. Releasing is part of all three endings, not only the two that
+ * expire: `EXPIRED` and `CANCELLED` are both outside
+ * `SLOT_HOLDING_STATUSES`. One transaction makes that window
  * unobservable to anyone else today, but the ordering still has to read
  * right to whoever adds a second hold mechanism later. The `applied` check
  * sits between save and release for the same reason: releasing a hold this
@@ -84,12 +128,79 @@ export class ExpireBookingCommand {
         throw new BookingNotFoundError(input.bookingId);
       }
 
-      const moved = booking.expire(at);
+      // Never null here: `booking` was loaded through `findById`, which
+      // only ever returns a booking the database already assigned an id to.
+      const bookingId = booking.id as string;
+
+      let moved: Booking;
+      let announcement: BookingExpired | BookingCancelled;
+
+      // The design's three-row table, in code. The transition and the fact
+      // its event has to carry are decided together, off the one status
+      // read, because they are the same decision: which clock this booking
+      // was standing on. `expiresAt` says when the deadline was, never
+      // which window set it.
+      //
+      // Literals rather than the `BookingStatus` const: that const lives in
+      // `shared/infrastructure/database/booking/enums.ts`, and no use case
+      // in this codebase reaches into `infrastructure/` — the domain layer's
+      // own use of it is as far in as this vocabulary comes. (Two of
+      // Communication's outbound *ports* do import from there; a command
+      // doing it would be a step further, and there is no need.) The
+      // literals are not loose strings either: `booking.status` is that same
+      // union, so a `case` naming a status that stopped existing is a
+      // compile error here, not a branch that silently stops matching.
+      switch (booking.status) {
+        case "DRAFT":
+          moved = booking.expire(at);
+          announcement = new BookingExpired({
+            bookingId,
+            customerId: booking.customerId,
+            providerMemberId: booking.providerMemberId,
+            startsAt: booking.startsAt,
+            clock: "checkout_hold",
+          });
+          break;
+
+        case "AWAITING_PROVIDER":
+          moved = booking.expire(at);
+          announcement = new BookingExpired({
+            bookingId,
+            customerId: booking.customerId,
+            providerMemberId: booking.providerMemberId,
+            startsAt: booking.startsAt,
+            clock: "provider_response",
+          });
+          break;
+
+        case "PENDING_PAYMENT":
+          // Not an expiry. See this class's doc comment: a provider blocked
+          // their calendar on the platform's promise and got nothing, and
+          // the reason is what they are owed.
+          moved = booking.cancel(at, CUSTOMER_DID_NOT_PAY);
+          announcement = new BookingCancelled({
+            bookingId,
+            customerId: booking.customerId,
+            providerId: booking.providerId,
+            providerMemberId: booking.providerMemberId,
+            startsAt: booking.startsAt,
+            reason: CUSTOMER_DID_NOT_PAY,
+          });
+          break;
+
+        default:
+          // No clock governs where this booking is now: the sweep selected
+          // it on a deadline and it moved on before this call reached it.
+          // The ordinary race, answered the same way the aggregate answers
+          // it — silently, with nothing written.
+          return;
+      }
+
       if (moved === booking) {
         // The aggregate says nothing happened by handing back the instance
-        // it was given: this booking already left `PENDING_PAYMENT` by some
-        // other path. Releasing its hold here would hand away a slot a
-        // customer who paid for it is still holding.
+        // it was given. It has the last word even where the switch above
+        // expected a transition: releasing this booking's hold would hand
+        // away a slot somebody may still be holding.
         return;
       }
 
@@ -97,31 +208,17 @@ export class ExpireBookingCommand {
       if (!applied) {
         // The row no longer holds the status this read saw — a payment
         // reached it first and already committed. `moved` describes a
-        // world that no longer exists; releasing its hold or announcing its
-        // expiry would hand away, and tell everyone about the loss of, a
-        // slot a customer who just paid is still holding. See this class's
-        // own doc comment for why the aggregate's identity check above
-        // cannot catch this on its own.
+        // world that no longer exists; releasing its hold or announcing
+        // its ending would hand away, and tell everyone about the loss of,
+        // a slot a customer who just paid is still holding. See this
+        // class's own doc comment for why the aggregate's identity check
+        // above cannot catch this on its own.
         return;
       }
 
-      // Never null here: `moved` was loaded through `findById`, which only
-      // ever returns a booking the database already assigned an id to.
-      const bookingId = moved.id as string;
-
       await this.slotHold.release(bookingId);
 
-      await this.outboxPort.publish(
-        [
-          new BookingExpired({
-            bookingId,
-            customerId: moved.customerId,
-            providerMemberId: moved.providerMemberId,
-            startsAt: moved.startsAt,
-          }),
-        ],
-        "booking",
-      );
+      await this.outboxPort.publish([announcement], "booking");
     });
   }
 }

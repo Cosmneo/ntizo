@@ -190,18 +190,25 @@ function bookingInput(
  *
  * `Booking.create` alone no longer reaches `PENDING_PAYMENT` — it produces
  * `DRAFT` now, the reversal Task 3 of the payment-and-confirmation-order
- * plan built — and this file's own fixtures (the exclusion constraint, the
- * compare-and-swap guard, `findDueForExpiry`) are all specifically about
- * `PENDING_PAYMENT` rows, not about the state machine that gets a booking
- * there. `submit`'s `respondBy` and `accept`'s `payBy` are both meaningless
- * to this file's assertions, so `input.expiresAt` is reused for both rather
- * than inventing two dates nothing here reads back — only the final,
- * post-`accept` value matters, and it lands exactly where `bookingInput`
- * put it.
+ * plan built — so this threads through `submit` and `accept` the way a real
+ * booking does. `submit`'s `respondBy` and `accept`'s `payBy` are both
+ * meaningless to this file's assertions, so `input.expiresAt` is reused for
+ * both rather than inventing two dates nothing here reads back — only the
+ * final, post-`accept` value matters, and it lands exactly where
+ * `bookingInput` put it.
  */
 function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
   const draft = Booking.create(input);
   return draft.submit(new Date(), input.expiresAt).accept(new Date(), input.expiresAt);
+}
+
+/**
+ * The middle of the three clocks: a request sent, waiting on the provider,
+ * with `expiresAt` left at exactly the value the caller configured — the
+ * same reuse of one date `pendingBooking` makes, and for the same reason.
+ */
+function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
+  return Booking.create(input).submit(new Date(), input.expiresAt);
 }
 
 /**
@@ -339,20 +346,27 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       const slotStart = new Date("2026-10-03T09:00:00.000Z");
       const slotExpires = new Date("2026-10-03T09:30:00.000Z");
 
+      // A `DRAFT`, not a `PENDING_PAYMENT`, because `expire` governs the
+      // two clocks *before* payment now: a checkout abandoned mid-form is
+      // exactly what `Booking.create` produces and exactly what the first
+      // of the three clocks ends. A `PENDING_PAYMENT` past its window ends
+      // as `CANCELLED` instead (see `save`'s guard test below, which uses
+      // that path).
       const first = await repo.insert(
-        pendingBooking(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
+        Booking.create(bookingInput({ startsAt: slotStart, expiresAt: slotExpires })),
         1,
       );
+      expect(first.status).toBe("DRAFT");
 
       // `save` against the happy path here — its compare-and-swap guard
       // (Task 5 of the booking-seams repair plan) gets its own tests below.
       // This is the scenario the brief asks for regardless: a released slot
       // must accept a second booking, which is only true once `expire`
-      // moved the first one out of `PENDING_PAYMENT` and `save` persisted
-      // that.
+      // moved the first one out of a slot-holding status and `save`
+      // persisted that.
       const expired = first.expire(new Date("2026-10-03T09:31:00.000Z"));
       expect(expired.status).toBe("EXPIRED");
-      const applied = await repo.save(expired, "PENDING_PAYMENT");
+      const applied = await repo.save(expired, "DRAFT");
       expect(applied).toBe(true);
 
       const reread = await repo.findById(first.id as string);
@@ -409,8 +423,16 @@ describe("save's expectedStatus guard", () => {
       // row before either wrote. Its `UPDATE … WHERE id = $1 AND status =
       // 'PENDING_PAYMENT'` now matches nothing, because the row already
       // moved.
-      const expired = first.expire(new Date("2026-10-03T15:06:00.000Z"));
-      const loserApplied = await repo.save(expired, "PENDING_PAYMENT");
+      //
+      // `cancel`, not `expire`: the sweep's ending for a PENDING_PAYMENT
+      // booking past its payment window is `CANCELLED` with a reason, which
+      // is what actually races a late-landing payment here.
+      const cancelled = first.cancel(
+        new Date("2026-10-03T15:06:00.000Z"),
+        "customer_did_not_pay",
+      );
+      expect(cancelled.status).toBe("CANCELLED");
+      const loserApplied = await repo.save(cancelled, "PENDING_PAYMENT");
       expect(loserApplied).toBe(false);
 
       // The row still says what the winner wrote — the loser's write did
@@ -425,100 +447,173 @@ describe("save's expectedStatus guard", () => {
 });
 
 describe("findDueForExpiry", () => {
-  test("selects only PENDING_PAYMENT bookings whose expiry has passed, oldest first, up to the limit", async () => {
+  /**
+   * One predicate over three statuses, not three queries: each hop already
+   * stamped its own clock's deadline onto `expires_at`, so by the time this
+   * query runs the only thing left to ask is `expires_at <= now AND status
+   * IN (DEADLINE_BEARING_STATUSES)`.
+   *
+   * Every insert is cleaned up in a `finally`, not after the last assertion.
+   * A `DRAFT` or `AWAITING_PROVIDER` row leaked by an assertion that threw
+   * early would now be picked up by *this very query* in every later test
+   * and in `booking-expiry-sweep.test.ts` — the widened status filter is
+   * exactly what turns one skipped cleanup into several unrelated-looking
+   * failures.
+   */
+  test("selects every status standing on a clock whose deadline has passed, oldest first, up to the limit", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const now = new Date("2026-10-04T12:00:00.000Z");
+      const inserted: string[] = [];
 
-      // Due: two PENDING_PAYMENT bookings whose expiresAt is already past
-      // `now`, at different slots so they don't collide with each other.
-      const dueLater = await repo.insert(
-        pendingBooking(
-          bookingInput({
-            startsAt: new Date("2026-10-04T09:00:00.000Z"),
-            expiresAt: new Date("2026-10-04T09:30:00.000Z"),
-          }),
-        ),
-        1,
-      );
-      const dueEarlier = await repo.insert(
-        pendingBooking(
-          bookingInput({
-            startsAt: new Date("2026-10-04T10:00:00.000Z"),
-            expiresAt: new Date("2026-10-04T09:15:00.000Z"),
-          }),
-        ),
-        1,
-      );
+      try {
+        // Due: one booking on each of the three clocks, past its own
+        // deadline, at different slots so they don't collide with each
+        // other. `DRAFT` and `AWAITING_PROVIDER` are what the widened
+        // predicate added — before it, both of these rows sat here for ever
+        // holding a member's calendar.
+        const dueLater = await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2026-10-04T09:00:00.000Z"),
+              expiresAt: new Date("2026-10-04T09:30:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(dueLater.id as string);
 
-      // Not due: still PENDING_PAYMENT, but the deadline is in the future.
-      const notYetDue = await repo.insert(
-        pendingBooking(
-          bookingInput({
-            startsAt: new Date("2026-10-04T11:00:00.000Z"),
-            expiresAt: new Date("2026-10-04T23:00:00.000Z"),
-          }),
-        ),
-        1,
-      );
+        const dueEarlier = await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2026-10-04T10:00:00.000Z"),
+              expiresAt: new Date("2026-10-04T09:15:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(dueEarlier.id as string);
 
-      // Not due: expiresAt has passed, but the booking already left
-      // PENDING_PAYMENT — the status filter is what excludes it, and has to
-      // be: `expiresAt` is no longer nulled on the way out of
-      // PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
-      // deadline is a fact a disputed booking needs, not a stale value to
-      // erase), so this row's `expires_at` is still in the past, still
-      // non-null, and only `status <> 'PENDING_PAYMENT'` keeps it out of
-      // the result below.
-      const paidStale = await repo.insert(
-        pendingBooking(
-          bookingInput({
-            startsAt: new Date("2026-10-04T12:30:00.000Z"),
-            expiresAt: new Date("2026-10-04T09:00:00.000Z"),
-          }),
-        ),
-        1,
-      );
-      const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
-      expect(paid.expiresAt).toEqual(paidStale.expiresAt);
-      const paidApplied = await repo.save(paid, "PENDING_PAYMENT");
-      expect(paidApplied).toBe(true);
+        const dueDraft = await repo.insert(
+          Booking.create(
+            bookingInput({
+              startsAt: new Date("2026-10-04T14:00:00.000Z"),
+              expiresAt: new Date("2026-10-04T09:45:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(dueDraft.id as string);
+        expect(dueDraft.status).toBe("DRAFT");
 
-      // This booking is already being built for the exclusion check below;
-      // reading it back costs one query and is the only place in this file
-      // that proves `paidAt` and `paymentRef` survive a round trip with a
-      // real value — `expectSameSnapshot` never sees a paid booking, since
-      // `Booking.create` always starts both null.
-      const paidReread = await repo.findById(paidStale.id as string);
-      expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
-      expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
-      // And the other half of the same write: `expiresAt` is preserved, not
-      // cleared, on the way out of `PENDING_PAYMENT` — this confirms that
-      // survival itself persisted, not only that the two new fields did.
-      expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
+        const dueAwaiting = await repo.insert(
+          awaitingBooking(
+            bookingInput({
+              startsAt: new Date("2026-10-04T15:00:00.000Z"),
+              expiresAt: new Date("2026-10-04T10:00:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(dueAwaiting.id as string);
+        expect(dueAwaiting.status).toBe("AWAITING_PROVIDER");
 
-      const due = await repo.findDueForExpiry(now, 10);
-      const dueIds = due.map((b) => b.id);
+        // Not due: on a clock, but the deadline is still in the future. One
+        // per status the widening added, so a predicate that dropped the
+        // time comparison while gaining statuses fails here.
+        const notYetDue = await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2026-10-04T11:00:00.000Z"),
+              expiresAt: new Date("2026-10-04T23:00:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(notYetDue.id as string);
 
-      expect(dueIds).not.toContain(notYetDue.id);
-      expect(dueIds).not.toContain(paidStale.id);
+        const draftNotYetDue = await repo.insert(
+          Booking.create(
+            bookingInput({
+              startsAt: new Date("2026-10-04T16:00:00.000Z"),
+              expiresAt: new Date("2026-10-04T23:30:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(draftNotYetDue.id as string);
 
-      const dueLaterIndex = dueIds.indexOf(dueLater.id);
-      const dueEarlierIndex = dueIds.indexOf(dueEarlier.id);
-      expect(dueLaterIndex).toBeGreaterThanOrEqual(0);
-      expect(dueEarlierIndex).toBeGreaterThanOrEqual(0);
-      // Oldest deadline first.
-      expect(dueEarlierIndex).toBeLessThan(dueLaterIndex);
+        // Not due: expiresAt has passed, but the booking already left every
+        // status with a clock on it. The status filter is what excludes it,
+        // and has to be: `expiresAt` is no longer nulled on the way out of
+        // PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
+        // deadline is a fact a disputed booking needs, not a stale value to
+        // erase), so this row's `expires_at` is still in the past, still
+        // non-null, and only its absence from `DEADLINE_BEARING_STATUSES`
+        // keeps it out of the result below. Expiring it would cancel a sale
+        // that already happened.
+        const paidStale = await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2026-10-04T12:30:00.000Z"),
+              expiresAt: new Date("2026-10-04T09:00:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        inserted.push(paidStale.id as string);
+        const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
+        expect(paid.expiresAt).toEqual(paidStale.expiresAt);
+        const paidApplied = await repo.save(paid, "PENDING_PAYMENT");
+        expect(paidApplied).toBe(true);
 
-      const limited = await repo.findDueForExpiry(now, 1);
-      expect(limited).toHaveLength(1);
-      expect(limited[0]?.id).toBe(dueEarlier.id);
+        // This booking is already being built for the exclusion check below;
+        // reading it back costs one query and is the only place in this file
+        // that proves `paidAt` and `paymentRef` survive a round trip with a
+        // real value — `expectSameSnapshot` never sees a paid booking, since
+        // `Booking.create` always starts both null.
+        const paidReread = await repo.findById(paidStale.id as string);
+        expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
+        expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
+        // And the other half of the same write: `expiresAt` is preserved, not
+        // cleared, on the way out of `PENDING_PAYMENT` — this confirms that
+        // survival itself persisted, not only that the two new fields did.
+        expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
 
-      await db
-        .delete(booking)
-        .where(eq(booking.id, dueLater.id as string));
-      await db.delete(booking).where(eq(booking.id, dueEarlier.id as string));
-      await db.delete(booking).where(eq(booking.id, notYetDue.id as string));
-      await db.delete(booking).where(eq(booking.id, paidStale.id as string));
+        const due = await repo.findDueForExpiry(now, 10);
+        const dueIds = due.map((b) => b.id);
+
+        expect(dueIds).toContain(dueDraft.id);
+        expect(dueIds).toContain(dueAwaiting.id);
+        expect(dueIds).not.toContain(notYetDue.id);
+        expect(dueIds).not.toContain(draftNotYetDue.id);
+        expect(dueIds).not.toContain(paidStale.id);
+
+        const dueLaterIndex = dueIds.indexOf(dueLater.id);
+        const dueEarlierIndex = dueIds.indexOf(dueEarlier.id);
+        expect(dueLaterIndex).toBeGreaterThanOrEqual(0);
+        expect(dueEarlierIndex).toBeGreaterThanOrEqual(0);
+        // Oldest deadline first.
+        expect(dueEarlierIndex).toBeLessThan(dueLaterIndex);
+        // And oldest-first across the whole result, not only among this
+        // file's own rows — the dev database is shared, so the result can
+        // legitimately carry rows nothing here inserted, and the ordering
+        // has to hold over those too.
+        const deadlines = due.map((b) => (b.expiresAt as Date).getTime());
+        expect(deadlines).toEqual([...deadlines].sort((a, b) => a - b));
+
+        const limited = await repo.findDueForExpiry(now, 1);
+        expect(limited).toHaveLength(1);
+        // The limit is applied *after* the ordering: the one row a limit of
+        // one returns is the same row the unlimited query returns first.
+        // Asserted against `due[0]` rather than against a fixture of this
+        // file's own, because the query is global and another session's row
+        // may legitimately be older than anything here.
+        expect(limited[0]?.id).toBe(due[0]?.id);
+      } finally {
+        for (const id of inserted) {
+          await db.delete(booking).where(eq(booking.id, id));
+        }
+      }
     });
   });
 });

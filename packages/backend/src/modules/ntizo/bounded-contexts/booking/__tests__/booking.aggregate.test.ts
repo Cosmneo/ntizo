@@ -12,6 +12,7 @@ import {
 } from "../domain/exceptions";
 import {
   type BookingStatus,
+  DEADLINE_BEARING_STATUSES,
   SLOT_HOLDING_STATUSES,
 } from "../../../shared/infrastructure/database/booking/enums";
 
@@ -290,7 +291,11 @@ describe("Booking.markPaid", () => {
   });
 
   it("refuses to pay a booking that already expired", () => {
-    const expired = Booking.restore(validProps()).expire(new Date());
+    // Expired from AWAITING_PROVIDER, not from PENDING_PAYMENT: since the
+    // three clocks landed, `expire` no longer moves PENDING_PAYMENT at all
+    // — that status is `cancel`'s (see `describe("Booking.cancel")`).
+    const expired = Booking.restore(validProps({ status: "AWAITING_PROVIDER" })).expire(new Date());
+    expect(expired.status).toBe("EXPIRED");
     expect(() => expired.markPaid("mpesa-123", new Date())).toThrow(BookingTransitionError);
   });
 
@@ -698,21 +703,34 @@ describe("Booking.markPaid — a different reference throws at every status but 
 });
 
 describe("Booking.expire", () => {
-  it("moves a pending booking to expired and keeps the deadline it was given", () => {
-    // `Booking.restore(validProps())`, not `Booking.create(validInput())`:
-    // `create` produces DRAFT now, and `expire` only ever transitions from
-    // PENDING_PAYMENT — see the same note on `describe("Booking.markPaid")`
-    // above.
-    const before = Booking.restore(validProps());
+  it("expires an abandoned checkout and keeps the deadline it was given", () => {
+    const before = Booking.restore(validProps({ status: "DRAFT" }));
     const expired = before.expire(new Date());
     expect(expired.status).toBe("EXPIRED");
     expect(expired.expiresAt).toEqual(before.expiresAt);
   });
 
+  it("expires a request the provider never answered", () => {
+    const before = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(before.expire(new Date()).status).toBe("EXPIRED");
+  });
+
+  it("leaves a booking waiting on payment alone — that one is cancelled, not expired", () => {
+    // The row the whole design exists for. A `PENDING_PAYMENT` booking past
+    // its window has a provider who blocked their calendar and got nothing,
+    // and `EXPIRED` explains none of that to them. `cancel` is what ends it,
+    // carrying the reason. If somebody ever flattens the three clocks into
+    // one ending, this is the assertion that goes red first.
+    const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
+    expect(pending.expire(new Date())).toBe(pending);
+    expect(pending.expire(new Date()).status).toBe("PENDING_PAYMENT");
+  });
+
   it("is a no-op on a booking that has already moved on", () => {
-    // The delayed job fires whether or not the payment landed first. If the
-    // status has moved, expiry has nothing to say — and throwing here would
-    // turn an ordinary race into an error somebody has to read.
+    // The sweep selects on a deadline, not on the booking, and the row can
+    // move between that select and this call. If the status has moved,
+    // expiry has nothing to say — and throwing here would turn an ordinary
+    // race into an error somebody has to read.
     const paid = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
     expect(paid.expire(new Date()).status).toBe("CONFIRMED");
   });
@@ -723,9 +741,28 @@ describe("Booking.expire — every status", () => {
   // to BookingStatus should fail this test, not fall through silently.
   const PAID_REF = "mpesa-existing";
 
+  /**
+   * Statuses a charge could actually have reached, so a fixture in one can
+   * realistically carry a reference. Nothing charges the customer before the
+   * provider accepts, and `DECLINED`/`EXPIRED`/`CANCELLED` are all endings
+   * reached without a payment.
+   */
+  const COULD_CARRY_A_REFERENCE: readonly BookingStatus[] = [
+    "PENDING_PAYMENT",
+    "CONFIRMED",
+    "MARKED_DONE",
+    "COMPLETED",
+    "DISPUTED",
+  ];
+
+  /** Widened from the `as const` tuple so `includes` accepts any status. */
+  const ON_A_CLOCK: readonly BookingStatus[] = DEADLINE_BEARING_STATUSES;
+
   const cases: Array<[BookingStatus, "transitions" | "no-op"]> = [
-    ["PENDING_PAYMENT", "transitions"],
-    ["AWAITING_PROVIDER", "no-op"],
+    ["DRAFT", "transitions"],
+    ["AWAITING_PROVIDER", "transitions"],
+    // Not a no-op by accident: `cancel` owns this one. See the test above.
+    ["PENDING_PAYMENT", "no-op"],
     ["CONFIRMED", "no-op"],
     ["MARKED_DONE", "no-op"],
     ["COMPLETED", "no-op"],
@@ -736,12 +773,11 @@ describe("Booking.expire — every status", () => {
   ];
 
   it.each(cases)("from %s it %s", (status, outcome) => {
-    const alreadyPaid = status !== "PENDING_PAYMENT" && status !== "EXPIRED";
     const booking = Booking.restore(
       validProps({
         status,
-        paymentRef: alreadyPaid ? PAID_REF : null,
-        expiresAt: status === "PENDING_PAYMENT" ? new Date("2026-09-01T10:15:00.000Z") : null,
+        paymentRef: COULD_CARRY_A_REFERENCE.includes(status) ? PAID_REF : null,
+        expiresAt: ON_A_CLOCK.includes(status) ? new Date("2026-09-01T10:15:00.000Z") : null,
       }),
     );
 
@@ -757,6 +793,83 @@ describe("Booking.expire — every status", () => {
       expect(result.status).toBe(status);
       expect(result).toBe(booking);
     }
+  });
+});
+
+describe("Booking.cancel", () => {
+  it("cancels a booking whose payment window closed, stamping when", () => {
+    const before = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
+    const cancelled = before.cancel(WHEN, "customer_did_not_pay");
+
+    expect(cancelled.status).toBe("CANCELLED");
+    expect(cancelled.cancelledAt).toEqual(WHEN);
+    // The deadline stays on the row for the same reason it survives every
+    // other transition: it is the fact a provider asking "how long did you
+    // give them?" actually needs.
+    expect(cancelled.expiresAt).toEqual(before.expiresAt);
+    // Nothing was ever charged, so nothing about the money moved either.
+    expect(cancelled.paidAt).toBeNull();
+    expect(cancelled.paymentRef).toBeNull();
+  });
+
+  it("does not expire it — CANCELLED and EXPIRED are different answers", () => {
+    const cancelled = Booking.restore(validProps({ status: "PENDING_PAYMENT" })).cancel(
+      WHEN,
+      "customer_did_not_pay",
+    );
+    expect(cancelled.status).not.toBe("EXPIRED");
+    expect(cancelled.expiredAt).toBeNull();
+  });
+
+  it("is a no-op on a booking that got paid first", () => {
+    // The same race `expire` absorbs, from the same caller: the sweep read
+    // the row as PENDING_PAYMENT and the customer's PIN landed before this
+    // call did. Silence, not an error somebody has to dismiss.
+    const paid = Booking.restore(validProps()).markPaid("mpesa-123", new Date());
+    expect(paid.cancel(WHEN, "customer_did_not_pay")).toBe(paid);
+  });
+
+  it.each<BookingStatus>([
+    "DRAFT",
+    "AWAITING_PROVIDER",
+    "CONFIRMED",
+    "MARKED_DONE",
+    "COMPLETED",
+    "DISPUTED",
+    "DECLINED",
+    "CANCELLED",
+    "EXPIRED",
+  ])("customer_did_not_pay cannot cancel from %s", (status) => {
+    // The reason is what decides which statuses are cancellable, not a flat
+    // "these statuses may be cancelled" list — see `CANCELLABLE_FROM` in the
+    // aggregate. `customer_did_not_pay` is only ever true of a booking still
+    // waiting on money; a `CONFIRMED` booking cancelled for this reason
+    // would be the sweep undoing a completed sale.
+    const booking = Booking.restore(validProps({ status }));
+    expect(booking.cancel(WHEN, "customer_did_not_pay")).toBe(booking);
+  });
+});
+
+describe("every deadline-bearing status has exactly one ending", () => {
+  // `DEADLINE_BEARING_STATUSES` is what `findDueForExpiry` selects on, and
+  // `expire`/`cancel` are the only two things that can end what it selects.
+  // A status added to that list without a transition that governs it would
+  // be swept every sixty seconds, for ever, and never move — the sweep
+  // would count it and nothing would happen. A status governed by *both*
+  // would mean two endings racing for one row.
+  //
+  // Driven off the constant itself rather than a copy of it, so adding a
+  // fourth clock fails here rather than passing quietly.
+  it.each([...DEADLINE_BEARING_STATUSES])("%s is ended by exactly one of expire/cancel", (status) => {
+    const booking = Booking.restore(validProps({ status }));
+
+    const expired = booking.expire(WHEN) !== booking;
+    const cancelled = booking.cancel(WHEN, "customer_did_not_pay") !== booking;
+
+    expect([expired, cancelled].filter(Boolean)).toHaveLength(1);
+    // And the ending is the one the design's table names, not merely *an*
+    // ending: `PENDING_PAYMENT` is the row that must not be an expiry.
+    expect(cancelled).toBe(status === "PENDING_PAYMENT");
   });
 });
 

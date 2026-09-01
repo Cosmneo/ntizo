@@ -20,20 +20,20 @@ export const SWEEP_LIMIT = 200;
 /**
  * How many due bookings one expiry sweep may claim.
  *
- * The cron runs every minute (see `wrangler.jsonc`) against the
- * `PENDING_PAYMENT` window — an administrator-configured setting,
- * `platform_settings.payment_window_minutes` (see `PlatformSettingsReaderPort`
- * in the booking bounded context), defaulting to 15 minutes rather than the
- * 30 an earlier version of this comment cited before Task 13 moved the
- * window out of a hardcoded constant. Under any plausible load whatever went
- * stale in the last minute is a small fraction of this ceiling, and one wave
- * clears it before the next wave starts. A shorter window only shrinks the
- * possible backlog further, so 200 stays a generous ceiling against a
- * runaway backlog either way — not a throttle a normal run is expected to
- * hit — kept as its own constant, not a reuse of `SWEEP_LIMIT` above,
- * because the two sweeps are budgeting against different windows on
- * different tables and have no reason to share a number just because it
- * currently matches.
+ * The cron runs every minute (see `wrangler.jsonc`) against three
+ * administrator-configured windows, not one: the checkout hold a `DRAFT`
+ * stands on, the response window an `AWAITING_PROVIDER` gives the provider,
+ * and the payment window a `PENDING_PAYMENT` gives the customer — all
+ * `platform_settings` columns, all read through `PlatformSettingsReaderPort`
+ * in the booking bounded context, the shortest of them measured in minutes.
+ * Under any plausible load whatever went stale in the last minute across all
+ * three is a small fraction of this ceiling, and one wave clears it before
+ * the next wave starts. Shorter windows only shrink the possible backlog
+ * further, so 200 stays a generous ceiling against a runaway backlog either
+ * way — not a throttle a normal run is expected to hit — kept as its own
+ * constant, not a reuse of `SWEEP_LIMIT` above, because the two sweeps are
+ * budgeting against different windows on different tables and have no reason
+ * to share a number just because it currently matches.
  */
 export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
 
@@ -69,9 +69,10 @@ export const BOOKING_EXPIRY_SWEEP_LIMIT = 200;
  * hand-copying that chain a second time — see that function's own doc
  * comment for the full argument.
  *
- * **Task 12 adds a second sweep in this same scope, not a second one of its
- * own.** A booking's `PENDING_PAYMENT` deadline is the same shape of
- * question against the same clock as a message's `notifyDueAt`, and this
+ * **The booking expiry sweep runs in this same scope, not a second one of
+ * its own.** A booking's `expires_at` — whichever of the three windows
+ * stamped it — is the same shape of question against the same clock as a
+ * message's `notifyDueAt`, and this
  * function already builds the one context a cron invocation needs — a
  * second `infraStore.runAsync` would mean a second `{ max: 1 }` connection
  * and a second close racing this one. Unlike the notification sweep,
@@ -154,15 +155,18 @@ export async function scheduled(
         // with bookings.
         try {
           const booking = bootstrapBooking();
-          const { expired, failed: bookingFailed } = await booking.useCases.internal.expireDue.execute({
+          const { swept, failed: bookingFailed } = await booking.useCases.internal.expireDue.execute({
             limit: BOOKING_EXPIRY_SWEEP_LIMIT,
           });
 
           if (bookingFailed > 0) {
             // Same reasoning as the notify-unread log above: no request scope
-            // exists for getRequestScopedLogger() to read.
+            // exists for getRequestScopedLogger() to read. "swept", not
+            // "expired": two of the three clocks end in `EXPIRED` and the
+            // third ends in `CANCELLED`, and this line cannot tell them
+            // apart — see `ExpireDueBookingsInternalCommand.execute`.
             console.error(
-              `[scheduled] booking-expiry sweep: ${expired} expired, ${bookingFailed} failed`,
+              `[scheduled] booking-expiry sweep: ${swept} swept, ${bookingFailed} failed`,
             );
           }
         } catch (error) {

@@ -8,6 +8,7 @@ import {
   BookingDeclined,
   BookingCancelled,
   type BookingCancelledReason,
+  type BookingExpiredClock,
 } from "../domain/events";
 
 describe("BookingCreated", () => {
@@ -159,6 +160,7 @@ describe("BookingExpired", () => {
       customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
+      clock: "provider_response",
     } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
     const event = new BookingExpired(payload);
@@ -173,12 +175,49 @@ describe("BookingExpired", () => {
       customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
+      clock: "provider_response",
     } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
     const event = new BookingExpired(payload);
 
     expect(event.payload).toEqual(payload);
   });
+
+  // The whole reason `clock` exists: the two clocks that end in EXPIRED
+  // have opposite audiences — an abandoned DRAFT tells nobody, a provider
+  // who never answered tells the customer — and the resulting row is
+  // identical either way, so Notification can only tell them apart from
+  // this field.
+  //
+  // A `Record` keyed by the union rather than a list of strings, so it is a
+  // gate and not a restatement: a member added to `BookingExpiredClock` is
+  // a type error here until somebody says who it tells. That is exactly the
+  // question a `payment_window` member could not answer — the payment
+  // window's audience is the *provider*, and it does not produce this event
+  // at all (it produces `BookingCancelled` with `customer_did_not_pay`; see
+  // the design's failure section). Each key also pins the literal, so a
+  // rename fails here even though it would still satisfy the type.
+  const TOLD_WHEN_IT_LAPSES: Record<BookingExpiredClock, "nobody" | "the customer"> = {
+    checkout_hold: "nobody",
+    provider_response: "the customer",
+  };
+
+  it.each(Object.keys(TOLD_WHEN_IT_LAPSES) as BookingExpiredClock[])(
+    "carries %s, the one fact separating two otherwise identical expiries",
+    (clock) => {
+      const payload = {
+        bookingId: "b1",
+        customerId: "u9",
+        providerMemberId: "m1",
+        startsAt: new Date("2026-09-04T12:30:00.000Z"),
+        clock,
+      } satisfies ConstructorParameters<typeof BookingExpired>[0];
+
+      const event = new BookingExpired(payload);
+
+      expect(event.payload.clock).toBe(clock);
+    },
+  );
 });
 
 describe("BookingAccepted", () => {
