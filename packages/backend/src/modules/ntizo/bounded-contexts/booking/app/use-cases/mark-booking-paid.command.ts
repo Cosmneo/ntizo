@@ -44,7 +44,7 @@ export interface MarkBookingPaidInput {
  * guard at the write, whichever of the two writes second would silently
  * overwrite the first's transition — the row would say `EXPIRED` while this
  * command had just told Notification and the customer they paid, or the
- * row would say `AWAITING_PROVIDER` while `BookingExpired` had already told
+ * row would say `CONFIRMED` while `BookingExpired` had already told
  * Scheduling the slot was free. `repo.save`'s `expectedStatus` parameter is
  * the guard: it carries the status this command's own read saw, and the
  * repository only writes if the row is still at that status by the time

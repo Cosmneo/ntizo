@@ -586,35 +586,51 @@ export class Booking {
    * `markPaid` is the only thing that can still take this booking to
    * `CONFIRMED`, once a charge actually clears.
    *
+   * `payBy` replaces `expiresAt` outright — the same shape `create` already
+   * uses for its own `expiresAt`, taken as an input rather than computed,
+   * because the aggregate has no way to read `payment_window_minutes`: that
+   * is a `platform_settings` value, and `domain/` reaches for no
+   * configuration. The command that already knows the window (Task 3)
+   * computes the deadline and hands it in. Before this call, `expiresAt`
+   * was the provider's now-irrelevant response deadline; skipping the
+   * replacement would leave that stale value on the row, silently, with
+   * nothing here to catch it.
+   *
    * Stamps `confirmedAt`, not a new field, because that column has named
    * "the provider said yes" since before this reversal — see its own doc
    * comment on `BookingProps`.
    */
-  accept(at: Date): Booking {
+  accept(at: Date, payBy: Date): Booking {
     if (this.props.status !== BookingStatus.AwaitingProvider) {
       throw new BookingTransitionError(this.props.status, BookingStatus.PendingPayment);
     }
 
     Booking.requireValidDate(at, "at");
+    Booking.requireValidDate(payBy, "payBy");
 
     return new Booking({
       ...this.props,
       status: BookingStatus.PendingPayment,
       confirmedAt: at,
+      expiresAt: payBy,
     });
   }
 
   /**
-   * The provider says no. `reason` is optional and, unlike every other
-   * field on this snapshot, is never stored on `BookingProps` — there is no
-   * column for it (see `booking.schema.ts`). It still passes through
-   * `requireNonBlank` when present: a caller that bothers to supply a
-   * present-but-empty reason has the same bug `addressDistrict` and
-   * `addressDirections` guard against elsewhere in this class, and this
-   * method is the only place positioned to catch it before it reaches
-   * whichever event a command builds from it. The command already holds
-   * the same `reason` value it passed in here, so it does not need this
-   * method to hand it back.
+   * The provider says no. `reason` is optional and, deliberately, never
+   * stored on `BookingProps` — do not add a `declineReason` column to
+   * `booking` for it. `booking_change` already has a `reason` column built
+   * for exactly this: the history of why a booking moved, one row per hop,
+   * append-only. Persisting it there is the command's job, through
+   * `appendChange` (Task 3); this method's job is only to validate it and
+   * hand it to whichever event a command builds from this call —
+   * `booking.declined` carries it so Notification can tell the customer
+   * why, without either of them reading the booking back.
+   *
+   * It still passes through `requireNonBlank` when present: a caller that
+   * bothers to supply a present-but-empty reason has the same bug
+   * `addressDistrict` and `addressDirections` guard against elsewhere in
+   * this class.
    */
   decline(at: Date, reason?: string): Booking {
     if (this.props.status !== BookingStatus.AwaitingProvider) {

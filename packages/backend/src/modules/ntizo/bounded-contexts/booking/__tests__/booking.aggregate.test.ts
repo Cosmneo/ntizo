@@ -349,9 +349,11 @@ describe("Booking.submit — every status", () => {
 });
 
 describe("Booking.accept", () => {
+  const PAY_BY = new Date("2026-09-04T15:00:00.000Z");
+
   it("moves an awaiting-provider booking to pending payment — the provider said yes and no money has moved", () => {
     const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
-    const accepted = awaiting.accept(new Date());
+    const accepted = awaiting.accept(new Date(), PAY_BY);
     expect(accepted.status).toBe("PENDING_PAYMENT");
     // This is the reversal, proven, not just asserted: accepting must not
     // touch paidAt or paymentRef. If it ever does, the booking would be
@@ -363,24 +365,42 @@ describe("Booking.accept", () => {
   it("stamps confirmedAt with the instant the provider answered", () => {
     const when = new Date("2026-09-04T13:00:00.000Z");
     const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
-    const accepted = awaiting.accept(when);
+    const accepted = awaiting.accept(when, PAY_BY);
     expect(accepted.confirmedAt).toEqual(when);
+  });
+
+  it("replaces expiresAt with payBy — the provider's window is over, the payment window starts here", () => {
+    // The whole reason accept takes payBy as an input: without this
+    // assertion, expiresAt could silently keep the provider's now-stale
+    // response deadline and nothing else here would catch it.
+    const awaiting = Booking.restore(
+      validProps({ status: "AWAITING_PROVIDER", expiresAt: new Date("2026-09-04T14:00:00.000Z") }),
+    );
+    const accepted = awaiting.accept(new Date(), PAY_BY);
+    expect(accepted.expiresAt).toEqual(PAY_BY);
   });
 
   it("refuses to accept a booking that was never submitted", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    expect(() => draft.accept(new Date())).toThrow(BookingTransitionError);
+    expect(() => draft.accept(new Date(), PAY_BY)).toThrow(BookingTransitionError);
   });
 
   it("refuses an at that does not name a real instant", () => {
     const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
-    expect(() => awaiting.accept(new Date("garbage"))).toThrow(BookingDateInvalidError);
+    expect(() => awaiting.accept(new Date("garbage"), PAY_BY)).toThrow(BookingDateInvalidError);
+  });
+
+  it("refuses a payBy that does not name a real instant", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.accept(new Date(), new Date("garbage"))).toThrow(BookingDateInvalidError);
   });
 });
 
 describe("Booking.accept — every status", () => {
   // Same shape as submit's table, same reasoning: no idempotency story here
   // either, so every status but the one origin throws.
+  const PAY_BY = new Date("2026-09-04T15:00:00.000Z");
+
   const cases: Array<[BookingStatus, "transitions" | "throws"]> = [
     ["DRAFT", "throws"],
     ["PENDING_PAYMENT", "throws"],
@@ -398,10 +418,11 @@ describe("Booking.accept — every status", () => {
     const booking = Booking.restore(validProps({ status, expiresAt: null }));
 
     if (outcome === "transitions") {
-      const result = booking.accept(new Date());
+      const result = booking.accept(new Date(), PAY_BY);
       expect(result.status).toBe("PENDING_PAYMENT");
+      expect(result.expiresAt).toEqual(PAY_BY);
     } else {
-      expect(() => booking.accept(new Date())).toThrow(BookingTransitionError);
+      expect(() => booking.accept(new Date(), PAY_BY)).toThrow(BookingTransitionError);
     }
   });
 });
