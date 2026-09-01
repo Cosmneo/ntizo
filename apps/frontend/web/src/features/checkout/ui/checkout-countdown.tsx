@@ -61,11 +61,26 @@ function formatRemaining(remainingMs: number): string {
 export function CheckoutCountdown({
   expiresAt,
   serviceId,
+  optionId,
 }: {
   /** ISO 8601, straight off the draft. */
   expiresAt: string;
   /** Which service to send the customer back to when the hold lapses. */
   serviceId: string;
+  /**
+   * Which package the lapsed draft was for, so step 1 re-opens on it.
+   *
+   * Optional, and it should be supplied by every caller that has it. Sending
+   * the customer back without it is the same silent downgrade to the
+   * cheapest option that `/book/$serviceId`'s own `optionId` exists to
+   * prevent, arriving one page later: somebody who chose the 900 package,
+   * spent twenty-nine minutes on step 2 and let the hold lapse would restart
+   * on the 500 one. The prop is here now, while the signature is still being
+   * set, rather than after steps 2 and 3 are written against a shape that
+   * cannot express it. `booking.byId` carries the option the draft was made
+   * from, so those pages will have it in hand.
+   */
+  optionId?: string;
 }) {
   const { t } = useTranslation("checkout");
   const navigate = useNavigate();
@@ -84,10 +99,10 @@ export function CheckoutCountdown({
     void navigate({
       to: "/book/$serviceId",
       params: { serviceId },
-      search: { expired: true },
+      search: { expired: true, ...(optionId ? { optionId } : {}) },
       replace: true,
     });
-  }, [remainingMs, navigate, serviceId]);
+  }, [remainingMs, navigate, serviceId, optionId]);
 
   if (remainingMs <= 0) return null;
 

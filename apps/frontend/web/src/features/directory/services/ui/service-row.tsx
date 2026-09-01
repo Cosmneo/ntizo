@@ -13,10 +13,11 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
 /**
  * One published service, as a row on its provider's own page.
  *
- * `ServiceCard` (this same directory) is the four-across grid this replaces.
- * It is left in place but has no consumers: the platform-wide browse moved to
- * `ServiceListingCard` before this change, and `ProviderServicesSection` —
- * its last caller — now renders these rows. A provider's own
+ * `ServiceCard` was the four-across grid this replaced. It outlived its last
+ * caller by a while — the platform-wide browse had already moved to
+ * `ServiceListingCard`, and `ProviderServicesSection` moved to these rows —
+ * and has now been deleted; only its price line survives, as
+ * `service-price.tsx`. A provider's own
  * page is a different reading task: a customer here has usually already
  * decided on the provider and is weighing which of their services to book,
  * which is a comparison of prices down one column, not a gallery of
@@ -83,7 +84,7 @@ export function ServiceRow({
     // into whatever width is left.
     <li className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-5 border-b border-[var(--color-border)] py-6 first:border-t sm:grid-cols-[112px_minmax(0,1fr)_auto]">
       <div className="aspect-square w-full overflow-hidden rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
-        {/* Decorative, like `ServiceCard`'s own thumbnail: the service's
+        {/* Decorative: the service's
             name is already adjacent link text, so a non-empty alt would
             have a screen reader announce it twice per row — once here,
             once for the link — and `ProviderServicesSection` stacks every

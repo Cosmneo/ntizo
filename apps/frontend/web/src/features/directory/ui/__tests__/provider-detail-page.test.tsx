@@ -371,8 +371,8 @@ describe("ProviderDetailPage", () => {
       screen.getByRole("link", { name: "Instalação eléctrica de obra nova" }),
     ).toBeInTheDocument();
     // One row, one call to action, and the call to action is a calendar —
-    // this is what reds if the section ever goes back to `ServiceCard`s,
-    // which offer no per-row availability control at all. A link since the
+    // this is what reds if the section ever goes back to a card grid, which
+    // offered no per-row availability control at all. A link since the
     // availability sheet became a routed page: it is the start of checkout,
     // which is a destination somebody can open in a new tab or return to.
     expect(screen.getAllByRole("link", { name: "See availability" })).toHaveLength(2);

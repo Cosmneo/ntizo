@@ -22,10 +22,19 @@ export const Route = createFileRoute("/book/$serviceId")({
   /**
    * The chosen slot lives in the URL, not in the page's state — see
    * `ChooseWhenPage`'s own doc comment for why that is load-bearing rather
-   * than tidy. Narrowed the way `services.index.tsx` narrows its filters: an
-   * unrecognised value is dropped rather than passed through, and a key that
-   * was not supplied stays absent rather than becoming an explicit
-   * `undefined` in the URL.
+   * than tidy.
+   *
+   * **Every key is returned, and a rejected one is returned as `undefined`
+   * rather than omitted.** `services.index.tsx` omits its rejected filters,
+   * and that idiom does not narrow anything here: a match's search is
+   * `{ ...parentSearch, ...validated }`, and the root has no `validateSearch`
+   * at all, so the *raw* URL value survives under any key this function does
+   * not name. `?expired=banana` reached the page as the string "banana" and
+   * rendered the lapsed-hold message, because the page asks whether the flag
+   * is truthy and "banana" is. Naming the key with `undefined` is what
+   * actually overrides the raw value — and it costs nothing in the address
+   * bar, since the router's own `encode` skips `undefined` (`qss.js`:
+   * `if (val !== void 0)`).
    *
    * `optionId` is which package the customer is buying, and it is here for
    * the same reason the slot is: it is a *choice*, made on the service page,
@@ -45,15 +54,19 @@ export const Route = createFileRoute("/book/$serviceId")({
   validateSearch: (
     search: Record<string, unknown>,
   ): { memberId?: string; startsAt?: string; optionId?: string; expired?: true } => {
-    const memberId = typeof search["memberId"] === "string" ? search["memberId"] : undefined;
-    const startsAt = typeof search["startsAt"] === "string" ? search["startsAt"] : undefined;
-    const optionId = typeof search["optionId"] === "string" ? search["optionId"] : undefined;
+    const text = (key: string): string | undefined => {
+      const raw = search[key];
+      return typeof raw === "string" && raw !== "" ? raw : undefined;
+    };
+    // `true` when the countdown navigated here in this session, `"true"` when
+    // the same URL was reloaded or shared — the browser hands a boolean back
+    // as text. Anything else is somebody typing.
     const expired = search["expired"] === true || search["expired"] === "true";
     return {
-      ...(memberId ? { memberId } : {}),
-      ...(startsAt ? { startsAt } : {}),
-      ...(optionId ? { optionId } : {}),
-      ...(expired ? { expired: true as const } : {}),
+      memberId: text("memberId"),
+      startsAt: text("startsAt"),
+      optionId: text("optionId"),
+      expired: expired ? (true as const) : undefined,
     };
   },
   // The service, not the availability: `useServiceDetail` is a suspense query

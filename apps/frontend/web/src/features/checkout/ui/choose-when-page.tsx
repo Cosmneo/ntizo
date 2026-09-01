@@ -51,15 +51,23 @@ interface BookSearch {
  * the name, the price and the length are in the rail beside the confirm — so
  * a customer whose id did not resolve sees the substitution rather than
  * discovering it on the invoice.
+ *
+ * **The fallback is the cheapest option, not the one flagged default**, and
+ * the difference is the promise the caller already made. The only control
+ * that reaches this page without naming an option is `ServiceRow`, and its
+ * price column reads "a partir de 500" — from the cheapest. Falling back to a
+ * default flag sitting on the expensive package answers that row with a page
+ * quoting 900. `options[0]` *is* the cheapest: `serviceById` orders them that
+ * way and this deliberately does not sort again, for the reason
+ * `ServiceDetailPage` gives about its own list — a second sort is a second
+ * place the rule can drift from the server's.
  */
 function chosenOption(
   options: readonly ServiceDetailOptionDTO[],
   optionId: string | undefined,
 ): ServiceDetailOptionDTO | null {
   const named = optionId ? options.find((o) => o.id === optionId) : undefined;
-  // Cheapest-first, since `serviceById` already orders them that way — the
-  // same "marked default, else the first" rule the service page opens on.
-  return named ?? options.find((o) => o.isDefault) ?? options[0] ?? null;
+  return named ?? options[0] ?? null;
 }
 
 /**
@@ -181,17 +189,17 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   // page — see `chosenOption` for why a guess is not good enough here.
   const option = chosenOption(service.options, search.optionId);
 
-  // A reasonable first guess at which week to open on: the slot already in
-  // the URL, or the visitor's own device date. It is not necessarily the
-  // *service's* civil date — that depends on `availability.forService`'s own
-  // `timezone`, only known once the first response lands — but it only has to
-  // land the strip on the right week. `todayIso` below is what the "past"
-  // rule actually reads once real data exists, and it uses the service's own
-  // zone.
+  // A first guess at which week to open on, and *only* a guess: the slot
+  // already in the URL, or the visitor's own device date. It is not
+  // necessarily the service's civil date — that needs
+  // `availability.forService`'s own `timezone`, which arrives with the first
+  // response — so nothing but the initial fetch window is allowed to depend
+  // on it. Which day a chosen slot belongs to is decided by `chosenCivilDate`
+  // below, in the service's zone.
   const [anchorDate, setAnchorDate] = useState(() =>
     localDateAt(deviceTimeZone(), openingInstant(search.startsAt)),
   );
-  const [selectedDate, setSelectedDate] = useState(anchorDate);
+  const [browsedDate, setBrowsedDate] = useState(anchorDate);
   const [selectedLengthMinutes, setSelectedLengthMinutes] = useState<number | null>(null);
 
   const week = weekOf(anchorDate);
@@ -201,6 +209,45 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
     from: week[0]!,
     to: week[6]!,
   });
+
+  /**
+   * The civil date the chosen instant actually falls on, **in the service's
+   * own timezone** — the only authority on which day a slot belongs to.
+   *
+   * This used to be the device's zone, and that was a defect rather than an
+   * approximation. A service in `Africa/Maputo` offering 23:00 UTC is
+   * offering 01:00 the *next* morning; a customer whose device is on UTC had
+   * the strip sit on the previous day, so `days.find` matched nothing, the
+   * grid drew zero buttons — and the confirm stayed enabled, ready to hold a
+   * slot the page was not showing. It is routine for a `remote` service, and
+   * reachable in the launch market for an early-morning slot on a device
+   * clocked to UTC. Worse, it fails on exactly the two paths the
+   * slot-in-the-URL design exists to protect: a shared link and the return
+   * from sign-in.
+   *
+   * Null until availability answers (the zone comes with it) or when no slot
+   * is chosen — in which case the customer is browsing and `browsedDate` is
+   * the honest answer.
+   */
+  const chosenCivilDate =
+    data && search.startsAt && !Number.isNaN(new Date(search.startsAt).getTime())
+      ? localDateAt(data.timezone, new Date(search.startsAt))
+      : null;
+  const shownDate = chosenCivilDate ?? browsedDate;
+
+  useEffect(() => {
+    // Only ever moves the *fetch window*, never what the customer is looking
+    // at, which is why this can be an effect without fighting a date click:
+    // `shownDate` is derived, so a user's choice cannot be overwritten by
+    // this landing a render later. Needed because the device's guess can put
+    // a chosen slot in the neighbouring week, and a week nobody fetched has
+    // no starts to select from.
+    if (chosenCivilDate && !weekOf(anchorDate).includes(chosenCivilDate)) {
+      setAnchorDate(chosenCivilDate);
+    }
+    // `anchorDate`, not `week`: `weekOf` builds a fresh array every render, so
+    // depending on it would re-run this on every render for nothing.
+  }, [chosenCivilDate, anchorDate]);
 
   useEffect(() => {
     if (!errorCode) return;
@@ -245,14 +292,14 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
 
   function goToWeek(nextAnchor: string) {
     setAnchorDate(nextAnchor);
-    setSelectedDate(nextAnchor);
+    setBrowsedDate(nextAnchor);
     setSelectedLengthMinutes(null);
     reset();
     goToSlot({ memberId: search.memberId });
   }
 
   function selectDate(dateIso: string) {
-    setSelectedDate(dateIso);
+    setBrowsedDate(dateIso);
     setSelectedLengthMinutes(null);
     reset();
     // The chosen time belonged to the day being left, so it goes with it.
@@ -301,12 +348,32 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   }
 
   const panel = serviceDetailPanel(service);
-  const day = data?.days.find((d) => d.date === selectedDate);
+  const day = data?.days.find((d) => d.date === shownDate);
   // Derived from the URL rather than held beside it, so there is only ever
   // one answer to "which time is chosen" — and so a slot arrived at by link
   // or by coming back from sign-in is already selected on arrival.
   const selectedStart = day?.starts.find((s) => s.startsAt === search.startsAt) ?? null;
-  const canConfirm = Boolean(option && search.startsAt && search.memberId) && !pending;
+  /**
+   * `selectedStart`, not `search.startsAt`.
+   *
+   * The URL is the customer's *claim* about which slot they want; the grid is
+   * the platform's answer about which slots exist. Confirming on the claim
+   * alone let the page hold a slot it was not displaying — a whole class of
+   * failure, not one bug:
+   *
+   * - a slot whose civil date the page had wrong drew an empty grid under an
+   *   enabled button (the cross-zone defect `chosenCivilDate` fixes);
+   * - after `SLOT_ALREADY_TAKEN` the grid refetches and the refused time
+   *   disappears from it, but `search.startsAt` is untouched — so the confirm
+   *   stayed live on the very slot that had just been refused;
+   * - a shared or bookmarked link naming a slot the provider has since
+   *   withdrawn offered a button that could only fail.
+   *
+   * Requiring the start to be one the grid is actually showing closes all
+   * three at once, and keeps a rule worth stating plainly: this page never
+   * offers to book something it is not showing.
+   */
+  const canConfirm = Boolean(option && selectedStart && search.memberId) && !pending;
 
   let body: React.ReactNode;
   if (panel.kind === "quote") {
@@ -355,7 +422,7 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
       <div className="grid gap-6">
         <DateStrip
           week={week}
-          selectedDate={selectedDate}
+          selectedDate={shownDate}
           todayIso={todayIso}
           locale={locale}
           onSelectDate={selectDate}

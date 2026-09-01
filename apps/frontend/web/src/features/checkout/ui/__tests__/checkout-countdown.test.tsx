@@ -18,18 +18,21 @@ function expiresIn(seconds: number): string {
   return new Date(Date.parse(NOW) + seconds * 1000).toISOString();
 }
 
-function renderCountdown(expiresAt: string) {
+function renderCountdown(expiresAt: string, optionId?: string) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => <CheckoutCountdown expiresAt={expiresAt} serviceId="svc-1" />,
+    component: () => (
+      <CheckoutCountdown expiresAt={expiresAt} serviceId="svc-1" optionId={optionId} />
+    ),
   });
   // Step 1, the destination a lapsed hold sends the customer back to.
   const bookRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/book/$serviceId",
-    validateSearch: (search: Record<string, unknown>) => search as { expired?: boolean },
+    validateSearch: (search: Record<string, unknown>) =>
+      search as { expired?: boolean; optionId?: string },
     component: () => <p>choose when</p>,
   });
   const router = createRouter({
@@ -99,6 +102,20 @@ describe("CheckoutCountdown", () => {
     expect(router.state.location.pathname).toBe("/book/svc-1");
     expect(router.state.location.search).toMatchObject({ expired: true });
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+  });
+
+  it("takes the lapsed draft's package back to step 1 with it", async () => {
+    // Otherwise a customer who chose the 900 package, spent twenty-nine
+    // minutes on step 2 and let the hold lapse restarts on the cheapest one —
+    // the same silent downgrade `/book/$serviceId`'s `optionId` exists to
+    // prevent, arriving one page later.
+    const { router } = renderCountdown(expiresIn(30), "opt-2");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    expect(router.state.location.search).toMatchObject({ expired: true, optionId: "opt-2" });
   });
 
   it("treats an expiry that has already passed as expired, not as a negative clock", async () => {

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -30,19 +31,42 @@ import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
  * assert nothing about that. `vi.mock` names a module rather than importing
  * one, so no `ui -> data` edge is created.
  */
-const fakes = vi.hoisted(() => ({
-  createBooking: vi.fn(),
-  refetch: vi.fn(),
-  availability: {} as Record<string, unknown>,
-  service: null as ServiceDetailDTO | null,
-}));
+const fakes = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  return {
+    createBooking: vi.fn(),
+    refetch: vi.fn(),
+    availability: {} as Record<string, unknown>,
+    service: null as ServiceDetailDTO | null,
+    // A one-value store, so a test can hand the page what a *refetch* came
+    // back with. React Query's own refetch is what this stands in for, and
+    // "the grid after the server answered again" is a state the page has to
+    // be assertable in — it is where the taken-slot rule actually lands.
+    version: 0,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    emit() {
+      this.version += 1;
+      listeners.forEach((listener) => listener());
+    },
+  };
+});
 
 vi.mock("@/features/checkout/data/checkout.repository", () => ({
   createBooking: fakes.createBooking,
 }));
 
 vi.mock("@/features/directory/availability/viewmodel/use-service-availability", () => ({
-  useServiceAvailability: () => ({ ...fakes.availability, refetch: fakes.refetch }),
+  useServiceAvailability: () => {
+    useSyncExternalStore(
+      fakes.subscribe,
+      () => fakes.version,
+      () => fakes.version,
+    );
+    return { ...fakes.availability, refetch: fakes.refetch };
+  },
 }));
 
 vi.mock("@/features/directory/services/viewmodel/use-service-detail", () => ({
@@ -55,6 +79,8 @@ const { ChooseWhenPage } = await import("../choose-when-page");
 const NOW = "2026-09-04T12:00:00.000Z";
 const NINE = "2026-09-04T09:00:00.000Z";
 const TEN = "2026-09-04T10:00:00.000Z";
+/** 23:00 UTC on the 4th — 01:00 on the 5th in Africa/Maputo. */
+const LATE = "2026-09-04T23:00:00.000Z";
 
 function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): ServiceDetailDTO {
   return {
@@ -133,6 +159,89 @@ function availabilityFixture(serviceId: string): ServiceAvailabilityDTO {
   };
 }
 
+/**
+ * A service whose day rolls over relative to UTC, offering a slot that lands
+ * on the *following* civil date in its own zone.
+ *
+ * 23:00 UTC on the 4th is 01:00 on the 5th in Maputo. A device on UTC used to
+ * put the strip on the 4th, so the day lookup matched nothing and the grid
+ * drew no buttons at all — under a confirm that stayed enabled.
+ */
+function crossZoneAvailability(serviceId: string): ServiceAvailabilityDTO {
+  return {
+    serviceId,
+    timezone: "Africa/Maputo",
+    bookingMode: "priced",
+    pricingMode: "fixed",
+    memberIds: ["mem-1"],
+    days: [
+      {
+        date: "2026-09-05",
+        starts: [
+          {
+            minuteOfDay: 60,
+            startsAt: LATE,
+            maxMinutes: null,
+            seatsLeft: 1,
+            memberIds: ["mem-1"],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Two hourly options whose minimum bookings differ, so the length ladder has
+ * something to be wrong about.
+ */
+function hourlyService(id: string): ServiceDetailDTO {
+  return serviceFixture(id, {
+    options: [
+      {
+        id: "opt-1",
+        name: "Limpeza",
+        amountMinor: 20000,
+        currency: "MZN",
+        durationMinutes: null,
+        minMinutes: 60,
+        stepMinutes: 60,
+        pricingMode: "hourly",
+        isDefault: true,
+      },
+      {
+        id: "opt-2",
+        name: "Limpeza profunda",
+        amountMinor: 20000,
+        currency: "MZN",
+        durationMinutes: null,
+        minMinutes: 240,
+        stepMinutes: 60,
+        pricingMode: "hourly",
+        isDefault: false,
+      },
+    ],
+  });
+}
+
+function hourlyAvailability(serviceId: string): ServiceAvailabilityDTO {
+  return {
+    serviceId,
+    timezone: "UTC",
+    bookingMode: "priced",
+    pricingMode: "hourly",
+    memberIds: ["mem-1"],
+    days: [
+      {
+        date: "2026-09-04",
+        starts: [
+          { minuteOfDay: 540, startsAt: NINE, maxMinutes: 300, seatsLeft: 1, memberIds: ["mem-1"] },
+        ],
+      },
+    ],
+  };
+}
+
 /** A refusal shaped exactly as the wire delivers one: coarse code outside, domain code inside. */
 function refusal(kitCode: string, domainCode: string): GraphqlError {
   return new GraphqlError(200, [
@@ -146,6 +255,8 @@ function renderChooseWhen({
   createFails,
   at,
   performers,
+  service,
+  availability,
 }: {
   serviceId: string;
   /** `null` is an anonymous visitor — the command refuses one with `UNAUTHENTICATED`. */
@@ -155,10 +266,14 @@ function renderChooseWhen({
   at?: string;
   /** What `serviceById` publishes about who performs this service. */
   performers?: { id: string; firstName: string; avatarUrl: string | null }[];
+  /** An alternative service, for the hourly and cross-zone cases. */
+  service?: ServiceDetailDTO;
+  /** An alternative calendar, likewise. */
+  availability?: ServiceAvailabilityDTO;
 }) {
-  fakes.service = serviceFixture(serviceId, performers ? { performers } : {});
+  fakes.service = service ?? serviceFixture(serviceId, performers ? { performers } : {});
   fakes.availability = {
-    data: availabilityFixture(serviceId),
+    data: availability ?? availabilityFixture(serviceId),
     isPending: false,
     isError: false,
     error: undefined,
@@ -260,6 +375,24 @@ function renderChooseWhen({
       get refetched(): boolean {
         return fakes.refetch.mock.calls.length > 0;
       },
+    },
+    /**
+     * What the refetch came back with: the same calendar minus one start.
+     * Stands in for React Query resolving the request `refetch()` fired.
+     */
+    rerenderWithout: (startsAt: string) => {
+      const current = fakes.availability["data"] as ServiceAvailabilityDTO;
+      fakes.availability = {
+        ...fakes.availability,
+        data: {
+          ...current,
+          days: current.days.map((day) => ({
+            ...day,
+            starts: day.starts.filter((start) => start.startsAt !== startsAt),
+          })),
+        },
+      };
+      act(() => fakes.emit());
     },
   };
 }
@@ -457,6 +590,81 @@ describe("ChooseWhenPage", () => {
 
     await waitFor(() => expect(create.calls).toHaveLength(1));
     expect(create.calls[0]).toMatchObject({ serviceOptionId: "opt-1" });
+  });
+
+  it("shows a slot whose day rolls over in the service's zone, and lets it be held", async () => {
+    // 23:00 UTC is 01:00 the next morning in Maputo. The page used to seed
+    // the strip from the *device's* zone, so a customer on UTC arriving by
+    // link — or coming back from sign-in, which is the whole reason the slot
+    // lives in the URL — landed on the 4th while the service files the slot
+    // under the 5th. The grid drew nothing at all, and the confirm sat
+    // enabled over it, ready to hold a time the page was not showing.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      availability: crossZoneAvailability("svc-1"),
+      at: `/book/svc-1?memberId=mem-1&startsAt=${encodeURIComponent(LATE)}`,
+    });
+
+    // Rendered in the service's zone, so 23:00 UTC reads as the 01:00 it is
+    // to the provider and the customer standing in front of them.
+    expect(await screen.findByRole("button", { name: /01:00/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeEnabled();
+  });
+
+  it("will not hold a time the grid is not showing", async () => {
+    // A shared or bookmarked link naming a slot the provider has withdrawn.
+    // The URL is the customer's claim about what they want; the grid is the
+    // platform's answer about what exists, and the confirm follows the grid.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      at: "/book/svc-1?memberId=mem-1&startsAt=2026-09-04T17%3A00%3A00.000Z",
+    });
+    await screen.findByRole("button", { name: /09:00/ });
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
+  });
+
+  it("stops offering the refused time after somebody else takes it", async () => {
+    // The second face of the same gap: the refetch drops the taken slot from
+    // the grid, but `search.startsAt` still names it, so a confirm keyed off
+    // the URL alone stayed live on the very time that had just been refused.
+    const { rerenderWithout } = renderChooseWhen({
+      serviceId: "svc-1",
+      createFails: { code: "SLOT_ALREADY_TAKEN" },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+    expect(await screen.findByText(/já foi marcada/i)).toBeInTheDocument();
+
+    // What the refetch comes back with: that start gone.
+    rerenderWithout(NINE);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /09:00/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
+  });
+
+  it("builds the length ladder from the chosen package, not the default one", async () => {
+    // Carried over from the reasoning that went with `toAvailabilityService`
+    // when the sheet was deleted: somebody who chose a package with a
+    // four-hour minimum must not be offered one-hour lengths because a
+    // different package carries the default flag. Both other fixtures are
+    // fixed-price with `minMinutes: null`, so nothing else in this file can
+    // fail for it.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      service: hourlyService("svc-1"),
+      availability: hourlyAvailability("svc-1"),
+      at: "/book/svc-1?optionId=opt-2",
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+
+    expect(await screen.findByRole("button", { name: "240 min" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "300 min" })).toBeInTheDocument();
+    // The default package's own minimum, which this customer did not choose.
+    expect(screen.queryByRole("button", { name: "60 min" })).not.toBeInTheDocument();
   });
 
   it("will not hold anything until a time has been chosen", async () => {

@@ -145,7 +145,7 @@ describe("ServiceRow", () => {
   });
 
   it("falls back to the provider's photo when the service has none", async () => {
-    // The thumbnail is decorative (`alt=""`, same as `ServiceCard`'s own —
+    // The thumbnail is decorative (`alt=""` —
     // the service's name is already adjacent link text), so it carries no
     // accessible role to query by. The DOM is read directly instead, the
     // same trade-off `service-listing-card.test.tsx` makes for its own
