@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Booking } from "../domain/aggregates/booking.aggregate";
-import { BookingNotFoundError, NotBookingCustomerError, NotProviderMemberError } from "../domain/exceptions";
+import {
+  BookingNotFoundError,
+  CustomerPhoneMissingError,
+  NotBookingCustomerError,
+  NotProviderMemberError,
+} from "../domain/exceptions";
 import {
   SubmitBookingCommand,
   type SubmitBookingInput,
@@ -18,6 +23,7 @@ import type {
   BookingChangeRecord,
   BookingRepositoryPort,
 } from "../app/ports/outbound/booking.repository.port";
+import type { CustomerPhoneReaderPort } from "../app/ports/outbound/customer-phone.reader.port";
 import type { DelayedJobsPort } from "../app/ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../app/ports/outbound/platform-settings.reader.port";
 import type { ProviderMemberReaderPort } from "../app/ports/outbound/provider-member-reader.port";
@@ -39,7 +45,16 @@ import { TrackingUnitOfWork, withId } from "./support/fakes";
  */
 const WHEN = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-/** A freshly-created, never-persisted booking's `Booking.create` input. */
+/**
+ * A freshly-created, never-persisted booking's `Booking.create` input.
+ *
+ * **No address and no description**, which is what a real `DRAFT` now looks
+ * like: `booking.create` sheds both, because checkout's step 1 has picked a
+ * time and nothing else. That absence is load-bearing rather than tidiness —
+ * a fixture arriving at `submit` with an address already on it could not fail
+ * if the command stopped passing `input.address` through, since the assertion
+ * would read back the fixture's own value.
+ */
 function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) {
   return {
     customerId: "cust-1",
@@ -56,13 +71,6 @@ function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) 
     providerName: "Hélder Cossa",
     providerSlug: "helder-cossa-electricidade",
     optionName: "Diagnóstico e reparação",
-    addressLabel: "Casa",
-    addressLine: "Av. Julius Nyerere 812",
-    addressCity: "Maputo",
-    addressDistrict: "Sommerschield",
-    addressDirections: null,
-    addressLat: null,
-    addressLng: null,
     description: null,
     // A checkout hold, so relative to `now` rather than to the slot — and,
     // like `WHEN`, not a pinned date.
@@ -91,13 +99,14 @@ function awaitingBooking(
   // a fixture built with a start minutes away is not one no command could
   // ever have produced.
   const respondBy = Math.min(Date.now() + 120 * 60_000, draft.startsAt.getTime());
-  // `submit` now takes the address explicitly; `bookingInput` always sets a
-  // concrete one, so pulling it back off the draft — including whatever
-  // `over` changed it to — is safe.
+  // `submit` takes the address explicitly, and the draft has none of its own
+  // to borrow — that is the point of the flow. A literal here, so an
+  // AWAITING_PROVIDER fixture carries a complete address the way every real
+  // one does.
   const submitted = draft.submit(new Date(), new Date(respondBy), {
-    label: draft.addressLabel as string,
-    line: draft.addressLine as string,
-    city: draft.addressCity as string,
+    label: "Casa",
+    line: "Av. Julius Nyerere 812",
+    city: "Maputo",
   });
   return withId(submitted, id);
 }
@@ -298,16 +307,48 @@ class CapturingOutbox implements OutboxPort {
   }
 }
 
-function setupSubmit(initial: Booking | null, opts: { providerResponseMinutes?: number } = {}) {
+/**
+ * `profile.phone_number` for whichever customer is asked about, keyed by
+ * user id so a test can hold a number for one customer and none for
+ * another. Undefined and null both mean "no number on file" — the shape
+ * `DrizzleCustomerPhoneReader` returns for a profile that has none.
+ */
+class FakePhoneReader implements CustomerPhoneReaderPort {
+  public queries: string[] = [];
+
+  constructor(private readonly numbers: Record<string, string | null> = {}) {}
+
+  async findPhoneNumber(userId: string): Promise<string | null> {
+    this.queries.push(userId);
+    return this.numbers[userId] ?? null;
+  }
+}
+
+function setupSubmit(
+  initial: Booking | null,
+  opts: { providerResponseMinutes?: number; phones?: Record<string, string | null> } = {},
+) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(initial, unitOfWork);
   const platformSettingsReader = new FakePlatformSettingsReader({
     providerResponse: opts.providerResponseMinutes,
   });
+  // Every customer this file submits for has a number unless a test says
+  // otherwise, so the happy paths are not silently testing the refusal.
+  const phones = new FakePhoneReader(
+    opts.phones ?? { "cust-1": "258841234567", "cust-2": "258851234567" },
+  );
   const delayedJobs = new FakeDelayedJobs();
-  const command = new SubmitBookingCommand(repo, platformSettingsReader, delayedJobs, unitOfWork, outbox);
-  return { command, repo, platformSettingsReader, delayedJobs, unitOfWork, outbox };
+  const command = new SubmitBookingCommand(
+    repo,
+    phones,
+    platformSettingsReader,
+    delayedJobs,
+    unitOfWork,
+    outbox,
+  );
+  return { command, repo, phones, platformSettingsReader, delayedJobs, unitOfWork, outbox };
 }
 
 function setupAccept(initial: Booking | null, opts: { paymentWindowMinutes?: number } = {}) {
@@ -341,9 +382,9 @@ function setupDecline(initial: Booking | null) {
 }
 
 describe("SubmitBookingCommand", () => {
-  // What the customer gave on checkout's step 2. None of this describe
-  // block's assertions read address content back — `BookingSubmitted`'s
-  // payload does not carry it — so one shared, valid value is enough.
+  // What the customer gave on checkout's step 2. The draft this command
+  // loads carries no address of its own, so a booking that comes back
+  // carrying these values can only have got them from here.
   const ADDRESS = { label: "Casa", line: "Av. Julius Nyerere 812", city: "Maputo" };
 
   it("submits a draft booking for its own customer, computing respondBy from provider_response_minutes, and publishes BookingSubmitted exactly once", async () => {
@@ -356,14 +397,34 @@ describe("SubmitBookingCommand", () => {
       draftBooking(),
       { providerResponseMinutes: 45 },
     );
-    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS };
+    const input: SubmitBookingInput = {
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      address: ADDRESS,
+      description: "Sem energia na cozinha",
+    };
 
     const before = Date.now();
-    await command.execute(input);
+    const result = await command.execute(input);
     const after = Date.now();
 
     expect(repo.saveCalls).toBe(1);
     expect(repo.savedArg?.status).toBe("AWAITING_PROVIDER");
+
+    // The address and the description reach the booking on this hop, and
+    // only on this hop: `draftBooking()` carries neither, so these values
+    // can only have come off `input`.
+    expect(repo.savedArg?.addressLabel).toBe("Casa");
+    expect(repo.savedArg?.addressLine).toBe("Av. Julius Nyerere 812");
+    expect(repo.savedArg?.addressCity).toBe("Maputo");
+    expect(repo.savedArg?.description).toBe("Sem energia na cozinha");
+
+    // What the mutation answers with. `respondBy` is the deadline this call
+    // actually stamped, not a second reading of the clock.
+    expect(result).toEqual({
+      bookingId: "bk-1",
+      respondBy: (repo.savedArg?.expiresAt as Date).toISOString(),
+    });
     // The exact-pair proof for Ruling N's check: the customer who submitted
     // is exactly the customer this booking already belonged to, not merely
     // "some customer succeeded." Mirrors AcceptBookingCommand's and
@@ -437,7 +498,7 @@ describe("SubmitBookingCommand", () => {
     // ("cust-1", from `bookingInput()`). A fixture where every input used
     // "cust-1" could not fail here if the check were dropped, because
     // there would be nobody foreign to refuse.
-    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-2", address: ADDRESS };
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-2", address: ADDRESS, description: null };
 
     await expect(command.execute(input)).rejects.toThrow(NotBookingCustomerError);
 
@@ -450,14 +511,15 @@ describe("SubmitBookingCommand", () => {
   });
 
   it("a losing compare-and-swap publishes nothing, appends nothing, schedules nothing, and throws nothing", async () => {
-    const { command, repo, outbox, delayedJobs } = setupSubmit(draftBooking());
+    const stored = draftBooking();
+    const { command, repo, outbox, delayedJobs } = setupSubmit(stored);
     // Somebody else's write already moved the row past DRAFT before this
     // command's own write reaches it — the ordinary case the CAS exists
     // for, not an exotic one.
     repo.currentStatusOverride = "AWAITING_PROVIDER";
-    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS };
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1", address: ADDRESS, description: null };
 
-    await command.execute(input);
+    const result = await command.execute(input);
 
     expect(repo.saveCalls).toBe(1);
     expect(repo.lastApplied).toBe(false);
@@ -466,6 +528,16 @@ describe("SubmitBookingCommand", () => {
     expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
+
+    // The loser still has to answer with a deadline, and it reports the one
+    // on the row rather than the one it computed and discarded — the winning
+    // request is what the provider is actually being held to. In this fake
+    // the row never moves, so what comes back is the stored booking's own
+    // `expiresAt`; against the real repository it is the winner's `respondBy`.
+    expect(result).toEqual({
+      bookingId: "bk-1",
+      respondBy: (stored.expiresAt as Date).toISOString(),
+    });
   });
 
   it("caps the provider's response window at the slot's own start when the slot begins before the window would close", async () => {
@@ -477,7 +549,7 @@ describe("SubmitBookingCommand", () => {
       providerResponseMinutes: 120,
     });
 
-    await command.execute({ bookingId: "bk-1", customerId: "cust-1", address: ADDRESS });
+    await command.execute({ bookingId: "bk-1", customerId: "cust-1", address: ADDRESS, description: null });
 
     // Equal to `startsAt` exactly, not merely "shorter than 120 minutes": an
     // implementation shortening the window by some other rule would still
@@ -498,7 +570,7 @@ describe("SubmitBookingCommand", () => {
     });
 
     const before = Date.now();
-    await command.execute({ bookingId: "bk-1", customerId: "cust-1", address: ADDRESS });
+    await command.execute({ bookingId: "bk-1", customerId: "cust-1", address: ADDRESS, description: null });
     const after = Date.now();
 
     const respondBy = repo.savedArg?.expiresAt as Date;
@@ -509,7 +581,7 @@ describe("SubmitBookingCommand", () => {
 
   it("throws BookingNotFoundError when the booking does not exist, and publishes nothing", async () => {
     const { command, repo, outbox, delayedJobs } = setupSubmit(null);
-    const input: SubmitBookingInput = { bookingId: "missing", customerId: "cust-1", address: ADDRESS };
+    const input: SubmitBookingInput = { bookingId: "missing", customerId: "cust-1", address: ADDRESS, description: null };
 
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 
@@ -517,6 +589,95 @@ describe("SubmitBookingCommand", () => {
     expect(repo.appendChangeCalls).toEqual([]);
     expect(outbox.published).toEqual([]);
     expect(delayedJobs.scheduled).toEqual([]);
+  });
+
+  it("refuses a customer who has no phone number on file", async () => {
+    // The mockup promises "Recebe um pedido de pagamento no 84 ••• 4021", and
+    // a customer with no number is charged into the void, spends all three
+    // attempts, and has the booking cancelled telling the provider they did
+    // not pay. This refusal is what makes the step-3 field a rule rather than
+    // a UI convention — anything calling the mutation directly meets it too.
+    const { command, repo, outbox, delayedJobs } = setupSubmit(draftBooking(), {
+      phones: { "cust-1": null },
+    });
+    const input: SubmitBookingInput = {
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      address: ADDRESS,
+      description: null,
+    };
+
+    await expect(command.execute(input)).rejects.toThrow(CustomerPhoneMissingError);
+
+    // A refusal writes nothing. Not merely "no booking came back" — a command
+    // that writes and then throws passes that weaker assertion.
+    expect(repo.saveCalls).toBe(0);
+    expect(repo.appendChangeCalls).toEqual([]);
+    expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
+  });
+
+  it("refuses a phone number that is present but blank", async () => {
+    // `profile.phone_number` is `text`: a column that permits `""` is one
+    // that will eventually hold one, and whitespace reaches M-Pesa exactly
+    // as usefully as null does. Without this pair, a bare `== null` check
+    // would look as correct as the one that is actually there.
+    const { command, repo, outbox } = setupSubmit(draftBooking(), { phones: { "cust-1": "   " } });
+
+    await expect(
+      command.execute({
+        bookingId: "bk-1",
+        customerId: "cust-1",
+        address: ADDRESS,
+        description: null,
+      }),
+    ).rejects.toThrow(CustomerPhoneMissingError);
+
+    expect(repo.saveCalls).toBe(0);
+    expect(outbox.published).toEqual([]);
+  });
+
+  it("reads the phone before opening a transaction, and asks about the requesting customer", async () => {
+    // The refusal needs no transaction, and taking one out only to throw it
+    // away again is work nobody asked for. `TrackingUnitOfWork.order` is
+    // reset by `atomicExecute` on entry, so an empty order after a refusal is
+    // the proof that block never ran.
+    const { command, phones, unitOfWork } = setupSubmit(draftBooking(), {
+      phones: { "cust-1": null },
+    });
+
+    await expect(
+      command.execute({
+        bookingId: "bk-1",
+        customerId: "cust-1",
+        address: ADDRESS,
+        description: null,
+      }),
+    ).rejects.toThrow(CustomerPhoneMissingError);
+
+    // Asked about the caller, not about the booking's provider or anybody
+    // else: a reader keyed on the wrong id would still refuse, and would
+    // still pass every assertion above.
+    expect(phones.queries).toEqual(["cust-1"]);
+    expect(unitOfWork.insideTransaction).toBe(false);
+    expect(unitOfWork.order).toEqual([]);
+  });
+
+  it("submits when the customer has one", async () => {
+    const { command, repo, phones } = setupSubmit(draftBooking(), {
+      phones: { "cust-1": "258841234567" },
+    });
+
+    await command.execute({
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      address: ADDRESS,
+      description: null,
+    });
+
+    expect(phones.queries).toEqual(["cust-1"]);
+    expect(repo.savedArg?.status).toBe("AWAITING_PROVIDER");
+    expect(repo.savedArg?.addressCity).toBe("Maputo");
   });
 });
 

@@ -37,5 +37,11 @@ export function createBookingReadHandlers(mod: BookingReadModule) {
         customerId: requireUser(ctx),
       }),
     )
+    .handle("booking.byId", async (args, ctx) =>
+      uc.getMine.execute({
+        bookingId: args.input.bookingId,
+        customerId: requireUser(ctx),
+      }),
+    )
     .build();
 }

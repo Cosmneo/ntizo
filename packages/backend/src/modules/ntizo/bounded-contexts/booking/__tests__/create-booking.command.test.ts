@@ -57,16 +57,9 @@ const INPUT: CreateBookingInput = {
   providerMemberId: "member-1",
   startsAt: SLOT_STARTS_AT,
   locale: "pt-MZ",
-  address: {
-    label: "Casa",
-    line: "Av. Julius Nyerere 812",
-    city: "Maputo",
-    district: "Sommerschield",
-    directions: null,
-    lat: null,
-    lng: null,
-  },
-  description: "Sem energia na cozinha",
+  // No address and no description: checkout's step 1 has picked a time and
+  // nothing else, and `CreateBookingInput` carries neither any more. Both
+  // arrive on `submit`, which is where the customer supplies them.
 };
 
 function validPricing(over: Partial<ServiceOptionPricing> = {}): ServiceOptionPricing {
@@ -496,27 +489,24 @@ describe("CreateBookingCommand", () => {
     expect(delayedJobs.scheduled[0]?.at.toISOString()).toBe(result.expiresAt);
   });
 
-  it("copies the address the customer chose onto the booking, immune to later mutation", async () => {
+  it("inserts a draft with no address and no description at all", async () => {
+    // The whole reason this design exists: a draft holds the slot while the
+    // customer is still on step 1, before they have said where the work
+    // happens or what it is. `Booking.submit` is where both arrive, and the
+    // invariant it carries — nothing past DRAFT without a complete address —
+    // is only meaningful if a DRAFT can actually be without one.
     const { command, repo } = setup();
-    const address = { ...INPUT.address };
-    const input: CreateBookingInput = { ...INPUT, address };
 
-    await command.execute(input);
+    await command.execute(INPUT);
 
-    // Mutated only after `execute` has returned. Passing the same object
-    // through and reading it back would prove nothing about whether the
-    // command copied it — this proves the booking no longer shares it.
-    address.label = "Mutated after the fact";
-    address.line = "Somewhere else entirely";
-    address.city = "Changed";
-    address.district = "Also changed";
-    address.lat = 999;
-
-    expect(repo.insertedArg?.addressLabel).toBe("Casa");
-    expect(repo.insertedArg?.addressLine).toBe("Av. Julius Nyerere 812");
-    expect(repo.insertedArg?.addressCity).toBe("Maputo");
-    expect(repo.insertedArg?.addressDistrict).toBe("Sommerschield");
+    expect(repo.insertedArg?.addressLabel).toBeNull();
+    expect(repo.insertedArg?.addressLine).toBeNull();
+    expect(repo.insertedArg?.addressCity).toBeNull();
+    expect(repo.insertedArg?.addressDistrict).toBeNull();
+    expect(repo.insertedArg?.addressDirections).toBeNull();
     expect(repo.insertedArg?.addressLat).toBeNull();
+    expect(repo.insertedArg?.addressLng).toBeNull();
+    expect(repo.insertedArg?.description).toBeNull();
   });
 
   it("refuses a quote service, before ever reading the provider or touching the slot", async () => {

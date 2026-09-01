@@ -63,4 +63,22 @@ export interface BookingReadRepositoryPort {
    * owner has" query with no pagination of its own.
    */
   listForCustomer(customerId: string): Promise<BookingListRow[]>;
+
+  /**
+   * One booking, but only if it is this customer's own.
+   *
+   * **`customerId` is a parameter of the query, not a check the caller runs
+   * afterward**, and that is the whole shape of this method. An
+   * implementation that read by id and then compared `row.customerId` would
+   * have the wrong customer's booking in memory for the length of that
+   * comparison — one `if` away from being returned, logged, or read by
+   * whatever gets added between the read and the check. Expressed as a
+   * `WHERE` clause there is no such window: the row either belongs to the
+   * caller or it never arrives.
+   *
+   * `null` covers both "no such booking" and "not yours", deliberately
+   * undistinguished: telling an unrelated caller which of the two it was
+   * would confirm that a given id names a real booking.
+   */
+  findForCustomer(bookingId: string, customerId: string): Promise<BookingListRow | null>;
 }

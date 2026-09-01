@@ -697,6 +697,16 @@ export class Booking {
    * therefore not an ordinary race to shrug off — it is either a bug
    * upstream or a caller that skipped the CAS, and `BookingTransitionError`
    * says so rather than absorbing it the way `expire`'s no-op does.
+   *
+   * **`description` arrives here for the same reason the address does, and is
+   * assigned unconditionally.** It is checkout's step-3 field — what the
+   * customer wants done, in their own words — and `create` now passes `null`
+   * for it, because step 1 has no such value to pass. Nothing between the two
+   * hops can set one, so writing whatever this call carries (`null`
+   * included) cannot clear a description somebody else supplied. Blank is
+   * normalised to `null` rather than refused, matching `create`'s own
+   * treatment: "the customer typed nothing" is an everyday shape for this
+   * field in a way it is not for an address component.
    */
   submit(
     at: Date,
@@ -710,6 +720,7 @@ export class Booking {
       lat?: number | null;
       lng?: number | null;
     },
+    description?: string | null,
   ): Booking {
     if (this.props.status !== BookingStatus.Draft) {
       throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
@@ -732,6 +743,8 @@ export class Booking {
       Booking.requireNonBlank(address.directions, "addressDirections");
     }
 
+    const trimmedDescription = (description ?? "").trim();
+
     return new Booking({
       ...this.props,
       status: BookingStatus.AwaitingProvider,
@@ -743,6 +756,7 @@ export class Booking {
       addressDirections: address.directions ?? null,
       addressLat: address.lat ?? null,
       addressLng: address.lng ?? null,
+      description: trimmedDescription === "" ? null : trimmedDescription,
     });
   }
 

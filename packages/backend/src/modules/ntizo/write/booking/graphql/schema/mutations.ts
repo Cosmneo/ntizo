@@ -30,12 +30,22 @@ import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
  * and a `startsAt` that is not a real, future, on-grid start for that
  * member.
  *
+ * **There is no `address` and no `description` field either, and that is the
+ * whole reason this flow works.** This mutation is checkout's step 1: the
+ * customer has picked a time and nothing else, and the draft has to be able
+ * to exist before the address does or the slot could not be held while they
+ * fill the rest in. Both fields moved to `submitBooking` below, where the
+ * customer actually supplies them. They are *removed* rather than made
+ * optional: an optional field nothing ever sets is a field somebody
+ * eventually sets wrongly, and a draft carrying half an address is one
+ * `Booking.submit` would then have to reconcile against the address it was
+ * handed.
+ *
  * The bounds here mirror the aggregate's rather than replacing them — this
- * is the edge refusing obvious nonsense cheaply (a blank address line, a
- * `startsAt` that isn't a real date), with `Booking.create` as the place the
- * rule is *defined*. A blank address line is refused twice, in both places,
- * on purpose; see `write/review`'s schema comment for the same argument made
- * about a rating of 4.5.
+ * is the edge refusing obvious nonsense cheaply (a `startsAt` that isn't a
+ * real date), with `Booking.create` as the place the rule is *defined*. See
+ * `write/review`'s schema comment for the same argument made about a rating
+ * of 4.5.
  *
  * `startsAt` crosses the wire as an ISO string (`z.string().datetime()`) —
  * GraphQL has no native `Date` scalar this kit uses — and the handler
@@ -53,6 +63,39 @@ export const createBooking = defineMutation({
       // `ServicePricingReaderPort.findOption` uses to snapshot the service
       // and option names onto the booking.
       locale: z.string().min(2),
+    }),
+  ),
+  output: zodSchema(z.object({ bookingId: z.string().min(1), expiresAt: z.string() })),
+  docs: { summary: "Book a service option", tags: ["Booking"] },
+});
+
+/**
+ * The customer finishes checkout and sends the request on to the provider.
+ *
+ * **There is no `customerId` field**, for the same reason `createBooking`
+ * has none: the customer comes from `requireUser(ctx)`, and a field here
+ * would make this the mutation that submits somebody else's draft. The
+ * command's own authorisation check refuses a requester who is not the
+ * booking's customer.
+ *
+ * The address arrives here rather than on `createBooking` because the
+ * customer supplies it on step 2, after the slot is already held — see the
+ * design's own account of the conflict this resolves. `description` travels
+ * with it, off step 3, for the same reason.
+ *
+ * The bounds are the edge's cheap refusal, not the rule: `Booking.submit`
+ * is where a blank or missing address component is actually refused, and
+ * `SubmitBookingCommand` deliberately keeps no second copy of that check.
+ * What this schema does add is the guarantee that `label`, `line` and `city`
+ * are present, non-blank strings by the time any of them reaches the
+ * aggregate — the kit validates every input against this schema before the
+ * handler runs (`validateInput` defaults to `true`), so an `undefined`
+ * component cannot arrive from the wire.
+ */
+export const submitBooking = defineMutation({
+  input: zodSchema(
+    z.object({
+      bookingId: z.string().min(1),
       address: z.object({
         label: z.string().trim().min(1),
         line: z.string().trim().min(1),
@@ -65,11 +108,11 @@ export const createBooking = defineMutation({
       description: z.string().trim().max(1000).nullable(),
     }),
   ),
-  output: zodSchema(z.object({ bookingId: z.string().min(1), expiresAt: z.string() })),
-  docs: { summary: "Book a service option", tags: ["Booking"] },
+  output: zodSchema(z.object({ bookingId: z.string().min(1), respondBy: z.string() })),
+  docs: { summary: "Send a booking request to the provider", tags: ["Booking"] },
 });
 
 export const bookingWriteSchema = defineGraphQLSchema(
-  { booking: { create: createBooking } },
+  { booking: { create: createBooking, submit: submitBooking } },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );

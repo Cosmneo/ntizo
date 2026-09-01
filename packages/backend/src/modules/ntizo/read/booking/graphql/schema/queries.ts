@@ -17,17 +17,38 @@ export const listMyBookings = defineQuery({
 });
 
 /**
+ * One of the caller's own bookings, by id — what checkout's steps 2 and 3
+ * load. `booking.mine` answers with a list, and a page about one booking has
+ * no use for one.
+ *
+ * Takes no customer id here either, for the same reason `mine` does not: it
+ * resolves from the session, and the repository filters on it *inside the
+ * query* rather than checking it after the read — see
+ * `BookingReadRepositoryPort.findForCustomer`.
+ *
+ * The output is nullable, and covers two cases without distinguishing them:
+ * no such booking, and one that is not the caller's. Telling an unrelated
+ * caller which it was would confirm that a given id names a real booking.
+ */
+export const getMyBooking = defineQuery({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(bookingReadModel.nullable()),
+  docs: { summary: "One of your own bookings", tags: ["Booking"] },
+});
+
+/**
  * Nested one level, like `activity`'s and `notification`'s: the field kit
- * flattens this to `bookingMine` on the wire — `{ booking: { mine } }` →
- * `bookingMine`, never `booking.mine`. Sits alongside `write/booking`'s
- * `booking: { create }`, which flattens to `bookingCreate` — the two merge
- * into one `booking` group without colliding because they name different
- * leaves.
+ * flattens these to `bookingMine` and `bookingById` on the wire —
+ * `{ booking: { mine } }` → `bookingMine`, never `booking.mine`. Sits
+ * alongside `write/booking`'s `booking: { create, submit }`, which flattens
+ * to `bookingCreate` and `bookingSubmit` — the groups merge into one
+ * `booking` without colliding because they name different leaves.
  */
 export const bookingReadSchema = defineGraphQLSchema(
   {
     booking: {
       mine: listMyBookings,
+      byId: getMyBooking,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

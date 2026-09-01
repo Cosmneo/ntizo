@@ -45,6 +45,15 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
         // boundary, not inside the command.
         startsAt: new Date(args.input.startsAt),
         locale: args.input.locale,
+      }),
+    )
+    .handle("booking.submit", async (args, ctx) =>
+      uc.submitBooking.execute({
+        bookingId: args.input.bookingId,
+        // Never from the client, for the same reason `booking.create`'s is
+        // not — see the schema's own doc comment. The command checks it
+        // against the booking's own `customerId` and refuses a stranger.
+        customerId: requireUser(ctx),
         address: args.input.address,
         description: args.input.description,
       }),

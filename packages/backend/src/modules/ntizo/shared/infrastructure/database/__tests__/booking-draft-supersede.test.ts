@@ -295,9 +295,9 @@ function buildCreate(): CreateBookingCommand {
  * One draft, through the real command — which is the only place the rule
  * under test lives.
  *
- * The address is still supplied because `CreateBookingInput` still requires
- * one; `Booking.create` no longer does, and the mutation that stops sending
- * it is the next task's. Nothing here reads it back.
+ * No address and no description: `CreateBookingInput` carries neither now,
+ * because step 1 of checkout has neither to give. Both arrive on `submit`.
+ * Nothing in this file read either back.
  */
 async function createDraft(input: { customerId: string; startsAt: Date }): Promise<{ id: string }> {
   const { bookingId } = await buildCreate().execute({
@@ -306,16 +306,6 @@ async function createDraft(input: { customerId: string; startsAt: Date }): Promi
     providerMemberId: memberId,
     startsAt: input.startsAt,
     locale: "pt-MZ",
-    address: {
-      label: "Salão",
-      line: "Av. Julius Nyerere 123",
-      city: "Maputo",
-      district: null,
-      directions: null,
-      lat: null,
-      lng: null,
-    },
-    description: null,
   });
   return { id: bookingId };
 }

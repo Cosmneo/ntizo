@@ -31,16 +31,14 @@ export interface CreateBookingInput {
   startsAt: Date;
   /** The locale the customer was reading the page in. */
   locale: string;
-  address: {
-    label: string;
-    line: string;
-    city: string;
-    district: string | null;
-    directions: string | null;
-    lat: number | null;
-    lng: number | null;
-  };
-  description: string | null;
+  // No `address` and no `description`, and both absences are the design.
+  // This command is checkout's step 1 — the customer has picked a time and
+  // nothing else — so there is no address and no description to give it yet.
+  // Both belong to `SubmitBookingInput`, which is the hop where the customer
+  // actually supplies them. Carrying them here as optional fields nothing
+  // ever sets would leave two fields somebody eventually sets wrongly, and a
+  // draft holding half an address is a draft `Booking.submit` would have to
+  // reconcile against the one it was handed.
 }
 
 /**
@@ -257,10 +255,10 @@ export class CreateBookingCommand {
       input.startsAt,
     );
 
-    // The address arrives as a value, not a reference: `input.address`'s
-    // fields are copied onto individually-typed `Booking.create` parameters
-    // below, not held as a shared object, so a caller mutating the object it
-    // passed in after this returns can never reach back into the booking.
+    // No address fields at all, and `description: null`. A draft holds a
+    // slot; it does not yet know where the work happens or what it is —
+    // `Booking.create` stopped requiring an address for exactly this hop, and
+    // `Booking.submit` is where both arrive. See `CreateBookingInput`.
     const booking = Booking.create({
       customerId: input.customerId,
       providerId: pricing.providerId,
@@ -278,14 +276,7 @@ export class CreateBookingCommand {
       providerName: provider.name,
       providerSlug: provider.slug,
       optionName: pricing.optionName,
-      addressLabel: input.address.label,
-      addressLine: input.address.line,
-      addressCity: input.address.city,
-      addressDistrict: input.address.district,
-      addressDirections: input.address.directions,
-      addressLat: input.address.lat,
-      addressLng: input.address.lng,
-      description: input.description,
+      description: null,
       expiresAt,
     });
 

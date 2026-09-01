@@ -109,6 +109,11 @@ export function bootstrapBooking() {
       ),
       submitBooking: new SubmitBookingCommand(
         bookingRepository,
+        // Shared with `chargeBooking`, which reads the same column for the
+        // same customer minutes later. Requiring the number at submit is
+        // what stops that charge being attempted against nothing at all —
+        // see `CustomerPhoneMissingError`.
+        customerPhoneReader,
         platformSettingsReader,
         delayedJobs,
         unitOfWork,

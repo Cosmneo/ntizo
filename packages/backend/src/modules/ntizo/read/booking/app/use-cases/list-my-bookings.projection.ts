@@ -1,5 +1,6 @@
 import type { BookingDTO } from "@ntizo/shared/read-models";
 import type { BookingReadRepositoryPort } from "../ports/outbound/booking-read.repository.port";
+import { toBookingDTO } from "./to-booking-dto";
 
 /**
  * A customer's own bookings, newest first.
@@ -15,32 +16,6 @@ export class ListMyBookingsProjection {
 
   async execute(input: { customerId: string }): Promise<BookingDTO[]> {
     const rows = await this.repo.listForCustomer(input.customerId);
-    return rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      serviceName: r.serviceName,
-      providerName: r.providerName,
-      providerSlug: r.providerSlug,
-      optionName: r.optionName,
-      durationMinutes: r.durationMinutes,
-      priceMinor: r.priceMinor,
-      commissionBps: r.commissionBps,
-      commissionMinor: r.commissionMinor,
-      currency: r.currency,
-      // The wire carries an ISO string, never a `Date` — `bookingReadModel`
-      // declares `startsAt`/`endsAt`/`expiresAt`/`createdAt` as `z.string()`,
-      // and the conversion belongs at this boundary, the same seam
-      // `ListActivityProjection` stringifies `occurredAt` at.
-      startsAt: r.startsAt.toISOString(),
-      endsAt: r.endsAt.toISOString(),
-      addressLabel: r.addressLabel,
-      addressLine: r.addressLine,
-      addressCity: r.addressCity,
-      addressDistrict: r.addressDistrict,
-      addressDirections: r.addressDirections,
-      description: r.description,
-      expiresAt: r.expiresAt ? r.expiresAt.toISOString() : null,
-      createdAt: r.createdAt.toISOString(),
-    }));
+    return rows.map(toBookingDTO);
   }
 }

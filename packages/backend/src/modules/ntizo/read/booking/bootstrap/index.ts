@@ -1,4 +1,5 @@
 import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
+import { GetMyBookingProjection } from "../app/use-cases/get-my-booking.projection";
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
 
 /**
@@ -30,6 +31,10 @@ export function bootstrapBookingRead() {
     adapters: { repo },
     useCases: {
       listMine: new ListMyBookingsProjection(repo),
+      // Checkout's steps 2 and 3 are pages about one booking, not a list.
+      // The same repository, because both read the same columns off the same
+      // table for the same customer — only the `WHERE` differs.
+      getMine: new GetMyBookingProjection(repo),
     },
   };
 }

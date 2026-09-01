@@ -13,4 +13,3 @@ export {
   type MpesaC2BResponse,
   type MpesaConfig,
 } from "./mpesa.client";
-export { toMpesaMsisdn } from "./msisdn";

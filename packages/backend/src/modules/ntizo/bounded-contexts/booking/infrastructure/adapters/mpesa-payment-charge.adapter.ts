@@ -1,10 +1,10 @@
+import { toMpesaMsisdn } from "@ntizo/shared";
 import { infraStore } from "../../../../../../shared/infrastructure/stores/infra-store";
 import {
   assertEnvironmentMatchesShortcode,
   type FetchLike,
   MpesaClient,
   type MpesaConfig,
-  toMpesaMsisdn,
 } from "../../../../shared/infrastructure/payments/mpesa";
 import type {
   PaymentChargePort,

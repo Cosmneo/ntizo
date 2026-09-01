@@ -1,6 +1,7 @@
 /**
- * `ListMyBookingsProjection`, wired to the real `DrizzleBookingReadRepository`,
- * against the real dev database — same reason and same mechanism as
+ * Both of `read/booking`'s projections — `ListMyBookingsProjection` and
+ * `GetMyBookingProjection` — wired to the real `DrizzleBookingReadRepository`,
+ * against the real dev database. Same reason and same mechanism as
  * `booking-repository.test.ts`: the reader reaches the database through
  * `getDb()`, which resolves through the app's request-scoped
  * AsyncLocalStorage context, and a test has no request.
@@ -8,12 +9,18 @@
  * `DEV_DB_URL`-backed Drizzle client into that same context for the duration
  * of one test body.
  *
+ * One file for both, and one fixture: they read the same columns off the
+ * same table for the same customer, differing only in their `WHERE`. A
+ * second file would be a second elaborate fixture and a second connection to
+ * a shared dev database, for two queries that must not be allowed to
+ * disagree.
+ *
  * The fixture below seeds bookings for TWO customers on purpose. BR7 limits
  * reading a booking to its own customer, its provider, or an administrator —
- * this query answers only for the signed-in customer — and a fixture holding
- * only the caller's own rows cannot fail if `listForCustomer`'s `WHERE`
- * clause were ever dropped. The whole point of this file is to prove the
- * filter, not merely the mapping.
+ * these queries answer only for the signed-in customer — and a fixture
+ * holding only the caller's own rows cannot fail if `listForCustomer`'s or
+ * `findForCustomer`'s `WHERE` clause were ever dropped. The whole point of
+ * this file is to prove those filters, not merely the mapping.
  *
  * Fixtures follow `booking-repository.test.ts`'s pattern: one provider and
  * one provider member, created fresh under a random `suffix` in `beforeAll`,
@@ -36,6 +43,7 @@ import { booking } from "../../../shared/infrastructure/database/booking/schemas
 import { Booking } from "../../../bounded-contexts/booking/domain/aggregates/booking.aggregate";
 import { DrizzleBookingRepository } from "../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
+import { GetMyBookingProjection } from "../app/use-cases/get-my-booking.projection";
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
 import {
   bestEffortCleanup,
@@ -51,6 +59,7 @@ const db = drizzle(sql, { schema: authSchema });
 const writeRepo = new DrizzleBookingRepository();
 const readRepo = new DrizzleBookingReadRepository();
 const projection = new ListMyBookingsProjection(readRepo);
+const byId = new GetMyBookingProjection(readRepo);
 const suffix = crypto.randomUUID();
 
 let customerAId: string;
@@ -287,6 +296,86 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
       expect(item?.endsAt).toBe("2026-12-03T10:00:00.000Z");
 
       await db.delete(booking).where(eq(booking.id, created.id as string));
+    });
+  });
+});
+
+describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () => {
+  test("returns the caller's own booking, and null for another customer's", async () => {
+    const created: string[] = [];
+    try {
+      await __runWithTransactionContextForTests(db, async () => {
+        const mine = await writeRepo.insert(
+          Booking.create(
+            bookingInput({
+              customerId: customerAId,
+              startsAt: new Date("2026-12-04T09:00:00.000Z"),
+              expiresAt: new Date("2026-12-04T09:30:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        // A real booking belonging to a real, different customer — asked for
+        // by its own id below. Without this row the test could not fail even
+        // if `findForCustomer` dropped `customerId` from its `WHERE` clause
+        // entirely, because there would be nothing to wrongly return. This
+        // branch has shipped that exact shape twice.
+        const theirs = await writeRepo.insert(
+          Booking.create(
+            bookingInput({
+              customerId: customerBId,
+              startsAt: new Date("2026-12-04T11:00:00.000Z"),
+              expiresAt: new Date("2026-12-04T11:30:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        created.push(mine.id as string, theirs.id as string);
+
+        const own = await byId.execute({
+          bookingId: mine.id as string,
+          customerId: customerAId,
+        });
+        expect(own?.id).toBe(mine.id as string);
+        // The mapping is the list's mapping — `toBookingDTO`, shared — so
+        // one field is enough to prove this went through it rather than
+        // handing back a raw row.
+        expect(own?.startsAt).toBe("2026-12-04T09:00:00.000Z");
+
+        // The assertion this test exists for: customer A asking for customer
+        // B's booking, by its real id, gets nothing.
+        const stolen = await byId.execute({
+          bookingId: theirs.id as string,
+          customerId: customerAId,
+        });
+        expect(stolen).toBeNull();
+
+        // And the same booking is genuinely readable by the customer it
+        // belongs to, so the null above is the filter refusing rather than
+        // the row being absent or unreadable for some other reason.
+        const hers = await byId.execute({
+          bookingId: theirs.id as string,
+          customerId: customerBId,
+        });
+        expect(hers?.id).toBe(theirs.id as string);
+      });
+    } finally {
+      await bestEffortCleanup(
+        created.map((id) => () => db.delete(booking).where(eq(booking.id, id))),
+      );
+    }
+  });
+
+  test("an id that names no booking is null, not an error", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      // A well-formed id that simply is not one — the shape a stale link
+      // produces. Undistinguished from "not yours" on purpose: telling the
+      // two apart would confirm that a given id names a real booking.
+      const result = await byId.execute({
+        bookingId: crypto.randomUUID(),
+        customerId: customerAId,
+      });
+      expect(result).toBeNull();
     });
   });
 });

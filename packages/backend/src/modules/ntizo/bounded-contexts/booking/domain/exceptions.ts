@@ -328,6 +328,39 @@ export class NotBookingCustomerError extends ForbiddenError {
 }
 
 /**
+ * Refused because the customer submitting a booking has no phone number on
+ * file.
+ *
+ * Checkout's step 3 promises the customer "Recebe um pedido de pagamento no
+ * 84 ••• 4021" — M-Pesa pushes its prompt to a handset, not to an account.
+ * `profile.phone_number` is nullable and nothing in the platform requires it,
+ * and the cost of that gap is already recorded: a customer with no number is
+ * charged into the void, spends all three of `ChargeBookingCommand`'s
+ * attempts, and the payment window then cancels the booking *telling the
+ * provider the customer did not pay*. Refusing at `submit` closes it by
+ * construction, before a provider's calendar is ever committed to a request
+ * that cannot be paid for.
+ *
+ * The refusal, not the step-3 form field, is what makes the number a rule: a
+ * UI convention can be skipped by anything that calls `booking.submit`
+ * directly.
+ *
+ * `UnprocessableError`, not `ForbiddenError`: the caller is exactly who they
+ * claim to be and is entitled to submit this booking — what is missing is a
+ * fact about their profile, and the remedy is to supply it, which is a
+ * different sentence to say on the page than "this is not yours".
+ */
+export class CustomerPhoneMissingError extends UnprocessableError {
+  constructor(public readonly customerId: string) {
+    super({
+      message: "Add a phone number to your profile before sending this request",
+      code: "CUSTOMER_PHONE_MISSING",
+    });
+    this.name = "CustomerPhoneMissingError";
+  }
+}
+
+/**
  * Refused because the provider a service option belongs to does not exist.
  *
  * Checked last among Task 8's refusals, once every fact the option itself

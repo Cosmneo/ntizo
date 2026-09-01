@@ -1,9 +1,14 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { BookingSubmitted } from "../../domain/events";
-import { BookingNotFoundError, NotBookingCustomerError } from "../../domain/exceptions";
+import {
+  BookingNotFoundError,
+  CustomerPhoneMissingError,
+  NotBookingCustomerError,
+} from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import { cappedToSlotStart } from "./capped-to-slot-start";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
+import type { CustomerPhoneReaderPort } from "../ports/outbound/customer-phone.reader.port";
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
 
@@ -27,6 +32,15 @@ export interface SubmitBookingInput {
     lat?: number | null;
     lng?: number | null;
   };
+  /**
+   * What the customer wants done, in their own words — checkout's step 3.
+   *
+   * It travels with the address for the same reason: `booking.create` no
+   * longer carries either, because step 1 has neither value to give. Passed
+   * straight through to `Booking.submit`, which normalises a blank one to
+   * null rather than refusing it.
+   */
+  description: string | null;
 }
 
 /**
@@ -103,20 +117,39 @@ const SUBMITTED_BY_CUSTOMER = "submitted_by_customer";
  * `null` from `atomicExecute` exactly when nothing happened (a losing
  * compare-and-swap), so nothing gets scheduled for a transition that never
  * landed.
+ *
+ * **A customer with no phone number on file is refused, before anything else
+ * runs.** M-Pesa pushes its payment prompt to a handset rather than to an
+ * account, and `profile.phone_number` is nullable with nothing in the
+ * platform requiring it — see `CustomerPhoneMissingError` for the failure
+ * that gap already produces downstream, and why refusing here rather than at
+ * charge time is what makes the number a rule instead of a form convention.
+ * The read happens *outside* `atomicExecute`: the refusal needs no
+ * transaction, and opening one only to throw it away again is work nobody
+ * asked for.
  */
 export class SubmitBookingCommand {
   constructor(
     private readonly repo: BookingRepositoryPort,
+    private readonly customerPhoneReader: CustomerPhoneReaderPort,
     private readonly platformSettingsReader: PlatformSettingsReaderPort,
     private readonly delayedJobs: DelayedJobsPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
 
-  async execute(input: SubmitBookingInput): Promise<void> {
+  async execute(input: SubmitBookingInput): Promise<{ bookingId: string; respondBy: string }> {
     // Computed once, before the transition — the instant this command ran,
     // not some later instant a retry or a delayed write might see.
     const at = new Date();
+
+    // Before the transaction opens, per this class's own doc comment. Blank
+    // counts as missing: `profile.phone_number` is `text`, and a column that
+    // permits `""` will eventually hold one.
+    const phone = await this.customerPhoneReader.findPhoneNumber(input.customerId);
+    if (phone == null || phone.trim().length === 0) {
+      throw new CustomerPhoneMissingError(input.customerId);
+    }
 
     const respondBy = await this.unitOfWork.atomicExecute(async (): Promise<Date | null> => {
       const booking = await this.repo.findById(input.bookingId);
@@ -140,7 +173,7 @@ export class SubmitBookingCommand {
         booking.startsAt,
       );
 
-      const moved = booking.submit(at, respondByDeadline, input.address);
+      const moved = booking.submit(at, respondByDeadline, input.address, input.description);
 
       const applied = await this.repo.save(moved, booking.status);
       if (!applied) {
@@ -200,6 +233,24 @@ export class SubmitBookingCommand {
     // that lost the compare-and-swap above, would be a job for nothing.
     if (respondBy) {
       await this.delayedJobs.scheduleBookingDeadline(input.bookingId, respondBy);
+      return { bookingId: input.bookingId, respondBy: respondBy.toISOString() };
     }
+
+    // The losing compare-and-swap still has to answer with a deadline: the
+    // caller asked when the provider must respond, and there genuinely is
+    // one — the twin request that won the race stamped it, published the
+    // event and scheduled the job. So it is read back off the row rather
+    // than reported from the value this call computed and then discarded,
+    // which would tell the customer a deadline nothing is holding anyone to.
+    //
+    // Outside the transaction, because nothing is written after it.
+    // `expiresAt` is set at `create` and only ever replaced, never cleared
+    // (see `Booking.submit` and `Booking.accept`), so a booking that is
+    // still there always has one; a null here means the row itself is gone.
+    const current = await this.repo.findById(input.bookingId);
+    if (!current?.expiresAt) {
+      throw new BookingNotFoundError(input.bookingId);
+    }
+    return { bookingId: input.bookingId, respondBy: current.expiresAt.toISOString() };
   }
 }
