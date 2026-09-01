@@ -2599,3 +2599,47 @@ which is precisely why twenty-six files could keep readable pinned dates and one
 Give that check a `now` parameter and the category ends: the fixture goes back to a literal, and no
 test in the repo has to care what today's date is. It changes a port signature and every implementer
 and fake with it, which is why it was not done inside a review fix round.
+
+## #109 — A route's `validateSearch` does not narrow keys it does not name
+
+TanStack Router builds a match's search as `{ ...parentSearch, ...validated }`, and the root route
+validates nothing — so any key a route's `validateSearch` does not explicitly name survives from the
+raw URL, with whatever type the parser gave it. `?expired=banana` reached the checkout page as the
+string `"banana"` and rendered the lapsed-hold message, because the page asked whether the flag was
+truthy.
+
+The conditional-spread idiom copied from `services.index.tsx` narrows nothing here: omitting a key
+from the returned object does not remove it, it just lets the parent's value through. The fix is to
+name **every** key and return `undefined` for a rejected one — the router's own `encode` skips
+undefined, so the address bar is unchanged.
+
+Found while testing `book.$serviceId`'s own route rather than a test-local passthrough. Every other
+route using the conditional-spread shape has the same hole until checked.
+
+**Trigger:** before trusting any search param for anything a user should not be able to set — and
+when adding a route that branches on one.
+
+## #110 — Route modules are tested through test-local passthroughs, so `validateSearch` is unreachable
+
+Every checkout suite built its own permissive route stub, and nothing in `src/` imported
+`routes/book.$serviceId` except the generated tree. The consequence was measured: replacing that
+route's `optionId` line with `undefined` left the entire web suite green — 133 files, 1467 tests —
+while reinstating a defect that books a customer the wrong package at the wrong price.
+
+`book.$serviceId` now has a suite driving the real `Route`, parented the way the generated tree
+parents it, and it lives under `routes/` because `eslint-plugin-boundaries` forbids `ui → routes`.
+No other route has one.
+
+**Trigger:** any bug traced to a search param, a loader or a route-level guard — and before adding
+route-level logic that a page's own tests cannot see.
+
+## #111 — "Bookings aren't open on Ntizo yet" is false once step 3 lands
+
+`rail-price-summary.tsx` carries a `packageBookingsClosed` string telling the customer bookings are
+not open. It was true when written and is still true today, because checkout dead-ends at the
+unbuilt confirm page — deleting the caveat while the flow goes nowhere would be a different lie.
+
+It becomes false the moment step 3 can send a request, and it is recorded here rather than only in
+that component's doc comment because carried-forward work lives in this file.
+
+**Trigger:** the commit that makes `/booking/$bookingId/confirm` reachable.
