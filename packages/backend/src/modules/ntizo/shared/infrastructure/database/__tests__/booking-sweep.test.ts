@@ -412,7 +412,7 @@ describe("SweepDueBookingsInternalCommand", () => {
         bookingId: due.id,
         customerId,
         providerMemberId: memberId,
-        clock: "checkout_hold",
+        cause: "checkout_hold",
       });
 
       // And the durable half: nobody made this change, so the actor is null
@@ -462,13 +462,13 @@ describe("SweepDueBookingsInternalCommand", () => {
       expect(announced?.eventType).toBe("booking.expired");
       // Same status and same event class as the DRAFT above, and a different
       // audience: this customer did everything asked of them and is owed the
-      // news. `clock` is the only thing that separates the two.
+      // news. `cause` is the only thing that separates the two.
       expect(announced?.payload).toMatchObject({
         bookingId: due.id,
         customerId,
-        clock: "provider_response",
+        cause: "provider_response",
       });
-      expect(announced?.payload.clock).not.toBe("checkout_hold");
+      expect(announced?.payload.cause).not.toBe("checkout_hold");
 
       expect(await historyFor(due.id as string)).toEqual([
         { reason: "provider_did_not_respond", changedByUserId: null },
@@ -724,6 +724,7 @@ describe("SweepDueBookingsInternalCommand", () => {
         // in for the real repository with exactly one method made flaky, and
         // a stub would be a second way for it to differ from the real one.
         // Nothing in this file calls either.
+        findOpenDraftForCustomer: (customerId) => repo.findOpenDraftForCustomer(customerId),
         findAwaitingCharge: (criteria) => repo.findAwaitingCharge(criteria),
         recordChargeAttempt: (claim) => repo.recordChargeAttempt(claim),
         abandonCharge: (abandonment) => repo.abandonCharge(abandonment),

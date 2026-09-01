@@ -134,6 +134,14 @@ class FakeRepo implements BookingRepositoryPort {
     return this.current?.id === id ? this.current : null;
   }
 
+  /**
+   * Nothing in this file's commands reads it — only `CreateBookingCommand`
+   * does — but the interface declares it, so the fake has to answer.
+   */
+  async findOpenDraftForCustomer(): Promise<Booking | null> {
+    return null;
+  }
+
   async save(booking: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
     this.saveCalls += 1;
     this.savedArg = booking;

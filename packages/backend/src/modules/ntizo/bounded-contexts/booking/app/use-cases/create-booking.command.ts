@@ -1,6 +1,6 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Booking } from "../../domain/aggregates/booking.aggregate";
-import { BookingCreated } from "../../domain/events";
+import { BookingCreated, BookingExpired } from "../../domain/events";
 import {
   ProviderNotFoundError,
   ServiceMemberCannotPerformError,
@@ -112,6 +112,15 @@ const RESULT_TO_REFUSAL: Record<
  * member. That port calls Scheduling's rules rather than re-deriving them —
  * see its own doc comment for why a second implementation of "is this slot
  * free" would be the exact defect this task exists to close, one layer up.
+ *
+ * **A customer holds one draft at a time.** Whatever draft this customer was
+ * already holding is expired, its slot released and a `BookingExpired`
+ * carrying `superseded` published, before the new one is inserted. Without
+ * that rule a customer who abandons step 2 three times leaves three of a
+ * provider's slots held for thirty minutes each — follow-up #108's
+ * calendar-hold problem arriving by accident rather than by attack. It is not
+ * a rate limit and does not pretend to be one: a scripted caller can still
+ * create, abandon and re-create in a loop, and #108 stays open for that.
  *
  * **The insert, the hold, and the publish share one transaction.** The insert
  * runs first because the hold and the event both need the database-assigned
@@ -267,6 +276,41 @@ export class CreateBookingCommand {
     });
 
     const created = await this.unitOfWork.atomicExecute(async () => {
+      // Same transaction as the insert on purpose: a customer who ends up with
+      // neither their old draft nor a new one has lost a slot to a failure that
+      // did nothing else.
+      //
+      // Before the insert, not after, so the two drafts are never both holding
+      // at once — a customer moving from 09:00 to 09:30 on a member whose
+      // capacity is one would otherwise collide with themselves.
+      const previous = await this.repo.findOpenDraftForCustomer(input.customerId);
+      if (previous?.id) {
+        const expired = previous.expire(at);
+        const applied = await this.repo.save(expired, previous.status);
+        if (applied) {
+          await this.slotHold.release(previous.id);
+          await this.outboxPort.publish(
+            [
+              new BookingExpired({
+                bookingId: previous.id,
+                customerId: previous.customerId,
+                providerMemberId: previous.providerMemberId,
+                startsAt: previous.startsAt,
+                // Not `checkout_hold`: this draft did not run out of
+                // anything. See `BookingExpiredCause`.
+                cause: "superseded",
+              }),
+            ],
+            // Lowercase, matching every other producer in this context
+            // (`BookingCreated` twenty lines below, and the sweep's own
+            // endings): `aggregate_type` is a value consumers group and
+            // filter on, so one event spelling it differently is one event
+            // they miss.
+            "booking",
+          );
+        }
+      }
+
       const inserted = await this.repo.insert(booking, capacity);
 
       // `inserted.id` is never null here: `insert`'s contract (see

@@ -8,7 +8,7 @@ import {
   BookingDeclined,
   BookingCancelled,
   type BookingCancelledReason,
-  type BookingExpiredClock,
+  type BookingExpiredCause,
 } from "../domain/events";
 
 describe("BookingCreated", () => {
@@ -160,7 +160,7 @@ describe("BookingExpired", () => {
       customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
-      clock: "provider_response",
+      cause: "provider_response",
     } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
     const event = new BookingExpired(payload);
@@ -175,7 +175,7 @@ describe("BookingExpired", () => {
       customerId: "u9",
       providerMemberId: "m1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
-      clock: "provider_response",
+      cause: "provider_response",
     } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
     const event = new BookingExpired(payload);
@@ -183,39 +183,48 @@ describe("BookingExpired", () => {
     expect(event.payload).toEqual(payload);
   });
 
-  // The whole reason `clock` exists: the two clocks that end in EXPIRED
-  // have opposite audiences — an abandoned DRAFT tells nobody, a provider
-  // who never answered tells the customer — and the resulting row is
-  // identical either way, so Notification can only tell them apart from
-  // this field.
+  // The whole reason `cause` exists: the three ways a booking reaches
+  // EXPIRED do not share an audience — an abandoned DRAFT tells nobody, a
+  // provider who never answered tells the customer — and the resulting row
+  // is identical in every case, so Notification can only tell them apart
+  // from this field.
   //
   // A `Record` keyed by the union rather than a list of strings, so it is a
-  // gate and not a restatement: a member added to `BookingExpiredClock` is
+  // gate and not a restatement: a member added to `BookingExpiredCause` is
   // a type error here until somebody says who it tells. That is exactly the
   // question a `payment_window` member could not answer — the payment
   // window's audience is the *provider*, and it does not produce this event
   // at all (it produces `BookingCancelled` with `customer_did_not_pay`; see
   // the design's failure section). Each key also pins the literal, so a
   // rename fails here even though it would still satisfy the type.
-  const TOLD_WHEN_IT_LAPSES: Record<BookingExpiredClock, "nobody" | "the customer"> = {
+  //
+  // Renamed from `BookingExpiredClock`: two of the three are clocks and the
+  // third is not. A draft superseded because the customer started a new one
+  // did not run out of anything, and reporting it as `checkout_hold` would
+  // make this event say something false about why a slot came free.
+  const AUDIENCE: Record<BookingExpiredCause, "nobody" | "the customer"> = {
     checkout_hold: "nobody",
     provider_response: "the customer",
+    // The customer did this deliberately, three seconds ago, by picking a
+    // different time. Telling them about it would be telling them what they
+    // just did.
+    superseded: "nobody",
   };
 
-  it.each(Object.keys(TOLD_WHEN_IT_LAPSES) as BookingExpiredClock[])(
-    "carries %s, the one fact separating two otherwise identical expiries",
-    (clock) => {
+  it.each(Object.keys(AUDIENCE) as BookingExpiredCause[])(
+    "carries %s, the one fact separating otherwise identical expiries",
+    (cause) => {
       const payload = {
         bookingId: "b1",
         customerId: "u9",
         providerMemberId: "m1",
         startsAt: new Date("2026-09-04T12:30:00.000Z"),
-        clock,
+        cause,
       } satisfies ConstructorParameters<typeof BookingExpired>[0];
 
       const event = new BookingExpired(payload);
 
-      expect(event.payload.clock).toBe(clock);
+      expect(event.payload.cause).toBe(cause);
     },
   );
 });

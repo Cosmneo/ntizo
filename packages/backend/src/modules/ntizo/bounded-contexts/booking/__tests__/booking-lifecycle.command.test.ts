@@ -130,6 +130,14 @@ class FakeRepo implements BookingRepositoryPort {
   }
 
   /**
+   * Nothing in this file's commands reads it — only `CreateBookingCommand`
+   * does — but the interface declares it, so the fake has to answer.
+   */
+  async findOpenDraftForCustomer(): Promise<Booking | null> {
+    return null;
+  }
+
+  /**
    * Mirrors the real repository's compare-and-swap (Task 5 of the
    * booking-seams repair plan): the write only "sticks" — and `true` comes
    * back — when `expectedStatus` still matches what `current` holds at the
@@ -224,6 +232,14 @@ class RacingFakeRepo implements BookingRepositoryPort {
 
   async findById(id: string): Promise<Booking | null> {
     return this.staleRead.id === id ? this.staleRead : null;
+  }
+
+  /**
+   * Nothing in this file's commands reads it — only `CreateBookingCommand`
+   * does — but the interface declares it, so the fake has to answer.
+   */
+  async findOpenDraftForCustomer(): Promise<Booking | null> {
+    return null;
   }
 
   async save(booking: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
@@ -447,7 +463,7 @@ describe("SweepBookingCommand", () => {
       // The checkout hold, not the provider's window: the customer walked
       // away from their own form, and this is the field that lets
       // Notification stay silent about it.
-      clock: "checkout_hold",
+      cause: "checkout_hold",
     });
   });
 
@@ -462,12 +478,12 @@ describe("SweepBookingCommand", () => {
     const event = outbox.published[0]!.events[0]!;
     expect(event.eventName).toBe("booking.expired");
     // Same status, same event class, same transition as the DRAFT above —
-    // and a different obligation. Nothing but `clock` separates them, which
+    // and a different obligation. Nothing but `cause` separates them, which
     // is why the two tests exist rather than one.
     expect(event.payload).toMatchObject({
       bookingId: "bk-1",
       customerId: "cust-1",
-      clock: "provider_response",
+      cause: "provider_response",
     });
 
     // The history row names what happened, and it is not the same token the

@@ -61,6 +61,19 @@ export interface BookingRepositoryPort {
   findById(id: string): Promise<Booking | null>;
 
   /**
+   * The one draft this customer is allowed to be holding, if any.
+   *
+   * A customer who abandons step 2 three times would otherwise hold three
+   * slots for thirty minutes each — follow-up #108's calendar-hold problem
+   * arriving by accident rather than by attack. `CreateBookingCommand` reads
+   * this and expires what it finds before holding another slot.
+   *
+   * Not a rate limit and not pretending to be one: a scripted caller can
+   * still create, abandon and re-create in a loop. #108 stays open.
+   */
+  findOpenDraftForCustomer(customerId: string): Promise<Booking | null>;
+
+  /**
    * Update an existing booking, but only if the row is still at
    * `expectedStatus` — the status the caller's own read returned before it
    * computed `booking`'s transition. Returns whether the write actually

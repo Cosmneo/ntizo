@@ -331,6 +331,30 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
   }
 
   /**
+   * `DRAFT` is the whole status filter, and it is also the whole "still
+   * holding a slot on nothing but a countdown" test: every other
+   * slot-holding status has somebody standing behind it — a provider asked,
+   * a provider who said yes, a payment that cleared — and none of them is a
+   * hold this customer may be made to give up by picking a different time.
+   *
+   * Ordered and limited even though the rule this backs is what keeps a
+   * customer down to one draft. Rows predating that rule can still exist,
+   * and a bare `limit(1)` over several of them would return whichever the
+   * planner reached first — a query whose answer changes between runs. The
+   * oldest is the honest one to expire first: it is the hold that has been
+   * blocking a provider's calendar the longest.
+   */
+  async findOpenDraftForCustomer(customerId: string): Promise<Booking | null> {
+    const [row] = await getDb()
+      .select()
+      .from(booking)
+      .where(and(eq(booking.customerId, customerId), eq(booking.status, BookingStatus.Draft)))
+      .orderBy(asc(booking.createdAt))
+      .limit(1);
+    return row ? toAggregate(row) : null;
+  }
+
+  /**
    * `expectedStatus` in the `WHERE`, not just `id` — see
    * `BookingRepositoryPort.save`'s own comment for the race this defends
    * against. Without it this was a plain `UPDATE … WHERE id = $1`: whichever

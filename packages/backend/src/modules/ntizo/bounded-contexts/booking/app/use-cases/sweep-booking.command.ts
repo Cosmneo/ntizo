@@ -4,7 +4,7 @@ import {
   BookingCancelled,
   type BookingCancelledReason,
   BookingExpired,
-  type BookingExpiredClock,
+  type BookingExpiredCause,
 } from "../../domain/events";
 import { BookingNotFoundError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
@@ -33,10 +33,10 @@ const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
  * switched on where English prose can only be shown verbatim.
  *
  * **Named for what happened, not for which clock it was.** `checkout_hold`
- * and `provider_response` — the `BookingExpiredClock` members — name
- * *windows*, and a window is not a reason: a column that promises a cause
- * and answers with a clock is a column that lies. So these are their own
- * vocabulary rather than a reuse of that one.
+ * and `provider_response` — the two `BookingExpiredCause` members this
+ * command can produce — name *windows*, and a window is not a reason: a
+ * column that promises a cause and answers with a clock is a column that
+ * lies. So these are their own vocabulary rather than a reuse of that one.
  *
  * A closed union rather than two loose strings, and that is the half of this
  * that took a second pass to get right. The cancellation ending has
@@ -46,6 +46,23 @@ const CUSTOMER_DID_NOT_PAY: BookingCancelledReason = "customer_did_not_pay";
  * silence.
  */
 export type BookingExpiredReason = "checkout_hold_expired" | "provider_did_not_respond";
+
+/**
+ * The `BookingExpiredCause` members that really are clocks — the only ones a
+ * deadline sweep can ever produce.
+ *
+ * `superseded` is excluded because no deadline produces it: a customer
+ * starting a second draft expires their first one on the spot, from inside
+ * `CreateBookingCommand`, while `findDueForSweep` selects on `expires_at`
+ * alone. Asking this file which *window* a superseded draft stood on would
+ * be asking a question that has no answer.
+ *
+ * An `Exclude` rather than a second hand-typed union, so the gate below
+ * keeps working in the direction that matters: a fourth cause that really is
+ * a clock lands in this type on its own and leaves the map below incomplete,
+ * which is a compile error until somebody says what it means.
+ */
+type BookingExpiredClock = Exclude<BookingExpiredCause, "superseded">;
 
 /**
  * Which reason each clock produces — total over `BookingExpiredClock`, which
@@ -102,7 +119,7 @@ const EXPIRED_REASON_BY_CLOCK: Record<BookingExpiredClock, BookingExpiredReason>
  * - `AWAITING_PROVIDER` past the provider's window becomes `EXPIRED`, and
  *   **the customer is told** — they did everything asked of them and the
  *   provider never answered. Same status, same transition, different
- *   obligation; `BookingExpired.clock` is what carries the difference to
+ *   obligation; `BookingExpired.cause` is what carries the difference to
  *   Notification.
  * - `PENDING_PAYMENT` past the payment window becomes **`CANCELLED`, not
  *   `EXPIRED`**, and **the provider is told, with the reason**. This is the
@@ -226,7 +243,7 @@ export class SweepBookingCommand {
             customerId: booking.customerId,
             providerMemberId: booking.providerMemberId,
             startsAt: booking.startsAt,
-            clock,
+            cause: clock,
           });
           changeReason = EXPIRED_REASON_BY_CLOCK[clock];
           break;
@@ -240,7 +257,7 @@ export class SweepBookingCommand {
             customerId: booking.customerId,
             providerMemberId: booking.providerMemberId,
             startsAt: booking.startsAt,
-            clock,
+            cause: clock,
           });
           changeReason = EXPIRED_REASON_BY_CLOCK[clock];
           break;

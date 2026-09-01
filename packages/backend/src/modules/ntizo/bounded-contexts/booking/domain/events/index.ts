@@ -135,29 +135,40 @@ export class BookingPaid extends BaseDomainEvent<{
 }
 
 /**
- * Which of the two clocks that end in `EXPIRED` ran out — the one fact a
- * consumer of `BookingExpired` cannot recover from the rest of the payload,
- * and the one that decides who hears about it at all.
+ * Why a booking reached `EXPIRED` — the one fact a consumer of
+ * `BookingExpired` cannot recover from the rest of the payload, and the one
+ * that decides who hears about it at all.
  *
- * The design gives the two expiries opposite audiences. A `DRAFT` past its
- * checkout hold means the customer opened the form and walked away: nobody
- * is told, because the only person who could be told is the one who left.
- * An `AWAITING_PROVIDER` past the provider's response window means the
- * customer did everything asked of them and the provider never answered:
- * the customer is told, and is owed that message. Same resulting status,
- * same transition, same event — different obligation, and the booking's
- * *previous* status is the only thing that separates them. That status does
- * not survive the transition (the row says `EXPIRED` either way), so it
- * either rides on the event or is lost, and a consumer reading the booking
- * back to recover it is exactly what carrying a fact on an event exists to
- * make unnecessary.
+ * **Not `BookingExpiredClock`, which is what this was called.** Two of the
+ * three members are clocks and the third is not: a `DRAFT` the customer
+ * replaced by picking a different time did not run out of anything. Reported
+ * under the nearest clock-shaped member — `checkout_hold` — this event would
+ * state something false about why a slot came free, which is a worse defect
+ * than a name that reads a little wider than two of its own members.
+ *
+ * Each cause has its own audience, and they are not one audience under
+ * different labels. A `DRAFT` past its checkout hold means the customer
+ * opened the form and walked away: nobody is told, because the only person
+ * who could be told is the one who left. An `AWAITING_PROVIDER` past the
+ * provider's response window means the customer did everything asked of
+ * them and the provider never answered: the customer is told, and is owed
+ * that message. A draft superseded by the customer's own next one tells
+ * nobody either, for a different reason than the abandoned one: they did it
+ * deliberately, seconds ago, by choosing another time. Same resulting
+ * status, same transition, same event — different obligation, and nothing
+ * the row keeps separates them, since it says `EXPIRED` in all three cases.
+ * So the cause either rides on the event or is lost, and a consumer reading
+ * the booking back to recover it is exactly what carrying a fact on an event
+ * exists to make unnecessary.
  *
  * A closed union rather than free text, for the same reason
  * `BookingCancelledReason` is one: Notification renders into eight locales,
- * and a locale key can be switched on where a sentence cannot. Named after
- * the two `platform_settings` columns the deadlines are read from —
- * `checkout_hold_minutes` and `provider_response_minutes` — so the value on
- * the payload and the setting that produced it read as the same fact.
+ * and a locale key can be switched on where a sentence cannot. The two
+ * clocks are named after the `platform_settings` columns their deadlines
+ * are read from — `checkout_hold_minutes` and `provider_response_minutes` —
+ * so the value on the payload and the setting that produced it read as the
+ * same fact. `superseded` has no such column behind it, which is why this
+ * type no longer claims to be named after that table.
  *
  * There is deliberately no `payment_window` member. A payment window that
  * runs out does not produce this event at all: it produces
@@ -166,16 +177,17 @@ export class BookingPaid extends BaseDomainEvent<{
  * cancellation with a reason rather than an expiry nobody explains. See the
  * design's failure section, and `Booking.cancel`.
  */
-export type BookingExpiredClock = "checkout_hold" | "provider_response";
+export type BookingExpiredCause = "checkout_hold" | "provider_response" | "superseded";
 
 /**
- * A booking ran out of time before anybody had committed money to it.
+ * A booking ended before anybody had committed money to it.
  *
  * Raised when a booking transitions to Expired status — from `DRAFT`, whose
  * checkout hold protected a customer still filling in the form, or from
  * `AWAITING_PROVIDER`, whose window protected that customer from a provider
- * who never answered. `PENDING_PAYMENT` is not one of them: it holds a
- * calendar a provider has already committed, so it ends in
+ * who never answered, or from a `DRAFT` the customer superseded by starting
+ * a new one on a different slot. `PENDING_PAYMENT` is not one of them: it
+ * holds a calendar a provider has already committed, so it ends in
  * `BookingCancelled` instead (see `Booking.cancel` and
  * `BookingCancelledReason`).
  *
@@ -185,22 +197,22 @@ export type BookingExpiredClock = "checkout_hold" | "provider_response";
  * an event that knows less than it could. It carries the customer id for
  * the same reason, aimed at a different consumer: Notification cannot tell
  * a customer their booking expired without knowing which customer, and the
- * booking id alone does not say that. `clock` is what tells Notification
- * whether to tell them at all — see `BookingExpiredClock`.
+ * booking id alone does not say that. `cause` is what tells Notification
+ * whether to tell them at all — see `BookingExpiredCause`.
  */
 export class BookingExpired extends BaseDomainEvent<{
   bookingId: string;
   customerId: string;
   providerMemberId: string;
   startsAt: Date;
-  clock: BookingExpiredClock;
+  cause: BookingExpiredCause;
 }> {
   constructor(payload: {
     bookingId: string;
     customerId: string;
     providerMemberId: string;
     startsAt: Date;
-    clock: BookingExpiredClock;
+    cause: BookingExpiredCause;
   }) {
     super("booking.expired", payload.bookingId, payload);
   }

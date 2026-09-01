@@ -119,6 +119,17 @@ class FakeRepo implements BookingRepositoryPort {
    * an id even inside a transaction that later rolls back.
    */
   public committed: Booking[] = [];
+  /**
+   * The draft this customer is already holding, as
+   * `findOpenDraftForCustomer` would answer it. Null — a customer holding
+   * nothing — everywhere except the tests for the one-draft rule.
+   */
+  public openDraft: Booking | null = null;
+  public openDraftQueries: string[] = [];
+  public savedArg: Booking | null = null;
+  public savedExpectedStatus: string | null = null;
+  /** What the compare-and-swap answers: false is "somebody moved it first". */
+  public saveApplies = true;
 
   constructor(
     private readonly opts: { insertError?: Error } = {},
@@ -147,11 +158,24 @@ class FakeRepo implements BookingRepositoryPort {
     return this.committed.find((b) => b.id === id) ?? null;
   }
 
-  // `CreateBookingCommand` never calls `save` — it only ever `insert`s — so
-  // this stub's signature doesn't need to mirror the real compare-and-swap
-  // Task 5 of the booking-seams repair plan gave `BookingRepositoryPort.save`
-  // (fewer/optional parameters than an interface declares still satisfy it).
-  async save(): Promise<boolean> {
+  async findOpenDraftForCustomer(customerId: string): Promise<Booking | null> {
+    this.openDraftQueries.push(customerId);
+    return this.openDraft;
+  }
+
+  // `CreateBookingCommand` does call `save` now — expiring whatever draft
+  // this customer was already holding — so this records both arguments and
+  // can answer `false`, the compare-and-swap's "somebody moved it first".
+  // `order` gets the same treatment as `insert` above, so a test can tell
+  // that the old draft was released before the new slot was claimed rather
+  // than merely that both happened.
+  async save(bookingArg: Booking, expectedStatus: string): Promise<boolean> {
+    this.savedArg = bookingArg;
+    this.savedExpectedStatus = expectedStatus;
+    if (!this.saveApplies) {
+      return false;
+    }
+    this.unitOfWork?.order.push("save");
     return true;
   }
 
@@ -770,6 +794,106 @@ describe("CreateBookingCommand", () => {
       expect(slotHold.held).toEqual([]);
       expect(outbox.published).toEqual([]);
       expect(delayedJobs.scheduled).toEqual([]);
+    });
+  });
+
+  describe("one open draft per customer", () => {
+    /**
+     * The draft this customer is already holding, on a different slot from
+     * the one `INPUT` books — the fixture that lets these tests fail. A
+     * customer holding nothing cannot fail if the rule is dropped.
+     *
+     * No address, because a draft on step 1 has none yet: `Booking.create`
+     * stopped requiring one, and this is the shape the real
+     * `findOpenDraftForCustomer` reads back.
+     */
+    function existingDraft(id: string): Booking {
+      return withId(
+        Booking.create({
+          customerId: INPUT.customerId,
+          providerId: "prov-1",
+          serviceId: "svc-1",
+          serviceOptionId: "opt-1",
+          providerMemberId: "member-1",
+          startsAt: new Date(SLOT_STARTS_AT.getTime() - 24 * 60 * 60 * 1000),
+          durationMinutes: 90,
+          priceMinor: 150000,
+          commissionBps: 750,
+          currency: "MZN",
+          serviceName: "Avaria eléctrica urgente",
+          providerName: "Hélder Cossa",
+          providerSlug: "helder-cossa-electricidade",
+          optionName: "Diagnóstico e reparação",
+          description: null,
+          expiresAt: new Date(SLOT_STARTS_AT.getTime() - 25 * 60 * 60 * 1000),
+        }),
+        id,
+      );
+    }
+
+    it("expires the previous draft and releases its slot before holding another", async () => {
+      const { command, repo, slotHold, outbox } = setup();
+      repo.openDraft = existingDraft("bk-old");
+
+      await command.execute(INPUT);
+
+      // Asked about this customer, not about the booking being created —
+      // the rule is per customer, and a query keyed on anything else would
+      // still pass every status assertion below.
+      expect(repo.openDraftQueries).toEqual([INPUT.customerId]);
+
+      expect(repo.savedArg?.id).toBe("bk-old");
+      expect(repo.savedArg?.status).toBe("EXPIRED");
+      // The compare-and-swap carries the status the read saw, so a draft
+      // that moved on between the two is left alone.
+      expect(repo.savedExpectedStatus).toBe("DRAFT");
+      expect(slotHold.released).toEqual(["bk-old"]);
+
+      const [expiry, creation] = outbox.published;
+      expect(expiry?.events[0]?.eventName).toBe("booking.expired");
+      expect(creation?.events[0]?.eventName).toBe("booking.created");
+      // Both in the same transaction as the insert: a customer left holding
+      // neither their old draft nor a new one has lost a slot to a failure
+      // that did nothing else.
+      expect(expiry?.insideTransaction).toBe(true);
+      // And *before* the insert, not after — the two drafts must never both
+      // hold at once, or a customer moving between two overlapping slots on
+      // a member with one seat collides with themselves.
+      expect(expiry?.afterInsert).toBe(false);
+      expect(expiry?.aggregateType).toBe("booking");
+      expect(expiry?.events[0]?.payload).toMatchObject({
+        bookingId: "bk-old",
+        customerId: INPUT.customerId,
+        providerMemberId: "member-1",
+        // Not `checkout_hold`: nothing ran out. See `BookingExpiredCause`.
+        cause: "superseded",
+      });
+    });
+
+    it("releases nothing and announces nothing when the compare-and-swap loses", async () => {
+      const { command, repo, slotHold, outbox } = setup();
+      repo.openDraft = existingDraft("bk-old");
+      // Somebody moved that draft first — the customer submitted it in
+      // another tab, or the sweep reached it. Releasing its hold on a write
+      // this command never actually made would hand away a slot on nothing
+      // but a stale read.
+      repo.saveApplies = false;
+
+      await command.execute(INPUT);
+
+      expect(slotHold.released).toEqual([]);
+      expect(outbox.published).toHaveLength(1);
+      expect(outbox.published[0]?.events[0]?.eventName).toBe("booking.created");
+    });
+
+    it("touches nothing when the customer holds no draft", async () => {
+      const { command, repo, slotHold, outbox } = setup();
+
+      await command.execute(INPUT);
+
+      expect(repo.savedArg).toBeNull();
+      expect(slotHold.released).toEqual([]);
+      expect(outbox.published).toHaveLength(1);
     });
   });
 
