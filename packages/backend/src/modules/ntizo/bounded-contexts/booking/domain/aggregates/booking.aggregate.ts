@@ -169,9 +169,14 @@ export interface BookingProps {
   readonly providerName: string;
   readonly providerSlug: string;
   readonly optionName: string;
-  readonly addressLabel: string;
-  readonly addressLine: string;
-  readonly addressCity: string;
+  // Null on a DRAFT and only on a DRAFT: the customer holds the slot from
+  // step 1 and gives the address on step 2, so a draft that has not reached
+  // step 2 has no address yet. `submit` refuses to leave DRAFT without one —
+  // see that method's own doc comment — so any status past DRAFT carries
+  // all three.
+  readonly addressLabel: string | null;
+  readonly addressLine: string | null;
+  readonly addressCity: string | null;
   readonly addressDistrict: string | null;
   readonly addressDirections: string | null;
   readonly addressLat: number | null;
@@ -271,9 +276,9 @@ export class Booking {
     providerName: string;
     providerSlug: string;
     optionName: string;
-    addressLabel: string;
-    addressLine: string;
-    addressCity: string;
+    addressLabel?: string | null;
+    addressLine?: string | null;
+    addressCity?: string | null;
     addressDistrict?: string | null;
     addressDirections?: string | null;
     addressLat?: number | null;
@@ -291,9 +296,17 @@ export class Booking {
     Booking.requireNonBlank(input.providerName, "providerName");
     Booking.requireNonBlank(input.providerSlug, "providerSlug");
     Booking.requireNonBlank(input.optionName, "optionName");
-    Booking.requireNonBlank(input.addressLabel, "addressLabel");
-    Booking.requireNonBlank(input.addressLine, "addressLine");
-    Booking.requireNonBlank(input.addressCity, "addressCity");
+
+    // Null is how a caller says "the customer has not reached step 2 yet".
+    // A present-but-blank value says something different and wrong — that
+    // there is an address, and it is nothing. The distinction is load-bearing:
+    // collapse it and a blank address reaches a submitted booking.
+    for (const field of ["addressLabel", "addressLine", "addressCity"] as const) {
+      const value = input[field];
+      if (value != null) {
+        Booking.requireNonBlank(value, field);
+      }
+    }
 
     // Nullable, but not free to be present-and-blank: null is how a caller
     // says "there is no directions note" / "no district on file"; an empty
@@ -362,9 +375,9 @@ export class Booking {
       providerName: input.providerName,
       providerSlug: input.providerSlug,
       optionName: input.optionName,
-      addressLabel: input.addressLabel,
-      addressLine: input.addressLine,
-      addressCity: input.addressCity,
+      addressLabel: input.addressLabel ?? null,
+      addressLine: input.addressLine ?? null,
+      addressCity: input.addressCity ?? null,
       addressDistrict: input.addressDistrict ?? null,
       addressDirections: input.addressDirections ?? null,
       addressLat: input.addressLat ?? null,
@@ -406,9 +419,17 @@ export class Booking {
     Booking.requireNonBlank(props.providerName, "providerName");
     Booking.requireNonBlank(props.providerSlug, "providerSlug");
     Booking.requireNonBlank(props.optionName, "optionName");
-    Booking.requireNonBlank(props.addressLabel, "addressLabel");
-    Booking.requireNonBlank(props.addressLine, "addressLine");
-    Booking.requireNonBlank(props.addressCity, "addressCity");
+
+    // Same rule `create` enforces, and for the same reason: a stored DRAFT
+    // row is null here until `submit`, and a stored row past DRAFT is never
+    // null — but a corrupt or hand-edited row could still be blank, and
+    // this reconstitution guards against that the same way `create` does.
+    for (const field of ["addressLabel", "addressLine", "addressCity"] as const) {
+      const value = props[field];
+      if (value != null) {
+        Booking.requireNonBlank(value, field);
+      }
+    }
 
     if (props.addressDistrict != null) {
       Booking.requireNonBlank(props.addressDistrict, "addressDistrict");
@@ -559,13 +580,13 @@ export class Booking {
   get optionName(): string {
     return this.props.optionName;
   }
-  get addressLabel(): string {
+  get addressLabel(): string | null {
     return this.props.addressLabel;
   }
-  get addressLine(): string {
+  get addressLine(): string | null {
     return this.props.addressLine;
   }
-  get addressCity(): string {
+  get addressCity(): string | null {
     return this.props.addressCity;
   }
   get addressDistrict(): string | null {
@@ -650,6 +671,13 @@ export class Booking {
    * Before this, the slot is held by a customer who might still abandon the
    * form; after it, the same hold is a request nobody has answered yet.
    *
+   * **This is also where the address becomes required.** `create` holds the
+   * slot with the address still optional — the customer picks a time on
+   * step 1 of checkout and gives an address on step 2, so the draft has to
+   * be able to exist before the address does. This method is step 2's hop:
+   * it takes the address the customer just gave and refuses to move the
+   * booking on without it. See the guard below for the full argument.
+   *
    * `respondBy` replaces `expiresAt` outright — the same shape `accept`
    * already uses for `payBy`, and for the same reason: the aggregate has no
    * way to read `provider_response_minutes`, a `platform_settings` value,
@@ -670,7 +698,19 @@ export class Booking {
    * upstream or a caller that skipped the CAS, and `BookingTransitionError`
    * says so rather than absorbing it the way `expire`'s no-op does.
    */
-  submit(at: Date, respondBy: Date): Booking {
+  submit(
+    at: Date,
+    respondBy: Date,
+    address: {
+      label: string;
+      line: string;
+      city: string;
+      district?: string | null;
+      directions?: string | null;
+      lat?: number | null;
+      lng?: number | null;
+    },
+  ): Booking {
     if (this.props.status !== BookingStatus.Draft) {
       throw new BookingTransitionError(this.props.status, BookingStatus.AwaitingProvider);
     }
@@ -678,10 +718,31 @@ export class Booking {
     Booking.requireValidDate(at, "at");
     Booking.requireValidDate(respondBy, "respondBy");
 
+    // The invariant this method carries: a DRAFT may have no address, and
+    // nothing past DRAFT may be without one. This is the hop where a booking
+    // stops being the customer's private draft and becomes a request somebody
+    // has to answer, so it is the hop that has to be able to name the place.
+    Booking.requireNonBlank(address.label, "addressLabel");
+    Booking.requireNonBlank(address.line, "addressLine");
+    Booking.requireNonBlank(address.city, "addressCity");
+    if (address.district != null) {
+      Booking.requireNonBlank(address.district, "addressDistrict");
+    }
+    if (address.directions != null) {
+      Booking.requireNonBlank(address.directions, "addressDirections");
+    }
+
     return new Booking({
       ...this.props,
       status: BookingStatus.AwaitingProvider,
       expiresAt: respondBy,
+      addressLabel: address.label,
+      addressLine: address.line,
+      addressCity: address.city,
+      addressDistrict: address.district ?? null,
+      addressDirections: address.directions ?? null,
+      addressLat: address.lat ?? null,
+      addressLng: address.lng ?? null,
     });
   }
 

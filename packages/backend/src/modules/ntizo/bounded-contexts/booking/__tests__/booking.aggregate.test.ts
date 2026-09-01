@@ -18,6 +18,14 @@ import {
 
 const WHEN = new Date("2026-09-04T12:30:00.000Z");
 
+/**
+ * `submit`'s new required address, for tests that only care about the
+ * status/deadline transition and not about address content — matches
+ * `validProps()`'s own default address so a submitted booking's address
+ * fields don't visibly change under tests that never asked to check them.
+ */
+const SUBMIT_ADDRESS = { label: "Casa", line: "Av. Julius Nyerere 812", city: "Maputo" };
+
 function validInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) {
   return {
     customerId: "u1",
@@ -172,10 +180,12 @@ describe("Booking.create", () => {
 });
 
 describe("Booking.create — blank-string guards", () => {
-  // Every non-nullable string in BookingProps. A NOT NULL Postgres column
-  // accepts "" as readily as a real value, and the CHECK constraints Task 2
-  // added cover the money and the status — nothing catches a blank one of
-  // these downstream, so `create` has to.
+  // Every non-nullable string in BookingProps, plus the three address fields
+  // that are nullable but never blank-when-present (see "a draft may have no
+  // address" below for their null case). A NOT NULL Postgres column accepts
+  // "" as readily as a real value, and the CHECK constraints Task 2 added
+  // cover the money and the status — nothing catches a blank one of these
+  // downstream, so `create` has to.
   const REQUIRED_STRING_FIELDS = [
     "customerId",
     "providerId",
@@ -216,6 +226,76 @@ describe("Booking.create — blank-string guards", () => {
       BookingFieldBlankError,
     );
     expect(Booking.create(validInput({ addressDistrict: null })).addressDistrict).toBeNull();
+  });
+});
+
+describe("Booking.create — a draft may have no address", () => {
+  // The customer picks a slot on step 1 and gives an address on step 2, so
+  // the hold has to exist before the address does. Null is "not supplied
+  // yet"; blank is a bug, and the two must not be collapsed.
+  it("accepts a draft with no address at all", () => {
+    const booking = Booking.create(
+      validInput({ addressLabel: null, addressLine: null, addressCity: null }),
+    );
+    expect(booking.status).toBe("DRAFT");
+    expect(booking.addressLabel).toBeNull();
+    expect(booking.addressLine).toBeNull();
+    expect(booking.addressCity).toBeNull();
+  });
+
+  it.each(["addressLabel", "addressLine", "addressCity"] as const)(
+    "still refuses a present-but-blank %s",
+    (field) => {
+      expect(() => Booking.create(validInput({ [field]: "" }))).toThrow(BookingFieldBlankError);
+      expect(() => Booking.create(validInput({ [field]: "   " }))).toThrow(BookingFieldBlankError);
+    },
+  );
+});
+
+describe("Booking.submit — the address becomes required here", () => {
+  const RESPOND_BY = new Date("2026-09-04T11:00:00.000Z");
+  const AT = new Date("2026-09-04T09:00:00.000Z");
+  const ADDRESS = {
+    label: "Casa",
+    line: "Av. Julius Nyerere 812",
+    city: "Maputo",
+    district: "Sommerschield",
+    directions: null,
+    lat: null,
+    lng: null,
+  };
+
+  function draftWithoutAddress() {
+    return Booking.restore(
+      validProps({
+        status: "DRAFT",
+        addressLabel: null,
+        addressLine: null,
+        addressCity: null,
+      }),
+    );
+  }
+
+  it("writes the address onto the booking it returns", () => {
+    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS);
+    expect(submitted.status).toBe("AWAITING_PROVIDER");
+    expect(submitted.addressLabel).toBe("Casa");
+    expect(submitted.addressLine).toBe("Av. Julius Nyerere 812");
+    expect(submitted.addressCity).toBe("Maputo");
+    expect(submitted.addressDistrict).toBe("Sommerschield");
+  });
+
+  it.each(["label", "line", "city"] as const)("refuses a blank %s", (field) => {
+    expect(() => draftWithoutAddress().submit(AT, RESPOND_BY, { ...ADDRESS, [field]: "  " })).toThrow(
+      BookingFieldBlankError,
+    );
+  });
+
+  it("still replaces expiresAt with respondBy", () => {
+    // Guarding the behaviour the address change sits next to: the provider's
+    // window has to start here, not keep the checkout hold.
+    const submitted = draftWithoutAddress().submit(AT, RESPOND_BY, ADDRESS);
+    expect(submitted.expiresAt).toEqual(RESPOND_BY);
   });
 });
 
@@ -321,7 +401,7 @@ describe("Booking.submit", () => {
 
   it("moves a draft booking to awaiting the provider", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    const submitted = draft.submit(new Date(), RESPOND_BY);
+    const submitted = draft.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS);
     expect(submitted.status).toBe("AWAITING_PROVIDER");
   });
 
@@ -335,23 +415,23 @@ describe("Booking.submit", () => {
     const draft = Booking.restore(
       validProps({ status: "DRAFT", expiresAt: new Date("2026-09-04T13:00:00.000Z") }),
     );
-    const submitted = draft.submit(new Date(), RESPOND_BY);
+    const submitted = draft.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS);
     expect(submitted.expiresAt).toEqual(RESPOND_BY);
   });
 
   it("refuses to submit a booking that already left DRAFT", () => {
     const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
-    expect(() => pending.submit(new Date(), RESPOND_BY)).toThrow(BookingTransitionError);
+    expect(() => pending.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS)).toThrow(BookingTransitionError);
   });
 
   it("refuses an at that does not name a real instant", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    expect(() => draft.submit(new Date("garbage"), RESPOND_BY)).toThrow(BookingDateInvalidError);
+    expect(() => draft.submit(new Date("garbage"), RESPOND_BY, SUBMIT_ADDRESS)).toThrow(BookingDateInvalidError);
   });
 
   it("refuses a respondBy that does not name a real instant", () => {
     const draft = Booking.restore(validProps({ status: "DRAFT", expiresAt: null }));
-    expect(() => draft.submit(new Date(), new Date("garbage"))).toThrow(BookingDateInvalidError);
+    expect(() => draft.submit(new Date(), new Date("garbage"), SUBMIT_ADDRESS)).toThrow(BookingDateInvalidError);
   });
 });
 
@@ -381,11 +461,11 @@ describe("Booking.submit — every status", () => {
     const booking = Booking.restore(validProps({ status, expiresAt: null }));
 
     if (outcome === "transitions") {
-      const result = booking.submit(new Date(), RESPOND_BY);
+      const result = booking.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS);
       expect(result.status).toBe("AWAITING_PROVIDER");
       expect(result.expiresAt).toEqual(RESPOND_BY);
     } else {
-      expect(() => booking.submit(new Date(), RESPOND_BY)).toThrow(BookingTransitionError);
+      expect(() => booking.submit(new Date(), RESPOND_BY, SUBMIT_ADDRESS)).toThrow(BookingTransitionError);
     }
   });
 });

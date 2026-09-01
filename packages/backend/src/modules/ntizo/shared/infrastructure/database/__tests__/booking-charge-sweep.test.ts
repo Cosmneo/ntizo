@@ -238,7 +238,16 @@ function bookingInput(
  * on, in one place.
  */
 function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
-  return Booking.create(input).submit(new Date(), input.expiresAt).accept(new Date(), input.expiresAt);
+  const draft = Booking.create(input);
+  // `submit` now takes the address explicitly; every fixture here sets a
+  // concrete one via `bookingInput`, so pulling it back off the draft is safe.
+  return draft
+    .submit(new Date(), input.expiresAt, {
+      label: draft.addressLabel as string,
+      line: draft.addressLine as string,
+      city: draft.addressCity as string,
+    })
+    .accept(new Date(), input.expiresAt);
 }
 
 /** Answers every charge the same way, and records what it was asked. */

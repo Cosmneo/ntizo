@@ -228,7 +228,14 @@ function draftBooking(input: Parameters<typeof Booking.create>[0]): Booking {
  * rather than a second date nothing here reads back.
  */
 function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
-  return draftBooking(input).submit(new Date(), input.expiresAt);
+  const draft = draftBooking(input);
+  // `submit` now takes the address explicitly; every fixture here sets a
+  // concrete one via `bookingInput`, so pulling it back off the draft is safe.
+  return draft.submit(new Date(), input.expiresAt, {
+    label: draft.addressLabel as string,
+    line: draft.addressLine as string,
+    city: draft.addressCity as string,
+  });
 }
 
 /**

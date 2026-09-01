@@ -58,10 +58,21 @@ function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) 
  * file (none of them assert on `expiresAt`); `bookingInput().expiresAt` is
  * reused for both purely so this helper needs no second date to invent.
  */
+/**
+ * `submit` now takes the address explicitly rather than reading it off the
+ * draft it already carries. Every fixture in this file goes through
+ * `bookingInput`, which always sets a concrete address, so pulling it back
+ * off the draft this way is safe — this file has nothing to say about a
+ * booking with no address.
+ */
+function requiredAddress(b: Booking) {
+  return { label: b.addressLabel as string, line: b.addressLine as string, city: b.addressCity as string };
+}
+
 function pendingBooking(id = "bk-1"): Booking {
   const draft = Booking.create(bookingInput());
   const deadline = draft.expiresAt as Date;
-  const submitted = draft.submit(new Date(), deadline);
+  const submitted = draft.submit(new Date(), deadline, requiredAddress(draft));
   const accepted = submitted.accept(new Date(), deadline);
   return withId(accepted, id);
 }
@@ -83,7 +94,7 @@ function draftBooking(id = "bk-1"): Booking {
  */
 function awaitingBooking(id = "bk-1"): Booking {
   const draft = Booking.create(bookingInput());
-  return withId(draft.submit(new Date(), draft.expiresAt as Date), id);
+  return withId(draft.submit(new Date(), draft.expiresAt as Date, requiredAddress(draft)), id);
 }
 
 /**

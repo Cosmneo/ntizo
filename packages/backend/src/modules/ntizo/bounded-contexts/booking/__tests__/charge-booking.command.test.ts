@@ -73,16 +73,30 @@ function bookingInput(over: Partial<Parameters<typeof Booking.create>[0]> = {}) 
   };
 }
 
+/**
+ * `submit` now takes the address explicitly rather than reading it off the
+ * draft it already carries. Every fixture in this file goes through
+ * `bookingInput`, which always sets a concrete address, so pulling it back
+ * off the draft this way is safe — this file has nothing to say about a
+ * booking with no address, only about the charge path.
+ */
+function requiredAddress(b: Booking) {
+  return { label: b.addressLabel as string, line: b.addressLine as string, city: b.addressCity as string };
+}
+
 /** A stored `PENDING_PAYMENT` booking — the provider has said yes and nobody has paid. */
 function pendingBooking(id = "bk-1", over = {}): Booking {
   const draft = Booking.create(bookingInput(over));
-  return withId(draft.submit(new Date(), DEADLINE).accept(new Date(), DEADLINE), id);
+  return withId(
+    draft.submit(new Date(), DEADLINE, requiredAddress(draft)).accept(new Date(), DEADLINE),
+    id,
+  );
 }
 
 /** A stored `AWAITING_PROVIDER` booking — nothing here should ever charge one. */
 function awaitingBooking(id = "bk-1"): Booking {
   const draft = Booking.create(bookingInput());
-  return withId(draft.submit(new Date(), DEADLINE), id);
+  return withId(draft.submit(new Date(), DEADLINE, requiredAddress(draft)), id);
 }
 
 /**

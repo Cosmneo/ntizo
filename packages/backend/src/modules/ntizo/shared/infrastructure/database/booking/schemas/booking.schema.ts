@@ -149,9 +149,9 @@ export const booking = bookingSchema.table(
     providerSlug: text("provider_slug").notNull(),
     optionName: text("option_name").notNull(),
     durationMinutes: integer("duration_minutes").notNull(),
-    addressLabel: text("address_label").notNull(),
-    addressLine: text("address_line").notNull(),
-    addressCity: text("address_city").notNull(),
+    addressLabel: text("address_label"),
+    addressLine: text("address_line"),
+    addressCity: text("address_city"),
     addressDistrict: text("address_district"),
     addressDirections: text("address_directions"),
     /** Text, matching `address.schema.ts`'s own choice — see that file. */

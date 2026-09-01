@@ -29,9 +29,12 @@ export interface BookingListRow {
   startsAt: Date;
   endsAt: Date;
 
-  addressLabel: string;
-  addressLine: string;
-  addressCity: string;
+  // Nullable for the same reason `bookingReadModel` widened: null on a
+  // DRAFT means the customer has not reached checkout's step 2 yet, and
+  // `Booking.submit` refuses to move a booking past DRAFT without one.
+  addressLabel: string | null;
+  addressLine: string | null;
+  addressCity: string | null;
   addressDistrict: string | null;
   addressDirections: string | null;
 

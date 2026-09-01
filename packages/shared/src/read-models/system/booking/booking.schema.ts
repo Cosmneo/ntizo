@@ -56,9 +56,13 @@ export const bookingReadModel = z.object({
   startsAt: z.string(),
   endsAt: z.string(),
 
-  addressLabel: z.string(),
-  addressLine: z.string(),
-  addressCity: z.string(),
+  // Null on a DRAFT and only on a DRAFT: the customer holds the slot from
+  // step 1 and gives the address on step 2, so a draft that has not reached
+  // step 2 has no address to report. `submit` refuses without one, so any
+  // status past DRAFT carries all three.
+  addressLabel: z.string().nullable(),
+  addressLine: z.string().nullable(),
+  addressCity: z.string().nullable(),
   addressDistrict: z.string().nullable(),
   addressDirections: z.string().nullable(),
 

@@ -91,7 +91,14 @@ function awaitingBooking(
   // a fixture built with a start minutes away is not one no command could
   // ever have produced.
   const respondBy = Math.min(Date.now() + 120 * 60_000, draft.startsAt.getTime());
-  const submitted = draft.submit(new Date(), new Date(respondBy));
+  // `submit` now takes the address explicitly; `bookingInput` always sets a
+  // concrete one, so pulling it back off the draft — including whatever
+  // `over` changed it to — is safe.
+  const submitted = draft.submit(new Date(), new Date(respondBy), {
+    label: draft.addressLabel as string,
+    line: draft.addressLine as string,
+    city: draft.addressCity as string,
+  });
   return withId(submitted, id);
 }
 

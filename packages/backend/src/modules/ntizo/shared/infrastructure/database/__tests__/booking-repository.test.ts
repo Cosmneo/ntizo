@@ -199,7 +199,7 @@ function bookingInput(
  */
 function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
   const draft = Booking.create(input);
-  return draft.submit(new Date(), input.expiresAt).accept(new Date(), input.expiresAt);
+  return draft.submit(new Date(), input.expiresAt, requiredAddress(draft)).accept(new Date(), input.expiresAt);
 }
 
 /**
@@ -208,7 +208,19 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
  * same reuse of one date `pendingBooking` makes, and for the same reason.
  */
 function awaitingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
-  return Booking.create(input).submit(new Date(), input.expiresAt);
+  const draft = Booking.create(input);
+  return draft.submit(new Date(), input.expiresAt, requiredAddress(draft));
+}
+
+/**
+ * `submit` now takes the address explicitly rather than reading it off the
+ * draft it already carries. Every `bookingInput` in this file sets a
+ * concrete address, so pulling it back off the draft — rather than
+ * inventing a second copy here — is what keeps `addressLabel` etc. exactly
+ * the value this file's round-trip assertions expect.
+ */
+function requiredAddress(b: Booking) {
+  return { label: b.addressLabel as string, line: b.addressLine as string, city: b.addressCity as string };
 }
 
 /**
