@@ -3,6 +3,7 @@ import { BookingAccepted } from "../../domain/events";
 import { BookingNotFoundError, NotProviderMemberError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
+import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
 import type { ProviderMemberReaderPort } from "../ports/outbound/provider-member-reader.port";
 
@@ -21,9 +22,9 @@ export interface AcceptBookingInput {
  * is checked immediately after the booking is read, before anything else
  * runs, and before anything is written. A caller who is not a member is
  * refused with `NotProviderMemberError` and this command writes nothing:
- * no `save`, no `appendChange`, no publish. Everything past that check is
- * mechanical — a compare-and-swap and an event, the same shape every other
- * command in this file uses.
+ * no `save`, no `appendChange`, no publish, no scheduled job. Everything
+ * past that check is mechanical — a compare-and-swap and an event, the
+ * same shape every other command in this file uses.
  *
  * **`payBy` is computed here, from `payment_window_minutes`, because
  * `Booking.accept` cannot read it.** The aggregate has no way to reach
@@ -41,16 +42,23 @@ export interface AcceptBookingInput {
  * has no no-op story of its own for an unexpected status (see its own doc
  * comment: it raises rather than absorbs) — so the write is where this race
  * is actually settled. `false` back means the other member won it, and this
- * command returns without publishing and without throwing, the same
- * outcome `MarkBookingPaidCommand` and `ExpireBookingCommand` reach through
- * the aggregate's own no-op path, reached here through the repository's
- * guard instead.
+ * command returns without publishing, without scheduling a job, and
+ * without throwing, the same outcome `MarkBookingPaidCommand` and
+ * `ExpireBookingCommand` reach through the aggregate's own no-op path,
+ * reached here through the repository's guard instead.
+ *
+ * **`scheduleBookingExpiry` is called after the transaction resolves, with
+ * `payBy`** — mirroring `CreateBookingCommand`'s own discipline. `payBy`
+ * comes back `null` from `atomicExecute` exactly when nothing happened (a
+ * losing compare-and-swap), so nothing gets scheduled for a transition that
+ * never landed.
  */
 export class AcceptBookingCommand {
   constructor(
     private readonly repo: BookingRepositoryPort,
     private readonly providerMemberReader: ProviderMemberReaderPort,
     private readonly platformSettingsReader: PlatformSettingsReaderPort,
+    private readonly delayedJobs: DelayedJobsPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
   ) {}
@@ -59,7 +67,7 @@ export class AcceptBookingCommand {
     // Computed once, before the transition — the instant this command ran.
     const at = new Date();
 
-    await this.unitOfWork.atomicExecute(async () => {
+    const payBy = await this.unitOfWork.atomicExecute(async (): Promise<Date | null> => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
         throw new BookingNotFoundError(input.bookingId);
@@ -77,16 +85,18 @@ export class AcceptBookingCommand {
 
       // LIVE: read fresh on every call, per this class's own doc comment.
       const paymentWindowMinutes = await this.platformSettingsReader.findPaymentWindowMinutes();
-      const payBy = new Date(at.getTime() + paymentWindowMinutes * 60_000);
+      const payByDeadline = new Date(at.getTime() + paymentWindowMinutes * 60_000);
 
-      const moved = booking.accept(at, payBy);
+      const moved = booking.accept(at, payByDeadline);
 
       const applied = await this.repo.save(moved, booking.status);
       if (!applied) {
         // The row no longer holds the status this read saw. `moved`
         // describes a world that no longer exists; saving it would
-        // silently overwrite whatever the concurrent writer just committed.
-        return;
+        // silently overwrite whatever the concurrent writer just
+        // committed, and scheduling a job against its deadline would be
+        // scheduling one for a transition that never happened.
+        return null;
       }
 
       await this.outboxPort.publish(
@@ -104,6 +114,16 @@ export class AcceptBookingCommand {
         ],
         "booking",
       );
+
+      return payByDeadline;
     });
+
+    // Scheduled after the transaction resolves, not inside it — the same
+    // reason `CreateBookingCommand` schedules its own job outside its own
+    // `atomicExecute`: a job queued for a write that then rolled back, or
+    // that lost the compare-and-swap above, would be a job for nothing.
+    if (payBy) {
+      await this.delayedJobs.scheduleBookingExpiry(input.bookingId, payBy);
+    }
   }
 }

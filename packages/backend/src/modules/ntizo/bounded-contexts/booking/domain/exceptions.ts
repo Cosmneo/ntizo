@@ -299,6 +299,35 @@ export class NotProviderMemberError extends ForbiddenError {
 }
 
 /**
+ * Refused because the caller trying to submit a booking is not the
+ * customer it belongs to.
+ *
+ * Ruling N: the original brief scoped authorisation to
+ * `AcceptBookingCommand` and `DeclineBookingCommand` and said nothing about
+ * `SubmitBookingCommand` — an omission, not a decision. Submitting somebody
+ * else's `DRAFT` starts the provider's response window and puts a request
+ * in their queue the customer never sent; the booking's own `customerId`,
+ * already on the row `SubmitBookingCommand` reads, is what this checks
+ * against.
+ *
+ * Deliberately not `NotFoundError`, for the same reason
+ * `NotProviderMemberError` is not: `SubmitBookingCommand` already has the
+ * booking, read off a row that exists. What is missing is a relationship
+ * between the caller and it, and a message admitting as much is more
+ * honest than a fabricated "not found" — this booking exists; it simply
+ * isn't the caller's.
+ */
+export class NotBookingCustomerError extends ForbiddenError {
+  constructor() {
+    super({
+      message: "This booking does not belong to you",
+      code: "NOT_BOOKING_CUSTOMER",
+    });
+    this.name = "NotBookingCustomerError";
+  }
+}
+
+/**
  * Refused because the provider a service option belongs to does not exist.
  *
  * Checked last among Task 8's refusals, once every fact the option itself

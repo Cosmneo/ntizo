@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
 import { Booking } from "../domain/aggregates/booking.aggregate";
-import { BookingNotFoundError, NotProviderMemberError } from "../domain/exceptions";
+import { BookingNotFoundError, NotBookingCustomerError, NotProviderMemberError } from "../domain/exceptions";
 import {
   SubmitBookingCommand,
   type SubmitBookingInput,
@@ -18,6 +18,7 @@ import type {
   BookingChangeRecord,
   BookingRepositoryPort,
 } from "../app/ports/outbound/booking.repository.port";
+import type { DelayedJobsPort } from "../app/ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../app/ports/outbound/platform-settings.reader.port";
 import type { ProviderMemberReaderPort } from "../app/ports/outbound/provider-member-reader.port";
 import type { SlotHoldPort, SlotWindow } from "../app/ports/outbound/slot-hold.port";
@@ -219,6 +220,15 @@ class FakeSlotHold implements SlotHoldPort {
   async transfer(_bookingId: string, _to: SlotWindow): Promise<void> {}
 }
 
+/** Records every `scheduleBookingExpiry` call, matching `create-booking.command.test.ts`'s own fake. */
+class FakeDelayedJobs implements DelayedJobsPort {
+  public scheduled: { bookingId: string; at: Date }[] = [];
+
+  async scheduleBookingExpiry(bookingId: string, at: Date): Promise<void> {
+    this.scheduled.push({ bookingId, at });
+  }
+}
+
 /**
  * Records what each command actually hands the outbox, plus whether that
  * call landed inside `unitOfWork.atomicExecute`, after the save had already
@@ -253,8 +263,9 @@ function setupSubmit(initial: Booking | null, opts: { providerResponseMinutes?: 
   const platformSettingsReader = new FakePlatformSettingsReader({
     providerResponse: opts.providerResponseMinutes,
   });
-  const command = new SubmitBookingCommand(repo, platformSettingsReader, unitOfWork, outbox);
-  return { command, repo, platformSettingsReader, unitOfWork, outbox };
+  const delayedJobs = new FakeDelayedJobs();
+  const command = new SubmitBookingCommand(repo, platformSettingsReader, delayedJobs, unitOfWork, outbox);
+  return { command, repo, platformSettingsReader, delayedJobs, unitOfWork, outbox };
 }
 
 function setupAccept(initial: Booking | null, opts: { paymentWindowMinutes?: number } = {}) {
@@ -265,14 +276,16 @@ function setupAccept(initial: Booking | null, opts: { paymentWindowMinutes?: num
   const platformSettingsReader = new FakePlatformSettingsReader({
     paymentWindow: opts.paymentWindowMinutes,
   });
+  const delayedJobs = new FakeDelayedJobs();
   const command = new AcceptBookingCommand(
     repo,
     providerMemberReader,
     platformSettingsReader,
+    delayedJobs,
     unitOfWork,
     outbox,
   );
-  return { command, repo, providerMemberReader, platformSettingsReader, unitOfWork, outbox };
+  return { command, repo, providerMemberReader, platformSettingsReader, delayedJobs, unitOfWork, outbox };
 }
 
 function setupDecline(initial: Booking | null) {
@@ -286,11 +299,17 @@ function setupDecline(initial: Booking | null) {
 }
 
 describe("SubmitBookingCommand", () => {
-  it("submits a draft booking, computing respondBy from provider_response_minutes, and publishes BookingSubmitted exactly once", async () => {
-    const { command, repo, outbox, platformSettingsReader } = setupSubmit(draftBooking(), {
-      providerResponseMinutes: 90,
-    });
-    const input: SubmitBookingInput = { bookingId: "bk-1" };
+  it("submits a draft booking for its own customer, computing respondBy from provider_response_minutes, and publishes BookingSubmitted exactly once", async () => {
+    // 45, not 90: `bookingInput()`'s own `durationMinutes` is 90, and using
+    // the same number for `providerResponseMinutes` would make `endsAt`
+    // (derived from the duration) and `respondBy` (derived from this
+    // window) land on the same instant by coincidence — indistinguishable
+    // from a bug that derived one from the other.
+    const { command, repo, outbox, delayedJobs, platformSettingsReader } = setupSubmit(
+      draftBooking(),
+      { providerResponseMinutes: 45 },
+    );
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1" };
 
     const before = Date.now();
     await command.execute(input);
@@ -298,14 +317,26 @@ describe("SubmitBookingCommand", () => {
 
     expect(repo.saveCalls).toBe(1);
     expect(repo.savedArg?.status).toBe("AWAITING_PROVIDER");
+    // The exact-pair proof for Ruling N's check: the customer who submitted
+    // is exactly the customer this booking already belonged to, not merely
+    // "some customer succeeded." Mirrors AcceptBookingCommand's and
+    // DeclineBookingCommand's own `providerMemberReader.queries` assertion
+    // on their happy paths.
+    expect(repo.savedArg?.customerId).toBe(input.customerId);
 
     // `expiresAt` is what `submit` actually wrote — the checkout hold is
-    // gone, replaced by a deadline 90 minutes out, not the payment window's
-    // default (15) or the checkout hold's (30).
+    // gone, replaced by a deadline 45 minutes out, not the payment window's
+    // default (15), the checkout hold's (30), or the duration (90).
     const respondBy = repo.savedArg?.expiresAt as Date;
-    expect(respondBy.getTime()).toBeGreaterThanOrEqual(before + 90 * 60_000);
-    expect(respondBy.getTime()).toBeLessThanOrEqual(after + 90 * 60_000);
+    expect(respondBy.getTime()).toBeGreaterThanOrEqual(before + 45 * 60_000);
+    expect(respondBy.getTime()).toBeLessThanOrEqual(after + 45 * 60_000);
     expect(platformSettingsReader.providerResponseCalls).toBe(1);
+
+    // Scheduled after the transaction resolves, against the deadline this
+    // command just stamped — see DelayedJobsPort's own doc comment for why
+    // a command that stamps a deadline and stays silent about it is a bug
+    // waiting for a real job queue to expose.
+    expect(delayedJobs.scheduled).toEqual([{ bookingId: "bk-1", at: respondBy }]);
 
     expect(outbox.published).toHaveLength(1);
     const batch = outbox.published[0]!;
@@ -315,49 +346,72 @@ describe("SubmitBookingCommand", () => {
     expect(batch.events).toHaveLength(1);
     const event = batch.events[0]!;
     expect(event.eventName).toBe("booking.submitted");
-    expect(event.payload).toMatchObject({
+    // Exhaustive, not `toMatchObject`: `BookingAccepted`'s and
+    // `BookingDeclined`'s own happy-path assertions pin every field, and a
+    // partial match here would not notice a field silently dropped.
+    expect(event.payload).toEqual({
       bookingId: "bk-1",
       customerId: "cust-1",
       providerId: "prov-1",
       providerMemberId: "member-1",
+      serviceId: "svc-1",
       startsAt: WHEN,
       endsAt: new Date(WHEN.getTime() + 90 * 60_000),
+      priceMinor: 150000,
+      currency: "MZN",
+      respondBy,
     });
-    expect((event.payload as { respondBy: Date }).respondBy).toEqual(respondBy);
   });
 
-  it("a losing compare-and-swap publishes nothing and throws nothing", async () => {
-    const { command, repo, outbox } = setupSubmit(draftBooking());
+  it("refuses a caller who is not this booking's customer, and writes nothing", async () => {
+    const { command, repo, outbox, delayedJobs } = setupSubmit(draftBooking());
+    // "cust-2" is a genuine, different customer id — not this booking's own
+    // ("cust-1", from `bookingInput()`). A fixture where every input used
+    // "cust-1" could not fail here if the check were dropped, because
+    // there would be nobody foreign to refuse.
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-2" };
+
+    await expect(command.execute(input)).rejects.toThrow(NotBookingCustomerError);
+
+    // The assertion this test exists for: a command that wrote and then
+    // threw would still pass a weaker "no booking came back" check.
+    expect(repo.saveCalls).toBe(0);
+    expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
+  });
+
+  it("a losing compare-and-swap publishes nothing, schedules nothing, and throws nothing", async () => {
+    const { command, repo, outbox, delayedJobs } = setupSubmit(draftBooking());
     // Somebody else's write already moved the row past DRAFT before this
     // command's own write reaches it — the ordinary case the CAS exists
     // for, not an exotic one.
     repo.currentStatusOverride = "AWAITING_PROVIDER";
-    const input: SubmitBookingInput = { bookingId: "bk-1" };
+    const input: SubmitBookingInput = { bookingId: "bk-1", customerId: "cust-1" };
 
     await command.execute(input);
 
     expect(repo.saveCalls).toBe(1);
     expect(repo.lastApplied).toBe(false);
     expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
   });
 
   it("throws BookingNotFoundError when the booking does not exist, and publishes nothing", async () => {
-    const { command, repo, outbox } = setupSubmit(null);
-    const input: SubmitBookingInput = { bookingId: "missing" };
+    const { command, repo, outbox, delayedJobs } = setupSubmit(null);
+    const input: SubmitBookingInput = { bookingId: "missing", customerId: "cust-1" };
 
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 
     expect(repo.saveCalls).toBe(0);
     expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
   });
 });
 
 describe("AcceptBookingCommand", () => {
   it("accepts an awaiting-provider booking for a caller who belongs to its provider, computing payBy from payment_window_minutes, and publishes BookingAccepted exactly once", async () => {
-    const { command, repo, outbox, providerMemberReader, platformSettingsReader } = setupAccept(
-      awaitingBooking(),
-      { paymentWindowMinutes: 20 },
-    );
+    const { command, repo, outbox, delayedJobs, providerMemberReader, platformSettingsReader } =
+      setupAccept(awaitingBooking(), { paymentWindowMinutes: 20 });
     const input: AcceptBookingInput = { bookingId: "bk-1", requesterUserId: "user-right-1" };
 
     const before = Date.now();
@@ -376,6 +430,10 @@ describe("AcceptBookingCommand", () => {
     expect(payBy.getTime()).toBeGreaterThanOrEqual(before + 20 * 60_000);
     expect(payBy.getTime()).toBeLessThanOrEqual(after + 20 * 60_000);
     expect(platformSettingsReader.paymentWindowCalls).toBe(1);
+
+    // Scheduled after the transaction resolves, against the deadline this
+    // command just stamped.
+    expect(delayedJobs.scheduled).toEqual([{ bookingId: "bk-1", at: payBy }]);
 
     expect(outbox.published).toHaveLength(1);
     const batch = outbox.published[0]!;
@@ -397,7 +455,7 @@ describe("AcceptBookingCommand", () => {
   });
 
   it("refuses a caller who belongs to a different provider, and writes nothing", async () => {
-    const { command, repo, outbox, providerMemberReader } = setupAccept(awaitingBooking());
+    const { command, repo, outbox, delayedJobs, providerMemberReader } = setupAccept(awaitingBooking());
     // `user-wrong` is a genuine member of prov-2 — a real person, just not
     // a member of this booking's provider (prov-1). A fixture holding only
     // `user-right-1`/`user-right-2` could not fail here if the membership
@@ -413,10 +471,11 @@ describe("AcceptBookingCommand", () => {
     // threw would still pass a weaker "no booking came back" check.
     expect(repo.saveCalls).toBe(0);
     expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
   });
 
-  it("a losing compare-and-swap publishes nothing and throws nothing", async () => {
-    const { command, repo, outbox } = setupAccept(awaitingBooking());
+  it("a losing compare-and-swap publishes nothing, schedules nothing, and throws nothing", async () => {
+    const { command, repo, outbox, delayedJobs } = setupAccept(awaitingBooking());
     // Two members of the same provider hitting "Aceitar" at once: this
     // command's own write finds the row already moved by the other one.
     repo.currentStatusOverride = "PENDING_PAYMENT";
@@ -427,16 +486,18 @@ describe("AcceptBookingCommand", () => {
     expect(repo.saveCalls).toBe(1);
     expect(repo.lastApplied).toBe(false);
     expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
   });
 
   it("throws BookingNotFoundError when the booking does not exist, and publishes nothing", async () => {
-    const { command, repo, outbox } = setupAccept(null);
+    const { command, repo, outbox, delayedJobs } = setupAccept(null);
     const input: AcceptBookingInput = { bookingId: "missing", requesterUserId: "user-right-1" };
 
     await expect(command.execute(input)).rejects.toThrow(BookingNotFoundError);
 
     expect(repo.saveCalls).toBe(0);
     expect(outbox.published).toEqual([]);
+    expect(delayedJobs.scheduled).toEqual([]);
   });
 });
 
@@ -492,14 +553,16 @@ describe("DeclineBookingCommand", () => {
     });
   });
 
-  it("still appends a change and publishes a null reason when the provider gives none, rather than leaving the NOT NULL booking_change.reason blank", async () => {
+  it("still appends a change with a machine token and publishes a null reason when the provider gives none, rather than leaving the NOT NULL booking_change.reason blank or writing prose into it", async () => {
     const { command, repo, outbox } = setupDecline(awaitingBooking());
     const input: DeclineBookingInput = { bookingId: "bk-1", requesterUserId: "user-right-1" };
 
     await command.execute(input);
 
     expect(repo.appendChangeCalls).toHaveLength(1);
-    expect(repo.appendChangeCalls[0]?.reason).toBe("No reason given");
+    // A token a renderer can switch on and translate, not a sentence in
+    // English — see DECLINED_WITHOUT_REASON's own doc comment.
+    expect(repo.appendChangeCalls[0]?.reason).toBe("declined_without_reason");
 
     const event = outbox.published[0]!.events[0]!;
     expect((event.payload as { reason: string | null }).reason).toBeNull();

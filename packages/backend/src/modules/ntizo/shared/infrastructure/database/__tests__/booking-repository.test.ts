@@ -208,21 +208,33 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
  * Every field `Booking.restore` did not derive — i.e. every field a round
  * trip could lose.
  *
- * `confirmedAt`, `declinedAt`, `cancelledAt`, `markedDoneAt`, `completedAt`
- * and `disputedAt` are compared here too, but every booking this file can
- * build is null on all six: `Booking` has no `confirm`/`decline`/`cancel`/
- * `markDone`/`complete`/`dispute` transition yet (only `markPaid` and
- * `expire` exist — see the aggregate), so there is no public way to give any
- * of them a real value in this task. Said here rather than left silently
- * looking equivalent to the fields this function *can* exercise with a real
- * value: a null-to-null comparison still catches a `toRow`/`toAggregate`
- * mapping bug that aliases one of these six to some unrelated non-null
+ * `confirmedAt` is no longer one of the fields this function can only ever
+ * compare null-to-null: the round-trip test below builds its fixture
+ * through `pendingBooking()` (above), which calls `submit` then `accept`,
+ * so `confirmedAt` carries a real, non-null value that a mis-mapping could
+ * actually lose. `declinedAt`, `cancelledAt`, `markedDoneAt`, `completedAt`
+ * and `disputedAt` remain compared as null-to-null on every booking this
+ * file builds — not because `Booking` still lacks the transitions
+ * (`decline` exists now too), but because a single booking cannot pass
+ * through both `accept` and `decline`, and a second, decline-shaped fixture
+ * here would only re-prove the same round-trip mechanism `booking.aggregate.test.ts`
+ * already covers for `decline`'s own behaviour. `cancelledAt`,
+ * `markedDoneAt`, `completedAt` and `disputedAt` are still genuinely
+ * unreachable: `Booking` has no `cancel`/`markDone`/`complete`/`dispute`
+ * transition yet, so there is still no public way to give any of them a
+ * real value. A null-to-null comparison still catches a `toRow`/`toAggregate`
+ * mapping bug that aliases one of these five to some unrelated non-null
  * column (proven below, in the mis-mapping check this file's commit
- * message points at), but it cannot distinguish one of these six columns
- * from another of the same six — both would still read back null either
- * way. Closing that specific residual gap needs Task 9's transitions to
- * exist first, so a booking here can actually carry a distinguishing value
- * in each.
+ * message points at), even though it cannot distinguish one of the five
+ * from another of the same five — both would still read back null either
+ * way.
+ *
+ * Every timestamp field is compared by `.toISOString()`, not `.toBe()`:
+ * two `Date` instances naming the same moment are never `===`, so a bare
+ * `toBe()` only ever happened to pass here because every one of these
+ * fields was null on both sides until `confirmedAt` stopped being one of
+ * them — the same reasoning `startsAt`, `endsAt`, `expiresAt` and
+ * `expiredAt` already used this comparison for below.
  */
 function expectSameSnapshot(actual: Booking, expected: Booking): void {
   expect(actual.customerId).toBe(expected.customerId);
@@ -235,14 +247,14 @@ function expectSameSnapshot(actual: Booking, expected: Booking): void {
   expect(actual.durationMinutes).toBe(expected.durationMinutes);
   expect(actual.status).toBe(expected.status);
   expect(actual.expiresAt?.toISOString() ?? null).toBe(expected.expiresAt?.toISOString() ?? null);
-  expect(actual.paidAt).toBe(expected.paidAt);
+  expect(actual.paidAt?.toISOString() ?? null).toBe(expected.paidAt?.toISOString() ?? null);
   expect(actual.paymentRef).toBe(expected.paymentRef);
-  expect(actual.confirmedAt).toBe(expected.confirmedAt);
-  expect(actual.declinedAt).toBe(expected.declinedAt);
-  expect(actual.cancelledAt).toBe(expected.cancelledAt);
-  expect(actual.markedDoneAt).toBe(expected.markedDoneAt);
-  expect(actual.completedAt).toBe(expected.completedAt);
-  expect(actual.disputedAt).toBe(expected.disputedAt);
+  expect(actual.confirmedAt?.toISOString() ?? null).toBe(expected.confirmedAt?.toISOString() ?? null);
+  expect(actual.declinedAt?.toISOString() ?? null).toBe(expected.declinedAt?.toISOString() ?? null);
+  expect(actual.cancelledAt?.toISOString() ?? null).toBe(expected.cancelledAt?.toISOString() ?? null);
+  expect(actual.markedDoneAt?.toISOString() ?? null).toBe(expected.markedDoneAt?.toISOString() ?? null);
+  expect(actual.completedAt?.toISOString() ?? null).toBe(expected.completedAt?.toISOString() ?? null);
+  expect(actual.disputedAt?.toISOString() ?? null).toBe(expected.disputedAt?.toISOString() ?? null);
   expect(actual.expiredAt?.toISOString() ?? null).toBe(expected.expiredAt?.toISOString() ?? null);
   expect(actual.priceMinor).toBe(expected.priceMinor);
   expect(actual.commissionBps).toBe(expected.commissionBps);
@@ -266,7 +278,11 @@ function expectSameSnapshot(actual: Booking, expected: Booking): void {
 describe("insert, then findById", () => {
   test("round-trips through Booking.restore with every snapshot field intact", async () => {
     await __runWithTransactionContextForTests(db, async () => {
-      const created = Booking.create(bookingInput());
+      // `pendingBooking`, not a bare `Booking.create`: this is the fixture
+      // that gives `confirmedAt` a real, non-null value to round-trip — see
+      // `expectSameSnapshot`'s own doc comment for why that closes a gap
+      // this test used to leave open.
+      const created = pendingBooking(bookingInput());
       const inserted = await repo.insert(created, 1);
 
       expect(inserted.id).toBeString();

@@ -50,9 +50,14 @@ export class BookingCreated extends BaseDomainEvent<{
  * the provider's response window (`provider_response_minutes`) starts here.
  *
  * Raised when a booking transitions to `AWAITING_PROVIDER` via `submit`.
- * Its natural consumer is Notification, telling the provider's workspace a
- * request is waiting and by when it has to be answered — which needs the
- * member and the slot for the same reason `BookingCreated` carries them:
+ * Its natural consumer is Notification, rendering the provider's "you have
+ * a new request" card — which is precisely where the amount and the
+ * service belong, the same reasoning `BookingCreated` carries `serviceId`,
+ * `priceMinor` and `currency` for. No consumer exists yet for either event;
+ * that is exactly why adding the three here is cheap now and would not be
+ * once one does — this codebase's own rule is that a consumer never reads
+ * the booking back to learn what its own event could have told it. It also
+ * needs the member and the slot for the same reason `BookingCreated` does:
  * reading the booking back to learn either would reintroduce the drift the
  * snapshot exists to prevent. `respondBy` is what `submit` actually wrote
  * onto `expiresAt` (see that method's own doc comment for why it takes the
@@ -65,8 +70,11 @@ export class BookingSubmitted extends BaseDomainEvent<{
   customerId: string;
   providerId: string;
   providerMemberId: string;
+  serviceId: string;
   startsAt: Date;
   endsAt: Date;
+  priceMinor: number;
+  currency: string;
   respondBy: Date;
 }> {
   constructor(payload: {
@@ -74,8 +82,11 @@ export class BookingSubmitted extends BaseDomainEvent<{
     customerId: string;
     providerId: string;
     providerMemberId: string;
+    serviceId: string;
     startsAt: Date;
     endsAt: Date;
+    priceMinor: number;
+    currency: string;
     respondBy: Date;
   }) {
     super("booking.submitted", payload.bookingId, payload);

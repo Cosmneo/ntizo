@@ -63,8 +63,11 @@ describe("BookingSubmitted", () => {
       customerId: "u1",
       providerId: "p1",
       providerMemberId: "m2",
+      serviceId: "s1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
       endsAt: new Date("2026-09-04T13:30:00.000Z"),
+      priceMinor: 120000,
+      currency: "MZN",
       respondBy: new Date("2026-09-04T14:30:00.000Z"),
     } satisfies ConstructorParameters<typeof BookingSubmitted>[0];
 
@@ -80,8 +83,11 @@ describe("BookingSubmitted", () => {
       customerId: "u1",
       providerId: "p1",
       providerMemberId: "m2",
+      serviceId: "s1",
       startsAt: new Date("2026-09-04T12:30:00.000Z"),
       endsAt: new Date("2026-09-04T13:30:00.000Z"),
+      priceMinor: 120000,
+      currency: "MZN",
       respondBy: new Date("2026-09-04T14:30:00.000Z"),
     } satisfies ConstructorParameters<typeof BookingSubmitted>[0];
 

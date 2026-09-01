@@ -355,13 +355,18 @@ describe("CreateBookingCommand", () => {
   });
 
   it("reads the checkout hold window from PlatformSettingsReaderPort, not the payment window", async () => {
-    const { command, platformSettingsReader } = setup({
+    const { command, repo, platformSettingsReader } = setup({
       checkoutHoldMinutes: FAKE_CHECKOUT_HOLD_MINUTES,
     });
 
     const before = Date.now();
     const result = await command.execute(INPUT);
     const after = Date.now();
+
+    // The headline change this command makes, and the one thing this file
+    // was otherwise silent on: a fresh booking is a DRAFT now, not
+    // PENDING_PAYMENT.
+    expect(repo.insertedArg?.status).toBe("DRAFT");
 
     // Bounded by wall-clock reads taken immediately before and after the
     // call, rather than pinned to one instant, because `expiresAt` is

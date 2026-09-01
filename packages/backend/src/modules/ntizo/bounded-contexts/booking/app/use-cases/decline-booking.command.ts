@@ -14,6 +14,19 @@ export interface DeclineBookingInput {
 }
 
 /**
+ * A machine token, not a sentence. `booking_change.reason` is a contract
+ * with whatever eventually renders this history — the same argument that
+ * made `BookingCancelledReason` a closed union rather than free text (see
+ * that type's own doc comment) — so what goes in the column when the
+ * provider gives no reason has to read as a value a renderer can switch on
+ * and translate, not as English prose a renderer would have to display
+ * verbatim to every locale. This branch already shipped raw English into a
+ * column meant for eight locales once; this is the same mistake avoided a
+ * second time.
+ */
+const DECLINED_WITHOUT_REASON = "declined_without_reason";
+
+/**
  * The provider says no: `AWAITING_PROVIDER` becomes `DECLINED`, and the slot
  * this booking was holding releases.
  *
@@ -34,10 +47,11 @@ export interface DeclineBookingInput {
  * the same party `ProviderMemberReaderPort` just authorised. When the
  * provider gives no reason, this command still writes the hop — the row's
  * value is not only the reason, it is the record of who declined and when,
- * which nothing else on `booking` carries — with a fixed placeholder text
- * rather than leaving `reason` blank, since the column is `NOT NULL` and a
- * blank string is the same bug `Booking`'s own `requireNonBlank` guards
- * against everywhere else in this codebase.
+ * which nothing else on `booking` carries — with `DECLINED_WITHOUT_REASON`
+ * (see that constant's own doc comment for why it is a token, not a
+ * sentence) rather than leaving `reason` blank, since the column is
+ * `NOT NULL` and a blank string is the same bug `Booking`'s own
+ * `requireNonBlank` guards against everywhere else in this codebase.
  *
  * **This command uses the compare-and-swap.** `save(booking, expectedStatus)`
  * only writes if the row is still at the status this command's own read
@@ -102,7 +116,7 @@ export class DeclineBookingCommand {
       await this.repo.appendChange({
         bookingId,
         changedByUserId: input.requesterUserId,
-        reason: input.reason ?? "No reason given",
+        reason: input.reason ?? DECLINED_WITHOUT_REASON,
         previousStartsAt: null,
         previousEndsAt: null,
         previousProviderMemberId: null,

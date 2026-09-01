@@ -79,6 +79,7 @@ export function bootstrapBooking() {
       submitBooking: new SubmitBookingCommand(
         bookingRepository,
         platformSettingsReader,
+        delayedJobs,
         unitOfWork,
         outboxPort,
       ),
@@ -86,6 +87,7 @@ export function bootstrapBooking() {
         bookingRepository,
         providerMemberReader,
         platformSettingsReader,
+        delayedJobs,
         unitOfWork,
         outboxPort,
       ),
