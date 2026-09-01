@@ -408,4 +408,39 @@ describe("DetailsPage", () => {
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
   });
+
+  it("does not mistake a request nobody answered for a lapsed hold", async () => {
+    // **`EXPIRED` means two different things**, and this page can meet both.
+    // `BookingStatus.Expired` covers a DRAFT whose checkout hold passed *and*
+    // an AWAITING_PROVIDER whose response window did — `SweepBookingCommand`
+    // writes it for both — so a status check alone answers "nobody replied to
+    // you" by sending the customer back to step 1 to pick another time.
+    //
+    // Step 3 is where that case is normally met, but this page is one
+    // back-press from it, and with `accept` and `decline` unmounted this
+    // phase a lapsed response window is the ordinary end state of a request
+    // rather than an unusual one. Same case, met from the other side.
+    //
+    // The discriminator is the address: null on a DRAFT and only on a DRAFT,
+    // because `Booking.submit` refuses to leave DRAFT without one. So this
+    // fixture — expired *with* an address — is the one the whole distinction
+    // rests on, and without it reverting `holdLapsedUnsent` to a bare
+    // `["EXPIRED","CANCELLED"].includes(status)` leaves this file green.
+    const { router } = renderDetails({
+      bookingId: "bk-1",
+      booking: bookingFixture({
+        status: "EXPIRED",
+        addressLabel: "Casa",
+        addressLine: "Av. Julius Nyerere 1234",
+        addressCity: "Maputo",
+      }),
+    });
+
+    expect(await screen.findByText(/já foi enviado/i)).toBeInTheDocument();
+    // Stays put. The redirect is what made the loss invisible, and the
+    // sibling assertions above prove this same page *does* redirect a draft
+    // whose hold genuinely lapsed.
+    expect(router.state.location.pathname).toBe("/booking/bk-1/details");
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
 });
