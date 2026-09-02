@@ -219,31 +219,46 @@ describe("the admin queue", () => {
     const resolvedId = await openPersonal("Done", new Date("2026-09-01T11:00:00.000Z"));
     await run(async () => requests.save((await requests.findByThreadId(resolvedId))!.resolve(adminId, NOW)));
 
+    // The admin queue is shared with a running application: a page can
+    // legitimately carry rows this test never created. Every assertion below
+    // filters a page down to this file's own fixtures — by `requesterUserId`,
+    // which is `customerId` for a personal request and `memberId` for one
+    // opened for the provider — before asserting membership or order, so a
+    // real request sorted alongside these never becomes part of the claim.
+    const isOwnFixture = (item: { requesterUserId: string }) =>
+      item.requesterUserId === customerId || item.requesterUserId === memberId;
+
     const open = await run(() => requests.listForAdmin({ status: "open" }, 500, null));
-    const ids = open.items.map((i) => i.threadId);
+    const ids = open.items.filter(isOwnFixture).map((i) => i.threadId);
     expect(ids).toContain(older);
     expect(ids).toContain(newer);
     expect(ids).not.toContain(resolvedId);
     expect(ids.indexOf(newer)).toBeLessThan(ids.indexOf(older));
 
     const providerOnly = await run(() => requests.listForAdmin({ status: "open", audience: "provider" }, 500, null));
-    expect(providerOnly.items.every((i) => i.audience === "provider")).toBe(true);
-    expect(providerOnly.items.map((i) => i.threadId)).toContain(older);
+    const providerOnlyOwn = providerOnly.items.filter(isOwnFixture);
+    expect(providerOnlyOwn.every((i) => i.audience === "provider")).toBe(true);
+    expect(providerOnlyOwn.map((i) => i.threadId)).toContain(older);
 
     const resolved = await run(() => requests.listForAdmin({ status: "resolved" }, 500, null));
-    expect(resolved.items.map((i) => i.threadId)).toContain(resolvedId);
-    expect(resolved.items.find((i) => i.threadId === resolvedId)?.resolvedAt).not.toBeNull();
+    const resolvedOwn = resolved.items.filter(isOwnFixture);
+    expect(resolvedOwn.map((i) => i.threadId)).toContain(resolvedId);
+    expect(resolvedOwn.find((i) => i.threadId === resolvedId)?.resolvedAt).not.toBeNull();
 
-    // Paging: one at a time through everything this test can see, no repeats, no gaps.
+    // Paging: walk one page at a time until this test's own three fixtures
+    // have all turned up — not a fixed 200-page ceiling, which a shared
+    // queue could either blow past (flaky/slow) or exhaust before reaching
+    // these rows (a false failure) depending on how much else is in it.
     const seen: string[] = [];
+    const fixtureIds = [older, newer, resolvedId];
     let cursor: string | null = null;
     do {
       const page: Awaited<ReturnType<typeof requests.listForAdmin>> = await run(() => requests.listForAdmin({}, 1, cursor));
       seen.push(...page.items.map((i) => i.threadId));
       cursor = page.nextCursor;
-    } while (cursor && seen.length < 200);
+    } while (cursor && !fixtureIds.every((id) => seen.includes(id)));
     expect(new Set(seen).size).toBe(seen.length);
-    for (const id of [older, newer, resolvedId]) expect(seen).toContain(id);
+    for (const id of fixtureIds) expect(seen).toContain(id);
   });
 
   test("countOpen moves with the queue", async () => {
