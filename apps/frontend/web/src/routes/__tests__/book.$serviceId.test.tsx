@@ -11,12 +11,6 @@ import {
 } from "@tanstack/react-router";
 import type { ServiceAvailabilityDTO, ServiceDetailDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
-import { widenAsyncTimeout } from "./route-suite-timeout";
-
-// Route suites mount the router, resolve an async `beforeLoad` and settle at
-// least one query before anything is assertable, and this one has gone red on
-// a loaded full run for that reason alone. See `widenAsyncTimeout`.
-widenAsyncTimeout();
 
 /**
  * The route itself — `validateSearch`, the loader and the remount wrapper —
@@ -36,7 +30,6 @@ widenAsyncTimeout();
  * importing `routes`, and rightly. A `routes` element may import `ui`, so
  * this is the only layer that can hold both halves.
  */
-
 const fakes = vi.hoisted(() => ({
   createBooking: vi.fn(),
   refetch: vi.fn(),

@@ -214,7 +214,7 @@ function MemberRow({
       // The two visible lines, joined. A button with an `aria-label` is
       // announced by that label alone, so a row labelled with the name only
       // would hide the half of it that decides the choice — including "sem
-      // horas hoje", which is the whole reason that row is still here.
+      // horários", which is the whole reason that row is still here.
       aria-label={`${name}, ${detail}`}
       onClick={onClick}
       className={cn(

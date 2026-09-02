@@ -2663,19 +2663,31 @@ that pass every time their file is run alone. Reproduced on an **untouched tree*
 web-suite runs: one failure, one clean, one with both) so it is the bound failing rather than any
 change.
 
-**The local fix, not the global one.** `asyncUtilTimeout` in `vite.config.ts` would change the
-bound for 141 files nobody had read, some of which may legitimately want a wait to give up
-quickly; the flake is a property of route suites specifically, which mount the router, resolve an
-async `beforeLoad` and settle a query before anything is assertable.
+**Scoped, not global.** Setting `asyncUtilTimeout` once in `src/test/setup.ts` would change the
+bound for all 141 files, some of which may legitimately want a wait to give up quickly; the flake
+is a property of route suites specifically, which mount the router, resolve an async
+`beforeLoad` and settle a query before anything is assertable.
 
 **But not the per-call constant this entry proposed either**, because that is what rotted: the
 confirm suite's `SETTLES_IN` had to be threaded through every wait, and the next two route suites
-were written without it — which is exactly how this entry came to name a second file. All three
-now call `widenAsyncTimeout()` from `routes/__tests__/route-suite-timeout.ts`, one
-`configure({ asyncUtilTimeout: 4000 })` covering every wait in the file including `findBy*` and
-including the ones nobody has written yet. `SETTLES_IN` and its threading are gone. Vitest isolates
-each test file, so the setting reaches nothing but the file that imports it, and the module sits
-beside the suites that need it, which is where the next route suite's author will find it.
+were written without it — which is exactly how this entry came to name a second file.
+
+**Nor a call each suite makes once**, which was the first attempt here and is the same failure
+mode with a longer fuse: it moves the omission from once per call site to once per *file*, and a
+fourth route suite written without the import silently gets one second back with no lint rule or
+meta-test to notice.
+
+`vite.config.ts` now splits the app into two vitest projects, and the one matching
+`src/routes/__tests__/**` loads `src/test/route-suite-setup.ts` on top of the shared setup: a
+single `configure({ asyncUtilTimeout: 4000 })` bound to a directory, covering every wait in every
+file there — `findBy*` included, and the files nobody has written yet. Nobody has to remember it,
+because there is nothing to remember. `SETTLES_IN` and its threading are gone, and two of the three
+route suites are byte-identical to what they were before any of this.
+
+Proven in both directions rather than assumed: with the bound dropped to 1ms the routes project
+loses 12 of its 14 tests and the web project's 138 files are untouched. Ten consecutive full
+`bun run test` runs afterwards, web 141 files green every time, where the same machine had been
+failing those two suites in three runs of five.
 
 ## #112 (original) — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
 

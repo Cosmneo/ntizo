@@ -11,13 +11,6 @@ import {
 import type { AddressDTO, CurrentUserDTO } from "@ntizo/shared";
 import type { BookingDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
-import { widenAsyncTimeout } from "./route-suite-timeout";
-
-// This file was the first route suite to go red on a loaded full run, and its
-// per-call `SETTLES_IN` constant is what this replaces — one setting covering
-// every wait, including the ones nobody has written yet. See
-// `widenAsyncTimeout`.
-widenAsyncTimeout();
 
 /**
  * The route itself — the session guard, the remount key, and the fact that it
@@ -34,7 +27,6 @@ widenAsyncTimeout();
  * It lives under `src/routes/` because `boundaries/dependencies` forbids `ui`
  * importing `routes`, so this is the only layer that can hold both halves.
  */
-
 const fakes = vi.hoisted(() => ({
   booking: null as unknown,
   addresses: [] as AddressDTO[],

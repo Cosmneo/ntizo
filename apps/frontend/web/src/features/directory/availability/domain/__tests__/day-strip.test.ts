@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   dayLoad,
+  daysFor,
   endOfStart,
   fullDayStarts,
   isPast,
@@ -172,6 +173,72 @@ describe("endOfStart", () => {
 
   test("crosses midnight in UTC without touching the civil date maths", () => {
     expect(endOfStart("2026-09-04T23:30:00.000Z", 60)).toBe("2026-09-05T00:30:00.000Z");
+  });
+});
+
+describe("daysFor", () => {
+  /** A start at `minuteOfDay`, free for exactly the people named. */
+  function shared(minuteOfDay: number, memberIds: string[]): Start {
+    return { ...start(minuteOfDay), memberIds };
+  }
+
+  test("keeps every date, including the ones it empties", () => {
+    // **The promise the date strip rests on.** `weekOf` draws seven cards and
+    // looks each date's count up in `startsByDate`'s Map, so today a dropped
+    // day and an emptied one both read "fechado" and nothing notices. That is
+    // luck rather than coverage, and it runs out the moment anything iterates
+    // this array instead of indexing it — which is what a strip built from the
+    // response rather than from `weekOf` would do.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1"]), shared(600, ["m2"])] },
+      { date: "2026-08-13", starts: [shared(540, ["m2"])] },
+      { date: "2026-08-14", starts: [] },
+    ];
+
+    const narrowed = daysFor(days, "m1");
+
+    expect(narrowed.map((d) => d.date)).toEqual(["2026-08-12", "2026-08-13", "2026-08-14"]);
+    // The 13th is emptied rather than removed, which is the whole point.
+    expect(narrowed.map((d) => d.starts.length)).toEqual([1, 0, 0]);
+  });
+
+  test("matches a start on its own memberIds, not on the day's", () => {
+    // A day is a bag of independent moments: two of a salon's staff being free
+    // at 09:00 says nothing about who is free at 10:00. A narrowing that read
+    // the day as a unit would hand one person the other's afternoon.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1", "m2"]), shared(600, ["m2"])] },
+    ];
+
+    expect(daysFor(days, "m1")[0]?.starts.map((s) => s.minuteOfDay)).toEqual([540]);
+    expect(daysFor(days, "m2")[0]?.starts.map((s) => s.minuteOfDay)).toEqual([540, 600]);
+  });
+
+  test("undefined is anyone, and changes nothing", () => {
+    // "Qualquer pessoa disponível" is an absence, not a member id — the same
+    // absence `availability.forService` itself reads that way. A narrowing
+    // that treated it as an id to match would filter the whole window to
+    // nothing and leave the customer with no way back out of a filter.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1"]), shared(600, ["m2"])] },
+      { date: "2026-08-13", starts: [] },
+    ];
+
+    expect(daysFor(days, undefined)).toEqual(days);
+  });
+
+  test("does not mutate the response it narrows", () => {
+    // The page holds one response and takes two readings of it: the picker
+    // counts the roster's day while the grid draws the narrowed one. If this
+    // narrowed in place, the second reading would destroy the first — and the
+    // roster rows would go back to reporting zero for everybody not chosen.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1"]), shared(600, ["m2"])] },
+    ];
+
+    daysFor(days, "m1");
+
+    expect(days[0]?.starts).toHaveLength(2);
   });
 });
 
