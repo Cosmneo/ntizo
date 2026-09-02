@@ -118,14 +118,23 @@ function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
     serviceName: "Corte de cabelo",
     providerName: "Studio X",
     providerSlug: "studio-x",
-    // Read live off the provider rather than snapshotted, and carried here so
-    // the compiler keeps this fixture honest — this page's rail does not
-    // print them yet, and the day it adopts the shared one it must be handed
-    // a booking that has them.
+    // Read live off the provider rather than snapshotted — and printed here
+    // now that this page renders the shared rail. 4,2 rather than the rail
+    // suite's own 4,8: no default and no other fixture in the repo produces
+    // it, so the trust-line assertion cannot pass against a rail that ignored
+    // the booking and printed a constant.
     providerVerified: true,
     providerRatingAverage: 4.2,
     optionName: "Corte e barba",
     durationMinutes: 90,
+    // **`at_provider`, which is deliberately not the branch the rail draws
+    // its extra line from.** The rail prints "Deslocação — Incluída" only
+    // where the *provider* travels — `at_customer` and `flexible` — so a
+    // fixture on one of those could not tell a page that reads the booking
+    // apart from one that hardcodes the interesting case, and neither could
+    // it fail if the line stopped being conditional. The tests that want the
+    // travel line override this to `at_customer`.
+    locationType: "at_provider",
     priceMinor: 90000,
     commissionBps: 1000,
     commissionMinor: 9000,
@@ -357,7 +366,17 @@ describe("ConfirmPage", () => {
     // page's total use — actually produces, and a checkout total is the one
     // number on this platform that may not be approximated.
     renderConfirm({ bookingId: "bk-1", priceMinor: 150000, commissionMinor: 18000 });
-    expect(await screen.findByText("1500,00 MTn")).toBeInTheDocument();
+    await screen.findByText("Studio X");
+    // **Every amount on the page, listed**, now that the rail prints a
+    // breakdown here rather than one bare figure: the service line and the
+    // total, both the package's own. A "Taxa Ntizo" row would be a third and
+    // would change the second, and neither an exact-match query nor
+    // `/comiss/i` can see a bare figure in a breakdown — the rail's own suite
+    // demonstrated a real commission line surviving both.
+    const amounts = screen
+      .getAllByText(/MTn/)
+      .map((node) => (node.textContent ?? "").replace(/\s+/g, " ").trim());
+    expect(amounts).toEqual(["1500,00 MTn", "1500,00 MTn"]);
     expect(screen.queryByText(/comiss/i)).not.toBeInTheDocument();
     // A regex, not the exact string. `queryByText("180,00")` matches a node
     // whose whole text is "180,00" and cannot see "180,00 MTn" — which is
@@ -376,6 +395,103 @@ describe("ConfirmPage", () => {
     expect(await screen.findByText(/nada é cobrado agora/i)).toBeInTheDocument();
   });
 
+  it("prints the provider's score and badge, which its own card never did", async () => {
+    // **The rail's trust line, on the page the customer actually commits
+    // on.** Both fields were already fetched for this page and neither was
+    // printed, because step 3 carried a card of its own — provider name,
+    // service name, price — while steps 1 and 2 shared the real rail. That is
+    // follow-up #118, and it closes by this page rendering `CheckoutRail`
+    // rather than a fourth copy of one.
+    renderConfirm({ bookingId: "bk-1" });
+
+    expect(await screen.findByText("Studio X")).toBeInTheDocument();
+    // "4,2" in `pt-MZ` — the reader's own decimal separator, and a value no
+    // default and no other fixture in the repo produces.
+    expect(screen.getByText("4,2")).toBeInTheDocument();
+    expect(screen.getByText("Verificado")).toBeInTheDocument();
+    // The two promises the platform can actually keep. Still no cancellation
+    // window: nothing in this product models one.
+    expect(screen.getByText(/pagamento fica retido/i)).toBeInTheDocument();
+    expect(screen.getByText(/documentos do prestador verificados/i)).toBeInTheDocument();
+    expect(screen.queryByText(/cancelamento/i)).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a score or a badge the booking does not carry", async () => {
+    // Null is never 0: zero is a score a person could have given, and
+    // printing it would tell the customer this is the worst provider on the
+    // platform — on the last screen before they commit. Paired with the case
+    // above so a hardcoded line fails one of the two.
+    renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ providerRatingAverage: null, providerVerified: false }),
+    });
+
+    expect(await screen.findByText("Studio X")).toBeInTheDocument();
+    expect(screen.queryByText("4,2")).not.toBeInTheDocument();
+    expect(screen.queryByText("0,0")).not.toBeInTheDocument();
+    expect(screen.queryByText("Verificado")).not.toBeInTheDocument();
+  });
+
+  it("says where the work happens, and claims no travel for a job at the provider's", async () => {
+    // `locationType` reaches this page off the booking now. Without it the
+    // rail printed the length alone and dropped "Deslocação — Incluída"
+    // everywhere, which reads as a design decision rather than as a missing
+    // field. A barber's shop is the case that has to stay silent: the
+    // customer is the one travelling, and telling them their travel is
+    // included would be a false statement about money.
+    renderConfirm({ bookingId: "bk-1" });
+
+    expect(await screen.findByText("No espaço dele · 90 min")).toBeInTheDocument();
+    expect(screen.queryByText("Deslocação")).not.toBeInTheDocument();
+    expect(screen.queryByText("Incluída")).not.toBeInTheDocument();
+  });
+
+  it("includes the travel only where the provider is the one travelling", async () => {
+    // The other branch, and the pair is what stops either from passing
+    // against a page that ignores the booking: the fixture's own value is
+    // `at_provider`, so this line can only have come from the override.
+    renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ locationType: "at_customer" }),
+    });
+
+    expect(await screen.findByText("Em sua casa · 90 min")).toBeInTheDocument();
+    expect(screen.getByText("Deslocação")).toBeInTheDocument();
+    expect(screen.getByText("Incluída")).toBeInTheDocument();
+  });
+
+  it("drops the location half alone when the booking cannot say where the work happens", async () => {
+    // `null` is the read model's `leftJoin` answer rather than a state the
+    // database can reach — but the rail is shared, and silence is the safe
+    // direction for a claim about money wherever the caller cannot know.
+    renderConfirm({
+      bookingId: "bk-1",
+      booking: bookingFixture({ locationType: null }),
+    });
+
+    // The length survives on its own; only the location half disappears.
+    expect(await screen.findByText("90 min")).toBeInTheDocument();
+    expect(screen.queryByText(/No espaço dele/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Deslocação")).not.toBeInTheDocument();
+  });
+
+  it("offers one way back to the time, on this booking's own package", async () => {
+    // The rail's "Alterar", and the *only* control for it on this page: the
+    // summary on the left is the record of what is being sent and carries
+    // none, so a customer who notices the wrong hour has exactly one place to
+    // press. Two of them, inches apart, is follow-up #117.
+    const { router } = renderConfirm({ bookingId: "bk-1" });
+
+    const buttons = await screen.findAllByRole("button", { name: /alterar/i });
+    expect(buttons).toHaveLength(1);
+    await userEvent.click(buttons[0]!);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/book/svc-1"));
+    // The package too. Landing on the service with no option re-offers the
+    // cheapest one, which is not necessarily what this customer chose.
+    expect(router.state.location.search).toMatchObject({ optionId: "opt-2" });
+  });
+
   it("reads the slot back in the service's zone, not the device's", async () => {
     // 22:30 UTC on the 4th is 00:30 on the 5th in Maputo. Printed in the
     // browser's zone this page would tell the customer a different day and a
@@ -385,8 +501,13 @@ describe("ConfirmPage", () => {
     // it.
     renderConfirm({ bookingId: "bk-1" });
 
+    // The summary's own long wording, which only it prints — the rail's
+    // compact form says "sáb., 5/09".
     expect(await screen.findByText(/s[áa]bado, 5 de setembro/i)).toBeInTheDocument();
-    expect(screen.getByText(/00:30/)).toBeInTheDocument();
+    // Twice: the summary on the left and the rail's QUANDO panel beside it
+    // both print the clock, and they must agree — two clocks on one page make
+    // whichever the customer checks against the other look wrong.
+    expect(screen.getAllByText(/00:30/)).toHaveLength(2);
   });
 
   it("reads a second service's slot in that service's zone too", async () => {
@@ -400,7 +521,7 @@ describe("ConfirmPage", () => {
       booking: bookingFixture({ timezone: "Pacific/Auckland" }),
     });
 
-    expect(await screen.findByText(/10:30/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText(/10:30/)).toHaveLength(2));
   });
 
   it("sends the address and the note step 2 collected, and nothing about a seat", async () => {

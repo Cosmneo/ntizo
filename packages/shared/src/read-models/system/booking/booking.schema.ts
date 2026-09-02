@@ -102,6 +102,47 @@ export const bookingReadModel = z.object({
   optionName: z.string(),
   durationMinutes: z.number().int().positive(),
 
+  /**
+   * Where the work happens — a `ServiceLocationType`, joined live off the
+   * service rather than snapshotted.
+   *
+   * It is here because checkout's rail prints `Em sua casa · 240 min` under
+   * the appointment, and decides from the same value whether
+   * "Deslocação — Incluída" is a true sentence: the provider travels for
+   * `at_customer` and `flexible` and nobody travels for `at_provider` or
+   * `remote`, so telling a customer their travel is included when they are
+   * the one travelling would be a false claim about money. Step 1 reads it
+   * off `serviceDetailReadModel`; steps 2 and 3 have only the booking, and
+   * before this the line was simply absent on two of the three pages of one
+   * flow.
+   *
+   * **Live is wrong here, and unlike `providerVerified` above that is a gap
+   * rather than a decision — see follow-up #119.** The badge and the score
+   * are what the platform asserts about a business *today*, and freezing them
+   * would keep claiming a withdrawn document. Where the work happens is not
+   * that: it is a **term of what the customer agreed to**, in the same class
+   * as `optionName` and `priceMinor`, which this schema snapshots. A provider
+   * who switches a service from `at_customer` to `at_provider` must not
+   * rewrite where an existing booking is happening — a customer who agreed to
+   * a callout would be shown a shopfront, and the "Deslocação — Incluída"
+   * line they were quoted on would vanish from the same booking. It is live
+   * only because snapshotting it needs a column and a migration, and the
+   * change that added it was a visual pass. The same argument #113 makes
+   * about `timezone`, on a field where the drift is visible rather than
+   * subtle.
+   *
+   * **Nullable because the join is a `leftJoin`, not because a service can
+   * lack one.** `service.location_type` is `NOT NULL` and
+   * `booking.service_id` is a `NOT NULL` FK with no cascade, so no row this
+   * query can reach has a null here. The left join is the cheap side of an
+   * asymmetric bet: an inner join that ever failed to match would make a
+   * booking **disappear from its own customer's checkout** — a page that then
+   * says nothing is being held for them — and fail nothing on the way. The
+   * consumer already has to handle the null anyway, because the rail is
+   * shared with a caller that has no location type to give.
+   */
+  locationType: z.string().nullable(),
+
   priceMinor: z.number().int().min(0),
   commissionBps: z.number().int().min(0).max(10_000),
   commissionMinor: z.number().int().min(0),

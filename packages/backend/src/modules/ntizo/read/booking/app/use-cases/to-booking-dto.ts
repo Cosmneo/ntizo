@@ -29,6 +29,7 @@ export function toBookingDTO(row: BookingListRow): BookingDTO {
     providerRatingAverage: row.providerRatingAverage,
     optionName: row.optionName,
     durationMinutes: row.durationMinutes,
+    locationType: row.locationType,
     priceMinor: row.priceMinor,
     commissionBps: row.commissionBps,
     commissionMinor: row.commissionMinor,

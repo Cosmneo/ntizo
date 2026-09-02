@@ -36,6 +36,48 @@ function providerTravels(locationType: string | null): boolean {
 }
 
 /**
+ * "Em sua casa · 240 min" — where the work happens and how long it takes,
+ * with each half dropping out on its own when the caller cannot answer it.
+ *
+ * A hook rather than a plain function because both halves are translated, and
+ * exported because **step 2 prints this line twice**: once in its own
+ * "MARCAÇÃO ESCOLHIDA" panel, which is the only one on screen below `lg`, and
+ * once in the rail, which is the only one at and above it. Two copies of the
+ * join would be two places for the separator, the order and the empty cases
+ * to drift — on one page, where a customer meeting the two on a phone and on
+ * a laptop would be told the appointment differently each time.
+ *
+ * `hourly` changes the second half rather than the first: an hourly package's
+ * duration is a *minimum* ("Mínimo de 60 min") and printing it as a length
+ * would tell the customer the job is over when it is not.
+ */
+export function useWhereAndLength(
+  locationType: string | null,
+  durationMinutes: number | null,
+  hourly = false,
+): { where: string; length: string; line: string } {
+  const { t: td } = useTranslation("directory");
+
+  const where = locationType
+    ? // `defaultValue: ""` rather than i18next's own "key not found" echo:
+      // `locationType` is a bare `string` on the read model, so an
+      // unrecognised value drops the half instead of printing its own key at
+      // the customer.
+      td(`filterWhereOption.${locationType}`, { defaultValue: "" })
+    : "";
+  const length =
+    durationMinutes === null
+      ? ""
+      : td(hourly ? "serviceMinimumMinutes" : "serviceDurationMinutes", {
+          count: durationMinutes,
+        });
+
+  // The halves come back too, because the price breakdown pairs the length
+  // with the package name and has no use for the location.
+  return { where, length, line: [where, length].filter(Boolean).join(" · ") };
+}
+
+/**
  * The card that runs down the right of every checkout page: what is being
  * booked, when, what it costs, and the two promises the platform actually
  * keeps.
@@ -128,15 +170,11 @@ export function CheckoutRail({
   const { t: td } = useTranslation("directory");
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
-  const where = locationType
-    ? td(`filterWhereOption.${locationType}`, { defaultValue: "" })
-    : "";
-  const length =
-    durationMinutes === null
-      ? ""
-      : td(hourly ? "serviceMinimumMinutes" : "serviceDurationMinutes", {
-          count: durationMinutes,
-        });
+  const { length, line: whereAndLength } = useWhereAndLength(
+    locationType,
+    durationMinutes,
+    hourly,
+  );
   // Guarded rather than defaulted to zero: `Intl.NumberFormat` throws on a
   // blank currency code, and a quote service genuinely has neither.
   const price = priceMinor === null ? null : formatAmount(priceMinor, currency, locale);
@@ -229,9 +267,9 @@ export function CheckoutRail({
             <p className="type-body-medium mt-1 font-semibold tabular-nums">
               {t("railWhen", { date: slot.date, start: slot.start, end: slot.end })}
             </p>
-            {(where || length) && (
+            {whereAndLength && (
               <p className="type-caption text-[var(--color-muted-foreground)]">
-                {[where, length].filter(Boolean).join(" · ")}
+                {whereAndLength}
               </p>
             )}
           </>

@@ -463,6 +463,11 @@ describe("bookingReadModel", () => {
     providerRatingAverage: 4.8,
     optionName: "Diagnóstico e reparação",
     durationMinutes: 60,
+    // A callout, which is the one class of location type checkout draws a
+    // second line from: the rail says "Deslocação — Incluída" for
+    // `at_customer` and `flexible`, and stays silent for the other two
+    // because nobody the platform could charge for is travelling.
+    locationType: "at_customer",
     priceMinor: 120000,
     commissionBps: 1000,
     commissionMinor: 12000,
@@ -505,6 +510,19 @@ describe("bookingReadModel", () => {
     // `""` is a zone `Intl.DateTimeFormat` throws on, not a zone.
     expect(() => bookingReadModel.parse({ ...base, timezone: undefined })).toThrow();
     expect(() => bookingReadModel.parse({ ...base, timezone: "" })).toThrow();
+  });
+
+  it("requires a location type key, and accepts null for it", () => {
+    // Null is the `leftJoin`'s answer, not a state the database can produce:
+    // `service.location_type` is `NOT NULL` and `booking.service_id` is a
+    // `NOT NULL` FK. So the schema has to admit null while the reader still
+    // has to supply a real value — and *missing* stays refused, or a mapper
+    // that dropped the field would pass as though it had answered "unknown"
+    // and the rail would silently lose a line on every booking.
+    expect(() => bookingReadModel.parse({ ...base, locationType: null })).not.toThrow();
+    const withoutIt: Record<string, unknown> = { ...base };
+    delete withoutIt.locationType;
+    expect(() => bookingReadModel.parse(withoutIt)).toThrow();
   });
 
   it("rejects a negative price", () => {

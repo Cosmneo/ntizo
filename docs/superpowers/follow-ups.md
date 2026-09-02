@@ -2707,7 +2707,9 @@ is behind the read model, and no frontend file moves. The `Europe/Lisbon` fixtur
 gets stronger — it could then assert the rendered time survives changing the provider's zone.
 
 **Trigger:** before a provider can plausibly relocate — a second launch market, or the first support
-ticket about an appointment that changed time by itself.
+ticket about an appointment that changed time by itself. **See also #119**, which is this argument
+about `locationType` off the same booking: both are one migration on the same table, and taking
+either alone leaves the other reading live off a row a provider can edit.
 
 ## #114 — `booking.byId` puts the commission on the wire, and the design says the customer never sees it
 
@@ -2800,7 +2802,35 @@ opened for a real change.
 
 ---
 
-## #117 — Checkout step 2 shows the same appointment twice, with two identical "Alterar" buttons
+## ~~#117 — Checkout step 2 shows the same appointment twice, with two identical "Alterar" buttons~~ — RESOLVED 2026-09-02
+
+Neither panel was dropped: **the layout decides which one is on screen.** The "MARCAÇÃO
+ESCOLHIDA" panel now carries `lg:hidden`, `lg` being the breakpoint the page's own grid switches
+on (`lg:grid-cols-[minmax(0,1fr)_20rem]`). Below it the rail is stacked under the whole form and
+the top panel is the only thing telling a customer what they are booking before they fill
+anything in; at and above it the rail is beside the form and permanently in view, so the second
+copy is noise. Exactly one appointment and exactly one "Alterar" at any width.
+
+Both suggested resolutions in the original were rejected for the same reason: they answer one
+viewport and break the other. Dropping the top panel makes a phone user scroll past every field
+first; dropping the rail's "Alterar" leaves the desktop control two hundred pixels above the
+fold on a long form.
+
+The comment on the panel says which breakpoint and why, because the failure mode from here is a
+reader deleting one of the two as a duplicate. The test asserts the class rather than computed
+visibility — jsdom loads no stylesheet and evaluates no media query, so every responsive utility
+in this app is inert under vitest. That is a weaker assertion than a rendered one and a much
+stronger one than nothing: without it the two panels are indistinguishable from the duplication
+this entry records.
+
+**Step 3 has a lesser version of the same shape and is deliberately left alone.** Its summary
+card states the appointment in long form ("Sábado, 5 de setembro" over "00:30 – 02:00") inside
+the `<dl>` that is the record of what is being sent, beside "Onde" and the note, and it carries
+no control; the rail states it compactly with the page's single "Alterar". One control, two
+registers, and the review block stays complete at every width — but it is still the same
+appointment twice on a desktop viewport, and somebody may want it resolved the same way.
+
+## #117 (original) — Checkout step 2 shows the same appointment twice, with two identical "Alterar" buttons
 
 The approved mockups give step 2 a "MARCAÇÃO ESCOLHIDA" panel at the top of the form *and* a
 "QUANDO" panel in the shared rail. Both print the same date and time, in the same words (they
@@ -2822,7 +2852,26 @@ places to make it.
 
 ---
 
-## #118 — Step 3 still carries the pre-redesign rail
+## ~~#118 — Step 3 still carries the pre-redesign rail~~ — RESOLVED 2026-09-02
+
+`/booking/$bookingId/confirm` renders `CheckoutRail`. Its bespoke card is gone, and with it the
+last copy of a price panel this flow had three of. The page the customer commits on now shows
+what the two that led there showed: the trust line (`Studio X · 4,2 ★ · Verificado`, off fields
+the query had been fetching and not printing), the "QUANDO" panel with the appointment in the
+service's zone, "Deslocação — Incluída" where the provider is the one travelling, and the two
+promises the platform can actually keep.
+
+Everything the page already did survived, and each of these has a test that fails without it:
+the `EXPIRED` split (`holdLapsedUnsent` vs `requestWentUnanswered`), `BookingOutcomePanel`'s
+per-status sentences, the sent panel ending checkout here rather than at the `/bookings`
+placeholder, the countdown's `sending` guard — which moved into the rail's `countdown` slot and
+was re-checked by deleting it — and the commission's absence, re-checked by injecting a real
+"Taxa Ntizo" row formatted with the page's own `formatAmount`.
+
+The send button, the failure message and "Nada é cobrado agora" are the rail's `children`, which
+is what that prop exists for.
+
+## #118 (original) — Step 3 still carries the pre-redesign rail
 
 Steps 1 and 2 render the shared `CheckoutRail`; step 3 still has its own bespoke card — provider
 name, service name, price, no trust line, no "QUANDO" panel, no `Deslocação` line. The
@@ -2836,3 +2885,85 @@ booking that has them.
 
 **Trigger:** the step 3 redesign, or any change to what the rail prints — because that is the
 moment the two cards start disagreeing about the same booking.
+
+---
+
+## #119 — A booking's `locationType` is read live from the service, not snapshotted
+
+`bookingReadModel.locationType` comes from a `leftJoin` on `catalog.service`. Every other term of
+the agreement — `serviceName`, `optionName`, `priceMinor`, `commissionBps`, the whole address —
+is copied onto the booking at creation, precisely so a later edit cannot rewrite what was bought.
+`booking.schema.ts` argues that at length. A live join is the opposite of it.
+
+**This is #113's argument, on a field where the drift is visible rather than subtle.** Read that
+entry first: `provider.timezone` is live for the same shape of reason and the same shape of
+cost, and the two want fixing in one change if either is fixed at all.
+
+The distinction that matters is against the two fields beside it. `providerVerified` and
+`providerRatingAverage` are also live, and correctly so: they are not terms of the booking, they
+are what the platform asserts about a business **today**, and a badge frozen at draft time would
+go on claiming a document the platform has since withdrawn. Where the work happens is not that.
+It is a term of what the customer agreed to, in the same class as the price and the package name.
+
+The case that decides it is a provider who switches a service from `at_customer` to
+`at_provider` — the barber who stops doing house calls. Nothing about the existing booking
+changed; the customer agreed to a callout and paid for one. But every checkout and booking screen
+reading this field then says "No espaço dele" about a job the provider is travelling to, and the
+rail's "Deslocação — Incluída" line — a claim about money — disappears from the same booking. The
+customer is shown terms nobody agreed to, and the provider's own record says the same.
+
+**The cost is a column and a migration, which is why it waited.** `ProviderSnapshotReaderPort`
+already fetches at creation; the service row is read in the same command for `durationMinutes`
+and the price, so the snapshot gains one field and no new query. The column is
+`location_type text NOT NULL` and the backfill is `UPDATE … FROM catalog.service`, trivially
+total since `booking.service_id` is `NOT NULL` and `service.location_type` is `NOT NULL`. Then
+the `leftJoin` goes and the field can stop being nullable.
+
+The change that added it was a visual pass over three checkout pages, and the value it carries is
+byte-identical either way for every booking whose service has not been edited — which is what
+makes it safe to defer, and why nobody notices it is outstanding unless this entry says so.
+
+**A note on the join.** It is a `leftJoin` even though `booking.service_id` is a `NOT NULL` FK
+with no cascade, which means an inner join could not drop a row either — and a probe confirms it:
+switching it to `innerJoin` leaves the projection suite green. The left join is not justified by
+a case it catches, then, but by the asymmetry of being wrong. A needless left join costs one
+nullable field the rail already handles; an inner join that ever failed to match would remove a
+booking from its own customer's checkout, which then tells them nothing is being held for them,
+and nothing anywhere would fail. Mutating the rating's left join to inner on this branch produced
+exactly that outcome, silently. Snapshotting the column ends the question.
+
+**Trigger:** the first provider who changes a published service's location type while a booking
+for it is open — or #113 being taken, since both are one migration on the same table and the same
+argument twice.
+
+---
+
+## #120 — Five of the eight locales are substantially untranslated, and checkout now shows it
+
+Roughly **300 strings per locale are byte-identical to their English source** in `de-DE`,
+`es-ES`, `fr-FR`, `it-IT` and `nl-NL` — about a fifth of the 1,549 keys each carries. (`pt-MZ`
+and `pt-PT` sit at 52, which is close to the floor: "M-Pesa", "/h", "OK" and other strings that
+are legitimately the same in both languages.) It is worst in `onboarding.json`, where 82 of 90
+keys are still English in every one of the five, and `provider.json`, at roughly 100 each.
+
+**Pre-existing, and this task neither caused it nor widened it — but it moved.**
+`directory.filterWhereOption` is one of the untranslated keys, and the checkout rail now prints
+it on all three steps rather than on step 1 alone, joined to a duration that *is* translated. A
+French customer reviewing what they are about to pay for reads "At your place · 240 min" under a
+French heading, beside a French price. Mixed inside one line is more conspicuous than mixed
+across a filter panel, which is where that key used to live.
+
+Not fixed here, and deliberately not partially fixed. `filterWhereOption` is four strings out of
+roughly thirty untranslated ones in `directory.json` alone — its own section heading,
+`filterWhere` ("Where it happens"), is English in all five — so translating the four this branch
+happens to render would leave the file exactly as half-English as it found it, while making the
+gap harder to measure. The honest unit of work is a locale, or at least a namespace.
+
+Worth noting that this is a different failure from the one the checkout brief warns about. That
+one is *four new keys translated into otherwise-English files*, which produces a bilingual
+heading in a screen somebody is actively building. This is the standing backlog underneath it,
+and no amount of care on new copy reduces it.
+
+**Trigger:** the first non-Portuguese launch market, or any decision to show a language picker to
+customers — because until then nothing routes a real reader to these files, and after it
+everything does.

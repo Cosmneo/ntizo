@@ -103,6 +103,14 @@ function bookingFixture(status: BookingDTO["status"]): BookingDTO {
     providerRatingAverage: 4.2,
     optionName: "Corte e barba",
     durationMinutes: 90,
+    // **`at_provider`, which is deliberately not the branch the rail draws
+    // its extra line from.** The rail prints "Deslocação — Incluída" only
+    // where the *provider* travels — `at_customer` and `flexible` — so a
+    // fixture on one of those could not tell a page that reads the booking
+    // apart from one that hardcodes the interesting case, and neither could
+    // it fail if the line stopped being conditional. The tests that want the
+    // travel line override this to `at_customer`.
+    locationType: "at_provider",
     priceMinor: 90000,
     commissionBps: 1000,
     commissionMinor: 9000,

@@ -121,6 +121,14 @@ function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
     providerRatingAverage: 4.2,
     optionName: "Corte e barba",
     durationMinutes: 90,
+    // **`at_provider`, which is deliberately not the branch the rail draws
+    // its extra line from.** The rail prints "Deslocação — Incluída" only
+    // where the *provider* travels — `at_customer` and `flexible` — so a
+    // fixture on one of those could not tell a page that reads the booking
+    // apart from one that hardcodes the interesting case, and neither could
+    // it fail if the line stopped being conditional. The tests that want the
+    // travel line override this to `at_customer`.
+    locationType: "at_provider",
     priceMinor: 90000,
     commissionBps: 1000,
     commissionMinor: 9000,
@@ -583,6 +591,64 @@ describe("DetailsPage", () => {
     expect(screen.queryByText("4,2")).not.toBeInTheDocument();
     expect(screen.queryByText("0,0")).not.toBeInTheDocument();
     expect(screen.queryByText("Verificado")).not.toBeInTheDocument();
+  });
+
+  it("shows the appointment once at any one width, not twice", async () => {
+    // **Both panels are in the document and exactly one is ever visible.**
+    // They say the same thing with the same "Alterar" — deliberately, because
+    // two wordings of one appointment make whichever the customer checks
+    // against the other look wrong — so the layout, not the content, decides
+    // which is on screen. `lg` is the breakpoint the page's own grid switches
+    // on (`lg:grid-cols-[minmax(0,1fr)_20rem]`): below it the rail is stacked
+    // under the whole form and this panel is the only one a customer reads
+    // before filling anything in; at and above it the rail is beside the form
+    // and permanently in view, and a second copy inches away is noise.
+    //
+    // Asserted on the class rather than on visibility because jsdom loads no
+    // stylesheet and computes no media query — every responsive utility in
+    // this app is inert here. That makes this a weaker test than a rendered
+    // one, and a stronger one than the alternative: with neither, the two
+    // panels are indistinguishable from the duplication follow-up #117
+    // records, and the next reader deletes one of them as redundant.
+    renderDetails({ bookingId: "bk-1" });
+
+    // Both eyebrows sit in a header row (label on the left, "Alterar" on the
+    // right) inside their own panel, so the panel is two levels up from each.
+    const chosen = await screen.findByText(/marcação escolhida/i);
+    expect(chosen.parentElement?.parentElement).toHaveClass("lg:hidden");
+    // And the rail's copy is *not* hidden at that width, or the appointment
+    // would vanish altogether on a desktop viewport rather than move.
+    const railWhen = screen.getByText(/^quando$/i);
+    expect(railWhen.parentElement?.parentElement).not.toHaveClass("lg:hidden");
+  });
+
+  it("says where the work happens as well as how long it takes", async () => {
+    // The mockup's second line, which this page could not print until
+    // `bookingReadModel` carried a location type: it had the length alone,
+    // and "Em sua casa" was a sentence the booking could not answer. Both
+    // panels word it identically, through one helper — a reader who meets the
+    // page on a phone and on a laptop must not be told the appointment
+    // differently each time.
+    renderDetails({ bookingId: "bk-1" });
+
+    await waitFor(() =>
+      expect(screen.getAllByText("No espaço dele · 90 min")).toHaveLength(2),
+    );
+    // A barber's shop: the customer travels, so the rail must not claim the
+    // travel is included. The fixture is on this branch precisely so the
+    // opposite case below cannot pass by accident.
+    expect(screen.queryByText("Deslocação")).not.toBeInTheDocument();
+  });
+
+  it("claims the travel is included only for a job at the customer's", async () => {
+    renderDetails({
+      bookingId: "bk-1",
+      booking: bookingFixture({ locationType: "at_customer" }),
+    });
+
+    await waitFor(() => expect(screen.getAllByText("Em sua casa · 90 min")).toHaveLength(2));
+    expect(screen.getByText("Deslocação")).toBeInTheDocument();
+    expect(screen.getByText("Incluída")).toBeInTheDocument();
   });
 
   it("reads the slot back in the service's zone, not the device's", async () => {

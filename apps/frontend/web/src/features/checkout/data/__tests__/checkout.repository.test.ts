@@ -53,6 +53,12 @@ const READ_BY_THE_PAGES = [
   "providerVerified",
   "providerRatingAverage",
   "optionName",
+  "durationMinutes",
+  // Where the work happens. The rail prints it under the appointment and
+  // decides from it whether "Deslocação — Incluída" is a true sentence, so a
+  // document that stopped asking would not blank a line — it would drop the
+  // travel claim on every booking and look like a design decision.
+  "locationType",
   "priceMinor",
   "currency",
   "startsAt",

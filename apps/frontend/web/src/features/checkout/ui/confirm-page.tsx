@@ -8,17 +8,17 @@ import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
 import { useMyAddresses } from "@/features/account/viewmodel/use-addresses";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
-import { formatAmount } from "@/features/directory/services/domain/service-card";
 import type {
   CheckoutBooking,
   SubmitBookingAddress,
 } from "@/features/checkout/viewmodel/use-checkout";
 import { useMyBooking, useSendBookingRequest } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
+import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import { readDraftDetails } from "@/features/checkout/domain/draft-store";
 import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
-import { slotWording } from "@/features/checkout/domain/slot-wording";
+import { compactSlotWording, slotWording } from "@/features/checkout/domain/slot-wording";
 import {
   BookingOutcomePanel,
   SentPanel,
@@ -78,6 +78,13 @@ function toSubmitAddress(address: AddressDTO): SubmitBookingAddress {
  * radio group with one live option and two greyed ones offers a decision
  * nobody can make and invites the customer to want the thing they cannot
  * have.
+ *
+ * **The rail is the shared one, not a card of its own.** This page used to
+ * carry a fourth copy — provider name, service name, price, and none of the
+ * trust line — so the screen a customer actually commits on looked unlike the
+ * two that led them to it, and the score and badge its own query fetches went
+ * unprinted. Its send button, its refusal message and "Nada é cobrado agora"
+ * are the rail's `children`; the countdown is its `countdown`.
  *
  * **The phone number is collected on step 2 and only read back here.** The
  * two mutations are unchanged and still both happen on this page — setting a
@@ -260,6 +267,25 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
   // page that prints the browser's answer tells the customer a different
   // appointment to the one the provider is expecting them for.
   const when = slotWording(booking.startsAt, booking.endsAt, locale, booking.timezone);
+  // The rail's own shorter wording of the same instants, from the same zone
+  // argument. Two clocks on one page make whichever the customer checks
+  // against the other look wrong, so the compact form is a second *format*
+  // and never a second source.
+  const railSlot = compactSlotWording(
+    booking.startsAt,
+    booking.endsAt,
+    locale,
+    booking.timezone,
+  );
+
+  /** Back to step 1, on the package this booking is for — the rail's "Alterar". */
+  function changeSlot() {
+    void navigate({
+      to: "/book/$serviceId",
+      params: { serviceId: booking.serviceId },
+      search: { optionId: booking.serviceOptionId },
+    });
+  }
 
   function send() {
     // Both already decided above, and both send the customer back to step 2
@@ -431,72 +457,86 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
             {/* 100px, not 0: the site header is 84px and sticky, so a rail
                 pinned to the top of the viewport would slide under it. */}
             <aside className="grid gap-4 lg:sticky lg:top-[100px]">
-              <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
-                {/* `expiresAt` is nullable because the column is. The service
-                    and the option are not: they come off the booking, so the
-                    countdown always has somewhere to send the customer when
-                    the hold lapses.
-
-                    `sending` is what stops the last seconds of the hold from
-                    navigating out from under a request that is landing — see
-                    the prop's own doc comment. This is the only page that can
-                    have a write in flight, which is why step 2 passes
-                    nothing. */}
-                {booking.expiresAt ? (
-                  <div className="mb-4">
+              {/* **The same rail as steps 1 and 2**, not a fourth card that
+                  prints the same booking. This page carried its own until now
+                  — provider name, service name, price, and none of the trust
+                  line — so the page the customer actually commits on was the
+                  one page of three that looked unlike the two that led there,
+                  and the score and badge the query already fetches for it were
+                  never printed. See follow-up #118, which this closes. */}
+              <CheckoutRail
+                // `bookingReadModel` carries no picture, and the rail draws
+                // its own placeholder rather than being handed a guess.
+                imageUrl={null}
+                serviceName={booking.serviceName}
+                providerName={booking.providerName}
+                providerRatingAverage={booking.providerRatingAverage}
+                providerVerified={booking.providerVerified}
+                optionName={booking.optionName}
+                slot={railSlot}
+                locationType={booking.locationType}
+                durationMinutes={booking.durationMinutes}
+                priceMinor={booking.priceMinor}
+                currency={booking.currency}
+                // Back to step 1, on this booking's own package. The summary
+                // on the left is the record of what is being sent and carries
+                // no control of its own, so this is the page's single way to
+                // change the time — never two "Alterar" buttons for one
+                // appointment, which is what follow-up #117 is about.
+                onChangeSlot={changeSlot}
+                countdown={
+                  // `expiresAt` is nullable because the column is. The service
+                  // and the option are not: they come off the booking, so the
+                  // countdown always has somewhere to send the customer when
+                  // the hold lapses.
+                  //
+                  // `sending` is what stops the last seconds of the hold from
+                  // navigating out from under a request that is landing — see
+                  // the prop's own doc comment. This is the only page that can
+                  // have a write in flight, which is why step 2 passes
+                  // nothing.
+                  booking.expiresAt ? (
                     <CheckoutCountdown
                       expiresAt={booking.expiresAt}
                       serviceId={booking.serviceId}
                       optionId={booking.serviceOptionId}
                       sending={request.pending}
                     />
-                  </div>
-                ) : null}
+                  ) : undefined
+                }
+              >
+                {/* One block rather than three loose children: the rail lays
+                    its own slots out on a `gap-5` grid, and a refusal, a
+                    button, and the sentence explaining what the button does
+                    are one thought rather than three sections of a card. */}
+                <div className="grid gap-3">
+                  {request.failed && (
+                    <p role="alert" className="text-sm text-[var(--color-destructive)]">
+                      {request.errorCode
+                        ? t(`submitError.${request.errorCode}`, {
+                            defaultValue: t("submitErrorGeneric"),
+                          })
+                        : t("submitErrorGeneric")}
+                    </p>
+                  )}
 
-                <p className="type-caption text-[var(--color-muted-foreground)]">
-                  {booking.providerName}
-                </p>
-                <h2 className="type-h3 mt-1 font-semibold">{booking.serviceName}</h2>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={request.pending || !address || !msisdn}
+                  >
+                    {t("sendAction")}
+                  </Button>
 
-                {/* The price the customer pays, exactly as the provider set
-                    it. No fee line and no breakdown, because there is nothing
-                    to break down: the commission comes out of the provider's
-                    payout, so a split shown here would invent a charge the
-                    customer is not being asked for. The query behind this
-                    page does not even fetch it. */}
-                <p className="type-h3 mt-4 font-semibold tabular-nums">
-                  {formatAmount(booking.priceMinor, booking.currency, locale)}
-                </p>
-                <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
-                  {booking.optionName}
-                </p>
-
-                {request.failed && (
-                  <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">
-                    {request.errorCode
-                      ? t(`submitError.${request.errorCode}`, {
-                          defaultValue: t("submitErrorGeneric"),
-                        })
-                      : t("submitErrorGeneric")}
+                  {/* The mockup's own promise, and the one sentence on this
+                      page that would have been a lie under the old ordering.
+                      Directly under the button rather than at the foot of the
+                      card: it is the answer to what pressing it does. */}
+                  <p className="type-caption text-center text-[var(--color-muted-foreground)]">
+                    {t("nothingChargedNow")}
                   </p>
-                )}
-
-                <Button
-                  type="submit"
-                  className="mt-4 w-full"
-                  disabled={request.pending || !address || !msisdn}
-                >
-                  {t("sendAction")}
-                </Button>
-
-                {/* The mockup's own promise, and the one sentence on this
-                    page that would have been a lie under the old ordering.
-                    Directly under the button rather than at the foot of the
-                    card: it is the answer to what pressing it does. */}
-                <p className="type-caption mt-3 text-center text-[var(--color-muted-foreground)]">
-                  {t("nothingChargedNow")}
-                </p>
-              </div>
+                </div>
+              </CheckoutRail>
             </aside>
           </div>
         </form>

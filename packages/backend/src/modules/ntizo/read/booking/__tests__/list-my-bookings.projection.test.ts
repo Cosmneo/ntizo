@@ -132,6 +132,12 @@ beforeAll(async () => {
       providerId,
       categoryId,
       sourceLocale: "pt-MZ",
+      // Deliberately NOT `at_customer`, the value checkout's rail draws its
+      // extra "Deslocação — Incluída" line from and the one every frontend
+      // fixture for these pages uses. A reader that hardcoded the interesting
+      // branch, or that fell back to it, would still look right against a
+      // fixture on it — the same reasoning the provider's `Europe/Lisbon`
+      // above is chosen for.
       locationType: "at_provider",
       status: "published",
     })
@@ -360,6 +366,11 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         // that disagreed with the booking.
         expect(own?.serviceId).toBe(serviceId);
         expect(own?.serviceOptionId).toBe(serviceOptionId);
+        // Joined off `service`, which `booking` has no column for — so like
+        // the timezone above, this can only have come from the join. Checkout
+        // prints it under the appointment ("No espaço dele · 60 min") and
+        // decides from it whether it may claim the travel is included.
+        expect(own?.locationType).toBe("at_provider");
         // **Asserted here as well as on the list, because this is the query
         // checkout actually reads.** `SELECTED_COLUMNS` is shared by both, so
         // they are hard to make disagree — but "hard to break" is not the

@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { booking } from "../../../../../shared/infrastructure/database/booking/schemas";
+import { service } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import {
   provider,
   providerDocument,
@@ -27,6 +28,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       .select(selectedColumns(reviewAgg, verifiedAgg))
       .from(booking)
       .innerJoin(provider, eq(provider.id, booking.providerId))
+      .leftJoin(service, eq(service.id, booking.serviceId))
       .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
       .where(eq(booking.customerId, customerId))
@@ -47,6 +49,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       .select(selectedColumns(reviewAgg, verifiedAgg))
       .from(booking)
       .innerJoin(provider, eq(provider.id, booking.providerId))
+      .leftJoin(service, eq(service.id, booking.serviceId))
       .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
       // Both halves in the `WHERE`, never an id lookup followed by an
@@ -138,18 +141,28 @@ function coerceRating(average: string | null): number | null {
  * rather than a constant only because the aggregate subqueries are built per
  * call.
  *
- * **Three columns are not `booking`'s.** `provider.timezone` is joined in —
+ * **Four columns are not `booking`'s.** `provider.timezone` is joined in —
  * the booking table has no zone of its own, and the instants below mean
  * nothing without one — with an `innerJoin` rather than a left one, because
  * `booking.provider_id` is `NOT NULL` and references `provider.id`, so that
  * join can never drop a row.
  *
- * The other two are the business's live review score and verified badge,
+ * Two more are the business's live review score and verified badge,
  * `leftJoin`ed: an inner join would silently hide every booking whose
  * provider has no reviews or no accepted document, which is most of them, and
  * the customer's list would simply come back short with nothing failing. See
- * `bookingReadModel` for why these two alone are read live rather than
- * snapshotted.
+ * `bookingReadModel` for why these two alone are read live *by design*.
+ *
+ * The fourth is `service.location_type`, which checkout's rail turns into
+ * "Em sua casa · 240 min" and into whether it may claim the travel is
+ * included. **`leftJoin`ed even though the FK would let it be inner**, and
+ * deliberately not on the same reasoning as `provider` above: that reasoning
+ * is right and the bet is still not worth taking, because the two outcomes
+ * are not comparable. A left join that never finds nothing costs one nullable
+ * field the consumer already handles. An inner join that ever fails to match
+ * removes the booking from its own customer's checkout, which then tells them
+ * nothing is being held for them — and nothing anywhere fails. Mutating the
+ * rating's left join to inner on this branch produced exactly that, silently.
  */
 function selectedColumns(
   reviewAgg: ReturnType<typeof reviewAggregate>,
@@ -168,6 +181,12 @@ function selectedColumns(
     providerVerifiedId: verifiedAgg.providerId,
     optionName: booking.optionName,
     durationMinutes: booking.durationMinutes,
+    /**
+     * Off `service`, not `booking` — the booking table has no such column.
+     * Null only where the left join found nothing, which the `NOT NULL` FK
+     * makes unreachable; see `selectedColumns`' own note on the joins.
+     */
+    locationType: service.locationType,
     priceMinor: booking.priceMinor,
     commissionBps: booking.commissionBps,
     commissionMinor: booking.commissionMinor,

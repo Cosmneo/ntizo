@@ -16,7 +16,7 @@ import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import type { CheckoutBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { useMyBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
-import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
+import { CheckoutRail, useWhereAndLength } from "@/features/checkout/ui/checkout-rail";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import {
   canStoreDraftDetails,
@@ -220,7 +220,6 @@ function DetailsSkeleton() {
 
 function Details({ booking }: { booking: CheckoutBooking }) {
   const { t, i18n } = useTranslation("checkout");
-  const { t: td } = useTranslation("directory");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
 
@@ -377,6 +376,13 @@ function Details({ booking }: { booking: CheckoutBooking }) {
     locale,
     booking.timezone,
   );
+  // Computed once here and handed to both panels through one helper, so the
+  // copy below `lg` and the rail's above it cannot word the same appointment
+  // two ways — see `useWhereAndLength`.
+  const { line: whereAndLength } = useWhereAndLength(
+    booking.locationType,
+    booking.durationMinutes,
+  );
 
   return (
     <>
@@ -402,11 +408,21 @@ function Details({ booking }: { booking: CheckoutBooking }) {
             </p>
 
             {/* What they picked on step 1, at the top of the step that asks
-                them for everything else — and the way back to change it. The
-                rail carries the same panel, so this one is what a customer on
-                a narrow screen reads before filling anything in, where the
-                rail has stacked below the form. */}
-            <div className="mt-8 rounded-[var(--radius-card)] bg-[var(--color-muted)] p-4">
+                them for everything else — and the way back to change it.
+
+                **`lg:hidden`, and it is not a duplicate to delete.** This
+                panel and the rail's "QUANDO" say the same thing with the same
+                "Alterar", so exactly one of them may be on screen at a time.
+                `lg` is the breakpoint because it is the one the grid above
+                switches on (`lg:grid-cols-[minmax(0,1fr)_20rem]`): below it
+                the rail is stacked *under* the whole form, so without this
+                panel a customer scrolls past every field before learning what
+                they are booking; at and above it the rail is beside the form
+                and permanently in view, and a second copy inches away is
+                noise. Neither can be dropped for the other — they answer
+                different layouts, not different content. See follow-up #117
+                for the version of this page that shipped both at once. */}
+            <div className="mt-8 rounded-[var(--radius-card)] bg-[var(--color-muted)] p-4 lg:hidden">
               <div className="flex items-baseline justify-between gap-3">
                 <p className={FIELD_LABEL}>{t("detailsChosenLabel")}</p>
                 <button
@@ -420,12 +436,14 @@ function Details({ booking }: { booking: CheckoutBooking }) {
               <p className="type-body-medium mt-1 font-semibold tabular-nums">
                 {t("railWhen", { date: slot.date, start: slot.start, end: slot.end })}
               </p>
-              {/* The length and nothing else. `bookingReadModel` carries no
-                  location type, so "Em sua casa" is a sentence this page
-                  cannot know is true — and the mockup's version of this line
-                  is the one thing on it the booking cannot answer. */}
+              {/* Worded exactly as the rail words its own second line, and
+                  from the same two facts — the two panels are one design and
+                  a reader who meets them on two devices must not be told
+                  different things. `where` disappears on its own for a
+                  booking whose service carries no location type, which is the
+                  `leftJoin`'s answer rather than a state the data can reach. */}
               <p className="type-caption text-[var(--color-muted-foreground)]">
-                {td("serviceDurationMinutes", { count: booking.durationMinutes })}
+                {whereAndLength}
               </p>
             </div>
 
@@ -646,11 +664,8 @@ function Details({ booking }: { booking: CheckoutBooking }) {
               pinned to the top of the viewport would slide under it. */}
           <aside className="grid gap-4 lg:sticky lg:top-[100px]">
             <CheckoutRail
-              // `bookingReadModel` carries no picture and no location type.
-              // Both are absent rather than guessed: the rail draws its own
-              // placeholder for the first, and leaves out "Deslocação —
-              // Incluída" for the second, which is the safe direction for a
-              // claim about money.
+              // `bookingReadModel` carries no picture, and the rail draws its
+              // own placeholder rather than being handed a guess.
               imageUrl={null}
               serviceName={booking.serviceName}
               providerName={booking.providerName}
@@ -658,7 +673,12 @@ function Details({ booking }: { booking: CheckoutBooking }) {
               providerVerified={booking.providerVerified}
               optionName={booking.optionName}
               slot={slot}
-              locationType={null}
+              // Off the booking now rather than passed as `null`: without it
+              // the rail lost "Em sua casa" and its whole "Deslocação —
+              // Incluída" line on the two steps that have only a booking, so
+              // one flow's shared rail said different things on step 1 and on
+              // the two that follow it.
+              locationType={booking.locationType}
               durationMinutes={booking.durationMinutes}
               priceMinor={booking.priceMinor}
               currency={booking.currency}

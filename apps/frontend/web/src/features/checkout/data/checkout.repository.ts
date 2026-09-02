@@ -114,6 +114,12 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
  * payout — so it stays off this document, and the test below reads the
  * document to prove it.
  *
+ * `locationType` is the rail's second line — "Em sua casa · 240 min" — and
+ * the fact it decides "Deslocação — Incluída" from. Steps 2 and 3 had neither
+ * until it was on the booking, so the rail they share with step 1 quietly
+ * lost a line halfway through one purchase. It is read live off the service
+ * today, which is a gap rather than a decision — see follow-up #119.
+ *
  * `timezone` is asked for because `startsAt` and `endsAt` are instants and
  * step 3 prints them. Without it the only clock a browser has is its own, and
  * a service in `Africa/Maputo` read on a device clocked to UTC would tell the
@@ -135,7 +141,7 @@ export const BOOKING_FIELDS = `
       id status
       serviceId serviceOptionId
       serviceName providerName providerSlug providerVerified providerRatingAverage
-      optionName durationMinutes
+      optionName durationMinutes locationType
       priceMinor currency
       startsAt endsAt timezone
       addressLabel addressLine addressCity addressDistrict addressDirections

@@ -40,6 +40,15 @@ export interface BookingListRow {
   optionName: string;
   durationMinutes: number;
 
+  /**
+   * Where the work happens, joined off `service` rather than read off
+   * `booking` — there is no such column. Null only ever means the `leftJoin`
+   * found nothing, which a `NOT NULL` FK makes unreachable; see
+   * `bookingReadModel.locationType` for why the join is left anyway, and for
+   * why this one is live where the rest of the agreement is snapshotted.
+   */
+  locationType: string | null;
+
   priceMinor: number;
   commissionBps: number;
   commissionMinor: number;
