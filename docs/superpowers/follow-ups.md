@@ -3184,3 +3184,26 @@ being folded into the component that exposed it.
 **Trigger:** before this list ships to a provider with more than two people on it — which is the
 only kind of provider the list exists for — or the first report of a customer told that a
 professional has nothing free on a day the grid is showing times for.
+
+## #124 — The backend suite loses tests against the shared dev database under load
+
+Across twelve consecutive full `bun run test` runs from the repo root, the backend workspace lost
+tests twice — once `booking-sweep.test.ts` alone, once four tests spread across files. Both were
+green on re-run, and the backend suite run by itself is 1524/0.
+
+The soak that found it was itself hammering that database, so what cannot yet be told apart is
+**degradation under load** from **an underlying race** between suites sharing one Postgres. The
+distinguishing experiment is a soak of the backend suite alone, at the same repetition count, on an
+otherwise quiet machine: if it stays clean, the cause is contention with the other workspaces
+turbo runs in parallel; if it does not, two suites are stepping on each other's rows.
+
+It is not a `waitFor` bound — that was #112, and it is fixed. This is the `CONNECT_TIMEOUT`-class
+flakiness every implementer on this branch has been warned about, finally measured rather than
+mentioned.
+
+The cost is the one that matters on a branch this size: a suite that reddens at random teaches
+whoever meets it to re-run rather than read, and the next real regression arrives looking exactly
+like the noise.
+
+**Trigger:** the next unexplained backend red, or before anyone wires the suite into a gate that
+blocks a merge on a single run.
