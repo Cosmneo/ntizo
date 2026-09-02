@@ -25,6 +25,18 @@ export interface BookingListRow {
   serviceName: string;
   providerName: string;
   providerSlug: string;
+  /**
+   * The business's verified badge and score, joined live rather than
+   * snapshotted — see `bookingReadModel`'s own comment on the pair for why
+   * these two are the one place this row deliberately reports today's answer
+   * instead of what was agreed.
+   *
+   * The average is already a rounded `number` by the time it is a row: the
+   * repository coerces Postgres's string-or-null `avg()` on the way out, so
+   * nothing downstream has to know that `avg()` is not a number.
+   */
+  providerVerified: boolean;
+  providerRatingAverage: number | null;
   optionName: string;
   durationMinutes: number;
 

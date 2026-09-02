@@ -79,6 +79,7 @@
   "providersPrevious": "Vorige",
   "providersNext": "Volgende",
   "providerVerified": "Geverifieerd",
+  "railRatingOutOfFive": "van de 5",
   "providerNoReviews": "Nog geen beoordelingen",
   "providerRatingLabel": "{{score}} van 5, uit {{count}} beoordeling",
   "providerRatingLabel_other": "{{score}} van 5, uit {{count}} beoordelingen",

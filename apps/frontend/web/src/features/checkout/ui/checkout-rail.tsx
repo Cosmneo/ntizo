@@ -1,7 +1,24 @@
 import { useTranslation } from "react-i18next";
-import { Check, ImageIcon } from "lucide-react";
+import { BadgeCheck, Check, ImageIcon, Star } from "lucide-react";
 import { formatAmount } from "@/features/directory/services/domain/service-card";
 import type { CompactSlot } from "@/features/checkout/domain/slot-wording";
+
+/**
+ * A review score to one decimal, in the reader's own numerals and separator —
+ * "4,8" in `pt-MZ`, "4.8" in `en-US`.
+ *
+ * Pinned to exactly one decimal rather than left to `Intl`'s default, so a
+ * business on a round 5 reads "5,0" beside one on "4,8" instead of a bare "5"
+ * that looks like a different kind of number. The value is already rounded to
+ * one decimal server-side — see `coerceReviewAggregate` — so this is
+ * presentation only and cannot disagree with the provider's own page.
+ */
+function formatRating(rating: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(rating);
+}
 
 /**
  * Whether the *provider* travels to the job, which is the only reading under
@@ -41,6 +58,8 @@ export function CheckoutRail({
   imageUrl,
   serviceName,
   providerName,
+  providerRatingAverage,
+  providerVerified,
   optionName,
   slot,
   locationType,
@@ -56,6 +75,14 @@ export function CheckoutRail({
   imageUrl: string | null;
   serviceName: string;
   providerName: string;
+  /**
+   * The business's average review score, or **null when nobody has reviewed
+   * it** — in which case the score is left out of the line entirely rather
+   * than shown as a zero. Zero is a score a person could have given.
+   */
+  providerRatingAverage: number | null;
+  /** Whether the platform has accepted at least one of the business's documents. */
+  providerVerified: boolean;
   /** Which package is being booked — printed so a fallback substitution is never silent. */
   optionName: string | null;
   /**
@@ -137,13 +164,48 @@ export function CheckoutRail({
         )}
         <div className="min-w-0">
           <h2 className="type-body-medium font-semibold">{serviceName}</h2>
-          {/* The provider's name alone. The mockup adds their rating and a
-              "Verificado" badge beside it; neither reaches this page —
-              `serviceDetailReadModel` publishes no rating and no verified flag
-              (only the browse card's `serviceReadModel` does) and
-              `bookingReadModel` publishes neither either. Inventing them here
-              would be worse than leaving them out. */}
-          <p className="type-caption text-[var(--color-muted-foreground)]">{providerName}</p>
+          {/* The trust line: who it is, what people have said about them, and
+              whether the platform has seen their documents. It is the reason a
+              customer holding a slot believes somebody will turn up, which is
+              why both halves were added to `serviceDetailReadModel` and
+              `bookingReadModel` rather than dropped for not being there.
+
+              Each half disappears on its own when it has nothing to say — an
+              unreviewed business shows no score rather than a zero, and an
+              unverified one shows no badge rather than a greyed-out promise —
+              so the line degrades to the name alone rather than to a row of
+              blanks. */}
+          <p className="type-caption flex flex-wrap items-center gap-x-1.5 text-[var(--color-muted-foreground)]">
+            <span className="truncate">{providerName}</span>
+            {providerRatingAverage !== null && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-0.5 tabular-nums">
+                  {formatRating(providerRatingAverage, locale)}
+                  <Star
+                    className="h-3 w-3 fill-[var(--color-warning)] text-[var(--color-warning)]"
+                    aria-hidden="true"
+                  />
+                  {/* The star is decorative; without this the score is
+                      announced as a bare number with nothing saying what it
+                      measures. */}
+                  <span className="sr-only">{td("railRatingOutOfFive")}</span>
+                </span>
+              </>
+            )}
+            {providerVerified && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-0.5">
+                  <BadgeCheck
+                    className="h-3.5 w-3.5 text-[var(--color-success)]"
+                    aria-hidden="true"
+                  />
+                  {td("providerVerified")}
+                </span>
+              </>
+            )}
+          </p>
         </div>
       </div>
 

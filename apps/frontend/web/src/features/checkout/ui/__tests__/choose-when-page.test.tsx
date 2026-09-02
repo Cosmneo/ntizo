@@ -122,6 +122,12 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
     providerSlug: "studio-x",
     providerType: "organization",
     providerLogoUrl: null,
+    // **Deliberately not the defaults.** `false` and `null` are exactly what
+    // a rail that never read these two would render, so a fixture carrying
+    // them could not tell "published" from "forgotten". 4.8 and verified can
+    // only appear on screen if the fields actually travelled.
+    providerVerified: true,
+    providerRatingAverage: 4.8,
     providerCity: "Maputo",
     providerDistrict: null,
     categoryCode: "hair",
@@ -1018,6 +1024,19 @@ describe("ChooseWhenPage", () => {
     await screen.findByRole("button", { name: /^09:00/ });
     expect(screen.getByText(/escolha uma data e uma hora/i)).toBeInTheDocument();
     expect(screen.queryByText(/17:00/)).not.toBeInTheDocument();
+  });
+
+  it("carries the provider's score and verified badge into the rail", async () => {
+    // The trust line, end to end from `serviceById`: it is the reason a
+    // customer about to hold a slot believes somebody will turn up, and both
+    // halves had to be added to `serviceDetailReadModel` to get here — the
+    // detail row used to `Omit` them so the joins could be skipped.
+    renderChooseWhen({ serviceId: "svc-1" });
+    await screen.findByRole("button", { name: /^09:00/ });
+
+    expect(screen.getByText("Studio X")).toBeInTheDocument();
+    expect(screen.getByText("4,8")).toBeInTheDocument();
+    expect(screen.getByText("Verificado")).toBeInTheDocument();
   });
 
   it("renders the rail for a service with no priced package at all", async () => {

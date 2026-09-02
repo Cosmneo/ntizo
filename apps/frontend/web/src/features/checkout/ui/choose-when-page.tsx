@@ -659,6 +659,8 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
               imageUrl={service.imageUrls[0] ?? null}
               serviceName={service.name}
               providerName={service.providerName}
+              providerRatingAverage={service.providerRatingAverage}
+              providerVerified={service.providerVerified}
               optionName={option?.name ?? null}
               slot={railSlot}
               locationType={service.locationType}

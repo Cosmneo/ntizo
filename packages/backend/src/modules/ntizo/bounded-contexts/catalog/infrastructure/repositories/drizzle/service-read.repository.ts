@@ -622,6 +622,14 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     if (!UUID.test(id)) return null;
 
     const db = getDb();
+    // The same two aggregates `listPublished` builds, on this page for the
+    // first time: the service page and checkout's rail both print the
+    // business's score and its verified badge beside its name. One row is
+    // being fetched, so the cost is one keyed lookup into each aggregate
+    // rather than the whole-table scan a browse page pays.
+    const reviewAgg = reviewAggregate(db);
+    const verifiedAgg = verifiedAggregate(db);
+
     const [row] = await db
       .select({
         id: service.id,
@@ -633,6 +641,10 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         providerLogoKey: provider.logoKey,
         providerCity: provider.addressCity,
         providerDistrict: provider.addressDistrict,
+        providerRatingAverage: reviewAgg.average,
+        providerReviewCount: reviewAgg.count,
+        /** Null when the left join found nothing — see `verifiedAggregate`. */
+        providerVerifiedId: verifiedAgg.providerId,
         categoryId: category.id,
         categoryCode: category.code,
         status: service.status,
@@ -644,6 +656,12 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       .from(service)
       .innerJoin(category, eq(category.id, service.categoryId))
       .innerJoin(provider, eq(provider.id, service.providerId))
+      // `leftJoin` on both, never inner, for the reason `listPublished`
+      // spells out: an inner join drops a service whose provider has no
+      // reviews or no accepted document, which is most of them — and here it
+      // would turn a real, published service into a 404.
+      .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
+      .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
       .where(eq(service.id, id))
       .limit(1);
 
@@ -669,13 +687,26 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
       : [];
 
     // Dropped from `rest` on purpose: the read model carries the category's
-    // resolved name, not its id. The underscore is the signal base.js defines
-    // for "destructured deliberately, and deliberately not used" — the same
-    // rule the sibling at line 355 does not need, because that one goes on to
-    // match translations against it.
-    const { categoryId: _categoryId, ...rest } = row;
+    // resolved name, not its id. `providerReviewCount` goes the same way —
+    // the review join has to select it to be worth running, and
+    // `ServiceDetailRow` deliberately does not carry it. `providerVerifiedId`
+    // is dropped because the row publishes the boolean derived from it below,
+    // not the id. The underscore is the signal base.js defines for
+    // "destructured deliberately, and deliberately not used".
+    const {
+      categoryId: _categoryId,
+      providerVerifiedId,
+      providerReviewCount: _providerReviewCount,
+      ...rest
+    } = row;
     return {
       ...rest,
+      // `avg()` comes back a string on Postgres and null on an empty group,
+      // and neither is the number `serviceDetailReadModel` promises — see
+      // `coerceReviewAggregate` for the rounding, which has to match the
+      // provider page's or one business carries two different numbers.
+      providerRatingAverage: coerceReviewAggregate(row).providerRatingAverage,
+      providerVerified: providerVerifiedId !== null,
       // The page's own chooser lists cheapest first, which is also the order
       // the "from" price on the browse card is taken from. One order, so the
       // number a reader arrived expecting is the first one they see here.

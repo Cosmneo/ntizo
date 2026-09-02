@@ -248,6 +248,8 @@ function detailService(over: Partial<ServiceDetailDTO> = {}): ServiceDetailDTO {
     providerSlug: "barbearia",
     providerType: "organization",
     providerLogoUrl: null,
+    providerVerified: true,
+    providerRatingAverage: 4.8,
     providerCity: "Maputo",
     providerDistrict: null,
     categoryCode: "hair",

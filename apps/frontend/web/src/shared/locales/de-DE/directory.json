@@ -79,6 +79,7 @@
   "providersPrevious": "Zurück",
   "providersNext": "Weiter",
   "providerVerified": "Verifiziert",
+  "railRatingOutOfFive": "von 5",
   "providerNoReviews": "Noch keine Bewertungen",
   "providerRatingLabel": "{{score}} von 5, aus {{count}} Bewertung",
   "providerRatingLabel_other": "{{score}} von 5, aus {{count}} Bewertungen",

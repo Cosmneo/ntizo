@@ -25,6 +25,8 @@ export function toBookingDTO(row: BookingListRow): BookingDTO {
     serviceName: row.serviceName,
     providerName: row.providerName,
     providerSlug: row.providerSlug,
+    providerVerified: row.providerVerified,
+    providerRatingAverage: row.providerRatingAverage,
     optionName: row.optionName,
     durationMinutes: row.durationMinutes,
     priceMinor: row.priceMinor,

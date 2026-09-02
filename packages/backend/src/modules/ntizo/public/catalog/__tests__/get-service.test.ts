@@ -18,6 +18,12 @@ const row = (over = {}) => ({
   providerLogoKey: null,
   providerCity: "Maputo",
   providerDistrict: "Malhazine",
+  // **Deliberately not the defaults.** `false`/`null` are what a projection
+  // that dropped these two fields would produce anyway, so a fixture carrying
+  // them could not tell "passed through" from "forgotten". `4.8` and `true`
+  // can only appear downstream if this row's own values got there.
+  providerVerified: true,
+  providerRatingAverage: 4.8,
   categoryCode: "hair",
   categoryTranslations: [{ locale: "pt-MZ", name: "Cabeleireiro", description: null }],
   status: "published",
@@ -67,6 +73,27 @@ describe("GetServiceProjection", () => {
     expect(out?.name).toBe("Fotografia de casamentos");
     expect(out?.options.map((o) => o.amountMinor)).toEqual([35000, 50000]);
     expect(out?.options[0]?.name).toBe("Cerimónia");
+  });
+
+  it("publishes the provider's verified badge and score", async () => {
+    // The trust line checkout's rail prints beside the business's name, and
+    // the reason a customer about to hold a slot believes somebody will turn
+    // up. `getPublishedById` used to omit both — the row type `Omit`ted them
+    // so the joins could be skipped — and this is the assertion that keeps
+    // them coming through now that the joins are paid for.
+    const out = await make(row()).execute({ id: "svc-1", locale: "pt-MZ" });
+    expect(out?.providerVerified).toBe(true);
+    expect(out?.providerRatingAverage).toBe(4.8);
+  });
+
+  it("reports no score for a business nobody has reviewed, rather than zero", async () => {
+    // Null, never 0. Zero is a score a person could have given, and printing
+    // it would tell every visitor this is the worst business on the platform.
+    const out = await make(
+      row({ providerRatingAverage: null, providerVerified: false }),
+    ).execute({ id: "svc-1", locale: "pt-MZ" });
+    expect(out?.providerRatingAverage).toBeNull();
+    expect(out?.providerVerified).toBe(false);
   });
 
   it("returns null when there is no such service", async () => {

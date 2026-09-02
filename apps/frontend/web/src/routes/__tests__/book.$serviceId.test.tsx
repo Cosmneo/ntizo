@@ -64,6 +64,8 @@ function serviceFixture(id: string): ServiceDetailDTO {
     providerSlug: "studio-x",
     providerType: "organization",
     providerLogoUrl: null,
+    providerVerified: true,
+    providerRatingAverage: 4.8,
     providerCity: "Maputo",
     providerDistrict: null,
     categoryCode: "hair",

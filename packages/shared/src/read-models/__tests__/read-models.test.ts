@@ -455,6 +455,12 @@ describe("bookingReadModel", () => {
     serviceName: "Avaria eléctrica urgente",
     providerName: "Hélder Cossa",
     providerSlug: "helder-cossa-electricidade",
+    // The rail's trust line, read live off `provider` rather than snapshotted
+    // with the rest — see the schema's own comment on the pair. Not the
+    // defaults: `false`/`null` are what a mapper that dropped both would
+    // produce, so a fixture carrying them could not tell that apart.
+    providerVerified: true,
+    providerRatingAverage: 4.8,
     optionName: "Diagnóstico e reparação",
     durationMinutes: 60,
     priceMinor: 120000,

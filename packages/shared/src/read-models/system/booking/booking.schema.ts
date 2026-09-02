@@ -71,6 +71,34 @@ export const bookingReadModel = z.object({
   serviceName: z.string(),
   providerName: z.string(),
   providerSlug: z.string(),
+  /**
+   * The business's verified badge and review score — **read live, not
+   * snapshotted, and deliberately so.**
+   *
+   * Every other provider field here is a snapshot, because what the customer
+   * agreed to must not change under them. These two are the opposite case:
+   * they are not terms of the booking, they are what the platform currently
+   * asserts about the business, and a customer looking at a request they have
+   * not sent yet wants today's answer. A verified badge frozen at the moment
+   * of a draft would go on claiming a document the platform has since
+   * withdrawn.
+   *
+   * Joined the same way `timezone` above is, off `provider`, and the same
+   * two aggregates the catalogue's own reader builds — see
+   * `DrizzleBookingReadRepository` for the copy and why it is one.
+   *
+   * They are here because checkout's rail is shared across its steps and
+   * prints one line — `Hélder Cossa · 4,8 ★ · Verificado`. Step 1 reads it
+   * off `serviceDetailReadModel`, which publishes the same two fields; steps
+   * 2 and 3 have only the booking, and a rail that quietly lost its trust
+   * line halfway through a purchase is a worse page than the one that was
+   * approved.
+   *
+   * Null average for a business nobody has reviewed, never 0 — see
+   * `serviceReadModel.providerRatingAverage` for that argument in full.
+   */
+  providerVerified: z.boolean(),
+  providerRatingAverage: z.number().nullable(),
   optionName: z.string(),
   durationMinutes: z.number().int().positive(),
 

@@ -104,6 +104,16 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
  * fact is one too many: a shared or bookmarked link could name a service that
  * disagreed with the booking, and nothing would notice.
  *
+ * `providerVerified` and `providerRatingAverage` are the rail's trust line —
+ * `Hélder Cossa · 4,8 ★ · Verificado`. **Asking for them is not a crack in
+ * the commission's absence**, and the distinction is worth stating because
+ * both are decisions about what checkout may see: these two are already
+ * public, rendered on every browse card and on the provider's own page, and
+ * they are what a customer about to hold a slot is deciding on. The
+ * commission is neither public nor theirs — it comes out of the provider's
+ * payout — so it stays off this document, and the test below reads the
+ * document to prove it.
+ *
  * `timezone` is asked for because `startsAt` and `endsAt` are instants and
  * step 3 prints them. Without it the only clock a browser has is its own, and
  * a service in `Africa/Maputo` read on a device clocked to UTC would tell the
@@ -124,7 +134,8 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
 export const BOOKING_FIELDS = `
       id status
       serviceId serviceOptionId
-      serviceName providerName providerSlug optionName durationMinutes
+      serviceName providerName providerSlug providerVerified providerRatingAverage
+      optionName durationMinutes
       priceMinor currency
       startsAt endsAt timezone
       addressLabel addressLine addressCity addressDistrict addressDirections

@@ -47,6 +47,11 @@ const READ_BY_THE_PAGES = [
   "serviceOptionId",
   "serviceName",
   "providerName",
+  // The rail's trust line. Both are already public — every browse card prints
+  // them — and they are what a customer about to hold a slot is deciding on,
+  // which is why they are asked for here while the commission is not.
+  "providerVerified",
+  "providerRatingAverage",
   "optionName",
   "priceMinor",
   "currency",

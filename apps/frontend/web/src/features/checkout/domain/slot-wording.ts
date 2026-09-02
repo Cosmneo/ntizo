@@ -18,7 +18,7 @@ export interface SlotWording {
 }
 
 /**
- * The same appointment written short, for the rail: "4/09" rather than
+ * The same appointment written short, for the rail: "sexta, 4/09" rather than
  * "Sábado, 5 de setembro".
  *
  * A second shape rather than a `short`/`long` flag on `SlotWording`, because
@@ -29,13 +29,20 @@ export interface SlotWording {
  */
 export interface CompactSlot {
   /**
-   * The civil date as **the locale's own short form**, whatever that turns out
-   * to be — "4/09" in `pt-MZ` and `pt-PT`, "Sep 4" in `en-US`, "4 sept." in
-   * `fr-FR`. The mockup writes "4 Set", and the CLDR data for the launch
-   * locale simply does not: it resolves a numeric day and month to a numeric
-   * short date. Hand-writing month abbreviations per locale to match the
-   * picture is exactly the job `Intl` exists to do, and it would be eight
-   * more strings to keep in step.
+   * The weekday and the civil date, in **the locale's own short forms** —
+   * "sexta, 4/09" in `pt-MZ`, "Fri, Sep 4" in `en-US`, "ven. 4 sept." in
+   * `fr-FR`.
+   *
+   * The mockup writes "4 Set", and CLDR for the launch locale simply does
+   * not: `pt-MZ` and `pt-PT` resolve a short day-and-month to a numeric
+   * "4/09". Hand-writing month abbreviations to match the picture is exactly
+   * the job `Intl` exists to do, and would be eight more strings to keep in
+   * step, in only one of which anybody would ever notice a mistake.
+   *
+   * **The weekday is here because it is the half a customer actually checks.**
+   * "4/09" alone is a date somebody has to convert before they know whether
+   * they are free; "sexta" is the word they are holding in their head. It is
+   * still `Intl`'s answer rather than ours.
    */
   date: string;
   start: string;
@@ -129,6 +136,7 @@ export function compactSlotWording(
     // midnight belongs to the day it began on, which is the day the customer
     // will be waiting.
     date: new Intl.DateTimeFormat(locale, {
+      weekday: "short",
       day: "numeric",
       month: "short",
       timeZone,

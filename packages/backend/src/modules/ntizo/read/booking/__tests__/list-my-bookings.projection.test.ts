@@ -368,6 +368,18 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         // than the column default, for the reason the provider fixture gives.
         expect(own?.timezone).toBe("Europe/Lisbon");
 
+        // **The booking came back at all, and that is the assertion.** The
+        // business's score and verified badge are `leftJoin`ed off two
+        // aggregates; this fixture's provider has no published review and no
+        // accepted document, so both aggregates have nothing for it. An
+        // inner join would make this booking vanish from a customer's own
+        // checkout — a page that simply says "nothing is being held for you"
+        // — rather than fail anything. Null and false are the honest answers
+        // for a business nobody has reviewed and nobody has verified; zero
+        // would tell the customer this is the worst provider on the platform.
+        expect(own?.providerRatingAverage).toBeNull();
+        expect(own?.providerVerified).toBe(false);
+
         // The assertion this test exists for: customer A asking for customer
         // B's booking, by its real id, gets nothing.
         const stolen = await byId.execute({

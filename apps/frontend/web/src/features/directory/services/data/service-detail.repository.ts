@@ -5,7 +5,8 @@ import { publicGraphql } from "@/shared/lib/graphql/public-graphql";
 /** Its own exported constant so a test can assert the page's fields are in it. */
 export const SERVICE_DETAIL_FIELDS = `
   id providerId providerName providerSlug providerType providerLogoUrl
-  providerCity providerDistrict categoryCode categoryName
+  providerCity providerDistrict providerVerified providerRatingAverage
+  categoryCode categoryName
   name description locationType bookingMode imageUrls isFallback
   options { id name amountMinor currency durationMinutes minMinutes stepMinutes pricingMode isDefault }
   performers { id firstName avatarUrl }`;
