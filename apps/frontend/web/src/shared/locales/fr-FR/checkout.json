@@ -4,6 +4,7 @@
   "stepWhen": "Date et heure",
   "stepDetails": "Détails",
   "stepConfirm": "Confirmer",
+  "secureCheckout": "Réservation sécurisée",
   "chooseWhenTitle": "Choisissez la date et l'heure",
   "chooseWhenIntro": "En continuant, nous vous réservons cet horaire pendant que vous complétez le reste.",
   "hourlyNotBookable": "Ce service est facturé à l'heure et ne peut pas encore être réservé ici. Revenez au service et écrivez au prestataire pour convenir d'un horaire.",

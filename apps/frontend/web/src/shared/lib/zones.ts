@@ -18,13 +18,18 @@ export function canAccessProvider(
 }
 
 /**
- * The zones that bring their own navigation.
+ * The zones that bring their own chrome.
  *
  * `/provider` and `/admin` each have a sidebar with its own trigger in the
  * header, so the customer bottom bar on top of that is a second navigation
  * offering four destinations that lead out of the zone you are working in.
+ *
+ * `/book` and `/booking` are checkout. Its header is the steps and a lock,
+ * and that is deliberate: a slot is on hold while those pages are open, and
+ * every destination the bottom bar offers leads away from it. The way out is
+ * the back link, or the logo — see `CheckoutHeader`.
  */
-const OWN_CHROME = ["provider", "admin"];
+const OWN_CHROME = ["provider", "admin", "book", "booking"];
 
 /**
  * Whether this path belongs to a zone that draws its own navigation.

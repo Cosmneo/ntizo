@@ -16,9 +16,9 @@ import { DetailsPage } from "@/features/checkout/ui/details-page";
  *
  * Outside `_customer` deliberately. That layout has the guard this page
  * wants, but it also has the account chrome — a sidebar of settings pages
- * around a purchase in progress. Checkout keeps the plain site header its
- * first step uses, so the guard is repeated here rather than the shell
- * inherited.
+ * around a purchase in progress. Checkout wears its own header
+ * (the steps and a lock, no navigation), so the guard is repeated here
+ * rather than the shell inherited.
  */
 export const Route = createFileRoute("/booking/$bookingId/details")({
   ssr: false,

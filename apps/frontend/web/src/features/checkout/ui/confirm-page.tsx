@@ -5,7 +5,7 @@ import { ArrowLeft, Smartphone } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
-import { SiteHeader } from "@/shared/components/site-header";
+import { CheckoutHeader } from "@/features/checkout/ui/checkout-header";
 import { useMyAddresses } from "@/features/account/viewmodel/use-addresses";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import type {
@@ -15,7 +15,6 @@ import type {
 import { useMyBooking, useSendBookingRequest } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
 import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
-import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import { readDraftDetails } from "@/features/checkout/domain/draft-store";
 import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
 import { compactSlotWording, slotWording } from "@/features/checkout/domain/slot-wording";
@@ -180,15 +179,12 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
   return <Confirm booking={booking} />;
 }
 
-/** The header, the step marker and the page frame — everything true before the booking is. */
+/** The header and the page frame — everything true before the booking is. */
 function ConfirmShell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SiteHeader current="services" />
-      <main className="page-shell py-8">
-        <CheckoutSteps current="confirm" />
-        <div className="mt-8">{children}</div>
-      </main>
+      <CheckoutHeader current="confirm" />
+      <main className="page-shell py-8">{children}</main>
     </>
   );
 }
@@ -338,7 +334,7 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
 
   return (
     <>
-      <SiteHeader current="services" />
+      <CheckoutHeader current="confirm" />
 
       <main className="page-shell py-8">
         <Link
@@ -363,8 +359,7 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
         >
           <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
             <div className="min-w-0">
-              <CheckoutSteps current="confirm" />
-              <h1 className="type-h1 mt-4">{t("confirmTitle")}</h1>
+              <h1 className="type-h1">{t("confirmTitle")}</h1>
               <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
                 {t("confirmIntro")}
               </p>
@@ -454,9 +449,9 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
               </section>
             </div>
 
-            {/* 100px, not 0: the site header is 84px and sticky, so a rail
+            {/* 80px, not 0: the checkout header is 64px and sticky, so a rail
                 pinned to the top of the viewport would slide under it. */}
-            <aside className="grid gap-4 lg:sticky lg:top-[100px]">
+            <aside className="grid gap-4 lg:sticky lg:top-[80px]">
               {/* **The same rail as steps 1 and 2**, not a fourth card that
                   prints the same booking. This page carried its own until now
                   — provider name, service name, price, and none of the trust

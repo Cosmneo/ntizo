@@ -44,6 +44,7 @@ function RootComponent() {
   // its trigger in their header. The customer bottom bar over that is a second
   // navigation whose four destinations all lead out of the zone the person is
   // working in, and it covered the last row of every list on a phone.
+  // Checkout is in the same list, for its own reason — see `zoneOwnsChrome`.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ownChrome = zoneOwnsChrome(pathname);
 

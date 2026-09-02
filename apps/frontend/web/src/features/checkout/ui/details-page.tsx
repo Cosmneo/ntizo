@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, TriangleAlert } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { Button, Input, Skeleton } from "@ntizo/frontend-ui";
-import { SiteHeader } from "@/shared/components/site-header";
+import { CheckoutHeader } from "@/features/checkout/ui/checkout-header";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { AddressForm } from "@/features/account/ui/address-form";
 import {
@@ -17,7 +17,6 @@ import type { CheckoutBooking } from "@/features/checkout/viewmodel/use-checkout
 import { useMyBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
 import { CheckoutRail, useWhereAndLength } from "@/features/checkout/ui/checkout-rail";
-import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import {
   canStoreDraftDetails,
   readDraftDetails,
@@ -195,15 +194,12 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
   return <Details booking={booking} />;
 }
 
-/** The header, the step marker and the page frame — everything that is true before the booking is. */
+/** The header and the page frame — everything that is true before the booking is. */
 function DetailsShell({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <SiteHeader current="services" />
-      <main className="page-shell py-8">
-        <CheckoutSteps current="details" />
-        <div className="mt-8">{children}</div>
-      </main>
+      <CheckoutHeader current="details" />
+      <main className="page-shell py-8">{children}</main>
     </>
   );
 }
@@ -386,7 +382,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
 
   return (
     <>
-      <SiteHeader current="services" />
+      <CheckoutHeader current="details" />
 
       <main className="page-shell py-8">
         <Link
@@ -401,8 +397,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
 
         <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="min-w-0">
-            <CheckoutSteps current="details" />
-            <h1 className="type-h1 mt-4">{t("detailsTitle")}</h1>
+            <h1 className="type-h1">{t("detailsTitle")}</h1>
             <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
               {t("detailsIntro")}
             </p>
@@ -667,9 +662,9 @@ function Details({ booking }: { booking: CheckoutBooking }) {
             )}
           </div>
 
-          {/* 100px, not 0: the site header is 84px and sticky, so a rail
+          {/* 80px, not 0: the checkout header is 64px and sticky, so a rail
               pinned to the top of the viewport would slide under it. */}
-          <aside className="grid gap-4 lg:sticky lg:top-[100px]">
+          <aside className="grid gap-4 lg:sticky lg:top-[80px]">
             <CheckoutRail
               // `bookingReadModel` carries no picture, and the rail draws its
               // own placeholder rather than being handed a guess.

@@ -4,6 +4,7 @@
   "stepWhen": "Date and time",
   "stepDetails": "Details",
   "stepConfirm": "Confirm",
+  "secureCheckout": "Secure checkout",
   "chooseWhenTitle": "Choose a date and time",
   "chooseWhenIntro": "Continuing holds this time for you while you fill in the rest.",
   "hourlyNotBookable": "This service is charged by the hour and can't be booked here yet. Go back to the service and message the provider to arrange it.",

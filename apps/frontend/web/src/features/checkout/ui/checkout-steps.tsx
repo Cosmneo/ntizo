@@ -31,6 +31,13 @@ const LABEL_KEY: Record<CheckoutStep, string> = {
  * marker digits are hidden from them: read aloud, a row of "1 2 3" beside
  * three labels is noise, where one sentence naming the position is the whole
  * fact.
+ *
+ * The connectors shrink below `sm`. The row lives in the checkout header, and
+ * at 390px the three Portuguese names with 24px lines between them came to a
+ * few pixels more than the shell — which put "3 Confirmar" alone on a third
+ * line under the logo. Halving the lines is what fits, and the names are the
+ * part worth keeping. A language whose names are longer still wraps, which
+ * `flex-wrap` handles; nothing overflows.
  */
 export function CheckoutSteps({ current }: { current: CheckoutStep }) {
   const { t } = useTranslation("checkout");
@@ -41,7 +48,7 @@ export function CheckoutSteps({ current }: { current: CheckoutStep }) {
       <p className="sr-only">
         {t("stepOf", { current: currentIndex + 1, total: CHECKOUT_STEPS.length })}
       </p>
-      <ol className="flex list-none flex-wrap items-center gap-2 p-0">
+      <ol className="flex list-none flex-wrap items-center gap-1.5 p-0 sm:gap-2">
         {CHECKOUT_STEPS.map((step, index) => {
           const done = index < currentIndex;
           const active = index === currentIndex;
@@ -70,7 +77,7 @@ export function CheckoutSteps({ current }: { current: CheckoutStep }) {
               {index < CHECKOUT_STEPS.length - 1 && (
                 <span
                   aria-hidden="true"
-                  className="mx-1 h-px w-6 bg-[var(--color-border)]"
+                  className="mx-0.5 h-px w-3 bg-[var(--color-border)] sm:mx-1 sm:w-6"
                 />
               )}
             </li>

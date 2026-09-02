@@ -6,7 +6,7 @@ import type { AddressDTO } from "@ntizo/shared";
 import type { ServiceDetailDTO, ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
 import { addDays, localDateAt } from "@ntizo/shared/datetime";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
-import { SiteHeader } from "@/shared/components/site-header";
+import { CheckoutHeader } from "@/features/checkout/ui/checkout-header";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { endOfStart, startsByDate, weekOf } from "@/features/directory/availability/domain/day-strip";
 import { distinctMemberIds, panelMode } from "@/features/directory/availability/domain/types";
@@ -26,7 +26,6 @@ import { useCreateBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { saveDraftDetails } from "@/features/checkout/domain/draft-store";
 import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
-import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 
 /** What `/book/$serviceId` carries in its URL. */
 interface BookSearch {
@@ -232,7 +231,7 @@ export function ChooseWhenPage({ serviceId }: { serviceId: string }) {
   if (!service) {
     return (
       <>
-        <SiteHeader current="services" />
+        <CheckoutHeader current="when" />
         <main className="page-shell py-12">
           <EmptyCard
             framed
@@ -713,7 +712,7 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
 
   return (
     <>
-      <SiteHeader current="services" />
+      <CheckoutHeader current="when" />
 
       <main className="page-shell py-8">
         <Link
@@ -727,8 +726,7 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
 
         <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="min-w-0">
-            <CheckoutSteps current="when" />
-            <h1 className="type-h1 mt-4">{t("chooseWhenTitle")}</h1>
+            <h1 className="type-h1">{t("chooseWhenTitle")}</h1>
             <p className="type-body mt-2 text-[var(--color-muted-foreground)]">
               {t("chooseWhenIntro")}
             </p>
@@ -745,9 +743,9 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
             <div className="mt-8">{body}</div>
           </div>
 
-          {/* 100px, not 0: the site header is 84px and sticky, so a rail
+          {/* 80px, not 0: the checkout header is 64px and sticky, so a rail
               pinned to the top of the viewport would slide under it. */}
-          <aside className="grid gap-4 lg:sticky lg:top-[100px]">
+          <aside className="grid gap-4 lg:sticky lg:top-[80px]">
             {/* No `onChangeSlot`: this page *is* where the slot is changed,
                 and an "Alterar" pointing at the grid two inches to its left
                 would be a control that does nothing. */}
