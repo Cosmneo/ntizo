@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Check } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
 
 /** The three pages of checkout, in the order a customer walks them. */
@@ -27,17 +28,22 @@ const LABEL_KEY: Record<CheckoutStep, string> = {
  * is what the browser's own back button and the "back to the service" link
  * are for.
  *
- * The "Step 1 of 3" sentence is rendered for screen readers only, and the
- * marker digits are hidden from them: read aloud, a row of "1 2 3" beside
- * three labels is noise, where one sentence naming the position is the whole
- * fact.
+ * One shape at every width, laid out two ways. A marker is a 28px circle:
+ * filled with a tick once the step is done, filled with its number and a
+ * soft halo while it is the one being taken, an outline with a grey number
+ * ahead of that. Below `md` the three take the whole row — equal columns,
+ * the name under each marker, one line running marker to marker that turns
+ * blue as far as the customer has come. That line is drawn by each column
+ * from its own marker's edge to the next column's, which is why it is
+ * absolutely positioned rather than a flex sibling: a flex line between two
+ * `flex-1` columns has no width of its own to claim. From `md` the same
+ * markers sit in one row with the name beside each, joined by short fixed
+ * connectors, which is the shape a 64px header bar has room for.
  *
- * The connectors shrink below `sm`. The row lives in the checkout header, and
- * at 390px the three Portuguese names with 24px lines between them came to a
- * few pixels more than the shell — which put "3 Confirmar" alone on a third
- * line under the logo. Halving the lines is what fits, and the names are the
- * part worth keeping. A language whose names are longer still wraps, which
- * `flex-wrap` handles; nothing overflows.
+ * The "Step 1 of 3" sentence is rendered for screen readers only, and the
+ * marker digits and ticks are hidden from them: read aloud, a row of "1 2 3"
+ * beside three labels is noise, where one sentence naming the position is
+ * the whole fact.
  */
 export function CheckoutSteps({ current }: { current: CheckoutStep }) {
   const { t } = useTranslation("checkout");
@@ -48,36 +54,69 @@ export function CheckoutSteps({ current }: { current: CheckoutStep }) {
       <p className="sr-only">
         {t("stepOf", { current: currentIndex + 1, total: CHECKOUT_STEPS.length })}
       </p>
-      <ol className="flex list-none flex-wrap items-center gap-1.5 p-0 sm:gap-2">
+      <ol className="flex list-none items-start p-0 md:items-center md:gap-2">
         {CHECKOUT_STEPS.map((step, index) => {
           const done = index < currentIndex;
           const active = index === currentIndex;
+          const last = index === CHECKOUT_STEPS.length - 1;
+          const lineClass = done
+            ? "bg-[var(--color-primary)]"
+            : "bg-[var(--color-border-strong)]";
+
           return (
-            <li key={step} className="flex items-center gap-2">
+            <li
+              key={step}
+              className="relative flex flex-1 flex-col items-center gap-1.5 md:flex-none md:flex-row md:gap-2"
+            >
+              {/* The phone's line to the next marker. `top` is the marker's
+                  centre less half the line; the horizontal offsets are the
+                  marker's radius plus a little air, measured from this
+                  column's centre to the next one's. */}
+              {!last && (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute top-[13px] right-[calc(-50%+1.125rem)] left-[calc(50%+1.125rem)] h-0.5 rounded-full md:hidden",
+                    lineClass,
+                  )}
+                />
+              )}
+
               <span
                 aria-hidden="true"
                 className={cn(
-                  "grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold",
-                  active || done
-                    ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
-                    : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]",
+                  "grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold tabular-nums",
+                  done && "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]",
+                  active &&
+                    "bg-[var(--color-primary)] text-[var(--color-primary-foreground)] ring-4 ring-[color:color-mix(in_srgb,var(--color-primary)_18%,transparent)]",
+                  !done &&
+                    !active &&
+                    "border-2 border-[var(--color-border-strong)] bg-[var(--color-background)] text-[var(--color-muted-foreground)]",
                 )}
               >
-                {index + 1}
+                {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : index + 1}
               </span>
+
               <span
                 aria-current={active ? "step" : undefined}
                 className={cn(
-                  "type-caption",
-                  active ? "font-semibold" : "text-[var(--color-muted-foreground)]",
+                  "max-w-[7.5rem] text-center text-xs leading-tight md:max-w-none md:text-left md:text-sm",
+                  active
+                    ? "font-semibold text-[var(--color-foreground)]"
+                    : done
+                      ? "font-medium text-[var(--color-foreground)]"
+                      : "font-medium text-[var(--color-muted-foreground)]",
                 )}
               >
                 {t(LABEL_KEY[step])}
               </span>
-              {index < CHECKOUT_STEPS.length - 1 && (
+
+              {/* The desktop connector: a sibling in the row, with a width of
+                  its own. */}
+              {!last && (
                 <span
                   aria-hidden="true"
-                  className="mx-0.5 h-px w-3 bg-[var(--color-border)] sm:mx-1 sm:w-6"
+                  className={cn("hidden h-0.5 w-8 rounded-full md:block lg:w-10", lineClass)}
                 />
               )}
             </li>

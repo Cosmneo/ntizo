@@ -22,21 +22,27 @@ import { CheckoutSteps, type CheckoutStep } from "@/features/checkout/ui/checkou
  *
  * Three columns from `md`, for the reason `SiteHeader` gives: `mx-auto` on the
  * middle item centres it between two sides of different widths, so the steps
- * would sit a little off centre. Below `md` they take a second row under the
- * logo and the lock — 64px is not tall enough for three named steps beside a
- * logo on a 390px screen.
+ * would sit a little off centre. Below `md` the steps take a second row of
+ * their own, the whole width of it — the three markers spread across the
+ * screen with their names underneath, which is `CheckoutSteps`' phone shape.
+ *
+ * Sticky from `md` only. On a phone the bar is two rows tall, and pinning
+ * ninety-odd pixels to the top of a 660px viewport takes the calendar's
+ * first row off the screen while the customer scrolls for a time. The rail's
+ * own sticky offset only applies from `lg`, so nothing depends on the bar
+ * staying put below that.
  */
 export function CheckoutHeader({ current }: { current: CheckoutStep }) {
   const { t } = useTranslation("checkout");
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-background)]">
-      <div className="page-shell grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 py-3 md:h-16 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:py-0">
+    <header className="z-20 border-b border-[var(--color-border)] bg-[var(--color-background)] md:sticky md:top-0">
+      <div className="page-shell grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-4 pt-3 pb-4 md:h-16 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:py-0">
         <Link to="/" className="col-start-1 row-start-1 justify-self-start">
           <img src="/brand/logo-primary.svg" alt="Ntizo" className="h-7" />
         </Link>
 
-        <div className="col-span-2 row-start-2 md:col-span-1 md:col-start-2 md:row-start-1 md:justify-self-center">
+        <div className="col-span-2 row-start-2 w-full md:col-span-1 md:col-start-2 md:row-start-1 md:w-auto md:justify-self-center">
           <CheckoutSteps current={current} />
         </div>
 
