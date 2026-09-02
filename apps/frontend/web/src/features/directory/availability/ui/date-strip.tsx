@@ -45,6 +45,15 @@ const LOAD_COLOUR: Record<Exclude<DayLoad, "closed">, string> = {
  * "ocupado" slots the mockup drew: the availability response never carries a
  * time nobody is free at, so density is the only honest way to show a day
  * filling up.
+ *
+ * **Below `sm` the caption is the bare number.** Seven cards across a 390px
+ * screen are 44px wide, and "fechado" is 48px of a single word: it ran out
+ * of its card into the next one, so two closed days read "fechado fechado"
+ * across their shared edge, and "17 livres" broke onto two lines. The count
+ * alone fits, the bar beside it already says what the count is of, and a
+ * closed day gets a dash where the word was. The `aria-label` keeps the
+ * full wording at every width — it is built from `caption`, not from what
+ * is drawn.
  */
 export function DateStrip({
   week,
@@ -120,6 +129,8 @@ export function DateStrip({
             : closed
               ? t("availabilityDayClosed")
               : t("availabilityDayFree", { count });
+          // What a phone draws in the caption's place — see the doc comment.
+          const shortCaption = past ? null : closed ? "\u2013" : String(count);
 
           return (
             <button
@@ -214,7 +225,8 @@ export function DateStrip({
                   !selected && "text-[var(--color-muted-foreground)]",
                 )}
               >
-                {caption ?? "\u00a0"}
+                <span className="sm:hidden">{shortCaption ?? "\u00a0"}</span>
+                <span className="hidden sm:inline">{caption ?? "\u00a0"}</span>
               </span>
             </button>
           );
