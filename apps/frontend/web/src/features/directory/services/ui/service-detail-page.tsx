@@ -68,13 +68,24 @@ export function ServiceDetailPage({ id }: { id: string }) {
 /**
  * The service page proper, built to read like its provider's.
  *
- * Same skeleton as `ProviderDetailPage`, deliberately: breadcrumb, the photo
- * collage full width, then two columns — what the service is on the left,
- * what it costs and how to act on the right. A customer moves between these
- * two pages constantly (a service names its provider, a provider lists its
- * services), and two pages built from different parts make that movement feel
- * like leaving the site. The rail is sticky because it is the part a reader
- * acts on; the left column is the part they read once and scroll past.
+ * Breadcrumb, then two columns — the photo collage and everything the service
+ * *is* on the left, what it costs and how to act on the right. The rail is
+ * sticky because it is the part a reader acts on; the left column is the part
+ * they read once and scroll past.
+ *
+ * **The collage moved inside the left column; the header did not move.** The
+ * page used to open with a collage spanning the whole shell, which pushed the
+ * rail — the price, and the only button that starts a booking — a full
+ * gallery down the page, below the fold on every laptop. Putting the collage
+ * in the left column lets the rail start level with it, so the price is
+ * visible the moment the page is. Everything under the collage kept its
+ * order and its spacing: the title still follows the pictures, `mt-10` still
+ * measures the same 40px the grid's old `py-10` did.
+ *
+ * `ProviderDetailPage` still opens with a full-width collage. It is the same
+ * trade there and probably wants the same answer, but its rail and header are
+ * different components, so that is a separate move rather than this patch
+ * applied twice.
  *
  * **The packages moved out of the rail and into the body.** `PackageChooser`
  * held the radio list and the total together in a 22rem column, which is too
@@ -137,15 +148,21 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
       <main className="page-shell py-8">
         <Breadcrumb service={service} />
 
-        {/* No badge over the main photo, though `DetailGallery` offers the
-            slot: a verification tick belongs to the business, and this page's
-            title is a service. The rail says it in words instead, once, and
-            only when it is true. */}
-        <DetailGallery key={service.id} images={service.imageUrls} alt={service.name} />
-
-        <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        {/* `pb-10`, with no top padding: the collage is the first thing in
+            the left column now, so it starts straight under the breadcrumb
+            the way it used to when it spanned the whole shell. */}
+        <div className="grid gap-10 pb-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="min-w-0">
-            <header className="min-w-0">
+            {/* No badge over the main photo, though `DetailGallery` offers the
+                slot: a verification tick belongs to the business, and this
+                page's title is a service. The rail says it in words instead,
+                once, and only when it is true. */}
+            <DetailGallery key={service.id} images={service.imageUrls} alt={service.name} />
+
+            {/* `mt-10` reproduces exactly the gap the grid's old `py-10` put
+                between a full-width collage and this header. The collage
+                changed column; the distance a reader sees did not. */}
+            <header className="mt-10 min-w-0">
               {/* The eyebrow names the business first and links to it. On the
                   provider page the same line names the trade, because the
                   business is the title there; here the business is the thing

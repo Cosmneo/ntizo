@@ -17,15 +17,15 @@ async function renderSearch(initialValue = "") {
     path: "/",
     component: () => <ServiceSearch initialValue={initialValue} />,
   });
-  const providers = createRoute({
+  const services = createRoute({
     getParentRoute: () => root,
-    path: "/providers",
+    path: "/services",
     validateSearch: (s: Record<string, unknown>): { q?: string } =>
       typeof s["q"] === "string" && s["q"] ? { q: s["q"] } : {},
     component: () => <div>results</div>,
   });
   const router = createRouter({
-    routeTree: root.addChildren([home, providers]),
+    routeTree: root.addChildren([home, services]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
@@ -41,9 +41,13 @@ describe("ServiceSearch", () => {
     await user.type(screen.getByLabelText("Search services"), "canalizacao");
     await user.click(screen.getByRole("button", { name: "Search" }));
 
+    // The services browse, not the provider directory. The field asks for a
+    // service and the button says so; landing on a list of businesses instead
+    // is what made this box feel broken.
+    //
     // In the URL, not in component state: a results page you cannot link to
     // or reload is not a results page.
-    expect(router.state.location.pathname).toBe("/providers");
+    expect(router.state.location.pathname).toBe("/services");
     expect(router.state.location.search).toEqual({ q: "canalizacao" });
   });
 
@@ -64,7 +68,7 @@ describe("ServiceSearch", () => {
     await user.click(screen.getByRole("button", { name: "Search" }));
 
     // `?q=` empty would be a search for nothing; omitting it is the full list.
-    expect(router.state.location.pathname).toBe("/providers");
+    expect(router.state.location.pathname).toBe("/services");
     expect(router.state.location.search).toEqual({});
   });
 

@@ -34,12 +34,13 @@ export function Hero() {
 
       <SiteHeader overlay />
 
+      {/* A "MAPUTO · MATOLA · BEIRA" eyebrow used to sit above the headline.
+          It was three city names written into a translation file, and only one
+          of them has a listed business — so the first thing the page said was
+          a claim about coverage that the directory behind it contradicts. The
+          headline leads instead. */}
       <div className="page-shell pb-24 pt-32 text-center text-white">
-        <p className="font-rounded text-[13px] font-bold uppercase tracking-[0.14em] text-white/70">
-          {t("cities")}
-        </p>
-
-        <h1 className="font-rounded mt-4 text-[clamp(2.9rem,6.6vw,5rem)] font-extrabold leading-[1.02] tracking-[-0.035em] [text-shadow:0_2px_30px_rgba(0,0,0,.35)]">
+        <h1 className="font-rounded text-[clamp(2.9rem,6.6vw,5rem)] font-extrabold leading-[1.02] tracking-[-0.035em] [text-shadow:0_2px_30px_rgba(0,0,0,.35)]">
           {t("heroLine1")}{" "}
           <span style={{ color: ACCENT }}>{t("heroLine2")}</span>
           <br />
@@ -57,9 +58,14 @@ export function Hero() {
             <Star className="h-4 w-4 fill-[#f5a524] text-[#f5a524]" />
             {t("promiseRated")}
           </span>
+          {/* This one used to promise "payment held until it's done". There
+              is no on-platform payment to hold anything with — `/bookings` is
+              still a placeholder page and the messaging feature's own contact
+              block says as much in its copy. Messaging is the thing that does
+              work, so that is what the middle promise now claims. */}
           <span className="flex items-center gap-1.5 text-sm text-white/90">
             <Check className="h-4 w-4 text-[#8ef0b0]" />
-            {t("promiseEscrow")}
+            {t("promiseMessage")}
           </span>
           <span className="flex items-center gap-1.5 text-sm text-white/90">
             <Check className="h-4 w-4 text-[#8ef0b0]" />

@@ -53,17 +53,25 @@ export function ServicePerformers({
               className="flex w-20 flex-col items-center gap-1.5 text-center"
             >
               <Avatar className="h-14 w-14">
-                {/* `AvatarImage`, not a bare `<img>`. With both children
+                {/* Two decisions live on these two lines, and they answer
+                    different questions.
+
+                    `AvatarImage`, not a bare `<img>`: with both children
                     mounted, a photo that 404s still lays the element out at
                     its intrinsic (zero) content size holding `min-width:
                     auto`, which pushes the fallback outside the
                     `overflow-hidden` circle and clips it — so a dead photo
-                    rendered an empty circle here and the monogram never
-                    appeared. `AvatarImage` unmounts itself on `error`,
-                    leaving the fallback as the box's only child; see its own
-                    doc comment for why it is not Radix's primitive. The
-                    availability picker's rows already did this correctly,
-                    which is how the difference was noticed. */}
+                    rendered an empty circle and the monogram never appeared.
+                    `AvatarImage` unmounts itself on `error`, leaving the
+                    fallback as the box's only child. The availability
+                    picker's rows already did this correctly, which is how the
+                    difference was noticed.
+
+                    And the fallback stays the monogram rather than the brand
+                    mark, unlike everywhere else a picture can be missing:
+                    this circle stands for one person, and replacing a named
+                    individual with the platform's logo says the wrong thing
+                    about who is doing the work. */}
                 {performer.avatarUrl && <AvatarImage src={performer.avatarUrl} alt="" />}
                 <AvatarFallback>{initialsFrom(label)}</AvatarFallback>
               </Avatar>

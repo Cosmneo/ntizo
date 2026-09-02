@@ -10,7 +10,8 @@
     "myAccount": "Il mio account",
     "providers": "Operatori",
     "categories": "Categorie",
-    "activity": "Attività"
+    "activity": "Attività",
+    "reviews": "Recensioni"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -207,5 +208,34 @@
   "activityTitle": "Registro di controllo",
   "activityHint": "Che cosa hanno fatto gli amministratori sulla piattaforma.",
   "activityEmptyTitle": "Ancora nulla registrato",
-  "activityEmpty": "Approvazioni, sospensioni e modifiche al catalogo verranno registrate qui."
+  "activityEmpty": "Approvazioni, sospensioni e modifiche al catalogo verranno registrate qui.",
+  "reviewsTitle": "Recensioni",
+  "reviewsSubtitle": "Tutte le recensioni della piattaforma, e quali mostra la home page.",
+  "reviewsReview": "Recensione",
+  "reviewsBusiness": "Attività",
+  "reviewsRating": "Voto",
+  "reviewsStatus": "Stato",
+  "reviewsDate": "Lasciata il",
+  "reviewsAnonymous": "Anonimo",
+  "reviewsNoComment": "Senza commento — solo voto",
+  "reviewsOnHome": "In home page",
+  "reviewsPutOnHome": "Mostra in home",
+  "reviewsOnHomeFilter": "In home page",
+  "reviewsFeaturedCount": "{{count}} di {{max}} recensioni in home page",
+  "reviewsFeatureFull": "La home page mostra già {{max}} recensioni — togline una prima",
+  "reviewsCannotFeatureNoComment": "Una recensione senza testo non ha nulla da mostrare",
+  "reviewsFeatureFailed": "Non è stato possibile modificare la recensione. La home ne mostra al massimo {{max}}.",
+  "reviewsEmpty": "Nessuno ha ancora recensito un'attività.",
+  "reviewsEmptyTitle": "Nessuna recensione",
+  "reviewsNoMatches": "Nessuna recensione in home page per ora.",
+  "reviewsNoMatchesTitle": "Niente in evidenza",
+  "reviewsError": "Non è stato possibile caricare le recensioni.",
+  "reviewsPrevious": "Precedente",
+  "reviewsNext": "Successiva",
+  "reviewStatus": {
+    "published": "Pubblicata",
+    "hidden": "Nascosta"
+  },
+  "reviewsSearchPlaceholder": "Cerca un'attività, un nome o ciò che è stato scritto",
+  "reviewsAction": "Home page"
 }

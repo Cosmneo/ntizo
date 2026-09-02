@@ -10,7 +10,8 @@
     "myAccount": "Mon compte",
     "providers": "Prestataires",
     "categories": "Catégories",
-    "activity": "Activité"
+    "activity": "Activité",
+    "reviews": "Avis"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",
@@ -207,5 +208,34 @@
   "activityTitle": "Journal d’audit",
   "activityHint": "Ce que les administrateurs ont fait sur la plateforme.",
   "activityEmptyTitle": "Rien d’enregistré pour l’instant",
-  "activityEmpty": "Les validations, les suspensions et les modifications du catalogue seront consignées ici."
+  "activityEmpty": "Les validations, les suspensions et les modifications du catalogue seront consignées ici.",
+  "reviewsTitle": "Avis",
+  "reviewsSubtitle": "Tous les avis de la plateforme, et ceux que la page d'accueil affiche.",
+  "reviewsReview": "Avis",
+  "reviewsBusiness": "Entreprise",
+  "reviewsRating": "Note",
+  "reviewsStatus": "Statut",
+  "reviewsDate": "Déposé le",
+  "reviewsAnonymous": "Anonyme",
+  "reviewsNoComment": "Sans commentaire — note seule",
+  "reviewsOnHome": "Sur l'accueil",
+  "reviewsPutOnHome": "Afficher sur l'accueil",
+  "reviewsOnHomeFilter": "Sur l'accueil",
+  "reviewsFeaturedCount": "{{count}} avis sur {{max}} affichés sur l'accueil",
+  "reviewsFeatureFull": "L'accueil affiche déjà {{max}} avis — retirez-en un d'abord",
+  "reviewsCannotFeatureNoComment": "Un avis sans texte n'a rien à montrer",
+  "reviewsFeatureFailed": "Cet avis n'a pas pu être modifié. L'accueil en affiche {{max}} au maximum.",
+  "reviewsEmpty": "Personne n'a encore évalué d'entreprise.",
+  "reviewsEmptyTitle": "Aucun avis",
+  "reviewsNoMatches": "Aucun avis sur l'accueil pour l'instant.",
+  "reviewsNoMatchesTitle": "Rien en avant",
+  "reviewsError": "Les avis n'ont pas pu être chargés.",
+  "reviewsPrevious": "Précédent",
+  "reviewsNext": "Suivant",
+  "reviewStatus": {
+    "published": "Publié",
+    "hidden": "Masqué"
+  },
+  "reviewsSearchPlaceholder": "Rechercher une entreprise, un nom, ou ce qui a été dit",
+  "reviewsAction": "Accueil"
 }

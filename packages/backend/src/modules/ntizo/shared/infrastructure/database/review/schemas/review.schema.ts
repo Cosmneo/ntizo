@@ -69,6 +69,22 @@ export const review = reviewSchema.table(
      * administrator hides one; the author's own removal deletes the row.
      */
     status: text("status").notNull().default("published"),
+    /**
+     * When an administrator chose to show this review on the home page, or
+     * null for the overwhelming majority that nobody has.
+     *
+     * A timestamp rather than a boolean, because the home page needs an order
+     * as well as a set: it shows the four most recently featured, so
+     * re-featuring a review is also how you move it to the front. A boolean
+     * would need a second column to say the same thing.
+     *
+     * Deliberately independent of `status`. A hidden review must never reach
+     * the home page, but hiding one does not unfeature it — an administrator
+     * who unhides it should get back the state they had, not a silently
+     * cleared choice. The query is what ANDs the two; see
+     * `listFeatured`.
+     */
+    featuredAt: timestamp("featured_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -77,6 +93,13 @@ export const review = reviewSchema.table(
     // The directory's ordering and every provider's average are both "the
     // published reviews of this business", which is this index.
     index("review_provider_status_idx").on(t.providerId, t.status),
+    // Partial, on the handful of rows that are actually featured. The home
+    // page's query is "published and featured, newest featured first", and a
+    // full index on a nullable column would be almost entirely nulls — this
+    // one holds four rows on a table meant to grow to millions.
+    index("review_featured_idx")
+      .on(t.featuredAt.desc())
+      .where(sql`${t.featuredAt} IS NOT NULL AND ${t.status} = 'published'`),
     check("review_rating_range", sql`${t.rating} BETWEEN 1 AND 5`),
     check("review_status_known", sql`${t.status} IN ('published', 'hidden')`),
   ],

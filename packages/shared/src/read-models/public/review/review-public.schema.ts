@@ -53,6 +53,27 @@ export const reviewSummaryReadModel = z.object({
   }),
 });
 
+/**
+ * One featured review, as the home page shows it.
+ *
+ * `reviewPublicReadModel` plus the business it is about — which the provider
+ * page never needs, because the reader is already on it, and the home page
+ * always does: a testimonial with no attributable subject is a quotation the
+ * reader cannot check. The slug is here so the card can link to that business
+ * rather than being a dead quote.
+ *
+ * A comment is required, unlike the base model where it is nullable. A review
+ * that is only a score has nothing to feature: the home page's card is built
+ * around the words. The query is what enforces it; this type is what says so.
+ */
+export const featuredReviewReadModel = reviewPublicReadModel.extend({
+  comment: z.string().min(1),
+  providerName: z.string().min(1),
+  providerSlug: z.string().min(1),
+});
+
+export type FeaturedReviewDTO = z.infer<typeof featuredReviewReadModel>;
+
 export const providerReviewsReadModel = z.object({
   summary: reviewSummaryReadModel,
   reviews: z.array(reviewPublicReadModel),

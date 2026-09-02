@@ -36,17 +36,10 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
 export function ServiceListingCard({
   service,
   locale,
-  categoryIcon,
 }: {
   service: ServiceDTO;
   /** Formats the amount. The card is handed it rather than reading i18next twice. */
   locale: string;
-  /**
-   * A Lucide name from the category's own `icon` column, for the generated
-   * tile. Null while the category query is in flight, or for a category
-   * nobody has given an icon — `ListingMedia` falls back to a tag either way.
-   */
-  categoryIcon: string | null;
 }) {
   const { t } = useTranslation("directory");
   const parts = serviceStubParts(service);
@@ -58,14 +51,8 @@ export function ServiceListingCard({
         // The image falls back to nothing rather than to the provider's logo:
         // on a provider's own page a logo is recognisable context, but in a
         // mixed browse it puts the same picture on four unrelated cards.
-        // `ListingMedia`'s generated tile is the fallback instead, and its hue
-        // comes from the category so a trade looks the same wherever it lands.
-        <ListingMedia
-          imageUrl={service.imageUrls[0] ?? null}
-          seed={service.categoryCode}
-          name={service.providerName}
-          icon={categoryIcon}
-        />
+        // `ListingMedia` draws the brand mark instead.
+        <ListingMedia imageUrl={service.imageUrls[0] ?? null} />
       }
       title={
         // The title link, not the card, carries the destination — and it goes

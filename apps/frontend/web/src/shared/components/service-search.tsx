@@ -19,10 +19,16 @@ interface ServiceSearchProps {
  * it can answer "who fixes taps" makes the user do the work of a filter that
  * does not exist yet.
  *
- * Submitting navigates to `/providers?q=`. It searches providers rather than
- * services because there is no Service aggregate in the backend yet — the
- * placeholder says "service" because that is what a user is looking for, and
- * the destination changes without this component changing when it exists.
+ * Submitting navigates to `/services?q=`, which is what the field has always
+ * said it does: the placeholder asks for a service and the button is labelled
+ * "search services".
+ *
+ * It used to go to `/providers`, and the comment here explained why — there
+ * was no Service aggregate to search. There is now, `/services` has taken a
+ * `q` since the browse page shipped, and the redirect had quietly become the
+ * kind of thing that makes a search box feel broken: you ask for "corte de
+ * cabelo" and land on a list of businesses instead of the haircuts you asked
+ * for.
  */
 export function ServiceSearch({
   initialValue = "",
@@ -44,7 +50,10 @@ export function ServiceSearch({
       onSubmit={(e) => {
         e.preventDefault();
         const q = value.trim();
-        navigate({ to: "/providers", search: q ? { q } : {} });
+        // An empty search still navigates: somebody who clears the box and
+        // presses the button is asking to browse everything, and leaving them
+        // on the home page reads as the button having failed.
+        navigate({ to: "/services", search: q ? { q } : {} });
       }}
       className={cn(
         "flex w-full items-center gap-2 rounded-full border border-[var(--color-border)]",

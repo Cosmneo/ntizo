@@ -8,3 +8,4 @@ export * from "./notification";
 export * from "./activity";
 export * from "./communication";
 export * from "./booking";
+export * from "./review";

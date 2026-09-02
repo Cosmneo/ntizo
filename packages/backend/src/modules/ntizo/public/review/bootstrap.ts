@@ -1,5 +1,6 @@
 import { DrizzleReviewRepository } from "../../bounded-contexts/review/infrastructure/repositories/drizzle/review.repository";
 import { ReadProviderReviewsQuery } from "../../bounded-contexts/review/app/use-cases/read-provider-reviews.query";
+import { ReadFeaturedReviewsQuery } from "../../bounded-contexts/review/app/use-cases/read-featured-reviews.query";
 import type { ReviewPublicModule } from "./graphql/handlers/queries.handlers";
 
 /**
@@ -15,7 +16,10 @@ export function bootstrapReviewPublic(): {
   const reviewRepository = new DrizzleReviewRepository();
   return {
     adapters: { reviewRepository },
-    useCases: { readProviderReviews: new ReadProviderReviewsQuery(reviewRepository) },
+    useCases: {
+      readProviderReviews: new ReadProviderReviewsQuery(reviewRepository),
+      readFeaturedReviews: new ReadFeaturedReviewsQuery(reviewRepository),
+    },
   };
 }
 

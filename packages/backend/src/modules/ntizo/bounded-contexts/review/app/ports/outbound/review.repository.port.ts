@@ -25,6 +25,40 @@ export interface ReviewSummary {
   histogram: Readonly<Record<"one" | "two" | "three" | "four" | "five", number>>;
 }
 
+/**
+ * One featured review, as the home page draws it.
+ *
+ * Carries the business it is about, which `ReviewRow` does not: a provider
+ * page's reader already knows whose reviews they are reading, and the home
+ * page's reader has no way of telling without being told.
+ *
+ * `comment` is non-null here, unlike on `ReviewRow`. A featured review that is
+ * only a score has nothing to put on the card, so the query never returns one.
+ */
+export interface FeaturedReviewRow {
+  id: string;
+  rating: number;
+  comment: string;
+  authorName: string | null;
+  createdAt: string;
+  providerName: string;
+  providerSlug: string;
+}
+
+/** One review as the administration list shows it — every provider, both statuses. */
+export interface AdminReviewRow {
+  id: string;
+  providerId: string;
+  providerName: string;
+  providerSlug: string;
+  rating: number;
+  comment: string | null;
+  authorName: string | null;
+  status: "published" | "hidden";
+  featuredAt: string | null;
+  createdAt: string;
+}
+
 /** What `upsert` actually did, straight from Postgres — see its own docblock. */
 export interface UpsertedReview {
   id: string;
@@ -52,6 +86,30 @@ export interface ReviewRepositoryPort {
   removeOwn(providerId: string, authorUserId: string): Promise<boolean>;
   /** Published only, newest first. */
   listPublished(providerId: string, limit: number, offset: number): Promise<ReviewRow[]>;
+  /**
+   * The reviews an administrator put on the home page, most recently featured
+   * first.
+   *
+   * Published *and* featured *and* carrying words. Unfeaturing is not the only
+   * way one leaves this list: hiding a review takes it off the home page while
+   * leaving the administrator's choice on the row, so unhiding restores it.
+   */
+  listFeatured(limit: number): Promise<FeaturedReviewRow[]>;
+  /** Every review, newest first, for the administration screen. Both statuses. */
+  listForAdmin(input: {
+    limit: number;
+    offset: number;
+    featuredOnly?: boolean;
+    /** Matches the business name, the author's name, or the words themselves. */
+    search?: string;
+  }): Promise<{ items: AdminReviewRow[]; total: number; featuredCount: number }>;
+  /**
+   * Marks one review as shown on the home page, or clears the mark.
+   *
+   * Returns false when there is no such review — the caller turns that into a
+   * not-found rather than reporting a success that changed nothing.
+   */
+  setFeatured(reviewId: string, featured: boolean): Promise<boolean>;
   summary(providerId: string): Promise<ReviewSummary>;
   /**
    * The provider, if it may be reviewed — active and existing — else null.

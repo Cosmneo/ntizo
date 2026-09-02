@@ -269,10 +269,6 @@ export function DirectoryPage() {
                         key={provider.id}
                         provider={provider}
                         locale={locale}
-                        categoryIcon={
-                          categories.find((c) => c.code === provider.categories[0]?.code)?.icon ??
-                          null
-                        }
                       />
                     ))}
                   </ul>

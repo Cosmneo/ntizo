@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BrandImage } from "@/shared/components/brand-image";
 import { ArrowDown, ArrowUp, MoreHorizontal, Plus, Shapes } from "lucide-react";
 import {
   Badge,
@@ -213,7 +214,7 @@ function CategoryCell({
     <div className="flex items-center gap-3">
       <div className="grid h-9 w-12 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
         {category.imageUrl ? (
-          <img src={category.imageUrl} alt="" className="h-full w-full object-cover" />
+          <BrandImage src={category.imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="type-caption font-semibold text-[var(--color-muted-foreground)]">
             {initialsFrom(name)}

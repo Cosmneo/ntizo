@@ -124,11 +124,7 @@ export function SidebarUserMenu() {
                       each cost a detail fetch to find theirs. */}
                   <div className="mr-2 flex aspect-square h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-primary/15 text-[11px] font-semibold text-primary">
                     {detail?.logo?.url ? (
-                      <img
-                        src={detail.logo.url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+                      <AvatarImage src={detail.logo.url} alt="" />
                     ) : (
                       orgInitials
                     )}

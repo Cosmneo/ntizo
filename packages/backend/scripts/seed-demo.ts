@@ -424,12 +424,27 @@ function initials(name: string): string {
 /* ── media ───────────────────────────────────────────────────────────────── */
 
 /**
- * Puts the generated SVGs in the bucket the API serves from.
+ * Puts the generated SVGs in *both* buckets the seeded rows can be read
+ * through.
  *
  * Shelling out to wrangler rather than using the R2 API: the local bucket is a
  * miniflare directory, not an S3 endpoint, and wrangler is the only thing that
  * knows where it is. The dev server picks the objects up without a restart —
  * verified by fetching one back through `/api/media` while it was running.
+ *
+ * **Both, and that is the whole point of this function.** It used to write only
+ * `ntizo-media-local`, while `stageUrl()` above points every run at the shared
+ * dev Neon database. So a seed wrote `logoKey`/`photoKeys` rows that the
+ * deployed dev site would resolve against `ntizo-media-dev` — a bucket the
+ * files had never been put in. Every demo photograph on dev.ntizo.co.mz was a
+ * 404 for exactly that reason, and nothing said so: the rows were valid, the
+ * URLs were well-formed, and only a browser fetching one found out.
+ *
+ * The two are not interchangeable because the same key resolves differently
+ * per environment — locally through this Worker's own `GET /api/media/*`,
+ * on dev through the bucket's public `r2.dev` host. Writing one and not the
+ * other leaves whichever environment was missed showing the fallback mark
+ * forever.
  */
 let mediaChecked = false;
 
@@ -454,20 +469,46 @@ async function assertWranglerCanRun(): Promise<void> {
   mediaChecked = true;
 }
 
-async function putMedia(key: string, svg: string): Promise<void> {
-  await assertWranglerCanRun();
-  const file = `/tmp/ntizo-seed-${key.replace(/[^a-z0-9]/gi, "-")}.svg`;
-  await Bun.write(file, svg);
+async function putOneBucket(
+  key: string,
+  file: string,
+  target: "local" | "remote",
+): Promise<void> {
+  const bucket = target === "local" ? "ntizo-media-local" : "ntizo-media-dev";
+  const placement =
+    target === "local"
+      ? ["--local", "--persist-to", ".wrangler/state"]
+      : // `--remote` is not the default here: wrangler resolves an unqualified
+        // put against the local simulation, which is the mistake that produced
+        // the 404s this function's doc comment describes.
+        ["--remote"];
+
   const proc = Bun.spawn(
     [
-      "bunx", "wrangler", "r2", "object", "put", `ntizo-media-local/${key}`,
+      "bunx", "wrangler", "r2", "object", "put", `${bucket}/${key}`,
       "--file", file, "--content-type", "image/svg+xml",
-      "--local", "--persist-to", ".wrangler/state",
+      ...placement,
     ],
     { cwd: "../../apps/backend/api", stdout: "ignore", stderr: "pipe" },
   );
   const code = await proc.exited;
-  if (code !== 0) throw new Error(`wrangler put ${key} failed: ${await new Response(proc.stderr).text()}`);
+  if (code !== 0) {
+    throw new Error(
+      `wrangler put ${bucket}/${key} failed: ${await new Response(proc.stderr).text()}`,
+    );
+  }
+}
+
+async function putMedia(key: string, svg: string): Promise<void> {
+  await assertWranglerCanRun();
+  const file = `/tmp/ntizo-seed-${key.replace(/[^a-z0-9]/gi, "-")}.svg`;
+  await Bun.write(file, svg);
+  await putOneBucket(key, file, "local");
+  // The remote write needs Cloudflare credentials, which a machine that has
+  // only ever run the local stack may not have. It still throws rather than
+  // warning: a seed that half-succeeds is what shipped the broken images, and
+  // an error naming the bucket is the cheapest possible way to find that out.
+  await putOneBucket(key, file, "remote");
 }
 
 /* ── the run ─────────────────────────────────────────────────────────────── */

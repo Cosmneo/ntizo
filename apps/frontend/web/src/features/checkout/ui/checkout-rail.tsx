@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { BrandImage } from "@/shared/components/brand-image";
 import { BadgeCheck, Check, ImageIcon, Star } from "lucide-react";
 import { formatAmount } from "@/features/directory/services/domain/service-card";
 import type { CompactSlot } from "@/features/checkout/domain/slot-wording";
@@ -187,11 +188,7 @@ export function CheckoutRail({
         {imageUrl ? (
           // `alt=""`: the service is named in the heading right beside it, and
           // a screen reader repeating that name for the picture is noise.
-          <img
-            src={imageUrl}
-            alt=""
-            className="h-14 w-14 shrink-0 rounded-[var(--radius-card-sm)] object-cover"
-          />
+          <BrandImage src={imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-[var(--radius-card-sm)] object-cover" />
         ) : (
           <span
             aria-hidden="true"

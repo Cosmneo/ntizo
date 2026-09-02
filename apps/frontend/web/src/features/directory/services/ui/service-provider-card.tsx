@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback } from "@ntizo/frontend-ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@ntizo/frontend-ui";
 import { initialsFrom } from "@/shared/lib/initials";
 import type { ServiceDetailDTO } from "@ntizo/shared/read-models";
 
@@ -33,12 +33,12 @@ export function ServiceProviderCard({ service }: { service: ServiceDetailDTO }) 
     <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
       <div className="flex items-center gap-3">
         <Avatar className="h-12 w-12 shrink-0">
+          {/* `AvatarImage`, not a bare `<img>`: it unmounts itself on error,
+              which is what lets the monogram beneath actually lay out inside
+              the circle. A raw `<img>` with a dead URL held the box at zero
+              width and clipped the fallback away — see the component. */}
           {service.providerLogoUrl && (
-            <img
-              src={service.providerLogoUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+            <AvatarImage src={service.providerLogoUrl} alt="" />
           )}
           <AvatarFallback>{initialsFrom(service.providerName)}</AvatarFallback>
         </Avatar>

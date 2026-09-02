@@ -40,6 +40,41 @@ export class ReviewNotFoundError extends NotFoundError {
   }
 }
 
+/**
+ * Refused because the review an administrator tried to feature is not there.
+ *
+ * Its own error rather than reusing `ReviewNotFoundError`, whose message —
+ * "You have not reviewed this business" — is addressed to a customer about
+ * their own review and would be nonsense on an administration screen.
+ */
+export class ReviewToFeatureNotFoundError extends NotFoundError {
+  constructor(public readonly reviewId: string) {
+    super({
+      message: `No review with id "${reviewId}"`,
+      code: "REVIEW_TO_FEATURE_NOT_FOUND",
+    });
+    this.name = "ReviewToFeatureNotFoundError";
+  }
+}
+
+/**
+ * Refused because the home page is full.
+ *
+ * The rail draws four. Without this, an administrator can mark forty reviews
+ * and the four that actually appear are decided by a timestamp they cannot
+ * see — which looks, from the screen, like the toggle not working. Better to
+ * say the shelf is full and let them take something off it.
+ */
+export class TooManyFeaturedReviewsError extends UnprocessableError {
+  constructor(public readonly max: number) {
+    super({
+      message: `Only ${max} reviews can be shown on the home page at once — unfeature one first`,
+      code: "TOO_MANY_FEATURED_REVIEWS",
+    });
+    this.name = "TooManyFeaturedReviewsError";
+  }
+}
+
 export class ProviderNotReviewableError extends NotFoundError {
   constructor(public readonly providerId: string) {
     super({

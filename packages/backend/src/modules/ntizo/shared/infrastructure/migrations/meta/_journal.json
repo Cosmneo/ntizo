@@ -239,6 +239,13 @@
       "when": 1788276305493,
       "tag": "0033_workable_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788344264122,
+      "tag": "0034_wakeful_prowler",
+      "breakpoints": true
     }
   ]
 }
