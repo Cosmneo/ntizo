@@ -13,11 +13,12 @@
  * `packages/backend/.env`.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { eq, sql as sqlExpr } from "drizzle-orm";
+import { eq, inArray, sql as sqlExpr } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { thread } from "../communication/schemas/thread.schema";
 import type { NewThreadRow } from "../communication/schemas/thread.schema";
 import { message } from "../communication/schemas/message.schema";
+import { supportRequest } from "../communication/schemas/support-request.schema";
 import { user } from "../user/schemas/user.schema";
 import { provider } from "../provider/schemas/provider.schema";
 import {
@@ -34,6 +35,10 @@ const db = drizzle(sql);
 const suffix = crypto.randomUUID();
 let userId: string;
 let providerId: string;
+// Support threads carry `providerId: null`, so they fall outside the
+// provider-id subquery cleanup below — tracked here instead and deleted by
+// id in `afterAll`, before that subquery runs.
+const createdThreadIds: string[] = [];
 
 beforeAll(async () => {
   userId = crypto.randomUUID();
@@ -67,6 +72,13 @@ afterAll(async () => {
   // half of that: `providerId`/`userId` themselves unassigned because
   // `beforeAll` didn't get that far.
   await bestEffortCleanup([
+    // Support threads (`providerId: null`), tracked by id since the
+    // provider-id subquery below can't see them. Cascades to their
+    // `message` and `support_request` rows.
+    () =>
+      createdThreadIds.length > 0
+        ? db.delete(thread).where(inArray(thread.id, createdThreadIds))
+        : Promise.resolve(),
     () =>
       db.delete(message).where(
         sqlExpr`${message.threadId} IN (SELECT ${thread.id} FROM ${thread} WHERE ${thread.providerId} = ${providerId})`,
@@ -119,7 +131,7 @@ describe("ntizo_communication constraints", () => {
     const [threadRow] = await insertThread();
     const [messageRow] = await db
       .insert(message)
-      .values({ threadId: threadRow!.id, senderUserId: userId, body: "hello" })
+      .values({ threadId: threadRow!.id, senderUserId: userId, senderSide: "customer", body: "hello" })
       .returning({ id: message.id });
     expect(messageRow?.id).toBeString();
 
@@ -127,5 +139,58 @@ describe("ntizo_communication constraints", () => {
 
     const remaining = await db.select().from(message).where(eq(message.id, messageRow!.id));
     expect(remaining).toHaveLength(0);
+  });
+
+  test("an inquiry without a provider is refused; a support thread without one is not", async () => {
+    await expect(async () => {
+      await db.insert(thread).values({
+        type: "inquiry",
+        customerUserId: userId,
+        providerId: null,
+        lastMessageAt: new Date(),
+      });
+    }).toThrow();
+
+    const [row] = await db
+      .insert(thread)
+      .values({ type: "support", customerUserId: userId, providerId: null, lastMessageAt: new Date() })
+      .returning({ id: thread.id });
+    createdThreadIds.push(row!.id);
+    expect(row?.id).toBeDefined();
+  });
+
+  test("a message must say which side it came from, and only a known one", async () => {
+    const [t] = await db
+      .insert(thread)
+      .values({ type: "support", customerUserId: userId, providerId: null, lastMessageAt: new Date() })
+      .returning({ id: thread.id });
+    createdThreadIds.push(t!.id);
+
+    await expect(async () => {
+      await db.insert(message).values({
+        threadId: t!.id,
+        senderUserId: userId,
+        senderSide: "somebody",
+        body: "x",
+      });
+    }).toThrow();
+  });
+
+  test("a support request cannot say open and carry a resolved_at", async () => {
+    const [t] = await db
+      .insert(thread)
+      .values({ type: "support", customerUserId: userId, providerId: null, lastMessageAt: new Date() })
+      .returning({ id: thread.id });
+    createdThreadIds.push(t!.id);
+
+    await expect(async () => {
+      await db.insert(supportRequest).values({
+        threadId: t!.id,
+        audience: "customer",
+        subject: "x",
+        status: "open",
+        resolvedAt: new Date(),
+      });
+    }).toThrow();
   });
 });

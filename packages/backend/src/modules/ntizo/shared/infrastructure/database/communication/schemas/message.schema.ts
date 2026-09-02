@@ -1,4 +1,4 @@
-import { index, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { communicationSchema, thread } from "./thread.schema";
 import { user } from "../../user/schemas/user.schema";
@@ -21,6 +21,16 @@ export const message = communicationSchema.table(
     senderUserId: text("sender_user_id")
       .notNull()
       .references(() => user.id),
+    /**
+     * Which side this message came from — see `SENDER_SIDES`. Backfilled by
+     * migration 0035 for every phase-1 row (`customer` where the sender is the
+     * thread's customer, else `provider`), so it can be NOT NULL from day one.
+     * What makes "unread for X" one predicate for every thread type: the
+     * phase-1 rule resolved "the other side" against `customer_user_id`
+     * alone, which cannot describe a provider request (a member must not
+     * count a teammate's message as unread) or a platform reply.
+     */
+    senderSide: varchar("sender_side", { length: 16 }).notNull(),
     body: text("body").notNull(),
     readAt: timestamp("read_at", { withTimezone: true }),
     notifyDueAt: timestamp("notify_due_at", { withTimezone: true }),
@@ -34,6 +44,7 @@ export const message = communicationSchema.table(
     index("idx_message_notify_due")
       .on(t.notifyDueAt)
       .where(sql`${t.notifyDueAt} IS NOT NULL AND ${t.readAt} IS NULL AND ${t.notifiedAt} IS NULL`),
+    check("message_sender_side_known", sql`${t.senderSide} in ('customer', 'provider', 'platform')`),
   ],
 );
 
