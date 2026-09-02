@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-MZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Company pages — approved mockups (2026-09-02)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; padding:32px 24px 64px; background:#fafafa; font-family: Inter, system-ui, sans-serif; color:#222; }
+  h2 { font-family: Poppins, Inter, sans-serif; font-size:22px; margin:0 0 6px; }
+  .subtitle { color:#666; font-size:14px; max-width:980px; margin:0 auto 22px; }
+  hr.sep { border:0; border-top:1px solid #ddd; max-width:980px; margin:56px auto; }
+  .intro { max-width:980px; margin:0 auto 32px; font-size:14px; line-height:1.6; color:#444; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <strong>Approved mockups for <code>2026-09-02-company-pages-design.md</code>.</strong> Two screens from the brainstorming session, kept as approved on 2026-09-02:
+  the About page (the shared frame, the "Ainda tem dúvidas?" strip and the new footer column), then Support, FAQ and Careers.
+  The Portuguese here is the approved pt-MZ copy and is what the locale files are written from. Layout decisions: dark compact band on top; single centred column on the form pages; FAQ with a sticky left index.
+  Per the owner's rule, no accent hairline before eyebrow labels anywhere.
+</div>
+<style>
+  .nz { --navy:#13171b; --accent:#006ffd; --page:#f2f8fe; --muted:#71727a; --border:#e5e5e5; --card:#fff;
+        font-family: Inter, system-ui, sans-serif; color: var(--navy); }
+  .nz * { box-sizing:border-box; }
+  .nz .disp { font-family: Poppins, Inter, system-ui, sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1.04; }
+  .pg { background:var(--page); border:1px solid var(--border); border-radius:12px; overflow:hidden; max-width:980px; margin:0 auto; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .sh { width:min(880px, 100% - 48px); margin-inline:auto; }
+  .eyebrow { font-family:Poppins; font-weight:700; font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .hd { display:flex; align-items:center; justify-content:space-between; padding:16px 0; font-size:11px; }
+  .hd .logo { font-family:Poppins; font-weight:800; font-size:17px; letter-spacing:-0.02em; }
+  .hd .pill { display:flex; gap:2px; padding:3px; border-radius:999px; background:rgba(255,255,255,.95); color:#13171b; }
+  .hd .pill span { padding:6px 12px; border-radius:999px; font-weight:600; }
+  .hd .btn { padding:7px 14px; border-radius:999px; font-weight:700; background:rgba(255,255,255,.95); color:#0e1f37; }
+  .band { background:var(--navy); color:#fff; position:relative; overflow:hidden; }
+  .band .blob { position:absolute; border-radius:999px; background:var(--accent); opacity:.14; }
+  .sec { padding:44px 0; }
+  .sec + .sec { border-top:1px solid var(--border); }
+  .lede { font-size:13px; line-height:1.6; }
+  .p { font-size:12px; line-height:1.65; color:var(--muted); }
+  .num { font-family:Poppins; font-weight:800; font-size:12px; color:var(--accent); letter-spacing:.04em; }
+  .h3 { font-family:Poppins; font-weight:800; font-size:15px; letter-spacing:-0.01em; margin-top:10px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
+  .ruled { display:grid; grid-template-columns:repeat(2,1fr); border:1px solid var(--border); border-radius:16px; background:#fff; overflow:hidden; }
+  .ruled > div { padding:22px 24px; }
+  .ruled > div:nth-child(2) { border-left:1px solid var(--border); }
+  .ruled > div:nth-child(3), .ruled > div:nth-child(4) { border-top:1px solid var(--border); }
+  .ruled > div:nth-child(4) { border-left:1px solid var(--border); }
+  .cta { display:inline-flex; align-items:center; gap:6px; font-family:Poppins; font-weight:800; font-size:11px; padding:10px 18px; border-radius:999px; background:var(--accent); color:#fff; margin-top:14px; }
+  .cta.ghost { background:transparent; border:1px solid rgba(19,23,27,.25); color:var(--navy); }
+  .aud { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .aud > div { background:#fff; border:1px solid var(--border); border-radius:16px; padding:26px 28px; }
+  .xlinks { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--border); border-radius:16px; background:#fff; overflow:hidden; }
+  .xlinks > a { display:block; padding:18px 22px; text-decoration:none; color:inherit; }
+  .xlinks > a + a { border-left:1px solid var(--border); }
+  .xlinks .t { font-family:Poppins; font-weight:800; font-size:12px; }
+  .xlinks .s { font-size:10.5px; color:var(--muted); margin-top:3px; line-height:1.45; }
+  .xlinks .arrow { color:var(--accent); font-weight:700; margin-left:4px; }
+  .foot { padding:36px 0 22px; }
+  .foot .cols { display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:24px; font-size:10.5px; }
+  .foot .ct { font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }
+  .foot .ln { color:var(--muted); line-height:2; }
+  .foot .new { color:var(--navy); font-weight:600; }
+  .foot .logo { font-family:Poppins; font-weight:800; font-size:16px; color:var(--accent); }
+  .foot .blurb { font-size:10px; color:var(--muted); max-width:220px; line-height:1.55; margin-top:8px; }
+  .foot .copy { border-top:1px solid var(--border); margin-top:22px; padding-top:14px; text-align:center; font-size:9px; color:var(--muted); }
+  .callout { font-size:12px; color:#444; background:#f6f8fb; border:1px solid #e5e5e5; border-radius:10px; padding:12px 14px; margin:14px auto 0; max-width:980px; }
+  .tag { position:absolute; left:0; top:0; transform:translateX(-100%); font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#999; padding:6px 10px 0 0; white-space:nowrap; }
+  .rel { position:relative; }
+</style>
+
+<div class="nz">
+<h2>A página "Sobre", completa</h2>
+<p class="subtitle">Moldura A no topo. Todo o texto é o rascunho final em pt-MZ (será escrito nos outros sete idiomas a partir daqui). As duas últimas partes, a barra "Ainda tem dúvidas?" e o footer, repetem-se em todas as seis páginas. Leia como leitor: o que sobra, o que falta, o que não é verdade.</p>
+
+<div class="pg">
+
+  <!-- HERO -->
+  <div class="band">
+    <span class="blob" style="width:360px;height:360px;left:-120px;top:-160px"></span>
+    <span class="blob" style="width:280px;height:280px;right:-90px;bottom:-140px"></span>
+    <div class="sh rel">
+      <div class="hd">
+        <span class="logo">ntizo</span>
+        <span class="pill"><span style="background:#006ffd;color:#fff">Explorar</span><span>Serviços</span><span>Prestadores</span></span>
+        <span class="btn">Entrar</span>
+      </div>
+      <div style="padding:34px 0 44px;max-width:620px">
+        <span class="eyebrow" style="color:rgba(255,255,255,.65)">Sobre a Ntizo</span>
+        <div class="disp" style="font-size:40px;margin-top:10px;max-width:15ch">Serviços locais em quem pode <span style="color:#006ffd">confiar</span>.</div>
+        <p class="lede" style="color:rgba(255,255,255,.8);margin:14px 0 0;max-width:52ch">A Ntizo liga quem precisa de um serviço a quem o sabe fazer. Prestadores verificados, preço à vista, e o pagamento só depois de o prestador confirmar a hora.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSÃO -->
+  <div class="sh sec rel">
+    <span class="tag">1 · Missão</span>
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:start">
+      <div>
+        <span class="eyebrow">A nossa missão</span>
+        <div class="disp" style="font-size:24px;margin-top:10px;max-width:22ch">Tornar a contratação de um serviço tão simples e segura como uma compra numa loja.</div>
+      </div>
+      <div>
+        <p class="p" style="margin:0">Em Moçambique, encontrar um bom canalizador, uma cabeleireira ou um explicador ainda depende de conhecer alguém que conheça alguém. O preço combina-se por telefone, a hora falha, e quando corre mal não há a quem recorrer.</p>
+        <p class="p" style="margin:12px 0 0">A Ntizo existe para mudar isso. Cada prestador é verificado antes de aparecer nos resultados, cada serviço tem o preço à vista, e cada reserva fica registada de ponta a ponta, da hora marcada ao pagamento.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMO FUNCIONA -->
+  <div class="sh sec rel">
+    <span class="tag">2 · Como funciona</span>
+    <span class="eyebrow">Como funciona</span>
+    <div class="disp" style="font-size:22px;margin-top:10px;max-width:24ch">Três passos, e nenhum deles é pagar antes de saber se vai acontecer.</div>
+    <div class="grid3" style="margin-top:28px">
+      <div>
+        <span class="num">01</span>
+        <div class="h3">Procure e compare</div>
+        <p class="p" style="margin:6px 0 0">Veja serviços por categoria e cidade, com o preço, as avaliações de quem já os usou e o selo de verificado.</p>
+      </div>
+      <div>
+        <span class="num">02</span>
+        <div class="h3">Reserve a hora</div>
+        <p class="p" style="margin:6px 0 0">Escolha o dia e a hora no calendário do prestador e diga onde o serviço acontece. O pedido segue para ele confirmar.</p>
+      </div>
+      <div>
+        <span class="num">03</span>
+        <div class="h3">Pague depois da confirmação</div>
+        <p class="p" style="margin:6px 0 0">Só depois de o prestador confirmar a hora recebe o pedido de pagamento no telemóvel. Antes disso não é cobrado nada.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINCÍPIOS -->
+  <div class="sh sec rel">
+    <span class="tag">3 · Princípios</span>
+    <span class="eyebrow">No que acreditamos</span>
+    <div class="disp" style="font-size:22px;margin-top:10px;max-width:24ch">Quatro regras que não mudam, seja qual for o serviço.</div>
+    <div class="ruled" style="margin-top:26px">
+      <div>
+        <div class="h3" style="margin-top:0">O preço é o preço.</div>
+        <p class="p" style="margin:6px 0 0">O valor que vê no anúncio é o valor que paga. A comissão da plataforma sai do lado do prestador, nunca do seu.</p>
+      </div>
+      <div>
+        <div class="h3" style="margin-top:0">Verificação antes de visibilidade.</div>
+        <p class="p" style="margin:6px 0 0">Nenhum prestador aparece nos resultados sem ter enviado um documento de identidade e sem uma pessoa da Ntizo o ter revisto.</p>
+      </div>
+      <div>
+        <div class="h3" style="margin-top:0">Pagar só depois do sim.</div>
+        <p class="p" style="margin:6px 0 0">O pedido de pagamento só chega depois de o prestador confirmar a hora. Se ele não confirmar ou recusar, não há nada a cobrar.</p>
+      </div>
+      <div>
+        <div class="h3" style="margin-top:0">Feito para aqui, pronto para crescer.</div>
+        <p class="p" style="margin:6px 0 0">M-Pesa, português, as cidades onde vivemos. E uma plataforma desenhada para servir outros países quando chegar a altura.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOIS PÚBLICOS -->
+  <div class="sh sec rel">
+    <span class="tag">4 · Públicos</span>
+    <div class="aud">
+      <div>
+        <span class="eyebrow">Para clientes</span>
+        <div class="disp" style="font-size:19px;margin-top:8px">Encontre, reserve e pague num só sítio.</div>
+        <p class="p" style="margin:8px 0 0">Sem telefonemas para saber o preço, sem esperar por uma resposta que não vem. Cada reserva tem uma hora, um valor e um registo.</p>
+        <span class="cta">Explorar serviços →</span>
+      </div>
+      <div>
+        <span class="eyebrow">Para prestadores</span>
+        <div class="disp" style="font-size:19px;margin-top:8px">A sua agenda, os seus preços, os seus clientes.</div>
+        <p class="p" style="margin:8px 0 0">Publique os serviços, defina quando está disponível e receba pedidos confirmados. A Ntizo trata do calendário, do pagamento e de o dar a conhecer.</p>
+        <span class="cta ghost">Torne-se prestador →</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BARRA PARTILHADA -->
+  <div class="sh sec rel" style="padding-top:36px;padding-bottom:36px">
+    <span class="tag">Partilhado · todas as páginas</span>
+    <span class="eyebrow">Ainda tem dúvidas?</span>
+    <div class="xlinks" style="margin-top:14px">
+      <a href="#"><div class="t">Perguntas frequentes<span class="arrow">→</span></div><div class="s">Reservas, pagamentos, verificação e como os prestadores recebem.</div></a>
+      <a href="#"><div class="t">Falar com o suporte<span class="arrow">→</span></div><div class="s">Um problema com uma reserva, um pagamento ou a sua conta.</div></a>
+      <a href="#"><div class="t">Contacto<span class="arrow">→</span></div><div class="s">Parcerias, imprensa, ou simplesmente um olá.</div></a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="foot rel" style="border-top:1px solid var(--border)">
+    <div class="sh">
+      <span class="tag" style="left:24px">Partilhado · footer</span>
+      <div class="cols">
+        <div><div class="logo">ntizo</div><div class="blurb">O mercado de serviços locais de confiança. Encontre, reserve e pague num só lugar.</div></div>
+        <div><div class="ct">Suporte</div><div class="ln" style="font-size:9.5px;line-height:1.4">Precisa de ajuda?<br><span class="new">suporte@ntizo.co.mz</span></div></div>
+        <div><div class="ct">Empresa</div><div class="ln"><span class="new">Sobre</span><br><span class="new">Contacto</span><br><span class="new">Falar com o suporte</span><br><span class="new">Perguntas frequentes</span><br><span class="new">Dar feedback</span><br>Torne-se prestador<br><span class="new">Carreiras</span></div></div>
+        <div><div class="ct">Legal</div><div class="ln">Termos de serviço<br>Política de privacidade<br>Admin</div></div>
+      </div>
+      <div class="copy">© 2026 Ntizo. Todos os direitos reservados.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="callout">
+  <strong>Para validar:</strong> a ordem das secções (missão → como funciona → princípios → públicos → dúvidas → footer), o tom do texto, e a barra "Ainda tem dúvidas?" que aparece em todas as páginas (cada página omite o link para si própria). No footer, os itens a negrito são os novos; "Falar com o suporte" e "Dar feedback" são as traduções de "Message support" e "Share feedback". Diga no terminal o que muda.
+</div>
+</div>
+<hr class="sep">
+<style>
+  .nz { --navy:#13171b; --accent:#006ffd; --page:#f2f8fe; --muted:#71727a; --border:#e5e5e5; --card:#fff;
+        font-family: Inter, system-ui, sans-serif; color: var(--navy); }
+  .nz * { box-sizing:border-box; }
+  .nz .disp { font-family: Poppins, Inter, system-ui, sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1.04; }
+  .pg { background:var(--page); border:1px solid var(--border); border-radius:12px; overflow:hidden; max-width:980px; margin:0 auto 40px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .sh { width:min(880px, 100% - 48px); margin-inline:auto; }
+  .eyebrow { font-family:Poppins; font-weight:700; font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .hd { display:flex; align-items:center; justify-content:space-between; padding:16px 0; font-size:11px; }
+  .hd .logo { font-family:Poppins; font-weight:800; font-size:17px; letter-spacing:-0.02em; }
+  .hd .pill { display:flex; gap:2px; padding:3px; border-radius:999px; background:rgba(255,255,255,.95); color:#13171b; }
+  .hd .pill span { padding:6px 12px; border-radius:999px; font-weight:600; }
+  .hd .btn { padding:7px 14px; border-radius:999px; font-weight:700; background:rgba(255,255,255,.95); color:#0e1f37; }
+  .band { background:var(--navy); color:#fff; position:relative; overflow:hidden; }
+  .band .blob { position:absolute; border-radius:999px; background:var(--accent); opacity:.14; }
+  .lede { font-size:13px; line-height:1.6; }
+  .p { font-size:12px; line-height:1.65; color:var(--muted); }
+  .h3 { font-family:Poppins; font-weight:800; font-size:14px; letter-spacing:-0.01em; }
+  .card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px 26px; }
+  .lbl { font-size:10.5px; font-weight:600; margin-top:14px; }
+  .fld { border:1px solid var(--border); border-radius:8px; height:34px; margin-top:6px; background:#fff; padding:0 10px; display:flex; align-items:center; font-size:11px; color:#333; }
+  .fld.ta { height:96px; align-items:flex-start; padding-top:8px; color:#999; }
+  .fld.ph { color:#999; }
+  .cta { display:inline-flex; align-items:center; gap:6px; font-family:Poppins; font-weight:800; font-size:11.5px; padding:11px 20px; border-radius:999px; background:var(--accent); color:#fff; }
+  .cta.ghost { background:transparent; border:1px solid rgba(19,23,27,.25); color:var(--navy); }
+  .hint { font-size:10px; color:var(--muted); line-height:1.5; }
+  .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .row3 .card { padding:18px 20px; }
+  .row3 .t { font-family:Poppins; font-weight:800; font-size:12px; }
+  .row3 .s { font-size:10.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+  .xlinks { display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--border); border-radius:16px; background:#fff; overflow:hidden; }
+  .xlinks > a { display:block; padding:16px 20px; text-decoration:none; color:inherit; }
+  .xlinks > a + a { border-left:1px solid var(--border); }
+  .xlinks .t { font-family:Poppins; font-weight:800; font-size:11.5px; }
+  .xlinks .s { font-size:10px; color:var(--muted); margin-top:3px; line-height:1.45; }
+  .xlinks .arrow { color:var(--accent); font-weight:700; margin-left:4px; }
+  .footmini { border-top:1px solid var(--border); padding:14px 0; font-size:9px; color:var(--muted); text-align:center; }
+  .q { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-top:8px; font-size:12px; font-weight:600; }
+  .q .a { font-weight:400; color:var(--muted); font-size:11.5px; line-height:1.6; margin-top:6px; }
+  .q .h { display:flex; justify-content:space-between; }
+  .q.open { border-color:var(--accent); }
+  .idx { font-size:11px; position:sticky; top:0; }
+  .idx div { padding:6px 0 6px 10px; color:var(--muted); border-left:2px solid transparent; }
+  .idx div.on { color:var(--accent); font-weight:700; border-left-color:var(--accent); }
+  .idx .cnt { color:var(--muted); font-weight:400; }
+  .grp-h { font-family:Poppins; font-weight:800; font-size:17px; letter-spacing:-0.02em; margin-top:26px; }
+  .grp-h:first-child { margin-top:0; }
+  .tag { position:absolute; left:0; top:0; transform:translateX(-100%); font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#999; padding:6px 10px 0 0; white-space:nowrap; }
+  .rel { position:relative; }
+  .callout { font-size:12px; color:#444; background:#f6f8fb; border:1px solid #e5e5e5; border-radius:10px; padding:12px 14px; margin:0 auto 40px; max-width:980px; }
+  .pgtitle { max-width:980px; margin:0 auto 10px; font-family:Poppins; font-weight:700; font-size:14px; color:#555; }
+  .success { text-align:center; padding:34px 26px; }
+  .success .ok { width:44px; height:44px; border-radius:999px; background:#e6f1ff; color:var(--accent); display:inline-flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; }
+  .ref { display:inline-block; margin-top:10px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; background:#f1f3f5; padding:4px 10px; border-radius:6px; color:#333; }
+</style>
+
+<div class="nz">
+<h2>Suporte, FAQ e Carreiras</h2>
+<p class="subtitle">Três páginas, texto final em pt-MZ. Contacto e Feedback têm a mesma forma que Suporte (só mudam os assuntos e um ou outro campo), por isso não estão desenhadas à parte. Todas terminam com a barra "Ainda tem dúvidas?" e o footer já aprovados.</p>
+
+<!-- ═══════════════════════ SUPORTE ═══════════════════════ -->
+<div class="pgtitle">1 · Falar com o suporte (/support)</div>
+<div class="pg">
+  <div class="band">
+    <span class="blob" style="width:360px;height:360px;left:-120px;top:-160px"></span>
+    <div class="sh rel">
+      <div class="hd">
+        <span class="logo">ntizo</span>
+        <span class="pill"><span style="background:#006ffd;color:#fff">Explorar</span><span>Serviços</span><span>Prestadores</span></span>
+        <span class="btn">Entrar</span>
+      </div>
+      <div style="padding:30px 0 40px;max-width:640px;margin:0 auto;text-align:center">
+        <span class="eyebrow" style="color:rgba(255,255,255,.65)">Suporte</span>
+        <div class="disp" style="font-size:34px;margin-top:10px">Precisa de ajuda com algo?</div>
+        <p class="lede" style="color:rgba(255,255,255,.8);margin:12px auto 0;max-width:50ch">Uma reserva, um pagamento, a sua conta. Conte-nos o que se passa e tratamos disso consigo.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh" style="padding:36px 0 40px">
+    <div style="max-width:640px;margin:0 auto">
+      <div class="card rel">
+        <span class="tag">Formulário</span>
+        <p class="hint" style="margin:0 0 4px">Tem conta? <span style="color:var(--accent);font-weight:600">Entre</span> e preenchemos o nome e o email por si.</p>
+        <div class="lbl">Nome</div><div class="fld ph">O seu nome</div>
+        <div class="lbl">Email</div><div class="fld ph">Para onde respondemos</div>
+        <div class="lbl">Assunto</div><div class="fld" style="justify-content:space-between"><span>Uma reserva</span><span style="color:#999">▾</span></div>
+        <div class="hint" style="margin-top:4px">A sua conta · Uma reserva · Um pagamento · A minha conta de prestador · Outro assunto</div>
+        <div class="lbl">Mensagem</div><div class="fld ta">Diga-nos o que aconteceu. Se for sobre uma reserva, inclua a data e o nome do prestador.</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;gap:14px">
+          <span class="hint" style="max-width:52ch">Guardamos esta mensagem para lhe responder. Mais nada. <span style="text-decoration:underline">Política de privacidade</span></span>
+          <span class="cta">Enviar mensagem →</span>
+        </div>
+      </div>
+
+      <div class="card rel success" style="margin-top:22px;border-style:dashed">
+        <span class="tag">Estado de sucesso (substitui o formulário)</span>
+        <div class="ok">✓</div>
+        <div class="disp" style="font-size:20px;margin-top:12px">Recebemos a sua mensagem.</div>
+        <p class="p" style="margin:8px auto 0;max-width:46ch">Respondemos para <strong style="color:var(--navy)">joana@exemplo.com</strong> em dias úteis, no idioma em que nos escreveu.</p>
+        <span class="ref">Referência: 7F3A2C</span>
+        <div style="margin-top:16px;display:flex;gap:10px;justify-content:center">
+          <span class="cta ghost">Voltar ao início</span>
+          <span class="cta ghost">Ver perguntas frequentes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row3" style="margin-top:28px">
+      <div class="card"><div class="t">Por email</div><div class="s"><span style="color:var(--navy);font-weight:600">suporte@ntizo.co.mz</span><br>Para quem prefere escrever directamente.</div></div>
+      <div class="card"><div class="t">O que esperar</div><div class="s">Uma pessoa lê, ninguém é robô. Respondemos em dias úteis, para o email que indicar.</div></div>
+      <div class="card"><div class="t">Talvez já esteja respondido</div><div class="s">Reservas, pagamentos, verificação. <span style="color:var(--accent);font-weight:600">Ver perguntas frequentes →</span></div></div>
+    </div>
+  </div>
+
+  <div class="sh" style="padding-bottom:30px">
+    <span class="eyebrow">Ainda tem dúvidas?</span>
+    <div class="xlinks" style="margin-top:12px">
+      <a href="#"><div class="t">Perguntas frequentes<span class="arrow">→</span></div><div class="s">Reservas, pagamentos, verificação e como os prestadores recebem.</div></a>
+      <a href="#"><div class="t">Contacto<span class="arrow">→</span></div><div class="s">Parcerias, imprensa, ou simplesmente um olá.</div></a>
+      <a href="#"><div class="t">Dar feedback<span class="arrow">→</span></div><div class="s">Uma ideia, algo que não funcionou, ou o que gostou.</div></a>
+    </div>
+  </div>
+  <div class="footmini">footer (igual ao aprovado)</div>
+</div>
+
+<div class="callout">
+  <strong>Contacto</strong> usa a mesma forma com os assuntos <em>Pergunta geral · Parceria · Imprensa · Sou prestador · Outro</em> e os cartões <em>ola@ntizo.co.mz · Instagram e LinkedIn · "É cliente com um problema? Fale com o suporte"</em>.
+  <strong>Feedback</strong> usa a mesma forma com o tipo <em>Uma ideia · Algo não funcionou · Gostei de algo</em>, email opcional ("se quiser resposta"), e regista sozinho a página de onde veio.
+</div>
+
+<!-- ═══════════════════════ FAQ ═══════════════════════ -->
+<div class="pgtitle">2 · Perguntas frequentes (/faq)</div>
+<div class="pg">
+  <div class="band">
+    <span class="blob" style="width:360px;height:360px;left:-120px;top:-160px"></span>
+    <div class="sh rel">
+      <div class="hd">
+        <span class="logo">ntizo</span>
+        <span class="pill"><span style="background:#006ffd;color:#fff">Explorar</span><span>Serviços</span><span>Prestadores</span></span>
+        <span class="btn">Entrar</span>
+      </div>
+      <div style="padding:30px 0 40px;max-width:620px">
+        <span class="eyebrow" style="color:rgba(255,255,255,.65)">Perguntas frequentes</span>
+        <div class="disp" style="font-size:34px;margin-top:10px">As respostas que procura.</div>
+        <p class="lede" style="color:rgba(255,255,255,.8);margin:12px 0 0;max-width:52ch">Como funciona a reserva, quando paga, o que significa o selo de verificado e como os prestadores recebem.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh" style="padding:36px 0 40px;display:grid;grid-template-columns:200px 1fr;gap:36px;align-items:start">
+    <div class="idx rel">
+      <span class="tag">Índice fixo</span>
+      <div class="on">Clientes <span class="cnt">· 8</span></div>
+      <div>Prestadores <span class="cnt">· 7</span></div>
+      <div>Pagamentos e segurança <span class="cnt">· 5</span></div>
+      <div class="card" style="margin-top:18px;padding:16px 18px;border-left:0">
+        <div class="h3" style="font-size:12px">Não encontrou?</div>
+        <p class="hint" style="margin:4px 0 0">Fale com o suporte. Uma pessoa responde em dias úteis.</p>
+        <span class="cta" style="margin-top:10px;font-size:10.5px;padding:8px 14px">Falar com o suporte</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="grp-h">Clientes</div>
+      <div class="q open"><div class="h"><span>Como funciona uma reserva?</span><span>−</span></div><div class="a">Escolhe o serviço, o dia e a hora no calendário do prestador, e diz onde o serviço acontece. O pedido segue para o prestador confirmar. Só depois de ele confirmar a hora recebe o pedido de pagamento no telemóvel.</div></div>
+      <div class="q"><div class="h"><span>Quando é que pago?</span><span>+</span></div><div class="a">Depois de o prestador confirmar a hora, e nunca antes. Se ele não responder dentro do prazo indicado no pedido, ou recusar, o pedido é encerrado e não é cobrado nada.</div></div>
+      <div class="q"><div class="h"><span>Que métodos de pagamento aceitam?</span><span>+</span></div><div class="a">Neste momento, M-Pesa (Vodacom). O pedido de pagamento chega ao seu telemóvel e confirma-o com o PIN. Outros métodos estão a caminho.</div></div>
+      <div class="q"><div class="h"><span>O preço que vejo é o que pago?</span><span>+</span></div><div class="a">Sim. O valor do anúncio é o valor cobrado. A comissão da Ntizo é descontada do lado do prestador, não é somada ao seu.</div></div>
+      <div class="q"><div class="h"><span>O que significa o selo de verificado?</span><span>+</span></div><div class="a">Que o prestador enviou um documento de identidade (BI, DIRE ou passaporte) e que uma pessoa da Ntizo o reviu antes de o perfil ficar visível.</div></div>
+      <div class="q"><div class="h"><span>Alguns serviços dizem "sob orçamento" ou "por hora". Como reservo?</span><span>+</span></div><div class="a">Esses ainda não se reservam directamente. Envie uma mensagem ao prestador a partir da página do serviço para combinar o preço e a hora.</div></div>
+      <div class="q"><div class="h"><span>Posso cancelar uma reserva?</span><span>+</span></div><div class="a">Antes de o prestador confirmar, o pedido ainda não o compromete a nada. Depois de confirmar e pagar, fale com o suporte o quanto antes com a data e o nome do prestador, e tratamos do caso consigo.</div></div>
+      <div class="q"><div class="h"><span>Como deixo uma avaliação?</span><span>+</span></div><div class="a">Só quem teve um serviço concluído com um prestador o pode avaliar. Cada pessoa tem uma avaliação por prestador, e pode mudá-la quando quiser.</div></div>
+
+      <div class="grp-h">Prestadores</div>
+      <div class="q"><div class="h"><span>Quem pode ser prestador?</span><span>+</span></div><div class="a">Uma pessoa que oferece o seu próprio trabalho, ou um estabelecimento com equipa. Precisa de um documento de identidade, de um meio para receber (M-Pesa, e-Mola ou conta bancária) e de aceitar os termos.</div></div>
+      <div class="q"><div class="h"><span>Quanto custa?</span><span>+</span></div><div class="a">Registar-se e publicar serviços é gratuito. A Ntizo cobra uma comissão sobre cada serviço pago, descontada do valor que lhe é pago. A sua taxa está indicada na sua área de prestador.</div></div>
+      <div class="q"><div class="h"><span>Quando é que recebo?</span><span>+</span></div><div class="a">O cliente paga depois de confirmar a hora, e o valor fica retido até o serviço estar concluído. Depois disso passa para a sua carteira, onde fica disponível para levantar após o período de retenção indicado.</div></div>
+      <div class="q"><div class="h"><span>Como funciona a verificação?</span><span>+</span></div><div class="a">Envia um documento de identidade durante o registo. Uma pessoa da Ntizo revê o pedido; até lá o perfil fica pendente e fora dos resultados. Avisamos por email quando estiver aprovado.</div></div>
+      <div class="q"><div class="h"><span>Posso ter uma equipa?</span><span>+</span></div><div class="a">Sim. Um estabelecimento convida membros por email. Cada um tem a sua disponibilidade, e as horas que os clientes vêem contam com quantas pessoas estão livres.</div></div>
+      <div class="q"><div class="h"><span>Como defino a minha disponibilidade?</span><span>+</span></div><div class="a">Define os dias e horas em que trabalha, a duração de cada serviço e o intervalo entre serviços. A Ntizo gera as horas que os clientes podem escolher. Pode bloquear dias específicos.</div></div>
+      <div class="q"><div class="h"><span>O que acontece se não responder a um pedido?</span><span>+</span></div><div class="a">Tem um prazo, indicado no pedido, para confirmar ou recusar. Passado esse prazo o pedido expira e o cliente é avisado para escolher outra hora ou outro prestador.</div></div>
+
+      <div class="grp-h">Pagamentos e segurança</div>
+      <div class="q"><div class="h"><span>Os meus dados de pagamento ficam guardados?</span><span>+</span></div><div class="a">Guardamos o número de telemóvel associado ao M-Pesa ou e-Mola e o país. Não guardamos números de cartão.</div></div>
+      <div class="q"><div class="h"><span>Posso partilhar o meu número ou email nas mensagens?</span><span>+</span></div><div class="a">As mensagens não permitem números de telefone nem emails. É o que mantém a reserva, o pagamento e a avaliação dentro da plataforma, onde há registo e a quem recorrer.</div></div>
+      <div class="q"><div class="h"><span>O que acontece se o serviço não for feito?</span><span>+</span></div><div class="a">O pagamento fica retido até o serviço estar concluído. Se algo correr mal, fale com o suporte com a data e o nome do prestador. Analisamos o caso com as duas partes.</div></div>
+      <div class="q"><div class="h"><span>Como tratam os meus dados?</span><span>+</span></div><div class="a">Recolhemos só o necessário para ligar clientes e prestadores. Está tudo na Política de Privacidade, escrita para ser lida.</div></div>
+      <div class="q"><div class="h"><span>Como apago a minha conta?</span><span>+</span></div><div class="a">Escreva para privacidade@ntizo.co.mz a partir do email da conta. Apagamos os seus dados, excepto o que a lei nos obriga a guardar.</div></div>
+    </div>
+  </div>
+  <div class="footmini">barra "Ainda tem dúvidas?" (sem o link para a FAQ) + footer</div>
+</div>
+
+<div class="callout">
+  <strong>Sobre a FAQ:</strong> nenhuma resposta cita um prazo ou uma percentagem, porque esses valores vivem nas definições da plataforma e mudam sem a página saber. Cada resposta foi verificada contra o que o produto faz hoje: só M-Pesa cobra, não há cancelamento pelo cliente nem reembolso automático, serviços à hora e sob orçamento passam por mensagem. Se alguma lhe parecer falsa ou a faltar, diga.
+</div>
+
+<!-- ═══════════════════════ CARREIRAS ═══════════════════════ -->
+<div class="pgtitle">3 · Carreiras (/careers)</div>
+<div class="pg">
+  <div class="band">
+    <span class="blob" style="width:360px;height:360px;left:-120px;top:-160px"></span>
+    <div class="sh rel">
+      <div class="hd">
+        <span class="logo">ntizo</span>
+        <span class="pill"><span style="background:#006ffd;color:#fff">Explorar</span><span>Serviços</span><span>Prestadores</span></span>
+        <span class="btn">Entrar</span>
+      </div>
+      <div style="padding:30px 0 40px;max-width:620px">
+        <span class="eyebrow" style="color:rgba(255,255,255,.65)">Carreiras</span>
+        <div class="disp" style="font-size:34px;margin-top:10px">Construa a Ntizo connosco.</div>
+        <p class="lede" style="color:rgba(255,255,255,.8);margin:12px 0 0;max-width:52ch">Somos uma equipa pequena a construir a infra-estrutura dos serviços locais em Moçambique. Não temos vagas abertas neste momento, mas lemos todas as candidaturas.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh" style="padding:36px 0 10px;display:grid;grid-template-columns:1fr 1fr;gap:40px">
+    <div>
+      <span class="eyebrow">O que estamos a construir</span>
+      <p class="p" style="margin:10px 0 0">Um mercado onde um cliente encontra, reserva e paga um serviço com a mesma confiança com que compra numa loja, e onde um prestador tem agenda, preços e pagamentos sem precisar de uma empresa por trás.</p>
+      <p class="p" style="margin:10px 0 0">Começámos por Moçambique, com M-Pesa e em português. A plataforma é desenhada desde o primeiro dia para servir outros países, outras moedas e outras línguas.</p>
+    </div>
+    <div>
+      <span class="eyebrow">Como trabalhamos</span>
+      <div style="margin-top:10px">
+        <div class="h3" style="font-size:12.5px">Escrevemos antes de construir.</div>
+        <p class="hint" style="margin:3px 0 0">Cada decisão tem um documento com o porquê, para que quem chegar depois não a tenha de adivinhar.</p>
+        <div class="h3" style="font-size:12.5px;margin-top:12px">Enviamos cedo, corrigimos depressa.</div>
+        <p class="hint" style="margin:3px 0 0">Preferimos uma versão real nas mãos de um cliente a uma versão perfeita numa apresentação.</p>
+        <div class="h3" style="font-size:12.5px;margin-top:12px">Quem usa vem primeiro.</div>
+        <p class="hint" style="margin:3px 0 0">Falamos com prestadores e clientes antes de decidir por eles.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh" style="padding:26px 0 40px">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:24px">
+      <div>
+        <span class="eyebrow">Vagas abertas</span>
+        <div class="disp" style="font-size:18px;margin-top:6px">Nenhuma neste momento.</div>
+        <p class="p" style="margin:6px 0 0;max-width:56ch">Se acha que devíamos estar a falar consigo mesmo assim, escreva-nos. Diga o que faz bem, o que já construiu, e porquê a Ntizo. Respondemos a todas.</p>
+      </div>
+      <span class="cta" style="white-space:nowrap">Candidatura espontânea →</span>
+    </div>
+    <p class="hint" style="margin:8px 0 0;text-align:right">Abre o seu email para ola@ntizo.co.mz com o assunto já preenchido.</p>
+  </div>
+  <div class="footmini">barra "Ainda tem dúvidas?" + footer</div>
+</div>
+
+<div class="callout">
+  <strong>Para validar:</strong> (1) o formulário centrado e o estado de sucesso com referência curta; (2) a lista de perguntas da FAQ, o agrupamento e as respostas; (3) o tom da página de Carreiras e os três princípios de "como trabalhamos", que são a única parte escrita sem factos do código. Responda no terminal.
+</div>
+</div>
+</body>
+</html>
