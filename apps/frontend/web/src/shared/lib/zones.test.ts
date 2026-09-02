@@ -99,30 +99,21 @@ describe("zoneOwnsChrome", () => {
     }
   });
 
-  it("claims checkout, whose header is the steps and nothing else", () => {
-    // A slot is on hold while these pages are open. The bottom bar's four
-    // destinations all lead away from it, and the checkout header already
-    // carries the only way out the customer should be offered.
+  it("leaves the customer pages alone, checkout included", () => {
+    // Checkout keeps the bottom bar on purpose — see `OWN_CHROME`. It only
+    // swaps the top of the page for its own header.
     for (const path of [
+      "/",
+      "/account",
+      "/onboarding",
+      "/become-provider",
+      "/sign-in",
       "/book/svc-1",
       "/booking/bk-1/details",
       "/booking/bk-1/confirm",
     ]) {
-      expect(zoneOwnsChrome(path)).toBe(true);
-    }
-  });
-
-  it("leaves the customer pages alone", () => {
-    for (const path of ["/", "/account", "/onboarding", "/become-provider", "/sign-in"]) {
       expect(zoneOwnsChrome(path)).toBe(false);
     }
-  });
-
-  it("does not mistake the customer's bookings list for checkout", () => {
-    // "/bookings".startsWith("/booking") is true, the same trap as
-    // "/providers" below — and that list is a customer page with nothing
-    // else to navigate with on a phone.
-    expect(zoneOwnsChrome("/bookings")).toBe(false);
   });
 
   it("does not mistake the public provider directory for the provider zone", () => {

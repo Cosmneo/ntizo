@@ -24,12 +24,14 @@ export function canAccessProvider(
  * header, so the customer bottom bar on top of that is a second navigation
  * offering four destinations that lead out of the zone you are working in.
  *
- * `/book` and `/booking` are checkout. Its header is the steps and a lock,
- * and that is deliberate: a slot is on hold while those pages are open, and
- * every destination the bottom bar offers leads away from it. The way out is
- * the back link, or the logo — see `CheckoutHeader`.
+ * Checkout (`/book`, `/booking`) is deliberately *not* here. It briefly was,
+ * on the argument that a slot on hold should not be a swipe away from four
+ * exits; the decision (2026-09-02) went the other way — the bar is the
+ * phone's navigation and it stays the same on every customer page, checkout
+ * included. Only the top of those pages is different: `CheckoutHeader`
+ * instead of `SiteHeader`.
  */
-const OWN_CHROME = ["provider", "admin", "book", "booking"];
+const OWN_CHROME = ["provider", "admin"];
 
 /**
  * Whether this path belongs to a zone that draws its own navigation.

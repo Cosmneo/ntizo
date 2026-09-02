@@ -11,8 +11,8 @@ import { CheckoutSteps, type CheckoutStep } from "@/features/checkout/ui/checkou
  * where somewhere else costs a slot on hold. Checkout is a corridor: the
  * customer finishes it, or leaves by the back link or the logo. So the bar
  * says where in the corridor they are and that the purchase is secure, and
- * nothing else. The bottom bar on a phone is gone for the same reason — see
- * `zoneOwnsChrome`.
+ * nothing else. The phone's bottom bar stays, though: it is the same on every
+ * customer page by decision — see `zoneOwnsChrome`.
  *
  * The steps live here rather than in the page body. The body already has a
  * back link, a title and an intro above the first control, and a fourth thing
