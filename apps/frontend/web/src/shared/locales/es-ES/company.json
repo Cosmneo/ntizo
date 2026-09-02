@@ -1,0 +1,125 @@
+{
+  "shared": {
+    "seeAlso": "Ver también",
+    "links": {
+      "contact": { "title": "Contacto", "body": "Colaboraciones, prensa, o simplemente un saludo." },
+      "feedback": { "title": "Enviar opinión", "body": "Una idea, algo que no funcionó, o algo que te gustó." },
+      "about": { "title": "Sobre Ntizo", "body": "Qué hacemos, cómo funciona y en qué creemos." },
+      "careers": { "title": "Empleo", "body": "Cómo trabajamos, y cómo presentar tu candidatura." }
+    }
+  },
+  "about": {
+    "headTitle": "Sobre Ntizo",
+    "eyebrow": "Sobre Ntizo",
+    "heading": "Servicios locales en los que puedes",
+    "headingAccent": "confiar",
+    "lede": "Ntizo conecta a quien necesita un servicio con quien sabe hacerlo. Proveedores verificados, el precio siempre visible, y el pago solo después de que el proveedor confirme la hora.",
+    "missionEyebrow": "Nuestra misión",
+    "missionTitle": "Hacer que contratar un servicio sea tan simple y seguro como comprar en una tienda.",
+    "mission1": "En Mozambique, encontrar un buen fontanero, una peluquera o un profesor particular todavía depende de conocer a alguien que conozca a alguien. El precio se acuerda por teléfono, la hora falla, y cuando algo sale mal no hay a quién recurrir.",
+    "mission2": "Ntizo existe para cambiar eso. Cada proveedor se verifica antes de aparecer en los resultados, cada servicio muestra su precio, y cada reserva queda registrada de principio a fin, desde la hora acordada hasta el pago.",
+    "howEyebrow": "Cómo funciona",
+    "howTitle": "Tres pasos, y ninguno de ellos es pagar antes de saber si va a suceder.",
+    "steps": {
+      "search": { "title": "Busca y compara", "body": "Consulta servicios por categoría y ciudad, con el precio, las opiniones de quienes ya los usaron y el distintivo de verificado." },
+      "book": { "title": "Reserva la hora", "body": "Elige el día y la hora en el calendario del proveedor e indica dónde tiene lugar el servicio. La solicitud pasa a que él la confirme." },
+      "pay": { "title": "Paga después de la confirmación", "body": "Solo cuando el proveedor confirma la hora recibes la solicitud de pago en el móvil. Antes de eso no se cobra nada." }
+    },
+    "principlesEyebrow": "En qué creemos",
+    "principlesTitle": "Cuatro reglas que no cambian, sea cual sea el servicio.",
+    "principles": {
+      "price": { "title": "El precio es el precio.", "body": "El importe que ves en el anuncio es el importe que pagas. La comisión de la plataforma sale de la parte del proveedor, nunca de la tuya." },
+      "verification": { "title": "Verificación antes de visibilidad.", "body": "Ningún proveedor aparece en los resultados sin haber enviado un documento de identidad y sin que una persona de Ntizo lo haya revisado." },
+      "payAfter": { "title": "Pagar solo después del sí.", "body": "La solicitud de pago solo llega después de que el proveedor confirme la hora. Si no confirma, o si la rechaza, no hay nada que cobrar." },
+      "local": { "title": "Hecho para aquí, listo para crecer.", "body": "M-Pesa, portugués, las ciudades donde vivimos. Y una plataforma pensada para servir a otros países cuando llegue el momento." }
+    },
+    "customersEyebrow": "Para clientes",
+    "customersTitle": "Encuentra, reserva y paga en un solo sitio.",
+    "customersBody": "Sin llamadas para saber el precio, sin esperar una respuesta que no llega. Cada reserva tiene una hora, un importe y un registro.",
+    "customersCta": "Explorar servicios",
+    "providersEyebrow": "Para proveedores",
+    "providersTitle": "Tu agenda, tus precios, tus clientes.",
+    "providersBody": "Publica tus servicios, define cuándo estás disponible y recibe solicitudes confirmadas. Ntizo se encarga del calendario, del pago y de darte a conocer.",
+    "providersCta": "Hazte proveedor"
+  },
+  "contact": {
+    "headTitle": "Contacto",
+    "eyebrow": "Contacto",
+    "heading": "Habla con nosotros.",
+    "lede": "Colaboraciones, prensa, una pregunta sobre la plataforma o simplemente un saludo. Respondemos en días laborables.",
+    "messagePlaceholder": "Cuéntanos qué tienes en mente.",
+    "cards": {
+      "email": { "title": "Por email", "body": "Para quien prefiere escribir directamente." },
+      "social": { "title": "En redes sociales", "body": "Novedades, entre bastidores y los proveedores que destacamos." },
+      "feedback": { "title": "¿Tienes una idea, o algo falló?", "body": "Eso es opinión, y lo leemos todo.", "cta": "Enviar opinión" }
+    }
+  },
+  "feedback": {
+    "headTitle": "Enviar opinión",
+    "eyebrow": "Opinión",
+    "heading": "Cuéntanos qué opinas.",
+    "lede": "Una idea, algo que no funcionó, o algo que te gustó. Lo leemos todo, y es esto lo que decide qué construimos a continuación.",
+    "messagePlaceholder": "¿Qué te gustaría que fuera diferente? Si algo falló, dinos dónde estabas y qué esperabas.",
+    "cards": {
+      "read": { "title": "Lo leemos todo", "body": "Cada mensaje llega a una persona del equipo. No todos tienen respuesta, pero todos cuentan." },
+      "contact": { "title": "¿Una colaboración, la prensa, una pregunta?", "body": "Eso es para contacto, que sí responde.", "cta": "Ir a contacto" },
+      "social": { "title": "En redes sociales", "body": "Novedades, entre bastidores y los proveedores que destacamos." }
+    }
+  },
+  "form": {
+    "signInHint": "¿Tienes cuenta?",
+    "signInLink": "Inicia sesión",
+    "signInHintRest": "y rellenamos el nombre y el email por ti.",
+    "name": "Nombre",
+    "namePlaceholder": "Tu nombre",
+    "email": "Email",
+    "emailPlaceholder": "Adónde respondemos",
+    "emailOptional": "Opcional. Solo si quieres respuesta.",
+    "topic": "Asunto",
+    "message": "Mensaje",
+    "privacyNote": "Guardamos este mensaje para responderte. Nada más.",
+    "privacyLink": "Política de privacidad",
+    "submit": "Enviar mensaje",
+    "sending": "Enviando…",
+    "errors": {
+      "nameRequired": "Dinos cómo te llamas.",
+      "emailRequired": "Necesitamos un email para responder.",
+      "emailInvalid": "Este email no parece completo.",
+      "messageTooShort": "Escribe al menos 10 caracteres.",
+      "rateLimited": "Hemos recibido varios mensajes desde este dispositivo hace poco. Inténtalo de nuevo dentro de una hora, o escribe a {{email}}.",
+      "generic": "No hemos podido enviarlo. Inténtalo de nuevo, o escríbenos a {{email}}."
+    },
+    "success": {
+      "title": "Hemos recibido tu mensaje.",
+      "replyTo": "Te responderemos a {{email}} en días laborables, en el idioma en que nos escribiste.",
+      "noEmail": "Gracias. Lo leemos todo lo que nos llega.",
+      "reference": "Referencia: {{reference}}",
+      "home": "Volver al inicio"
+    }
+  },
+  "topics": {
+    "contact": { "general": "Pregunta general", "partnership": "Colaboración", "press": "Prensa", "provider": "Soy proveedor", "other": "Otro" },
+    "feedback": { "idea": "Una idea", "problem": "Algo no funcionó", "praise": "Algo me gustó" }
+  },
+  "careers": {
+    "headTitle": "Empleo",
+    "eyebrow": "Empleo",
+    "heading": "Construye Ntizo con nosotros.",
+    "lede": "Somos un equipo pequeño construyendo la infraestructura de los servicios locales en Mozambique. No tenemos vacantes abiertas en este momento, pero leemos todas las candidaturas.",
+    "buildingEyebrow": "Qué estamos construyendo",
+    "building1": "Un mercado donde un cliente encuentra, reserva y paga un servicio con la misma confianza con la que compra en una tienda, y donde un proveedor tiene agenda, precios y pagos sin necesitar una empresa detrás.",
+    "building2": "Empezamos por Mozambique, con M-Pesa y en portugués. La plataforma está pensada desde el primer día para servir a otros países, otras monedas y otros idiomas.",
+    "howEyebrow": "Cómo trabajamos",
+    "how": [
+      { "title": "Escribimos antes de construir.", "body": "Cada decisión tiene un documento con el porqué, para que quien llegue después no tenga que adivinarlo." },
+      { "title": "Publicamos pronto y corregimos rápido.", "body": "Preferimos una versión real en manos de un cliente a una versión perfecta en una presentación." },
+      { "title": "Quien lo usa va primero.", "body": "Hablamos con proveedores y clientes antes de decidir por ellos." }
+    ],
+    "openingsEyebrow": "Vacantes abiertas",
+    "openingsTitle": "Ninguna en este momento.",
+    "openingsBody": "Si crees que deberíamos estar hablando contigo de todas formas, escríbenos. Cuéntanos qué haces bien, qué has construido, y por qué Ntizo. Respondemos a todas.",
+    "openingsCta": "Candidatura espontánea",
+    "openingsHint": "Abre tu email a {{email}} con el asunto ya rellenado.",
+    "mailSubject": "Candidatura espontánea"
+  }
+}
