@@ -10,10 +10,12 @@ import type {
   RaiseNotificationInput,
   RaiseNotificationInternalPort,
 } from "../app/ports/outbound/raise-notification.port";
+import type { AdminUserReaderPort } from "../app/ports/outbound/admin-user-reader.port";
 
 const NOW = new Date("2026-08-27T10:02:00.000Z");
 const customerId = "customer-1";
 const providerId = "provider-1";
+const staffId = "staff-1";
 
 /** One due message, defaulted to "sent by the customer" unless overridden. */
 function dueMessage(id: string, patch: Partial<DueMessage> = {}): DueMessage {
@@ -92,7 +94,16 @@ class FakeRaiseNotification implements RaiseNotificationInternalPort {
   }
 }
 
+class FakeAdminUserReader implements AdminUserReaderPort {
+  constructor(private readonly ids: string[]) {}
+  async findAdminUserIds(): Promise<string[]> {
+    return this.ids;
+  }
+}
+
 let raised: FakeRaiseNotification;
+/** Unused by the inquiry-only tests below — support requests are the only path that reads it. */
+const admins = new FakeAdminUserReader(["admin-1", "admin-2"]);
 
 beforeEach(() => {
   raised = new FakeRaiseNotification();
@@ -101,7 +112,7 @@ beforeEach(() => {
 describe("who gets told", () => {
   it("notifies the provider when the customer sent the message", async () => {
     const messages = new FakeMessageRepository([dueMessage("m1", { senderSide: "customer" })]);
-    const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
 
     const result = await notify.execute({ limit: 10 });
 
@@ -118,7 +129,7 @@ describe("who gets told", () => {
 
   it("notifies the customer when a provider team member sent the message", async () => {
     const messages = new FakeMessageRepository([dueMessage("m1", { senderSide: "provider" })]);
-    const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
 
     await notify.execute({ limit: 10 });
 
@@ -141,7 +152,7 @@ describe("who gets told", () => {
       dueMessage("from-customer", { senderSide: "customer" }),
       dueMessage("from-staff", { senderSide: "provider" }),
     ]);
-    const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
 
     await notify.execute({ limit: 10 });
 
@@ -154,7 +165,7 @@ describe("who gets told", () => {
 describe("claiming", () => {
   it("passes the caller's limit and clock straight through to claimDueForNotice", async () => {
     const messages = new FakeMessageRepository([]);
-    const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
 
     await notify.execute({ limit: 7 });
 
@@ -163,7 +174,7 @@ describe("claiming", () => {
 
   it("marks what it notified so the next sweep skips it", async () => {
     const messages = new FakeMessageRepository([dueMessage("m1"), dueMessage("m2")]);
-    const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
 
     const first = await notify.execute({ limit: 10 });
     expect(first).toEqual({ notified: 2, failed: 0 });
@@ -185,7 +196,7 @@ describe("resilience", () => {
     // m2 sits between two messages that must still succeed — a loop that
     // aborts on the first thrown error would never reach m3.
     raised.failOn((input) => input.payload["threadId"] === "m2-thread");
-    const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
 
     const result = await notify.execute({ limit: 10 });
 
@@ -197,5 +208,79 @@ describe("resilience", () => {
     // `markNotified` is only reached after `raiseNotification.execute`
     // resolved. Left unmarked, the next sweep will retry exactly this one.
     expect(messages.notifiedAt.has("m2")).toBe(false);
+  });
+});
+
+describe("support requests", () => {
+  const admins = new FakeAdminUserReader(["admin-1", "admin-2"]);
+
+  it("a requester's unread message tells every admin, once each", async () => {
+    const messages = new FakeMessageRepository([
+      dueMessage("m1", { threadType: "support", senderSide: "customer", providerId: null, subject: "Reembolso" }),
+    ]);
+    const notify = new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW);
+
+    const result = await notify.execute({ limit: 10 });
+
+    expect(result).toEqual({ notified: 1, failed: 0 });
+    expect(raised.calls).toEqual([
+      { type: NotificationType.SupportRequestMessage, audience: "user", userId: "admin-1", payload: { threadId: "m1-thread", subject: "Reembolso", requestAudience: "customer" } },
+      { type: NotificationType.SupportRequestMessage, audience: "user", userId: "admin-2", payload: { threadId: "m1-thread", subject: "Reembolso", requestAudience: "customer" } },
+    ]);
+    expect(messages.notifiedAt.has("m1")).toBe(true);
+  });
+
+  it("a platform reply tells the customer on a personal request, and the provider on a provider request", async () => {
+    const messages = new FakeMessageRepository([
+      dueMessage("personal", { threadType: "support", senderSide: "platform", providerId: null, subject: "A" }),
+      dueMessage("prov", { threadType: "support", senderSide: "platform", customerUserId: staffId, providerId, subject: "B" }),
+    ]);
+    await new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW).execute({ limit: 10 });
+
+    expect(raised.calls).toEqual([
+      { type: NotificationType.SupportReply, audience: "user", userId: customerId, payload: { threadId: "personal-thread", subject: "A", requestAudience: "customer" } },
+      { type: NotificationType.SupportReply, audience: "provider", providerId, payload: { threadId: "prov-thread", subject: "B", requestAudience: "provider", providerId } },
+    ]);
+  });
+
+  it("a member's message on a provider request still goes to the admins, with the provider named", async () => {
+    const messages = new FakeMessageRepository([
+      dueMessage("m", { threadType: "support", senderSide: "provider", customerUserId: staffId, providerId, subject: "C" }),
+    ]);
+    await new NotifyUnreadInternalCommand(messages, raised, new FakeAdminUserReader(["admin-1"]), () => NOW).execute({ limit: 10 });
+    expect(raised.calls).toEqual([
+      { type: NotificationType.SupportRequestMessage, audience: "user", userId: "admin-1", payload: { threadId: "m-thread", subject: "C", requestAudience: "provider", providerId } },
+    ]);
+  });
+
+  it("an inquiry is untouched by all of this", async () => {
+    const messages = new FakeMessageRepository([dueMessage("i", { senderSide: "provider" })]);
+    await new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW).execute({ limit: 10 });
+    expect(raised.calls).toEqual([{ type: NotificationType.NewMessage, audience: "user", userId: customerId, payload: { threadId: "i-thread" } }]);
+  });
+
+  it("with no admins at all, the message is marked notified rather than retried forever", async () => {
+    const messages = new FakeMessageRepository([dueMessage("m", { threadType: "support", senderSide: "customer", providerId: null, subject: "x" })]);
+    const result = await new NotifyUnreadInternalCommand(messages, raised, new FakeAdminUserReader([]), () => NOW).execute({ limit: 10 });
+    expect(result).toEqual({ notified: 1, failed: 0 });
+    expect(raised.calls).toHaveLength(0);
+    expect(messages.notifiedAt.has("m")).toBe(true);
+  });
+
+  it("one admin failing does not lose the notice for the others, and the message is still marked", async () => {
+    raised.failOn((input) => input.audience === "user" && input.userId === "admin-1");
+    const messages = new FakeMessageRepository([dueMessage("m", { threadType: "support", senderSide: "customer", providerId: null, subject: "x" })]);
+    const result = await new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW).execute({ limit: 10 });
+    expect(result).toEqual({ notified: 1, failed: 0 });
+    expect(raised.calls).toHaveLength(2);
+    expect(messages.notifiedAt.has("m")).toBe(true);
+  });
+
+  it("every admin failing counts the message as failed and leaves it for the next sweep", async () => {
+    raised.failOn(() => true);
+    const messages = new FakeMessageRepository([dueMessage("m", { threadType: "support", senderSide: "customer", providerId: null, subject: "x" })]);
+    const result = await new NotifyUnreadInternalCommand(messages, raised, admins, () => NOW).execute({ limit: 10 });
+    expect(result).toEqual({ notified: 0, failed: 1 });
+    expect(messages.notifiedAt.has("m")).toBe(false);
   });
 });

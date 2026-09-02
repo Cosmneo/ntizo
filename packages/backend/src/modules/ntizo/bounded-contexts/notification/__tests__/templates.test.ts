@@ -50,6 +50,10 @@ const PAYLOADS: Record<string, Record<string, unknown>> = {
     role: "staff",
   },
   [NotificationType.NewMessage]: { threadId: "thread-1" },
+  [NotificationType.SupportRequestOpened]: { threadId: "t1", subject: "Reembolso", requestAudience: "customer" },
+  [NotificationType.SupportRequestMessage]: { threadId: "t1", subject: "Reembolso", requestAudience: "provider", providerId: "p1" },
+  [NotificationType.SupportReply]: { threadId: "t1", subject: "Reembolso", requestAudience: "customer" },
+  [NotificationType.SupportRequestResolved]: { threadId: "t1", subject: "Reembolso", requestAudience: "provider", providerId: "p1" },
 };
 
 describe("every template renders in every locale", () => {
@@ -131,6 +135,29 @@ describe("newMessageTemplate routes its CTA by audience", () => {
     const out = await withInfra(() => newMessageTemplate.render("en-US", { threadId: "thread-1" }));
     expect(out.html).toContain("https://ntizo.test/messages");
     expect(out.html).not.toContain("/provider/");
+  });
+});
+
+describe("support templates link to the reader's own screen", () => {
+  it("admin templates link to the admin queue entry", async () => {
+    for (const type of [NotificationType.SupportRequestOpened, NotificationType.SupportRequestMessage]) {
+      const out = (await withInfra(() => renderer.render(type, "pt-MZ", PAYLOADS[type]!)))!;
+      expect(out.text).toContain("https://ntizo.test/admin/support/t1");
+      expect(out.text).toContain("Reembolso");
+    }
+  });
+
+  it("requester templates link to the personal inbox, or the provider's", async () => {
+    const personal = (await withInfra(() => renderer.render(NotificationType.SupportReply, "pt-MZ", { threadId: "t1", subject: "S", requestAudience: "customer" })))!;
+    expect(personal.text).toContain("https://ntizo.test/messages?thread=t1");
+    const provider = (await withInfra(() => renderer.render(NotificationType.SupportRequestResolved, "pt-MZ", { threadId: "t1", subject: "S", requestAudience: "provider", providerId: "p1" })))!;
+    expect(provider.text).toContain("https://ntizo.test/provider/p1/messages?thread=t1");
+  });
+
+  it("escapes a subject that carries markup", async () => {
+    const out = (await withInfra(() => renderer.render(NotificationType.SupportRequestOpened, "en-US", { threadId: "t1", subject: "<b>x</b>", requestAudience: "customer" })))!;
+    expect(out.html).not.toContain("<b>x</b>");
+    expect(out.html).toContain("&lt;b&gt;x&lt;/b&gt;");
   });
 });
 
