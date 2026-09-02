@@ -37,6 +37,7 @@ export const configMiddleware: MiddlewareHandler<{ Bindings: AppBindings }> = as
       MPESA_ENVIRONMENT: env.MPESA_ENVIRONMENT,
       MPESA_ORIGIN: env.MPESA_ORIGIN,
       MPESA_SERVICE_PROVIDER_CODE: env.MPESA_SERVICE_PROVIDER_CODE,
+      CONTACT_INBOX_EMAIL: env.CONTACT_INBOX_EMAIL,
     },
     async () => {
       // Carried so signup can create the profile in the language the person is

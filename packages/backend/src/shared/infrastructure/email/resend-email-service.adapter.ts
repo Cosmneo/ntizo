@@ -23,6 +23,7 @@ export class ResendEmailServiceAdapter implements EmailServicePort {
       subject: message.subject,
       html: message.htmlBody,
       text: message.textBody,
+      ...(message.replyTo ? { replyTo: message.replyTo } : {}),
     });
 
     if (error) {

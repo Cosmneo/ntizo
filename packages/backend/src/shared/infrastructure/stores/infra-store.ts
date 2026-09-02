@@ -51,6 +51,15 @@ export interface InfraEnvBindings {
   MPESA_ORIGIN?: string;
   /** The merchant shortcode being paid. `171717` in the sandbox. */
   MPESA_SERVICE_PROVIDER_CODE?: string;
+  /**
+   * Where a contact or feedback form's message is forwarded.
+   *
+   * Optional for the same reason the M-Pesa pair is: a local run, a script
+   * and every test that builds this shape genuinely have none, and the
+   * adapter that reads it says so (it logs and keeps the row) rather than
+   * throwing. Configuration, not a secret, so it lives in `wrangler.jsonc`.
+   */
+  CONTACT_INBOX_EMAIL?: string;
 }
 
 /**

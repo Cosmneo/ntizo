@@ -144,6 +144,7 @@ export async function scheduled(
       MPESA_ENVIRONMENT: env.MPESA_ENVIRONMENT,
       MPESA_ORIGIN: env.MPESA_ORIGIN,
       MPESA_SERVICE_PROVIDER_CODE: env.MPESA_SERVICE_PROVIDER_CODE,
+      CONTACT_INBOX_EMAIL: env.CONTACT_INBOX_EMAIL,
     },
     async () => {
       infraStore.setHyperdrive(
