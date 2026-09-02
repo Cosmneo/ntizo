@@ -3219,3 +3219,29 @@ like the noise.
 
 **Trigger:** the next unexplained backend red, or before anyone wires the suite into a gate that
 blocks a merge on a single run.
+
+## #125 — Every page is served as `lang="en"`, whatever language it renders in
+
+`document.documentElement.lang` is `"en"` on a page rendering Portuguese. Measured on the deployed
+dev environment with the browser on `pt-PT`: i18next resolved `pt-PT`, every string on screen was
+Portuguese, and the document declared English.
+
+Two costs, and the second is the one that shows.
+
+A screen reader picks its voice and its pronunciation rules from that attribute, so a Portuguese
+page is read aloud by an English synthesiser; browsers offer to translate a page they are told is
+in a language the reader already has. Neither failure is visible to anyone testing with their eyes.
+
+And it is the root of a **hydration mismatch on every load**. React reported the server rendering
+`aria-label="Main navigation"` and `Explore` where the client rendered `Navegação principal` and
+`Explorar`, and regenerated the tree — the server does not know the reader's language, so it
+renders the default and the client corrects it a frame later. Adding `?lng=pt-MZ` makes it explicit
+rather than causing it.
+
+The fix is that the server has to know the language before it renders: the `Accept-Language` header
+it already receives, or a cookie the switcher writes, carried into i18next's initialisation and out
+into `<html lang>`. The tell that it is fixed is the hydration warning disappearing, not the
+attribute changing.
+
+**Trigger:** before any locale other than Portuguese has real users, and before anyone
+investigates the hydration warning on its own — it is a symptom of this, not a separate bug.
