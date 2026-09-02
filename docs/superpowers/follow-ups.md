@@ -2767,7 +2767,25 @@ otherwise a visual redesign of three pages.
 reviews, a verification that gains a state — because that is the moment two of them become
 wrong silently.
 
-## #116 — Checkout fixtures are typed loosely enough to drift from the read model
+## ~~#116 — Checkout fixtures are typed loosely enough to drift from the read model~~ — RESOLVED 2026-09-02
+
+All four checkout booking fixtures now return a whole `BookingDTO` instead of taking a
+`Partial<BookingDTO>` and returning `unknown`, so a field added to `bookingReadModel` is a
+compile error rather than a silently stale fixture: `details-page.test.tsx` and
+`confirm-page.test.tsx`, plus `routes/__tests__/booking.$bookingId.{details,confirm}.test.tsx`,
+which had the same shape and were not in the original entry.
+
+**Two of them had already drifted.** The details *route* fixture carried no `timezone` and no
+`providerRatingAverage` at all, and step 2 now renders both — the missing rating would have
+reached `Intl.NumberFormat().format(undefined)` and printed `NaN` in the trust line. The
+`CurrentUserDTO` fixtures in both route suites were ad-hoc object literals and are now typed
+too, for the same reason.
+
+The rating on every fixture is **4.2**, chosen because no default and no other fixture in the
+repo produces it: at 4.8 the trust-line assertion would pass against a rail that ignored the
+booking and printed the shared suite's constant.
+
+## #116 (original) — Checkout fixtures are typed loosely enough to drift from the read model
 
 `details-page.test.tsx` and `confirm-page.test.tsx` build their bookings as `Partial<BookingDTO>`
 cast through `unknown`, so adding a required field to `bookingReadModel` does not break them.
@@ -2779,3 +2797,42 @@ left behind, which is worse, because it reads as coverage.
 
 **Trigger:** any field added to `bookingReadModel`, and whenever one of those suites is next
 opened for a real change.
+
+---
+
+## #117 — Checkout step 2 shows the same appointment twice, with two identical "Alterar" buttons
+
+The approved mockups give step 2 a "MARCAÇÃO ESCOLHIDA" panel at the top of the form *and* a
+"QUANDO" panel in the shared rail. Both print the same date and time, in the same words (they
+share `railWhen`, deliberately — two clocks on one page make whichever the customer checks
+against the other look wrong), and both carry an "Alterar" that goes to the same place.
+
+On a narrow screen the rail stacks below the form, so the top panel is the only one a customer
+reads before filling anything in — which is the case that justifies it. On a desktop viewport
+they are inches apart and the duplication is visible.
+
+Built as the brief specifies rather than resolved, because the two mockups are the authority
+and the owner approved them. The resolution, if it is wanted, is one of: drop the top panel and
+rely on the rail above the fold, or drop the rail's "Alterar" on this step and let the panel own
+the control.
+
+**Trigger:** the first time somebody looks at step 2 on a desktop viewport and asks why the
+appointment is there twice — or the next change to either panel, because there are now two
+places to make it.
+
+---
+
+## #118 — Step 3 still carries the pre-redesign rail
+
+Steps 1 and 2 render the shared `CheckoutRail`; step 3 still has its own bespoke card — provider
+name, service name, price, no trust line, no "QUANDO" panel, no `Deslocação` line. The
+duplication the rail was extracted to end therefore survives on one of the three pages, and the
+booking's `providerVerified`/`providerRatingAverage` reach that page and are not printed.
+
+Out of scope deliberately: this task's scope was step 2 and the phone's move off step 3, and
+adopting the rail there is a visual change to a page nobody asked to redesign in this pass. The
+fixtures in `confirm-page.test.tsx` already carry both fields, so the adoption starts from a
+booking that has them.
+
+**Trigger:** the step 3 redesign, or any change to what the rail prints — because that is the
+moment the two cards start disagreeing about the same booking.

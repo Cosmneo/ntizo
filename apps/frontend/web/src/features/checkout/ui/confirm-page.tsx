@@ -4,7 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Smartphone } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
-import { Button, Input, Label, Skeleton } from "@ntizo/frontend-ui";
+import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
 import { useMyAddresses } from "@/features/account/viewmodel/use-addresses";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
@@ -23,9 +23,6 @@ import {
   BookingOutcomePanel,
   SentPanel,
 } from "@/features/checkout/ui/booking-outcome-panel";
-
-/** Why the phone field is refusing, or `null` when it is not. */
-type PhoneRefusal = "required" | "notVodacom";
 
 /**
  * A stored coordinate as a number, or `null`.
@@ -81,6 +78,15 @@ function toSubmitAddress(address: AddressDTO): SubmitBookingAddress {
  * radio group with one live option and two greyed ones offers a decision
  * nobody can make and invites the customer to want the thing they cannot
  * have.
+ *
+ * **The phone number is collected on step 2 and only read back here.** The
+ * two mutations are unchanged and still both happen on this page — setting a
+ * phone number is the User context's job, so `user.updateMyProfile` runs
+ * before `booking.submit` and the submit refuses a customer with none on
+ * file. What moved is the field, not the rule: the number arrives in the
+ * tab's own store beside the address, and a store that carries one
+ * `toMpesaMsisdn` refuses sends the customer back to the step that asks
+ * rather than into a refusal they cannot act on from here.
  *
  * Split in two so the address, profile and mutation hooks below are not run
  * for a booking this page is about to navigate away from — the same split
@@ -196,16 +202,14 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
   const navigate = useNavigate();
 
   const { data: addresses = [], isPending: addressesLoading } = useMyAddresses();
-  const { data: user } = useCurrentUser();
+  const { data: user, isPending: userLoading } = useCurrentUser();
   const request = useSendBookingRequest();
 
-  // Read once, on mount, exactly as step 2 writes it. The address and the
-  // note reached this page through the tab's own store and through nothing
-  // else — this design writes to the server twice, at the two ends of
-  // checkout, and never in between.
+  // Read once, on mount, exactly as step 2 writes it. The address, the note
+  // and the phone number reached this page through the tab's own store and
+  // through nothing else — this design writes to the server twice, at the two
+  // ends of checkout, and never in between.
   const [details] = useState(() => readDraftDetails(booking.id));
-  const [typedPhone, setTypedPhone] = useState<string | null>(null);
-  const [refusal, setRefusal] = useState<PhoneRefusal | null>(null);
   /**
    * The deadline the send came back with — and, by being set at all, the fact
    * that this page's errand is done.
@@ -220,27 +224,36 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
   const [respondBy, setRespondBy] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
-  // Derived rather than seeded by an effect: the profile arrives a render or
-  // two after this component mounts, and an effect that copied it into state
-  // would either overwrite what the customer had already started typing or
-  // need a flag to remember that it had run. `null` means untouched, which is
-  // the only thing a `""` could not distinguish from "cleared on purpose".
-  const phone = typedPhone ?? user?.phoneNumber ?? "";
+  // Step 2's answer first, the profile behind it. The order is the same one
+  // the address follows: what the customer said in this checkout wins over
+  // what the platform happened to hold, because the number they typed on the
+  // step before is the one they expect the prompt on.
+  const phone = details?.phoneNumber ?? user?.phoneNumber ?? "";
+  // **The same rule the charge uses, applied again on this side of the
+  // store.** Step 2 refuses to continue on a number `toMpesaMsisdn` rejects,
+  // but `sessionStorage` is a string anybody with a console open can rewrite
+  // and a bookmarked confirm URL never went through step 2 at all.
+  const msisdn = toMpesaMsisdn(phone);
 
   const address = addresses.find((a) => a.id === details?.addressId) ?? null;
   // Not merely "the store was empty": an address chosen on step 2 and deleted
   // in another tab lands here too. Either way there is nothing to send and no
   // honest way to guess, so the customer goes back to the step that asks.
   const addressMissing = !addressesLoading && address === null;
+  // And the same for the number, for the same reason and to the same place.
+  // `booking.submit` refuses a customer with none on file, so sending anyway
+  // buys a round trip whose only outcome is a refusal — on a page that no
+  // longer has the field to fix it in.
+  const phoneMissing = !userLoading && msisdn === null;
 
   useEffect(() => {
-    if (!addressMissing) return;
+    if (!addressMissing && !phoneMissing) return;
     void navigate({
       to: "/booking/$bookingId/details",
       params: { bookingId: booking.id },
       replace: true,
     });
-  }, [addressMissing, booking.id, navigate]);
+  }, [addressMissing, phoneMissing, booking.id, navigate]);
 
   // **In the service's zone, never the device's.** See `slotWording`: the
   // instant is the same everywhere, the hour it is spoken of in is not, and a
@@ -249,18 +262,11 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
   const when = slotWording(booking.startsAt, booking.endsAt, locale, booking.timezone);
 
   function send() {
-    // **The same rule the charge uses, not a laxer one.** `82` is a real
-    // Mozambican prefix and not Vodacom's: accepted here, it would fail at
-    // the charge instead — after the provider had already blocked their
-    // calendar for it.
-    const msisdn = toMpesaMsisdn(phone);
-    if (!msisdn) {
-      setRefusal(phone.trim() ? "notVodacom" : "required");
-      return;
-    }
-    if (!address) return;
+    // Both already decided above, and both send the customer back to step 2
+    // when they are missing rather than being reported here — there is
+    // nothing on this page to correct either one in.
+    if (!msisdn || !address) return;
 
-    setRefusal(null);
     // Stored in E.164, the form `profile.phone_number` already holds and the
     // one `toMpesaMsisdn` reads back — see its own doc comment.
     void request
@@ -319,9 +325,10 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
         </Link>
 
         {/* One form around both columns, so the send button in the rail is
-            the form's own submit: Enter in the phone field sends the request
-            rather than doing nothing, and the button needs no `form`
-            attribute pointing across the layout at it. */}
+            the form's own submit rather than a `form` attribute pointing
+            across the layout at it. Kept now that the phone field has moved
+            to step 2: this page's one action is still a submission, and
+            `type="submit"` is what a keyboard reaches it as. */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -390,42 +397,18 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
                   />
                   <div className="min-w-0">
                     <p className="type-body-medium font-semibold">{t("paymentMpesa")}</p>
+                    {/* **The number, read back rather than asked for again.**
+                        This page is the last screen before a commitment, and
+                        the handset the prompt lands on is one of the two
+                        facts on it a customer can still get wrong. Printed
+                        from the store, so a wrong one is visible here and
+                        correctable one press back on the step that owns the
+                        field. */}
+                    <p className="type-body tabular-nums">{phone}</p>
                     <p className="type-caption text-[var(--color-muted-foreground)]">
                       {t("paymentMpesaHint")}
                     </p>
                   </div>
-                </div>
-
-                <div className="mt-4 grid max-w-sm gap-1.5">
-                  <Label htmlFor="checkout-phone">{t("phoneLabel")}</Label>
-                  <Input
-                    id="checkout-phone"
-                    // `tel` rather than `number`: a phone number is digits
-                    // that may carry a `+` and spaces, and a numeric spinner
-                    // over one is nonsense on a desktop and a decimal keypad
-                    // on a phone.
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      setTypedPhone(e.target.value);
-                      // Cleared the moment they start correcting it, or they
-                      // read a refusal about a number they have already
-                      // changed.
-                      setRefusal(null);
-                    }}
-                    aria-invalid={refusal !== null}
-                    aria-describedby="checkout-phone-hint"
-                  />
-                  <p id="checkout-phone-hint" className="type-caption text-[var(--color-muted-foreground)]">
-                    {t("phoneHint")}
-                  </p>
-                  {refusal && (
-                    <p role="alert" className="type-caption text-[var(--color-destructive)]">
-                      {t(refusal === "required" ? "phoneRequired" : "phoneNotVodacom")}
-                    </p>
-                  )}
                 </div>
               </section>
 
@@ -501,7 +484,7 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
                 <Button
                   type="submit"
                   className="mt-4 w-full"
-                  disabled={request.pending || !address}
+                  disabled={request.pending || !address || !msisdn}
                 >
                   {t("sendAction")}
                 </Button>

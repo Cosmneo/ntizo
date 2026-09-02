@@ -1108,7 +1108,14 @@ describe("ChooseWhenPage", () => {
     });
     // Read back through the store's own reader rather than by key, because
     // that reader is what step 2 will use.
-    expect(readDraftDetails("bk-1")).toEqual({ addressId: "a2", description: "" });
+    // `phoneNumber: null` is asserted rather than omitted: step 2 collects
+    // the number, and a value written here would be this page answering a
+    // question it never asked.
+    expect(readDraftDetails("bk-1")).toEqual({
+      addressId: "a2",
+      description: "",
+      phoneNumber: null,
+    });
   });
 
   it("records 'outro endereço' as a positive answer, not as an absence", async () => {
@@ -1124,7 +1131,11 @@ describe("ChooseWhenPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() => expect(readDraftDetails("bk-1")).not.toBeNull());
-    expect(readDraftDetails("bk-1")).toEqual({ addressId: null, description: "" });
+    expect(readDraftDetails("bk-1")).toEqual({
+      addressId: null,
+      description: "",
+      phoneNumber: null,
+    });
   });
 
   it("does not read the address book for a visitor who has not signed in", async () => {

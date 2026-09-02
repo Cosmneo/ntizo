@@ -1,5 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { canStoreDraftDetails, readDraftDetails, saveDraftDetails } from "../draft-store";
+import {
+  canStoreDraftDetails,
+  readDraftDetails,
+  saveDraftDetails,
+  type DraftDetails,
+} from "../draft-store";
+
+/** Everything step 2 collects: which saved address, the note, and the handset. */
+const DETAILS: DraftDetails = {
+  addressId: "addr-2",
+  description: "Portão azul",
+  phoneNumber: "841234567",
+};
 
 /**
  * The store is the tab's, so it survives between tests the way it survives
@@ -19,19 +31,19 @@ describe("the checkout draft store", () => {
     // The design's one-write-at-each-end rule: an intermediate mutation would
     // leave a row that is neither an abandoned draft nor a sent request, and
     // a second place for the address to disagree with itself.
-    saveDraftDetails("bk-1", { addressId: "addr-2", description: "Portão azul" });
-    expect(readDraftDetails("bk-1")).toEqual({ addressId: "addr-2", description: "Portão azul" });
+    saveDraftDetails("bk-1", DETAILS);
+    expect(readDraftDetails("bk-1")).toEqual(DETAILS);
   });
 
   it("keeps one booking's details out of another's", () => {
-    saveDraftDetails("bk-1", { addressId: "addr-2", description: "Portão azul" });
+    saveDraftDetails("bk-1", DETAILS);
     expect(readDraftDetails("bk-2")).toBeNull();
   });
 
   it("survives a refresh", () => {
     // sessionStorage rather than component state: the customer who reloads
     // step 2 keeps what they typed. Scoped to the tab, gone when it closes.
-    saveDraftDetails("bk-1", { addressId: "addr-2", description: "Portão azul" });
+    saveDraftDetails("bk-1", DETAILS);
     expect(JSON.parse(sessionStorage.getItem("ntizo.checkout.bk-1") ?? "null")).toMatchObject({
       addressId: "addr-2",
     });
@@ -48,9 +60,7 @@ describe("the checkout draft store", () => {
       throw new Error("SecurityError");
     });
 
-    expect(() =>
-      saveDraftDetails("bk-1", { addressId: "addr-2", description: "Portão azul" }),
-    ).not.toThrow();
+    expect(() => saveDraftDetails("bk-1", DETAILS)).not.toThrow();
     expect(readDraftDetails("bk-1")).toBeNull();
   });
 
@@ -83,6 +93,28 @@ describe("the checkout draft store", () => {
     expect(readDraftDetails("bk-1")).toBeNull();
 
     sessionStorage.setItem("ntizo.checkout.bk-1", JSON.stringify({ addressId: 42 }));
-    expect(readDraftDetails("bk-1")).toEqual({ addressId: null, description: "" });
+    expect(readDraftDetails("bk-1")).toEqual({
+      addressId: null,
+      description: "",
+      phoneNumber: null,
+    });
+  });
+
+  it("reads step 1's entry back as a phone nobody has given yet", () => {
+    // Step 1 writes the address choice and nothing else, so this is the shape
+    // step 2 actually opens on for every customer. A missing field has to
+    // arrive as `null` rather than as `undefined`: it is seeded straight into
+    // the phone input's state, and `undefined` there turns a controlled field
+    // into an uncontrolled one on the customer's first keystroke.
+    sessionStorage.setItem(
+      "ntizo.checkout.bk-1",
+      JSON.stringify({ addressId: "addr-2", description: "" }),
+    );
+
+    expect(readDraftDetails("bk-1")).toEqual({
+      addressId: "addr-2",
+      description: "",
+      phoneNumber: null,
+    });
   });
 });

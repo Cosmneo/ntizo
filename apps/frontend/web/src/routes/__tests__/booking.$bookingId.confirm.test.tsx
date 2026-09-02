@@ -8,7 +8,8 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import type { AddressDTO } from "@ntizo/shared";
+import type { AddressDTO, CurrentUserDTO } from "@ntizo/shared";
+import type { BookingDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
 
 /**
@@ -76,7 +77,13 @@ const { Route: ConfirmRoute } = await import("../booking.$bookingId.confirm");
 
 const NOW = "2026-09-04T12:00:00.000Z";
 
-function bookingFixture(status: string): unknown {
+/**
+ * Typed as a whole `BookingDTO` rather than cast through `unknown` — the same
+ * tightening follow-up #116 asks for in the page suites, and for the same
+ * reason: a fixture the compiler does not check is one that goes on
+ * describing a booking the API stopped returning.
+ */
+function bookingFixture(status: BookingDTO["status"]): BookingDTO {
   return {
     id: "bk-1",
     status,
@@ -85,9 +92,13 @@ function bookingFixture(status: string): unknown {
     serviceName: "Corte de cabelo",
     providerName: "Studio X",
     providerSlug: "studio-x",
+    providerVerified: true,
+    providerRatingAverage: 4.2,
     optionName: "Corte e barba",
     durationMinutes: 90,
     priceMinor: 90000,
+    commissionBps: 1000,
+    commissionMinor: 9000,
     currency: "MZN",
     startsAt: "2026-09-04T13:00:00.000Z",
     endsAt: "2026-09-04T14:30:00.000Z",
@@ -102,6 +113,27 @@ function bookingFixture(status: string): unknown {
     createdAt: NOW,
   };
 }
+
+/** The signed-in customer, whole, so a field added to `user.me` breaks here too. */
+const USER: CurrentUserDTO = {
+  id: "cust-1",
+  email: "cliente@ntizo.test",
+  role: "customer",
+  status: "active",
+  createdAt: NOW,
+  name: "Ana Cossa",
+  firstName: "Ana",
+  lastName: "Cossa",
+  displayName: "Ana",
+  avatarUrl: null,
+  avatarKey: null,
+  phoneNumber: null,
+  bio: null,
+  language: "pt-MZ",
+  timezone: "Africa/Maputo",
+  dateOfBirth: null,
+  gender: null,
+};
 
 const ADDRESS: AddressDTO = {
   id: "addr-1",
@@ -126,11 +158,14 @@ const ADDRESS: AddressDTO = {
  */
 function renderRoute(
   at: string,
-  { signedIn = true, status = "EXPIRED" }: { signedIn?: boolean; status?: string } = {},
+  {
+    signedIn = true,
+    status = "EXPIRED",
+  }: { signedIn?: boolean; status?: BookingDTO["status"] } = {},
 ) {
   fakes.session = signedIn ? { user: { id: "cust-1" } } : null;
   fakes.addresses = [ADDRESS];
-  fakes.user = { id: "cust-1", phoneNumber: null, language: "pt-MZ", timezone: "Africa/Maputo" };
+  fakes.user = USER;
   // Lapsed by default, so the cases about *where this route sends somebody it
   // cannot keep on the page* do not also depend on the form rendering.
   fakes.booking = bookingFixture(status);
@@ -252,13 +287,24 @@ describe("the /booking/$bookingId/confirm route", () => {
     // reconciles the same component instance — so one booking's note would
     // survive onto another's confirmation, which is precisely what keying the
     // store by booking exists to prevent.
+    // The number rides with them: it is what step 2 collects now, and a store
+    // entry without one sends this page straight back there rather than
+    // rendering either note.
     sessionStorage.setItem(
       "ntizo.checkout.bk-1",
-      JSON.stringify({ addressId: "addr-1", description: "Portão azul" }),
+      JSON.stringify({
+        addressId: "addr-1",
+        description: "Portão azul",
+        phoneNumber: "841234567",
+      }),
     );
     sessionStorage.setItem(
       "ntizo.checkout.bk-2",
-      JSON.stringify({ addressId: "addr-1", description: "Terceiro andar" }),
+      JSON.stringify({
+        addressId: "addr-1",
+        description: "Terceiro andar",
+        phoneNumber: "841234567",
+      }),
     );
     const { router } = renderRoute("/booking/bk-1/confirm", { status: "DRAFT" });
 

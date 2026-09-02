@@ -7,10 +7,29 @@
  * second version of an address that can be edited in another tab.
  */
 export interface DraftDetails {
-  /** Which saved address, or `null` while the customer has not picked one. */
+  /**
+   * Which saved address, or `null` for **"outro endereço"** — a positive
+   * answer meaning the customer will give a new one on step 2, not an
+   * absence. Step 1 writes it the moment the draft exists, so step 2 opens on
+   * its add-address form when it reads a `null` back, and on the address
+   * book's default only when there is no entry at all to read.
+   */
   addressId: string | null;
   /** What the customer wrote about the job — `""` when they wrote nothing. */
   description: string;
+  /**
+   * The handset the M-Pesa prompt will go to, **as the customer typed it**,
+   * or `null` where nothing has been collected — which is what step 1 writes,
+   * because step 1 does not ask.
+   *
+   * Raw rather than normalised, for the reason the description is written on
+   * every keystroke: it is what makes a reload of step 2 keep a number
+   * half-typed. `toMpesaMsisdn` is the rule and it runs at both ends — step 2
+   * refuses to continue on a number it rejects, step 3 normalises before
+   * writing the profile and sends the customer back here when it cannot.
+   * Neither end trusts what is in this store.
+   */
+  phoneNumber: string | null;
 }
 
 /**
@@ -122,13 +141,16 @@ export function readDraftDetails(bookingId: string): DraftDetails | null {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
-    const { addressId, description } = parsed as Record<string, unknown>;
+    const { addressId, description, phoneNumber } = parsed as Record<string, unknown>;
     // Read field by field rather than trusted wholesale: this value is a
     // string anybody with a console open can rewrite, and the page's state
-    // types are what the rest of the flow relies on.
+    // types are what the rest of the flow relies on. A field this module has
+    // not written — step 1's entry carries no phone — reads back as its own
+    // empty rather than letting an `undefined` into a page's state.
     return {
       addressId: typeof addressId === "string" ? addressId : null,
       description: typeof description === "string" ? description : "",
+      phoneNumber: typeof phoneNumber === "string" ? phoneNumber : null,
     };
   } catch {
     return null;

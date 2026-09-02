@@ -9,11 +9,14 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import type { AddressDTO } from "@ntizo/shared";
+import type { AddressDTO, CurrentUserDTO } from "@ntizo/shared";
 import type { BookingDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
-import { saveDraftDetails } from "@/features/checkout/domain/draft-store";
+import {
+  saveDraftDetails,
+  type DraftDetails,
+} from "@/features/checkout/domain/draft-store";
 
 /**
  * Every read and every write is mocked at the **data** layer, so the real
@@ -93,12 +96,20 @@ const NOW = "2026-09-04T12:00:00.000Z";
  * one the provider is expecting the customer for. A fixture at midday could
  * not fail that way.
  *
- * `commissionBps` and `commissionMinor` are on the fixture **on purpose**,
- * even though `CheckoutBooking` omits them and the query never asks for them.
- * A fixture without them could not fail the "no commission on this page"
- * test: it would be asserting that a number nobody supplied is not rendered.
+ * **Typed as a whole `BookingDTO` rather than cast through `unknown`**, which
+ * is follow-up #116 closed: the old shape took a `Partial<BookingDTO>` and
+ * returned `unknown`, so a field added to `bookingReadModel` never broke it.
+ * `providerVerified` and `providerRatingAverage` were added and this fixture
+ * compiled unchanged, describing a booking the API no longer returned — a
+ * passing test asserting against a shape reality had left behind, which reads
+ * as coverage. The compiler is now the thing that notices.
+ *
+ * `commissionBps` and `commissionMinor` come with the type, and that matters
+ * for one test in particular: a fixture without them could not fail the "no
+ * commission on this page" case, because it would be asserting that a number
+ * nobody supplied is not rendered.
  */
-function bookingFixture(over: Partial<BookingDTO> = {}): unknown {
+function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
   return {
     id: "bk-1",
     status: "DRAFT",
@@ -107,6 +118,12 @@ function bookingFixture(over: Partial<BookingDTO> = {}): unknown {
     serviceName: "Corte de cabelo",
     providerName: "Studio X",
     providerSlug: "studio-x",
+    // Read live off the provider rather than snapshotted, and carried here so
+    // the compiler keeps this fixture honest — this page's rail does not
+    // print them yet, and the day it adopts the shared one it must be handed
+    // a booking that has them.
+    providerVerified: true,
+    providerRatingAverage: 4.2,
     optionName: "Corte e barba",
     durationMinutes: 90,
     priceMinor: 90000,
@@ -146,7 +163,7 @@ function addressFixture(id: string, label: string, over: Partial<AddressDTO> = {
   };
 }
 
-function userFixture(over: Record<string, unknown> = {}): unknown {
+function userFixture(over: Partial<CurrentUserDTO> = {}): CurrentUserDTO {
   return {
     id: "cust-1",
     email: "cliente@ntizo.test",
@@ -175,29 +192,32 @@ function renderConfirm({
   addresses = [addressFixture("addr-1", "Casa", { isDefault: true })],
   user = userFixture(),
   /**
-   * What step 2 left in the tab's store. `undefined` means "seed the usual
-   * thing"; `null` means the store is genuinely empty, which is how a
-   * customer who typed this URL straight in arrives.
+   * What step 2 left in the tab's store — the address, the note **and the
+   * number**, which is where the phone field went. `undefined` means "seed
+   * the usual thing"; `null` means the store is genuinely empty, which is how
+   * a customer who typed this URL straight in arrives.
    */
-  details = { addressId: "addr-1", description: "Portão azul" } as
-    | { addressId: string | null; description: string }
-    | null,
+  details = {
+    addressId: "addr-1",
+    description: "Portão azul",
+    phoneNumber: "841234567",
+  } as DraftDetails | null,
   priceMinor,
   commissionMinor,
 }: {
   bookingId: string;
   /** `null` is what the server answers with for an id that is not this customer's. */
-  booking?: unknown;
+  booking?: BookingDTO | null;
   addresses?: AddressDTO[];
-  user?: unknown;
-  details?: { addressId: string | null; description: string } | null;
+  user?: CurrentUserDTO;
+  details?: DraftDetails | null;
   priceMinor?: number;
   commissionMinor?: number;
 }) {
   fakes.booking =
     booking && (priceMinor !== undefined || commissionMinor !== undefined)
       ? {
-          ...(booking as object),
+          ...booking,
           ...(priceMinor !== undefined ? { priceMinor } : {}),
           ...(commissionMinor !== undefined ? { commissionMinor } : {}),
         }
@@ -282,25 +302,45 @@ afterEach(async () => {
 });
 
 describe("ConfirmPage", () => {
-  it("validates the phone with the same rule the charge uses", async () => {
-    // 82 is a real Mozambican prefix and not Vodacom's. A laxer browser rule
-    // would accept it here and the charge would fail on it later, after the
-    // provider had already blocked their calendar.
-    renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "821234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+  it("applies the charge's own rule to what step 2 stored, rather than trusting it", async () => {
+    // **The field moved to step 2; the rule did not stop applying here.**
+    // `sessionStorage` is a string anybody with a console open can rewrite,
+    // and a bookmarked confirm URL never went through step 2 at all. `82` is
+    // a real Mozambican prefix and not Vodacom's — the value a laxer check
+    // would wave through, and one the charge would fail on later, after the
+    // provider had blocked their calendar.
+    const { router } = renderConfirm({
+      bookingId: "bk-1",
+      details: { addressId: "addr-1", description: "", phoneNumber: "821234567" },
+    });
 
-    expect(await screen.findByText(/n[uú]mero.*Vodacom/i)).toBeInTheDocument();
+    // Back to the step that owns the field, because this page no longer has
+    // one to correct it in.
+    await waitFor(() => expect(router.state.location.pathname).toBe("/booking/bk-1/details"));
     expect(submitSpy).not.toHaveBeenCalled();
+    expect(fakes.updateMyProfile).not.toHaveBeenCalled();
+  });
+
+  it("no longer asks for the number it is about to charge", async () => {
+    // The move itself. Step 2 collects it; a second field here would be a
+    // second answer to one question, and the one further from the address it
+    // travels with.
+    renderConfirm({ bookingId: "bk-1" });
+
+    await screen.findByRole("button", { name: /enviar pedido/i });
+    expect(screen.queryByLabelText(/telem[oó]vel/i)).not.toBeInTheDocument();
+    // Read back instead, so a wrong number is visible on the last screen
+    // before a commitment.
+    expect(screen.getByText("841234567")).toBeInTheDocument();
   });
 
   it("saves the phone before submitting, in that order", async () => {
     // Two mutations, not one: setting a phone number is the User context's
     // job. If the second fails the phone is still saved, which is recoverable
-    // and not wrong.
+    // and not wrong. **Both still happen here**, on the page that sends the
+    // request — moving the field to step 2 moved a control, not a write.
     renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
     await waitFor(() => expect(calls).toEqual(["user.updateMyProfile", "booking.submit"]));
   });
@@ -380,11 +420,10 @@ describe("ConfirmPage", () => {
           longitude: "32.5832",
         }),
       ],
-      details: { addressId: "addr-2", description: "Portão azul" },
+      details: { addressId: "addr-2", description: "Portão azul", phoneNumber: "841234567" },
     });
 
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
     expect(submitSpy).toHaveBeenCalledWith({
@@ -411,36 +450,62 @@ describe("ConfirmPage", () => {
   it("stores the number in the form the charge reads back", async () => {
     // `toMpesaMsisdn` accepts `84…`, `258 84…` and `+258 84…` and answers
     // with `258XXXXXXXXX`; `profile.phone_number` holds E.164. Writing back
-    // whatever the customer typed would store a national number the charge
-    // has to guess a country for.
-    renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "84 123 4567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    // whatever the customer typed — spaces and all, and with no country —
+    // would store a national number the charge has to guess a country for.
+    renderConfirm({
+      bookingId: "bk-1",
+      details: { addressId: "addr-1", description: "", phoneNumber: "84 123 4567" },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
     await waitFor(() => expect(fakes.updateMyProfile).toHaveBeenCalledTimes(1));
     expect(fakes.updateMyProfile).toHaveBeenCalledWith({ phoneNumber: "+258841234567" });
   });
 
-  it("opens on the number already on the profile", async () => {
-    // The commonest case is a customer who has one: retyping a number the
-    // platform already holds is work asked of them for nothing.
+  it("falls back to the profile's number when step 2 recorded none", async () => {
+    // The store step 1 leaves behind carries an address and no phone, and a
+    // customer who already has one on their profile never had to type it on
+    // step 2 either. Sending them back for a number the platform is holding
+    // would be work asked of them for nothing.
     renderConfirm({
       bookingId: "bk-1",
+      details: { addressId: "addr-1", description: "", phoneNumber: null },
       user: userFixture({ phoneNumber: "+258845550101" }),
     });
 
-    expect(await screen.findByLabelText(/telem[oó]vel/i)).toHaveValue("+258845550101");
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
+
+    await waitFor(() => expect(fakes.updateMyProfile).toHaveBeenCalledTimes(1));
+    expect(fakes.updateMyProfile).toHaveBeenCalledWith({ phoneNumber: "+258845550101" });
   });
 
-  it("refuses an empty field rather than calling anything", async () => {
-    // `submit` refuses a customer with no number on file, so a blank field
-    // reaching the server is a round trip whose only outcome is a refusal —
-    // and, on a profile that already had one, a mutation that would clear it.
-    renderConfirm({ bookingId: "bk-1" });
+  it("prefers what the customer typed on step 2 over the number on file", async () => {
+    // They changed it on the step before precisely because the one on file is
+    // not the handset they want the prompt on.
+    renderConfirm({
+      bookingId: "bk-1",
+      details: { addressId: "addr-1", description: "", phoneNumber: "845559999" },
+      user: userFixture({ phoneNumber: "+258845550101" }),
+    });
 
     await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await waitFor(() => expect(fakes.updateMyProfile).toHaveBeenCalledTimes(1));
+    expect(fakes.updateMyProfile).toHaveBeenCalledWith({ phoneNumber: "+258845559999" });
+  });
+
+  it("goes back for a number rather than sending without one", async () => {
+    // `submit` refuses a customer with no number on file, so reaching the
+    // server with nothing is a round trip whose only outcome is a refusal —
+    // and, on a profile that already had one, a mutation that would clear it.
+    // The address is treated the same way and for the same reason: the step
+    // that asks is the only place either can be fixed.
+    const { router } = renderConfirm({
+      bookingId: "bk-1",
+      details: { addressId: "addr-1", description: "", phoneNumber: null },
+    });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/booking/bk-1/details"));
     expect(fakes.updateMyProfile).not.toHaveBeenCalled();
     expect(submitSpy).not.toHaveBeenCalled();
   });
@@ -453,8 +518,7 @@ describe("ConfirmPage", () => {
     // obvious reaction is to book it again. This page is also the only one
     // holding `respondBy`.
     const { router } = renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
     expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/booking/bk-1/confirm");
@@ -476,8 +540,7 @@ describe("ConfirmPage", () => {
     });
 
     renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
     expect(await screen.findByText(/14:45/)).toBeInTheDocument();
   });
@@ -598,8 +661,7 @@ describe("ConfirmPage", () => {
     );
 
     const { router } = renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
     // The hold runs out with the mutation still in flight. `setSystemTime`
     // moves the clock the countdown reads; its own one-second interval is
@@ -711,23 +773,32 @@ describe("ConfirmPage", () => {
     );
 
     renderConfirm({ bookingId: "bk-1" });
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "841234567");
-    await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /enviar pedido/i }));
 
-    expect(await screen.findByText(/confirme o n[uú]mero acima/i)).toBeInTheDocument();
+    expect(await screen.findByText(/volte aos detalhes e confirme o n[uú]mero/i)).toBeInTheDocument();
 
     // **The half-failure, and what makes "recoverable and not wrong" true.**
     // The profile write landed and the submit did not. The number has to
-    // survive on screen for the retry to be one press rather than a retype —
-    // and it does because the field is derived (`typed ?? profile ?? ""`)
-    // rather than seeded by an effect, which matters here specifically:
-    // `updateMyProfile`'s own `onSuccess` invalidates `user.me`, so an effect
-    // copying the profile into state would fire again mid-failure.
-    expect(screen.getByLabelText(/telem[oó]vel/i)).toHaveValue("841234567");
+    // survive for the retry to be one press rather than a retype — and it
+    // does from wherever the field lives, because it is read out of the tab's
+    // store on mount rather than held in a form this failure could clear.
+    // That matters here specifically: `updateMyProfile`'s own `onSuccess`
+    // invalidates `user.me`, so a page seeding state off the profile would be
+    // re-seeded mid-failure.
+    expect(screen.getByText("841234567")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /enviar pedido/i }));
 
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/pedido enviado/i)).toBeInTheDocument();
+    // The profile write ran again too — the second attempt is a whole send
+    // rather than a submit stitched onto the first one's profile write.
+    // (`booking.submit` appears once because the rejected attempt is a
+    // `mockRejectedValueOnce`, which never reaches the fake that records it.)
+    expect(calls).toEqual([
+      "user.updateMyProfile",
+      "user.updateMyProfile",
+      "booking.submit",
+    ]);
   });
 });

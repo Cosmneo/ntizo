@@ -415,6 +415,10 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
         saveDraftDetails(bookingId, {
           addressId: where.kind === "saved" ? where.addressId : null,
           description: "",
+          // This page does not ask for a phone number and must not invent
+          // one: step 2 collects it, and a value here would be this page
+          // guessing at an answer it never put on screen.
+          phoneNumber: null,
         });
         void navigate({ to: "/booking/$bookingId/details", params: { bookingId } });
       },

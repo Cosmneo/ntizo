@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Plus, TriangleAlert } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
-import { Button, Skeleton } from "@ntizo/frontend-ui";
+import { toMpesaMsisdn } from "@ntizo/shared";
+import { Button, Input, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { AddressForm } from "@/features/account/ui/address-form";
@@ -11,18 +12,34 @@ import {
   useAddressMutations,
   useMyAddresses,
 } from "@/features/account/viewmodel/use-addresses";
-import { formatAmount } from "@/features/directory/services/domain/service-card";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import type { CheckoutBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { useMyBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
+import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 import {
   canStoreDraftDetails,
   readDraftDetails,
   saveDraftDetails,
+  type DraftDetails,
 } from "@/features/checkout/domain/draft-store";
 import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
+import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { BookingOutcomePanel } from "@/features/checkout/ui/booking-outcome-panel";
+
+/** Why the phone field is refusing, or `null` when it is not. */
+type PhoneRefusal = "required" | "notVodacom";
+
+/**
+ * The small uppercase caption that sits over every value in "Os seus dados".
+ *
+ * The same treatment the rail gives its "QUANDO" eyebrow, deliberately: the
+ * two panels are on one screen and a second style for the same kind of label
+ * would read as two designs rather than one.
+ */
+const FIELD_LABEL =
+  "type-caption font-semibold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase";
 
 /** One address as a single line: enough to tell two of them apart, not the whole record. */
 function addressSummary(address: AddressDTO): string {
@@ -34,11 +51,17 @@ function addressSummary(address: AddressDTO): string {
 /**
  * Which address the radio group opens on.
  *
- * The customer's own last answer wins, whether they gave it a minute ago or
- * before a refresh. Failing that the address book's default, which is the one
- * they told us to assume — and failing that the first row, so a list that is
- * not empty always has something chosen and the continue button is never
- * disabled for a reason nobody can see.
+ * The customer's own last answer wins, whether they gave it a minute ago, on
+ * step 1, or before a refresh. Failing that the address book's default, which
+ * is the one they told us to assume — and failing that the first row, so a
+ * list that is not empty always has something chosen and the continue button
+ * is never disabled for a reason nobody can see.
+ *
+ * **It is never asked about "outro endereço".** Step 1 records that as a
+ * `null` `addressId`, and a null reaching here would be answered with the
+ * saved default — silently overriding a customer who said they would give a
+ * different address. The caller keeps that case out by opening the
+ * add-address form for it instead; see `Details`.
  *
  * **`settled` is why the membership test is safe.** The stored choice is
  * honoured unconditionally while the list is still in flight — a bare
@@ -67,22 +90,24 @@ function openingAddressId(
 }
 
 /**
- * Step 2 of checkout: where, and what.
+ * Step 2 of checkout: who you are, where the work happens, and what needs
+ * doing.
  *
- * **This page writes nothing to the server.** The design allows one write at
+ * **This page writes nothing to the booking.** The design allows one write at
  * the start of checkout (`booking.create`, which holds the slot) and one at
  * the end (`booking.submit`), and nothing between them: an intermediate
  * mutation would leave a row that is neither an abandoned draft nor a request
  * anybody sent, and a second place for the address to disagree with itself.
  * So what is collected here goes into the tab's own store and travels to step
- * 3 from there. Adding an address *is* a write, but to the customer's address
- * book rather than to the booking, which is the same write the account page
- * makes.
+ * 3 from there — the phone number included, which is why it can be collected
+ * on this page while both of its mutations still happen on the next one.
+ * Adding an address *is* a write, but to the customer's address book rather
+ * than to the booking, which is the same write the account page makes.
  *
- * Split in two so the address queries below are not fired for a booking this
- * page is about to navigate away from — the same split `ChooseWhenPage`
- * makes, and for the same reason React forbids a hook that runs for one
- * render and not the next.
+ * Split in two so the address, profile and mutation hooks below are not fired
+ * for a booking this page is about to navigate away from — the same split
+ * `ChooseWhenPage` makes, and for the same reason React forbids a hook that
+ * runs for one render and not the next.
  */
 export function DetailsPage({ bookingId }: { bookingId: string }) {
   const { t } = useTranslation("checkout");
@@ -195,6 +220,7 @@ function DetailsSkeleton() {
 
 function Details({ booking }: { booking: CheckoutBooking }) {
   const { t, i18n } = useTranslation("checkout");
+  const { t: td } = useTranslation("directory");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
 
@@ -205,6 +231,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
     refetch,
   } = useMyAddresses();
   const { add } = useAddressMutations();
+  const { data: user } = useCurrentUser();
 
   // Read once, on mount. After that the page's own state is the truth and the
   // store is only written to — re-reading it every render would let a write
@@ -212,15 +239,38 @@ function Details({ booking }: { booking: CheckoutBooking }) {
   const [restored] = useState(() => readDraftDetails(booking.id));
   const [chosen, setChosen] = useState<string | null>(restored?.addressId ?? null);
   const [description, setDescription] = useState(restored?.description ?? "");
-  const [adding, setAdding] = useState(false);
+  const [typedPhone, setTypedPhone] = useState<string | null>(restored?.phoneNumber ?? null);
+  const [refusal, setRefusal] = useState<PhoneRefusal | null>(null);
+  /**
+   * The add-address form is open.
+   *
+   * **Seeded from step 1's answer, and this is the whole reason "outro
+   * endereço" is stored as a `null` rather than as nothing.** A customer who
+   * said on step 1 that they would give a different address arrives here with
+   * a record whose `addressId` is null; opening on their saved default
+   * instead would answer a question they had already answered, and send the
+   * provider somewhere they did not ask for. `restored === null` — no record
+   * at all, a bookmarked URL — is the different case, and falls through to
+   * the address book.
+   */
+  const [adding, setAdding] = useState(
+    () => restored !== null && restored.addressId === null,
+  );
+  /** The saved-address chooser is open, because the customer pressed "Alterar morada". */
+  const [picking, setPicking] = useState(false);
   // Probed once, on mount, and by writing rather than reading — see
   // `canStoreDraftDetails`. A tab that cannot keep this page's answers cannot
   // hand them to step 3 either, and `sessionStorage` is the only channel
-  // between the two, so the page says so instead of collecting an address it
-  // is going to lose at the confirm.
+  // between the two, so the page says so instead of collecting an address and
+  // a phone number it is going to lose at the confirm.
   const [storable] = useState(canStoreDraftDetails);
 
-  const selectedId = openingAddressId(chosen, addresses, !addressesLoading);
+  // Derived rather than seeded by an effect: the profile arrives a render or
+  // two after this component mounts, and an effect that copied it into state
+  // would either overwrite what the customer had already started typing or
+  // need a flag to remember that it had run.
+  const phone = typedPhone ?? user?.phoneNumber ?? "";
+
   // The form IS the empty state. A list with nothing in it and nothing to do
   // next reads as broken software, and the customer genuinely cannot go on
   // without an address — so the thing they have to do is already on screen
@@ -230,28 +280,103 @@ function Details({ booking }: { booking: CheckoutBooking }) {
   // different question**, asked once beside the fieldset, because it has to
   // suppress the add button as well as the form.
   const formOpen = adding || (!addressesLoading && addresses.length === 0);
+  // The saved rows show alongside the form as well as on their own, so a
+  // customer who opened the form by mistake — or who was sent here by step
+  // 1's "outro endereço" and has changed their mind — can still pick one.
+  const chooserOpen = picking || formOpen;
+  // **Nothing is selected while the form is open**, even when the address
+  // book has rows to fall back on. Falling back there would leave a live
+  // continue beside a half-filled new address and carry the *old* one to step
+  // 3 — the customer's explicit "somewhere else" answered with the default
+  // they were trying to replace.
+  const selectedId = formOpen
+    ? null
+    : openingAddressId(chosen, addresses, !addressesLoading);
+  const selected = addresses.find((a) => a.id === selectedId) ?? null;
+
+  /**
+   * Everything this page has collected so far, written whole.
+   *
+   * `over` wins because the caller is holding the value React has not
+   * re-rendered with yet — `setChosen` does not change `selectedId` in the
+   * handler that called it.
+   *
+   * A blank phone is stored as `null` rather than as `""`: an empty string
+   * reads back as a real answer and would shadow the number already on the
+   * customer's profile after a reload, which is the one value that should
+   * fill this field when they have typed nothing.
+   */
+  function write(over: Partial<DraftDetails>) {
+    saveDraftDetails(booking.id, {
+      addressId: selectedId,
+      description,
+      phoneNumber: phone.trim() ? phone : null,
+      ...over,
+    });
+  }
 
   function chooseAddress(addressId: string) {
     setChosen(addressId);
-    saveDraftDetails(booking.id, { addressId, description });
+    setAdding(false);
+    setPicking(false);
+    write({ addressId });
   }
 
   function editDescription(next: string) {
     setDescription(next);
-    saveDraftDetails(booking.id, { addressId: selectedId, description: next });
+    write({ description: next });
+  }
+
+  function editPhone(next: string) {
+    setTypedPhone(next);
+    // Cleared the moment they start correcting it, or they read a refusal
+    // about a number they have already changed.
+    setRefusal(null);
+    write({ phoneNumber: next.trim() ? next : null });
+  }
+
+  /** Back to step 1, on the package this booking is for. */
+  function changeSlot() {
+    void navigate({
+      to: "/book/$serviceId",
+      params: { serviceId: booking.serviceId },
+      search: { optionId: booking.serviceOptionId },
+    });
   }
 
   function goToConfirm() {
+    // **The same rule the charge uses, not a laxer one.** `82` is a real
+    // Mozambican prefix and not Vodacom's: accepted here, it would fail at
+    // the charge instead — after the provider had already blocked their
+    // calendar for it. Checked before the address so a customer with both
+    // wrong is told about the field they can see.
+    if (!toMpesaMsisdn(phone)) {
+      setRefusal(phone.trim() ? "notVodacom" : "required");
+      return;
+    }
+    if (!selectedId) return;
+
+    setRefusal(null);
     // Written again here rather than trusted from the handlers above: a
-    // customer who touched neither field still has a selection — the address
-    // book's default — and step 3 has to be given it.
-    saveDraftDetails(booking.id, { addressId: selectedId, description });
-    // A typed `to` now that step 3's route exists — this was an untyped
-    // `href` for exactly as long as it named a page nobody had written.
+    // customer who touched no field still has answers — the address book's
+    // default, and the number already on their profile — and step 3 has to be
+    // given both.
+    saveDraftDetails(booking.id, { addressId: selectedId, description, phoneNumber: phone });
     // Nothing travels with it: step 3 reads the same booking, which carries
     // its own service, option, price and zone.
     void navigate({ to: "/booking/$bookingId/confirm", params: { bookingId: booking.id } });
   }
+
+  // **In the service's zone, never the device's.** A service in
+  // `Africa/Maputo` read on a device clocked to UTC drew step 1 an empty grid
+  // under a live confirm button; the same substitution here would print the
+  // customer a different appointment to the one they are about to ask for.
+  const slot = compactSlotWording(
+    booking.startsAt,
+    booking.endsAt,
+    locale,
+    booking.timezone,
+  );
 
   return (
     <>
@@ -276,178 +401,298 @@ function Details({ booking }: { booking: CheckoutBooking }) {
               {t("detailsIntro")}
             </p>
 
-            {!storable ? (
-              // **Said, not worked around.** The address and the note reach
-              // step 3 through `sessionStorage` and through nothing else, so
-              // a tab that refuses to keep them cannot finish checkout — and
-              // a form rendered here would take an address only to lose it at
-              // the confirm, with nothing on screen to explain where it went.
-              // The slot is not lost with it: the draft goes on holding it
-              // for the rest of its thirty minutes, in whichever window the
-              // customer opens next.
-              <EmptyCard
-                framed
-                badge={TriangleAlert}
-                title={t("storageBlockedTitle")}
-                body={t("storageBlockedBody")}
-              />
-            ) : (
-            <>
-            <fieldset className="mt-8 grid gap-3 border-0 p-0">
-              <legend className="type-h3 font-semibold">{t("addressLegend")}</legend>
-
-              {addressesLoading ? (
-                <Skeleton className="h-24 w-full" />
-              ) : addressesFailed ? (
-                // Not the add-address form. The addresses exist; something
-                // stopped us reading them, and offering to create one more
-                // answers a transient failure with a permanent duplicate.
-                <div
-                  role="alert"
-                  className="grid justify-items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
-                >
-                  <p className="type-body text-[var(--color-destructive)]">
-                    {t("addressesLoadError")}
-                  </p>
-                  <Button type="button" variant="outline" onClick={() => void refetch()}>
-                    {t("addressesRetryAction")}
-                  </Button>
-                </div>
-              ) : (
-                addresses.map((address) => (
-                  <label
-                    key={address.id}
-                    className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
-                  >
-                    <input
-                      type="radio"
-                      name="checkout-address"
-                      value={address.id}
-                      checked={selectedId === address.id}
-                      onChange={() => chooseAddress(address.id)}
-                      className="mt-1 h-4 w-4 accent-[var(--color-primary)]"
-                    />
-                    <span className="min-w-0">
-                      <span className="type-body-medium block font-semibold">{address.label}</span>
-                      <span className="type-caption block text-[var(--color-muted-foreground)]">
-                        {addressSummary(address)}
-                      </span>
-                    </span>
-                  </label>
-                ))
-              )}
-
-              {/* **A list that failed to load is not an empty one**, and
-                  neither the form nor the offer of one belongs under a
-                  failure. A customer with three saved addresses hitting a
-                  transient error was shown the empty state — "add an
-                  address" — and either typed a duplicate of one they already
-                  had or pressed a continue that bounced them off step 3 and
-                  straight back here. Retrying is the only thing that can
-                  actually help, so it is the only thing offered. */}
-              {addressesFailed ? null : formOpen ? (
-                <AddressForm
-                  ariaLabel={t("newAddressTitle")}
-                  submitting={add.isPending}
-                  // No way out when there is nothing to go back to: a customer
-                  // with no saved address has to add one to continue.
-                  {...(addresses.length > 0 ? { onCancel: () => setAdding(false) } : {})}
-                  onSubmit={async (values) => {
-                    const id = await add.mutateAsync(values);
-                    // Awaited before selecting it, so the new row is in the
-                    // list the radio group is rendering from by the time it
-                    // is the chosen one.
-                    await refetch();
-                    chooseAddress(id);
-                    setAdding(false);
-                  }}
-                />
-              ) : (
-                <Button
+            {/* What they picked on step 1, at the top of the step that asks
+                them for everything else — and the way back to change it. The
+                rail carries the same panel, so this one is what a customer on
+                a narrow screen reads before filling anything in, where the
+                rail has stacked below the form. */}
+            <div className="mt-8 rounded-[var(--radius-card)] bg-[var(--color-muted)] p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className={FIELD_LABEL}>{t("detailsChosenLabel")}</p>
+                <button
                   type="button"
-                  variant="outline"
-                  className="justify-self-start"
-                  onClick={() => setAdding(true)}
+                  onClick={changeSlot}
+                  className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
                 >
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  {t("addressAddAction")}
-                </Button>
-              )}
-            </fieldset>
-
-            <div className="mt-8 grid gap-1.5">
-              <label htmlFor="checkout-description" className="type-h3 font-semibold">
-                {t("descriptionLabel")}
-              </label>
-              <p className="type-caption text-[var(--color-muted-foreground)]">
-                {t("descriptionHint")}
+                  {t("railChangeAction")}
+                </button>
+              </div>
+              <p className="type-body-medium mt-1 font-semibold tabular-nums">
+                {t("railWhen", { date: slot.date, start: slot.start, end: slot.end })}
               </p>
-              <textarea
-                id="checkout-description"
-                rows={4}
-                // The same 1000 `booking.submit` accepts. A field that lets a
-                // customer write more than the mutation will take is a
-                // refusal at the end of checkout for something they could
-                // have been told at the start.
-                maxLength={1000}
-                value={description}
-                onChange={(e) => editDescription(e.target.value)}
-                className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-              />
+              {/* The length and nothing else. `bookingReadModel` carries no
+                  location type, so "Em sua casa" is a sentence this page
+                  cannot know is true — and the mockup's version of this line
+                  is the one thing on it the booking cannot answer. */}
+              <p className="type-caption text-[var(--color-muted-foreground)]">
+                {td("serviceDurationMinutes", { count: booking.durationMinutes })}
+              </p>
             </div>
-            </>
+
+            {!storable ? (
+              // **Said, not worked around.** The address, the note and the
+              // phone number reach step 3 through `sessionStorage` and
+              // through nothing else, so a tab that refuses to keep them
+              // cannot finish checkout — and a form rendered here would take
+              // them only to lose them at the confirm, with nothing on screen
+              // to explain where they went. The slot is not lost with them:
+              // the draft goes on holding it for the rest of its thirty
+              // minutes, in whichever window the customer opens next.
+              <div className="mt-8">
+                <EmptyCard
+                  framed
+                  badge={TriangleAlert}
+                  title={t("storageBlockedTitle")}
+                  body={t("storageBlockedBody")}
+                />
+              </div>
+            ) : (
+              <>
+                <section className="mt-8">
+                  <h2 className="type-h3 font-semibold">{t("detailsDataLegend")}</h2>
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="grid content-start gap-1.5">
+                      <p className={FIELD_LABEL}>{t("fieldNameLabel")}</p>
+                      {/* Read back, not editable. `booking.submit` takes no
+                          name, and changing the one on the account is the
+                          account page's errand — a field here would be a
+                          write this step is not allowed to make. */}
+                      {user ? (
+                        <p className="type-body">{user.name}</p>
+                      ) : (
+                        <Skeleton className="h-5 w-40" />
+                      )}
+                    </div>
+
+                    <div className="grid content-start gap-1.5">
+                      {/* A plain `label` rather than the kit's `Label`: this
+                          one carries the uppercase caption treatment the rest
+                          of the group uses, and the kit's own `text-sm` is
+                          not a class `cn` knows to drop for it. */}
+                      <label htmlFor="checkout-phone" className={FIELD_LABEL}>
+                        {t("phoneLabel")}
+                      </label>
+                      <Input
+                        id="checkout-phone"
+                        // `tel` rather than `number`: a phone number is
+                        // digits that may carry a `+` and spaces, and a
+                        // numeric spinner over one is nonsense on a desktop
+                        // and a decimal keypad on a phone.
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={phone}
+                        onChange={(e) => editPhone(e.target.value)}
+                        aria-invalid={refusal !== null}
+                        aria-describedby="checkout-phone-hint"
+                      />
+                      <p
+                        id="checkout-phone-hint"
+                        className="type-caption text-[var(--color-muted-foreground)]"
+                      >
+                        {t("phoneHint")}
+                      </p>
+                      {refusal && (
+                        <p role="alert" className="type-caption text-[var(--color-destructive)]">
+                          {t(refusal === "required" ? "phoneRequired" : "phoneNotVodacom")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-1.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className={FIELD_LABEL}>{t("fieldAddressLabel")}</p>
+                      {/* Offered rather than a trip back to step 1: going
+                          back there to swap "Casa" for "Escritório" means
+                          picking a time again and holding a second slot, for
+                          a change that touches neither. */}
+                      {!chooserOpen && !addressesFailed && selected && (
+                        <button
+                          type="button"
+                          onClick={() => setPicking(true)}
+                          className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
+                        >
+                          {t("addressChangeAction")}
+                        </button>
+                      )}
+                    </div>
+
+                    {addressesLoading ? (
+                      <Skeleton className="h-24 w-full" />
+                    ) : addressesFailed ? (
+                      // Not the add-address form. The addresses exist;
+                      // something stopped us reading them, and offering to
+                      // create one more answers a transient failure with a
+                      // permanent duplicate.
+                      <div
+                        role="alert"
+                        className="grid justify-items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
+                      >
+                        <p className="type-body text-[var(--color-destructive)]">
+                          {t("addressesLoadError")}
+                        </p>
+                        <Button type="button" variant="outline" onClick={() => void refetch()}>
+                          {t("addressesRetryAction")}
+                        </Button>
+                      </div>
+                    ) : chooserOpen ? (
+                      <fieldset className="grid gap-3 border-0 p-0">
+                        {/* The heading above already says "Endereço"; this
+                            names the group for a screen reader without
+                            printing the word twice. */}
+                        <legend className="sr-only">{t("addressLegend")}</legend>
+
+                        {addresses.map((address) => (
+                          <label
+                            key={address.id}
+                            className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
+                          >
+                            <input
+                              type="radio"
+                              name="checkout-address"
+                              value={address.id}
+                              checked={selectedId === address.id}
+                              onChange={() => chooseAddress(address.id)}
+                              className="mt-1 h-4 w-4 accent-[var(--color-primary)]"
+                            />
+                            <span className="min-w-0">
+                              <span className="type-body-medium block font-semibold">
+                                {address.label}
+                              </span>
+                              <span className="type-caption block text-[var(--color-muted-foreground)]">
+                                {addressSummary(address)}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+
+                        {formOpen ? (
+                          <AddressForm
+                            ariaLabel={t("newAddressTitle")}
+                            submitting={add.isPending}
+                            // No way out when there is nothing to go back to:
+                            // a customer with no saved address has to add one
+                            // to continue.
+                            {...(addresses.length > 0
+                              ? { onCancel: () => setAdding(false) }
+                              : {})}
+                            onSubmit={async (values) => {
+                              const id = await add.mutateAsync(values);
+                              // Awaited before selecting it, so the new row
+                              // is in the list the radio group is rendering
+                              // from by the time it is the chosen one.
+                              await refetch();
+                              chooseAddress(id);
+                            }}
+                          />
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="justify-self-start"
+                            onClick={() => setAdding(true)}
+                          >
+                            <Plus className="h-4 w-4" aria-hidden="true" />
+                            {t("addressAddAction")}
+                          </Button>
+                        )}
+                      </fieldset>
+                    ) : selected ? (
+                      <>
+                        <p className="type-body">
+                          {[selected.line1, selected.line2].filter(Boolean).join(", ")}
+                        </p>
+                        <p className={`${FIELD_LABEL} mt-4`}>{t("fieldDistrictLabel")}</p>
+                        {/* The city rides with the bairro rather than being
+                            dropped: "Polana" alone names a neighbourhood in
+                            more than one city, and this line is the customer
+                            checking we are sending somebody to the right
+                            one. */}
+                        <p className="type-body">
+                          {[selected.district, selected.city].filter(Boolean).join(", ")}
+                        </p>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="mt-8 grid gap-1.5">
+                  <label htmlFor="checkout-description" className="type-h3 font-semibold">
+                    {t("descriptionLabel")}
+                  </label>
+                  <p className="type-caption text-[var(--color-muted-foreground)]">
+                    {t("descriptionHint")}
+                  </p>
+                  <textarea
+                    id="checkout-description"
+                    rows={4}
+                    // The same 1000 `booking.submit` accepts. A field that
+                    // lets a customer write more than the mutation will take
+                    // is a refusal at the end of checkout for something they
+                    // could have been told at the start.
+                    maxLength={1000}
+                    value={description}
+                    onChange={(e) => editDescription(e.target.value)}
+                    className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
+                  />
+                </section>
+              </>
             )}
           </div>
 
           {/* 100px, not 0: the site header is 84px and sticky, so a rail
               pinned to the top of the viewport would slide under it. */}
           <aside className="grid gap-4 lg:sticky lg:top-[100px]">
-            <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
-              {/* `expiresAt` is nullable because the column is. The service
-                  and the option are not: they come off the booking, so the
-                  countdown always has somewhere to send the customer when the
-                  hold lapses. */}
-              {booking.expiresAt ? (
-                <div className="mb-4">
+            <CheckoutRail
+              // `bookingReadModel` carries no picture and no location type.
+              // Both are absent rather than guessed: the rail draws its own
+              // placeholder for the first, and leaves out "Deslocação —
+              // Incluída" for the second, which is the safe direction for a
+              // claim about money.
+              imageUrl={null}
+              serviceName={booking.serviceName}
+              providerName={booking.providerName}
+              providerRatingAverage={booking.providerRatingAverage}
+              providerVerified={booking.providerVerified}
+              optionName={booking.optionName}
+              slot={slot}
+              locationType={null}
+              durationMinutes={booking.durationMinutes}
+              priceMinor={booking.priceMinor}
+              currency={booking.currency}
+              onChangeSlot={changeSlot}
+              countdown={
+                // `expiresAt` is nullable because the column is. The service
+                // and the option are not: they come off the booking, so the
+                // countdown always has somewhere to send the customer when
+                // the hold lapses. No `sending` here — this page has no write
+                // that could be in flight when the hold runs out.
+                booking.expiresAt ? (
                   <CheckoutCountdown
                     expiresAt={booking.expiresAt}
                     serviceId={booking.serviceId}
                     optionId={booking.serviceOptionId}
                   />
-                </div>
-              ) : null}
-
-              <p className="type-caption text-[var(--color-muted-foreground)]">
-                {booking.providerName}
-              </p>
-              <h2 className="type-h3 mt-1 font-semibold">{booking.serviceName}</h2>
-
-              {/* The price the customer pays, exactly as the provider set it.
-                  No fee line and no breakdown, because there is nothing to
-                  break down: the commission comes out of the provider's
-                  payout, so a split shown here would invent a charge the
-                  customer is not being asked for. The query behind this page
-                  does not even fetch it. */}
-              <p className="type-h3 mt-4 font-semibold tabular-nums">
-                {formatAmount(booking.priceMinor, booking.currency, locale)}
-              </p>
-              <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
-                {booking.optionName}
-              </p>
-
+                ) : undefined
+              }
+            >
               {/* `storable` as well as an address: the notice on the left
                   explains why there is nothing to fill in, and a live
                   continue beside it would carry an empty answer to step 3
-                  anyway. */}
+                  anyway. The phone is deliberately *not* part of this
+                  condition — an empty field earns a sentence saying what is
+                  wrong with it, where a dead button says nothing. */}
               <Button
                 type="button"
-                className="mt-4 w-full"
+                className="w-full"
                 disabled={!selectedId || !storable}
                 onClick={goToConfirm}
               >
                 {t("continueAction")}
               </Button>
-            </div>
+            </CheckoutRail>
           </aside>
         </div>
       </main>
