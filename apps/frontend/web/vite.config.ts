@@ -56,5 +56,51 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
     css: true,
+    /**
+     * Two projects for one app, so that route suites — and only route
+     * suites — get a wider async bound.
+     *
+     * Every one of them mounts the router, resolves an async `beforeLoad` and
+     * settles a query before anything is assertable, which costs ~450ms on an
+     * idle machine and more beside a database-backed backend suite running
+     * concurrently under `turbo run test`. Testing Library's one-second
+     * default is not enough for that: two of these files went red on a loaded
+     * full run, repeatedly, on assertions that pass in isolation. None of them
+     * is about latency, so a bound that fails on a loaded machine is testing
+     * the machine.
+     *
+     * **A pattern rather than a call each suite has to remember.** The two
+     * previous shapes rotted the same way, one level apart: a `{ timeout }`
+     * threaded through every wait is forgotten by the next assertion, and a
+     * `widenAsyncTimeout()` per file is forgotten by the next *file* — which
+     * is exactly how this came to affect three suites. Nobody has to remember
+     * a directory: a fourth route suite is covered by existing.
+     *
+     * **And still not a global.** `asyncUtilTimeout` set once in
+     * `src/test/setup.ts` would widen the bound for 138 files nobody read,
+     * some of which may legitimately want a wait to give up quickly. This
+     * reaches `src/routes/__tests__/` and nothing else.
+     *
+     * `extends: true` inherits this block and the whole Vite config with it —
+     * the `@` alias and the plugin pipeline — so each project is an `include`
+     * and a `setupFiles` and nothing more.
+     */
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "web",
+          exclude: ["**/node_modules/**", "**/dist/**", "src/routes/__tests__/**"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "routes",
+          include: ["src/routes/__tests__/**/*.test.{ts,tsx}"],
+          setupFiles: ["./src/test/setup.ts", "./src/test/route-suite-setup.ts"],
+        },
+      },
+    ],
   },
 });

@@ -433,7 +433,11 @@ describe("DetailsPage", () => {
     expect(readDraftDetails("bk-1")).toEqual({
       addressId: "addr-2",
       description: "Portão azul",
-      phoneNumber: "841234567",
+      // **E.164, because the field is now a country plus a national number.**
+      // The prefix is the selector's, not something the customer typed, and
+      // it is the same form `profile.phone_number` already stores — so a
+      // number given here reads back on `/account` and the other way round.
+      phoneNumber: "+258841234567",
     });
     expect(fakes.addAddress).not.toHaveBeenCalled();
   });
@@ -464,7 +468,59 @@ describe("DetailsPage", () => {
 
     expect(await screen.findByText(/n[uú]mero.*Vodacom/i)).toBeInTheDocument();
     // And it goes no further: step 3 would have nothing to fix it with.
-    expect(readDraftDetails("bk-1")?.phoneNumber).toBe("821234567");
+    expect(readDraftDetails("bk-1")?.phoneNumber).toBe("+258821234567");
+  });
+
+  it("tells a valid foreign number apart from a number that is not one", async () => {
+    // **The whole reason the field grew a country selector needs a sentence
+    // of its own.** A Portuguese mobile is a perfectly good phone number; it
+    // simply is not somewhere Vodacom Moçambique can send a payment request.
+    // Told "that isn't a valid number", the customer goes off correcting
+    // digits that were never wrong — so the M-Pesa refusal has to be the one
+    // that lands, and it has to land beside the field rather than as a failed
+    // send after the provider has blocked their calendar.
+    renderDetails({ bookingId: "bk-1" });
+
+    await userEvent.click(await screen.findByLabelText(/selecionar país/i));
+    await userEvent.type(screen.getByPlaceholderText(/procurar país/i), "Portugal");
+    await userEvent.click(screen.getByText("Portugal"));
+    await userEvent.type(phoneField(), "912345678");
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    // `+351912345678` is a real, valid Portuguese mobile — `isValidPhoneNumber`
+    // says yes and `toMpesaMsisdn` says no, which is the one combination this
+    // case exists for.
+    expect(await screen.findByText(/n[uú]mero.*Vodacom/i)).toBeInTheDocument();
+    expect(screen.queryByText(/não parece estar completo/i)).not.toBeInTheDocument();
+  });
+
+  it("says a half-typed number is incomplete rather than blaming the carrier", async () => {
+    // The other side of the same split. `toMpesaMsisdn` refuses this too, so a
+    // page that asked the M-Pesa rule first would answer a typing mistake
+    // with "change carrier" — and the digits it named would be Vodacom's own
+    // 84, which the customer had already got right.
+    const { router } = renderDetails({ bookingId: "bk-1" });
+
+    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "8412");
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    expect(await screen.findByText(/não parece estar completo/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Vodacom/i)).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/booking/bk-1/details");
+  });
+
+  it("marks the field itself invalid, not only the sentence under it", async () => {
+    // The refusal is a `role="alert"` paragraph, which a screen reader
+    // announces once and then leaves behind. `aria-invalid` on the control is
+    // what tells somebody arriving at the field afterwards — by tab, or by
+    // re-reading the form — that this is the one being refused.
+    renderDetails({ bookingId: "bk-1" });
+
+    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "821234567");
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    await screen.findByText(/n[uú]mero.*Vodacom/i);
+    expect(phoneField()).toHaveAttribute("aria-invalid", "true");
   });
 
   it("stays put on a number M-Pesa cannot reach", async () => {
@@ -481,15 +537,17 @@ describe("DetailsPage", () => {
   });
 
   it("accepts a number typed the way people type one", async () => {
-    // Spaces are how a Mozambican writes a phone number, and `toMpesaMsisdn`
-    // strips separators before deciding. A page that validated the raw string
-    // would refuse a perfectly good handset for a habit of punctuation.
+    // Spaces are how a Mozambican writes a phone number. The field keeps the
+    // digits and drops everything else before anything is decided, so a
+    // perfectly good handset is never refused for a habit of punctuation.
     const { router } = renderDetails({ bookingId: "bk-1" });
 
-    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "+258 84 123 4567");
+    await userEvent.type(await screen.findByLabelText(/telem[oó]vel/i), "84 123 4567");
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/booking/bk-1/confirm"));
+    // And what step 3 is handed is the number, not the spacing.
+    expect(readDraftDetails("bk-1")?.phoneNumber).toBe("+258841234567");
   });
 
   it("refuses an empty number rather than moving on", async () => {
@@ -504,15 +562,22 @@ describe("DetailsPage", () => {
     expect(router.state.location.pathname).toBe("/booking/bk-1/details");
   });
 
-  it("opens on the number already on the profile", async () => {
+  it("opens on the number already on the profile, split across the two controls", async () => {
     // The commonest case is a customer who has one: retyping a number the
     // platform already holds is work asked of them for nothing.
+    //
+    // The profile stores E.164 (`normalizePhoneNumber` keeps `.number` and
+    // nothing else), and the field splits it: `+258` goes to the country
+    // control and the rest into the box beside it. Both halves are read back,
+    // because a control that showed `845550101` under a `+351` it had failed
+    // to adopt would look right and be wrong.
     renderDetails({
       bookingId: "bk-1",
       user: userFixture({ phoneNumber: "+258845550101" }),
     });
 
-    await waitFor(() => expect(phoneField()).toHaveValue("+258845550101"));
+    await waitFor(() => expect(phoneField()).toHaveValue("845550101"));
+    expect(screen.getByLabelText(/selecionar país/i)).toHaveTextContent("+258");
   });
 
   it("keeps what the customer typed before they press anything", async () => {
@@ -530,7 +595,7 @@ describe("DetailsPage", () => {
     expect(readDraftDetails("bk-1")).toEqual({
       addressId: "addr-1",
       description: "Portão azul",
-      phoneNumber: "841234567",
+      phoneNumber: "+258841234567",
     });
   });
 
@@ -542,7 +607,9 @@ describe("DetailsPage", () => {
       JSON.stringify({
         addressId: "addr-2",
         description: "Portão azul",
-        phoneNumber: "845550101",
+        // Stored E.164, which is what this page writes now that the field is
+        // a country plus a national number.
+        phoneNumber: "+258845550101",
       }),
     );
 
@@ -825,7 +892,7 @@ describe("DetailsPage", () => {
       JSON.stringify({
         addressId: "addr-gone",
         description: "Portão azul",
-        phoneNumber: "841234567",
+        phoneNumber: "+258841234567",
       }),
     );
 
@@ -849,7 +916,7 @@ describe("DetailsPage", () => {
     expect(readDraftDetails("bk-1")).toEqual({
       addressId: "addr-1",
       description: "Portão azul",
-      phoneNumber: "841234567",
+      phoneNumber: "+258841234567",
     });
   });
 

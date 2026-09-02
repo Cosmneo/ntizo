@@ -66,14 +66,62 @@ vi.mock("@/features/checkout/data/checkout.repository", () => ({
   createBooking: fakes.createBooking,
 }));
 
+/**
+ * **The mock narrows by `memberId` exactly the way the server does.**
+ *
+ * It used to ignore the parameter and hand back the same fixture whatever was
+ * asked for, and that is not a shortcut — it is the one thing that made a real
+ * defect untestable. `ListServiceAvailability` scopes its whole projection to
+ * `queriedMemberIds = input.memberId !== undefined ? [input.memberId] :
+ * info.memberIds`, so a filtered response describes one person and nobody
+ * else; a fixture that answers identically for "anyone" and for "Flávio"
+ * cannot fail on anything that turns on the difference. The picker's own
+ * sub-lines are read off `days[].starts[].memberIds`, so that difference is
+ * now the whole ballgame.
+ *
+ * Three things the real projection does, reproduced here:
+ *
+ * - a start the named member is not free at is not returned at all;
+ * - a returned start's own `memberIds` names only who the query was scoped
+ *   to, because that is all the projection computed;
+ * - the top-level `memberIds` stays the **full roster** regardless — that is
+ *   deliberate on the server (see `service-availability.schema.ts`) and is why
+ *   a filtered response still draws every row of the picker.
+ *
+ * `seatsLeft` is left alone rather than re-summed: the fixtures set it to a
+ * fixed value precisely so nothing may read it, and inventing a per-member
+ * seat count here would be modelling a number no assertion is allowed to
+ * depend on.
+ */
+function narrowToMember(
+  data: ServiceAvailabilityDTO,
+  memberId: string | undefined,
+): ServiceAvailabilityDTO {
+  if (memberId === undefined) return data;
+  return {
+    ...data,
+    days: data.days.map((day) => ({
+      ...day,
+      starts: day.starts
+        .filter((start) => start.memberIds.includes(memberId))
+        .map((start) => ({ ...start, memberIds: [memberId] })),
+    })),
+  };
+}
+
 vi.mock("@/features/directory/availability/viewmodel/use-service-availability", () => ({
-  useServiceAvailability: () => {
+  useServiceAvailability: (input: { memberId: string | undefined }) => {
     useSyncExternalStore(
       fakes.subscribe,
       () => fakes.version,
       () => fakes.version,
     );
-    return { ...fakes.availability, refetch: fakes.refetch };
+    const data = fakes.availability["data"] as ServiceAvailabilityDTO | undefined;
+    return {
+      ...fakes.availability,
+      ...(data ? { data: narrowToMember(data, input.memberId) } : {}),
+      refetch: fakes.refetch,
+    };
   },
 }));
 
@@ -566,9 +614,17 @@ describe("ChooseWhenPage", () => {
     // The other half of the rule above: a slot in the URL is a slot already
     // chosen, whether it got there by a link, a refresh, or a return from
     // sign-in.
+    //
+    // **`mem-2`, not `mem-1`, and that is the fixture doing work.** This case
+    // needs two cards on screen — the chosen one pressed and another not — and
+    // the grid only ever draws times the named member is free at. `mem-1` is
+    // free at 09:00 alone, so under a `memberId` filter there is no second
+    // card to be unpressed; `mem-2` is free at both. It read as `mem-1` while
+    // the mock ignored the filter entirely and handed back every start
+    // whoever was asked for.
     renderChooseWhen({
       serviceId: "svc-1",
-      at: `/book/svc-1?memberId=mem-1&startsAt=${encodeURIComponent(NINE)}`,
+      at: `/book/svc-1?memberId=mem-2&startsAt=${encodeURIComponent(NINE)}`,
     });
 
     expect(await screen.findByRole("button", { name: /^09:00/ })).toHaveAttribute(
@@ -928,7 +984,7 @@ describe("ChooseWhenPage", () => {
     expect(await screen.findByText(/já não faz este serviço/i)).toBeInTheDocument();
 
     // The remedy the copy actually names for this code: somebody else.
-    await userEvent.click(screen.getByRole("radio", { name: "Profissional 2" }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Profissional 2,/ }));
     await userEvent.click(await screen.findByRole("button", { name: /^10:00/ }));
 
     await waitFor(() =>
@@ -958,8 +1014,144 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       performers: [{ id: "mem-1", firstName: "Ana", avatarUrl: null }],
     });
-    expect(await screen.findByRole("radio", { name: "Ana" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Profissional 2" })).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /^Ana,/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /^Profissional 2,/ })).toBeInTheDocument();
+  });
+
+  it("tells each performer's own free hours apart from the day's total", async () => {
+    // The fixture's two starts are free for different people — 09:00 for both,
+    // 10:00 for `mem-2` alone — so the three rows must read three different
+    // ways. A picker handed the day but counting `starts.length` for everybody
+    // would say "2 livres" on all three, which is why a fixture where everyone
+    // is free at everything could not test this at all.
+    renderChooseWhen({ serviceId: "svc-1" });
+
+    expect(
+      await screen.findByRole("radio", {
+        name: "Qualquer pessoa disponível, 2 livres · a próxima às 09:00",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Profissional 1, 1 livre · a próxima às 09:00" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Profissional 2, 2 livres · a próxima às 09:00" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps every performer's own count once one of them is chosen", async () => {
+    // **The defect the list was nearly shipped with.** `availability.forService`
+    // narrows `days[].starts[]` to the member it was asked about, so a page
+    // that fetched under `search.memberId` and counted off that response told
+    // the customer that every *other* performer had nothing free — on a salon
+    // of twelve, eleven rows reading "sem horários" about people whose
+    // calendars are full. The roster is the whole reason this control is a
+    // list rather than pills, and a list that lies about eleven of twelve is
+    // worse than the pills it replaced.
+    //
+    // **`mem-1` is chosen, and which one is chosen is the whole fixture.**
+    // `mem-1` is free at 09:00 alone and `mem-2` at both starts, so narrowing
+    // to `mem-1` genuinely *loses* one of `mem-2`'s: a picker fed the narrowed
+    // day reports "1 livre" for `mem-2`, and a page still fetching filtered
+    // reports "sem horários". Choosing `mem-2` instead would prove nothing —
+    // `mem-2` is free at a superset of `mem-1`'s starts, so the narrowed day
+    // and the roster's day are the same array and every wrong wiring gives
+    // the right answer.
+    renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?memberId=mem-1" });
+
+    expect(
+      await screen.findByRole("radio", { name: "Profissional 1, 1 livre · a próxima às 09:00" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Profissional 2, 2 livres · a próxima às 09:00" }),
+    ).toBeInTheDocument();
+    // And "anyone" still means the whole day rather than the chosen person's
+    // share of it — the row a customer uses to get back out of the filter.
+    expect(
+      screen.getByRole("radio", {
+        name: "Qualquer pessoa disponível, 2 livres · a próxima às 09:00",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers only the times the chosen performer is free at", async () => {
+    // The other side of narrowing on the client: the counts widen to the whole
+    // roster, and the grid must not widen with them. `mem-1` is free at 09:00
+    // and not at 10:00, and a grid drawing 10:00 here would be offering a time
+    // that person cannot be booked at.
+    renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?memberId=mem-1" });
+
+    expect(await screen.findByRole("button", { name: /^09:00/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^10:00/ })).not.toBeInTheDocument();
+  });
+
+  it("will not hold a time the chosen performer is not free at", async () => {
+    // A link naming a slot that exists for somebody else. `selectedStart` is
+    // looked up in the *narrowed* day, so the URL's claim dies against the
+    // grid's answer rather than arming a confirm over an empty grid — the
+    // same rule the cross-zone case already had to learn.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      at: `/book/svc-1?memberId=mem-1&startsAt=${encodeURIComponent(TEN)}`,
+    });
+
+    await screen.findByRole("button", { name: /^09:00/ });
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
+  });
+
+  it("counts the day cards for the chosen performer, not for everybody", async () => {
+    // The date strip answers "is it worth opening this day at all", and the
+    // customer has just said which person they are asking about. Counting the
+    // whole roster here would promise two free times on a day that person has
+    // one — the number and the grid under it disagreeing on one screen.
+    renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?memberId=mem-1" });
+
+    expect(await screen.findByRole("button", { name: /1 livre$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /2 livres$/ })).not.toBeInTheDocument();
+  });
+
+  it("counts the day cards for the whole roster while nobody is chosen", async () => {
+    // The boundary of the rule above, and what makes it a rule rather than a
+    // constant: with no filter the same card counts both starts.
+    renderChooseWhen({ serviceId: "svc-1" });
+
+    expect(await screen.findByRole("button", { name: /2 livres$/ })).toBeInTheDocument();
+  });
+
+  it("still says so when the link names somebody who no longer does this service", async () => {
+    // **A refusal the server used to give and cannot any more.** While the
+    // fetch carried `search.memberId`, an id off the roster came back as
+    // `SERVICE_MEMBER_CANNOT_PERFORM` and the page printed it. Unfiltered,
+    // the query succeeds, and without a check on this side the customer got
+    // the silent version: nothing ticked in the picker, and "sem horários
+    // livres neste dia" over a business that is open all week.
+    //
+    // `mem-9` is on neither the roster nor any start, which is what a
+    // bookmark looks like after the provider lets somebody go.
+    renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?memberId=mem-9" });
+
+    expect(await screen.findByText(/já não presta este serviço/i)).toBeInTheDocument();
+    // And nothing is offered under it — a grid here would be times this
+    // person cannot take.
+    expect(screen.queryByRole("button", { name: /^09:00/ })).not.toBeInTheDocument();
+  });
+
+  it("names the next free time in the service's zone, not the device's", async () => {
+    // The same two starts filed under `Africa/Maputo`: 09:00 UTC is 11:00 to
+    // the provider and to the customer standing in front of them. This page
+    // has already shipped one empty grid under a live confirm for reading the
+    // device's clock instead; a next-free-time two hours out is the same
+    // substitution, and harder to spot because the sentence still looks right.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      availability: { ...availabilityFixture("svc-1"), timezone: "Africa/Maputo" },
+    });
+
+    expect(
+      await screen.findByRole("radio", {
+        name: "Qualquer pessoa disponível, 2 livres · a próxima às 11:00",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("never shows the customer a commission", async () => {

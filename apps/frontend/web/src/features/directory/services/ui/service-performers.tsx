@@ -15,7 +15,9 @@ import type { ServicePerformerDTO } from "@ntizo/shared/read-models";
  * First name and photo only, never a surname — these are employees, not
  * account holders, publishing more than `ServicePerformerDTO` carries is not
  * available here. A performer with no photo falls back to a monogram rather
- * than a blank circle, matching every other avatar in the app.
+ * than a blank circle, matching every other avatar in the app — and so does
+ * one whose photo *fails*, which is what `AvatarImage` below is for and what
+ * a bare `<img>` here could not do.
  *
  * `firstName` carries a `.default("")` in its schema, so a performer whose
  * profile has no first name resolves to an empty string, not to an absent
@@ -51,13 +53,26 @@ export function ServicePerformers({
               className="flex w-20 flex-col items-center gap-1.5 text-center"
             >
               <Avatar className="h-14 w-14">
-                {/* The monogram stays the fallback here rather than the brand
-                    mark: this circle stands for one person, and replacing a
-                    named individual with the platform's logo says the wrong
-                    thing about who is doing the work. */}
-                {performer.avatarUrl && (
-                  <AvatarImage src={performer.avatarUrl} alt="" />
-                )}
+                {/* Two decisions live on these two lines, and they answer
+                    different questions.
+
+                    `AvatarImage`, not a bare `<img>`: with both children
+                    mounted, a photo that 404s still lays the element out at
+                    its intrinsic (zero) content size holding `min-width:
+                    auto`, which pushes the fallback outside the
+                    `overflow-hidden` circle and clips it — so a dead photo
+                    rendered an empty circle and the monogram never appeared.
+                    `AvatarImage` unmounts itself on `error`, leaving the
+                    fallback as the box's only child. The availability
+                    picker's rows already did this correctly, which is how the
+                    difference was noticed.
+
+                    And the fallback stays the monogram rather than the brand
+                    mark, unlike everywhere else a picture can be missing:
+                    this circle stands for one person, and replacing a named
+                    individual with the platform's logo says the wrong thing
+                    about who is doing the work. */}
+                {performer.avatarUrl && <AvatarImage src={performer.avatarUrl} alt="" />}
                 <AvatarFallback>{initialsFrom(label)}</AvatarFallback>
               </Avatar>
               <span className="type-caption w-full truncate">{label}</span>

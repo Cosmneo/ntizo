@@ -2655,7 +2655,41 @@ No other route has one.
 **Trigger:** any bug traced to a search param, a loader or a route-level guard — and before adding
 route-level logic that a page's own tests cannot see.
 
-## #112 — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
+## ~~#112 — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose~~ — RESOLVED 2026-09-02
+
+It stopped being a prediction. On a loaded `bun run test`, `booking.$bookingId.details` and
+`book.$serviceId` — the second file this entry named — both went red, repeatedly, on assertions
+that pass every time their file is run alone. Reproduced on an **untouched tree** (HEAD~1, four
+web-suite runs: one failure, one clean, one with both) so it is the bound failing rather than any
+change.
+
+**Scoped, not global.** Setting `asyncUtilTimeout` once in `src/test/setup.ts` would change the
+bound for all 141 files, some of which may legitimately want a wait to give up quickly; the flake
+is a property of route suites specifically, which mount the router, resolve an async
+`beforeLoad` and settle a query before anything is assertable.
+
+**But not the per-call constant this entry proposed either**, because that is what rotted: the
+confirm suite's `SETTLES_IN` had to be threaded through every wait, and the next two route suites
+were written without it — which is exactly how this entry came to name a second file.
+
+**Nor a call each suite makes once**, which was the first attempt here and is the same failure
+mode with a longer fuse: it moves the omission from once per call site to once per *file*, and a
+fourth route suite written without the import silently gets one second back with no lint rule or
+meta-test to notice.
+
+`vite.config.ts` now splits the app into two vitest projects, and the one matching
+`src/routes/__tests__/**` loads `src/test/route-suite-setup.ts` on top of the shared setup: a
+single `configure({ asyncUtilTimeout: 4000 })` bound to a directory, covering every wait in every
+file there — `findBy*` included, and the files nobody has written yet. Nobody has to remember it,
+because there is nothing to remember. `SETTLES_IN` and its threading are gone, and two of the three
+route suites are byte-identical to what they were before any of this.
+
+Proven in both directions rather than assumed: with the bound dropped to 1ms the routes project
+loses 12 of its 14 tests and the web project's 138 files are untouched. Ten consecutive full
+`bun run test` runs afterwards, web 141 files green every time, where the same machine had been
+failing those two suites in three runs of five.
+
+## #112 (original) — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
 
 `waitFor`'s default timeout is one second. The first render in either checkout route suite costs
 **~450ms measured on an idle machine** — the route's async `beforeLoad`, then the booking query, then
@@ -3077,3 +3111,137 @@ same state, and a publish-time check would not catch it — only a rule at the w
 **Trigger:** the first provider who publishes an option without naming it — visible as any
 `SERVICE_OPTION_UNNAMED` in the logs, which is what that error now exists to make greppable — or
 any repeat of this report from a customer stuck on Continuar.
+
+---
+
+## ~~#123 — Step 1's roster counts go blank for everybody else the moment a professional is picked~~ — RESOLVED 2026-09-02
+
+**Step 1 stopped filtering its fetch and narrows in the browser instead.** `ChooseWhenPage` now
+calls `availability.forService` with `memberId: undefined` always, and `daysFor(days, memberId)`
+(`directory/availability/domain/day-strip.ts`) produces the narrowed window everything else reads.
+Still one query — not a second request — and it is the only version from which both readings can
+be taken: the roster's day for the picker, this customer's day for the grid, the strip and the
+confirm.
+
+**The mock was the reason this reached review as a note rather than a red test, and it was fixed
+first.** `choose-when-page.test.tsx` stubbed `useServiceAvailability` with a fixture that ignored
+`memberId` entirely, so "anyone" and "Flávio" got identical responses and nothing that turned on
+the difference could fail. It now reproduces what `ListServiceAvailability` actually does: a start
+the named member is not free at is not returned, a returned start's `memberIds` names only the
+person asked about, and the top-level `memberIds` stays the full roster. Making it honest
+immediately reddened a second assertion nobody had noticed — "opens on the slot the URL already
+carries" was reading two cards off a response that should only have carried one, and now names a
+member who is genuinely free at both.
+
+**Each consequence was taken deliberately rather than allowed to follow, and each has its own
+test:**
+
+- *The date strip* counts `startsByDate(narrowedDays)`, not the roster's. The customer has just
+  said which person they are asking about, and a card promising two free times on a day that
+  person has one would disagree with the grid directly underneath it.
+- *`selectedStart`* is looked up in the narrowed day, so a link naming a time that exists only for
+  somebody else leaves the confirm disabled instead of arming it over a card the page is not
+  drawing.
+- *`seatsLeft`* now means seats summed across everyone free at a moment rather than across the one
+  person asked about. Nothing in the web app reads it — `startsByDate` counts starts and says why —
+  so the change is inert, and `daysFor`'s doc records it so the next reader does not inherit the
+  narrower meaning by assumption.
+- *`SERVICE_MEMBER_CANNOT_PERFORM` from the query* is now unreachable, and that mattered: an id off
+  the roster used to come back as that error and print "Essa pessoa já não presta este serviço."
+  Unfiltered, the query succeeds, and the customer got the silent version instead — nothing ticked
+  in the picker, and "sem horários livres neste dia" over a business open all week. The page now
+  makes the same determination itself, against `data.memberIds`, and prints the same key. The
+  translations stay because the sentence is still the right one; only the side of the wire that
+  notices has moved.
+
+## #123 (original) — Step 1's roster counts go blank for everybody else the moment a professional is picked
+
+`MemberPicker` is now a vertical list, and each row carries how much of the shown day that person
+still has free ("6 horas · a próxima às 12:30"), summed off `days[].starts[].memberIds` in the
+response step 1 has already fetched. That is correct while the picker sits on "Qualquer pessoa
+disponível". **It stops being correct the instant somebody is chosen.**
+
+`ChooseWhenPage` fetches with `memberId: search.memberId`, and
+`ListServiceAvailability` narrows the whole projection to that one person —
+`queriedMemberIds = input.memberId !== undefined ? [input.memberId] : info.memberIds`, and every
+schedule, closure and busy-interval read below it is scoped to that array. The response's
+top-level `memberIds` stays the full roster on purpose (that is the bug `distinctMemberIds`
+documents), so the picker still draws every row; but `days[].starts[]` now mentions nobody else.
+So on a salon of twelve, choosing Flávio leaves eleven rows reading "sem horas hoje" — a sentence
+about people whose calendars are full of openings — and drops the "Qualquer pessoa disponível"
+total to Flávio's own. A customer reasonably concludes the salon is empty and leaves.
+
+**Nothing in the suite can see it**, which is worth stating on its own: `choose-when-page.test.tsx`
+mocks `useServiceAvailability` with a fixture that ignores `memberId` entirely, so every existing
+test — including the two added with the list — exercises only the unfiltered response.
+
+**The fix is one line plus its consequences, and the consequences are why it is not done here.**
+Every start already carries `memberIds`, so the filter the server is doing could be done in the
+browser: fetch unfiltered, and hand `TimeGrid` `day.starts.filter(s => s.memberIds.includes(id))`.
+One query either way — this is not a second request. But it moves four other things:
+
+- `startsByDate(data.days)` feeds the date strip's per-day counts, which currently follow the
+  member filter and would stop doing so unless the same filter is threaded through it;
+- `selectedStart` must be looked up in the *filtered* list, or the confirm can hold a time the
+  chosen person is not free at (the server refuses it, but the page would be offering it);
+- `seatsLeft` on an unfiltered start sums across every member free at that moment, so anything
+  that ever reads it changes meaning;
+- `availability.forService`'s own `SERVICE_MEMBER_CANNOT_PERFORM` becomes unreachable from the
+  query — the page's `availabilityForServiceError.SERVICE_MEMBER_CANNOT_PERFORM` copy would only
+  ever be reached through `booking.create`.
+
+That is a change to how step 1 fetches, not to the picker, and it wants a decision rather than
+being folded into the component that exposed it.
+
+**Trigger:** before this list ships to a provider with more than two people on it — which is the
+only kind of provider the list exists for — or the first report of a customer told that a
+professional has nothing free on a day the grid is showing times for.
+
+## #124 — The backend suite loses tests against the shared dev database under load
+
+Across twelve consecutive full `bun run test` runs from the repo root, the backend workspace lost
+tests twice — once `booking-sweep.test.ts` alone, once four tests spread across files. Both were
+green on re-run, and the backend suite run by itself is 1524/0.
+
+The soak that found it was itself hammering that database, so what cannot yet be told apart is
+**degradation under load** from **an underlying race** between suites sharing one Postgres. The
+distinguishing experiment is a soak of the backend suite alone, at the same repetition count, on an
+otherwise quiet machine: if it stays clean, the cause is contention with the other workspaces
+turbo runs in parallel; if it does not, two suites are stepping on each other's rows.
+
+It is not a `waitFor` bound — that was #112, and it is fixed. This is the `CONNECT_TIMEOUT`-class
+flakiness every implementer on this branch has been warned about, finally measured rather than
+mentioned.
+
+The cost is the one that matters on a branch this size: a suite that reddens at random teaches
+whoever meets it to re-run rather than read, and the next real regression arrives looking exactly
+like the noise.
+
+**Trigger:** the next unexplained backend red, or before anyone wires the suite into a gate that
+blocks a merge on a single run.
+
+## #125 — Every page is served as `lang="en"`, whatever language it renders in
+
+`document.documentElement.lang` is `"en"` on a page rendering Portuguese. Measured on the deployed
+dev environment with the browser on `pt-PT`: i18next resolved `pt-PT`, every string on screen was
+Portuguese, and the document declared English.
+
+Two costs, and the second is the one that shows.
+
+A screen reader picks its voice and its pronunciation rules from that attribute, so a Portuguese
+page is read aloud by an English synthesiser; browsers offer to translate a page they are told is
+in a language the reader already has. Neither failure is visible to anyone testing with their eyes.
+
+And it is the root of a **hydration mismatch on every load**. React reported the server rendering
+`aria-label="Main navigation"` and `Explore` where the client rendered `Navegação principal` and
+`Explorar`, and regenerated the tree — the server does not know the reader's language, so it
+renders the default and the client corrects it a frame later. Adding `?lng=pt-MZ` makes it explicit
+rather than causing it.
+
+The fix is that the server has to know the language before it renders: the `Accept-Language` header
+it already receives, or a cookie the switcher writes, carried into i18next's initialisation and out
+into `<html lang>`. The tell that it is fixed is the hydration warning disappearing, not the
+attribute changing.
+
+**Trigger:** before any locale other than Portuguese has real users, and before anyone
+investigates the hydration warning on its own — it is a symptom of this, not a separate bug.

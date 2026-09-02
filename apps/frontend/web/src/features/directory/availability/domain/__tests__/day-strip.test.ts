@@ -1,9 +1,11 @@
 import { describe, expect, test } from "vitest";
 import {
   dayLoad,
+  daysFor,
   endOfStart,
   fullDayStarts,
   isPast,
+  memberDayFree,
   splitByHalfDay,
   startsByDate,
   weekOf,
@@ -171,5 +173,115 @@ describe("endOfStart", () => {
 
   test("crosses midnight in UTC without touching the civil date maths", () => {
     expect(endOfStart("2026-09-04T23:30:00.000Z", 60)).toBe("2026-09-05T00:30:00.000Z");
+  });
+});
+
+describe("daysFor", () => {
+  /** A start at `minuteOfDay`, free for exactly the people named. */
+  function shared(minuteOfDay: number, memberIds: string[]): Start {
+    return { ...start(minuteOfDay), memberIds };
+  }
+
+  test("keeps every date, including the ones it empties", () => {
+    // **The promise the date strip rests on.** `weekOf` draws seven cards and
+    // looks each date's count up in `startsByDate`'s Map, so today a dropped
+    // day and an emptied one both read "fechado" and nothing notices. That is
+    // luck rather than coverage, and it runs out the moment anything iterates
+    // this array instead of indexing it — which is what a strip built from the
+    // response rather than from `weekOf` would do.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1"]), shared(600, ["m2"])] },
+      { date: "2026-08-13", starts: [shared(540, ["m2"])] },
+      { date: "2026-08-14", starts: [] },
+    ];
+
+    const narrowed = daysFor(days, "m1");
+
+    expect(narrowed.map((d) => d.date)).toEqual(["2026-08-12", "2026-08-13", "2026-08-14"]);
+    // The 13th is emptied rather than removed, which is the whole point.
+    expect(narrowed.map((d) => d.starts.length)).toEqual([1, 0, 0]);
+  });
+
+  test("matches a start on its own memberIds, not on the day's", () => {
+    // A day is a bag of independent moments: two of a salon's staff being free
+    // at 09:00 says nothing about who is free at 10:00. A narrowing that read
+    // the day as a unit would hand one person the other's afternoon.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1", "m2"]), shared(600, ["m2"])] },
+    ];
+
+    expect(daysFor(days, "m1")[0]?.starts.map((s) => s.minuteOfDay)).toEqual([540]);
+    expect(daysFor(days, "m2")[0]?.starts.map((s) => s.minuteOfDay)).toEqual([540, 600]);
+  });
+
+  test("undefined is anyone, and changes nothing", () => {
+    // "Qualquer pessoa disponível" is an absence, not a member id — the same
+    // absence `availability.forService` itself reads that way. A narrowing
+    // that treated it as an id to match would filter the whole window to
+    // nothing and leave the customer with no way back out of a filter.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1"]), shared(600, ["m2"])] },
+      { date: "2026-08-13", starts: [] },
+    ];
+
+    expect(daysFor(days, undefined)).toEqual(days);
+  });
+
+  test("does not mutate the response it narrows", () => {
+    // The page holds one response and takes two readings of it: the picker
+    // counts the roster's day while the grid draws the narrowed one. If this
+    // narrowed in place, the second reading would destroy the first — and the
+    // roster rows would go back to reporting zero for everybody not chosen.
+    const days = [
+      { date: "2026-08-12", starts: [shared(540, ["m1"]), shared(600, ["m2"])] },
+    ];
+
+    daysFor(days, "m1");
+
+    expect(days[0]?.starts).toHaveLength(2);
+  });
+});
+
+describe("memberDayFree", () => {
+  /** A start at `minuteOfDay`, free for exactly the people named. */
+  function shared(minuteOfDay: number, memberIds: string[]): Start {
+    return { ...start(minuteOfDay), memberIds, seatsLeft: 4 };
+  }
+
+  test("counts only the starts that name the person", () => {
+    const day = [shared(540, ["m1", "m2"]), shared(600, ["m2"]), shared(660, ["m1"])];
+    expect(memberDayFree(day, "m1").count).toBe(2);
+    expect(memberDayFree(day, "m2").count).toBe(2);
+  });
+
+  test("undefined is anyone — the whole day, not one person's share", () => {
+    const day = [shared(540, ["m1"]), shared(600, ["m2"]), shared(660, ["m2"])];
+    expect(memberDayFree(day, undefined).count).toBe(3);
+  });
+
+  test("counts moments, never the seats behind them", () => {
+    // `seatsLeft` is 4 on every fixture here on purpose: a sum of seats would
+    // answer 8 where two bookable moments is the honest answer, and it would
+    // publish the provider's capacity in a place that asked "who".
+    expect(memberDayFree([shared(540, ["m1"]), shared(600, ["m1"])], "m1").count).toBe(2);
+  });
+
+  test("the next one is the earliest by the clock, not the first in the array", () => {
+    // The read model promises a day's set of starts; nothing in it promises an
+    // order. A `starts[0]` rule reads the same as this one on any sorted
+    // fixture, which is why this one is deliberately not sorted.
+    const day = [shared(660, ["m1"]), shared(540, ["m1"])];
+    expect(memberDayFree(day, "m1").nextStartsAt).toBe(start(540).startsAt);
+  });
+
+  test("a person free at nothing has no next one to name", () => {
+    expect(memberDayFree([shared(540, ["m1"])], "m2")).toEqual({
+      count: 0,
+      nextStartsAt: null,
+    });
+  });
+
+  test("a day with no starts at all is empty for anyone", () => {
+    expect(memberDayFree([], undefined)).toEqual({ count: 0, nextStartsAt: null });
   });
 });
