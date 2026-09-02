@@ -2743,3 +2743,39 @@ harm is not yet.
 read model for the *other* audience (where the split is legitimately visible and the customer's
 side then differs by convention alone), or any commission-visibility review that treats "the
 customer never sees it" as an enforced property.
+
+## #115 — The same review-and-verification SQL exists in three contexts
+
+`reviewAggregate` and `verifiedAggregate` — the subqueries that give a provider their average
+rating and their verified badge — are now written out in `public/provider`, in
+`bounded-contexts/catalog`, and in `read/booking`.
+
+The first pair is a deliberate, documented copy: importing one context's query builder into
+another would be a context violation, and duplicating six lines was judged cheaper than the
+coupling. That argument still holds for each copy taken on its own. It stops holding at three,
+because the thing that goes wrong with duplicated SQL is not the writing — it is that one of
+them is corrected and the others are not, and nothing says so.
+
+All three already import their tables from `shared/infrastructure/database`, which is where the
+helpers belong: shared *schema* is not a context boundary crossing, and lifting them there is
+what the existing comment's own reasoning points at without taking the step.
+
+Not done at the time because it touches two other contexts and their tests inside what was
+otherwise a visual redesign of three pages.
+
+**Trigger:** the next change to any of the three — a rating that starts excluding withdrawn
+reviews, a verification that gains a state — because that is the moment two of them become
+wrong silently.
+
+## #116 — Checkout fixtures are typed loosely enough to drift from the read model
+
+`details-page.test.tsx` and `confirm-page.test.tsx` build their bookings as `Partial<BookingDTO>`
+cast through `unknown`, so adding a required field to `bookingReadModel` does not break them.
+`providerRating` and `providerVerified` were added and those fixtures compiled unchanged, still
+describing a booking the API no longer returns.
+
+The cost is not a broken test — it is a passing one that asserts against a shape reality has
+left behind, which is worse, because it reads as coverage.
+
+**Trigger:** any field added to `bookingReadModel`, and whenever one of those suites is next
+opened for a real change.
