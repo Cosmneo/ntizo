@@ -68,8 +68,9 @@ async function toThreadSummaries(
 
   return threads.map((t) => ({
     id: t.id!,
-    providerId: t.providerId,
-    providerName: providerNamesById.get(t.providerId) ?? "",
+    // Placeholder until Task 8 makes the DTO's providerId nullable; unreachable today — nothing mounted can open a support thread yet.
+    providerId: t.providerId ?? "",
+    providerName: providerNamesById.get(t.providerId ?? "") ?? "",
     customerName: customerNamesById.get(t.customerUserId) ?? "",
     lastMessageAt: t.lastMessageAt.toISOString(),
     lastMessagePreview: previewByThread.get(t.id!)?.body ?? "",
