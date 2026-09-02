@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { AboutPage } from "../about-page";
 import { CareersPage } from "../careers-page";
 import { renderCompanyPage } from "./render-company-page";
@@ -25,8 +25,13 @@ describe("AboutPage", () => {
 
   it("sends customers to services and providers to the pitch", async () => {
     await renderCompanyPage(AboutPage, "/about");
-    expect(screen.getByRole("link", { name: /explore services/i })).toHaveAttribute("href", "/services");
-    expect(screen.getByRole("link", { name: /become a provider/i })).toHaveAttribute("href", "/become-provider");
+    // Scoped to each audience card: the footer also links to /become-provider,
+    // so an unscoped `getByRole("link", { name: /become a provider/i })` is
+    // ambiguous — both the footer's own link and this page's card match.
+    const customers = screen.getByRole("heading", { name: "Find, book and pay in one place." }).closest("article")!;
+    expect(within(customers).getByRole("link", { name: /explore services/i })).toHaveAttribute("href", "/services");
+    const providers = screen.getByRole("heading", { name: "Your calendar, your prices, your customers." }).closest("article")!;
+    expect(within(providers).getByRole("link", { name: /become a provider/i })).toHaveAttribute("href", "/become-provider");
   });
 
   it("offers contact, feedback and careers at the bottom — and not itself", async () => {
