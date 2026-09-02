@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Smartphone } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, MapPin, Smartphone } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
@@ -22,6 +22,17 @@ import {
   BookingOutcomePanel,
   SentPanel,
 } from "@/features/checkout/ui/booking-outcome-panel";
+
+
+/** One card per section, the frame step 2 draws around each of its questions. */
+const CARD = "rounded-[var(--radius-card)] border border-[var(--color-border)] p-4 sm:p-5";
+
+/** The tinted disc an icon sits in — step 2's address pin, here on every row of the record. */
+const ICON_BADGE =
+  "grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[var(--color-primary)]";
+
+/** The order money and commitment happen in, as three keys so each stays greppable. */
+const HOW_IT_WORKS = ["howItWorks1", "howItWorks2", "howItWorks3"] as const;
 
 /**
  * A stored coordinate as a number, or `null`.
@@ -364,89 +375,119 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
                 {t("confirmIntro")}
               </p>
 
-              <dl className="mt-8 grid gap-5 rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
-                <div>
-                  <dt className="type-caption text-[var(--color-muted-foreground)]">
-                    {t("summaryWhen")}
-                  </dt>
-                  <dd className="type-body-medium mt-1 font-semibold">{when.date}</dd>
-                  <dd className="type-body tabular-nums">
-                    {t("slotRange", { start: when.start, end: when.end })}
-                  </dd>
-                </div>
+              {/* The record of what is being sent, then how it is paid,
+                  then what happens next — three framed blocks in the shape
+                  step 2 already gave its three questions, so the page the
+                  customer commits on looks like the one that led there.
 
-                {address && (
+                  The record is read-only on purpose. The rail's "Alterar" is
+                  the one control that changes the time, and the back link is
+                  the way to everything step 2 owns; a change button on every
+                  row here would be a second answer to each of those
+                  questions, and the suite pins the rail's as the only one. */}
+              <div className="mt-8 grid gap-4">
+                <dl className={`${CARD} grid gap-5`}>
                   <div>
-                    <dt className="type-caption text-[var(--color-muted-foreground)]">
-                      {t("summaryWhere")}
+                    <dt className="type-caption flex items-center gap-2 text-[var(--color-muted-foreground)]">
+                      <CalendarDays className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+                      {t("summaryWhen")}
                     </dt>
-                    <dd className="type-body-medium mt-1 font-semibold">{address.label}</dd>
-                    <dd className="type-body">
-                      {[address.line1, address.line2, address.district, address.city]
-                        .filter(Boolean)
-                        .join(", ")}
+                    <dd className="type-body-medium mt-1 pl-6 font-semibold">{when.date}</dd>
+                    <dd className="type-body pl-6 tabular-nums">
+                      {t("slotRange", { start: when.start, end: when.end })}
                     </dd>
-                    {address.directions && (
-                      <dd className="type-caption text-[var(--color-muted-foreground)]">
-                        {address.directions}
+                  </div>
+
+                  {address && (
+                    <div>
+                      <dt className="type-caption flex items-center gap-2 text-[var(--color-muted-foreground)]">
+                        <MapPin className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+                        {t("summaryWhere")}
+                      </dt>
+                      <dd className="type-body-medium mt-1 pl-6 font-semibold">{address.label}</dd>
+                      <dd className="type-body pl-6">
+                        {[address.line1, address.line2, address.district, address.city]
+                          .filter(Boolean)
+                          .join(", ")}
                       </dd>
-                    )}
-                  </div>
-                )}
+                      {address.directions && (
+                        <dd className="type-caption pl-6 text-[var(--color-muted-foreground)]">
+                          {address.directions}
+                        </dd>
+                      )}
+                    </div>
+                  )}
 
-                {details?.description.trim() && (
-                  <div>
-                    <dt className="type-caption text-[var(--color-muted-foreground)]">
-                      {t("summaryNote")}
-                    </dt>
-                    <dd className="type-body mt-1 whitespace-pre-line">
-                      {details.description.trim()}
-                    </dd>
-                  </div>
-                )}
-              </dl>
+                  {details?.description.trim() && (
+                    <div>
+                      <dt className="type-caption flex items-center gap-2 text-[var(--color-muted-foreground)]">
+                        <FileText className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+                        {t("summaryNote")}
+                      </dt>
+                      <dd className="type-body mt-1 pl-6 whitespace-pre-line">
+                        {details.description.trim()}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
 
-              {/* One method, stated. Not a radio group with one live option
-                  and two greyed ones: a chooser offering a decision nobody
-                  can make invites the customer to want what is not there. */}
-              <section className="mt-8">
-                <h2 className="type-h3 font-semibold">{t("paymentLegend")}</h2>
-                <div className="mt-3 flex items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4">
-                  <Smartphone
-                    className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]"
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <p className="type-body-medium font-semibold">{t("paymentMpesa")}</p>
-                    {/* **The number, read back rather than asked for again.**
-                        This page is the last screen before a commitment, and
-                        the handset the prompt lands on is one of the two
-                        facts on it a customer can still get wrong. Printed
-                        from the store, so a wrong one is visible here and
-                        correctable one press back on the step that owns the
-                        field. */}
-                    <p className="type-body tabular-nums">{phone}</p>
-                    <p className="type-caption text-[var(--color-muted-foreground)]">
-                      {t("paymentMpesaHint")}
-                    </p>
+                {/* One method, stated. Not a radio group with one live option
+                    and two greyed ones: a chooser offering a decision nobody
+                    can make invites the customer to want what is not there. */}
+                <section className={CARD}>
+                  <h2 className="type-h3 font-semibold">{t("paymentLegend")}</h2>
+                  <div className="mt-4 flex items-start gap-3">
+                    <span aria-hidden="true" className={ICON_BADGE}>
+                      <Smartphone className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="type-body-medium font-semibold">{t("paymentMpesa")}</p>
+                      {/* **The number, read back rather than asked for again.**
+                          This page is the last screen before a commitment, and
+                          the handset the prompt lands on is one of the two
+                          facts on it a customer can still get wrong. Printed
+                          from the store, so a wrong one is visible here and
+                          correctable one press back on the step that owns the
+                          field. */}
+                      <p className="type-body tabular-nums">{phone}</p>
+                      <p className="type-caption text-[var(--color-muted-foreground)]">
+                        {t("paymentMpesaHint")}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
 
-              <section className="mt-8">
-                <h2 className="type-h3 font-semibold">{t("howItWorksTitle")}</h2>
-                {/* The order money and commitment actually happen in, which
-                    is the whole of what the reversal changed. Written without
-                    a number of hours in it: the window is
-                    `provider_response_minutes`, a live setting an
-                    administrator can change, and a figure printed here would
-                    be a second source of truth that goes stale silently. */}
-                <ol className="type-body mt-3 grid list-decimal gap-2 pl-5 text-[var(--color-muted-foreground)]">
-                  <li>{t("howItWorks1")}</li>
-                  <li>{t("howItWorks2")}</li>
-                  <li>{t("howItWorks3")}</li>
-                </ol>
-              </section>
+                {/* Tinted rather than framed: this block is not the customer's
+                    own data, it is the platform explaining itself, and the
+                    ground says so before a word is read. */}
+                <section className="rounded-[var(--radius-card)] bg-[var(--color-muted)] p-4 sm:p-5">
+                  <h2 className="type-h3 font-semibold">{t("howItWorksTitle")}</h2>
+                  {/* The order money and commitment actually happen in, which
+                      is the whole of what the reversal changed. Written without
+                      a number of hours in it: the window is
+                      `provider_response_minutes`, a live setting an
+                      administrator can change, and a figure printed here would
+                      be a second source of truth that goes stale silently.
+                      Still an `ol`, so it is announced as three ordered steps;
+                      the drawn discs replace the browser's own "1." for the
+                      eye only. */}
+                  <ol className="mt-3 grid list-none gap-3 p-0">
+                    {HOW_IT_WORKS.map((key, index) => (
+                      <li key={key} className="flex items-start gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-background)] text-xs font-bold text-[var(--color-primary)]"
+                        >
+                          {index + 1}
+                        </span>
+                        <span className="type-body text-[var(--color-muted-foreground)]">
+                          {t(key)}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              </div>
             </div>
 
             {/* 80px, not 0: the checkout header is 64px and sticky, so a rail
