@@ -1,4 +1,11 @@
-import { Activity, Briefcase, LayoutDashboard, Tags, Users } from "lucide-react";
+import {
+  Activity,
+  Briefcase,
+  LayoutDashboard,
+  MessageSquareQuote,
+  Tags,
+  Users,
+} from "lucide-react";
 import type { NavGroup } from "@/shared/lib/navigation";
 
 /** The admin zone: the platform. Same rule as the provider zone — no personal account. */
@@ -15,6 +22,10 @@ export const adminNavGroups: readonly NavGroup[] = [
       // The catalog last: it is set up once and revisited, where the two above
       // are looked at daily.
       { titleKey: "nav.categories", url: "/admin/categories", icon: Tags },
+      // Beside the catalog rather than beside the queues: like categories,
+      // this is content the platform curates and revisits, not a stream of
+      // work arriving. What it decides is what the home page says.
+      { titleKey: "nav.reviews", url: "/admin/reviews", icon: MessageSquareQuote },
       // Last, and read rather than worked: the audit trail is where you go to
       // find out what was already done, not somewhere anything gets done.
       { titleKey: "nav.activity", url: "/admin/activity", icon: Activity },

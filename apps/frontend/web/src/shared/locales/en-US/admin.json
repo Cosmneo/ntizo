@@ -10,7 +10,8 @@
     "myAccount": "My account",
     "providers": "Providers",
     "categories": "Categories",
-    "activity": "Activity"
+    "activity": "Activity",
+    "reviews": "Reviews"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",
@@ -207,5 +208,34 @@
   "activityTitle": "Audit trail",
   "activityHint": "What administrators have done on the platform.",
   "activityEmptyTitle": "Nothing recorded yet",
-  "activityEmpty": "Approvals, suspensions and catalogue edits will be recorded here."
+  "activityEmpty": "Approvals, suspensions and catalogue edits will be recorded here.",
+  "reviewsTitle": "Reviews",
+  "reviewsSubtitle": "Every review on the platform, and which of them the home page shows.",
+  "reviewsReview": "Review",
+  "reviewsBusiness": "Business",
+  "reviewsRating": "Rating",
+  "reviewsStatus": "Status",
+  "reviewsDate": "Left on",
+  "reviewsAnonymous": "Anonymous",
+  "reviewsNoComment": "No comment — a score only",
+  "reviewsOnHome": "On home page",
+  "reviewsPutOnHome": "Show on home",
+  "reviewsOnHomeFilter": "On the home page",
+  "reviewsFeaturedCount": "{{count}} of {{max}} reviews on the home page",
+  "reviewsFeatureFull": "The home page already shows {{max}} reviews — take one off first",
+  "reviewsCannotFeatureNoComment": "A review with no words has nothing to show",
+  "reviewsFeatureFailed": "That review could not be changed. The home page shows at most {{max}}.",
+  "reviewsEmpty": "Nobody has reviewed a business yet.",
+  "reviewsEmptyTitle": "No reviews",
+  "reviewsNoMatches": "No review is on the home page yet.",
+  "reviewsNoMatchesTitle": "Nothing featured",
+  "reviewsError": "The reviews could not be loaded.",
+  "reviewsPrevious": "Previous",
+  "reviewsNext": "Next",
+  "reviewStatus": {
+    "published": "Published",
+    "hidden": "Hidden"
+  },
+  "reviewsSearchPlaceholder": "Search a business, a name, or what was said",
+  "reviewsAction": "Home page"
 }

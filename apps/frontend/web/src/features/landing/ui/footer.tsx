@@ -29,31 +29,39 @@ export function Footer() {
   return (
     <>
       <footer style={footer}>
-        <div className="mx-auto grid max-w-[1320px] grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:gap-10">
+        <div className="mx-auto grid max-w-[1320px] grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-[1.6fr_1fr_1fr_1fr] lg:gap-10">
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
             <img
               src="/brand/logo-primary.svg"
               alt="Ntizo"
               style={{ height: 28 }}
             />
-            <p style={footerDesc}>
-              Your gateway to trusted local services across the globe — book,
-              schedule, and pay all in one place.
-            </p>
+            {/* Through i18next. It used to be an English sentence written
+                into the markup, so this one paragraph stayed in English on a
+                page whose every other word followed the language switcher —
+                and `footer.blurb`, which says the same thing in all eight,
+                sat in the locale files with nothing reading it. */}
+            <p style={footerDesc}>{t("footer.blurb")}</p>
           </div>
 
           <FooterCol title={t("footer.support")}>
+            {/* The phone line that used to sit above this was
+                "+1 (800) 000-0000" under the label "Toll Free Customer Care" —
+                a number in a country Ntizo does not operate in, that nobody
+                could ring. It is gone rather than replaced: an address that
+                reaches somebody beats a number that does not. */}
             <FooterMeta
-              label="Toll Free Customer Care"
-              value="+1 (800) 000-0000"
+              label={t("footer.supportEmailLabel")}
+              value="hello@ntizo.com"
+              href="mailto:hello@ntizo.com"
             />
-            <FooterMeta label="Need live support?" value="hello@ntizo.com" />
           </FooterCol>
 
+          {/* About, Contact, FAQ and Careers used to sit around this link,
+              all four on `href="#"`. A footer of eleven links where six go
+              nowhere teaches a reader that none of them work; they come back
+              one at a time, as the pages behind them are written. */}
           <FooterCol title={t("footer.company")}>
-            <FooterLink href="#">{t("footer.about")}</FooterLink>
-            <FooterLink href="#">{t("footer.contact")}</FooterLink>
-            <FooterLink href="#">{t("footer.faq")}</FooterLink>
             {/* The public pitch, not registration. A link labelled "become a
                 provider" that opens a sign-up form skips the part where someone
                 finds out what they would be signing up for — and that page's
@@ -61,30 +69,18 @@ export function Footer() {
             <FooterLink to="/become-provider">
               {t("footer.becomeProvider")}
             </FooterLink>
-            <FooterLink href="#">{t("footer.careers")}</FooterLink>
           </FooterCol>
 
           <FooterCol title={t("footer.legal")}>
             <FooterLink to="/terms">{t("footer.terms")}</FooterLink>
             <FooterLink to="/privacy">{t("footer.privacy")}</FooterLink>
-            <FooterLink href="#">{t("footer.cookies")}</FooterLink>
             <FooterLink to="/admin">{t("admin")}</FooterLink>
           </FooterCol>
 
-          <FooterCol title={t("footer.getTheApp")}>
-            <a href="#" style={appBadge}>
-              <span style={{ fontSize: 11, opacity: 0.8 }}>
-                {t("footer.downloadOnThe")}
-              </span>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>App Store</span>
-            </a>
-            <a href="#" style={appBadge}>
-              <span style={{ fontSize: 11, opacity: 0.8 }}>
-                {t("footer.getItOn")}
-              </span>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Google Play</span>
-            </a>
-          </FooterCol>
+          {/* A "Get the App" column stood here with an App Store and a Google
+              Play badge, both on `href="#"`. Ntizo ships no mobile app, so the
+              column advertised two downloads that do not exist — the one thing
+              on a footer a reader is most likely to act on. */}
         </div>
 
         <div
@@ -139,8 +135,11 @@ export function Footer() {
           </div>
         </div>
 
+        {/* Through i18next like the blurb above it. "All rights reserved."
+            was the last English sentence left in the markup, so it stayed in
+            English under a footer that had just translated everything else. */}
         <div style={copyright}>
-          © {new Date().getFullYear()} Ntizo. All rights reserved.
+          © {new Date().getFullYear()} Ntizo. {t("footer.rights")}
         </div>
       </footer>
     </>
@@ -186,11 +185,39 @@ function FooterLink({
   );
 }
 
-function FooterMeta({ label, value }: { label: string; value: string }) {
+/**
+ * A labelled way to reach somebody.
+ *
+ * `href` is optional and, when given, makes the value itself the link — an
+ * address printed as plain text is one a reader has to select and copy, on a
+ * phone especially. Without it the value stays text, which is right for
+ * anything that is not dialable or mailable.
+ */
+function FooterMeta({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+}) {
+  const style: React.CSSProperties = {
+    fontSize: 14,
+    color: NAVY,
+    fontWeight: 600,
+    textDecoration: "none",
+  };
   return (
     <div>
       <div style={{ fontSize: 12, color: MUTED }}>{label}</div>
-      <div style={{ fontSize: 14, color: NAVY, fontWeight: 600 }}>{value}</div>
+      {href ? (
+        <a href={href} style={style}>
+          {value}
+        </a>
+      ) : (
+        <div style={style}>{value}</div>
+      )}
     </div>
   );
 }
@@ -308,16 +335,6 @@ const footerLink: React.CSSProperties = {
   textDecoration: "none",
 };
 
-const appBadge: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  padding: "10px 16px",
-  borderRadius: 12,
-  background: NAVY,
-  color: "#fff",
-  textDecoration: "none",
-  width: "fit-content",
-};
 
 /**
  * The shape only. Each icon supplies its own `background`, and the glyph is

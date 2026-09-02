@@ -32,6 +32,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminActivityRouteImport } from './routes/admin/activity'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as AdminReviewsRouteImport } from './routes/admin/reviews'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
 import { Route as ProviderSlugRouteRouteImport } from './routes/provider/$slug/route'
@@ -172,6 +173,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReviewsRoute = AdminReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -346,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/providers/$slug': typeof ProvidersSlugRoute
@@ -394,6 +401,7 @@ export interface FileRoutesByTo {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/providers/$slug': typeof ProvidersSlugRoute
@@ -448,6 +456,7 @@ export interface FileRoutesById {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
   '/providers/$slug': typeof ProvidersSlugRoute
@@ -501,6 +510,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/categories'
     | '/admin/dashboard'
+    | '/admin/reviews'
     | '/admin/users'
     | '/provider/no-provider'
     | '/providers/$slug'
@@ -549,6 +559,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/categories'
     | '/admin/dashboard'
+    | '/admin/reviews'
     | '/admin/users'
     | '/provider/no-provider'
     | '/providers/$slug'
@@ -602,6 +613,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/categories'
     | '/admin/dashboard'
+    | '/admin/reviews'
     | '/admin/users'
     | '/provider/no-provider'
     | '/providers/$slug'
@@ -810,6 +822,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/admin/dashboard'
       preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reviews': {
+      id: '/admin/reviews'
+      path: '/reviews'
+      fullPath: '/admin/reviews'
+      preLoaderRoute: typeof AdminReviewsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/users': {
@@ -1078,6 +1097,7 @@ interface AdminRouteRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminReviewsRoute: typeof AdminReviewsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminProvidersProviderIdRoute: typeof AdminProvidersProviderIdRoute
@@ -1088,6 +1108,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminActivityRoute: AdminActivityRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminReviewsRoute: AdminReviewsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminProvidersProviderIdRoute: AdminProvidersProviderIdRoute,

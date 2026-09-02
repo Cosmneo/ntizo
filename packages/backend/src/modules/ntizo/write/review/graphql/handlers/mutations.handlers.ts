@@ -28,6 +28,25 @@ function requireUser(ctx: GraphQLHandlerContext): string {
   return requesterUserId;
 }
 
+/**
+ * Refuses anyone whose platform role is not `admin`.
+ *
+ * Both the id and the role, not the role alone: the context defaults a caller
+ * with no session to `customer`, so a role check by itself would be reading a
+ * value chosen for the absence of a user rather than asserted about one. Same
+ * shape as the catalog's own — copied rather than shared, as `requireUser`
+ * above already is, because tiers do not import each other here.
+ */
+function requireAdmin(ctx: GraphQLHandlerContext): void {
+  const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
+  if (!requesterUserId || role !== "admin") {
+    throw new ForbiddenError({
+      message: "Only administrators may choose what the home page shows",
+      code: "ADMIN_ONLY",
+    });
+  }
+}
+
 export function createReviewWriteHandlers(mod: ReviewWriteModule) {
   const uc = mod.review.useCases;
 
@@ -38,5 +57,10 @@ export function createReviewWriteHandlers(mod: ReviewWriteModule) {
     .handle("review.remove", async (args, ctx) =>
       uc.removeReview.execute({ requesterUserId: requireUser(ctx), ...args.input }),
     )
+    // The one mutation here that is not the author acting on their own words.
+    .handle("review.setFeatured", async (args, ctx) => {
+      requireAdmin(ctx);
+      return uc.setReviewFeatured.execute(args.input);
+    })
     .build();
 }

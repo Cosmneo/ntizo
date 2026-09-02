@@ -10,7 +10,8 @@
     "myAccount": "Mein Konto",
     "providers": "Anbieter",
     "categories": "Kategorien",
-    "activity": "Aktivität"
+    "activity": "Aktivität",
+    "reviews": "Bewertungen"
   },
   "providersTitle": "Anbieter",
   "providersSubtitle": "Alle Betriebe der Plattform.",
@@ -207,5 +208,34 @@
   "activityTitle": "Prüfprotokoll",
   "activityHint": "Was Administratoren auf der Plattform getan haben.",
   "activityEmptyTitle": "Noch nichts protokolliert",
-  "activityEmpty": "Freigaben, Sperrungen und Katalogänderungen werden hier protokolliert."
+  "activityEmpty": "Freigaben, Sperrungen und Katalogänderungen werden hier protokolliert.",
+  "reviewsTitle": "Bewertungen",
+  "reviewsSubtitle": "Alle Bewertungen der Plattform und welche davon die Startseite zeigt.",
+  "reviewsReview": "Bewertung",
+  "reviewsBusiness": "Betrieb",
+  "reviewsRating": "Note",
+  "reviewsStatus": "Status",
+  "reviewsDate": "Abgegeben am",
+  "reviewsAnonymous": "Anonym",
+  "reviewsNoComment": "Ohne Text — nur eine Note",
+  "reviewsOnHome": "Auf der Startseite",
+  "reviewsPutOnHome": "Auf Startseite zeigen",
+  "reviewsOnHomeFilter": "Auf der Startseite",
+  "reviewsFeaturedCount": "{{count}} von {{max}} Bewertungen auf der Startseite",
+  "reviewsFeatureFull": "Die Startseite zeigt bereits {{max}} Bewertungen — nimm zuerst eine weg",
+  "reviewsCannotFeatureNoComment": "Eine Bewertung ohne Text hat nichts zu zeigen",
+  "reviewsFeatureFailed": "Diese Bewertung konnte nicht geändert werden. Die Startseite zeigt höchstens {{max}}.",
+  "reviewsEmpty": "Noch hat niemand einen Betrieb bewertet.",
+  "reviewsEmptyTitle": "Keine Bewertungen",
+  "reviewsNoMatches": "Noch keine Bewertung auf der Startseite.",
+  "reviewsNoMatchesTitle": "Nichts hervorgehoben",
+  "reviewsError": "Die Bewertungen konnten nicht geladen werden.",
+  "reviewsPrevious": "Zurück",
+  "reviewsNext": "Weiter",
+  "reviewStatus": {
+    "published": "Veröffentlicht",
+    "hidden": "Ausgeblendet"
+  },
+  "reviewsSearchPlaceholder": "Betrieb, Name oder Gesagtes suchen",
+  "reviewsAction": "Startseite"
 }

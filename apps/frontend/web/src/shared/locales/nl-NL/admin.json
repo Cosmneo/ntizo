@@ -10,7 +10,8 @@
     "myAccount": "Mijn account",
     "providers": "Aanbieders",
     "categories": "Categorieën",
-    "activity": "Activiteit"
+    "activity": "Activiteit",
+    "reviews": "Beoordelingen"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -207,5 +208,34 @@
   "activityTitle": "Auditlogboek",
   "activityHint": "Wat beheerders op het platform hebben gedaan.",
   "activityEmptyTitle": "Nog niets vastgelegd",
-  "activityEmpty": "Goedkeuringen, schorsingen en catalogusbewerkingen worden hier vastgelegd."
+  "activityEmpty": "Goedkeuringen, schorsingen en catalogusbewerkingen worden hier vastgelegd.",
+  "reviewsTitle": "Beoordelingen",
+  "reviewsSubtitle": "Alle beoordelingen op het platform, en welke de homepage laat zien.",
+  "reviewsReview": "Beoordeling",
+  "reviewsBusiness": "Bedrijf",
+  "reviewsRating": "Cijfer",
+  "reviewsStatus": "Status",
+  "reviewsDate": "Geplaatst op",
+  "reviewsAnonymous": "Anoniem",
+  "reviewsNoComment": "Zonder tekst — alleen een cijfer",
+  "reviewsOnHome": "Op de homepage",
+  "reviewsPutOnHome": "Op homepage tonen",
+  "reviewsOnHomeFilter": "Op de homepage",
+  "reviewsFeaturedCount": "{{count}} van {{max}} beoordelingen op de homepage",
+  "reviewsFeatureFull": "De homepage toont al {{max}} beoordelingen — haal er eerst een af",
+  "reviewsCannotFeatureNoComment": "Een beoordeling zonder tekst heeft niets te tonen",
+  "reviewsFeatureFailed": "Deze beoordeling kon niet worden gewijzigd. De homepage toont er hoogstens {{max}}.",
+  "reviewsEmpty": "Nog niemand heeft een bedrijf beoordeeld.",
+  "reviewsEmptyTitle": "Geen beoordelingen",
+  "reviewsNoMatches": "Nog geen beoordeling op de homepage.",
+  "reviewsNoMatchesTitle": "Niets uitgelicht",
+  "reviewsError": "De beoordelingen konden niet worden geladen.",
+  "reviewsPrevious": "Vorige",
+  "reviewsNext": "Volgende",
+  "reviewStatus": {
+    "published": "Gepubliceerd",
+    "hidden": "Verborgen"
+  },
+  "reviewsSearchPlaceholder": "Zoek een bedrijf, een naam of wat er is gezegd",
+  "reviewsAction": "Homepage"
 }

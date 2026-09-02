@@ -36,7 +36,31 @@ export const removeReview = defineMutation({
   docs: { summary: "Take your own review back", tags: ["Review"] },
 });
 
+/**
+ * An administrator putting a review on the home page, or taking it off.
+ *
+ * Sits in the review slice rather than a curation one of its own because the
+ * thing being changed is a review — but note it is the only mutation here that
+ * is not the author acting on their own words. The handler is where that
+ * difference is enforced: `requireAdmin`, not `requireUser`.
+ *
+ * A single mutation carrying a boolean rather than a feature/unfeature pair,
+ * for the reason `submitReview` gives about itself: a toggle whose two
+ * directions are two endpoints makes every caller ask which state it is in
+ * before acting, and get it wrong under a race.
+ */
+export const setReviewFeatured = defineMutation({
+  input: zodSchema(
+    z.object({
+      reviewId: z.string().min(1),
+      featured: z.boolean(),
+    }),
+  ),
+  output: zodSchema(z.object({ featured: z.boolean() })),
+  docs: { summary: "Show a review on the home page, or stop showing it", tags: ["Review"] },
+});
+
 export const reviewWriteSchema = defineGraphQLSchema(
-  { review: { submit: submitReview, remove: removeReview } },
+  { review: { submit: submitReview, remove: removeReview, setFeatured: setReviewFeatured } },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );

@@ -39,6 +39,10 @@ import { bootstrapCatalog } from "@ntizo/backend/modules/ntizo/bounded-contexts/
 import { createSchedulingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/scheduling";
 import { bootstrapScheduling } from "@ntizo/backend/modules/ntizo/bounded-contexts/scheduling";
 import { createReviewWriteHandlers } from "@ntizo/backend/modules/ntizo/write/review";
+import {
+  bootstrapReviewRead,
+  createReviewReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/review";
 import { bootstrapReview } from "@ntizo/backend/modules/ntizo/bounded-contexts/review";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
@@ -84,6 +88,7 @@ export function buildPrivateGraphQLFields(): {
   const catalog = bootstrapCatalog();
   const scheduling = bootstrapScheduling();
   const review = bootstrapReview();
+  const reviewRead = bootstrapReviewRead();
   const walletRead = bootstrapWalletRead();
   // The eight notification fields are already in `privateGraphqlSchema` —
   // read/schema.ts and write/schema.ts merge them in. A field declared in
@@ -125,6 +130,7 @@ export function buildPrivateGraphQLFields(): {
       ...createNotificationReadHandlers({ notificationRead }),
       ...createActivityReadHandlers({ activityRead }),
       ...createCommunicationReadHandlers({ communicationRead }),
+      ...createReviewReadHandlers(reviewRead.useCases),
       ...createCommunicationWriteHandlers({ communication }),
       ...createProviderWriteHandlers({ provider, workflows }),
       ...createCatalogWriteHandlers({ catalog }),

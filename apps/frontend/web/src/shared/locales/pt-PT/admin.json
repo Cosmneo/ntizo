@@ -10,7 +10,8 @@
     "myAccount": "A minha conta",
     "providers": "Prestadores",
     "categories": "Categorias",
-    "activity": "Atividade"
+    "activity": "Atividade",
+    "reviews": "Avaliações"
   },
   "providersTitle": "Prestadores",
   "providersSubtitle": "Todos os negócios da plataforma.",
@@ -207,5 +208,34 @@
   "activityTitle": "Registo de auditoria",
   "activityHint": "O que os administradores fizeram na plataforma.",
   "activityEmptyTitle": "Ainda nada registado",
-  "activityEmpty": "Aprovações, suspensões e edições do catálogo serão registadas aqui."
+  "activityEmpty": "Aprovações, suspensões e edições do catálogo serão registadas aqui.",
+  "reviewsTitle": "Avaliações",
+  "reviewsSubtitle": "Todas as avaliações da plataforma, e quais delas aparecem na página inicial.",
+  "reviewsReview": "Avaliação",
+  "reviewsBusiness": "Negócio",
+  "reviewsRating": "Nota",
+  "reviewsStatus": "Estado",
+  "reviewsDate": "Deixada a",
+  "reviewsAnonymous": "Anónimo",
+  "reviewsNoComment": "Sem comentário — apenas nota",
+  "reviewsOnHome": "Na página inicial",
+  "reviewsPutOnHome": "Mostrar na inicial",
+  "reviewsOnHomeFilter": "Na página inicial",
+  "reviewsFeaturedCount": "{{count}} de {{max}} avaliações na página inicial",
+  "reviewsFeatureFull": "A página inicial já mostra {{max}} avaliações — retire uma primeiro",
+  "reviewsCannotFeatureNoComment": "Uma avaliação sem texto não tem nada para mostrar",
+  "reviewsFeatureFailed": "Não foi possível alterar essa avaliação. A página inicial mostra no máximo {{max}}.",
+  "reviewsEmpty": "Ainda ninguém avaliou um negócio.",
+  "reviewsEmptyTitle": "Sem avaliações",
+  "reviewsNoMatches": "Ainda não há avaliações na página inicial.",
+  "reviewsNoMatchesTitle": "Nada em destaque",
+  "reviewsError": "Não foi possível carregar as avaliações.",
+  "reviewsPrevious": "Anterior",
+  "reviewsNext": "Seguinte",
+  "reviewStatus": {
+    "published": "Publicada",
+    "hidden": "Oculta"
+  },
+  "reviewsSearchPlaceholder": "Procurar um negócio, um nome, ou o que foi dito",
+  "reviewsAction": "Página inicial"
 }

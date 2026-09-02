@@ -7,9 +7,15 @@ import {
   ProviderNotReviewableError,
   ReviewNotEarnedError,
   ReviewNotFoundError,
+  ReviewToFeatureNotFoundError,
+  TooManyFeaturedReviewsError,
 } from "../domain/exceptions";
 import { RemoveReviewCommand, SubmitReviewCommand } from "../app/use-cases/submit-review.command";
+import { SetReviewFeaturedCommand } from "../app/use-cases/set-review-featured.command";
+import { MAX_FEATURED } from "../app/use-cases/read-featured-reviews.query";
 import type {
+  AdminReviewRow,
+  FeaturedReviewRow,
   ReviewRepositoryPort,
   ReviewRow,
   ReviewSummary,
@@ -47,6 +53,7 @@ class TrackingUnitOfWork implements UnitOfWorkPort {
 class FakeRepo implements ReviewRepositoryPort {
   public upserted: Review | null = null;
   public removed: string | null = null;
+  public featured: { reviewId: string; featured: boolean } | null = null;
 
   constructor(
     private readonly opts: {
@@ -66,6 +73,13 @@ class FakeRepo implements ReviewRepositoryPort {
        * read never having seen it.
        */
       inserted?: boolean;
+      /**
+       * How many reviews are already on the home page, for the cap check in
+       * `SetReviewFeaturedCommand`. Only that command reads it.
+       */
+      featuredCount?: number;
+      /** Whether the row `setFeatured` was pointed at exists. */
+      featureTargetExists?: boolean;
     } = {},
     private readonly unitOfWork?: TrackingUnitOfWork,
   ) {}
@@ -84,6 +98,20 @@ class FakeRepo implements ReviewRepositoryPort {
   }
   async listPublished(): Promise<ReviewRow[]> {
     return [];
+  }
+  async listFeatured(): Promise<FeaturedReviewRow[]> {
+    return [];
+  }
+  async listForAdmin(): Promise<{
+    items: AdminReviewRow[];
+    total: number;
+    featuredCount: number;
+  }> {
+    return { items: [], total: 0, featuredCount: this.opts.featuredCount ?? 0 };
+  }
+  async setFeatured(reviewId: string, featured: boolean): Promise<boolean> {
+    this.featured = { reviewId, featured };
+    return this.opts.featureTargetExists ?? true;
   }
   async summary(): Promise<ReviewSummary> {
     return { average: null, count: 0, histogram: { one: 0, two: 0, three: 0, four: 0, five: 0 } };
@@ -357,5 +385,51 @@ describe("the outbox", () => {
     ).rejects.toThrow(ReviewNotEarnedError);
 
     expect(outbox.published).toHaveLength(0);
+  });
+});
+
+describe("SetReviewFeaturedCommand", () => {
+  it("marks a review as shown on the home page", async () => {
+    const repo = new FakeRepo({ featuredCount: 0 });
+    const result = await new SetReviewFeaturedCommand(repo).execute({
+      reviewId: "r1",
+      featured: true,
+    });
+
+    expect(result).toEqual({ featured: true });
+    expect(repo.featured).toEqual({ reviewId: "r1", featured: true });
+  });
+
+  it("refuses to feature a fifth review", async () => {
+    // The rail draws four. Without the cap an administrator can mark forty and
+    // the four that appear are decided by a timestamp they cannot see.
+    const repo = new FakeRepo({ featuredCount: MAX_FEATURED });
+
+    await expect(
+      new SetReviewFeaturedCommand(repo).execute({ reviewId: "r5", featured: true }),
+    ).rejects.toBeInstanceOf(TooManyFeaturedReviewsError);
+    // Refused before the write, not after it.
+    expect(repo.featured).toBeNull();
+  });
+
+  it("always allows unfeaturing, even at the cap", async () => {
+    // Taking something off a full shelf is exactly what somebody who just hit
+    // the cap needs to do next.
+    const repo = new FakeRepo({ featuredCount: MAX_FEATURED });
+    const result = await new SetReviewFeaturedCommand(repo).execute({
+      reviewId: "r1",
+      featured: false,
+    });
+
+    expect(result).toEqual({ featured: false });
+    expect(repo.featured).toEqual({ reviewId: "r1", featured: false });
+  });
+
+  it("reports a review that is not there rather than a success that changed nothing", async () => {
+    const repo = new FakeRepo({ featuredCount: 0, featureTargetExists: false });
+
+    await expect(
+      new SetReviewFeaturedCommand(repo).execute({ reviewId: "gone", featured: true }),
+    ).rejects.toBeInstanceOf(ReviewToFeatureNotFoundError);
   });
 });

@@ -10,7 +10,8 @@
     "myAccount": "Mi cuenta",
     "providers": "Proveedores",
     "categories": "Categorías",
-    "activity": "Actividad"
+    "activity": "Actividad",
+    "reviews": "Reseñas"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",
@@ -207,5 +208,34 @@
   "activityTitle": "Registro de auditoría",
   "activityHint": "Lo que los administradores han hecho en la plataforma.",
   "activityEmptyTitle": "Aún no hay nada registrado",
-  "activityEmpty": "Las aprobaciones, suspensiones y ediciones del catálogo se registrarán aquí."
+  "activityEmpty": "Las aprobaciones, suspensiones y ediciones del catálogo se registrarán aquí.",
+  "reviewsTitle": "Reseñas",
+  "reviewsSubtitle": "Todas las reseñas de la plataforma, y cuáles muestra la página de inicio.",
+  "reviewsReview": "Reseña",
+  "reviewsBusiness": "Negocio",
+  "reviewsRating": "Valoración",
+  "reviewsStatus": "Estado",
+  "reviewsDate": "Dejada el",
+  "reviewsAnonymous": "Anónimo",
+  "reviewsNoComment": "Sin comentario — solo puntuación",
+  "reviewsOnHome": "En la portada",
+  "reviewsPutOnHome": "Mostrar en portada",
+  "reviewsOnHomeFilter": "En la portada",
+  "reviewsFeaturedCount": "{{count}} de {{max}} reseñas en la portada",
+  "reviewsFeatureFull": "La portada ya muestra {{max}} reseñas — quita una primero",
+  "reviewsCannotFeatureNoComment": "Una reseña sin texto no tiene nada que mostrar",
+  "reviewsFeatureFailed": "No se pudo cambiar esa reseña. La portada muestra como máximo {{max}}.",
+  "reviewsEmpty": "Todavía nadie ha reseñado un negocio.",
+  "reviewsEmptyTitle": "Sin reseñas",
+  "reviewsNoMatches": "Aún no hay reseñas en la portada.",
+  "reviewsNoMatchesTitle": "Nada destacado",
+  "reviewsError": "No se pudieron cargar las reseñas.",
+  "reviewsPrevious": "Anterior",
+  "reviewsNext": "Siguiente",
+  "reviewStatus": {
+    "published": "Publicada",
+    "hidden": "Oculta"
+  },
+  "reviewsSearchPlaceholder": "Buscar un negocio, un nombre o lo que se dijo",
+  "reviewsAction": "Portada"
 }
