@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { BrandImage } from "@/shared/components/brand-image";
 import { buttonVariants } from "@ntizo/frontend-ui";
 import {
   formatHeadlinePrice,
@@ -91,12 +92,7 @@ export function ServiceRow({
             one of a provider's services into a list, where that doubles up
             once per row. */}
         {image ? (
-          <img
-            src={image}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
+          <BrandImage src={image} alt="" className="h-full w-full object-cover" />
         ) : null}
       </div>
 

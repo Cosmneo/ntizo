@@ -32,17 +32,10 @@ const MAX_CATEGORIES = 3;
 export function ProviderListingCard({
   provider,
   locale,
-  categoryIcon,
 }: {
   provider: ProviderPublicDTO;
   /** Formats the amount. The card is handed it rather than reading i18next twice. */
   locale: string;
-  /**
-   * A Lucide name from the business's leading category, for the generated
-   * tile. Null while the category query is in flight, or for a category
-   * nobody has given an icon — `ListingMedia` falls back to a tag either way.
-   */
-  categoryIcon: string | null;
 }) {
   const { t } = useTranslation("directory");
 
@@ -69,23 +62,12 @@ export function ProviderListingCard({
   return (
     <ListingCard
       media={
-        // Three fallbacks, in the order a reader would want them: the business's
-        // own photograph of its work, then its logo, then the generated tile.
-        // Unlike a service card — which refuses the logo, because in a mixed
-        // browse it puts the same picture on four unrelated cards — here every
-        // card *is* that business, so its logo is exactly the right picture.
-        // Most businesses have neither, which is why the third fallback is
-        // generated rather than grey.
-        <ListingMedia
-          imageUrl={provider.photoUrls[0] ?? provider.logoUrl ?? null}
-          // The trade, not the id: a plumber should look like a plumber
-          // wherever it lands. A business with no published category yet has
-          // no trade to seed with, so its id keeps the hue at least stable
-          // across renders.
-          seed={provider.categories[0]?.code ?? provider.id}
-          name={provider.name}
-          icon={categoryIcon}
-        />
+        // The business's own photograph of its work, then its logo, then the
+        // brand mark. Unlike a service card — which refuses the logo, because
+        // in a mixed browse it puts the same picture on four unrelated cards —
+        // here every card *is* that business, so its logo is exactly the right
+        // picture. Most businesses have neither.
+        <ListingMedia imageUrl={provider.photoUrls[0] ?? provider.logoUrl ?? null} />
       }
       meta={
         <>

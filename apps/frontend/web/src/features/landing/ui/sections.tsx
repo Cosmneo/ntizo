@@ -9,6 +9,7 @@ import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories"
 import { usePopularProviders } from "@/features/landing/viewmodel/use-popular-providers";
 import { useFeaturedReviews } from "@/features/landing/viewmodel/use-featured-reviews";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
+import { BrandImage } from "@/shared/components/brand-image";
 import {
   ACCENT,
   BORDER,
@@ -245,8 +246,15 @@ export function PopularProviders() {
                         one business, so its logo is exactly the right picture.
                         Most have neither, which is why the last fallback is
                         generated rather than grey. */}
+                    {/* `BrandImage` rather than a bare `<img>`: a photograph
+                        whose URL no longer resolves drew the browser's broken
+                        glyph, which is how this section looked on dev the day
+                        it shipped -- every seeded portfolio file is a dead URL.
+                        With no photo at all the generated art still stands in,
+                        because a rail of three is small enough for it to read
+                        as decoration rather than as three identical marks. */}
                     {photo ? (
-                      <img
+                      <BrandImage
                         src={photo}
                         alt=""
                         className="aspect-[16/10] w-full object-cover"

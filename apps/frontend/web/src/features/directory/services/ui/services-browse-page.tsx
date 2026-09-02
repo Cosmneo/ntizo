@@ -277,9 +277,6 @@ export function ServicesBrowsePage() {
                         key={service.id}
                         service={service}
                         locale={locale}
-                        categoryIcon={
-                          categories.find((c) => c.code === service.categoryCode)?.icon ?? null
-                        }
                       />
                     ))}
                   </ul>

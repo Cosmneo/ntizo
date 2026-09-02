@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback } from "@ntizo/frontend-ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@ntizo/frontend-ui";
 import { initialsFrom } from "@/shared/lib/initials";
 import type { ServicePerformerDTO } from "@ntizo/shared/read-models";
 
@@ -51,12 +51,12 @@ export function ServicePerformers({
               className="flex w-20 flex-col items-center gap-1.5 text-center"
             >
               <Avatar className="h-14 w-14">
+                {/* The monogram stays the fallback here rather than the brand
+                    mark: this circle stands for one person, and replacing a
+                    named individual with the platform's logo says the wrong
+                    thing about who is doing the work. */}
                 {performer.avatarUrl && (
-                  <img
-                    src={performer.avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  <AvatarImage src={performer.avatarUrl} alt="" />
                 )}
                 <AvatarFallback>{initialsFrom(label)}</AvatarFallback>
               </Avatar>

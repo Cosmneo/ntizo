@@ -51,14 +51,14 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
   };
 }
 
-function renderCard(dto: ServiceDTO, categoryIcon: string | null = null, locale = "en-US") {
+function renderCard(dto: ServiceDTO, locale = "en-US") {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
       <ul>
-        <ServiceListingCard service={dto} locale={locale} categoryIcon={categoryIcon} />
+        <ServiceListingCard service={dto} locale={locale} />
       </ul>
     ),
   });
@@ -70,12 +70,13 @@ function renderCard(dto: ServiceDTO, categoryIcon: string | null = null, locale 
 }
 
 describe("ServiceListingCard", () => {
-  it("draws the generated tile for a service with no photograph", async () => {
+  it("draws the brand mark for a service with no photograph", async () => {
     // Most listings on this platform have none. A column of grey rectangles
-    // reads as a page that failed to load; a coloured tile reads as variety.
+    // reads as a page that failed to load; the mark reads as deliberate, and
+    // is the same thing every other missing picture in the product shows.
     const { container } = renderCard(service({ imageUrls: [] }));
     await screen.findByRole("listitem");
-    expect(container.querySelector("[data-testid='listing-placeholder']")).not.toBeNull();
+    expect(container.querySelector("[data-testid='media-fallback']")).not.toBeNull();
     expect(container.querySelector("img")).toBeNull();
   });
 
@@ -192,7 +193,6 @@ describe("ServiceListingCard", () => {
     // whose default omits grouping below five digits can tell the two apart.
     renderCard(
       service({ defaultOption: { ...service().defaultOption!, amountMinor: 120_000 } }),
-      null,
       "pt-MZ",
     );
     const stub = await screen.findByTestId("price-stub");

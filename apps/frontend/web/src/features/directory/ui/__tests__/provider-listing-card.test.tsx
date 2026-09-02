@@ -50,7 +50,7 @@ function renderCard(dto: ProviderPublicDTO, locale = "en-US") {
     path: "/",
     component: () => (
       <ul>
-        <ProviderListingCard provider={dto} locale={locale} categoryIcon={null} />
+        <ProviderListingCard provider={dto} locale={locale} />
       </ul>
     ),
   });
@@ -62,7 +62,7 @@ function renderCard(dto: ProviderPublicDTO, locale = "en-US") {
 }
 
 describe("ProviderListingCard", () => {
-  it("leads with the business's photograph, then its logo, then a generated tile", async () => {
+  it("leads with the business's photograph, then its logo, then the brand mark", async () => {
     // Three fallbacks because most businesses have none of the first two, and
     // a provider directory of empty grey boxes reads as a directory of
     // nothing.
@@ -85,7 +85,7 @@ describe("ProviderListingCard", () => {
     await screen.findByRole("listitem");
     expect(withNeither.container.querySelector("img")).toBeNull();
     expect(
-      withNeither.container.querySelector("[data-testid='listing-placeholder']"),
+      withNeither.container.querySelector("[data-testid='media-fallback']"),
     ).not.toBeNull();
   });
 

@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { Button, Dialog, DialogContent, cn } from "@ntizo/frontend-ui";
+import { BrandImage } from "@/shared/components/brand-image";
 
 /** How many side tiles sit beside the main photo, at most. */
 const SIDE_TILES = 2;
@@ -68,7 +69,10 @@ export function DetailGallery({
           !hasSide && "sm:col-span-2",
         )}
       >
-        <img src={main} alt={alt} className="h-full w-full object-cover" />
+        {/* Eager, unlike every other picture here: this is the one above the
+            fold on both detail pages, and deferring it is deferring the thing
+            the reader came for. */}
+        <BrandImage src={main} alt={alt} loading="eager" className="h-full w-full object-cover" />
         {badge && <div className="absolute top-3 left-3">{badge}</div>}
       </div>
 
@@ -87,7 +91,7 @@ export function DetailGallery({
                 sideImages.length === 1 && "col-span-2 sm:col-span-1 sm:row-span-2",
               )}
             >
-              <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+              <BrandImage src={src} alt="" className="h-full w-full object-cover" />
             </div>
           ))}
 
@@ -130,11 +134,10 @@ export function DetailGallery({
             </div>
             <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto border-t border-[var(--color-border)] p-5 sm:grid-cols-3">
               {images.map((src, index) => (
-                <img
+                <BrandImage
                   key={src}
                   src={src}
                   alt={`${alt} ${index + 1}`}
-                  loading="lazy"
                   className="aspect-[4/3] w-full rounded-[var(--radius-card-sm)] object-cover"
                 />
               ))}

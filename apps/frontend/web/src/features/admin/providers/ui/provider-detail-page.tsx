@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BrandImage } from "@/shared/components/brand-image";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   Badge,
   Button,
   Input,
@@ -94,11 +96,7 @@ export function AdminProviderDetailPage() {
                     monogram stays as the fallback for a business with none. */}
                 <Avatar className="h-14 w-14 shrink-0">
                   {detail.logoUrl && (
-                    <img
-                      src={detail.logoUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                    <AvatarImage src={detail.logoUrl} alt="" />
                   )}
                   <AvatarFallback>{initialsFrom(detail.name)}</AvatarFallback>
                 </Avatar>
@@ -193,7 +191,7 @@ export function AdminProviderDetailPage() {
                 <div className="mt-2 flex flex-wrap gap-3">
                   {detail.photoUrls.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer">
-                      <img
+                      <BrandImage
                         src={url}
                         alt=""
                         className="h-24 w-32 rounded-[var(--radius-card-sm)] object-cover"
