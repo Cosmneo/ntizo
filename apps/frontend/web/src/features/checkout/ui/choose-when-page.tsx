@@ -662,6 +662,19 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
           selectedMemberId={search.memberId}
           onChange={selectMember}
           performers={service.performers}
+          // The same day the grid below is drawing, so a row saying "6 horas"
+          // and the times under it can never be counting different days.
+          //
+          // These are the starts of *this* response, and this response is
+          // fetched under `search.memberId` — so once somebody is chosen,
+          // `availability.forService` has narrowed `days[].starts[]` to that
+          // one person and the sub-lines can only describe them. See
+          // `memberDayFree`'s own doc comment, and follow-up #123.
+          starts={day?.starts ?? []}
+          locale={locale}
+          // `data.timezone`, never the device's: the same rule `chosenCivilDate`
+          // above already had to learn the hard way.
+          timezone={data.timezone}
         />
         <TimeGrid
           starts={day?.starts ?? []}

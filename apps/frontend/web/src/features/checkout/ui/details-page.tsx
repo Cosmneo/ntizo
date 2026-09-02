@@ -4,7 +4,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Plus, TriangleAlert } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
-import { Button, Input, Skeleton } from "@ntizo/frontend-ui";
+import { isValidPhoneNumber } from "libphonenumber-js";
+import { Button, PhoneInput, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { AddressForm } from "@/features/account/ui/address-form";
@@ -28,8 +29,29 @@ import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { BookingOutcomePanel } from "@/features/checkout/ui/booking-outcome-panel";
 
-/** Why the phone field is refusing, or `null` when it is not. */
-type PhoneRefusal = "required" | "notVodacom";
+/**
+ * Why the phone field is refusing, or `null` when it is not.
+ *
+ * **Three, and they must read differently.** Now that the field carries a
+ * country selector, "not a number" and "a real number M-Pesa cannot reach"
+ * are genuinely different answers, and collapsing them would tell somebody
+ * who picked Portugal that their perfectly valid mobile is malformed — which
+ * would send them off correcting digits that were never wrong.
+ */
+type PhoneRefusal = "required" | "invalid" | "notVodacom";
+
+/**
+ * Which sentence each refusal prints.
+ *
+ * A map rather than a nested ternary at the call site: with three cases the
+ * ternary stops being readable, and the next code added would be the one that
+ * silently reused the wrong copy.
+ */
+const REFUSAL_COPY: Record<PhoneRefusal, string> = {
+  required: "phoneRequired",
+  invalid: "phoneInvalid",
+  notVodacom: "phoneNotVodacom",
+};
 
 /**
  * The small uppercase caption that sits over every value in "Os seus dados".
@@ -344,13 +366,32 @@ function Details({ booking }: { booking: CheckoutBooking }) {
   }
 
   function goToConfirm() {
+    // Checked before the address so a customer with both wrong is told about
+    // the field they can see.
+    const typed = phone.trim();
+    if (!typed) {
+      setRefusal("required");
+      return;
+    }
+    // **`isValidPhoneNumber` first, `toMpesaMsisdn` second, and never the
+    // other way round.** They refuse for different reasons and the customer
+    // has to be told which: half a number is a typing mistake, where a
+    // complete Portuguese mobile is a correct number in a country M-Pesa does
+    // not serve. Asking the M-Pesa rule first would answer both with
+    // "Vodacom", sending somebody who mistyped a Mozambican number off
+    // changing their carrier.
+    if (!isValidPhoneNumber(typed)) {
+      setRefusal("invalid");
+      return;
+    }
     // **The same rule the charge uses, not a laxer one.** `82` is a real
     // Mozambican prefix and not Vodacom's: accepted here, it would fail at
     // the charge instead — after the provider had already blocked their
-    // calendar for it. Checked before the address so a customer with both
-    // wrong is told about the field they can see.
-    if (!toMpesaMsisdn(phone)) {
-      setRefusal(phone.trim() ? "notVodacom" : "required");
+    // calendar for it. `booking.submit` refuses the same numbers server-side
+    // and goes on doing so; this is what stops the customer meeting that
+    // refusal as a failed send rather than as a sentence beside the field.
+    if (!toMpesaMsisdn(typed)) {
+      setRefusal("notVodacom");
       return;
     }
     if (!selectedId) return;
@@ -498,17 +539,26 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                       <label htmlFor="checkout-phone" className={FIELD_LABEL}>
                         {t("phoneLabel")}
                       </label>
-                      <Input
+                      {/* **The account page's own control, not a second
+                          one.** `/account` splits a phone into a country and
+                          a national number with this component and validates
+                          it with `isValidPhoneNumber`; a bare text box here
+                          would be the same field asking for the same thing
+                          in a second shape, and the E.164 it emits is the
+                          form the profile already stores — so a number typed
+                          on either screen reads back on the other. */}
+                      <PhoneInput
                         id="checkout-phone"
-                        // `tel` rather than `number`: a phone number is
-                        // digits that may carry a `+` and spaces, and a
-                        // numeric spinner over one is nonsense on a desktop
-                        // and a decimal keypad on a phone.
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
                         value={phone}
-                        onChange={(e) => editPhone(e.target.value)}
+                        onChange={(next) => editPhone(next)}
+                        // Moçambique is the launch market and M-Pesa's only
+                        // one, so it is where the selector opens — the
+                        // customer who has to change it is the exception.
+                        defaultCountry="MZ"
+                        locale={i18n.language}
+                        searchPlaceholder={t("countrySearchPlaceholder")}
+                        noResultsText={t("countryNoResults")}
+                        countrySelectLabel={t("countrySelectLabel")}
                         aria-invalid={refusal !== null}
                         aria-describedby="checkout-phone-hint"
                       />
@@ -518,9 +568,19 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                       >
                         {t("phoneHint")}
                       </p>
+                      {/* **Three refusals, worded three ways.** A country
+                          selector on a field labelled "Telemóvel M-Pesa" lets
+                          somebody pick a country the payment will refuse, and
+                          the one thing that must not happen is that they find
+                          out as a generic failure after the provider has
+                          blocked their calendar. So a Portuguese mobile —
+                          a perfectly good phone number that Vodacom
+                          Moçambique simply cannot send a payment request to —
+                          is told exactly that, here, beside the field, rather
+                          than "invalid number" or nothing at all. */}
                       {refusal && (
                         <p role="alert" className="type-caption text-[var(--color-destructive)]">
-                          {t(refusal === "required" ? "phoneRequired" : "phoneNotVodacom")}
+                          {t(REFUSAL_COPY[refusal])}
                         </p>
                       )}
                     </div>

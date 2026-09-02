@@ -3077,3 +3077,48 @@ same state, and a publish-time check would not catch it — only a rule at the w
 **Trigger:** the first provider who publishes an option without naming it — visible as any
 `SERVICE_OPTION_UNNAMED` in the logs, which is what that error now exists to make greppable — or
 any repeat of this report from a customer stuck on Continuar.
+
+---
+
+## #123 — Step 1's roster counts go blank for everybody else the moment a professional is picked
+
+`MemberPicker` is now a vertical list, and each row carries how much of the shown day that person
+still has free ("6 horas · a próxima às 12:30"), summed off `days[].starts[].memberIds` in the
+response step 1 has already fetched. That is correct while the picker sits on "Qualquer pessoa
+disponível". **It stops being correct the instant somebody is chosen.**
+
+`ChooseWhenPage` fetches with `memberId: search.memberId`, and
+`ListServiceAvailability` narrows the whole projection to that one person —
+`queriedMemberIds = input.memberId !== undefined ? [input.memberId] : info.memberIds`, and every
+schedule, closure and busy-interval read below it is scoped to that array. The response's
+top-level `memberIds` stays the full roster on purpose (that is the bug `distinctMemberIds`
+documents), so the picker still draws every row; but `days[].starts[]` now mentions nobody else.
+So on a salon of twelve, choosing Flávio leaves eleven rows reading "sem horas hoje" — a sentence
+about people whose calendars are full of openings — and drops the "Qualquer pessoa disponível"
+total to Flávio's own. A customer reasonably concludes the salon is empty and leaves.
+
+**Nothing in the suite can see it**, which is worth stating on its own: `choose-when-page.test.tsx`
+mocks `useServiceAvailability` with a fixture that ignores `memberId` entirely, so every existing
+test — including the two added with the list — exercises only the unfiltered response.
+
+**The fix is one line plus its consequences, and the consequences are why it is not done here.**
+Every start already carries `memberIds`, so the filter the server is doing could be done in the
+browser: fetch unfiltered, and hand `TimeGrid` `day.starts.filter(s => s.memberIds.includes(id))`.
+One query either way — this is not a second request. But it moves four other things:
+
+- `startsByDate(data.days)` feeds the date strip's per-day counts, which currently follow the
+  member filter and would stop doing so unless the same filter is threaded through it;
+- `selectedStart` must be looked up in the *filtered* list, or the confirm can hold a time the
+  chosen person is not free at (the server refuses it, but the page would be offering it);
+- `seatsLeft` on an unfiltered start sums across every member free at that moment, so anything
+  that ever reads it changes meaning;
+- `availability.forService`'s own `SERVICE_MEMBER_CANNOT_PERFORM` becomes unreachable from the
+  query — the page's `availabilityForServiceError.SERVICE_MEMBER_CANNOT_PERFORM` copy would only
+  ever be reached through `booking.create`.
+
+That is a change to how step 1 fetches, not to the picker, and it wants a decision rather than
+being folded into the component that exposed it.
+
+**Trigger:** before this list ships to a provider with more than two people on it — which is the
+only kind of provider the list exists for — or the first report of a customer told that a
+professional has nothing free on a day the grid is showing times for.

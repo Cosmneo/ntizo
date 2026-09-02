@@ -28,6 +28,17 @@ export interface PhoneInputProps {
   required?: boolean;
   className?: string;
   onBlur?: () => void;
+  /**
+   * Forwarded to the number field itself, so a form that refuses this value
+   * can mark it invalid and point at the sentence saying why.
+   *
+   * They belong on the `<input>` and nowhere else: the wrapper is a plain
+   * `div` with no role, and a control's own validity has to be announced on
+   * the control. Optional, because a form with no message to point at has
+   * nothing to say here.
+   */
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
 }
 
 export function PhoneInput({
@@ -45,6 +56,8 @@ export function PhoneInput({
   required,
   className,
   onBlur,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: PhoneInputProps) {
   const [country, setCountry] = React.useState<CountryCode>(defaultCountry);
   const [national, setNational] = React.useState("");
@@ -200,6 +213,8 @@ export function PhoneInput({
           placeholder={placeholder}
           disabled={disabled}
           required={required}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           value={national}
           onBlur={onBlur}
           onChange={(e) => handleNational(e.target.value)}

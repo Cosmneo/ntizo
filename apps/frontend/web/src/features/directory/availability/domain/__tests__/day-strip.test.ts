@@ -4,6 +4,7 @@ import {
   endOfStart,
   fullDayStarts,
   isPast,
+  memberDayFree,
   splitByHalfDay,
   startsByDate,
   weekOf,
@@ -171,5 +172,49 @@ describe("endOfStart", () => {
 
   test("crosses midnight in UTC without touching the civil date maths", () => {
     expect(endOfStart("2026-09-04T23:30:00.000Z", 60)).toBe("2026-09-05T00:30:00.000Z");
+  });
+});
+
+describe("memberDayFree", () => {
+  /** A start at `minuteOfDay`, free for exactly the people named. */
+  function shared(minuteOfDay: number, memberIds: string[]): Start {
+    return { ...start(minuteOfDay), memberIds, seatsLeft: 4 };
+  }
+
+  test("counts only the starts that name the person", () => {
+    const day = [shared(540, ["m1", "m2"]), shared(600, ["m2"]), shared(660, ["m1"])];
+    expect(memberDayFree(day, "m1").count).toBe(2);
+    expect(memberDayFree(day, "m2").count).toBe(2);
+  });
+
+  test("undefined is anyone — the whole day, not one person's share", () => {
+    const day = [shared(540, ["m1"]), shared(600, ["m2"]), shared(660, ["m2"])];
+    expect(memberDayFree(day, undefined).count).toBe(3);
+  });
+
+  test("counts moments, never the seats behind them", () => {
+    // `seatsLeft` is 4 on every fixture here on purpose: a sum of seats would
+    // answer 8 where two bookable moments is the honest answer, and it would
+    // publish the provider's capacity in a place that asked "who".
+    expect(memberDayFree([shared(540, ["m1"]), shared(600, ["m1"])], "m1").count).toBe(2);
+  });
+
+  test("the next one is the earliest by the clock, not the first in the array", () => {
+    // The read model promises a day's set of starts; nothing in it promises an
+    // order. A `starts[0]` rule reads the same as this one on any sorted
+    // fixture, which is why this one is deliberately not sorted.
+    const day = [shared(660, ["m1"]), shared(540, ["m1"])];
+    expect(memberDayFree(day, "m1").nextStartsAt).toBe(start(540).startsAt);
+  });
+
+  test("a person free at nothing has no next one to name", () => {
+    expect(memberDayFree([shared(540, ["m1"])], "m2")).toEqual({
+      count: 0,
+      nextStartsAt: null,
+    });
+  });
+
+  test("a day with no starts at all is empty for anyone", () => {
+    expect(memberDayFree([], undefined)).toEqual({ count: 0, nextStartsAt: null });
   });
 });

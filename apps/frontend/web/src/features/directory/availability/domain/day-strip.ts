@@ -143,3 +143,41 @@ export function splitByHalfDay(starts: readonly Start[]): { morning: Start[]; af
 export function endOfStart(startsAt: string, durationMinutes: number): string {
   return new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
 }
+
+/**
+ * How much of one day a single performer still has free: how many bookable
+ * starts they appear at, and the earliest of them.
+ *
+ * `undefined` is "anyone" — every start on the day, which is the fact the
+ * picker's first row stands for.
+ *
+ * **Read off `starts[].memberIds` — who is free at that moment — and never
+ * off `seatsLeft`.** A seat count is how many bookings one start still holds,
+ * which is a fact about the provider's capacity; this answers "how much of
+ * this day can I have with this person", and summing seats would answer a
+ * question nobody asked in a place that asked "who".
+ *
+ * **The counts describe exactly the starts handed in, and nothing wider.**
+ * `availability.forService` narrows `days[].starts[]` to the one member a
+ * caller named (`ListServiceAvailability`'s own `queriedMemberIds`), so a
+ * response fetched under a `memberId` filter can only ever describe that one
+ * person — see `member-picker.tsx` for what the picker does with that.
+ *
+ * The earliest is chosen by `minuteOfDay`, not by array position: the read
+ * model promises a day's set of starts and not an order for them, and
+ * `minuteOfDay` is computed by the projection in the **service's** zone, so
+ * it orders the day the way the provider's own clock does rather than the
+ * reader's device.
+ */
+export function memberDayFree(
+  starts: readonly Start[],
+  memberId: string | undefined,
+): { count: number; nextStartsAt: string | null } {
+  const theirs =
+    memberId === undefined ? starts : starts.filter((s) => s.memberIds.includes(memberId));
+  let earliest: Start | null = null;
+  for (const start of theirs) {
+    if (earliest === null || start.minuteOfDay < earliest.minuteOfDay) earliest = start;
+  }
+  return { count: theirs.length, nextStartsAt: earliest?.startsAt ?? null };
+}

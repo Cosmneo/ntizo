@@ -928,7 +928,7 @@ describe("ChooseWhenPage", () => {
     expect(await screen.findByText(/já não faz este serviço/i)).toBeInTheDocument();
 
     // The remedy the copy actually names for this code: somebody else.
-    await userEvent.click(screen.getByRole("radio", { name: "Profissional 2" }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Profissional 2,/ }));
     await userEvent.click(await screen.findByRole("button", { name: /^10:00/ }));
 
     await waitFor(() =>
@@ -958,8 +958,47 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       performers: [{ id: "mem-1", firstName: "Ana", avatarUrl: null }],
     });
-    expect(await screen.findByRole("radio", { name: "Ana" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Profissional 2" })).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /^Ana,/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /^Profissional 2,/ })).toBeInTheDocument();
+  });
+
+  it("tells each performer's own free hours apart from the day's total", async () => {
+    // The fixture's two starts are free for different people — 09:00 for both,
+    // 10:00 for `mem-2` alone — so the three rows must read three different
+    // ways. A picker handed the day but counting `starts.length` for everybody
+    // would say "2 horas" on all three, which is why a fixture where everyone
+    // is free at everything could not test this at all.
+    renderChooseWhen({ serviceId: "svc-1" });
+
+    expect(
+      await screen.findByRole("radio", {
+        name: "Qualquer pessoa disponível, 2 horas · a próxima às 09:00",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Profissional 1, 1 hora · a próxima às 09:00" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Profissional 2, 2 horas · a próxima às 09:00" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the next free time in the service's zone, not the device's", async () => {
+    // The same two starts filed under `Africa/Maputo`: 09:00 UTC is 11:00 to
+    // the provider and to the customer standing in front of them. This page
+    // has already shipped one empty grid under a live confirm for reading the
+    // device's clock instead; a next-free-time two hours out is the same
+    // substitution, and harder to spot because the sentence still looks right.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      availability: { ...availabilityFixture("svc-1"), timezone: "Africa/Maputo" },
+    });
+
+    expect(
+      await screen.findByRole("radio", {
+        name: "Qualquer pessoa disponível, 2 horas · a próxima às 11:00",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("never shows the customer a commission", async () => {
