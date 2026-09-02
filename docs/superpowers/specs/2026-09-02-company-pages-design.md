@@ -4,6 +4,22 @@
 
 **Mockups:** `2026-09-02-company-pages.mockup.html`, next to this file. The copy in it is the approved pt-MZ text and is the source the locale files are written from.
 
+## Revision, 2026-09-02 — the split with the help center
+
+Discovered at execution time: a parallel session had written `2026-09-02-help-center-design.md` (messaging phase 2) the same day, covering support requests from signed-in users, an admin queue at `/admin/support`, a public FAQ at `/help` and a floating help panel. Its own scope table excludes "share feedback" ("its own context, its own spec"), anonymous requests, and static `/contact` and `/support` pages. The owner chose to **split** rather than build two support systems:
+
+| | This spec (revised) | Help center |
+|---|---|---|
+| Pages | `/about`, `/contact`, `/feedback`, `/careers` | `/help` (FAQ, search, panel entry) |
+| Forms | Contact and feedback, **anonymous or signed in** | Support with an account, as threads |
+| Context | `contact` (kinds `contact` \| `feedback`), schema `ntizo_contact`, table `contact_request`, GraphQL `contactRequest.*`, errors `CONTACT_*` | `communication` threads + `support_request`, GraphQL `support*`, errors `SUPPORT_*` |
+| Inbox | `CONTACT_INBOX_EMAIL` = `ola@ntizo.co.mz` | notifications to every admin |
+| Admin | `/admin/contact` ("Contactos"), `Mail` icon, after Users | `/admin/support` ("Suporte"), after Contactos |
+| FAQ | **none here.** The twenty approved answers are handed over in `2026-09-02-faq-content.md` for `/help` to use | `/help` |
+| Footer | Empresa column with the five links that exist: Sobre, Contacto, Dar feedback, Torne-se prestador, Carreiras | adds "Falar com o suporte" and "Perguntas frequentes" when `/help` lands (follow-ups #132) |
+
+Everything below that says "support", "`/support`", "`/faq`", "six pages" or "`support` context" is superseded by this table; the plan (`docs/superpowers/plans/2026-09-02-company-pages.md`) is written to the revised scope. The "Ainda tem dúvidas?" strip becomes "Ver também", linking the other three of the four pages. The contact page's third card points to feedback; the feedback page's cards are "we read everything", contact, and the socials.
+
 ## What this is
 
 The original request: *"Acho que devemos fazer aqui páginas sobre a empresa e adicionar uma secção no footer como este. Mas essas páginas devem ter uma boa UI/UX. Deve ser uma coisa profissional, bem feita, com um texto bem escrito."* The reference footer column reads: About, Contact, Message support, FAQ, Share feedback, Become a Provider, Careers.
