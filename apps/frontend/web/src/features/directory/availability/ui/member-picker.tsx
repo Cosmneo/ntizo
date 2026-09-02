@@ -1,6 +1,7 @@
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { Check, Users } from "lucide-react";
+import { Check, ChevronDown, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage, cn } from "@ntizo/frontend-ui";
 import { initialsFrom } from "@/shared/lib/initials";
 import { memberDayFree } from "@/features/directory/availability/domain/day-strip";
@@ -37,6 +38,19 @@ import type { Start } from "@/features/directory/availability/domain/types";
  * still has free — which is the fact that decides the choice, and which a
  * pill had nowhere to put.
  *
+ * **Folded by default (2026-09-02).** The list earned its rows and then
+ * charged for them: six performers on a phone put the times — the decision
+ * this page exists for — a full screen below the day strip, behind a
+ * question most customers answer with the default. So the frame shows one
+ * row, the current choice, with the list's own wording ("Qualquer pessoa
+ * disponível, 17 livres · a próxima às 08:00"), and a button in the heading
+ * that says what opening it is for: "Escolher profissional" while anyone is
+ * chosen, "Alterar" once somebody is, "Fechar" while the list is open. A
+ * choice folds the list back, because the row that then shows is the
+ * answer. Focus follows: into the list onto the ticked row when it opens, and
+ * back to the heading's button when it folds, so a keyboard is never left on
+ * an element that has just unmounted.
+ *
  * **The sub-lines are a sum over `days[].starts[].memberIds`** — who is free
  * at each moment — and cost no extra query. A count of moments is not a seat
  * index: how many openings a day holds is a fact a customer is being invited
@@ -71,69 +85,151 @@ export function MemberPicker({
   timezone: string;
 }) {
   const { t } = useTranslation("directory");
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  // Only a fold that follows an unfold moves focus: on first render nothing
+  // has been touched, and stealing focus to this heading from wherever the
+  // page put it would be a jump nobody asked for.
+  const hasOpened = useRef(false);
+  useEffect(() => {
+    if (open) {
+      hasOpened.current = true;
+      frameRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+    } else if (hasOpened.current) {
+      toggleRef.current?.focus();
+    }
+  }, [open]);
 
   // One performer means the question has one answer, and asking it is
   // noise — the same rule the provider-side screen already applies to its
   // own person picker (`isIndividualProvider`).
   if (memberIds.length <= 1) return null;
 
+  const rows: { id: string | undefined; name: string; detail: string; face: React.ReactNode }[] = [
+    {
+      id: undefined,
+      name: t("availabilityMemberAnyone"),
+      detail: freeLine(t, locale, timezone, starts, undefined),
+      face: (
+        // Stacked heads rather than a face or a monogram: this row is not
+        // a person, and a `?` circle in the same place as eleven real
+        // photographs reads as a performer whose picture failed to load.
+        <Avatar className="h-9 w-9">
+          <AvatarFallback>
+            <Users className="h-4 w-4" aria-hidden="true" />
+          </AvatarFallback>
+        </Avatar>
+      ),
+    },
+    ...memberIds.map((id, index) => {
+      // A blank `firstName` (the schema's own `.default("")`) is treated
+      // as no match at all, not as a name to render — see the doc
+      // comment above.
+      const performer = performers?.find((p) => p.id === id);
+      const name = performer?.firstName
+        ? performer.firstName
+        : t("availabilityMemberOption", { number: index + 1 });
+      return {
+        id,
+        name,
+        detail: freeLine(t, locale, timezone, starts, id),
+        face: (
+          <Avatar className="h-9 w-9">
+            {/* `AvatarImage` rather than a bare `<img>`: with both
+                children mounted a 404'd photo pushes the fallback out
+                of the clipped circle, so the monogram never appears —
+                see that component's own doc comment. */}
+            {performer?.avatarUrl && <AvatarImage src={performer.avatarUrl} alt="" />}
+            <AvatarFallback>{initialsFrom(name)}</AvatarFallback>
+          </Avatar>
+        ),
+      };
+    }),
+  ];
+  // An id the roster does not carry (a stale link) folds to the anyone row
+  // rather than to a blank one; the list, once opened, ticks nothing, which
+  // is the honest reading of a choice nothing here can name.
+  const chosen = rows.find((row) => row.id === selectedMemberId) ?? rows[0]!;
+  const toggleLabel = open
+    ? t("availabilityMemberClose")
+    : selectedMemberId === undefined
+      ? t("availabilityMemberChoose")
+      : t("availabilityMemberChange");
+
   return (
     <div className="grid gap-1.5">
-      <span className="text-xs font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-        {t("availabilityMemberLabel")}
-      </span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
+          {t("availabilityMemberLabel")}
+        </span>
+        <button
+          ref={toggleRef}
+          type="button"
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex items-center gap-1 rounded-full text-sm font-semibold text-[var(--color-primary)] hover:underline"
+        >
+          {toggleLabel}
+          <ChevronDown
+            aria-hidden="true"
+            className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
+          />
+        </button>
+      </div>
       {/* One border around the whole list and hairlines between the rows,
           rather than a border per row: twelve bordered cards stacked read as
-          twelve separate decisions, where one framed list reads as one. */}
+          twelve separate decisions, where one framed list reads as one. The
+          frame is the same element folded or open, so the toggle's
+          `aria-controls` always points at something that exists. */}
       <div
-        role="radiogroup"
-        aria-label={t("availabilityMemberLabel")}
+        id={listId}
+        ref={frameRef}
+        role={open ? "radiogroup" : undefined}
+        aria-label={open ? t("availabilityMemberLabel") : undefined}
         className="divide-y divide-[var(--color-border)] overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]"
       >
-        <MemberRow
-          selected={selectedMemberId === undefined}
-          onClick={() => onChange(undefined)}
-          name={t("availabilityMemberAnyone")}
-          detail={freeLine(t, locale, timezone, starts, undefined)}
-          face={
-            // Stacked heads rather than a face or a monogram: this row is not
-            // a person, and a `?` circle in the same place as eleven real
-            // photographs reads as a performer whose picture failed to load.
-            <Avatar className="h-9 w-9">
-              <AvatarFallback>
-                <Users className="h-4 w-4" aria-hidden="true" />
-              </AvatarFallback>
-            </Avatar>
-          }
-        />
-        {memberIds.map((id, index) => {
-          // A blank `firstName` (the schema's own `.default("")`) is treated
-          // as no match at all, not as a name to render — see the doc
-          // comment above.
-          const performer = performers?.find((p) => p.id === id);
-          const name = performer?.firstName
-            ? performer.firstName
-            : t("availabilityMemberOption", { number: index + 1 });
-          return (
+        {open ? (
+          rows.map((row) => (
             <MemberRow
-              key={id}
-              selected={selectedMemberId === id}
-              onClick={() => onChange(id)}
-              name={name}
-              detail={freeLine(t, locale, timezone, starts, id)}
-              face={
-                <Avatar className="h-9 w-9">
-                  {/* `AvatarImage` rather than a bare `<img>`: with both
-                      children mounted a 404'd photo pushes the fallback out
-                      of the clipped circle, so the monogram never appears —
-                      see that component's own doc comment. */}
-                  {performer?.avatarUrl && <AvatarImage src={performer.avatarUrl} alt="" />}
-                  <AvatarFallback>{initialsFrom(name)}</AvatarFallback>
-                </Avatar>
-              }
+              key={row.id ?? "anyone"}
+              selected={selectedMemberId === row.id}
+              onClick={() => {
+                onChange(row.id);
+                setOpen(false);
+              }}
+              name={row.name}
+              detail={row.detail}
+              face={row.face}
             />
-          );
-        })}
+          ))
+        ) : (
+          <button
+            type="button"
+            aria-expanded={false}
+            aria-controls={listId}
+            // The two visible lines, joined, exactly as the radio for this
+            // row would be named: what is chosen is the fact, and opening
+            // the list is what the chevron and the heading's button say.
+            aria-label={`${chosen.name}, ${chosen.detail}`}
+            onClick={() => setOpen(true)}
+            className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-[var(--color-muted)]"
+          >
+            {chosen.face}
+            <span aria-hidden="true" className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{chosen.name}</span>
+              <span className="type-caption block truncate text-[var(--color-muted-foreground)]">
+                {chosen.detail}
+              </span>
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]"
+            />
+          </button>
+        )}
       </div>
     </div>
   );

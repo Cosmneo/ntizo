@@ -590,6 +590,18 @@ afterEach(async () => {
   await i18n.changeLanguage("en-US");
 });
 
+/**
+ * Unfold "Com quem?". The roster starts folded on the current choice — see
+ * `MemberPicker`'s doc comment — so a test that reaches for a performer's
+ * row opens it first, the way a customer would. Anchored, so "Alterar" here
+ * cannot match a longer button elsewhere on the page.
+ */
+async function openRoster() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: /^(escolher profissional|alterar)$/i }),
+  );
+}
+
 describe("ChooseWhenPage", () => {
   it("keeps the chosen slot in the URL, not in memory", async () => {
     // The sign-in round trip leaves the app entirely. A choice held in
@@ -984,6 +996,7 @@ describe("ChooseWhenPage", () => {
     expect(await screen.findByText(/já não faz este serviço/i)).toBeInTheDocument();
 
     // The remedy the copy actually names for this code: somebody else.
+    await openRoster();
     await userEvent.click(screen.getByRole("radio", { name: /^Profissional 2,/ }));
     await userEvent.click(await screen.findByRole("button", { name: /^10:00/ }));
 
@@ -1014,6 +1027,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       performers: [{ id: "mem-1", firstName: "Ana", avatarUrl: null }],
     });
+    await openRoster();
     expect(await screen.findByRole("radio", { name: /^Ana,/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /^Profissional 2,/ })).toBeInTheDocument();
   });
@@ -1025,6 +1039,7 @@ describe("ChooseWhenPage", () => {
     // would say "2 livres" on all three, which is why a fixture where everyone
     // is free at everything could not test this at all.
     renderChooseWhen({ serviceId: "svc-1" });
+    await openRoster();
 
     expect(
       await screen.findByRole("radio", {
@@ -1058,6 +1073,7 @@ describe("ChooseWhenPage", () => {
     // and the roster's day are the same array and every wrong wiring gives
     // the right answer.
     renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?memberId=mem-1" });
+    await openRoster();
 
     expect(
       await screen.findByRole("radio", { name: "Profissional 1, 1 livre · a próxima às 09:00" }),
@@ -1146,6 +1162,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       availability: { ...availabilityFixture("svc-1"), timezone: "Africa/Maputo" },
     });
+    await openRoster();
 
     expect(
       await screen.findByRole("radio", {
