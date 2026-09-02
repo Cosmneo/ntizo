@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Plus, TriangleAlert } from "lucide-react";
+import { ArrowLeft, MapPin, Plus, TriangleAlert } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { isValidPhoneNumber } from "libphonenumber-js";
@@ -61,6 +61,12 @@ const REFUSAL_COPY: Record<PhoneRefusal, string> = {
  */
 const FIELD_LABEL =
   "type-caption font-semibold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase";
+
+/** A form label inside the cards below: sentence case, the size of the field it names. */
+const FORM_LABEL = "text-sm font-medium";
+
+/** One card per question the step asks — see the note where they are drawn. */
+const CARD = "rounded-[var(--radius-card)] border border-[var(--color-border)] p-4 sm:p-5";
 
 /** One address as a single line: enough to tell two of them apart, not the whole record. */
 function addressSummary(address: AddressDTO): string {
@@ -508,30 +514,39 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                 />
               </div>
             ) : (
-              <>
-                <section className="mt-8">
+              /* Three cards, one per question the step asks — who, where,
+                 what — rather than headings floating on the page. The column
+                 is `minmax(0,1fr)` wide, which at a desktop width put "Nome"
+                 at one edge and the phone at the other with nothing between
+                 them, and "Alterar morada" a screen's width from the address
+                 it changes. A frame around each group keeps a label beside
+                 the thing it labels and the button beside the thing it
+                 changes, at every width. */
+              <div className="mt-8 grid gap-4">
+                <section className={CARD}>
                   <h2 className="type-h3 font-semibold">{t("detailsDataLegend")}</h2>
 
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div className="grid content-start gap-1.5">
-                      <p className={FIELD_LABEL}>{t("fieldNameLabel")}</p>
+                      <p className={FORM_LABEL}>{t("fieldNameLabel")}</p>
                       {/* Read back, not editable. `booking.submit` takes no
                           name, and changing the one on the account is the
                           account page's errand — a field here would be a
-                          write this step is not allowed to make. */}
+                          write this step is not allowed to make. Drawn as a
+                          filled box the height of the phone field beside it,
+                          so the pair reads as one row of a form rather than
+                          a word next to a control. */}
                       {user ? (
-                        <p className="type-body">{user.name}</p>
+                        <p className="type-body flex h-10 items-center rounded-[var(--radius-field)] bg-[var(--color-muted)] px-3.5">
+                          {user.name}
+                        </p>
                       ) : (
-                        <Skeleton className="h-5 w-40" />
+                        <Skeleton className="h-10 w-full" />
                       )}
                     </div>
 
                     <div className="grid content-start gap-1.5">
-                      {/* A plain `label` rather than the kit's `Label`: this
-                          one carries the uppercase caption treatment the rest
-                          of the group uses, and the kit's own `text-sm` is
-                          not a class `cn` knows to drop for it. */}
-                      <label htmlFor="checkout-phone" className={FIELD_LABEL}>
+                      <label htmlFor="checkout-phone" className={FORM_LABEL}>
                         {t("phoneLabel")}
                       </label>
                       {/* **The account page's own control, not a second
@@ -580,36 +595,35 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                       )}
                     </div>
                   </div>
+                </section>
 
-                  <div className="mt-6 grid gap-1.5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className={FIELD_LABEL}>{t("fieldAddressLabel")}</p>
-                      {/* Offered rather than a trip back to step 1: going
-                          back there to swap "Casa" for "Escritório" means
-                          picking a time again and holding a second slot, for
-                          a change that touches neither. */}
-                      {!chooserOpen && !addressesFailed && selected && (
-                        <button
-                          type="button"
-                          onClick={() => setPicking(true)}
-                          className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
-                        >
-                          {t("addressChangeAction")}
-                        </button>
-                      )}
-                    </div>
+                <section className={CARD}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="type-h3 font-semibold">{t("addressLegend")}</h2>
+                    {/* Offered rather than a trip back to step 1: going
+                        back there to swap "Casa" for "Escritório" means
+                        picking a time again and holding a second slot, for
+                        a change that touches neither. */}
+                    {!chooserOpen && !addressesFailed && selected && (
+                      <button
+                        type="button"
+                        onClick={() => setPicking(true)}
+                        className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
+                      >
+                        {t("addressChangeAction")}
+                      </button>
+                    )}
+                  </div>
 
+                  <div className="mt-4">
                     {addressesLoading ? (
-                      <Skeleton className="h-24 w-full" />
+                      <Skeleton className="h-16 w-full" />
                     ) : addressesFailed ? (
                       // Not the add-address form. The addresses exist;
                       // something stopped us reading them, and offering to
                       // create one more answers a transient failure with a
                       // permanent duplicate.
-                      <div
-                        role="alert"
-                        className="grid justify-items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
-                      >
+                      <div role="alert" className="grid justify-items-start gap-3">
                         <p className="type-body text-[var(--color-destructive)]">
                           {t("addressesLoadError")}
                         </p>
@@ -619,15 +633,15 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                       </div>
                     ) : chooserOpen ? (
                       <fieldset className="grid gap-3 border-0 p-0">
-                        {/* The heading above already says "Endereço"; this
-                            names the group for a screen reader without
-                            printing the word twice. */}
+                        {/* The heading above already says "Morada do
+                            serviço"; this names the group for a screen
+                            reader without printing the words twice. */}
                         <legend className="sr-only">{t("addressLegend")}</legend>
 
                         {addresses.map((address) => (
                           <label
                             key={address.id}
-                            className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
+                            className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-4"
                           >
                             <input
                               type="radio"
@@ -680,29 +694,41 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                         )}
                       </fieldset>
                     ) : selected ? (
-                      <>
-                        <p className="type-body">
-                          {[selected.line1, selected.line2].filter(Boolean).join(", ")}
-                        </p>
-                        <p className={`${FIELD_LABEL} mt-4`}>{t("fieldDistrictLabel")}</p>
-                        {/* The city rides with the bairro rather than being
-                            dropped: "Polana" alone names a neighbourhood in
-                            more than one city, and this line is the customer
-                            checking we are sending somebody to the right
-                            one. */}
-                        <p className="type-body">
-                          {[selected.district, selected.city].filter(Boolean).join(", ")}
-                        </p>
-                      </>
+                      // The chosen address as one block, the way it would be
+                      // written on an envelope: its name, the street, then
+                      // the bairro with its city — not two labelled fields
+                      // an inch apart.
+                      <div className="flex items-start gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[var(--color-primary)]"
+                        >
+                          <MapPin className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="type-body-medium font-semibold">{selected.label}</p>
+                          <p className="type-body">
+                            {[selected.line1, selected.line2].filter(Boolean).join(", ")}
+                          </p>
+                          {/* The city rides with the bairro rather than being
+                              dropped: "Polana" alone names a neighbourhood in
+                              more than one city, and this line is the
+                              customer checking we are sending somebody to
+                              the right one. */}
+                          <p className="type-caption text-[var(--color-muted-foreground)]">
+                            {[selected.district, selected.city].filter(Boolean).join(", ")}
+                          </p>
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 </section>
 
-                <section className="mt-8 grid gap-1.5">
-                  <label htmlFor="checkout-description" className="type-h3 font-semibold">
+                <section className={CARD}>
+                  <label htmlFor="checkout-description" className="type-h3 block font-semibold">
                     {t("descriptionLabel")}
                   </label>
-                  <p className="type-caption text-[var(--color-muted-foreground)]">
+                  <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
                     {t("descriptionHint")}
                   </p>
                   <textarea
@@ -715,10 +741,10 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                     maxLength={1000}
                     value={description}
                     onChange={(e) => editDescription(e.target.value)}
-                    className="type-body rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
+                    className="type-body mt-3 w-full rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
                   />
                 </section>
-              </>
+              </div>
             )}
           </div>
 
