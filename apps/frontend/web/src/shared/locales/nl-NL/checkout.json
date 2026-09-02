@@ -79,7 +79,16 @@
   "createError": {
     "SLOT_ALREADY_TAKEN": "Iemand anders heeft dat tijdstip zojuist geboekt. Kies een ander tijdstip.",
     "SLOT_NOT_OFFERED": "Dat tijdstip is niet meer beschikbaar. Kies een ander tijdstip.",
-    "SLOT_IN_PAST": "Dat tijdstip is al voorbij. Kies een ander tijdstip."
+    "SLOT_IN_PAST": "Dat tijdstip is al voorbij. Kies een ander tijdstip.",
+    "SERVICE_OPTION_UNNAMED": "Deze dienst kan op dit moment niet worden geboekt — bij een van de pakketten ontbreekt informatie. Opnieuw proberen helpt niet. Stuur de dienstverlener een bericht of kies een andere dienst.",
+    "SERVICE_OPTION_NOT_FOUND": "Dat pakket bestaat niet meer. Ga terug naar de dienst en kies een ander pakket.",
+    "SERVICE_NOT_BOOKABLE_QUOTE": "Deze dienst gaat op offerte, dus hier is geen tijdstip om vast te houden. Ga terug naar de dienst en vraag een offerte aan.",
+    "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED": "De dienstverlener heeft deze dienst offline gehaald, dus die kan niet worden geboekt. Opnieuw proberen helpt niet — zoek een andere dienst.",
+    "SERVICE_NOT_BOOKABLE_OPTION_RETIRED": "De dienstverlener biedt dit pakket niet meer aan. Ga terug naar de dienst en kies een ander pakket.",
+    "SERVICE_NOT_BOOKABLE_HOURLY": "Deze dienst wordt per uur afgerekend en kan hier nog niet worden geboekt. Ga terug naar de dienst en stuur de dienstverlener een bericht om het af te spreken.",
+    "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE": "Deze dienstverlener neemt op dit moment geen boekingen aan. Opnieuw proberen helpt niet — zoek een andere dienstverlener.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Die vakman doet deze dienst niet meer. Kies iemand anders uit de lijst.",
+    "PROVIDER_NOT_FOUND": "We kunnen de gegevens van deze dienstverlener niet lezen, dus het tijdstip kan niet worden vastgehouden. Opnieuw proberen helpt niet — kies een andere dienstverlener."
   },
   "createErrorGeneric": "We konden dit tijdstip nu niet vasthouden. Probeer het opnieuw.",
   "submitError": {

@@ -79,7 +79,16 @@
   "createError": {
     "SLOT_ALREADY_TAKEN": "Diese Uhrzeit wurde gerade von jemand anderem gebucht. Bitte wählen Sie eine andere.",
     "SLOT_NOT_OFFERED": "Diese Uhrzeit ist nicht mehr verfügbar. Bitte wählen Sie eine andere.",
-    "SLOT_IN_PAST": "Diese Uhrzeit liegt bereits in der Vergangenheit. Bitte wählen Sie eine andere."
+    "SLOT_IN_PAST": "Diese Uhrzeit liegt bereits in der Vergangenheit. Bitte wählen Sie eine andere.",
+    "SERVICE_OPTION_UNNAMED": "Diese Leistung kann derzeit nicht gebucht werden — bei einem ihrer Pakete fehlt eine Angabe. Ein erneuter Versuch hilft nicht. Schreiben Sie dem Anbieter oder wählen Sie eine andere Leistung.",
+    "SERVICE_OPTION_NOT_FOUND": "Dieses Paket gibt es nicht mehr. Gehen Sie zurück zur Leistung und wählen Sie ein anderes.",
+    "SERVICE_NOT_BOOKABLE_QUOTE": "Diese Leistung wird auf Angebotsbasis abgerechnet, hier gibt es also keine Uhrzeit zu reservieren. Gehen Sie zurück zur Leistung und fordern Sie ein Angebot an.",
+    "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED": "Der Anbieter hat diese Leistung zurückgezogen, sie kann daher nicht gebucht werden. Ein erneuter Versuch hilft nicht — suchen Sie eine andere Leistung.",
+    "SERVICE_NOT_BOOKABLE_OPTION_RETIRED": "Der Anbieter bietet dieses Paket nicht mehr an. Gehen Sie zurück zur Leistung und wählen Sie ein anderes.",
+    "SERVICE_NOT_BOOKABLE_HOURLY": "Diese Leistung wird stundenweise abgerechnet und kann hier noch nicht gebucht werden. Gehen Sie zurück zur Leistung und schreiben Sie dem Anbieter, um einen Termin abzustimmen.",
+    "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE": "Dieser Anbieter nimmt derzeit keine Buchungen an. Ein erneuter Versuch hilft nicht — suchen Sie einen anderen Anbieter.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Diese Fachkraft führt diese Leistung nicht mehr aus. Bitte wählen Sie jemand anderen aus der Liste.",
+    "PROVIDER_NOT_FOUND": "Wir können die Daten dieses Anbieters nicht lesen, die Uhrzeit lässt sich daher nicht reservieren. Ein erneuter Versuch hilft nicht — bitte wählen Sie einen anderen Anbieter."
   },
   "createErrorGeneric": "Wir konnten diese Uhrzeit gerade nicht reservieren. Bitte versuchen Sie es erneut.",
   "submitError": {

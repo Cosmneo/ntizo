@@ -79,7 +79,16 @@
   "createError": {
     "SLOT_ALREADY_TAKEN": "Someone else has just booked that time. Please choose another.",
     "SLOT_NOT_OFFERED": "That time is no longer available. Please choose another.",
-    "SLOT_IN_PAST": "That time has already passed. Please choose another."
+    "SLOT_IN_PAST": "That time has already passed. Please choose another.",
+    "SERVICE_OPTION_UNNAMED": "This service can't be booked at the moment — one of its packages is missing information. Trying again won't help. Message the provider, or choose another service.",
+    "SERVICE_OPTION_NOT_FOUND": "That package no longer exists. Go back to the service and choose another.",
+    "SERVICE_NOT_BOOKABLE_QUOTE": "This service is priced by quote, so there is no time to hold here. Go back to the service and ask for a quote.",
+    "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED": "The provider has taken this service down, so it can't be booked. Trying again won't help — look for another service.",
+    "SERVICE_NOT_BOOKABLE_OPTION_RETIRED": "The provider no longer offers this package. Go back to the service and choose another.",
+    "SERVICE_NOT_BOOKABLE_HOURLY": "This service is charged by the hour and can't be booked here yet. Go back to the service and message the provider to arrange it.",
+    "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE": "This provider isn't taking bookings at the moment. Trying again won't help — look for another provider.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "That professional no longer does this service. Choose someone else from the list.",
+    "PROVIDER_NOT_FOUND": "We can't read this provider's details, so the time can't be held. Trying again won't help — please choose another provider."
   },
   "createErrorGeneric": "We couldn't hold this time right now. Please try again.",
   "submitError": {

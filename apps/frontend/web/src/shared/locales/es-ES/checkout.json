@@ -79,7 +79,16 @@
   "createError": {
     "SLOT_ALREADY_TAKEN": "Otra persona acaba de reservar esa hora. Elige otra.",
     "SLOT_NOT_OFFERED": "Esa hora ya no está disponible. Elige otra.",
-    "SLOT_IN_PAST": "Esa hora ya ha pasado. Elige otra."
+    "SLOT_IN_PAST": "Esa hora ya ha pasado. Elige otra.",
+    "SERVICE_OPTION_UNNAMED": "Este servicio no se puede reservar ahora mismo: a uno de sus paquetes le falta información. Volver a intentarlo no sirve. Escribe al profesional o elige otro servicio.",
+    "SERVICE_OPTION_NOT_FOUND": "Ese paquete ya no existe. Vuelve al servicio y elige otro.",
+    "SERVICE_NOT_BOOKABLE_QUOTE": "Este servicio se cotiza con presupuesto, así que aquí no hay ninguna hora que guardar. Vuelve al servicio y pide un presupuesto.",
+    "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED": "El profesional ha retirado este servicio, así que no se puede reservar. Volver a intentarlo no sirve: busca otro servicio.",
+    "SERVICE_NOT_BOOKABLE_OPTION_RETIRED": "El profesional ya no ofrece este paquete. Vuelve al servicio y elige otro.",
+    "SERVICE_NOT_BOOKABLE_HOURLY": "Este servicio se cobra por hora y todavía no se puede reservar aquí. Vuelve al servicio y escribe al profesional para acordarlo.",
+    "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE": "Este profesional no acepta reservas ahora mismo. Volver a intentarlo no sirve: busca otro profesional.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Esa persona ya no hace este servicio. Elige a otra de la lista.",
+    "PROVIDER_NOT_FOUND": "No podemos leer los datos de este profesional, así que la hora no se puede guardar. Volver a intentarlo no sirve: elige otro profesional."
   },
   "createErrorGeneric": "No hemos podido guardar esta hora ahora mismo. Inténtalo de nuevo.",
   "submitError": {

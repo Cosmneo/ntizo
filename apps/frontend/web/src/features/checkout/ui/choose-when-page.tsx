@@ -91,6 +91,56 @@ const STALE_GRID_CODES: ReadonlySet<string> = new Set([
   "SLOT_IN_PAST",
 ]);
 
+/**
+ * The refusals that will still be refusals however many times the button is
+ * pressed.
+ *
+ * Every one of these is a fact about the service, the option, the provider or
+ * the professional — not about this attempt. Nothing the customer does on
+ * this page changes any of them, so the generic
+ * `createErrorGeneric` — "Tente novamente" — is not merely unhelpful for
+ * them, it is *instruction to do the one thing that cannot work*. That is the
+ * defect the hourly case already closed by disabling the confirm; the
+ * difference here is that none of these can be known before the mutation
+ * answers, so the same remedy has to arrive with the refusal instead.
+ *
+ * Two things follow from membership, and they are one decision: the customer
+ * reads a sentence naming the real reason (`createError.<code>`), and the
+ * confirm goes dead so pressing on is not offered as an option. It comes back
+ * the moment they change the day, the professional, the week or the time —
+ * every one of those calls `reset()`, which clears `errorCode` — which is
+ * right for the two entries a different choice genuinely fixes
+ * (`SERVICE_MEMBER_CANNOT_PERFORM`, and an option id that named a deleted
+ * row) and harmless for the rest, since the next press produces the same
+ * sentence rather than the same silence.
+ *
+ * `SERVICE_OPTION_UNNAMED` is the one that brought this list into existence:
+ * an option whose name is missing from `service_option_translation` in both
+ * the customer's locale and the service's source locale. `canPublish` does
+ * not require an option to be named, so a provider can publish a service no
+ * customer can ever book — twenty of dev's twenty-four published options were
+ * in that state. Follow-up #122 is where refusing at publish time lives; this
+ * is what the customer is told until then.
+ *
+ * Deliberately **not** here: `SLOT_*` and `SLOT_ALREADY_TAKEN`, which are
+ * transient by definition and already answered by `STALE_GRID_CODES` above;
+ * and the aggregate's own invariant violations (`BOOKING_FIELD_BLANK` and
+ * friends), which are permanent but are bugs rather than states — they have
+ * no sentence a customer can act on, and inventing one would dress a defect
+ * up as a product rule.
+ */
+const PERMANENT_CREATE_CODES: ReadonlySet<string> = new Set([
+  "SERVICE_OPTION_UNNAMED",
+  "SERVICE_OPTION_NOT_FOUND",
+  "SERVICE_NOT_BOOKABLE_QUOTE",
+  "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED",
+  "SERVICE_NOT_BOOKABLE_OPTION_RETIRED",
+  "SERVICE_NOT_BOOKABLE_HOURLY",
+  "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE",
+  "SERVICE_MEMBER_CANNOT_PERFORM",
+  "PROVIDER_NOT_FOUND",
+]);
+
 /** The device's own IANA zone — the only clock available before the first response names the service's own. */
 function deviceTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -512,9 +562,17 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
    * has not arrived. A customer who is still loading cannot be said to have
    * chosen anything.
    */
+  /**
+   * A refusal already given that pressing again would only repeat. See
+   * `PERMANENT_CREATE_CODES`: the message beside the button says what is
+   * wrong, and the button not being pressable is the other half of saying it.
+   */
+  const refusedPermanently = Boolean(errorCode && PERMANENT_CREATE_CODES.has(errorCode));
+
   const canConfirm =
     Boolean(option && selectedStart && search.memberId) &&
     !isHourly &&
+    !refusedPermanently &&
     !pending &&
     addressChoiceSettled;
 
@@ -716,7 +774,11 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
               hourly={isHourly}
             >
               {failed && (
-                <p role="alert" className="text-sm text-[var(--color-destructive)]">
+                <p
+                  id="checkout-create-error"
+                  role="alert"
+                  className="text-sm text-[var(--color-destructive)]"
+                >
                   {errorCode
                     ? t(`createError.${errorCode}`, { defaultValue: t("createErrorGeneric") })
                     : t("createErrorGeneric")}
@@ -740,7 +802,15 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
                 type="button"
                 className="w-full"
                 disabled={!canConfirm}
-                {...(isHourly ? { "aria-describedby": "checkout-hourly-notice" } : {})}
+                {...(isHourly
+                  ? { "aria-describedby": "checkout-hourly-notice" }
+                  : // Same reasoning as the hourly notice: a control that has
+                    // just gone dead has to say why to a screen reader that
+                    // lands on it, and here the reason is the refusal
+                    // rendered directly above.
+                    refusedPermanently
+                    ? { "aria-describedby": "checkout-create-error" }
+                    : {})}
                 onClick={confirm}
               >
                 {t("continueAction")}

@@ -79,7 +79,16 @@
   "createError": {
     "SLOT_ALREADY_TAKEN": "Qualcun altro ha appena prenotato quell'orario. Scegline un altro.",
     "SLOT_NOT_OFFERED": "Quell'orario non è più disponibile. Scegline un altro.",
-    "SLOT_IN_PAST": "Quell'orario è già passato. Scegline un altro."
+    "SLOT_IN_PAST": "Quell'orario è già passato. Scegline un altro.",
+    "SERVICE_OPTION_UNNAMED": "Questo servizio non è prenotabile al momento: a uno dei suoi pacchetti manca un'informazione. Riprovare non serve. Scrivi al professionista o scegli un altro servizio.",
+    "SERVICE_OPTION_NOT_FOUND": "Quel pacchetto non esiste più. Torna al servizio e scegline un altro.",
+    "SERVICE_NOT_BOOKABLE_QUOTE": "Questo servizio si paga su preventivo, quindi qui non c'è nessun orario da bloccare. Torna al servizio e chiedi un preventivo.",
+    "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED": "Il professionista ha ritirato questo servizio, quindi non è prenotabile. Riprovare non serve: cerca un altro servizio.",
+    "SERVICE_NOT_BOOKABLE_OPTION_RETIRED": "Il professionista non offre più questo pacchetto. Torna al servizio e scegline un altro.",
+    "SERVICE_NOT_BOOKABLE_HOURLY": "Questo servizio si paga a ore e non può ancora essere prenotato qui. Torna al servizio e scrivi al professionista per accordarti.",
+    "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE": "Questo professionista al momento non accetta prenotazioni. Riprovare non serve: cerca un altro professionista.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Quella persona non svolge più questo servizio. Scegline un'altra dall'elenco.",
+    "PROVIDER_NOT_FOUND": "Non riusciamo a leggere i dati di questo professionista, quindi l'orario non può essere bloccato. Riprovare non serve: scegli un altro professionista."
   },
   "createErrorGeneric": "Non siamo riusciti a bloccare questo orario in questo momento. Riprova.",
   "submitError": {

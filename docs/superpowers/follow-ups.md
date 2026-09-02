@@ -3013,3 +3013,67 @@ that deferred #115, which this shares its root cause with (the same duplicated a
 slow-query log entry naming either subquery, or a provider/review count high enough that
 `EXPLAIN ANALYZE` on `getPublishedById` shows measurable time spent on `review_agg` or
 `verified_agg` rather than on the indexed lookups around them.
+
+---
+
+## #122 — `canPublish` does not require an option to have a name, so a service can be published that nobody can book
+
+A customer opened a published service on dev, picked a time, pressed **Continuar**, and read
+"Não foi possível guardar esta hora agora. Tente novamente." Pressing again did the same thing,
+and would have done for ever. The GraphQL response underneath it said
+`BOOKING_FIELD_BLANK — A booking's "optionName" cannot be blank`.
+
+**The sequence.** An option's name is not a column on `service_option`; it lives in
+`service_option_translation`, one row per locale. `ServicePricingReaderPort.findOption` resolves
+it by falling back — the customer's locale first, then `service.source_locale` — and returned
+`""` when neither matched. That blank travelled through `CreateBookingCommand` into
+`Booking.create`, which refused it, correctly: a booking snapshots the name of what was bought
+and `""` is not a name. Four layers separated the refusal from the missing row, so the message
+named a booking field rather than a catalogue one, and the page — which had no key for the code
+either way — fell through to the generic retry sentence.
+
+**Twenty of dev's twenty-four published, active options had no `service_option_translation` row
+in any locale.** Not a corrupted subset: five-sixths of everything a customer could see and press
+Continuar on. Those rows have since been seeded, and both halves of the reporting are now fixed —
+the reader refuses with `SERVICE_OPTION_UNNAMED`, naming the option and both locales it looked
+in, and `choose-when-page.tsx` has copy for that code (and eight others) in all eight locales,
+with the confirm going dead rather than inviting a press that cannot work.
+
+**None of that stops it happening again**, because nothing requires an option to be named.
+`canPublish` (`catalog/domain/service-rules.ts`) checks four things: a category, a source-locale
+*service* name (`hasSourceName`), at least one member, and — for a `priced` service — at least one
+option. It counts the options and never looks inside them. So a provider can publish a service
+whose every option is nameless, the service lists, its page renders, its rail says "Ver
+disponibilidade", the calendar draws, and every Continuar on it fails. The service is, in the only
+sense that matters, unbookable while presenting as bookable.
+
+**Refusing at publish is the honest place, and this entry exists because that is a product
+decision rather than a code change.** `Service.publish` is where the platform already makes the
+"is this ready to be seen" judgement, it already refuses an unnamed *service* by exactly this
+argument, and refusing there costs the provider one form field at the one moment they are looking
+at the form. Every alternative is worse: refusing at booking time (where it is now) is a customer
+discovering a provider's omission on the provider's behalf; defaulting the name to something
+("Pacote 1", the price, the service's own name) puts a string the provider never wrote onto a
+customer's receipt and into the booking record that is meant to be evidence of what was agreed.
+
+**Which is exactly why it is not done here.** Adding `hasNamedOptions` to `PublishCheck` blocks
+providers mid-flow, and the interesting half is not the new services — it is the existing rows.
+Dev's twenty were seeded rather than typed, but production will eventually hold options published
+under the old rule, and a `canPublish` that refuses them turns any later edit-and-republish into a
+dead end for a provider who has changed nothing about the names. That needs a decision (backfill?
+grandfather? unpublish and notify?) and probably a provider-facing prompt, neither of which
+belongs inside a bug fix.
+
+Two adjacent facts worth carrying with it. `serviceName` has the same shape of gap and is
+currently safe for a *different* reason — `Service.publish` enforces `hasSourceName`, so a
+published service always has one — which means the reader treats the two fields asymmetrically on
+purpose; closing this follow-up is what would let them be symmetric. And the cascade in
+`ServiceRepository.save` deletes and re-inserts `service_option` wholesale, taking
+`service_option_translation` with it via `ON DELETE CASCADE`, so an aggregate that ever reaches
+`toPersistence` with an empty `translations` array on an option silently unnames a published
+option that had a name yesterday. Nothing observed doing that, but it is the second route to the
+same state, and a publish-time check would not catch it — only a rule at the write would.
+
+**Trigger:** the first provider who publishes an option without naming it — visible as any
+`SERVICE_OPTION_UNNAMED` in the logs, which is what that error now exists to make greppable — or
+any repeat of this report from a customer stuck on Continuar.

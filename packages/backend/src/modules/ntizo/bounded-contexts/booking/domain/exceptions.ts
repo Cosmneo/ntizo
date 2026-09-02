@@ -245,6 +245,55 @@ export class ServiceOptionNotFoundError extends NotFoundError {
 }
 
 /**
+ * Refused because a service option that does exist has no name to snapshot —
+ * not in the locale the customer was reading, and not in the service's own
+ * source locale either.
+ *
+ * A booking records the name of the thing that was bought, and `""` is not a
+ * name. `Booking.create` already refuses it (`BookingFieldBlankError`), and
+ * that guard stays, but it is four calls too late to say anything useful: by
+ * then the fact has been flattened into "a booking field was blank", with no
+ * option id in it and nothing pointing at the catalogue row that is actually
+ * wrong. This is the same refusal made where the missing thing is still
+ * visible.
+ *
+ * **Raised by `ServicePricingReaderPort.findOption`, not by the command.** The
+ * reader's job is to describe an option; an option with no name anywhere is
+ * one it cannot describe, and returning `""` was that port answering a
+ * question it should have refused. Declared here rather than beside the
+ * adapter that throws it for the same reason `SlotAlreadyTakenError` is —
+ * "this option has no name" is a fact about what can be booked, not a fact
+ * about Postgres.
+ *
+ * Both locales are named in the message because the reader falls back from
+ * one to the other (see `DrizzleServicePricingReader`), and the two failures
+ * want different fixes: a name missing only from the customer's locale is a
+ * translation gap the fallback silently absorbs, while one missing from the
+ * source locale too is a service nobody ever named. Only the second reaches
+ * here.
+ *
+ * How dev got twenty of these: nothing requires an option to be named.
+ * `canPublish` checks the category, the source *service* name, the member
+ * count and the option count, and says nothing about option names — so a
+ * provider can publish a service whose options no customer can ever book.
+ * That gap is follow-up #122; this error is what makes it legible when it
+ * bites.
+ */
+export class ServiceOptionUnnamedError extends UnprocessableError {
+  constructor(
+    public readonly serviceOptionId: string,
+    public readonly requestedLocale: string,
+    public readonly sourceLocale: string,
+  ) {
+    super({
+      message: `Service option "${serviceOptionId}" has no name in "${requestedLocale}" or in its service's source locale "${sourceLocale}"`,
+      code: "SERVICE_OPTION_UNNAMED",
+    });
+    this.name = "ServiceOptionUnnamedError";
+  }
+}
+
+/**
  * Refused because a command was given a booking id that does not name any
  * booking.
  *

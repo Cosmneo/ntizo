@@ -79,7 +79,16 @@
   "createError": {
     "SLOT_ALREADY_TAKEN": "Quelqu'un vient de réserver cet horaire. Veuillez en choisir un autre.",
     "SLOT_NOT_OFFERED": "Cet horaire n'est plus disponible. Veuillez en choisir un autre.",
-    "SLOT_IN_PAST": "Cet horaire est déjà passé. Veuillez en choisir un autre."
+    "SLOT_IN_PAST": "Cet horaire est déjà passé. Veuillez en choisir un autre.",
+    "SERVICE_OPTION_UNNAMED": "Ce service ne peut pas être réservé pour le moment : il manque une information à l'une de ses formules. Réessayer n'y changera rien. Écrivez au prestataire ou choisissez un autre service.",
+    "SERVICE_OPTION_NOT_FOUND": "Cette formule n'existe plus. Revenez au service et choisissez-en une autre.",
+    "SERVICE_NOT_BOOKABLE_QUOTE": "Ce service se règle sur devis : il n'y a donc aucun horaire à réserver ici. Revenez au service et demandez un devis.",
+    "SERVICE_NOT_BOOKABLE_NOT_PUBLISHED": "Le prestataire a retiré ce service, il n'est donc plus réservable. Réessayer n'y changera rien — cherchez un autre service.",
+    "SERVICE_NOT_BOOKABLE_OPTION_RETIRED": "Le prestataire ne propose plus cette formule. Revenez au service et choisissez-en une autre.",
+    "SERVICE_NOT_BOOKABLE_HOURLY": "Ce service est facturé à l'heure et ne peut pas encore être réservé ici. Revenez au service et écrivez au prestataire pour convenir d'un horaire.",
+    "SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE": "Ce prestataire n'accepte pas de réservations pour le moment. Réessayer n'y changera rien — cherchez un autre prestataire.",
+    "SERVICE_MEMBER_CANNOT_PERFORM": "Ce professionnel ne réalise plus ce service. Choisissez quelqu'un d'autre dans la liste.",
+    "PROVIDER_NOT_FOUND": "Nous ne parvenons pas à lire les informations de ce prestataire, l'horaire ne peut donc pas être réservé. Réessayer n'y changera rien — veuillez choisir un autre prestataire."
   },
   "createErrorGeneric": "Nous n'avons pas pu réserver cet horaire pour le moment. Veuillez réessayer.",
   "submitError": {

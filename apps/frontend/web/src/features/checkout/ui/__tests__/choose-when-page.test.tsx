@@ -354,7 +354,16 @@ function renderChooseWhen({
   serviceId: string;
   /** `null` is an anonymous visitor — the command refuses one with `UNAUTHENTICATED`. */
   session?: { userId: string } | null;
-  createFails?: { code: string };
+  /**
+   * `kitCode` is the coarse code the refusal rides inside, and it is worth
+   * naming rather than always sending `CONFLICT`: the kit derives it from the
+   * error's own base class, so `SlotAlreadyTakenError` (a `ConflictError`)
+   * and `ServiceNotBookableError` (an `UnprocessableError`) genuinely arrive
+   * under different ones. The page must read past it to `originalCode` in
+   * both cases, which a fixture that only ever sent one coarse code could not
+   * show.
+   */
+  createFails?: { code: string; kitCode?: string };
   /** Where to start, when a test needs the URL to already carry a slot. */
   at?: string;
   /** What `serviceById` publishes about who performs this service. */
@@ -389,7 +398,9 @@ function renderChooseWhen({
   if (session === null) {
     fakes.createBooking.mockRejectedValue(refusal("FORBIDDEN", "UNAUTHENTICATED"));
   } else if (createFails) {
-    fakes.createBooking.mockRejectedValue(refusal("CONFLICT", createFails.code));
+    fakes.createBooking.mockRejectedValue(
+      refusal(createFails.kitCode ?? "CONFLICT", createFails.code),
+    );
   } else {
     fakes.createBooking.mockResolvedValue({
       bookingId: "bk-1",
@@ -830,6 +841,99 @@ describe("ChooseWhenPage", () => {
     // said *instead of* the generic retry sentence, not beside it.
     expect(screen.getByText(/cobrado à hora/i)).toBeInTheDocument();
     expect(screen.queryByText(/tente novamente/i)).not.toBeInTheDocument();
+  });
+
+  it("names the reason when the option has no name to book under", async () => {
+    // The defect a customer actually hit on dev. An option's name lives in
+    // `service_option_translation`, `canPublish` never requires a row there,
+    // and twenty of dev's twenty-four published active options had none — so
+    // `booking.create` refused every attempt. The refusal is now
+    // `SERVICE_OPTION_UNNAMED`, raised where the name is read; before that it
+    // arrived as `BOOKING_FIELD_BLANK` from four layers down.
+    //
+    // Either way it had no key under `createError`, so the page said "Não foi
+    // possível guardar esta hora agora. Tente novamente." — and the customer
+    // did, forever, because that sentence told them to.
+    const { create } = renderChooseWhen({
+      serviceId: "svc-1",
+      createFails: { kitCode: "UNPROCESSABLE", code: "SERVICE_OPTION_UNNAMED" },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    expect(await screen.findByText(/falta informação/i)).toBeInTheDocument();
+    expect(screen.queryByText(/tente novamente/i)).not.toBeInTheDocument();
+    // The other half of not lying: a permanent refusal must not leave live
+    // the one control whose only outcome is the same refusal.
+    const confirm = screen.getByRole("button", { name: /continuar/i });
+    expect(confirm).toBeDisabled();
+    expect(confirm).toHaveAttribute("aria-describedby", "checkout-create-error");
+    await userEvent.click(confirm);
+    expect(create.calls).toHaveLength(1);
+    // Not a stale grid: nothing about the calendar is wrong, so refetching it
+    // would be a request that cannot change the answer.
+    expect(create.refetched).toBe(false);
+  });
+
+  it.each([
+    ["SERVICE_NOT_BOOKABLE_NOT_PUBLISHED", /retirou este serviço/i],
+    ["SERVICE_NOT_BOOKABLE_OPTION_RETIRED", /já não oferece este pacote/i],
+    ["SERVICE_NOT_BOOKABLE_QUOTE", /peça um orçamento/i],
+    ["SERVICE_NOT_BOOKABLE_PROVIDER_NOT_ACTIVE", /não está a aceitar reservas/i],
+    ["SERVICE_MEMBER_CANNOT_PERFORM", /já não faz este serviço/i],
+    ["SERVICE_OPTION_NOT_FOUND", /pacote já não existe/i],
+    ["PROVIDER_NOT_FOUND", /dados deste prestador/i],
+  ])("says what is wrong when booking.create refuses with %s", async (code, copy) => {
+    // Every one of these is permanent — a fact about the service, the option,
+    // the provider or the professional, not about this attempt — and every
+    // one of them used to reach the customer as "Tente novamente". Pressing
+    // again was the single worst thing they could be told to do, and it was
+    // the only thing the page said.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      createFails: { kitCode: "UNPROCESSABLE", code },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    expect(await screen.findByText(copy)).toBeInTheDocument();
+    expect(screen.queryByText(/tente novamente/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
+  });
+
+  it("keeps the confirm live after a refusal that another press really could clear", async () => {
+    // The boundary of the rule above, and the reason it is a list rather than
+    // "any error disables the button": somebody else taking the slot is an
+    // answer about *this attempt*. The grid refetches, the customer picks a
+    // different time, and pressing again is exactly right.
+    renderChooseWhen({ serviceId: "svc-1", createFails: { code: "SLOT_ALREADY_TAKEN" } });
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    expect(await screen.findByText(/já foi marcada/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeEnabled();
+  });
+
+  it("re-arms the confirm once the customer changes something", async () => {
+    // A dead button that stays dead for the life of the page would be its own
+    // trap. Every date, week, member and time click calls `reset()`, which
+    // clears the code this disabling reads — so the customer is never left
+    // with no way forward, only without a way that could not work.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      createFails: { kitCode: "UNPROCESSABLE", code: "SERVICE_MEMBER_CANNOT_PERFORM" },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+    expect(await screen.findByText(/já não faz este serviço/i)).toBeInTheDocument();
+
+    // The remedy the copy actually names for this code: somebody else.
+    await userEvent.click(screen.getByRole("radio", { name: "Profissional 2" }));
+    await userEvent.click(await screen.findByRole("button", { name: /^10:00/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /continuar/i })).toBeEnabled(),
+    );
   });
 
   it("will not hold anything until a time has been chosen", async () => {

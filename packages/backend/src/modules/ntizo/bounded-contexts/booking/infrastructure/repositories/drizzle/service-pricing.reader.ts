@@ -7,6 +7,7 @@ import {
   serviceOptionTranslation,
   serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
+import { ServiceOptionUnnamedError } from "../../../domain/exceptions";
 import type {
   ServiceOptionPricing,
   ServicePricingReaderPort,
@@ -35,6 +36,16 @@ const optionTranslationSource = alias(serviceOptionTranslation, "service_option_
  * row at all, or a customer reading the site in a locale nobody translated
  * into would be told the service does not exist.
  *
+ * The option's own name is then the one thing this reader refuses on rather
+ * than reports: four joins can find a row without finding a name for it, and
+ * an option nobody named is one no booking can snapshot. See
+ * `ServiceOptionUnnamedError` — and note that "no name" here means neither
+ * translation matched, which is a *narrower* claim than "no name in any
+ * locale": a name filed only under some third locale is invisible to these
+ * joins and is refused with the rest. Widening that would mean picking a
+ * language for the customer's receipt at random, which is worse than saying
+ * the option is not describable.
+ *
  * `bookingMode`, `serviceStatus`, `optionIsActive` and `pricingMode` are read
  * and returned as-is, unfiltered by this query — `CreateBookingCommand` is
  * what decides whether any of them refuse the booking, and it needs the real
@@ -48,6 +59,11 @@ export class DrizzleServicePricingReader implements ServicePricingReaderPort {
       .select({
         serviceId: service.id,
         providerId: service.providerId,
+        // Read only so the refusal below can name the locale it looked in
+        // second. A message saying "no name in pt-MZ or the source locale"
+        // sends whoever reads it to find out which locale that is; naming it
+        // sends them to the row.
+        sourceLocale: service.sourceLocale,
         bookingMode: service.bookingMode,
         serviceStatus: service.status,
         optionIsActive: serviceOption.isActive,
@@ -95,6 +111,23 @@ export class DrizzleServicePricingReader implements ServicePricingReaderPort {
 
     if (!row) return null;
 
+    // Requested locale first, source locale second — the same two-step
+    // `serviceName` takes below, and the reason a missing translation is not
+    // by itself a refusal: a customer reading in `fr-FR` on a service written
+    // in `pt-MZ` gets the Portuguese name snapshotted, which is a real name
+    // and the right one.
+    //
+    // Nothing left after both, though, and this reader has run out of places
+    // to look. Trimmed for the test and not for the value: `"   "` is as
+    // unusable a name as `""`, but what a booking snapshots is what the
+    // catalogue actually holds — rewriting it here would make this reader the
+    // author of a name it only read. Same split `BookingFieldBlankError`
+    // makes, one layer down.
+    const optionName = row.optionNameRequested ?? row.optionNameSource ?? "";
+    if (optionName.trim().length === 0) {
+      throw new ServiceOptionUnnamedError(serviceOptionId, locale, row.sourceLocale);
+    }
+
     return {
       serviceId: row.serviceId,
       providerId: row.providerId,
@@ -105,8 +138,12 @@ export class DrizzleServicePricingReader implements ServicePricingReaderPort {
       // `serviceStatus: "published"`. `""` rather than throwing here: naming
       // that gap is `CreateBookingCommand`'s job (it already refuses any
       // service that is not published), not this reader's.
+      //
+      // The *option* has no equivalent rule behind it — `canPublish` never
+      // asks whether an option is named — which is why the two fields are
+      // treated differently a few lines up rather than symmetrically here.
       serviceName: row.serviceNameRequested ?? row.serviceNameSource ?? "",
-      optionName: row.optionNameRequested ?? row.optionNameSource ?? "",
+      optionName,
       // Three `text` columns widened into unions. Only `pricingMode` has any
       // constraint behind it (`service_option_mode_fields`, and even that
       // constrains the mode's *companion* columns rather than its own value);
