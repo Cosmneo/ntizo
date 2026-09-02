@@ -8,8 +8,7 @@ import { ScrollRail } from "./scroll-rail";
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { usePopularProviders } from "@/features/landing/viewmodel/use-popular-providers";
 import { useFeaturedReviews } from "@/features/landing/viewmodel/use-featured-reviews";
-import { SurfaceArt } from "@/features/landing/ui/surface-art";
-import { BrandImage } from "@/shared/components/brand-image";
+import { BrandImage, MediaFallback } from "@/shared/components/brand-image";
 import {
   ACCENT,
   BORDER,
@@ -127,7 +126,7 @@ export function Categories() {
                   <Skeleton className="mt-3 h-[17px] w-24" />
                 </div>
               ))
-            : rail.map((cat, i) => (
+            : rail.map((cat) => (
                 <Link
                   key={cat.id}
                   // The category's own services, not an undifferentiated
@@ -139,26 +138,20 @@ export function Categories() {
                   search={{ category: cat.code }}
                   className="group"
                 >
-                  {/* The last raw `<img>` on this page, and the last broken
-                      one: a category whose stored image had been swept from
-                      the bucket drew the browser's glyph here while every
-                      other tile on the page had already been taught to fall
-                      back. The generated art still stands in for a category
-                      that never had a photograph — this rail is four tiles
-                      wide, so the pattern reads as decoration rather than as
-                      four identical marks. */}
-                  {cat.imageUrl ? (
-                    <BrandImage
-                      src={cat.imageUrl}
-                      alt=""
-                      className="aspect-[16/11] w-full rounded-2xl object-cover outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
-                    />
-                  ) : (
-                    <SurfaceArt
-                      seed={i + 1}
-                      className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
-                    />
-                  )}
+                  {/* One treatment for every tile in the rail.
+                      
+                      This used to branch: the generated art for a category
+                      with no picture, the brand mark for one whose picture
+                      failed. Both appeared at once on dev — three tiles of
+                      blue gradient beside one of the mark — which is not a
+                      rail, it is two rails sharing a row. `BrandImage` takes
+                      a null `src` as a legitimate state, so the branch is
+                      gone and all four look alike. */}
+                  <BrandImage
+                    src={cat.imageUrl}
+                    alt=""
+                    className="aspect-[16/11] w-full rounded-2xl object-cover outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
+                  />
                   <b className="font-rounded mt-3 block text-sm font-bold">
                     {cat.name}
                   </b>
@@ -232,7 +225,7 @@ export function PopularProviders() {
                   </div>
                 </div>
               ))
-            : providers.map((p, i) => {
+            : providers.map((p) => {
                 const where = [p.district, p.city].filter(Boolean).join(", ");
                 // Both halves checked: `Intl` cannot format an amount without
                 // a currency, and the read model can only promise the two
@@ -254,22 +247,16 @@ export function PopularProviders() {
                         one business, so its logo is exactly the right picture.
                         Most have neither, which is why the last fallback is
                         generated rather than grey. */}
-                    {/* `BrandImage` rather than a bare `<img>`: a photograph
-                        whose URL no longer resolves drew the browser's broken
-                        glyph, which is how this section looked on dev the day
-                        it shipped -- every seeded portfolio file is a dead URL.
-                        With no photo at all the generated art still stands in,
-                        because a rail of three is small enough for it to read
-                        as decoration rather than as three identical marks. */}
-                    {photo ? (
-                      <BrandImage
-                        src={photo}
-                        alt=""
-                        className="aspect-[16/10] w-full object-cover"
-                      />
-                    ) : (
-                      <SurfaceArt seed={i + 20} className="aspect-[16/10] w-full" />
-                    )}
+                    {/* One treatment, matching the category rail above and the
+                        stories below. A business with no photograph and one
+                        whose photograph 404s are the same thing to a reader:
+                        there is no picture. Drawing them differently only
+                        told them the page was inconsistent. */}
+                    <BrandImage
+                      src={photo}
+                      alt=""
+                      className="aspect-[16/10] w-full object-cover"
+                    />
                     <div className="grid gap-1 p-5">
                       <div className="flex items-center justify-between gap-3">
                         <b className="font-rounded text-base font-bold">{p.name}</b>
@@ -397,13 +384,16 @@ export function Stories() {
                   </div>
                 </div>
               ))
-            : stories.map((s, i) => (
+            : stories.map((s) => (
                 <article
                   key={s.id}
                   className="overflow-hidden rounded-2xl bg-[color:var(--l-card)] shadow-sm"
                 >
                   <div className="relative">
-                    <SurfaceArt seed={i + 40} className="aspect-[16/9] w-full" />
+                    {/* A review carries no picture of its own, so this is
+                        always the fallback — drawn directly rather than
+                        through `BrandImage` with a permanently null `src`. */}
+                    <MediaFallback className="aspect-[16/9] w-full" />
                     {/* The author's initials, or a dash where they set no
                         name. `initialsOf("")` would render an empty circle,
                         which reads as a failed image rather than as somebody

@@ -32,6 +32,14 @@ import { BrandMark } from "@/shared/components/brand-mark";
  * `aria-hidden`, because this says nothing a reader needs: the heading beside
  * it already names what the picture would have shown, and announcing "no
  * image" is an apology nobody asked for.
+ *
+ * **It sets no size of its own.** It used to carry `h-full w-full`, which
+ * fought any caller passing an aspect ratio: `h-full` resolves against a
+ * parent with no height while `aspect-[16/11]` derives height from width, and
+ * the two together left one tile in a rail of four visibly taller than its
+ * neighbours. Every call site already passes its own sizing -- the same
+ * `className` the `<img>` would have worn -- so the fallback simply wears it
+ * too and lands in exactly the box the picture would have filled.
  */
 export function MediaFallback({ className }: { className?: string }) {
   return (
@@ -39,7 +47,7 @@ export function MediaFallback({ className }: { className?: string }) {
       aria-hidden="true"
       data-testid="media-fallback"
       className={cn(
-        "grid h-full w-full place-items-center",
+        "grid place-items-center overflow-hidden",
         "bg-[color-mix(in_srgb,var(--color-muted)_88%,var(--color-primary))]",
         className,
       )}
