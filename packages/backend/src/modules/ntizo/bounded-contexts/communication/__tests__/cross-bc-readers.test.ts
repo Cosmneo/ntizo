@@ -71,7 +71,11 @@ async function makeProvider(ownerUserId: string, label: string): Promise<string>
 
 let customerId: string;
 let memberId: string;
-let strangerId: string;
+// Never inserted as a user row on purpose: `isOwnedBy` compares plain
+// strings against `booking.customerId`, and a caller who was never a real
+// user still cannot own a booking. Proves the negative case needs no
+// fixture beyond the id itself.
+const strangerId = crypto.randomUUID();
 let adminId: string;
 let suspendedAdminId: string;
 let providerId: string;
@@ -84,13 +88,11 @@ let bookingId: string;
 beforeAll(async () => {
   customerId = newUser();
   memberId = newUser();
-  strangerId = newUser();
   adminId = newUser();
   suspendedAdminId = newUser();
   await db.insert(user).values([
     { id: customerId, email: `cbr-c-${suffix}@ntizo.test`, role: "customer", status: "active" },
     { id: memberId, email: `cbr-m-${suffix}@ntizo.test`, role: "customer", status: "active" },
-    { id: strangerId, email: `cbr-s-${suffix}@ntizo.test`, role: "customer", status: "active" },
     { id: adminId, email: `cbr-a-${suffix}@ntizo.test`, role: "admin", status: "active" },
     { id: suspendedAdminId, email: `cbr-sa-${suffix}@ntizo.test`, role: "admin", status: "suspended" },
   ]);
