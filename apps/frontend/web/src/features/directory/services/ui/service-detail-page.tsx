@@ -66,15 +66,24 @@ export function ServiceDetailPage({ id }: { id: string }) {
 }
 
 /**
- * The service page proper, built to read like its provider's.
+ * The service page proper.
  *
- * Same skeleton as `ProviderDetailPage`, deliberately: breadcrumb, the photo
- * collage full width, then two columns — what the service is on the left,
- * what it costs and how to act on the right. A customer moves between these
- * two pages constantly (a service names its provider, a provider lists its
- * services), and two pages built from different parts make that movement feel
- * like leaving the site. The rail is sticky because it is the part a reader
+ * Breadcrumb, then the title block full width, then two columns — the photo
+ * collage and everything the service *is* on the left, what it costs and how
+ * to act on the right. The rail is sticky because it is the part a reader
  * acts on; the left column is the part they read once and scroll past.
+ *
+ * **The header sits above the grid, and the collage inside it.** This page
+ * used to open with a full-width collage and name the service underneath it,
+ * matching `ProviderDetailPage` line for line. That symmetry was deliberate —
+ * a customer moves between these two pages constantly — but it cost this page
+ * the thing it is for: the title landed under 520px of pictures, and the rail
+ * under the whole gallery, so the name and the price could not be read in one
+ * screen. Naming the thing first and letting the collage share its row with
+ * the rail is what every mature booking page does, and the two pages still
+ * share every part below the fold. `ProviderDetailPage` is the one now out of
+ * step; it should follow, but its header is `ProviderHero`, not this one, so
+ * it is a separate move rather than the same patch twice.
  *
  * **The packages moved out of the rail and into the body.** `PackageChooser`
  * held the radio list and the total together in a 22rem column, which is too
@@ -137,44 +146,63 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
       <main className="page-shell py-8">
         <Breadcrumb service={service} />
 
-        {/* No badge over the main photo, though `DetailGallery` offers the
-            slot: a verification tick belongs to the business, and this page's
-            title is a service. The rail says it in words instead, once, and
-            only when it is true. */}
-        <DetailGallery key={service.id} images={service.imageUrls} alt={service.name} />
+        {/*
+         * The title block sits above the collage, full width, rather than
+         * inside the left column beside it.
+         *
+         * It used to open with the photographs and name the service under
+         * them, which put the one line that confirms "yes, this is the thing
+         * I clicked" below a 520px-tall band of pictures — and pushed the
+         * rail, the other half of that confirmation, a whole gallery down the
+         * page. Lifting the header out of the grid lets the collage and the
+         * rail share the first row instead, so the name, the price and the
+         * pictures land in one screen rather than two. It is also the order
+         * every mature booking site settled on, for the same reason.
+         *
+         * `min-w-0` survives the move: the title is unbroken provider text
+         * and a long unspaced word would otherwise widen the whole shell.
+         */}
+        <header className="min-w-0">
+          {/* The eyebrow names the business first and links to it. On the
+              provider page the same line names the trade, because the
+              business is the title there; here the business is the thing
+              a reader most often wants to leave for, and burying that
+              link in the rail's card alone would hide the page's closest
+              neighbour. */}
+          <p className="type-body text-[var(--color-muted-foreground)]">
+            <Link
+              to="/providers/$slug"
+              params={{ slug: service.providerSlug }}
+              className="hover:text-[var(--color-foreground)] hover:underline"
+            >
+              {service.providerName}
+            </Link>
+            {` · ${[providerKind, service.categoryName].join(" · ")}`}
+          </p>
 
-        <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+          <h1 className="type-h1 mt-1.5">{service.name}</h1>
+
+          <p className="type-body mt-3.5 flex flex-wrap items-center gap-x-7 gap-y-2">
+            <ServiceHeaderRating service={service} />
+            {place && (
+              <span className="inline-flex items-center gap-1 text-[var(--color-muted-foreground)]">
+                <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                {place}
+              </span>
+            )}
+          </p>
+        </header>
+
+        {/* `pt-7`, where this used to be `py-10`: the 40px belonged under a
+            full-width gallery, and above one that now follows a title it
+            reads as a gap in the header rather than the start of the body. */}
+        <div className="grid gap-10 pt-7 pb-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="min-w-0">
-            <header className="min-w-0">
-              {/* The eyebrow names the business first and links to it. On the
-                  provider page the same line names the trade, because the
-                  business is the title there; here the business is the thing
-                  a reader most often wants to leave for, and burying that
-                  link in the rail's card alone would hide the page's closest
-                  neighbour. */}
-              <p className="type-body text-[var(--color-muted-foreground)]">
-                <Link
-                  to="/providers/$slug"
-                  params={{ slug: service.providerSlug }}
-                  className="hover:text-[var(--color-foreground)] hover:underline"
-                >
-                  {service.providerName}
-                </Link>
-                {` · ${[providerKind, service.categoryName].join(" · ")}`}
-              </p>
-
-              <h1 className="type-h1 mt-1.5">{service.name}</h1>
-
-              <p className="type-body mt-3.5 flex flex-wrap items-center gap-x-7 gap-y-2">
-                <ServiceHeaderRating service={service} />
-                {place && (
-                  <span className="inline-flex items-center gap-1 text-[var(--color-muted-foreground)]">
-                    <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                    {place}
-                  </span>
-                )}
-              </p>
-            </header>
+            {/* No badge over the main photo, though `DetailGallery` offers the
+                slot: a verification tick belongs to the business, and this
+                page's title is a service. The rail says it in words instead,
+                once, and only when it is true. */}
+            <DetailGallery key={service.id} images={service.imageUrls} alt={service.name} />
 
             <DetailFacts
               facts={[
