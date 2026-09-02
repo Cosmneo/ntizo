@@ -11,6 +11,13 @@ import {
 import type { AddressDTO, CurrentUserDTO } from "@ntizo/shared";
 import type { BookingDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
+import { widenAsyncTimeout } from "./route-suite-timeout";
+
+// This file was the first route suite to go red on a loaded full run, and its
+// per-call `SETTLES_IN` constant is what this replaces — one setting covering
+// every wait, including the ones nobody has written yet. See
+// `widenAsyncTimeout`.
+widenAsyncTimeout();
 
 /**
  * The route itself — the session guard, the remount key, and the fact that it
@@ -27,6 +34,7 @@ import i18n from "@/shared/lib/i18n";
  * It lives under `src/routes/` because `boundaries/dependencies` forbids `ui`
  * importing `routes`, so this is the only layer that can hold both halves.
  */
+
 const fakes = vi.hoisted(() => ({
   booking: null as unknown,
   addresses: [] as AddressDTO[],
@@ -220,21 +228,6 @@ function renderRoute(
   return { router };
 }
 
-/**
- * Longer than `waitFor`'s own default of one second, and measured rather than
- * guessed: the first render in this file costs ~450ms on an idle machine —
- * the route's async `beforeLoad`, then the booking query, then the effect
- * that reads it, on top of a first mount that processes the app's CSS
- * (`vite.config.ts` sets `css: true`). One second is comfortable alone and
- * not comfortable at all beside 138 other files and a database-backed backend
- * suite, which is how this file first went red.
- *
- * These assertions are about *where* the route sends somebody, never about
- * how quickly, so a bound that fails on a loaded machine is testing the
- * machine.
- */
-const SETTLES_IN = { timeout: 4000 };
-
 beforeEach(async () => {
   await i18n.changeLanguage("pt-MZ");
   vi.setSystemTime(new Date(NOW));
@@ -255,7 +248,7 @@ describe("the /booking/$bookingId/confirm route", () => {
     // rather than on the home page.
     const { router } = renderRoute("/booking/bk-1/confirm", { signedIn: false });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe("/sign-in"), SETTLES_IN);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/sign-in"));
     expect(router.state.location.search).toMatchObject({
       next: "/booking/bk-1/confirm",
     });
@@ -273,7 +266,7 @@ describe("the /booking/$bookingId/confirm route", () => {
         expired: true,
         optionId: "opt-2",
       });
-    }, SETTLES_IN);
+    });
   });
 
   it("takes nothing from the URL but the booking id", async () => {
@@ -284,7 +277,7 @@ describe("the /booking/$bookingId/confirm route", () => {
     // voice.
     const { router } = renderRoute("/booking/bk-1/confirm?serviceId=svc-999&optionId=opt-999");
 
-    await waitFor(() => expect(router.state.location.pathname).toBe("/book/svc-1"), SETTLES_IN);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/book/svc-1"));
     expect(router.state.location.search).toMatchObject({ optionId: "opt-2" });
   });
 
@@ -316,17 +309,14 @@ describe("the /booking/$bookingId/confirm route", () => {
     );
     const { router } = renderRoute("/booking/bk-1/confirm", { status: "DRAFT" });
 
-    expect(await screen.findByText("Portão azul", undefined, SETTLES_IN)).toBeInTheDocument();
+    expect(await screen.findByText("Portão azul")).toBeInTheDocument();
 
     await router.navigate({
       to: "/booking/$bookingId/confirm",
       params: { bookingId: "bk-2" },
     });
 
-    await waitFor(
-      () => expect(screen.getByText("Terceiro andar")).toBeInTheDocument(),
-      SETTLES_IN,
-    );
+    await waitFor(() => expect(screen.getByText("Terceiro andar")).toBeInTheDocument());
     expect(screen.queryByText("Portão azul")).not.toBeInTheDocument();
   });
 });

@@ -2655,7 +2655,29 @@ No other route has one.
 **Trigger:** any bug traced to a search param, a loader or a route-level guard — and before adding
 route-level logic that a page's own tests cannot see.
 
-## #112 — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
+## ~~#112 — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose~~ — RESOLVED 2026-09-02
+
+It stopped being a prediction. On a loaded `bun run test`, `booking.$bookingId.details` and
+`book.$serviceId` — the second file this entry named — both went red, repeatedly, on assertions
+that pass every time their file is run alone. Reproduced on an **untouched tree** (HEAD~1, four
+web-suite runs: one failure, one clean, one with both) so it is the bound failing rather than any
+change.
+
+**The local fix, not the global one.** `asyncUtilTimeout` in `vite.config.ts` would change the
+bound for 141 files nobody had read, some of which may legitimately want a wait to give up
+quickly; the flake is a property of route suites specifically, which mount the router, resolve an
+async `beforeLoad` and settle a query before anything is assertable.
+
+**But not the per-call constant this entry proposed either**, because that is what rotted: the
+confirm suite's `SETTLES_IN` had to be threaded through every wait, and the next two route suites
+were written without it — which is exactly how this entry came to name a second file. All three
+now call `widenAsyncTimeout()` from `routes/__tests__/route-suite-timeout.ts`, one
+`configure({ asyncUtilTimeout: 4000 })` covering every wait in the file including `findBy*` and
+including the ones nobody has written yet. `SETTLES_IN` and its threading are gone. Vitest isolates
+each test file, so the setting reaches nothing but the file that imports it, and the module sits
+beside the suites that need it, which is where the next route suite's author will find it.
+
+## #112 (original) — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
 
 `waitFor`'s default timeout is one second. The first render in either checkout route suite costs
 **~450ms measured on an idle machine** — the route's async `beforeLoad`, then the booking query, then
@@ -3080,7 +3102,47 @@ any repeat of this report from a customer stuck on Continuar.
 
 ---
 
-## #123 — Step 1's roster counts go blank for everybody else the moment a professional is picked
+## ~~#123 — Step 1's roster counts go blank for everybody else the moment a professional is picked~~ — RESOLVED 2026-09-02
+
+**Step 1 stopped filtering its fetch and narrows in the browser instead.** `ChooseWhenPage` now
+calls `availability.forService` with `memberId: undefined` always, and `daysFor(days, memberId)`
+(`directory/availability/domain/day-strip.ts`) produces the narrowed window everything else reads.
+Still one query — not a second request — and it is the only version from which both readings can
+be taken: the roster's day for the picker, this customer's day for the grid, the strip and the
+confirm.
+
+**The mock was the reason this reached review as a note rather than a red test, and it was fixed
+first.** `choose-when-page.test.tsx` stubbed `useServiceAvailability` with a fixture that ignored
+`memberId` entirely, so "anyone" and "Flávio" got identical responses and nothing that turned on
+the difference could fail. It now reproduces what `ListServiceAvailability` actually does: a start
+the named member is not free at is not returned, a returned start's `memberIds` names only the
+person asked about, and the top-level `memberIds` stays the full roster. Making it honest
+immediately reddened a second assertion nobody had noticed — "opens on the slot the URL already
+carries" was reading two cards off a response that should only have carried one, and now names a
+member who is genuinely free at both.
+
+**Each consequence was taken deliberately rather than allowed to follow, and each has its own
+test:**
+
+- *The date strip* counts `startsByDate(narrowedDays)`, not the roster's. The customer has just
+  said which person they are asking about, and a card promising two free times on a day that
+  person has one would disagree with the grid directly underneath it.
+- *`selectedStart`* is looked up in the narrowed day, so a link naming a time that exists only for
+  somebody else leaves the confirm disabled instead of arming it over a card the page is not
+  drawing.
+- *`seatsLeft`* now means seats summed across everyone free at a moment rather than across the one
+  person asked about. Nothing in the web app reads it — `startsByDate` counts starts and says why —
+  so the change is inert, and `daysFor`'s doc records it so the next reader does not inherit the
+  narrower meaning by assumption.
+- *`SERVICE_MEMBER_CANNOT_PERFORM` from the query* is now unreachable, and that mattered: an id off
+  the roster used to come back as that error and print "Essa pessoa já não presta este serviço."
+  Unfiltered, the query succeeds, and the customer got the silent version instead — nothing ticked
+  in the picker, and "sem horários livres neste dia" over a business open all week. The page now
+  makes the same determination itself, against `data.memberIds`, and prints the same key. The
+  translations stay because the sentence is still the right one; only the side of the wire that
+  notices has moved.
+
+## #123 (original) — Step 1's roster counts go blank for everybody else the moment a professional is picked
 
 `MemberPicker` is now a vertical list, and each row carries how much of the shown day that person
 still has free ("6 horas · a próxima às 12:30"), summed off `days[].starts[].memberIds` in the

@@ -8,7 +8,12 @@ import { addDays, localDateAt } from "@ntizo/shared/datetime";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
 import { EmptyCard } from "@/shared/components/empty-card";
-import { endOfStart, startsByDate, weekOf } from "@/features/directory/availability/domain/day-strip";
+import {
+  daysFor,
+  endOfStart,
+  startsByDate,
+  weekOf,
+} from "@/features/directory/availability/domain/day-strip";
 import { distinctMemberIds, panelMode } from "@/features/directory/availability/domain/types";
 import type { Start } from "@/features/directory/availability/domain/types";
 import { useServiceAvailability } from "@/features/directory/availability/viewmodel/use-service-availability";
@@ -332,9 +337,27 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   const addressChoiceSettled = !viewerPending && (!viewer || !addressesLoading);
 
   const week = weekOf(anchorDate);
+  /**
+   * **The whole roster's window, never one person's, whatever the picker
+   * says.**
+   *
+   * This used to pass `search.memberId`, and `ListServiceAvailability` scopes
+   * its entire projection to it — so a filtered response describes the chosen
+   * performer and mentions nobody else. That is the right answer for a
+   * calendar and the wrong one for a roster: the picker's rows count off
+   * `days[].starts[].memberIds`, so the moment somebody was chosen every
+   * other row read "sem horários" about people whose calendars were full. On
+   * the salon of twelve this list exists for, eleven of the twelve rows were
+   * a lie.
+   *
+   * Asking unfiltered and narrowing in the browser (`daysFor`) is the same
+   * one query — not a second request — and it is the only version from which
+   * both readings can be taken: the roster's day for the picker, this
+   * customer's day for the grid and the strip.
+   */
   const { data, isPending, isError, error, refetch } = useServiceAvailability({
     serviceId: service.id,
-    memberId: search.memberId,
+    memberId: undefined,
     from: week[0]!,
     to: week[6]!,
   });
@@ -499,10 +522,31 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   }
 
   const panel = serviceDetailPanel(service);
-  const day = data?.days.find((d) => d.date === shownDate);
+  /**
+   * **Two readings of one response, and everything below picks one on
+   * purpose.**
+   *
+   * `rosterDay` is the day as the whole business has it — what the picker
+   * counts, because its rows speak for the people the customer has *not*
+   * chosen as much as the one they have. `narrowedDays` is the same window
+   * answering the question actually asked: only the times the chosen
+   * performer is free at, which is what the grid may offer, what the date
+   * strip may count, and what the confirm may hold.
+   *
+   * Neither is derivable from the other after the fact, which is why the
+   * fetch above stopped filtering. See `daysFor`.
+   */
+  const narrowedDays = daysFor(data?.days ?? [], search.memberId);
+  const rosterDay = data?.days.find((d) => d.date === shownDate);
+  const day = narrowedDays.find((d) => d.date === shownDate);
   // Derived from the URL rather than held beside it, so there is only ever
   // one answer to "which time is chosen" — and so a slot arrived at by link
   // or by coming back from sign-in is already selected on arrival.
+  //
+  // Looked up in the **narrowed** day, so a link naming a time that exists
+  // only for somebody else dies against the grid rather than arming a confirm
+  // over a card the page is not drawing — the same rule the cross-zone case
+  // had to learn, and the reason the confirm follows the grid and not the URL.
   const selectedStart = day?.starts.find((s) => s.startsAt === search.startsAt) ?? null;
   /**
    * **`booking.create` refuses an hourly option, and nothing stops a provider
@@ -620,6 +664,29 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
     );
   } else if (panelMode(data) === "quote") {
     body = <p className="type-body text-[var(--color-muted-foreground)]">{td("availabilityQuoteNotice")}</p>;
+  } else if (search.memberId && !data.memberIds.includes(search.memberId)) {
+    /**
+     * A link naming somebody who no longer performs this service.
+     *
+     * **Said here because it is no longer said by the server.** The query used
+     * to be sent with `search.memberId`, and `ListServiceAvailability` refuses
+     * an id off the roster with `SERVICE_MEMBER_CANNOT_PERFORM` — which
+     * reached the error branch above and printed exactly this sentence. Now
+     * that the fetch is unfiltered that refusal cannot happen, and without
+     * this branch the customer got the silent version instead: a picker with
+     * no row ticked, a grid narrowed by `daysFor` to nothing, and "sem
+     * horários livres neste dia" over a business that is open all week.
+     *
+     * The same key the query's own failure used, deliberately — one sentence
+     * for one situation, whichever side of the wire notices it. It is
+     * reachable by a bookmark, a shared link, and by a provider removing a
+     * member while somebody is mid-checkout.
+     */
+    body = (
+      <p className="text-sm text-[var(--color-destructive)]">
+        {td("availabilityForServiceError.SERVICE_MEMBER_CANNOT_PERFORM")}
+      </p>
+    );
   } else {
     const todayIso = localDateAt(data.timezone, new Date());
     // The roster is the response's top-level `memberIds` — who performs this
@@ -639,9 +706,11 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
           locale={locale}
           // How many bookable times each day carries, so the strip can say so
           // on the card rather than making the customer open seven days to
-          // find out. Read off the same response the grid draws from, which
-          // is what keeps the number and the times under it in agreement.
-          startsByDate={startsByDate(data.days)}
+          // find out. **Narrowed, like the grid**: the customer has just said
+          // which person they are asking about, and a card promising two free
+          // times on a day that person has one would disagree with the grid
+          // directly underneath it.
+          startsByDate={startsByDate(narrowedDays)}
           onSelectDate={selectDate}
           onPreviousWeek={() => goToWeek(addDays(anchorDate, -7))}
           onNextWeek={() => goToWeek(addDays(anchorDate, 7))}
@@ -662,15 +731,13 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
           selectedMemberId={search.memberId}
           onChange={selectMember}
           performers={service.performers}
-          // The same day the grid below is drawing, so a row saying "6 horas"
-          // and the times under it can never be counting different days.
-          //
-          // These are the starts of *this* response, and this response is
-          // fetched under `search.memberId` — so once somebody is chosen,
-          // `availability.forService` has narrowed `days[].starts[]` to that
-          // one person and the sub-lines can only describe them. See
-          // `memberDayFree`'s own doc comment, and follow-up #123.
-          starts={day?.starts ?? []}
+          // **The roster's day, not the grid's.** Every other consumer on
+          // this page wants the window narrowed to whoever is chosen; this
+          // one is the single place that must see all of it, because a row
+          // saying what Ana has free is worthless on a page filtered to
+          // Flávio. Same date as the grid below, so the two can never be
+          // counting different days.
+          starts={rosterDay?.starts ?? []}
           locale={locale}
           // `data.timezone`, never the device's: the same rule `chosenCivilDate`
           // above already had to learn the hard way.

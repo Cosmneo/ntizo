@@ -37,12 +37,17 @@ import type { Start } from "@/features/directory/availability/domain/types";
  * still has free — which is the fact that decides the choice, and which a
  * pill had nowhere to put.
  *
- * **The sub-lines describe exactly the `starts` handed in.** They are a sum
- * over `days[].starts[].memberIds`, which is who is free at each moment, and
- * they cost no extra query. A count of moments is not a seat index: how many
- * openings a day holds is a fact a customer is being invited to act on, where
- * which seat they would occupy is not, and nothing here publishes the
- * second.
+ * **The sub-lines are a sum over `days[].starts[].memberIds`** — who is free
+ * at each moment — and cost no extra query. A count of moments is not a seat
+ * index: how many openings a day holds is a fact a customer is being invited
+ * to act on, where which seat they would occupy is not, and nothing here
+ * publishes the second.
+ *
+ * **Hand it the whole roster's day, never one narrowed to the chosen
+ * performer.** These rows speak for the people the customer has *not* picked
+ * as much as for the one they have; fed a narrowed day they report zero for
+ * everybody else, which is a list of twelve saying eleven things that are not
+ * true. See `daysFor`.
  */
 export function MemberPicker({
   memberIds,
@@ -152,10 +157,22 @@ function formatTime(startsAt: string, locale: string, timeZone: string): string 
  * The muted second line of a row: how much of the shown day this person still
  * has free, and when the next of it is.
  *
+ * **It borrows the day card's own word for the same number** — "6 livres",
+ * matching `availabilityDayFree`'s "17 livres" on the strip above. It said
+ * "6 horas" first, and that was a different unit dressed as the same one: the
+ * number is bookable *starts*, so six of them on a thirty-minute service is
+ * three hours and on a ninety-minute one is nine. Two numbers on one screen
+ * that a customer cannot add up are worse than one.
+ *
  * **A person with nothing free that day says so and stays selectable.** They
  * are not dropped from the list and they are not `disabled`: a customer may
  * well pick them precisely to go looking at another day, and a roster that
  * changed length as the week was browsed would make the list a moving target.
+ * That line names no day — "sem horários", not "sem horas hoje", which was
+ * false on every day but one and read as a claim about today to somebody
+ * looking at next Tuesday. The selected date is on the card directly above
+ * the list, so repeating it in twelve rows would cost the space the row
+ * hasn't got to say something already on screen.
  * `disabled` is separately out of the question — the day cards already
  * learned that a disabled button is pulled out of the tab order, so the very
  * label explaining why it cannot be used is the one thing that can never be

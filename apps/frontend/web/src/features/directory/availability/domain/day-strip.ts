@@ -145,23 +145,72 @@ export function endOfStart(startsAt: string, durationMinutes: number): string {
 }
 
 /**
+ * Whether one performer can take an appointment at this moment.
+ *
+ * `undefined` is "anyone", which is free at every start there is — the same
+ * absence `availability.forService` itself reads that way, and the fact the
+ * picker's first row stands for.
+ *
+ * **Read off `start.memberIds` — who is free at that moment — and never off
+ * `seatsLeft`.** A seat count is how many bookings one start still holds,
+ * which is a fact about the provider's capacity; every question in this file
+ * is about *who*, and reaching for the seat count to answer it would publish
+ * something nobody asked for.
+ */
+function isFreeAt(start: Start, memberId: string | undefined): boolean {
+  return memberId === undefined || start.memberIds.includes(memberId);
+}
+
+/**
+ * The window narrowed to one performer: every date still present, each
+ * carrying only the starts that person is free at.
+ *
+ * **This is the narrowing the server used to do, moved to the browser, and it
+ * had to move.** `availability.forService` scopes its whole projection to
+ * `input.memberId` (`ListServiceAvailability`'s `queriedMemberIds`), so a
+ * response fetched under a filter describes one person and mentions nobody
+ * else. That is fine for a calendar and fatal for a roster: the picker's rows
+ * count off `days[].starts[].memberIds`, so under a filtered response every
+ * *other* performer read as having nothing free — eleven rows of a salon of
+ * twelve saying "sem horários" about people whose calendars were full. The
+ * page now asks for the whole roster once and narrows here, which is the same
+ * single query and leaves both readings available from it.
+ *
+ * **Every date survives, including the ones that end up empty.** A day with
+ * nothing on it is something the date strip has to draw — a gap in the week
+ * reads as a rendering fault — and a caller left to infer a closed day from a
+ * missing key infers it wrongly. This is the same promise the projection
+ * itself makes about its window.
+ *
+ * `seatsLeft` rides through untouched and now means something wider than it
+ * did: on an unfiltered start it is the seats summed across *everyone* free
+ * at that moment rather than across the one person asked about. Nothing in
+ * this app reads it — `startsByDate` deliberately counts starts instead, and
+ * says why — so the change is inert; it is recorded here because the next
+ * reader of that field would otherwise inherit the narrower meaning by
+ * assumption.
+ */
+export function daysFor(
+  days: readonly AvailabilityDayDTO[],
+  memberId: string | undefined,
+): AvailabilityDayDTO[] {
+  return days.map((day) => ({
+    ...day,
+    starts: day.starts.filter((start) => isFreeAt(start, memberId)),
+  }));
+}
+
+/**
  * How much of one day a single performer still has free: how many bookable
  * starts they appear at, and the earliest of them.
  *
  * `undefined` is "anyone" — every start on the day, which is the fact the
  * picker's first row stands for.
  *
- * **Read off `starts[].memberIds` — who is free at that moment — and never
- * off `seatsLeft`.** A seat count is how many bookings one start still holds,
- * which is a fact about the provider's capacity; this answers "how much of
- * this day can I have with this person", and summing seats would answer a
- * question nobody asked in a place that asked "who".
- *
- * **The counts describe exactly the starts handed in, and nothing wider.**
- * `availability.forService` narrows `days[].starts[]` to the one member a
- * caller named (`ListServiceAvailability`'s own `queriedMemberIds`), so a
- * response fetched under a `memberId` filter can only ever describe that one
- * person — see `member-picker.tsx` for what the picker does with that.
+ * **Hand it the roster's day, never a narrowed one.** The whole point of the
+ * picker's sub-lines is that they speak for everybody at once, including the
+ * people the customer has *not* chosen; fed the output of `daysFor` they would
+ * report zero for all of them. See `daysFor` for the defect that is.
  *
  * The earliest is chosen by `minuteOfDay`, not by array position: the read
  * model promises a day's set of starts and not an order for them, and
@@ -173,8 +222,7 @@ export function memberDayFree(
   starts: readonly Start[],
   memberId: string | undefined,
 ): { count: number; nextStartsAt: string | null } {
-  const theirs =
-    memberId === undefined ? starts : starts.filter((s) => s.memberIds.includes(memberId));
+  const theirs = starts.filter((start) => isFreeAt(start, memberId));
   let earliest: Start | null = null;
   for (const start of theirs) {
     if (earliest === null || start.minuteOfDay < earliest.minuteOfDay) earliest = start;

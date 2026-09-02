@@ -120,7 +120,7 @@ describe("MemberPicker", () => {
     renderPicker({ performers: [{ id: "m1", firstName: "Ana", avatarUrl: null }] });
 
     expect(
-      screen.getByRole("radio", { name: "Ana, 3 horas · a próxima às 11:00" }),
+      screen.getByRole("radio", { name: "Ana, 3 livres · a próxima às 11:00" }),
     ).toBeInTheDocument();
   });
 
@@ -132,7 +132,7 @@ describe("MemberPicker", () => {
 
     expect(
       screen.getByRole("radio", {
-        name: "Qualquer pessoa disponível, 4 horas · a próxima às 11:00",
+        name: "Qualquer pessoa disponível, 4 livres · a próxima às 11:00",
       }),
     ).toBeInTheDocument();
   });
@@ -147,7 +147,7 @@ describe("MemberPicker", () => {
     });
 
     expect(
-      screen.getByRole("radio", { name: "Ana, 2 horas · a próxima às 09:00" }),
+      screen.getByRole("radio", { name: "Ana, 2 livres · a próxima às 09:00" }),
     ).toBeInTheDocument();
   });
 
@@ -161,7 +161,7 @@ describe("MemberPicker", () => {
       performers: [{ id: "m2", firstName: "Flávio", avatarUrl: null }],
     });
 
-    const row = screen.getByRole("radio", { name: "Flávio, sem horas hoje" });
+    const row = screen.getByRole("radio", { name: "Flávio, sem horários" });
     expect(row).toBeEnabled();
 
     await userEvent.click(row);

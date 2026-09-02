@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback } from "@ntizo/frontend-ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@ntizo/frontend-ui";
 import { initialsFrom } from "@/shared/lib/initials";
 import type { ServicePerformerDTO } from "@ntizo/shared/read-models";
 
@@ -15,7 +15,9 @@ import type { ServicePerformerDTO } from "@ntizo/shared/read-models";
  * First name and photo only, never a surname — these are employees, not
  * account holders, publishing more than `ServicePerformerDTO` carries is not
  * available here. A performer with no photo falls back to a monogram rather
- * than a blank circle, matching every other avatar in the app.
+ * than a blank circle, matching every other avatar in the app — and so does
+ * one whose photo *fails*, which is what `AvatarImage` below is for and what
+ * a bare `<img>` here could not do.
  *
  * `firstName` carries a `.default("")` in its schema, so a performer whose
  * profile has no first name resolves to an empty string, not to an absent
@@ -51,13 +53,18 @@ export function ServicePerformers({
               className="flex w-20 flex-col items-center gap-1.5 text-center"
             >
               <Avatar className="h-14 w-14">
-                {performer.avatarUrl && (
-                  <img
-                    src={performer.avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
+                {/* `AvatarImage`, not a bare `<img>`. With both children
+                    mounted, a photo that 404s still lays the element out at
+                    its intrinsic (zero) content size holding `min-width:
+                    auto`, which pushes the fallback outside the
+                    `overflow-hidden` circle and clips it — so a dead photo
+                    rendered an empty circle here and the monogram never
+                    appeared. `AvatarImage` unmounts itself on `error`,
+                    leaving the fallback as the box's only child; see its own
+                    doc comment for why it is not Radix's primitive. The
+                    availability picker's rows already did this correctly,
+                    which is how the difference was noticed. */}
+                {performer.avatarUrl && <AvatarImage src={performer.avatarUrl} alt="" />}
                 <AvatarFallback>{initialsFrom(label)}</AvatarFallback>
               </Avatar>
               <span className="type-caption w-full truncate">{label}</span>
