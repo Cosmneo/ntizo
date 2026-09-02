@@ -114,8 +114,8 @@ export function Categories() {
     <section id="categorias" className={SECTION_PAD}>
       <div className="page-shell">
         {/* No "see all": the page it led to is gone, and a link to a 404 is
-            worse than no link. The tiles below still all land on /providers
-            undifferentiated — see the note on the rail. */}
+            worse than no link. Each tile now carries its own category through
+            to the services browse, so the rail is navigable without one. */}
         <Head title={t("categoriesTitle")} blurb={t("categoriesBlurb")} />
         <ScrollRail columns={4} cardWidth="44%">
           {isLoading
@@ -130,22 +130,30 @@ export function Categories() {
             : rail.map((cat, i) => (
                 <Link
                   key={cat.id}
-                  // Plain, until the directory can filter by category. A link
-                  // carrying a parameter the page ignores is a control that
-                  // lies about being one.
-                  to="/providers"
+                  // The category's own services, not an undifferentiated
+                  // directory. This used to go to a bare `/providers` with a
+                  // note explaining that no page could filter by category yet
+                  // — `/services` has taken a `category` since the browse page
+                  // shipped, so the tile now lands on the thing it names.
+                  to="/services"
+                  search={{ category: cat.code }}
                   className="group"
                 >
+                  {/* The last raw `<img>` on this page, and the last broken
+                      one: a category whose stored image had been swept from
+                      the bucket drew the browser's glyph here while every
+                      other tile on the page had already been taught to fall
+                      back. The generated art still stands in for a category
+                      that never had a photograph — this rail is four tiles
+                      wide, so the pattern reads as decoration rather than as
+                      four identical marks. */}
                   {cat.imageUrl ? (
-                    <img
+                    <BrandImage
                       src={cat.imageUrl}
                       alt=""
                       className="aspect-[16/11] w-full rounded-2xl object-cover outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
                     />
                   ) : (
-                    // The generated art stays as the stand-in for a category
-                    // with no photograph yet — seeded by position, so the same
-                    // tile keeps the same pattern between visits.
                     <SurfaceArt
                       seed={i + 1}
                       className="aspect-[16/11] w-full rounded-2xl outline-offset-2 group-hover:outline-2 group-hover:outline-[color:var(--l-accent)]"
