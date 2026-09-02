@@ -351,12 +351,18 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
  * exactly this, and `ProviderDetailPage`'s own breadcrumb already uses it.
  *
  * The last crumb is text, not a link to the page you are already on.
+ *
+ * `mb-6` where `ProviderDetailPage`'s identical trail uses `mb-4`. The gallery
+ * used to sit between this and the header; now the eyebrow follows it
+ * directly, and two muted lines 16px apart — one separated by slashes, one by
+ * middle dots — read as one confused block. The extra 8px is what separates
+ * "where you are" from "what this is".
  */
 function Breadcrumb({ service }: { service: ServiceDetailDTO }) {
   const { t } = useTranslation("directory");
 
   return (
-    <nav aria-label={t("breadcrumbLabel")} className="type-caption mb-4">
+    <nav aria-label={t("breadcrumbLabel")} className="type-caption mb-6">
       <ol className="flex list-none flex-wrap items-center gap-1.5 p-0 text-[var(--color-muted-foreground)]">
         <li>
           <Link to="/" className="hover:text-[var(--color-foreground)] hover:underline">
