@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomerRouteRouteImport } from './routes/_customer/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as BecomeProviderRouteImport } from './routes/become-provider'
+import { Route as CareersRouteImport } from './routes/careers'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
@@ -78,6 +80,11 @@ const PublicRouteRoute = PublicRouteRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -86,6 +93,11 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
 const BecomeProviderRoute = BecomeProviderRouteImport.update({
   id: '/become-provider',
   path: '/become-provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CareersRoute = CareersRouteImport.update({
+  id: '/careers',
+  path: '/careers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -352,7 +364,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/about': typeof AboutRoute
   '/become-provider': typeof BecomeProviderRoute
+  '/careers': typeof CareersRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -405,7 +419,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/become-provider': typeof BecomeProviderRoute
+  '/careers': typeof CareersRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -462,7 +478,9 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/provider': typeof ProviderRouteRouteWithChildren
+  '/about': typeof AboutRoute
   '/become-provider': typeof BecomeProviderRoute
+  '/careers': typeof CareersRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -519,7 +537,9 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/provider'
+    | '/about'
     | '/become-provider'
+    | '/careers'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -572,7 +592,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/become-provider'
+    | '/careers'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -628,7 +650,9 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/provider'
+    | '/about'
     | '/become-provider'
+    | '/careers'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -686,7 +710,9 @@ export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ProviderRouteRoute: typeof ProviderRouteRouteWithChildren
+  AboutRoute: typeof AboutRoute
   BecomeProviderRoute: typeof BecomeProviderRoute
+  CareersRoute: typeof CareersRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
@@ -723,6 +749,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -735,6 +768,13 @@ declare module '@tanstack/react-router' {
       path: '/become-provider'
       fullPath: '/become-provider'
       preLoaderRoute: typeof BecomeProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/careers': {
+      id: '/careers'
+      path: '/careers'
+      fullPath: '/careers'
+      preLoaderRoute: typeof CareersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -1230,7 +1270,9 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ProviderRouteRoute: ProviderRouteRouteWithChildren,
+  AboutRoute: AboutRoute,
   BecomeProviderRoute: BecomeProviderRoute,
+  CareersRoute: CareersRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
