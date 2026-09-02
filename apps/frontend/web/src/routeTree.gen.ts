@@ -16,6 +16,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as BecomeProviderRouteImport } from './routes/become-provider'
 import { Route as CareersRouteImport } from './routes/careers'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
@@ -98,6 +100,16 @@ const BecomeProviderRoute = BecomeProviderRouteImport.update({
 const CareersRoute = CareersRouteImport.update({
   id: '/careers',
   path: '/careers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackRoute = FeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -367,6 +379,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/become-provider': typeof BecomeProviderRoute
   '/careers': typeof CareersRoute
+  '/contact': typeof ContactRoute
+  '/feedback': typeof FeedbackRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -422,6 +436,8 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/become-provider': typeof BecomeProviderRoute
   '/careers': typeof CareersRoute
+  '/contact': typeof ContactRoute
+  '/feedback': typeof FeedbackRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -481,6 +497,8 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/become-provider': typeof BecomeProviderRoute
   '/careers': typeof CareersRoute
+  '/contact': typeof ContactRoute
+  '/feedback': typeof FeedbackRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -540,6 +558,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/become-provider'
     | '/careers'
+    | '/contact'
+    | '/feedback'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -595,6 +615,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/become-provider'
     | '/careers'
+    | '/contact'
+    | '/feedback'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -653,6 +675,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/become-provider'
     | '/careers'
+    | '/contact'
+    | '/feedback'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -713,6 +737,8 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   BecomeProviderRoute: typeof BecomeProviderRoute
   CareersRoute: typeof CareersRoute
+  ContactRoute: typeof ContactRoute
+  FeedbackRoute: typeof FeedbackRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
@@ -775,6 +801,20 @@ declare module '@tanstack/react-router' {
       path: '/careers'
       fullPath: '/careers'
       preLoaderRoute: typeof CareersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback': {
+      id: '/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -1273,6 +1313,8 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   BecomeProviderRoute: BecomeProviderRoute,
   CareersRoute: CareersRoute,
+  ContactRoute: ContactRoute,
+  FeedbackRoute: FeedbackRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
