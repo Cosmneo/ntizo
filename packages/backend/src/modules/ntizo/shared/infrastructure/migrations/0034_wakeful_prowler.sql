@@ -1,0 +1,2 @@
+ALTER TABLE "ntizo_review"."review" ADD COLUMN "featured_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "review_featured_idx" ON "ntizo_review"."review" USING btree ("featured_at" DESC NULLS LAST) WHERE "ntizo_review"."review"."featured_at" IS NOT NULL AND "ntizo_review"."review"."status" = 'published';
