@@ -213,6 +213,14 @@ class FakeThreadRepository implements ThreadRepositoryPort {
   async listForProvider(): Promise<ThreadPage> {
     return { items: [], nextCursor: null };
   }
+
+  async openSupport(): Promise<never> {
+    throw new Error("not used by this test");
+  }
+
+  async findSupportThread(): Promise<never> {
+    throw new Error("not used by this test");
+  }
 }
 
 class FakeMessageRepository implements MessageRepositoryPort {
@@ -246,6 +254,14 @@ class FakeMessageRepository implements MessageRepositoryPort {
   async countUnreadForViewer(): Promise<Map<string, number>> {
     return new Map();
   }
+
+  async markReadForPlatform(): Promise<never> {
+    throw new Error("not used by this test");
+  }
+
+  async countUnreadForPlatform(): Promise<never> {
+    throw new Error("not used by this test");
+  }
 }
 
 /**
@@ -271,6 +287,10 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
 
   async findVisible(): Promise<AttachmentRow | null> {
     return null;
+  }
+
+  async findOnSupportThread(): Promise<never> {
+    throw new Error("not used by this test");
   }
 }
 

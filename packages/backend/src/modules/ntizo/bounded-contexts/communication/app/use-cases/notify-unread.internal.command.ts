@@ -48,8 +48,9 @@ export class NotifyUnreadInternalCommand implements NotifyUnreadInternalPort {
     for (const message of due) {
       try {
         const recipient =
-          message.senderUserId === message.customerUserId
-            ? ({ audience: "provider", providerId: message.providerId } as const)
+          message.senderSide === "customer"
+            ? // Non-null on an inquiry by thread_inquiry_has_provider; Task 6 rewrites this for support threads.
+              ({ audience: "provider", providerId: message.providerId! } as const)
             : ({ audience: "user", userId: message.customerUserId } as const);
 
         await this.raiseNotification.execute({

@@ -76,6 +76,12 @@ class FakeThreadRepository implements ThreadRepositoryPort {
     this.calls.push(`listForProvider:${providerId}:${limit}:${cursor ?? "none"}`);
     return this.page;
   }
+  async openSupport(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
+  async findSupportThread(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
 }
 
 class FakeMessageRepository implements MessageRepositoryPort {
@@ -105,6 +111,12 @@ class FakeMessageRepository implements MessageRepositoryPort {
     this.calls.push(`countUnreadForViewer:[${threadIds.join(",")}]:${viewerUserId}`);
     return this.unread;
   }
+  async markReadForPlatform(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
+  async countUnreadForPlatform(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
 }
 
 /** Records every call and counts them, so a test can prove a page is enriched with exactly ONE batched call, not one per message. */
@@ -124,6 +136,9 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
     return this.byMessage;
   }
   async findVisible(): Promise<AttachmentRow | null> {
+    throw new Error("not used by the read side");
+  }
+  async findOnSupportThread(): Promise<never> {
     throw new Error("not used by the read side");
   }
 }

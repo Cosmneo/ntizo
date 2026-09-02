@@ -14,16 +14,17 @@ import type {
 const NOW = new Date("2026-08-27T10:02:00.000Z");
 const customerId = "customer-1";
 const providerId = "provider-1";
-const staffId = "staff-1";
 
 /** One due message, defaulted to "sent by the customer" unless overridden. */
 function dueMessage(id: string, patch: Partial<DueMessage> = {}): DueMessage {
   return {
     id,
     threadId: `${id}-thread`,
-    senderUserId: customerId,
+    threadType: "inquiry",
+    senderSide: "customer",
     customerUserId: customerId,
     providerId,
+    subject: null,
     ...patch,
   };
 }
@@ -65,6 +66,14 @@ class FakeMessageRepository implements MessageRepositoryPort {
   async countUnreadForViewer(): Promise<Map<string, number>> {
     return new Map();
   }
+
+  async markReadForPlatform(): Promise<never> {
+    throw new Error("not used by this test");
+  }
+
+  async countUnreadForPlatform(): Promise<never> {
+    throw new Error("not used by this test");
+  }
 }
 
 class FakeRaiseNotification implements RaiseNotificationInternalPort {
@@ -91,7 +100,7 @@ beforeEach(() => {
 
 describe("who gets told", () => {
   it("notifies the provider when the customer sent the message", async () => {
-    const messages = new FakeMessageRepository([dueMessage("m1", { senderUserId: customerId })]);
+    const messages = new FakeMessageRepository([dueMessage("m1", { senderSide: "customer" })]);
     const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
 
     const result = await notify.execute({ limit: 10 });
@@ -108,7 +117,7 @@ describe("who gets told", () => {
   });
 
   it("notifies the customer when a provider team member sent the message", async () => {
-    const messages = new FakeMessageRepository([dueMessage("m1", { senderUserId: staffId })]);
+    const messages = new FakeMessageRepository([dueMessage("m1", { senderSide: "provider" })]);
     const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
 
     await notify.execute({ limit: 10 });
@@ -129,8 +138,8 @@ describe("who gets told", () => {
   // inverted or constant-audience bug cannot survive.
   it("gets both directions right within the same sweep, not just one at a time", async () => {
     const messages = new FakeMessageRepository([
-      dueMessage("from-customer", { senderUserId: customerId }),
-      dueMessage("from-staff", { senderUserId: staffId }),
+      dueMessage("from-customer", { senderSide: "customer" }),
+      dueMessage("from-staff", { senderSide: "provider" }),
     ]);
     const notify = new NotifyUnreadInternalCommand(messages, raised, () => NOW);
 
