@@ -232,7 +232,7 @@ apps/frontend/web/src/
     ui/support-form.tsx          fields, honeypot, prefill, success state, errors
     ui/faq-index.tsx             sticky index / phone chips, scroll-spy
     domain/topics.ts             the topics per kind, shared with the select and the tests
-    data/support-request.repository.ts   submit via publicGraphql (works signed out and during SSR)
+    data/support-request.repository.ts   submit via sessionGraphql — see note below
     viewmodel/use-submit-support-request.ts
   features/admin/support/
     data/admin-support.repository.ts   allForAdmin + setStatus via sessionGraphql
@@ -242,6 +242,7 @@ apps/frontend/web/src/
   shared/locales/<locale>/company.json   new namespace, eight files
 ```
 
+- **Which endpoint the form talks to.** `sessionGraphql`, the private `/graphql` mount — not `publicGraphql`. The public mount serves `publicSchema` only (queries, no mutations) and builds an empty context, so it has neither the IP the rate limit counts on nor the session the prefill and `requester_user_id` come from. The private mount already accepts anonymous callers: `createGraphqlContextFactory` resolves no session to `requesterUserId: null` and role `customer`, and field-level authorization is each handler's own job. `credentials: "include"` simply attaches a session when there is one. The form submits from the browser only, never during SSR, so the endpoint's browser-only URL is not a problem.
 - **i18n:** namespace `company` registered in `i18n.ts` and added to `NAMESPACES` in the locale parity test beside `directory` and `checkout`. pt-MZ is authored first (it is the reference the test compares against) from the mockup's copy; the other seven are written from it, not machine-translated word for word — each must read as its own language. `landing.json` gains the Empresa column keys; `admin.json` gains the support page's; `legal.json` gains the privacy sentence and the interpolated address.
 - **The FAQ's questions live in the locale file as an array** of `{ group, items: [{ q, a }] }`, the way the legal sections do, so a translator can reorder or drop one without touching the component.
 - **Form state** is local (`useState` per field, or `@tanstack/react-form`, which the checkout details page already uses — the plan follows whatever `details-page.tsx` does). No draft persistence.
