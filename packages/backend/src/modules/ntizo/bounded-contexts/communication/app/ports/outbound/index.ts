@@ -4,3 +4,9 @@ export type { NewAttachment, AttachmentRepositoryPort } from "./attachment.repos
 export type { StoredAttachmentMetadata, AttachmentStoragePort } from "./attachment-storage.port";
 export type { ProviderReaderPort } from "./provider-reader.port";
 export type { RaiseNotificationInput, RaiseNotificationInternalPort } from "./raise-notification.port";
+export type {
+  SupportRequestFilter,
+  SupportRequestListItem,
+  SupportRequestPage,
+  SupportRequestRepositoryPort,
+} from "./support-request.repository.port";

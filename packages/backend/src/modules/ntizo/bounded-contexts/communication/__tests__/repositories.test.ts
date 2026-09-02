@@ -53,6 +53,10 @@ const suffix = crypto.randomUUID();
 // `providerIds`, captured before the race even starts, has no such gap.
 const userIds: string[] = [];
 const providerIds: string[] = [];
+// Support threads have no provider, so they are not caught by the
+// `providerIds`-scoped cleanup below — tracked by id instead. Cascades to
+// `support_request` and `message`.
+const supportThreadIds: string[] = [];
 
 function newUser(): string {
   const id = crypto.randomUUID();
@@ -139,6 +143,8 @@ afterAll(async () => {
   await db.delete(thread).where(inArray(thread.providerId, providerIds));
   await db.delete(providerMember).where(inArray(providerMember.providerId, providerIds));
   await db.delete(provider).where(inArray(provider.id, providerIds));
+  // Support threads carry no provider — deleted by id, before the users.
+  if (supportThreadIds.length > 0) await db.delete(thread).where(inArray(thread.id, supportThreadIds));
   await db.delete(user).where(inArray(user.id, userIds));
   await sql.end();
 }, 20_000);
@@ -301,6 +307,15 @@ describe("findVisible", () => {
       expect(await threads.findVisible(threadId, strangerId)).toBeNull();
       expect(await threads.findVisible(crypto.randomUUID(), customerId)).toBeNull();
     });
+  });
+
+  test("a personal support thread is visible to its opener and to nobody else", async () => {
+    const id = await __runWithTransactionContextForTests(db, () => threads.openSupport(customerId, null, new Date()));
+    // Track for cleanup the way this file tracks threads.
+    supportThreadIds.push(id);
+    expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, customerId))).not.toBeNull();
+    expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, strangerId))).toBeNull();
+    expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, staffId))).toBeNull();
   });
 });
 
@@ -618,7 +633,8 @@ describe("claimDueForNotice / markNotified", () => {
       expect(forThisThread.map((m) => m.id)).toEqual([dueUnread!.id]);
       expect(forThisThread[0]).toMatchObject({
         threadId: opened.id,
-        senderUserId: customerId,
+        threadType: "inquiry",
+        senderSide: "customer",
         customerUserId: customerId,
         providerId,
       });

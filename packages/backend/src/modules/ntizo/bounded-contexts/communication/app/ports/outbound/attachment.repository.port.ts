@@ -56,4 +56,11 @@ export interface AttachmentRepositoryPort {
    * `ThreadRepositoryPort.findVisible` gives.
    */
   findVisible(attachmentId: string, viewerUserId: string): Promise<AttachmentRow | null>;
+
+  /**
+   * The attachment, if its message sits on a support thread — no viewer
+   * check. For the admin branch of the download route only, after the
+   * caller's role has been proven; the participant path stays `findVisible`.
+   */
+  findOnSupportThread(attachmentId: string): Promise<AttachmentRow | null>;
 }

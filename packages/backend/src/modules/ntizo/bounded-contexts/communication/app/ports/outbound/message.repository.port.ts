@@ -1,3 +1,4 @@
+import type { SenderSide, ThreadType } from "../../../../../shared/infrastructure/database/communication/enums";
 import type { Message } from "../../../domain/aggregates/message.aggregate";
 
 /** One page of a conversation, newest first. */
@@ -9,17 +10,19 @@ export interface MessagePage {
 
 /**
  * A message the sweep must tell somebody about: due, still unread, not yet
- * notified. Carries just enough to raise the notification —
- * `RaiseNotificationInternalCommand` needs the recipient side (`providerId`
- * when the sender is the customer, `customerUserId` when the sender is a
- * provider member), not the body.
+ * notified. Carries what `NotifyUnreadInternalCommand` needs to pick the
+ * recipient side and the notification type — never the body.
  */
 export interface DueMessage {
   id: string;
   threadId: string;
-  senderUserId: string;
+  threadType: ThreadType;
+  senderSide: SenderSide;
   customerUserId: string;
-  providerId: string;
+  /** Null on a personal support request. */
+  providerId: string | null;
+  /** The support request's subject; null on an inquiry. Rides into the notification payload. */
+  subject: string | null;
 }
 
 export interface MessageRepositoryPort {
@@ -37,13 +40,18 @@ export interface MessageRepositoryPort {
    * Marks read every unread message in this thread sent by the side
    * `viewerUserId` is *not* on — the customer's messages when a provider
    * member reads, the provider's when the customer reads. "Side" is resolved
-   * against the thread's `customer_user_id`, not against `viewerUserId`
-   * directly, so one teammate reading does not also mark another teammate's
-   * own sent messages as read.
+   * from `sender_side` against the side `viewerUserId` is on — the customer
+   * of an inquiry or personal request is `customer`, anybody else who can
+   * see it is `provider` — not against `viewerUserId` directly, so one
+   * teammate reading does not also mark another teammate's own sent
+   * messages as read.
    *
    * Returns how many rows it actually marked.
    */
   markReadForViewer(threadId: string, viewerUserId: string, at: Date): Promise<number>;
+
+  /** The platform side reading a support request: marks every unread message not sent by `platform`. */
+  markReadForPlatform(threadId: string, at: Date): Promise<number>;
 
   /**
    * Due, unread, not-yet-notified messages, oldest-due first, up to `limit`.
@@ -67,4 +75,7 @@ export interface MessageRepositoryPort {
    * present with `0`; callers read a missing entry as zero.
    */
   countUnreadForViewer(threadIds: string[], viewerUserId: string): Promise<Map<string, number>>;
+
+  /** Unread-for-the-platform counts per thread — the admin queue's badge. Absent means zero. */
+  countUnreadForPlatform(threadIds: string[]): Promise<Map<string, number>>;
 }

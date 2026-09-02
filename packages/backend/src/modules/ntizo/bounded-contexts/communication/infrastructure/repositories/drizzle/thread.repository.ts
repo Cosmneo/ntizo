@@ -1,6 +1,7 @@
-import { and, desc, eq, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { visibleToViewer } from "./thread-visibility";
+import type { ThreadType } from "../../../../../shared/infrastructure/database/communication/enums";
 import {
   thread,
   type ThreadRow,
@@ -82,6 +83,25 @@ export class DrizzleThreadRepository implements ThreadRepositoryPort {
     return { id: row!.id, created: row!.inserted };
   }
 
+  /** A plain insert — see the port. `lastMessageAt = now`: the first message lands in the same transaction. */
+  async openSupport(customerUserId: string, providerId: string | null, now: Date): Promise<string> {
+    const [row] = await getDb()
+      .insert(thread)
+      .values({ type: "support", customerUserId, providerId, lastMessageAt: now })
+      .returning({ id: thread.id });
+    return row!.id;
+  }
+
+  /** `type = 'support'` is the whole scope — no viewer, see the port. */
+  async findSupportThread(threadId: string): Promise<ThreadRow | null> {
+    const [row] = await getDb()
+      .select()
+      .from(thread)
+      .where(and(eq(thread.id, threadId), eq(thread.type, "support")))
+      .limit(1);
+    return row ?? null;
+  }
+
   async touch(threadId: string, at: Date): Promise<void> {
     await getDb().update(thread).set({ lastMessageAt: at }).where(eq(thread.id, threadId));
   }
@@ -107,19 +127,30 @@ export class DrizzleThreadRepository implements ThreadRepositoryPort {
     return row ?? null;
   }
 
-  async listForCustomer(customerUserId: string, limit: number, cursor: string | null): Promise<ThreadPage> {
-    return this.list(eq(thread.customerUserId, customerUserId), limit, cursor);
+  /**
+   * Personal only: `type = 'inquiry'`, or a support thread with no
+   * provider. A provider request the same person opened on the provider's
+   * behalf has `customer_user_id = this person` too — that row is the
+   * provider's, not theirs, and listing it here would put the provider's
+   * business in a personal inbox.
+   */
+  async listForCustomer(customerUserId: string, limit: number, cursor: string | null, type?: ThreadType): Promise<ThreadPage> {
+    return this.list(
+      and(
+        eq(thread.customerUserId, customerUserId),
+        or(eq(thread.type, "inquiry"), isNull(thread.providerId)),
+        type ? eq(thread.type, type) : undefined,
+      ),
+      limit,
+      cursor,
+    );
   }
 
-  async listForProvider(providerId: string, limit: number, cursor: string | null): Promise<ThreadPage> {
-    return this.list(eq(thread.providerId, providerId), limit, cursor);
+  async listForProvider(providerId: string, limit: number, cursor: string | null, type?: ThreadType): Promise<ThreadPage> {
+    return this.list(and(eq(thread.providerId, providerId), type ? eq(thread.type, type) : undefined), limit, cursor);
   }
 
-  private async list(
-    scope: ReturnType<typeof eq>,
-    limit: number,
-    cursor: string | null,
-  ): Promise<ThreadPage> {
+  private async list(scope: SQL | undefined, limit: number, cursor: string | null): Promise<ThreadPage> {
     // A cursor that fails to decode is rejected, not treated as absent — see
     // `activity.repository.ts`'s `listForActor` for why silently falling back
     // to page one is the wrong failure mode for a client that pages by

@@ -85,4 +85,24 @@ export class DrizzleAttachmentRepository implements AttachmentRepositoryPort {
       .limit(1);
     return row ?? null;
   }
+
+  /** Same join as `findVisible`; the scope is the thread's type, not a viewer. See the port. */
+  async findOnSupportThread(attachmentId: string): Promise<AttachmentRow | null> {
+    const [row] = await getDb()
+      .select({
+        id: attachment.id,
+        messageId: attachment.messageId,
+        storageKey: attachment.storageKey,
+        fileName: attachment.fileName,
+        contentType: attachment.contentType,
+        sizeBytes: attachment.sizeBytes,
+        createdAt: attachment.createdAt,
+      })
+      .from(attachment)
+      .innerJoin(message, eq(message.id, attachment.messageId))
+      .innerJoin(thread, eq(thread.id, message.threadId))
+      .where(and(eq(attachment.id, attachmentId), eq(thread.type, "support")))
+      .limit(1);
+    return row ?? null;
+  }
 }

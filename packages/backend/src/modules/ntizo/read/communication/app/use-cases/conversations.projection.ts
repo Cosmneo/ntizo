@@ -56,7 +56,7 @@ async function toThreadSummaries(
   if (threads.length === 0) return [];
 
   const threadIds = threads.map((t) => t.id!);
-  const providerIds = [...new Set(threads.map((t) => t.providerId))];
+  const providerIds = [...new Set(threads.map((t) => t.providerId).filter((id): id is string => id !== null))];
   const customerUserIds = [...new Set(threads.map((t) => t.customerUserId))];
 
   const [unread, providerNamesById, customerNamesById, previewByThread] = await Promise.all([

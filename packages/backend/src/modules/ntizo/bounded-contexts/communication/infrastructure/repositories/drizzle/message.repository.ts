@@ -1,6 +1,6 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lt, lte, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
-import { message, thread } from "../../../../../shared/infrastructure/database/communication/schemas";
+import { message, supportRequest, thread } from "../../../../../shared/infrastructure/database/communication/schemas";
 import { Message } from "../../../domain/aggregates/message.aggregate";
 import { CursorInvalidError } from "../../../domain/exceptions";
 import type {
@@ -29,18 +29,25 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } | null {
 }
 
 /**
- * A message sent by the thread's customer, expressed as a where-fragment
- * factory: `markReadForViewer` and `countUnreadForViewer` both need "is this
- * message from the side `viewerUserId` is *not* on", resolved against
- * `thread.customer_user_id` rather than against `viewerUserId` directly — a
- * provider member reading must not also mark a teammate's own sent message as
- * read. Both call sites join `message` to `thread`, so both can share this.
+ * The side `viewerUserId` is on, as SQL over the joined `thread` row.
+ *
+ * The customer of an inquiry, or the opener of a *personal* support
+ * request, is `customer`. Everybody else who can see the thread — a member
+ * of the provider on an inquiry, any member (the opener included) on a
+ * provider request — is `provider`. The platform never calls this: it has
+ * `markReadForPlatform` / `countUnreadForPlatform`, whose side is fixed.
+ *
+ * Callers must have proven visibility already (`findVisible`): this
+ * expression puts an unknown viewer on the `provider` side, which is the
+ * right answer for a member and a meaningless one for a stranger.
  */
+function viewerSide(viewerUserId: string) {
+  return sql<string>`CASE WHEN ${thread.customerUserId} = ${viewerUserId} AND NOT (${thread.type} = 'support' AND ${thread.providerId} IS NOT NULL) THEN 'customer' ELSE 'provider' END`;
+}
+
+/** "From the side the viewer is not on" — one predicate for every thread type now that the side is on the row. */
 function fromTheOtherSide(viewerUserId: string) {
-  return or(
-    and(eq(thread.customerUserId, viewerUserId), ne(message.senderUserId, thread.customerUserId)),
-    and(ne(thread.customerUserId, viewerUserId), eq(message.senderUserId, thread.customerUserId)),
-  );
+  return ne(message.senderSide, viewerSide(viewerUserId));
 }
 
 export class DrizzleMessageRepository implements MessageRepositoryPort {
@@ -51,6 +58,7 @@ export class DrizzleMessageRepository implements MessageRepositoryPort {
       .values({
         threadId: entity.threadId,
         senderUserId: entity.senderUserId,
+        senderSide: entity.senderSide,
         body: entity.body,
         readAt: entity.readAt,
         notifyDueAt: entity.notifyDueAt,
@@ -104,6 +112,7 @@ export class DrizzleMessageRepository implements MessageRepositoryPort {
           id: r.id,
           threadId: r.threadId,
           senderUserId: r.senderUserId,
+          senderSide: r.senderSide as Message["senderSide"],
           body: r.body,
           readAt: r.readAt,
           notifyDueAt: r.notifyDueAt,
@@ -140,16 +149,20 @@ export class DrizzleMessageRepository implements MessageRepositoryPort {
 
   /** Due, unread, un-notified — the `idx_message_notify_due` partial index's exact predicate. */
   async claimDueForNotice(limit: number, now: Date): Promise<DueMessage[]> {
-    return await getDb()
+    const rows = await getDb()
       .select({
         id: message.id,
         threadId: message.threadId,
-        senderUserId: message.senderUserId,
+        threadType: thread.type,
+        senderSide: message.senderSide,
         customerUserId: thread.customerUserId,
         providerId: thread.providerId,
+        subject: supportRequest.subject,
       })
       .from(message)
       .innerJoin(thread, eq(thread.id, message.threadId))
+      // Left: an inquiry has no request row, and its `subject` is null.
+      .leftJoin(supportRequest, eq(supportRequest.threadId, thread.id))
       .where(
         and(
           isNotNull(message.notifyDueAt),
@@ -160,6 +173,16 @@ export class DrizzleMessageRepository implements MessageRepositoryPort {
       )
       .orderBy(asc(message.notifyDueAt))
       .limit(limit);
+
+    return rows.map((r) => ({
+      id: r.id,
+      threadId: r.threadId,
+      threadType: r.threadType as DueMessage["threadType"],
+      senderSide: r.senderSide as DueMessage["senderSide"],
+      customerUserId: r.customerUserId,
+      providerId: r.providerId,
+      subject: r.subject ?? null,
+    }));
   }
 
   async markNotified(messageId: string, at: Date): Promise<void> {
@@ -177,6 +200,25 @@ export class DrizzleMessageRepository implements MessageRepositoryPort {
       .where(and(inArray(message.threadId, threadIds), isNull(message.readAt), fromTheOtherSide(viewerUserId)))
       .groupBy(message.threadId);
 
+    return new Map(rows.map((r) => [r.threadId, r.value]));
+  }
+
+  async markReadForPlatform(threadId: string, at: Date): Promise<number> {
+    const rows = await getDb()
+      .update(message)
+      .set({ readAt: at })
+      .where(and(eq(message.threadId, threadId), isNull(message.readAt), ne(message.senderSide, "platform")))
+      .returning({ id: message.id });
+    return rows.length;
+  }
+
+  async countUnreadForPlatform(threadIds: string[]): Promise<Map<string, number>> {
+    if (threadIds.length === 0) return new Map();
+    const rows = await getDb()
+      .select({ threadId: message.threadId, value: count() })
+      .from(message)
+      .where(and(inArray(message.threadId, threadIds), isNull(message.readAt), ne(message.senderSide, "platform")))
+      .groupBy(message.threadId);
     return new Map(rows.map((r) => [r.threadId, r.value]));
   }
 }
