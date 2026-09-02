@@ -11,7 +11,8 @@
     "providers": "Anbieter",
     "categories": "Kategorien",
     "activity": "Aktivität",
-    "reviews": "Bewertungen"
+    "reviews": "Bewertungen",
+    "contact": "Kontakt"
   },
   "providersTitle": "Anbieter",
   "providersSubtitle": "Alle Betriebe der Plattform.",
@@ -237,5 +238,42 @@
     "hidden": "Ausgeblendet"
   },
   "reviewsSearchPlaceholder": "Betrieb, Name oder Gesagtes suchen",
-  "reviewsAction": "Startseite"
+  "reviewsAction": "Startseite",
+  "contactTitle": "Kontakt",
+  "contactSubtitle": "Was uns über das Kontakt- und Feedback-Formular geschrieben wurde, und was noch unbeantwortet ist.",
+  "contactOpenCount_one": "{{count}} offene Anfrage",
+  "contactOpenCount_other": "{{count}} offene Anfragen",
+  "contactKindAll": "Alle",
+  "contactKind": {
+    "contact": "Kontakt",
+    "feedback": "Feedback"
+  },
+  "contactKindColumn": "Art",
+  "contactStatus": {
+    "open": "Offen",
+    "resolved": "Erledigt"
+  },
+  "contactStatusAll": "Alle",
+  "contactRequest": "Anfrage",
+  "contactTopic": "Thema",
+  "contactDate": "Eingegangen",
+  "contactAction": "Aktionen",
+  "contactSearchPlaceholder": "Nach Name, E-Mail, Text oder Referenz suchen",
+  "contactEmpty": "Nichts zu beantworten.",
+  "contactEmptyTitle": "Warteschlange leer",
+  "contactNoMatches": "Keine Anfrage entspricht dieser Suche.",
+  "contactNoMatchesTitle": "Keine Ergebnisse",
+  "contactError": "Die Anfragen konnten nicht geladen werden.",
+  "contactStatusFailed": "Diese Anfrage konnte nicht geändert werden. Versuchen Sie es erneut.",
+  "contactReply": "Per E-Mail antworten",
+  "contactResolve": "Als erledigt markieren",
+  "contactReopen": "Wieder öffnen",
+  "contactPrevious": "Zurück",
+  "contactNext": "Weiter",
+  "contactNoEmail": "keine E-Mail",
+  "contactOrigin": "Seite",
+  "contactIp": "IP",
+  "contactUserAgent": "Browser",
+  "contactShowDetails": "Details anzeigen",
+  "contactHideDetails": "Details ausblenden"
 }

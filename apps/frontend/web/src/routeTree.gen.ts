@@ -35,6 +35,7 @@ import { Route as PublicSignUpRouteImport } from './routes/_public/sign-up'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminActivityRouteImport } from './routes/admin/activity'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
+import { Route as AdminContactRouteImport } from './routes/admin/contact'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminReviewsRouteImport } from './routes/admin/reviews'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
@@ -195,6 +196,11 @@ const AdminActivityRoute = AdminActivityRouteImport.update({
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminContactRoute = AdminContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -397,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof PublicSignUpRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -453,6 +460,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof PublicSignUpRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -515,6 +523,7 @@ export interface FileRoutesById {
   '/_public/sign-up': typeof PublicSignUpRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -576,6 +585,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin/activity'
     | '/admin/categories'
+    | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
     | '/admin/users'
@@ -632,6 +642,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/admin/activity'
     | '/admin/categories'
+    | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
     | '/admin/users'
@@ -693,6 +704,7 @@ export interface FileRouteTypes {
     | '/_public/sign-up'
     | '/admin/activity'
     | '/admin/categories'
+    | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
     | '/admin/users'
@@ -934,6 +946,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/admin/categories'
       preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/contact': {
+      id: '/admin/contact'
+      path: '/contact'
+      fullPath: '/admin/contact'
+      preLoaderRoute: typeof AdminContactRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/dashboard': {
@@ -1236,6 +1255,7 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
 interface AdminRouteRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminContactRoute: typeof AdminContactRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1247,6 +1267,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminActivityRoute: AdminActivityRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminContactRoute: AdminContactRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminReviewsRoute: AdminReviewsRoute,
   AdminUsersRoute: AdminUsersRoute,

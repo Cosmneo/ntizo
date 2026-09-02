@@ -39,6 +39,14 @@ import itITLegal from "../it-IT/legal.json";
 import nlNLLegal from "../nl-NL/legal.json";
 import ptMZLegal from "../pt-MZ/legal.json";
 import ptPTLegal from "../pt-PT/legal.json";
+import deDEAdmin from "../de-DE/admin.json";
+import enUSAdmin from "../en-US/admin.json";
+import esESAdmin from "../es-ES/admin.json";
+import frFRAdmin from "../fr-FR/admin.json";
+import itITAdmin from "../it-IT/admin.json";
+import nlNLAdmin from "../nl-NL/admin.json";
+import ptMZAdmin from "../pt-MZ/admin.json";
+import ptPTAdmin from "../pt-PT/admin.json";
 
 /**
  * The namespaces this gate covers, each as its eight bundles keyed by locale.
@@ -69,6 +77,10 @@ const NAMESPACES: Record<string, Record<string, unknown>> = {
   legal: {
     "de-DE": deDELegal, "en-US": enUSLegal, "es-ES": esESLegal, "fr-FR": frFRLegal,
     "it-IT": itITLegal, "nl-NL": nlNLLegal, "pt-MZ": ptMZLegal, "pt-PT": ptPTLegal,
+  },
+  admin: {
+    "de-DE": deDEAdmin, "en-US": enUSAdmin, "es-ES": esESAdmin, "fr-FR": frFRAdmin,
+    "it-IT": itITAdmin, "nl-NL": nlNLAdmin, "pt-MZ": ptMZAdmin, "pt-PT": ptPTAdmin,
   },
 };
 

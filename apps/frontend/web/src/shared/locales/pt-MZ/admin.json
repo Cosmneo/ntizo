@@ -11,7 +11,8 @@
     "providers": "Prestadores",
     "categories": "Categorias",
     "activity": "Actividade",
-    "reviews": "Avaliações"
+    "reviews": "Avaliações",
+    "contact": "Contactos"
   },
   "providersTitle": "Prestadores",
   "providersSubtitle": "Todos os negócios da plataforma.",
@@ -237,5 +238,42 @@
     "hidden": "Oculta"
   },
   "reviewsSearchPlaceholder": "Procurar um negócio, um nome, ou o que foi dito",
-  "reviewsAction": "Página inicial"
+  "reviewsAction": "Página inicial",
+  "contactTitle": "Contactos",
+  "contactSubtitle": "O que as pessoas nos escreveram pelos formulários de contacto e feedback, e o que ainda está por responder.",
+  "contactOpenCount_one": "{{count}} pedido aberto",
+  "contactOpenCount_other": "{{count}} pedidos abertos",
+  "contactKindAll": "Todos",
+  "contactKind": {
+    "contact": "Contacto",
+    "feedback": "Feedback"
+  },
+  "contactKindColumn": "Tipo",
+  "contactStatus": {
+    "open": "Abertos",
+    "resolved": "Resolvidos"
+  },
+  "contactStatusAll": "Todos",
+  "contactRequest": "Pedido",
+  "contactTopic": "Assunto",
+  "contactDate": "Recebido",
+  "contactAction": "Acções",
+  "contactSearchPlaceholder": "Procurar por nome, email, texto ou referência",
+  "contactEmpty": "Nada por responder.",
+  "contactEmptyTitle": "Fila vazia",
+  "contactNoMatches": "Nenhum pedido corresponde a esta pesquisa.",
+  "contactNoMatchesTitle": "Sem resultados",
+  "contactError": "Não foi possível carregar os pedidos.",
+  "contactStatusFailed": "Não foi possível alterar esse pedido. Tente de novo.",
+  "contactReply": "Responder por email",
+  "contactResolve": "Marcar resolvido",
+  "contactReopen": "Reabrir",
+  "contactPrevious": "Anterior",
+  "contactNext": "Seguinte",
+  "contactNoEmail": "sem email",
+  "contactOrigin": "Página",
+  "contactIp": "IP",
+  "contactUserAgent": "Navegador",
+  "contactShowDetails": "Mostrar detalhes",
+  "contactHideDetails": "Esconder detalhes"
 }

@@ -11,7 +11,8 @@
     "providers": "Prestataires",
     "categories": "Catégories",
     "activity": "Activité",
-    "reviews": "Avis"
+    "reviews": "Avis",
+    "contact": "Contact"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",
@@ -237,5 +238,42 @@
     "hidden": "Masqué"
   },
   "reviewsSearchPlaceholder": "Rechercher une entreprise, un nom, ou ce qui a été dit",
-  "reviewsAction": "Accueil"
+  "reviewsAction": "Accueil",
+  "contactTitle": "Contact",
+  "contactSubtitle": "Ce que les gens nous ont écrit via les formulaires de contact et d'avis, et ce qui reste sans réponse.",
+  "contactOpenCount_one": "{{count}} demande ouverte",
+  "contactOpenCount_other": "{{count}} demandes ouvertes",
+  "contactKindAll": "Toutes",
+  "contactKind": {
+    "contact": "Contact",
+    "feedback": "Avis"
+  },
+  "contactKindColumn": "Type",
+  "contactStatus": {
+    "open": "Ouvertes",
+    "resolved": "Résolues"
+  },
+  "contactStatusAll": "Toutes",
+  "contactRequest": "Demande",
+  "contactTopic": "Sujet",
+  "contactDate": "Reçu",
+  "contactAction": "Actions",
+  "contactSearchPlaceholder": "Rechercher par nom, e-mail, texte ou référence",
+  "contactEmpty": "Rien à répondre.",
+  "contactEmptyTitle": "File vide",
+  "contactNoMatches": "Aucune demande ne correspond à cette recherche.",
+  "contactNoMatchesTitle": "Aucun résultat",
+  "contactError": "Les demandes n'ont pas pu être chargées.",
+  "contactStatusFailed": "Cette demande n'a pas pu être modifiée. Réessayez.",
+  "contactReply": "Répondre par e-mail",
+  "contactResolve": "Marquer résolue",
+  "contactReopen": "Rouvrir",
+  "contactPrevious": "Précédent",
+  "contactNext": "Suivant",
+  "contactNoEmail": "sans e-mail",
+  "contactOrigin": "Page",
+  "contactIp": "IP",
+  "contactUserAgent": "Navigateur",
+  "contactShowDetails": "Afficher les détails",
+  "contactHideDetails": "Masquer les détails"
 }

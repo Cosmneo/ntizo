@@ -11,7 +11,8 @@
     "providers": "Proveedores",
     "categories": "Categorías",
     "activity": "Actividad",
-    "reviews": "Reseñas"
+    "reviews": "Reseñas",
+    "contact": "Contacto"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",
@@ -237,5 +238,42 @@
     "hidden": "Oculta"
   },
   "reviewsSearchPlaceholder": "Buscar un negocio, un nombre o lo que se dijo",
-  "reviewsAction": "Portada"
+  "reviewsAction": "Portada",
+  "contactTitle": "Contacto",
+  "contactSubtitle": "Lo que las personas nos escribieron a través de los formularios de contacto y opinión, y lo que aún está sin responder.",
+  "contactOpenCount_one": "{{count}} solicitud abierta",
+  "contactOpenCount_other": "{{count}} solicitudes abiertas",
+  "contactKindAll": "Todos",
+  "contactKind": {
+    "contact": "Contacto",
+    "feedback": "Opinión"
+  },
+  "contactKindColumn": "Tipo",
+  "contactStatus": {
+    "open": "Abiertas",
+    "resolved": "Resueltas"
+  },
+  "contactStatusAll": "Todas",
+  "contactRequest": "Solicitud",
+  "contactTopic": "Asunto",
+  "contactDate": "Recibido",
+  "contactAction": "Acciones",
+  "contactSearchPlaceholder": "Buscar por nombre, correo, texto o referencia",
+  "contactEmpty": "Nada por responder.",
+  "contactEmptyTitle": "Cola vacía",
+  "contactNoMatches": "Ninguna solicitud coincide con esta búsqueda.",
+  "contactNoMatchesTitle": "Sin resultados",
+  "contactError": "No se pudieron cargar las solicitudes.",
+  "contactStatusFailed": "No se pudo cambiar esa solicitud. Inténtelo de nuevo.",
+  "contactReply": "Responder por correo",
+  "contactResolve": "Marcar como resuelta",
+  "contactReopen": "Reabrir",
+  "contactPrevious": "Anterior",
+  "contactNext": "Siguiente",
+  "contactNoEmail": "sin correo",
+  "contactOrigin": "Página",
+  "contactIp": "IP",
+  "contactUserAgent": "Navegador",
+  "contactShowDetails": "Mostrar detalles",
+  "contactHideDetails": "Ocultar detalles"
 }
