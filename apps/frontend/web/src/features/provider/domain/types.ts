@@ -125,6 +125,12 @@ export interface ProviderDetail {
   documents?: ProviderDocument[];
   /** Set when an accepted document was replaced. */
   reverificationRequestedAt?: string | null;
+  /**
+   * Raw basis points -- 1200 is 12%. Formatting is the view's job (a number
+   * that arrived pre-formatted could not be localised), and this is the same
+   * field the Terms promise a provider sees before they list a service.
+   */
+  commissionBps?: number;
   members?: ProviderMember[];
   invites?: ProviderInvite[];
 }

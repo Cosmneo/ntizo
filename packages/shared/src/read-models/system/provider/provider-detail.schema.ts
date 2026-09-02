@@ -88,6 +88,26 @@ export const providerDetailReadModel = z.object({
    * changed, and it means a swap is never silent on either side of the screen.
    */
   reverificationRequestedAt: z.string().nullable(),
+  /**
+   * The platform's cut of this workspace's bookings, in basis points — 1200
+   * is 12%. Raw, not a formatted percentage: formatting is the view's job,
+   * and a number that arrives pre-formatted cannot be localised.
+   *
+   * The first commercially sensitive field on this model. Everything else
+   * here — name, members, invites — is descriptive; this one tells a
+   * provider what the platform takes out of every payout, and it reaches
+   * this model only through `provider.byId`, which is membership-guarded.
+   *
+   * Readable by every member, `staff` included — deliberately, not by
+   * oversight. `Provider.assertCanManage` (the domain aggregate) excludes
+   * `staff` from every write in this bounded context: a staff member can
+   * rename nothing, move nothing, change no payout destination. This field
+   * does not follow that line, because it isn't a management action being
+   * exposed — it's a fact about the business, the same category as its name
+   * or its address, and someone who works there may know what the business
+   * is charged even though they may not change it.
+   */
+  commissionBps: z.number().int(),
   ownerUserId: z.string().min(1),
   members: z.array(providerMemberReadModel),
   invites: z.array(providerInviteReadModel),

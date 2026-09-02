@@ -63,17 +63,24 @@ export const provider = providerSchema.table("provider", {
   }),
 
   /**
-   * The platform fee charged to the **customer** on this provider's bookings,
-   * in basis points.
+   * The platform's cut of this provider's bookings, in basis points.
    *
    * Copied from `platform_settings.default_commission_bps` when the workspace
    * is created and kept, so changing the platform default never moves the rate
    * under a business that already signed up. An administrator can change this
    * one; the provider cannot, and the mutation they use does not accept it.
    *
-   * Charged to the customer. Never deducted from the provider — the provider
-   * receives the price they quoted, and that is a permanent commitment rather
-   * than a configuration.
+   * **Deducted from the provider's payout, not added to the customer's bill.**
+   * The price a provider sets is the price the customer pays; the provider
+   * receives that price less this rate. They are expected to set it with the
+   * rate in mind, which is why the deduction is not a reduction in what they
+   * meant to earn. `Booking` snapshots this value at creation, so a rate
+   * changed afterwards never rewrites a sale that already happened.
+   *
+   * This reverses the model recorded here until 2026-08-30, which had the fee
+   * added to the customer's total with the provider receiving the price whole.
+   * If you find a comment or a piece of copy still saying that, it is stale
+   * rather than describing some other rate.
    */
   commissionBps: integer("commission_bps").notNull().default(1000),
 

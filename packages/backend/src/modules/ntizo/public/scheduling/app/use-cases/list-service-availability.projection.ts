@@ -123,6 +123,11 @@ export class ListServiceAvailability {
   constructor(
     private readonly schedules: ScheduleRepositoryPort,
     private readonly busyIntervals: BusyIntervalsPort,
+    // Same shape `SweepDueBookingsInternalCommand` injects its clock with: a
+    // closure defaulting to the real one, so this class never reads
+    // `Date.now()` inline and no fixture in its own tests has to depend on
+    // which day it is when the suite runs — see follow-up #104.
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async execute(input: ListServiceAvailabilityInput): Promise<ServiceAvailabilityDTO> {
@@ -232,6 +237,12 @@ export class ListServiceAvailability {
     const isHouseClosed = (date: string) =>
       closures.some((c) => c.fromDate <= date && date <= c.toDate);
 
+    // Read once, not inside the day loop: the question for every start in
+    // the window is "is it still ahead of this one moment", not "was it
+    // ahead of whatever instant the clock happened to read by the time this
+    // particular day's iteration ran".
+    const now = this.now();
+
     const days: ServiceAvailabilityDTO["days"] = [];
     for (let date = input.from; date <= input.to; date = addDays(date, 1)) {
       const houseClosed = isHouseClosed(date);
@@ -285,10 +296,24 @@ export class ListServiceAvailability {
         .sort(([a], [b]) => a - b)
         .map(([minuteOfDay, entry]) => ({
           minuteOfDay,
-          startsAt: localDateTimeToInstant(info.timezone, date, minuteOfDay).toISOString(),
+          instant: localDateTimeToInstant(info.timezone, date, minuteOfDay),
           maxMinutes: entry.maxMinutes,
           seatsLeft: entry.seatsLeft,
           memberIds: entry.memberIds,
+        }))
+        // The write's own rule (`SlotValidityReaderPort.check`, in
+        // `slot-validity.reader.ts`) throws `SlotInPastError` for any
+        // `startsAt <= now`. Matched exactly, not approximated, or a
+        // customer is shown a time the write then refuses: `> now`, so a
+        // start landing on `now` to the millisecond — already gone by the
+        // write's own test — is not offered either.
+        .filter((s) => s.instant.getTime() > now.getTime())
+        .map((s) => ({
+          minuteOfDay: s.minuteOfDay,
+          startsAt: s.instant.toISOString(),
+          maxMinutes: s.maxMinutes,
+          seatsLeft: s.seatsLeft,
+          memberIds: s.memberIds,
         }));
 
       days.push({ date, starts });

@@ -1,73 +1,73 @@
 {
-  "eyebrow": "Ntizo providers",
-  "title": "Offer your services.",
-  "titleAccent": "Keep the whole price.",
-  "subtitle": "Join the providers finding customers in Maputo, Matola and Beira — no monthly fee, and no commission on what you earn.",
-  "cta": "Get started",
-  "trustFree": "Free to join",
-  "trustPaid": "Guaranteed payment",
-  "trustLocal": "Customers near you",
-  "pathsTitle": "Two ways to provide",
-  "pathsBlurb": "Pick one to start with. You can change later — what differs is how the calendar and the team work.",
+  "eyebrow": "Ntizo-Anbieter",
+  "title": "Biete deine Leistungen an.",
+  "titleAccent": "Du legst den Preis fest.",
+  "subtitle": "Werde einer der Anbieter, die in Maputo, Matola und Beira Kundschaft finden. Keine monatliche Gebühr — nur ein fester Prozentsatz von dem, was du verdienst, angezeigt, bevor du inserierst.",
+  "cta": "Loslegen",
+  "trustFree": "Kostenlose Anmeldung",
+  "trustPaid": "Garantierte Bezahlung",
+  "trustLocal": "Kundschaft in deiner Nähe",
+  "pathsTitle": "Zwei Wege, Leistungen anzubieten",
+  "pathsBlurb": "Wähle einen zum Start. Du kannst später wechseln — was sich unterscheidet, ist, wie Kalender und Team funktionieren.",
   "path": {
     "individual": {
-      "title": "On your own",
-      "body": "You are the service: your profile, your prices, the hours you choose. Work at the customer's, at your place, or remote.",
-      "tag": "One calendar — yours"
+      "title": "Auf eigene Faust",
+      "body": "Du bist die Leistung: dein Profil, deine Preise, die Stunden, die du wählst. Arbeite beim Kunden, bei dir oder aus der Ferne.",
+      "tag": "Ein Kalender — deiner"
     },
     "organization": {
-      "title": "A business with staff",
-      "body": "Several staff under one name, with bookings running in parallel as people are free. Invite your team and set what each can do.",
-      "tag": "One calendar per member of staff"
+      "title": "Ein Unternehmen mit Personal",
+      "body": "Mehrere Mitarbeitende unter einem Namen, mit parallel laufenden Buchungen je nach Verfügbarkeit. Lade dein Team ein und lege fest, was jeder tun kann.",
+      "tag": "Ein Kalender pro Mitarbeiter"
     }
   },
-  "pricingTitle": "Zero commission for you",
-  "pricingBody": "The price you set is the price you receive. The 10% service fee is paid by the customer, on top of your price — it never comes out of yours.",
-  "stepsTitle": "How it works",
+  "pricingTitle": "Ein Preis, den du festlegst",
+  "pricingBody": "Der Kunde zahlt genau den Preis, den du festlegst. Der Anteil der Plattform wird von dem abgezogen, was du ausgezahlt bekommst — ein fester Prozentsatz, angezeigt, bevor du eine Leistung veröffentlichst, und nie eine Überraschung bei der Auszahlung.",
+  "stepsTitle": "So funktioniert's",
   "step": {
     "apply": {
-      "title": "Apply",
-      "body": "Create the account and tell us what you do and where. It takes a few minutes.",
-      "tag": "≈ 5 minutes"
+      "title": "Bewirb dich",
+      "body": "Erstelle das Konto und sag uns, was du anbietest und wo. Es dauert nur ein paar Minuten.",
+      "tag": "≈ 5 Minuten"
     },
     "review": {
-      "title": "Verification",
-      "body": "We confirm who you are before showing you to customers. It is what makes the verified badge mean something.",
-      "tag": "1 to 2 days"
+      "title": "Verifizierung",
+      "body": "Wir bestätigen, wer du bist, bevor wir dich der Kundschaft zeigen. Das ist es, was das Verifiziert-Abzeichen bedeutungsvoll macht.",
+      "tag": "1 bis 2 Tage"
     },
     "publish": {
-      "title": "Publish services",
-      "body": "Prices, duration and availability. Bookable slots are generated for you.",
-      "tag": "whenever you like"
+      "title": "Leistungen veröffentlichen",
+      "body": "Preise, Dauer und Verfügbarkeit. Buchbare Termine werden automatisch für dich erstellt.",
+      "tag": "wann immer du willst"
     },
     "earn": {
-      "title": "Get paid",
-      "body": "Payment is held until the job is done, then released to you.",
-      "tag": "once it's done"
+      "title": "Bezahlt werden",
+      "body": "Die Zahlung wird zurückgehalten, bis der Auftrag erledigt ist, und dann an dich ausgezahlt.",
+      "tag": "sobald es erledigt ist"
     }
   },
-  "requirementsTitle": "What you need",
-  "requirementsBlurb": "No complicated paperwork. Three things.",
+  "requirementsTitle": "Was du brauchst",
+  "requirementsBlurb": "Kein komplizierter Papierkram. Drei Dinge.",
   "requirement": {
     "identity": {
-      "title": "Proof of identity",
-      "body": "An ID card, passport or driving licence, so we can confirm you are who you say."
+      "title": "Identitätsnachweis",
+      "body": "Ein Personalausweis, Reisepass oder Führerschein, damit wir bestätigen können, wer du bist."
     },
     "payout": {
-      "title": "A way to be paid",
-      "body": "M-Pesa, e-Mola or a bank account. It is where your earnings go."
+      "title": "Eine Möglichkeit, bezahlt zu werden",
+      "body": "M-Pesa, e-Mola oder ein Bankkonto. Dorthin geht, was du verdienst."
     },
     "terms": {
-      "title": "Accept the terms",
-      "body": "The platform's rules, including what happens when a booking goes wrong."
+      "title": "Die Bedingungen akzeptieren",
+      "body": "Die Regeln der Plattform, einschließlich dessen, was passiert, wenn bei einer Buchung etwas schiefgeht."
     }
   },
-  "ctaSecondary": "Browse providers",
-  "pathsEyebrow": "Pick your path",
-  "pricingEyebrow": "What it costs you",
-  "stepsEyebrow": "From signing up to your first booking",
-  "requirementsEyebrow": "Before you start",
-  "closingTitle": "Ready to start earning?",
-  "closingBody": "Joining is free, and there is nothing to pay until your first booking.",
-  "closingTalk": "Talk to us"
+  "ctaSecondary": "Anbieter ansehen",
+  "pathsEyebrow": "Wähle deinen Weg",
+  "pricingEyebrow": "Was es dich kostet",
+  "stepsEyebrow": "Von der Anmeldung bis zu deiner ersten Buchung",
+  "requirementsEyebrow": "Bevor du startest",
+  "closingTitle": "Bereit, mit dem Verdienen anzufangen?",
+  "closingBody": "Die Anmeldung ist kostenlos, und bis zu deiner ersten Buchung gibt es nichts zu bezahlen.",
+  "closingTalk": "Sprich mit uns"
 }

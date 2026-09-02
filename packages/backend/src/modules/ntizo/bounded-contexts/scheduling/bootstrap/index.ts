@@ -1,5 +1,5 @@
 import { DrizzleScheduleRepository } from "../infrastructure/repositories/drizzle/schedule.repository";
-import { NoBookingsBusyAdapter } from "../infrastructure/repositories/drizzle/no-bookings-busy.adapter";
+import { DrizzleBookingBusyAdapter } from "../infrastructure/repositories/drizzle/booking-busy.adapter";
 import { SetWeeklyPatternCommand } from "../app/use-cases/set-weekly-pattern.command";
 import { ManageExceptionsCommand } from "../app/use-cases/manage-exceptions.command";
 import { ManageClosuresCommand } from "../app/use-cases/manage-closures.command";
@@ -7,7 +7,7 @@ import { ReadAvailabilityConfigQuery } from "../app/use-cases/read-availability-
 
 export function bootstrapScheduling() {
   const scheduleRepository = new DrizzleScheduleRepository();
-  const busyIntervals = new NoBookingsBusyAdapter();
+  const busyIntervals = new DrizzleBookingBusyAdapter();
   return {
     adapters: { scheduleRepository, busyIntervals },
     useCases: {

@@ -63,12 +63,102 @@ describe("legal documents", () => {
         }
   });
 
-  it("states the service fee the become-provider page already promises", () => {
-    // The public pitch says 10% paid by the customer, provider keeps their
-    // price. Terms that said something else would be the version that counts.
+  it("never promises the fee model retracted on 2026-08-30", () => {
+    // The same shape repeats for the three surfaces that made this promise
+    // beside the Terms -- landing.json, become-provider.json, admin.json --
+    // in retracted-fee-promise.test.ts. A contract gets its own file rather
+    // than sharing one with marketing copy, but the check is identical.
+    //
+    // This used to assert the terms NAME the rate ("10%"), which is backwards:
+    // the rate is per provider and administrator-set, so a test pinning a
+    // specific percentage into the contract is itself a bug waiting to fire
+    // the day an administrator changes it. An absence check has no rate to
+    // go stale — it only fails the way that actually matters, which is
+    // someone restoring the old promise (a hardcoded "0%"/"10%", "never
+    // deducted", "the price they set is the price they receive") into the
+    // one document where that promise is a contract. Written out per locale,
+    // in that locale's own words, rather than searching every language for
+    // the English phrasing.
+    const BANNED: Record<string, string[]> = {
+      "en-US": [
+        "0%",
+        "10%",
+        "added on top of that price",
+        "never deducted",
+        "the price they set is the price they receive",
+        "zero commission",
+      ],
+      "pt-MZ": [
+        "0%",
+        "10%",
+        "acresce uma taxa",
+        "nunca é descontada",
+        "o preço que ele define é o que recebe",
+        "comissão zero",
+        "zero de comissão",
+      ],
+      "pt-PT": [
+        "0%",
+        "10%",
+        "acresce uma taxa",
+        "nunca é descontada",
+        "o preço que ele define é o que recebe",
+        "comissão zero",
+        "zero de comissão",
+      ],
+      "es-ES": [
+        "0%",
+        "10%",
+        "se añade una tarifa",
+        "nunca se descuenta",
+        "el precio que fija es el que recibe",
+        "comisión cero",
+        "cero comisión",
+      ],
+      "fr-FR": [
+        "0 %",
+        "10 %",
+        "s’y ajoutent des frais",
+        "jamais prélevés",
+        "le prix qu’il fixe est celui qu’il reçoit",
+        "commission nulle",
+        "zéro commission",
+      ],
+      "de-DE": [
+        "0 %",
+        "10 %",
+        "darauf kommt eine servicegebühr",
+        "nie abgezogen",
+        "der preis, den er festlegt, ist der, den er erhält",
+        "nullprovision",
+        "keine provision",
+      ],
+      "it-IT": [
+        "0%",
+        "10%",
+        "si aggiunge una commissione",
+        "non viene mai trattenuta",
+        "il prezzo che fissa è quello che riceve",
+        "commissione zero",
+        "zero commissioni",
+      ],
+      "nl-NL": [
+        "0%",
+        "10%",
+        "daar bovenop komen servicekosten",
+        "nooit ingehouden",
+        "de prijs die hij bepaalt is de prijs die hij ontvangt",
+        "nulcommissie",
+        "geen commissie",
+      ],
+    };
+
     for (const { locale, data } of byLocale) {
+      const banned = BANNED[locale];
+      expect(banned, `no banned-phrase list recorded for locale ${locale}`).toBeDefined();
       const text = JSON.stringify(data.terms).toLowerCase();
-      expect(text, `${locale} terms should name the fee`).toMatch(/10\s*%/);
+      for (const phrase of banned!)
+        expect(text, `${locale} terms still say "${phrase}"`).not.toContain(phrase.toLowerCase());
     }
   });
 });

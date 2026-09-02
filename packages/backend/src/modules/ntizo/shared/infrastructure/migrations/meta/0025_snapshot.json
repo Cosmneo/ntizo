@@ -1,5 +1,5 @@
 {
-  "id": "2937bac3-9753-40b7-9e30-956b32c9f83f",
+  "id": "4c12b6f3-09ee-4b58-8202-7cb906acf880",
   "prevId": "fcacd451-6a8c-4b25-9e80-e36fa5234bcf",
   "version": "7",
   "dialect": "postgresql",
@@ -2635,12 +2635,210 @@
           "primaryKey": false,
           "notNull": true
         },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service_id": {
+          "name": "service_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service_option_id": {
+          "name": "service_option_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_member_id": {
+          "name": "provider_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declined_at": {
+          "name": "declined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marked_done_at": {
+          "name": "marked_done_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "disputed_at": {
+          "name": "disputed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expired_at": {
+          "name": "expired_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_minor": {
+          "name": "price_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commission_bps": {
+          "name": "commission_bps",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commission_minor": {
+          "name": "commission_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
-          "default": "'pending'"
+          "default": "'MZN'"
+        },
+        "service_name": {
+          "name": "service_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_name": {
+          "name": "provider_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_slug": {
+          "name": "provider_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "option_name": {
+          "name": "option_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address_label": {
+          "name": "address_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address_line": {
+          "name": "address_line",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address_city": {
+          "name": "address_city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address_district": {
+          "name": "address_district",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_directions": {
+          "name": "address_directions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_lat": {
+          "name": "address_lat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_lng": {
+          "name": "address_lng",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_ref": {
+          "name": "payment_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2648,9 +2846,60 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "booking_member_slot_active_uq": {
+          "name": "booking_member_slot_active_uq",
+          "columns": [
+            {
+              "expression": "provider_member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "starts_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"ntizo_booking\".\"booking\".\"status\" in ('PENDING_PAYMENT', 'AWAITING_PROVIDER', 'CONFIRMED', 'MARKED_DONE')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "booking_provider_status_idx": {
+          "name": "booking_provider_status_idx",
+          "columns": [
+            {
+              "expression": "provider_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "booking_customer_id_user_id_fk": {
           "name": "booking_customer_id_user_id_fk",
@@ -2665,12 +2914,188 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "booking_provider_id_provider_id_fk": {
+          "name": "booking_provider_id_provider_id_fk",
+          "tableFrom": "booking",
+          "tableTo": "provider",
+          "schemaTo": "ntizo_provider",
+          "columnsFrom": [
+            "provider_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "booking_service_id_service_id_fk": {
+          "name": "booking_service_id_service_id_fk",
+          "tableFrom": "booking",
+          "tableTo": "service",
+          "schemaTo": "ntizo_catalog",
+          "columnsFrom": [
+            "service_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "booking_service_option_id_service_option_id_fk": {
+          "name": "booking_service_option_id_service_option_id_fk",
+          "tableFrom": "booking",
+          "tableTo": "service_option",
+          "schemaTo": "ntizo_catalog",
+          "columnsFrom": [
+            "service_option_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "booking_provider_member_id_provider_member_id_fk": {
+          "name": "booking_provider_member_id_provider_member_id_fk",
+          "tableFrom": "booking",
+          "tableTo": "provider_member",
+          "schemaTo": "ntizo_provider",
+          "columnsFrom": [
+            "provider_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "booking_status_known": {
+          "name": "booking_status_known",
+          "value": "\"ntizo_booking\".\"booking\".\"status\" in ('PENDING_PAYMENT', 'AWAITING_PROVIDER', 'CONFIRMED', 'MARKED_DONE', 'COMPLETED', 'DISPUTED', 'DECLINED', 'CANCELLED', 'EXPIRED')"
+        },
+        "booking_price_minor_non_negative": {
+          "name": "booking_price_minor_non_negative",
+          "value": "\"ntizo_booking\".\"booking\".\"price_minor\" >= 0"
+        },
+        "booking_commission_bps_range": {
+          "name": "booking_commission_bps_range",
+          "value": "\"ntizo_booking\".\"booking\".\"commission_bps\" BETWEEN 0 AND 10000"
+        },
+        "booking_commission_minor_non_negative": {
+          "name": "booking_commission_minor_non_negative",
+          "value": "\"ntizo_booking\".\"booking\".\"commission_minor\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "ntizo_booking.booking_change": {
+      "name": "booking_change",
+      "schema": "ntizo_booking",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "booking_id": {
+          "name": "booking_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_by_user_id": {
+          "name": "changed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_starts_at": {
+          "name": "previous_starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_ends_at": {
+          "name": "previous_ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_provider_member_id": {
+          "name": "previous_provider_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_price_minor": {
+          "name": "previous_price_minor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "booking_change_booking_id_booking_id_fk": {
+          "name": "booking_change_booking_id_booking_id_fk",
+          "tableFrom": "booking_change",
+          "tableTo": "booking",
+          "schemaTo": "ntizo_booking",
+          "columnsFrom": [
+            "booking_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "booking_change_changed_by_user_id_user_id_fk": {
+          "name": "booking_change_changed_by_user_id_user_id_fk",
+          "tableFrom": "booking_change",
+          "tableTo": "user",
+          "schemaTo": "ntizo_user",
+          "columnsFrom": [
+            "changed_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "booking_change_previous_price_minor_non_negative": {
+          "name": "booking_change_previous_price_minor_non_negative",
+          "value": "\"ntizo_booking\".\"booking_change\".\"previous_price_minor\" IS NULL OR \"ntizo_booking\".\"booking_change\".\"previous_price_minor\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "ntizo_communication.thread": {
@@ -3102,12 +3527,6 @@
           "notNull": true,
           "default": "'published'"
         },
-        "featured_at": {
-          "name": "featured_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -3141,22 +3560,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "review_featured_idx": {
-          "name": "review_featured_idx",
-          "columns": [
-            {
-              "expression": "featured_at",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"ntizo_review\".\"review\".\"featured_at\" IS NOT NULL AND \"ntizo_review\".\"review\".\"status\" = 'published'",
           "concurrently": false,
           "method": "btree",
           "with": {}

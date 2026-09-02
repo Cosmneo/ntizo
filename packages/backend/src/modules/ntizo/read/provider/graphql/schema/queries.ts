@@ -62,10 +62,11 @@ export const listProvidersForAdmin = defineQuery({
 /**
  * One business, for the administrator deciding about it.
  *
- * Separate from `provider.detail`, which a workspace's own members read: this
- * one carries the commission and the legal next statuses and is refused to
- * everybody but an admin, and folding the two together would mean one query
- * whose shape and whose guard both depend on who is asking.
+ * Separate from `provider.detail`, which a workspace's own members read and
+ * which now also carries the commission: this one additionally carries the
+ * payout details and the legal next statuses, and is refused to everybody
+ * but an admin. Folding the two together would mean one query whose shape
+ * and whose guard both depend on who is asking.
  */
 export const getProviderDetailForAdmin = defineQuery({
   input: zodSchema(z.object({ providerId: z.string().min(1) })),

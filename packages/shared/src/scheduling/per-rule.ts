@@ -43,6 +43,15 @@ export interface StartCapacity {
    * reason: a fixed length is not a choice, so there is nothing to cap.
    */
   readonly maxMinutes: number | null;
+  /**
+   * The winning rule's own capacity (null already resolved to one), carried
+   * alongside `seatsLeft` rather than left for a caller to re-derive by
+   * subtracting occupancy back out. A booking-side caller needs the total,
+   * not what's left of it, to assign a seat number — and re-resolving
+   * "which rule won this start" outside this loop is the second reading of
+   * the same question this engine exists to prevent.
+   */
+  readonly capacity: number;
 }
 
 /** Every start one rule offers on its shaped free time, with its own length ceiling. */
@@ -206,10 +215,10 @@ export function startsForDay(input: StartsInput): Map<number, StartCapacity> {
 
       // A start offered by two rules is offered by both, so it takes
       // whichever rule leaves more room — and with it, that rule's own
-      // length ceiling, so the two never mix.
+      // length ceiling and own capacity, so none of the three mix.
       const existing = out.get(start);
       if (existing === undefined || seatsLeft > existing.seatsLeft) {
-        out.set(start, { seatsLeft, maxMinutes: cappedMax });
+        out.set(start, { seatsLeft, maxMinutes: cappedMax, capacity: shape.capacity });
       }
     }
   }

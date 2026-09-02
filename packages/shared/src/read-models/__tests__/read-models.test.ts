@@ -13,6 +13,11 @@ import {
   messageReadModel,
   messagePageReadModel,
 } from "../system/communication";
+import {
+  providerPublicDetailReadModel,
+  providerPublicReadModel,
+} from "../public";
+import { bookingReadModel } from "../system";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -42,7 +47,7 @@ describe("providerDetailReadModel", () => {
     const parsed = providerDetailReadModel.parse({
       id: "p1", name: "Org", slug: "org", type: "organization",
       status: "active", description: null, address: null,
-logo: null, photos: [], documents: [], reverificationRequestedAt: null, ownerUserId: "u1",
+logo: null, photos: [], documents: [], reverificationRequestedAt: null, commissionBps: 1200, ownerUserId: "u1",
       members: [{ userId: "u1", email: "a@b.c", name: "A B", role: "owner", joinedAt: "2026-08-07T00:00:00.000Z" }],
       invites: [{ id: "i1", email: "c@d.e", role: "staff", status: "pending" }],
     });
@@ -438,5 +443,214 @@ describe("messagePageReadModel", () => {
       nextCursor: "2026-08-24T09:00:00.000Z|m1",
     });
     expect(parsed.nextCursor).toBe("2026-08-24T09:00:00.000Z|m1");
+  });
+});
+
+describe("bookingReadModel", () => {
+  const base = {
+    id: "b1",
+    status: "PENDING_PAYMENT" as const,
+    serviceId: "svc-1",
+    serviceOptionId: "opt-1",
+    serviceName: "Avaria eléctrica urgente",
+    providerName: "Hélder Cossa",
+    providerSlug: "helder-cossa-electricidade",
+    // The rail's trust line, read live off `provider` rather than snapshotted
+    // with the rest — see the schema's own comment on the pair. Not the
+    // defaults: `false`/`null` are what a mapper that dropped both would
+    // produce, so a fixture carrying them could not tell that apart.
+    providerVerified: true,
+    providerRatingAverage: 4.8,
+    optionName: "Diagnóstico e reparação",
+    durationMinutes: 60,
+    // A callout, which is the one class of location type checkout draws a
+    // second line from: the rail says "Deslocação — Incluída" for
+    // `at_customer` and `flexible`, and stays silent for the other two
+    // because nobody the platform could charge for is travelling.
+    locationType: "at_customer",
+    priceMinor: 120000,
+    commissionBps: 1000,
+    commissionMinor: 12000,
+    currency: "MZN",
+    startsAt: "2026-09-04T12:30:00.000Z",
+    endsAt: "2026-09-04T13:30:00.000Z",
+    timezone: "Africa/Maputo",
+    addressLabel: "Casa",
+    addressLine: "Av. Julius Nyerere 812",
+    addressCity: "Maputo",
+    addressDistrict: "Sommerschield",
+    addressDirections: null,
+    description: null,
+    expiresAt: "2026-09-01T10:15:00.000Z",
+    createdAt: "2026-09-01T10:00:00.000Z",
+  };
+
+  it("accepts a booking awaiting payment", () => {
+    expect(() => bookingReadModel.parse(base)).not.toThrow();
+  });
+
+  it("rejects a status outside the machine", () => {
+    expect(() => bookingReadModel.parse({ ...base, status: "PAID" })).toThrow();
+  });
+
+  it("requires the service and option ids, because a reader has to link somewhere", () => {
+    // Both are `NOT NULL` on the table. They are what lets checkout's steps 2
+    // and 3 send a customer whose hold lapsed back to `/book/<the service>`
+    // on the package they chose — the fact those pages previously had to
+    // carry in the URL, where a shared link could disagree with the booking
+    // and nothing would notice.
+    expect(() => bookingReadModel.parse({ ...base, serviceId: "" })).toThrow();
+    expect(() => bookingReadModel.parse({ ...base, serviceOptionId: undefined })).toThrow();
+  });
+
+  it("requires a timezone, because the instants above mean nothing without one", () => {
+    // A reader with no zone has only the device's, and a service in
+    // `Africa/Maputo` read on a device clocked to UTC then shows a customer
+    // an appointment on the wrong day. Blank is refused as well as missing:
+    // `""` is a zone `Intl.DateTimeFormat` throws on, not a zone.
+    expect(() => bookingReadModel.parse({ ...base, timezone: undefined })).toThrow();
+    expect(() => bookingReadModel.parse({ ...base, timezone: "" })).toThrow();
+  });
+
+  it("requires a location type key, and accepts null for it", () => {
+    // Null is the `leftJoin`'s answer, not a state the database can produce:
+    // `service.location_type` is `NOT NULL` and `booking.service_id` is a
+    // `NOT NULL` FK. So the schema has to admit null while the reader still
+    // has to supply a real value — and *missing* stays refused, or a mapper
+    // that dropped the field would pass as though it had answered "unknown"
+    // and the rail would silently lose a line on every booking.
+    expect(() => bookingReadModel.parse({ ...base, locationType: null })).not.toThrow();
+    const withoutIt: Record<string, unknown> = { ...base };
+    delete withoutIt.locationType;
+    expect(() => bookingReadModel.parse(withoutIt)).toThrow();
+  });
+
+  it("rejects a negative price", () => {
+    // Money is minor units and never negative. A refund is a payment's fact,
+    // not a booking with a negative price.
+    expect(() => bookingReadModel.parse({ ...base, priceMinor: -1 })).toThrow();
+  });
+
+  it("rejects a commission outside 0..10000 basis points", () => {
+    expect(() => bookingReadModel.parse({ ...base, commissionBps: 10001 })).toThrow();
+  });
+
+  it("allows a null expiresAt, because the column is nullable — not because any status clears it", () => {
+    // Nothing writes null today: every deadline-bearing hop stamps this, and
+    // no transition clears it afterwards. The DTO stays nullable because
+    // `booking.expires_at` is — see `bookingReadModel`'s own comment on the
+    // field, which no longer promises a null once a booking stops waiting to
+    // be paid.
+    const parsed = bookingReadModel.parse({
+      ...base,
+      status: "AWAITING_PROVIDER",
+      expiresAt: null,
+    });
+    expect(parsed.expiresAt).toBeNull();
+  });
+
+  it("keeps a past expiresAt on a CONFIRMED booking, which is why a consumer must read the status first", () => {
+    // The half of the old contract that was most wrong: a confirmed booking
+    // still carries the deadline it was last given. A countdown driven off
+    // this field alone would render an expired timer on a booking that is
+    // paid and done.
+    const parsed = bookingReadModel.parse({
+      ...base,
+      status: "CONFIRMED",
+      expiresAt: "2026-09-01T10:15:00.000Z",
+    });
+    expect(parsed.expiresAt).toBe("2026-09-01T10:15:00.000Z");
+  });
+});
+
+describe("providerPublicDetailReadModel", () => {
+  const base = {
+    id: "p1", name: "Org", slug: "org", type: "organization" as const,
+    description: null, city: null, district: null, country: null,
+    logoUrl: null, photoUrls: [], verified: false,
+    ratingAverage: null, reviewCount: 0, categories: [],
+    serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
+  };
+
+  /**
+   * A full seven-day week, closed by default — the shape the schema now
+   * requires of every one of these fixtures, not just the ones that mean to
+   * test the week itself. `open` keys by weekday and only needs to name the
+   * days that are not closed.
+   */
+  function fullWeek(
+    open: Partial<Record<number, { startMinute: number; endMinute: number }[]>> = {},
+  ) {
+    return [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+      weekday,
+      intervals: open[weekday] ?? [],
+    }));
+  }
+
+  it("accepts a provider with hours, a join month and location types", () => {
+    const parsed = providerPublicDetailReadModel.parse({
+      ...base,
+      memberSince: "2025-03",
+      serviceLocationTypes: ["at_customer", "remote"],
+      weeklyHours: fullWeek({ 1: [{ startMinute: 480, endMinute: 1080 }] }),
+    });
+    expect(parsed.memberSince).toBe("2025-03");
+    expect(parsed.weeklyHours[1]?.intervals[0]?.endMinute).toBe(1080);
+  });
+
+  it("accepts a closed weekday as an empty interval list", () => {
+    const parsed = providerPublicDetailReadModel.parse({
+      ...base, memberSince: null, serviceLocationTypes: [],
+      weeklyHours: fullWeek(),
+    });
+    expect(parsed.weeklyHours[0]?.intervals).toEqual([]);
+  });
+
+  it("rejects a weekday outside 0..6", () => {
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: null, serviceLocationTypes: [],
+        // Seven entries, so this exercises the weekday bound itself rather
+        // than the length check below — weekday 7 stands in for weekday 0.
+        weeklyHours: [7, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, intervals: [] })),
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a short weeklyHours array, even one where every entry is a distinct, in-range weekday", () => {
+    // The case a weekday-set check alone would miss: six distinct, valid
+    // weekdays are still not a week. `.length(7)` is what catches this one,
+    // not the `superRefine` — which is why it is its own case rather than
+    // folded into "outside 0..6" above.
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: null, serviceLocationTypes: [],
+        weeklyHours: fullWeek().slice(0, 6),
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a repeated weekday, even at a full length of seven", () => {
+    // Seven entries, so `.length(7)` alone would wave this through — two
+    // Mondays and no Sunday is exactly what the weekday-set `superRefine`
+    // exists to catch.
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: null, serviceLocationTypes: [],
+        weeklyHours: [1, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, intervals: [] })),
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a memberSince that is not an ISO year-month", () => {
+    expect(() =>
+      providerPublicDetailReadModel.parse({
+        ...base, memberSince: "2025-03-14", serviceLocationTypes: [], weeklyHours: fullWeek(),
+      }),
+    ).toThrow();
+  });
+
+  it("still parses as the list model, so the directory is unaffected", () => {
+    expect(() => providerPublicReadModel.parse(base)).not.toThrow();
   });
 });

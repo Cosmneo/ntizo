@@ -129,7 +129,7 @@
   "providerDetailDecision": "Beslissing",
   "providerDetailDecisionHint": "Alleen de van hieruit toegestane statuswijzigingen worden aangeboden.",
   "providerDetailNoActions": "Gearchiveerd is definitief — hier valt niets te beslissen.",
-  "providerDetailCommissionHint": "De aan de klant berekende vergoeding. De aanbieder ziet die, maar wijzigt die niet.",
+  "providerDetailCommissionHint": "Het percentage dat op de uitbetaling van deze aanbieder wordt ingehouden. De aanbieder ziet het, maar wijzigt het niet.",
   "providerDetailCommissionSave": "Commissie opslaan",
   "providerDetailCommissionRange": "Tussen 0 en 100%.",
   "providerDetailWallet": "Portemonnee",

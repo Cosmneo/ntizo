@@ -7,9 +7,17 @@ import {
   type AddressFieldsInput,
 } from "@/features/account/data/address.repository";
 
-/** The only path from the account UI to the address data layer. */
-export function useMyAddresses() {
-  return useQuery(addressQueries.mine());
+/**
+ * The only path from the account UI to the address data layer.
+ *
+ * `enabled` exists for checkout's step 1, which is a **public** page: the
+ * address book is a session query, and firing it for a visitor who has not
+ * signed in yet buys one guaranteed `UNAUTHENTICATED` round trip and an error
+ * state on a page that is only asking them to pick a time. Defaulted to true,
+ * so every caller that already has a session reads exactly as before.
+ */
+export function useMyAddresses({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ ...addressQueries.mine(), enabled });
 }
 
 /**

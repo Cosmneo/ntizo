@@ -137,7 +137,7 @@ describe("ServiceListingCard", () => {
     // whether this platform writes "800 MZN" or "800.00 MZN" is worse than
     // either choice on its own. `ProviderListingCard` rounds and the approved
     // mockup rounds, so this rounds. The decimals stay where a number is what
-    // somebody pays rather than a headline — see `PackageChooser`.
+    // somebody pays rather than a headline — see `RailPriceSummary`.
     renderCard(service({ defaultOption: { ...service().defaultOption!, amountMinor: 80_000 } }));
     const stub = await screen.findByTestId("price-stub");
     expect(stub).toHaveTextContent("MZN 800");

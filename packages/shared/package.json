@@ -42,6 +42,11 @@
       "import": "./src/datetime/index.ts",
       "default": "./src/datetime/index.ts"
     },
+    "./phone": {
+      "types": "./src/phone/index.ts",
+      "import": "./src/phone/index.ts",
+      "default": "./src/phone/index.ts"
+    },
     "./scheduling": {
       "types": "./src/scheduling/index.ts",
       "import": "./src/scheduling/index.ts",

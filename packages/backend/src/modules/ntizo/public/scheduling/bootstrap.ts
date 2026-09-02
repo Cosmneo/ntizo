@@ -1,5 +1,5 @@
 import { DrizzleScheduleRepository } from "../../bounded-contexts/scheduling/infrastructure/repositories/drizzle/schedule.repository";
-import { NoBookingsBusyAdapter } from "../../bounded-contexts/scheduling/infrastructure/repositories/drizzle/no-bookings-busy.adapter";
+import { DrizzleBookingBusyAdapter } from "../../bounded-contexts/scheduling/infrastructure/repositories/drizzle/booking-busy.adapter";
 import { ListServiceAvailability } from "./app/use-cases/list-service-availability.projection";
 import type { SchedulingPublicModule } from "./graphql/handlers/queries.handlers";
 
@@ -11,19 +11,16 @@ import type { SchedulingPublicModule } from "./graphql/handlers/queries.handlers
  * tier has no business owning them. Both are stateless — repositories resolve
  * `getDb()` per call — so a second instance costs nothing and keeps the public
  * mount's dependency list to exactly what it uses.
- *
- * `NoBookingsBusyAdapter` returns an empty map until slice 4 ships bookings.
- * When it does, this line is the only thing that changes here.
  */
 export function bootstrapSchedulingPublic(): {
   adapters: {
     scheduleRepository: DrizzleScheduleRepository;
-    busyIntervals: NoBookingsBusyAdapter;
+    busyIntervals: DrizzleBookingBusyAdapter;
   };
   useCases: SchedulingPublicModule;
 } {
   const scheduleRepository = new DrizzleScheduleRepository();
-  const busyIntervals = new NoBookingsBusyAdapter();
+  const busyIntervals = new DrizzleBookingBusyAdapter();
   return {
     adapters: { scheduleRepository, busyIntervals },
     useCases: {

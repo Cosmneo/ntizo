@@ -29,6 +29,7 @@
   "settings": "Einstellungen",
   "account": "Konto",
   "noActiveProvider": "Kein aktiver Anbieter.",
+  "commissionRateLabel": "Anteil der Plattform",
   "welcomeTitle": "Willkommen! Richten wir Sie als Anbieter ein.",
   "welcomeSubtitle": "Wählen Sie, wie Sie starten möchten. Sie können diese Angaben jederzeit ändern.",
   "setMeUpAutomatically": "Automatisch einrichten",

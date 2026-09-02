@@ -1,0 +1,146 @@
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import type { ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
+import { RailPriceSummary } from "../rail-price-summary";
+
+const FIXED: ServiceDetailOptionDTO = {
+  id: "opt-1",
+  name: "Diagnóstico e reparação",
+  amountMinor: 120000,
+  currency: "MZN",
+  durationMinutes: 60,
+  minMinutes: null,
+  stepMinutes: null,
+  pricingMode: "fixed",
+  isDefault: true,
+};
+
+function renderRail(
+  option: ServiceDetailOptionDTO,
+  { verified = true }: { verified?: boolean } = {},
+) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <RailPriceSummary
+        option={option}
+        locale="en-US"
+        serviceId="svc-1"
+        providerId="p1"
+        providerVerified={verified}
+      />
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
+
+/**
+ * Every first assertion is a `findBy*`: `createRouter`'s initial match
+ * resolves a tick after `render()` returns, the same async seam
+ * `provider-detail-page.test.tsx` and `service-detail-page.test.tsx` work
+ * around the same way. The router is not optional scaffolding here —
+ * `MessageProviderButton` reads the current pathname and navigates with it —
+ * so there is no synchronous render of this card to assert against. Once one
+ * element is found the tree is settled and the rest of a test can query
+ * synchronously.
+ */
+describe("RailPriceSummary", () => {
+  it("charges exactly the price the provider set, with nothing added", async () => {
+    // 120000 minor units is 1200.00 — the provider's own price, unmarked up.
+    // The 2026-08-30 decision means this is what the customer pays, so there
+    // is no separate fee line to assert: the headline total *is* the price.
+    renderRail(FIXED);
+    expect(await screen.findByTestId("booking-total")).toHaveTextContent(/1[.,\s]?200/);
+    expect(screen.queryByText(/Ntizo commission/)).not.toBeInTheDocument();
+  });
+
+  it("no longer says bookings are closed, because they are not", async () => {
+    // The caveat this card carried while checkout dead-ended at an unbuilt
+    // confirm page. All three steps exist now and the third sends a real
+    // request to a real provider, so the sentence is false — and a warning
+    // that is no longer true costs more than the one it used to save.
+    // Awaited on a control that IS here, so the absence below is asserted
+    // against a rendered card rather than an empty tree.
+    renderRail(FIXED);
+    expect(await screen.findByRole("link", { name: "See availability" })).toBeInTheDocument();
+    expect(screen.queryByText(/bookings aren't open/i)).not.toBeInTheDocument();
+  });
+
+  it("offers no control that implies a reservation was already made", async () => {
+    renderRail(FIXED);
+    // The two controls the card does offer, awaited first, so the absence
+    // below is asserted against a rendered card rather than an empty tree.
+    // The primary starts checkout; it does not complete one.
+    expect(await screen.findByRole("link", { name: "See availability" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^book$/i })).not.toBeInTheDocument();
+  });
+
+  it("sends the reader to this service's own checkout, not to a dialog", async () => {
+    // A link, and one carrying this service's id: the sheet this replaced
+    // could be opened over any page and left no URL behind, which is exactly
+    // what a purchase cannot afford — a refresh or a trip through sign-in
+    // lost the whole decision.
+    renderRail(FIXED);
+    expect(await screen.findByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/book/svc-1"),
+    );
+  });
+
+  it("names the package it is quoting in the link, so checkout charges this total", async () => {
+    // This card is the only control on the platform that knows which option
+    // the reader is looking at. Drop `optionId` from the link and checkout
+    // falls back to the service's default — the reader agrees to the total
+    // printed above and is charged a different one, silently.
+    renderRail(FIXED);
+    expect(await screen.findByRole("link", { name: "See availability" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("optionId=opt-1"),
+    );
+  });
+
+  it("labels an hourly option by its minimum, not by a duration it does not have", async () => {
+    renderRail({
+      ...FIXED,
+      pricingMode: "hourly",
+      durationMinutes: null,
+      minMinutes: 240,
+      stepMinutes: 60,
+    });
+    expect(await screen.findByText("240 min minimum")).toBeInTheDocument();
+  });
+
+  it("makes no verification claim for an unverified provider", async () => {
+    renderRail(FIXED, { verified: false });
+    // The unconditional bullet, awaited first: without it this would pass
+    // just as well against a card that rendered no trust list at all.
+    expect(await screen.findByText(/this is the final price/i)).toBeInTheDocument();
+    expect(screen.queryByText(/verified by Ntizo/i)).not.toBeInTheDocument();
+  });
+
+  it("always says this is the final price", async () => {
+    renderRail(FIXED);
+    expect(await screen.findByText(/this is the final price/i)).toBeInTheDocument();
+  });
+});

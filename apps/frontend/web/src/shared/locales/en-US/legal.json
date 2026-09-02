@@ -68,7 +68,7 @@
   },
   "terms": {
     "title": "Terms of Service",
-    "updated": "26 August 2026",
+    "updated": "31 August 2026",
     "intro": "These terms govern your use of Ntizo. Creating an account accepts them. If you disagree with something here, do not use the platform — and tell us why, which is useful information.",
     "sections": [
       {
@@ -91,7 +91,7 @@
         "heading": "Bookings, prices and the service fee",
         "body": [
           "The price of a service is set by the provider and shown before you confirm.",
-          "A platform service fee is added on top of that price and paid by you, the customer. It is currently 10%. It is always shown before you confirm a booking, and it is never deducted from the provider: the price they set is the price they receive.",
+          "A platform service fee applies to every booking, as a percentage of the price the provider set. The fee is deducted from what the provider is paid — it is not added to what you, the customer, pay: the price shown to you is the price you pay. The percentage is set per provider and shown to them before they list a service.",
           "Cancellations follow the conditions shown at the time of booking."
         ]
       },

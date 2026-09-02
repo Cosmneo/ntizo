@@ -179,7 +179,7 @@ export function ProviderListingCard({
  * out.
  *
  * Its own copy rather than the services domain's `formatAmount`, which keeps
- * the decimals because it also formats `PackageChooser`'s checkout total — a
+ * the decimals because it also formats `RailPriceSummary`'s checkout total — a
  * number that is what the customer pays, not a headline, and so cannot round.
  * `ServiceListingCard` holds the twin of this function for the same reason.
  *

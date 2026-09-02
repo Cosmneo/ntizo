@@ -29,6 +29,10 @@ import {
   bootstrapCommunicationRead,
   createCommunicationReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/communication";
+import {
+  bootstrapBookingRead,
+  createBookingReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/booking";
 import { createCommunicationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/communication";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import { createNotificationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/notification";
@@ -44,6 +48,8 @@ import {
   createReviewReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/review";
 import { bootstrapReview } from "@ntizo/backend/modules/ntizo/bounded-contexts/review";
+import { createBookingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/booking";
+import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
@@ -89,6 +95,8 @@ export function buildPrivateGraphQLFields(): {
   const scheduling = bootstrapScheduling();
   const review = bootstrapReview();
   const reviewRead = bootstrapReviewRead();
+  const booking = bootstrapBooking();
+  const bookingRead = bootstrapBookingRead();
   const walletRead = bootstrapWalletRead();
   // The eight notification fields are already in `privateGraphqlSchema` —
   // read/schema.ts and write/schema.ts merge them in. A field declared in
@@ -136,6 +144,8 @@ export function buildPrivateGraphQLFields(): {
       ...createCatalogWriteHandlers({ catalog }),
       ...createSchedulingWriteHandlers({ scheduling }),
       ...createReviewWriteHandlers({ review }),
+      ...createBookingWriteHandlers({ booking }),
+      ...createBookingReadHandlers({ bookingRead }),
       ...createNotificationWriteHandlers({ notification }),
       ...createUserWriteHandlers({
         updateMyProfile: user.useCases.updateMyProfile,

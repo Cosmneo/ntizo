@@ -943,7 +943,9 @@ not the three components that happen to produce them. (Duration was briefly a
 fifth fabricated fact inside `ServiceFacts` — "4–12 horas" beside a real price
 — and is not part of this entry's scope any more: it was replaced with real
 data, `optionDurationMinutes`, rendered by `PackageChooser` instead, in the
-same pass that corrected this count.)
+same pass that corrected this count. `PackageChooser` has since been split into
+`ServiceOptions` and `RailPriceSummary`, which both still read that same
+function.)
 
 Deleting the module also orphans locale keys nothing else reads: `ratingCount`
 (and its plural sibling `ratingCount_other`), `ratingAriaLabel`,
@@ -1765,17 +1767,37 @@ this file is touched for an unrelated reason.
 
 ---
 
-## 69. `PackageChooser` and `ServiceQuoteNotice` still disable "contact provider" behind a stale comment
+## ~~69. `ServiceQuoteNotice` still disables "contact provider" behind a stale comment~~ — RESOLVED 2026-08-28
 
-Both render their "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
-comment explaining why: "there is no Communication context in this product either" (`package-chooser.tsx`,
-`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
-context, and `provider-hero.tsx`'s `MessageProviderButton` already wires the identical CTA to
-`useStartThread` a few features over. The button in these two files could work today; nobody has
-gone back to wire it up now that the reason it was disabled no longer holds.
+`ServiceQuoteNotice` now takes a `providerId` and renders the real `MessageProviderButton` in place
+of the disabled button and the `packageContactClosed` sentence — the same control
+`RailPriceSummary` and the provider page's own rail already mount. A quote service can be neither
+booked nor scheduled, so this is the only action its page offers, which made the stale disabled
+button more than cosmetic: the sentence beside it claimed messaging "isn't open on Ntizo yet" when
+it had been open since this phase, the same defect class this whole spec exists to prevent, merely
+inverted. `packageContactClosed` had no other consumer once this was the last place using it, so the
+key is gone from all eight locale files.
 
-**Trigger:** the next time `PackageChooser` or `ServiceQuoteNotice` is touched — wire the button the
-way `provider-hero.tsx` already does, or explain why a package/quote page shouldn't offer it.
+The original entry is kept below for the record.
+
+---
+
+## 69. (original) `ServiceQuoteNotice` still disables "contact provider" behind a stale comment
+
+It renders its "Falar com o prestador" / "contact provider" button `disabled`, unwired, with a
+comment explaining why: "there is no Communication context in this product either"
+(`service-quote-notice.tsx`). That premise is no longer true — this phase built the Communication
+context, and `provider-rail.tsx`'s `MessageProviderButton` wires the identical CTA to
+`useStartThread`. The button could work today; nobody has gone back to wire it up now that the
+reason it was disabled no longer holds.
+
+Half of this entry is now closed. `PackageChooser` carried the same disabled button and was deleted
+in the detail-pages redesign; its replacement, `RailPriceSummary`, mounts the real
+`MessageProviderButton` — so `ServiceQuoteNotice` is the last place in the product where this
+control is a placeholder, and it is now conspicuous rather than consistent.
+
+**Trigger:** the next time `ServiceQuoteNotice` is touched — wire the button the way
+`RailPriceSummary` already does, or explain why a quote page shouldn't offer it.
 
 ---
 
@@ -2149,3 +2171,909 @@ the configured-not-broken path the route was written for — correct behaviour, 
 
 **Trigger:** the next deploy to qa or prod, or the first time somebody runs the API locally and
 finds uploads answering 503.
+
+---
+
+## 90. The `Dialog` primitive is not a dialog
+
+`packages/frontend/src/components/dialog.tsx`'s `DialogContent` renders two bare `div`s. It has no
+`role="dialog"`, no `aria-modal`, no focus trap, no focus restoration, and **no Escape handler** —
+the only thing that closes it is a click on the backdrop.
+
+Every modal surface in the app inherits this: `mobile-search-sheet.tsx`, `provider-facets.tsx`,
+`service-facets.tsx`, `rule-drawer.tsx`, `availability-sheet.tsx`, and now
+`detail-gallery.tsx`. Each of them independently supplies its own `role="dialog"` and
+`aria-labelledby` to paper over it, which is six copies of a fix that belongs in one place — and
+six chances for the seventh consumer to forget.
+
+**What is not broken:** these components are still operable without a mouse, because each supplies
+its own focusable close button. A keyboard user is not trapped; they are made to Tab to a control
+that Escape should have handled.
+
+**Why it was not fixed here:** it surfaced during Task 7 of the detail-pages redesign, whose diff
+touches none of the other five consumers. Changing a primitive with that blast radius would have put
+an unreviewed behaviour change under five screens nobody was reviewing that day — and a focus trap
+is behaviour, not decoration: it changes what Tab does on every one of them.
+
+**Trigger:** the next accessibility pass, the next keyboard-navigation bug filed against any modal,
+or the next component that needs a dialog — at which point it is a seventh copy of the workaround,
+and the argument for fixing the primitive has beaten the argument against it.
+
+---
+
+## 91. What the detail-pages redesign deferred
+
+The whole-branch review triaged each of these as a follow-up rather than a merge blocker, with
+the reason. Recorded here because the branch's own working notes are deleted once it merges.
+
+**Dead code behind a live export.** `features/directory/services/ui/service-card.tsx` has had no
+consumer for its `ServiceCard` export since the browse moved to `ServiceListingCard` — before this
+branch. The same file still exports `ServicePrice`, which `availability/ui/availability-sheet.tsx`
+imports, so removing it means extracting that first. **Trigger:** the next change to either symbol.
+
+**The browse card still says "Book".** `service-listing-card.tsx` labels its CTA `packageBook` on a
+`<Link>` into a page that states, in words, that bookings are not open. The detail pages were
+scrubbed of that word; the front door was out of scope. It is asserted by name in that card's own
+test, so it is a two-file change. **Trigger:** the next honesty pass, or the first customer who asks
+why "Book" does not book.
+
+**Two prices, two spellings, one click apart.** `rail-price-summary.tsx`'s headline keeps
+`formatAmount`'s decimals while `ProviderRail`'s headline and `ServiceRow`'s price use
+`formatHeadlinePrice`'s whole units. Deliberate — the comment at that line records the trade and its
+cost — because rounding it would show two spellings of one amount inside a single card. **Trigger:**
+a decision that cross-page consistency matters more, or a redesign that separates the headline from
+the breakdown.
+
+**`memberSince` is pinned to UTC.** `provider-public.repository.ts` derives it with
+`toISOString().slice(0, 7)`, so a business registered between midnight and 02:00 on the 1st in Maputo
+publishes the previous month. Wrong by one month, on a fact whose whole purpose is telling a
+five-year business from a five-week one. **Trigger:** the next change to `toDTO`.
+
+**Coverage the redesign did not add.** The rail's fixed-duration label is unasserted (only the hourly
+branch is covered); `ServiceRow`'s `from` and `unavailable` price branches are untested; and the
+spec asked for the e2e provider journey to assert the rail's price and the availability card, which
+was not done. That last one matters more than coverage arithmetic suggests: this work added a second
+awaited GraphQL query to `/services/$id`'s SSR loader, and `apps/e2e/tests/public-directory.spec.ts`
+exists because a routing bug once made every detail URL render the wrong thing with JavaScript
+disabled. **Trigger:** the next SSR or routing change to either detail route.
+
+**Test guards weaker than they look.** `flattenToDottedPaths` in the locale parity test treats `{}`
+identically to an absent key, so two content-empty sides compare equal. And
+`member-since.test.ts`'s UTC-vs-local regression test cannot fail on a runner whose timezone has a
+non-negative offset — `vite.config.ts` pins no `TZ` and CI is almost certainly UTC, so a test named
+for catching a timezone bug cannot catch it there. **Trigger:** either, the next time a date or a
+locale bug is suspected.
+
+**Keyboard behaviour carried across unchanged.** The service options radiogroup duplicates its own
+`h2` as an `aria-label` and has no roving `tabIndex` or arrow-key handling — inherited verbatim from
+the deleted `PackageChooser`, and now a full-width body control rather than a rail detail. Every
+radio is individually tabbable and `aria-checked` is correct, so it is operable, just not
+APG-conformant. **Trigger:** pair it with #90, the `Dialog` primitive's missing focus trap.
+
+## #92 — The backend's hexagonal layering is enforced by nobody
+
+`eslint-plugin-boundaries` is configured only in `apps/frontend/web/eslint.config.js`.
+`packages/backend/eslint.config.js` extends `packages/tooling/eslint-config/base.js`, and neither
+carries a `boundaries` or `no-restricted-imports` rule. So the rule that `domain/` imports nothing
+from `app/` or `infrastructure/` — the architectural premise of every bounded context here — holds
+only because people keep remembering it. This was believed otherwise for a long time: six
+subagent dispatches during the Booking work asserted the rule was enforced, and an implementer
+checking with `eslint --debug` is what settled it.
+
+Turning it on is not a config edit. The domain already imports `BookingStatus` from
+`shared/infrastructure/database/booking/enums.ts` — a path with `infrastructure` in it — and
+Review's and Communication's aggregates do the identical thing, so the rule would light up existing
+code in several contexts on the first run. The work is deciding whether those imports are the
+violation or the enum's location is, then moving one or the other.
+
+**Trigger:** the next time a layering violation is found in review, or before a new bounded context
+is started — a rule that would have caught it is cheaper than another reviewer reading import lists
+by hand.
+
+## #93 — Nothing sets how long an unpaid booking holds its slot — CLOSED, see Task 13
+
+**Closed 2026-08-30.** Raised as a follow-up, then answered the same day: the payment window
+becomes a LIVE `platform_settings` column with a default of 15 minutes, and `CreateBookingCommand`
+reads it rather than carrying a constant. Task 13 of the booking-core plan. The original text
+follows, because the reasoning is still why the number is not a developer's to pick.
+
+## #93 — Nothing sets how long an unpaid booking holds its slot
+
+`CreateBookingCommand` carries `PENDING_PAYMENT_WINDOW_MINUTES = 30` as a named, commented
+stand-in. The booking spec deliberately does not set the window and says it must be a configured
+value; it also warns that the 30 minutes its own mockup shows is wrong for M-Pesa, whose C2B flow
+is synchronous — the customer approves on the handset in a minute or two, not half an hour.
+
+The number is a product decision with a real cost on each side: too long and an abandoned checkout
+blocks a member's calendar for half an hour; too short and a customer who fumbles the PIN loses the
+slot they were paying for. It belongs in `platform_settings` beside `default_commission_bps`, not
+in a constant.
+
+**Trigger:** before the first real M-Pesa payment runs end to end, or the first time a provider asks
+why a slot showed as taken with no booking behind it.
+
+## #94 — This plan books fixed-price options only
+
+`CreateBookingCommand` refuses an `hourly` option with `ServiceNotBookableError("hourly")`.
+`Booking.create` needs a `durationMinutes` and an hourly option has none by construction: the
+customer picks a length within a minimum and a step, and the price follows from that choice. That
+is a second pricing rule with its own arithmetic and rounding, and no task in the booking-core plan
+contains a line of it.
+
+The MVP scope names hourly as booking path B, so this is a missing feature rather than a deliberate
+product boundary. The refusal message says so and does not imply the provider did anything wrong.
+
+**Trigger:** the first provider who publishes an hourly service and finds nobody can book it.
+
+## #95 — The database integration suite is not safe to run concurrently with itself
+
+During the Booking work, a reviewer running `bun test src/modules/ntizo/shared/infrastructure/database/__tests__`
+while another session ran the same suite saw the whole thing take **931 seconds** with one failure: the
+booking rollback test hit bun's 45-second timeout, and a `CONNECTION_CLOSED` surfaced roughly fifteen
+minutes later on a different connection. Run alone, the same suite is 70/70 in 29 seconds and the same
+file is 7/7 in 5 seconds — verified twice.
+
+Nothing was wrong with the code. The suite opens per-file connections against a shared Neon `dev`
+database that several worktrees and sessions use at once, and a test holding a real transaction open
+while connections are contested is enough to stall the rest.
+
+This matters beyond one slow run: **a contended run produces a red test that looks exactly like a
+broken one.** A reviewer who had not re-run it in isolation would have reported working code as
+failing, and somebody would have spent an afternoon on it. This session has now hit that shape of
+false signal twice — the other was CI's exhausted Actions quota reading as broken code.
+
+Worth doing: a per-run advisory lock or a serialised project for the DB-integration files, or moving
+them to an ephemeral Postgres (a throwaway Docker instance already proved out during this plan, in
+Task 2's `inArray` investigation).
+
+**Trigger:** the next time a database test fails and the failure does not reproduce in isolation.
+
+## #96 — Nothing guarantees the singleton settings row exists
+
+`ntizo_platform.platform_settings` holds exactly one row, `id = 'global'`, and the whole table is
+designed around that: a typed single row rather than a key-value table, so a schema can refuse to
+store nonsense. But **no migration ever created it.** `0010` creates the table and sets column
+defaults; nothing inserts. The row exists in the shared `dev` database only because somebody wrote
+it by hand — which is also why its `default_commission_bps` reads 1200 against a schema default of
+1000.
+
+This surfaced during the Booking work, when a new reader was written to throw on a missing row
+rather than fall back silently. That was the right call and it made the gap loud: combined with a
+row nothing creates, booking creation would have failed outright in any environment where nobody
+happened to hand-write it. Migration `0026` now seeds it with
+`INSERT ... VALUES ('global') ON CONFLICT DO NOTHING`, which closes it from `0026` onward.
+
+What is left is the general shape. A database that stopped between `0010` and `0025` still has zero
+rows, and Provider's `defaultCommissionBps()` papers over that by falling back to a hardcoded
+default instead of throwing — so a misconfigured environment reads as a configured one. Any future
+table with a singleton row will hit the same thing unless seeding becomes a habit rather than a
+patch.
+
+Worth doing: audit which environments actually have the row, decide whether
+`defaultCommissionBps()`'s fallback should become a throw now that a seed exists, and make "a
+singleton row is created by the migration that creates its table" an explicit rule.
+
+**Trigger:** before the first deploy to an environment whose database has not run `0026`, or the
+next time a settings value reads as a default nobody set.
+
+## #97 — The availability modal sizes its grid off the default option only
+
+`ListServiceAvailability` resolves its offer from `info.defaultOption` alone, and
+`findServiceSchedulingInfo` hard-codes `WHERE is_default = true`. `ListServiceAvailabilityInput` has no
+`serviceOptionId` field, so there is currently no way for the modal to ask about any other option — while
+`manage-options.command.ts` happily allows several fixed-price options with different durations and one
+default among them.
+
+This sat harmless until the Booking context started checking availability before writing. It is now
+customer-facing. Concrete: a provider open 08:00–10:00, 30-minute grid, one member. Default option 60
+minutes, second option 90 minutes. The modal sizes the grid off 60 and offers 08:00, 08:30 and **09:00**.
+The customer picks the 90-minute option — the modal cannot resize for that choice — and submits 09:00.
+`SlotValidityReaderPort` sizes off the real 90 minutes, 09:00 + 90 runs past closing, and the booking is
+refused at checkout for a slot the page had just displayed as free.
+
+**Do not "fix" this by sizing the booking check off the default option instead.** That would match the
+modal and reintroduce a real double-booking hole: `booking_member_slot_active_uq` is on
+`(provider_member_id, starts_at)`, so it only catches two bookings at the *same instant* — a 90-minute
+booking at 09:00 overlapping a 60-minute one at 09:30 has a different `starts_at` and the index stays
+silent. Validating against the option actually being bought is the correct half; the modal is the wrong
+half.
+
+Smallest honest fix: thread an optional `serviceOptionId` (or `durationMinutes`) through
+`ListServiceAvailabilityInput` → `findServiceSchedulingInfo` → `resolveOffer`, selecting the requested
+option and falling back to the default when omitted, so existing public callers keep working.
+
+**Trigger:** before any provider publishes a second fixed-price option whose duration differs from their
+default — which no rule currently prevents.
+
+## #98 — A concurrent double payment fails closed silently
+
+`BookingRepositoryPort.save(booking, expectedStatus)` is a compare-and-swap: the `UPDATE` carries the
+status the command read, and a zero-row result means somebody else moved the booking first. Both
+`MarkBookingPaidCommand` and `ExpireBookingCommand` treat that as the aggregate's own no-op — no
+publish, no release, no error.
+
+That is right for the race it was built for, where a sweep and a webhook both act on one stale read
+and only one may win. It is less right for one case it also catches: **two payments with different
+references arriving concurrently.** Read sequentially, that conflict raises
+`PaymentReferenceMismatchError`, because the second call sees the first's reference already stored —
+a customer debited twice for one slot, and somebody owes them money back. Read concurrently, the
+second `save` simply finds the status moved and returns false, and the second payment leaves no
+trace at all.
+
+Not a regression: before the CAS the unconditional `UPDATE` had the same blind spot in a worse form,
+silently overwriting rather than silently dropping. And not this plan's to fix — its scope was the
+payment-versus-expiry race.
+
+Worth doing when double-payment handling is next touched: distinguish "the status moved" from "the
+status moved *and* a different payment reference is now stored", and raise on the second.
+
+**Trigger:** the first time M-Pesa's webhook is observed delivering two distinct transaction ids for
+one booking, or before any refund flow is built on the assumption that a double payment always raises.
+
+## #99 — A scheduled-handler test is flaky on unmodified HEAD
+
+`apps/backend/api/src/__tests__/scheduled.test.ts`'s "closes the run's postgres pool behind deferred
+work, not beside it" fails intermittently — reproduced three times in isolation against code it does
+not test, and confirmed against the original files checked out fresh.
+
+The mechanism: the booking-expiry sweep makes a real database round trip that sits between the mocked
+notification sweep's fire-and-forget 20ms timer and an assertion taken immediately after `scheduled()`
+resolves. Whether the timer has fired by then depends on how long the database takes, which is not
+something the test controls.
+
+It lives in `apps/backend/api`, not `packages/backend`, so it does not affect that package's gate and
+is easy to not notice.
+
+**Trigger:** the next time this test fails in CI and somebody starts looking for a defect in
+`scheduled.ts` — the answer is here.
+
+## #100 — Domain-event tests do not pin their payload contracts
+
+`booking-events.test.ts` builds each event's payload as a separate `const` and passes it to the
+constructor. `BaseDomainEvent`'s payload is `unknown` at runtime and deep-clones whatever it is
+handed, and TypeScript's excess-property check does not apply to a named variable — only to a fresh
+object literal passed directly. So the test asserts an object survives a round trip through a
+constructor, which it would do whatever the class declared.
+
+Found by an implementer following a "watch the test fail first" instruction and discovering it could
+not: they added the new fields to the test and it passed, green, before the event classes were
+touched. A reviewer then reproduced it in an isolated file outside the repo and confirmed the control
+case — the same extra field as an inline literal raises `TS2353`, so the checker works and is
+specifically bypassed by this pattern.
+
+`satisfies ConstructorParameters<typeof X>[0]` restores the check without restructuring, because
+`satisfies` triggers excess-property checking on a variable declaration. That has been applied to the
+two events the seams plan touched.
+
+**Still unpinned:** `BookingCreated`'s payloads in the same file, plus the identical pattern in
+`catalog/__tests__/events-carry-actor.test.ts`, `provider/domain/events/__tests__/events.test.ts`,
+and any other bounded context's event tests. Events cross context boundaries without a shared
+transaction, so a payload field silently dropped is a bug nobody finds until a customer is not
+notified.
+
+**Trigger:** before another context starts consuming Booking's events, or the next time an event
+payload changes shape.
+
+## #101 — `save` does not catch the exclusion constraint's SQLSTATE
+
+`isSlotCollision` maps `23505` (the old unique index) and `23P01` (the exclusion
+constraint) to `SlotAlreadyTakenError`, but it is wired into `insert` only. `save`'s
+`UPDATE` has no `try`/`catch`, so a `23P01` raised there propagates raw and reaches a
+customer as "An unexpected error occurred".
+
+Unreachable today: no transition changes `starts_at`, `ends_at` or `provider_member_id`,
+so `save` cannot violate the constraint. But `booking-row-slot-hold.adapter.ts`'s own doc
+comment describes the path that will — *"a reschedule's own UPDATE of startsAt/endsAt
+inside one transaction already moves what the constraint enforces"* — and `booking_change`
+already carries `previousStartsAt`, `previousEndsAt` and `previousProviderMemberId` for it.
+
+So the moment Plan 2 ships reschedule, an honest slot race on the update path becomes a
+500 — the exact failure `isSlotCollision`'s own comment says it exists to prevent. The
+comment is currently a trap: it describes a route that is not defended.
+
+**Trigger:** before reschedule lands. It is a `try`/`catch` around one `UPDATE`.
+
+## #102 — A booking's seat lock covers only its start-day
+
+`DrizzleBookingRepository.insert` takes `pg_advisory_xact_lock(hashtext(providerMemberId), civilDay)`
+before assigning a seat, where `civilDay` is derived from `startsAt` alone. A booking whose window
+crosses local midnight therefore locks only the day it starts on.
+
+Concretely, in `Africa/Maputo`: booking A local 23:45–00:15 (day D into D+1) and booking B local
+00:00–00:30 on D+1 overlap by fifteen minutes but take different lock keys, so they compute occupancy
+concurrently and can choose the same lowest free seat. The exclusion constraint then refuses the
+second insert — `23P01`, surfaced as `SlotAlreadyTakenError`.
+
+**No data is corrupted**; the constraint backstop does exactly what the design says it is there for.
+What is wrong is the outcome: at capacity 2 or more, both bookings could have succeeded on different
+seats, and one customer is told the slot is taken when it was not.
+
+Not reachable today — no fixed-price option in the catalogue produces a booking spanning local
+midnight, and `DrizzleBookingBusyAdapter`'s own comment already rests on the same "well under a day"
+assumption without handling it either. The fix is to lock every civil day the booking's window
+touches, in a stable order to avoid deadlock between two bookings that span the same pair of days.
+
+**Trigger:** before an hourly or multi-hour option can produce a booking that crosses local midnight,
+or the first time a customer reports "already taken" on a slot that was free.
+
+## #103 — A slot can be offered with less notice than the three clocks need
+
+The checkout hold (30 min), the provider response window (120 min) and the payment window (15 min)
+sum to 165 minutes, and the only lead-time rule anywhere is `slot-validity.reader.ts`'s
+`startsAt > Date.now()` at creation. Deadlines are now capped at the slot's own start, so nothing
+can be charged for a service whose time has passed — but a slot booked ten minutes out gets a
+ten-minute hold and may leave the provider no window at all to answer. The cap makes the outcome
+honest; it does not make the booking useful.
+
+The remedy is on the other side: Scheduling should not *offer* a slot that starts inside the run-up
+the clocks need. That is a decision about what a customer is shown, not about what the booking
+aggregate accepts, which is why the cap was the right thing to build first.
+
+**Trigger:** the first customer complaint that a booking "expired immediately", or before same-day
+booking is promoted anywhere in the product.
+
+## #104 — Test fixtures pinned to future dates go red on a calendar boundary
+
+Two command test files pinned their fixture slot to `2026-09-04T12:30:00.000Z`. Once deadlines were
+capped at the slot's start, every deadline assertion in both files was three days from failing —
+not on a change, but on the date arriving, and whoever met it would have been debugging a cap that
+was working correctly. Both are now relative.
+
+A fixture that merely needs a stable value is fine pinned. The ones that matter are those whose
+*correctness depends on the date still being in the future*; those are a suite that fails for a
+reason unrelated to the code.
+
+**Trigger:** any test failing on a date nobody changed anything on — and re-check whenever a new
+rule compares a fixture's date to `now`.
+
+## #105 — `prettier --check` fails on files nobody has touched
+
+There is no prettier config at the repo root, so `bunx prettier --check` runs at its 80-column
+default against a codebase written to about 100 and fails on untouched files. It is not wired into
+any gate, and nothing depends on it — but a check that fails on work you did not do teaches
+everybody to ignore it, which is worse than not having one.
+
+Either add a config matching the codebase's actual width and make it a gate, or remove the illusion
+that running it means anything.
+
+**Trigger:** anyone proposing to add formatting to CI, or the next time someone runs it and wastes
+time on the output.
+
+## #106 — Five transitions in the booking state machine have no code, and `COMPLETED` is unreachable
+
+The design's diagram draws `CONFIRMED → MARKED_DONE`, `MARKED_DONE → COMPLETED`,
+`MARKED_DONE → DISPUTED`, `CONFIRMED → CANCELLED` and reschedule. None is implemented. `CONFIRMED`
+became reachable for the first time when `markPaid` was retargeted, and it is terminal.
+
+The consequence worth writing down: `booking-review-eligibility.adapter.ts` requires `COMPLETED`, so
+it can never return true. Reviews cannot be left on any booking, and nothing says so — the adapter
+looks correct and simply has no reachable input.
+
+This is the original booking spec's own slicing rather than an omission, but the plans that
+implemented the reversal do not say so anywhere a reader of the diagram would find it.
+
+**Trigger:** before anyone builds the review flow, or the first "why can't I review this?" report.
+
+## #107 — An ambiguous charge is abandoned rather than reconciled
+
+A charge whose outcome we do not know — the WAF's HTML 504 while the prompt is still live, our own
+transport timeout, an `INS-0` carrying no transaction id — now stops the booking rather than
+retrying it, because a second prompt can land on a live first one and refunds do not exist. That
+trades a possible missed charge for a possible double debit, deliberately and in the safe direction.
+
+The real answer is `queryTransactionStatus` against attempt N−1 before pushing attempt N.
+`chargeReference` and the third-party reference are both derived from `bookingId` + attempt so any
+past attempt is rebuildable from the row; the call is the only missing piece.
+
+**Trigger:** the first real customer payment, or any report of a booking cancelled for non-payment
+by a customer who says they paid.
+
+## #108 — `create` and `submit` are mounted and unthrottled; `accept` and `decline` are still not mounted
+
+**Rewritten after the checkout-pages branch, which falsified the old title and tripped the old
+trigger.** This entry used to open "`write/booking/graphql/schema/mutations.ts` exposes only
+`booking.create`" and to title itself "`submit`, `accept` and `decline` exist but are not mounted".
+`booking.submit` is mounted now, and `/booking/$bookingId/confirm` calls it. The trigger said the
+rate limit belonged in the same change as mounting; one of the three was mounted and no throttle
+landed. **That omission is deliberate and stays deliberate** — a throttle is a platform concern with
+its own shape, and the checkout branch was not the place to invent one — but the register has to
+describe the world as it is or it cannot be used to judge urgency.
+
+Where things actually stand:
+
+- **`booking.create` — mounted.** Step 1's confirm calls it.
+- **`booking.submit` — mounted.** Step 3's send calls it.
+- **`accept` and `decline` — written, tested, not mounted.** They belong to the provider inbox,
+  which has its own spec. Until it exists, a submitted request can only be accepted by hand, and
+  the ordinary end state of a request is its response window lapsing. The customer pages are built
+  to say so rather than to treat it as an anomaly.
+- **No rate limit anywhere in this repo**, on any of it.
+
+The hold consequence is unchanged and is now live rather than prospective. `DRAFT` is in
+`SLOT_HOLDING_STATUSES`, so `booking.create` — authenticated, free, unthrottled — blocks a
+provider's seat for `checkout_hold_minutes` (30), and `booking.submit` extends that by
+`provider_response_minutes` (120). Before this branch the longest free hold was
+`payment_window_minutes` (15). One signed-in account can hold every slot on a provider's grid and
+repeat it as each expires; the exclusion constraint, the seat assignment and the availability engine
+all honour the hold, correctly, which is exactly what makes it effective.
+
+Two things blunt it and neither closes it. `CreateBookingCommand` expires a customer's existing
+`DRAFT` before creating the next, so one account holds one slot at a time through the ordinary UI —
+but a scripted caller creating and abandoning in a loop still walks the grid, and `submit` turns a
+30-minute hold into a 150-minute one that the one-draft rule does not touch (it filters
+`status = 'DRAFT'`).
+
+The spec's "trade being accepted" paragraph names the payment risk moving to the provider. It does
+not name this one.
+
+**Trigger:** mounting `accept` or `decline`, opening the platform to accounts that are not
+hand-created, or the first provider report of slots held by somebody who never books. Whichever
+comes first — and the throttle now belongs in a change of its own, since the mounting it was
+supposed to ride along with has already happened.
+
+### #104, the durable fix
+
+The rot has one cause. `slot-validity.reader.ts` reads the real clock inline, and it is the last
+place in this area that does — every other consumer takes `now` as a parameter
+(`findDueForSweep(now)`, `criteriaAt(now)`, `buildSweep(repo, () => now)`, `Booking.submit(at, …)`),
+which is precisely why twenty-six files could keep readable pinned dates and one could not.
+
+Give that check a `now` parameter and the category ends: the fixture goes back to a literal, and no
+test in the repo has to care what today's date is. It changes a port signature and every implementer
+and fake with it, which is why it was not done inside a review fix round.
+
+## #109 — A route's `validateSearch` does not narrow keys it does not name
+
+TanStack Router builds a match's search as `{ ...parentSearch, ...validated }`, and the root route
+validates nothing — so any key a route's `validateSearch` does not explicitly name survives from the
+raw URL, with whatever type the parser gave it. `?expired=banana` reached the checkout page as the
+string `"banana"` and rendered the lapsed-hold message, because the page asked whether the flag was
+truthy.
+
+The conditional-spread idiom copied from `services.index.tsx` narrows nothing here: omitting a key
+from the returned object does not remove it, it just lets the parent's value through. The fix is to
+name **every** key and return `undefined` for a rejected one — the router's own `encode` skips
+undefined, so the address bar is unchanged.
+
+Found while testing `book.$serviceId`'s own route rather than a test-local passthrough. Every other
+route using the conditional-spread shape has the same hole until checked.
+
+**Trigger:** before trusting any search param for anything a user should not be able to set — and
+when adding a route that branches on one.
+
+## #110 — Route modules are tested through test-local passthroughs, so `validateSearch` is unreachable
+
+Every checkout suite built its own permissive route stub, and nothing in `src/` imported
+`routes/book.$serviceId` except the generated tree. The consequence was measured: replacing that
+route's `optionId` line with `undefined` left the entire web suite green — 133 files, 1467 tests —
+while reinstating a defect that books a customer the wrong package at the wrong price.
+
+`book.$serviceId` now has a suite driving the real `Route`, parented the way the generated tree
+parents it, and it lives under `routes/` because `eslint-plugin-boundaries` forbids `ui → routes`.
+No other route has one.
+
+**Trigger:** any bug traced to a search param, a loader or a route-level guard — and before adding
+route-level logic that a page's own tests cannot see.
+
+## #112 — `booking.$bookingId.details.test.tsx` races a one-second `waitFor` it can lose
+
+`waitFor`'s default timeout is one second. The first render in either checkout route suite costs
+**~450ms measured on an idle machine** — the route's async `beforeLoad`, then the booking query, then
+the effect that reads it, on top of a first mount that processes the app's CSS (`vite.config.ts` sets
+`css: true`). Alone that is comfortable; beside 138 other web files and a database-backed backend
+suite running concurrently under `turbo run test`, it is not.
+
+`booking.$bookingId.confirm.test.tsx` went red twice that way and now passes an explicit
+`SETTLES_IN = { timeout: 4000 }` to every wait that depends on a navigation.
+`booking.$bookingId.details.test.tsx` has the identical shape and the identical 450ms first render and
+still uses the default. It has not gone red yet; nothing about it is safer, and the commit that added
+the confirm suite added a second file racing the same budget.
+
+Two candidate fixes, and the second is probably the right one: pass the same explicit timeout in that
+file, or raise `asyncUtilTimeout` once in `vite.config.ts` — these assertions are about *where* a
+route sends somebody and never about how quickly, so a bound that fails on a loaded machine is
+testing the machine. The global change is a whole-suite behaviour change and wants its own decision.
+
+**Trigger:** the next time a route or page suite fails on a `waitFor` timeout rather than on an
+assertion — and before adding a third route suite of this shape.
+
+## #113 — A booking's timezone is read live from the provider, not snapshotted
+
+`bookingReadModel.timezone` comes from an `innerJoin` on `provider`. Every other fact the customer
+agreed to — `serviceName`, `providerName`, `optionName`, `priceMinor`, `commissionBps` — is copied
+onto the booking at creation, precisely so a later edit cannot rewrite what was bought.
+`booking.schema.ts` argues that at length. A live join is the opposite of it.
+
+The analogy that made the join look safe is the weak part: `serviceId` is an *identity*, and the row
+it names is the same row forever, which is exactly why ids stay live while names are snapshotted.
+`provider.timezone` is a **mutable attribute**, in the same class as `provider.name` — and it is
+editable in the product, on the availability page a provider visits to manage their calendar.
+
+The case that decides it is a provider who relocates while still serving the same city. The instant
+does not move; `startsAt` is a `timestamptz`. The words do. A customer who agreed to "Sábado às
+14:00" in Maputo, whose provider has since moved to Lisbon, is shown 13:00 — a wall clock matching
+neither what was agreed nor where the work happens. Sharper still for an `at_customer` service,
+where the relevant civil clock was never the provider's to begin with: "the provider moved zone, so
+the appointment moved too" is true for a shopfront and false for a callout.
+
+**The cost is small and mostly already paid.** `ProviderSnapshotReaderPort.findForBooking` already
+fetches the provider row at creation for `commissionBps`, `name` and `slug`, so the snapshot gains
+one field and no new query. The column is `timezone text NOT NULL`, and its backfill is
+`UPDATE … FROM provider` — trivially total, since `provider_id` is `NOT NULL` and
+`provider.timezone` is `NOT NULL DEFAULT`. Then the two `innerJoin`s go.
+
+**`bookingReadModel.timezone` stays byte-identical**, which is why this can wait: the whole change
+is behind the read model, and no frontend file moves. The `Europe/Lisbon` fixture stays valid and
+gets stronger — it could then assert the rendered time survives changing the provider's zone.
+
+**Trigger:** before a provider can plausibly relocate — a second launch market, or the first support
+ticket about an appointment that changed time by itself. **See also #119**, which is this argument
+about `locationType` off the same booking: both are one migration on the same table, and taking
+either alone leaves the other reading live off a row a provider can edit.
+
+## #114 — `booking.byId` puts the commission on the wire, and the design says the customer never sees it
+
+`bookingById` reuses `bookingReadModel`, which carries `commissionBps` and `commissionMinor`. It is
+the customer's own booking, read by the customer's own session, so both numbers are served to the
+browser on every checkout page load.
+
+**Pre-existing, and identical in kind to `booking.mine`'s**, which has exposed the same two fields
+since the read tier was built — which is why the checkout branch did not fix it there. What the
+branch changed is who is looking: the commission now travels to the three pages the design singles
+out as the ones a customer may not be shown a fee on.
+
+Checkout's own client defends itself twice and neither defence reaches the wire's other end.
+`CheckoutBooking` is `Omit<BookingDTO, "commissionBps" | "commissionMinor">`, so a page reading one
+is a compile error; `BOOKING_FIELDS` never selects them, so the current query genuinely does not ask
+(and `checkout.repository.test.ts` now holds that document to it, after six reviews in which the
+claim could not fail). Both are properties of *this* consumer. Any other caller of `bookingById` —
+another feature, a devtools panel, somebody reading the network tab over a customer's shoulder —
+gets the split.
+
+"The commission is deducted from the provider's payout and is never shown to the customer" is a
+stated global constraint. Today it is enforced by client-side selection sets, which is a convention
+rather than a rule: the honest fix is a customer-facing projection of `bookingReadModel` that does
+not carry the fields at all, so `bookingById` and `bookingMine` cannot serve them to a customer
+session whatever a client asks for. It is the same shape as `booking.byId` already filtering on the
+session's customer id *inside* the query rather than returning a row plus a check.
+
+Not fixed on the checkout branch because it is a read-tier change touching a shared read model and
+two mounted fields, and because nothing in the product renders it — the exposure is real and the
+harm is not yet.
+
+**Trigger:** the second consumer of `bookingById` or `bookingMine`, the provider inbox reusing this
+read model for the *other* audience (where the split is legitimately visible and the customer's
+side then differs by convention alone), or any commission-visibility review that treats "the
+customer never sees it" as an enforced property.
+
+## #115 — The same review-and-verification SQL exists in three contexts
+
+`reviewAggregate` and `verifiedAggregate` — the subqueries that give a provider their average
+rating and their verified badge — are now written out in `public/provider`, in
+`bounded-contexts/catalog`, and in `read/booking`.
+
+The first pair is a deliberate, documented copy: importing one context's query builder into
+another would be a context violation, and duplicating six lines was judged cheaper than the
+coupling. That argument still holds for each copy taken on its own. It stops holding at three,
+because the thing that goes wrong with duplicated SQL is not the writing — it is that one of
+them is corrected and the others are not, and nothing says so.
+
+All three already import their tables from `shared/infrastructure/database`, which is where the
+helpers belong: shared *schema* is not a context boundary crossing, and lifting them there is
+what the existing comment's own reasoning points at without taking the step.
+
+**The three copies are not one shape, and the lift has to know that.** `read/booking`'s
+`reviewAggregate` selects `providerId` and `average` only; the catalogue's copy
+(`bounded-contexts/catalog/.../service-read.repository.ts`) and the provider page's also select
+`count: sql\`count(*)\``. That is not drift — checkout's rail has never rendered a review count,
+so the booking reader never asked for one — but "lift them into `shared/infrastructure/database`"
+reads as though a single function would serve all three call sites. Doing that naively (one
+shared `reviewAggregate` selecting all three columns) would quietly hand checkout a `count` column
+it does not use today and did not ask for, the same kind of silent widening this entry exists to
+prevent one row up. The lift needs a way to ask for the average alone — a parameter, or a base
+aggregate the count is layered onto — not a single fixed projection.
+
+Not done at the time because it touches two other contexts and their tests inside what was
+otherwise a visual redesign of three pages.
+
+**Trigger:** the next change to any of the three — a rating that starts excluding withdrawn
+reviews, a verification that gains a state — because that is the moment two of them become
+wrong silently.
+
+## ~~#116 — Checkout fixtures are typed loosely enough to drift from the read model~~ — RESOLVED 2026-09-02
+
+All four checkout booking fixtures now return a whole `BookingDTO` instead of taking a
+`Partial<BookingDTO>` and returning `unknown`, so a field added to `bookingReadModel` is a
+compile error rather than a silently stale fixture: `details-page.test.tsx` and
+`confirm-page.test.tsx`, plus `routes/__tests__/booking.$bookingId.{details,confirm}.test.tsx`,
+which had the same shape and were not in the original entry.
+
+**Two of them had already drifted.** The details *route* fixture carried no `timezone` and no
+`providerRatingAverage` at all, and step 2 now renders both — the missing rating would have
+reached `Intl.NumberFormat().format(undefined)` and printed `NaN` in the trust line. The
+`CurrentUserDTO` fixtures in both route suites were ad-hoc object literals and are now typed
+too, for the same reason.
+
+The rating on every fixture is **4.2**, chosen because no default and no other fixture in the
+repo produces it: at 4.8 the trust-line assertion would pass against a rail that ignored the
+booking and printed the shared suite's constant.
+
+## #116 (original) — Checkout fixtures are typed loosely enough to drift from the read model
+
+`details-page.test.tsx` and `confirm-page.test.tsx` build their bookings as `Partial<BookingDTO>`
+cast through `unknown`, so adding a required field to `bookingReadModel` does not break them.
+`providerRating` and `providerVerified` were added and those fixtures compiled unchanged, still
+describing a booking the API no longer returns.
+
+The cost is not a broken test — it is a passing one that asserts against a shape reality has
+left behind, which is worse, because it reads as coverage.
+
+**Trigger:** any field added to `bookingReadModel`, and whenever one of those suites is next
+opened for a real change.
+
+---
+
+## ~~#117 — Checkout step 2 shows the same appointment twice, with two identical "Alterar" buttons~~ — RESOLVED 2026-09-02
+
+Neither panel was dropped: **the layout decides which one is on screen.** The "MARCAÇÃO
+ESCOLHIDA" panel now carries `lg:hidden`, `lg` being the breakpoint the page's own grid switches
+on (`lg:grid-cols-[minmax(0,1fr)_20rem]`). Below it the rail is stacked under the whole form and
+the top panel is the only thing telling a customer what they are booking before they fill
+anything in; at and above it the rail is beside the form and permanently in view, so the second
+copy is noise. Exactly one appointment and exactly one "Alterar" at any width.
+
+Both suggested resolutions in the original were rejected for the same reason: they answer one
+viewport and break the other. Dropping the top panel makes a phone user scroll past every field
+first; dropping the rail's "Alterar" leaves the desktop control two hundred pixels above the
+fold on a long form.
+
+The comment on the panel says which breakpoint and why, because the failure mode from here is a
+reader deleting one of the two as a duplicate. The test asserts the class rather than computed
+visibility — jsdom loads no stylesheet and evaluates no media query, so every responsive utility
+in this app is inert under vitest. That is a weaker assertion than a rendered one and a much
+stronger one than nothing: without it the two panels are indistinguishable from the duplication
+this entry records.
+
+**Step 3 has a lesser version of the same shape and is deliberately left alone.** Its summary
+card states the appointment in long form ("Sábado, 5 de setembro" over "00:30 – 02:00") inside
+the `<dl>` that is the record of what is being sent, beside "Onde" and the note, and it carries
+no control; the rail states it compactly with the page's single "Alterar". One control, two
+registers, and the review block stays complete at every width — but it is still the same
+appointment twice on a desktop viewport, and somebody may want it resolved the same way.
+
+## #117 (original) — Checkout step 2 shows the same appointment twice, with two identical "Alterar" buttons
+
+The approved mockups give step 2 a "MARCAÇÃO ESCOLHIDA" panel at the top of the form *and* a
+"QUANDO" panel in the shared rail. Both print the same date and time, in the same words (they
+share `railWhen`, deliberately — two clocks on one page make whichever the customer checks
+against the other look wrong), and both carry an "Alterar" that goes to the same place.
+
+On a narrow screen the rail stacks below the form, so the top panel is the only one a customer
+reads before filling anything in — which is the case that justifies it. On a desktop viewport
+they are inches apart and the duplication is visible.
+
+Built as the brief specifies rather than resolved, because the two mockups are the authority
+and the owner approved them. The resolution, if it is wanted, is one of: drop the top panel and
+rely on the rail above the fold, or drop the rail's "Alterar" on this step and let the panel own
+the control.
+
+**Trigger:** the first time somebody looks at step 2 on a desktop viewport and asks why the
+appointment is there twice — or the next change to either panel, because there are now two
+places to make it.
+
+---
+
+## ~~#118 — Step 3 still carries the pre-redesign rail~~ — RESOLVED 2026-09-02
+
+`/booking/$bookingId/confirm` renders `CheckoutRail`. Its bespoke card is gone, and with it the
+last copy of a price panel this flow had three of. The page the customer commits on now shows
+what the two that led there showed: the trust line (`Studio X · 4,2 ★ · Verificado`, off fields
+the query had been fetching and not printing), the "QUANDO" panel with the appointment in the
+service's zone, "Deslocação — Incluída" where the provider is the one travelling, and the two
+promises the platform can actually keep.
+
+Everything the page already did survived, and each of these has a test that fails without it:
+the `EXPIRED` split (`holdLapsedUnsent` vs `requestWentUnanswered`), `BookingOutcomePanel`'s
+per-status sentences, the sent panel ending checkout here rather than at the `/bookings`
+placeholder, the countdown's `sending` guard — which moved into the rail's `countdown` slot and
+was re-checked by deleting it — and the commission's absence, re-checked by injecting a real
+"Taxa Ntizo" row formatted with the page's own `formatAmount`.
+
+The send button, the failure message and "Nada é cobrado agora" are the rail's `children`, which
+is what that prop exists for.
+
+## #118 (original) — Step 3 still carries the pre-redesign rail
+
+Steps 1 and 2 render the shared `CheckoutRail`; step 3 still has its own bespoke card — provider
+name, service name, price, no trust line, no "QUANDO" panel, no `Deslocação` line. The
+duplication the rail was extracted to end therefore survives on one of the three pages, and the
+booking's `providerVerified`/`providerRatingAverage` reach that page and are not printed.
+
+Out of scope deliberately: this task's scope was step 2 and the phone's move off step 3, and
+adopting the rail there is a visual change to a page nobody asked to redesign in this pass. The
+fixtures in `confirm-page.test.tsx` already carry both fields, so the adoption starts from a
+booking that has them.
+
+**Trigger:** the step 3 redesign, or any change to what the rail prints — because that is the
+moment the two cards start disagreeing about the same booking.
+
+---
+
+## #119 — A booking's `locationType` is read live from the service, not snapshotted
+
+`bookingReadModel.locationType` comes from a `leftJoin` on `catalog.service`. Every other term of
+the agreement — `serviceName`, `optionName`, `priceMinor`, `commissionBps`, the whole address —
+is copied onto the booking at creation, precisely so a later edit cannot rewrite what was bought.
+`booking.schema.ts` argues that at length. A live join is the opposite of it.
+
+**This is #113's argument, on a field where the drift is visible rather than subtle.** Read that
+entry first: `provider.timezone` is live for the same shape of reason and the same shape of
+cost, and the two want fixing in one change if either is fixed at all.
+
+The distinction that matters is against the two fields beside it. `providerVerified` and
+`providerRatingAverage` are also live, and correctly so: they are not terms of the booking, they
+are what the platform asserts about a business **today**, and a badge frozen at draft time would
+go on claiming a document the platform has since withdrawn. Where the work happens is not that.
+It is a term of what the customer agreed to, in the same class as the price and the package name.
+
+The case that decides it is a provider who switches a service from `at_customer` to
+`at_provider` — the barber who stops doing house calls. Nothing about the existing booking
+changed; the customer agreed to a callout and paid for one. But every checkout and booking screen
+reading this field then says "No espaço dele" about a job the provider is travelling to, and the
+rail's "Deslocação — Incluída" line — a claim about money — disappears from the same booking. The
+customer is shown terms nobody agreed to, and the provider's own record says the same.
+
+**The cost is a column and a migration, which is why it waited.** `ProviderSnapshotReaderPort`
+already fetches at creation; the service row is read in the same command for `durationMinutes`
+and the price, so the snapshot gains one field and no new query. The column is
+`location_type text NOT NULL` and the backfill is `UPDATE … FROM catalog.service`, trivially
+total since `booking.service_id` is `NOT NULL` and `service.location_type` is `NOT NULL`. Then
+the `leftJoin` goes and the field can stop being nullable.
+
+The change that added it was a visual pass over three checkout pages, and the value it carries is
+byte-identical either way for every booking whose service has not been edited — which is what
+makes it safe to defer, and why nobody notices it is outstanding unless this entry says so.
+
+**A note on the join.** It is a `leftJoin` even though `booking.service_id` is a `NOT NULL` FK
+with no cascade, which means an inner join could not drop a row either — and a probe confirms it:
+switching it to `innerJoin` leaves the projection suite green. The left join is not justified by
+a case it catches, then, but by the asymmetry of being wrong. A needless left join costs one
+nullable field the rail already handles; an inner join that ever failed to match would remove a
+booking from its own customer's checkout, which then tells them nothing is being held for them,
+and nothing anywhere would fail. A mutation check that flipped the *rating*'s left join to inner
+on this branch was caught, not silent: `list-my-bookings.projection.test.ts`'s
+`GetMyBookingProjection` case fails when the booking vanishes. Snapshotting the column ends the
+question.
+
+**Trigger:** the first provider who changes a published service's location type while a booking
+for it is open — or #113 being taken, since both are one migration on the same table and the same
+argument twice.
+
+---
+
+## #120 — Five of the eight locales are substantially untranslated, and checkout now shows it
+
+Roughly **300 strings per locale are byte-identical to their English source** in `de-DE`,
+`es-ES`, `fr-FR`, `it-IT` and `nl-NL` — about a fifth of the 1,549 keys each carries. (`pt-MZ`
+and `pt-PT` sit at 52, which is close to the floor: "M-Pesa", "/h", "OK" and other strings that
+are legitimately the same in both languages.) It is worst in `onboarding.json`, where 82 of 90
+keys are still English in every one of the five, and `provider.json`, at roughly 100 each.
+
+**Pre-existing, and this task neither caused it nor widened it — but it moved.**
+`directory.filterWhereOption` is one of the untranslated keys, and the checkout rail now prints
+it on all three steps rather than on step 1 alone, joined to a duration that *is* translated. A
+French customer reviewing what they are about to pay for reads "At your place · 240 min" under a
+French heading, beside a French price. Mixed inside one line is more conspicuous than mixed
+across a filter panel, which is where that key used to live.
+
+Not fixed here, and deliberately not partially fixed. `filterWhereOption` is four strings out of
+roughly thirty untranslated ones in `directory.json` alone — its own section heading,
+`filterWhere` ("Where it happens"), is English in all five — so translating the four this branch
+happens to render would leave the file exactly as half-English as it found it, while making the
+gap harder to measure. The honest unit of work is a locale, or at least a namespace.
+
+Worth noting that this is a different failure from the one the checkout brief warns about. That
+one is *four new keys translated into otherwise-English files*, which produces a bilingual
+heading in a screen somebody is actively building. This is the standing backlog underneath it,
+and no amount of care on new copy reduces it.
+
+**Trigger:** the first non-Portuguese launch market, or any decision to show a language picker to
+customers — because until then nothing routes a real reader to these files, and after it
+everything does.
+
+---
+
+## #121 — `getPublishedById` and `findForCustomer` pay a whole-table aggregate cost for a one-row read
+
+`reviewAggregate` and `verifiedAggregate` (both copies — the catalogue's and the booking reader's,
+see #115) carry a `GROUP BY` and a `SELECT DISTINCT`. Postgres cannot push a join qualifier into
+either: there is no parameterized path from `provider.id = ?` into a subquery shaped like that
+without `LATERAL`. `listPublished` and `listForCustomer` pay that cost deliberately — they are
+browsing many rows, so the aggregate has to run in full regardless of how it is asked.
+
+`getPublishedById` (`bounded-contexts/catalog/.../service-read.repository.ts:621`) and
+`findForCustomer` (`read/booking/.../booking-read.repository.ts:43`) are not: each fetches exactly
+one row, by a key neither aggregate subquery ever sees, so Postgres still runs a hash aggregate
+over every published review and a distinct over every accepted document to answer a lookup that
+only ever wanted one provider's two numbers.
+
+**Free today because `review` and `provider_document` are small.** A hash aggregate over a few
+hundred rows costs nothing next to the network round trip around it, which is why the comment this
+entry replaces could say "the cost is one keyed lookup" and nothing caught it — the sentence was
+wrong on every call and free on every one of them.
+
+The fix is to make the two single-row readers correlated — a `LATERAL` join keyed on
+`provider.id`, or two scalar subqueries in the select list — and leave the whole-table form to the
+two readers that genuinely browse. Not done here: it touches two bounded contexts and their tests,
+inside what this branch is otherwise a visual pass over three checkout pages — the same reasoning
+that deferred #115, which this shares its root cause with (the same duplicated aggregates).
+
+**Trigger:** not a date — nothing about calendar time changes what this query costs. `review` or
+`provider_document` crossing a size where the hash aggregate or the distinct stops being free: a
+slow-query log entry naming either subquery, or a provider/review count high enough that
+`EXPLAIN ANALYZE` on `getPublishedById` shows measurable time spent on `review_agg` or
+`verified_agg` rather than on the indexed lookups around them.
+
+---
+
+## #122 — `canPublish` does not require an option to have a name, so a service can be published that nobody can book
+
+A customer opened a published service on dev, picked a time, pressed **Continuar**, and read
+"Não foi possível guardar esta hora agora. Tente novamente." Pressing again did the same thing,
+and would have done for ever. The GraphQL response underneath it said
+`BOOKING_FIELD_BLANK — A booking's "optionName" cannot be blank`.
+
+**The sequence.** An option's name is not a column on `service_option`; it lives in
+`service_option_translation`, one row per locale. `ServicePricingReaderPort.findOption` resolves
+it by falling back — the customer's locale first, then `service.source_locale` — and returned
+`""` when neither matched. That blank travelled through `CreateBookingCommand` into
+`Booking.create`, which refused it, correctly: a booking snapshots the name of what was bought
+and `""` is not a name. Four layers separated the refusal from the missing row, so the message
+named a booking field rather than a catalogue one, and the page — which had no key for the code
+either way — fell through to the generic retry sentence.
+
+**Twenty of dev's twenty-four published, active options had no `service_option_translation` row
+in any locale.** Not a corrupted subset: five-sixths of everything a customer could see and press
+Continuar on. Those rows have since been seeded, and both halves of the reporting are now fixed —
+the reader refuses with `SERVICE_OPTION_UNNAMED`, naming the option and both locales it looked
+in, and `choose-when-page.tsx` has copy for that code (and eight others) in all eight locales,
+with the confirm going dead rather than inviting a press that cannot work.
+
+**None of that stops it happening again**, because nothing requires an option to be named.
+`canPublish` (`catalog/domain/service-rules.ts`) checks four things: a category, a source-locale
+*service* name (`hasSourceName`), at least one member, and — for a `priced` service — at least one
+option. It counts the options and never looks inside them. So a provider can publish a service
+whose every option is nameless, the service lists, its page renders, its rail says "Ver
+disponibilidade", the calendar draws, and every Continuar on it fails. The service is, in the only
+sense that matters, unbookable while presenting as bookable.
+
+**Refusing at publish is the honest place, and this entry exists because that is a product
+decision rather than a code change.** `Service.publish` is where the platform already makes the
+"is this ready to be seen" judgement, it already refuses an unnamed *service* by exactly this
+argument, and refusing there costs the provider one form field at the one moment they are looking
+at the form. Every alternative is worse: refusing at booking time (where it is now) is a customer
+discovering a provider's omission on the provider's behalf; defaulting the name to something
+("Pacote 1", the price, the service's own name) puts a string the provider never wrote onto a
+customer's receipt and into the booking record that is meant to be evidence of what was agreed.
+
+**Which is exactly why it is not done here.** Adding `hasNamedOptions` to `PublishCheck` blocks
+providers mid-flow, and the interesting half is not the new services — it is the existing rows.
+Dev's twenty were seeded rather than typed, but production will eventually hold options published
+under the old rule, and a `canPublish` that refuses them turns any later edit-and-republish into a
+dead end for a provider who has changed nothing about the names. That needs a decision (backfill?
+grandfather? unpublish and notify?) and probably a provider-facing prompt, neither of which
+belongs inside a bug fix.
+
+Two adjacent facts worth carrying with it. `serviceName` has the same shape of gap and is
+currently safe for a *different* reason — `Service.publish` enforces `hasSourceName`, so a
+published service always has one — which means the reader treats the two fields asymmetrically on
+purpose; closing this follow-up is what would let them be symmetric. And the cascade in
+`ServiceRepository.save` deletes and re-inserts `service_option` wholesale, taking
+`service_option_translation` with it via `ON DELETE CASCADE`, so an aggregate that ever reaches
+`toPersistence` with an empty `translations` array on an option silently unnames a published
+option that had a name yesterday. Nothing observed doing that, but it is the second route to the
+same state, and a publish-time check would not catch it — only a rule at the write would.
+
+**Trigger:** the first provider who publishes an option without naming it — visible as any
+`SERVICE_OPTION_UNNAMED` in the logs, which is what that error now exists to make greppable — or
+any repeat of this report from a customer stuck on Continuar.

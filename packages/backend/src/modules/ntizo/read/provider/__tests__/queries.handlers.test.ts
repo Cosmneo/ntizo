@@ -19,7 +19,7 @@ const detail: ProviderDetailDTO = {
   logo: null,
   photos: [],
   documents: [],
-  reverificationRequestedAt: null, ownerUserId: "u1", members: [], invites: [],
+  reverificationRequestedAt: null, commissionBps: 1200, ownerUserId: "u1", members: [], invites: [],
 };
 
 function makeModule(calls: string[] = []) {

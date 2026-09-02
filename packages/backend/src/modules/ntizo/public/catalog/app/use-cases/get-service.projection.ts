@@ -50,6 +50,12 @@ export class GetServiceProjection {
       providerLogoUrl: mediaUrl(r.providerLogoKey),
       providerCity: r.providerCity,
       providerDistrict: r.providerDistrict,
+      // Passed through untouched. The rounding that makes this business's
+      // score agree with the one on its own provider page happens once, in
+      // `coerceReviewAggregate`, and a second normalisation here would be a
+      // second place for the two to drift apart.
+      providerVerified: r.providerVerified,
+      providerRatingAverage: r.providerRatingAverage,
       categoryCode: r.categoryCode,
       categoryName: c?.name ?? r.categoryCode,
       name: t.name,

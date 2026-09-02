@@ -1,0 +1,3 @@
+ALTER TABLE "ntizo_platform"."platform_settings" ADD COLUMN "payment_window_minutes" integer DEFAULT 15 NOT NULL;--> statement-breakpoint
+ALTER TABLE "ntizo_platform"."platform_settings" ADD CONSTRAINT "platform_settings_payment_window_minutes_positive" CHECK ("ntizo_platform"."platform_settings"."payment_window_minutes" >= 1);--> statement-breakpoint
+INSERT INTO "ntizo_platform"."platform_settings" ("id") VALUES ('global') ON CONFLICT ("id") DO NOTHING;

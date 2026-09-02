@@ -1,6 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   integer,
   pgSchema,
   text,
@@ -41,12 +43,16 @@ export const platformSettings = platformSchema.table("platform_settings", {
   // ── Money ────────────────────────────────────────────────────────────────
 
   /**
-   * SEED. The platform fee charged to the **customer**, in basis points.
+   * SEED. The default rate deducted from the **provider's** payout, in basis
+   * points, copied onto `provider.commission_bps` when a provider is created.
    *
-   * Charged to the customer and never deducted from the provider — that is a
-   * permanent commitment of this product, not a default. There is deliberately
-   * no provider-side rate anywhere in this table, because a field is an
-   * invitation and this is one nobody should be able to accept.
+   * The provider prices a service with this fee already in mind: the
+   * customer pays exactly the listed price, and the provider receives that
+   * price minus the commission. Copied at creation rather than read live so
+   * a provider who signed up under one rate is not moved onto another
+   * without agreeing to it — an administrator can still change a given
+   * provider's own `commission_bps` afterward, which is exactly the field
+   * this seed exists to initialize.
    *
    * Basis points as an integer, for the same reason money is: 1050 is 10.5%,
    * and no two machines disagree about it.
@@ -79,6 +85,59 @@ export const platformSettings = platformSchema.table("platform_settings", {
    * decision about dispute risk, not a technical one.
    */
   earningsHoldDays: integer("earnings_hold_days").notNull().default(3),
+
+  // ── Booking ──────────────────────────────────────────────────────────────
+
+  /**
+   * LIVE. Minutes a DRAFT holds its slot before an abandoned checkout
+   * expires it and releases the calendar.
+   *
+   * The mockup's countdown — "Hora reservada 29:40" — runs on all three
+   * checkout steps, so the slot has to be held from the moment the customer
+   * picks it, not from the moment they finish; this is that hold's length.
+   * Read when the booking is created, same relationship to the row as
+   * `paymentWindowMinutes` below: a change applies to new bookings at once,
+   * and a `DRAFT` already in progress keeps the deadline it was given (this
+   * table's header comment on seed vs. live).
+   */
+  checkoutHoldMinutes: integer("checkout_hold_minutes").notNull().default(30),
+
+  /**
+   * LIVE. Minutes a provider has to accept or decline a request before it
+   * expires on them and the slot releases.
+   *
+   * The mockup states this one directly: "o prestador tem 2 horas para
+   * confirmar a hora." Read when the request reaches `AWAITING_PROVIDER`,
+   * same relationship to the row as `paymentWindowMinutes` below — a
+   * booking already waiting on a provider keeps the deadline it was given
+   * even if this setting changes underneath it.
+   */
+  providerResponseMinutes: integer("provider_response_minutes").notNull().default(120),
+
+  /**
+   * LIVE. Minutes an accepted booking holds its slot while payment is
+   * collected, before it expires unpaid.
+   *
+   * Read when the booking is created, so a change applies to new bookings at
+   * once; bookings already made keep the deadline they were given — that is
+   * the booking snapshot behaving normally (see this table's header comment
+   * on seed vs. live), not a seed relationship. Was a hard-coded 30 in
+   * `CreateBookingCommand`.
+   *
+   * The trade is real in both directions: long enough and an abandoned
+   * checkout blocks a member's calendar while other customers are turned
+   * away, short enough and somebody who fumbles an M-Pesa PIN loses the slot
+   * they were paying for. M-Pesa's C2B is synchronous — approval takes a
+   * minute or two, not half an hour — which is why the default here is 15,
+   * not the mockup's 30.
+   *
+   * The name and the meaning both predate the reversal this file's siblings
+   * are part of: this still counts down "we are waiting for money," the same
+   * thing it always counted. Only where it sits in the flow moves — after
+   * the provider's yes rather than before it — and that move is a later
+   * task's business, not this column's.
+   */
+  paymentWindowMinutes: integer("payment_window_minutes").notNull().default(15),
 
   // ── Approval and verification ────────────────────────────────────────────
 
@@ -125,7 +184,26 @@ export const platformSettings = platformSchema.table("platform_settings", {
     .default(true),
 
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  // A zero-minute window creates something already expired — a DRAFT with no
+  // time to fill in the form, a request with no time for a provider to
+  // answer, a booking with no time to pay — and a negative one creates a
+  // deadline already in the past. Neither is a state anybody meant to
+  // configure; both are rows the sweep would end — expire or cancel,
+  // depending on which clock — the instant they exist.
+  check(
+    "platform_settings_checkout_hold_minutes_positive",
+    sql`${t.checkoutHoldMinutes} >= 1`,
+  ),
+  check(
+    "platform_settings_provider_response_minutes_positive",
+    sql`${t.providerResponseMinutes} >= 1`,
+  ),
+  check(
+    "platform_settings_payment_window_minutes_positive",
+    sql`${t.paymentWindowMinutes} >= 1`,
+  ),
+]);
 
 /**
  * Who changed what, when, and from what to what.

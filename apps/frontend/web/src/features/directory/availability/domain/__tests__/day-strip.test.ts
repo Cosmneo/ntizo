@@ -1,5 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { groupByHour, isPast, weekOf } from "../day-strip";
+import {
+  dayLoad,
+  endOfStart,
+  fullDayStarts,
+  isPast,
+  splitByHalfDay,
+  startsByDate,
+  weekOf,
+} from "../day-strip";
 import type { Start } from "../types";
 
 describe("weekOf", () => {
@@ -38,7 +46,7 @@ describe("isPast", () => {
   test("tomorrow is not past", () => expect(isPast("2026-08-13", "2026-08-12")).toBe(false));
 });
 
-/** A minimal `Start`, with only the field `groupByHour` actually reads set explicitly. */
+/** A minimal `Start`, with only the fields these functions actually read set meaningfully. */
 function start(minuteOfDay: number): Start {
   return {
     minuteOfDay,
@@ -49,25 +57,119 @@ function start(minuteOfDay: number): Start {
   };
 }
 
-describe("groupByHour", () => {
-  test("puts every start of one hour in one group", () => {
-    const starts = [start(540), start(555), start(570), start(585)]; // 09:00, 09:15, 09:30, 09:45
-    expect(groupByHour(starts)).toEqual([[start(540), start(555), start(570), start(585)]]);
+describe("startsByDate", () => {
+  test("counts each day's bookable starts", () => {
+    const counts = startsByDate([
+      { date: "2026-08-12", starts: [start(540), start(600)] },
+      { date: "2026-08-13", starts: [] },
+    ]);
+    expect(counts.get("2026-08-12")).toBe(2);
+    expect(counts.get("2026-08-13")).toBe(0);
   });
 
-  test("keeps groups in chronological order", () => {
-    // Deliberately out of order on input — 11:00, then 09:00, then 10:00 —
-    // so a function that merely preserved input order would fail this.
-    const eleven = start(660);
-    const nineA = start(540);
-    const nineB = start(555);
-    const ten = start(600);
-    const starts = [eleven, nineA, ten, nineB];
-
-    expect(groupByHour(starts)).toEqual([[nineA, nineB], [ten], [eleven]]);
+  test("counts starts, never seats", () => {
+    // **The number on a day card is how many appointments can be asked for,
+    // not how many people the provider could take.** Summing `seatsLeft`
+    // would report six free times where there are two, and would republish a
+    // capacity figure this screen has no business restating.
+    const busy: Start = { ...start(540), seatsLeft: 5 };
+    expect(startsByDate([{ date: "2026-08-12", starts: [busy, start(600)] }]).get("2026-08-12")).toBe(2);
   });
 
-  test("an empty list gives no groups", () => {
-    expect(groupByHour([])).toEqual([]);
+  test("a date nobody mentioned is simply absent", () => {
+    expect(startsByDate([]).get("2026-08-12")).toBeUndefined();
+  });
+});
+
+describe("fullDayStarts", () => {
+  test("is the busiest day in the window", () => {
+    expect(fullDayStarts([2, 11, 0, 7])).toBe(11);
+  });
+
+  test("is zero when the whole window is closed", () => {
+    expect(fullDayStarts([0, 0])).toBe(0);
+    expect(fullDayStarts([])).toBe(0);
+  });
+});
+
+describe("dayLoad", () => {
+  test("nothing free is closed", () => {
+    expect(dayLoad(0, 12)).toBe("closed");
+  });
+
+  test("the fullest day is always comfortable", () => {
+    expect(dayLoad(12, 12)).toBe("open");
+  });
+
+  test("a small provider at full strength is not nearly full", () => {
+    // **The reason this is a fraction and not a threshold.** Four free times
+    // is a whole day's work for a provider who publishes four, and an
+    // absolute rule ("under five is nearly gone") would paint their every day
+    // red.
+    expect(dayLoad(4, 4)).toBe("open");
+  });
+
+  test("a large provider down to four is nearly gone", () => {
+    // The same four, on a provider whose normal day is thirty. Both of these
+    // pass only under a rule that reads the provider's own scale.
+    expect(dayLoad(4, 30)).toBe("scarce");
+  });
+
+  test("the two thresholds sit at two thirds and one third, both strict", () => {
+    expect(dayLoad(9, 12)).toBe("open");
+    // Exactly two thirds is already the middle band, not the top one.
+    expect(dayLoad(8, 12)).toBe("limited");
+    expect(dayLoad(5, 12)).toBe("limited");
+    // And exactly one third is already the bottom one.
+    expect(dayLoad(4, 12)).toBe("scarce");
+  });
+
+  test("a provider offering three a day can still reach every band", () => {
+    // Thirds rather than 80/20, and strict comparisons rather than inclusive
+    // ones, for exactly this: on a three-start day all three bands have to be
+    // reachable, or a provider like this jumps from "plenty" to "hurry" with
+    // nothing in between.
+    expect(dayLoad(3, 3)).toBe("open");
+    expect(dayLoad(2, 3)).toBe("limited");
+    expect(dayLoad(1, 3)).toBe("scarce");
+  });
+
+  test("a scale of zero is answered rather than divided by", () => {
+    expect(dayLoad(1, 0)).toBe("open");
+  });
+});
+
+describe("splitByHalfDay", () => {
+  test("noon belongs to the afternoon", () => {
+    const { morning, afternoon } = splitByHalfDay([start(719), start(720)]);
+    expect(morning).toEqual([start(719)]);
+    expect(afternoon).toEqual([start(720)]);
+  });
+
+  test("a provider who opens at 06:00 has a morning that starts there", () => {
+    // The heading's range is read off these arrays, which is what stops it
+    // claiming "08:00 às 12:00" over somebody who opens two hours earlier.
+    const { morning } = splitByHalfDay([start(360), start(420)]);
+    expect(morning[0]?.minuteOfDay).toBe(360);
+  });
+
+  test("an afternoon-only provider gets an empty morning rather than a missing one", () => {
+    const { morning, afternoon } = splitByHalfDay([start(840)]);
+    expect(morning).toEqual([]);
+    expect(afternoon).toHaveLength(1);
+  });
+
+  test("no starts at all splits into two empty halves", () => {
+    expect(splitByHalfDay([])).toEqual({ morning: [], afternoon: [] });
+  });
+});
+
+describe("endOfStart", () => {
+  test("adds the package's length to the start", () => {
+    expect(endOfStart("2026-09-04T09:00:00.000Z", 90)).toBe("2026-09-04T10:30:00.000Z");
+  });
+
+  test("crosses midnight in UTC without touching the civil date maths", () => {
+    expect(endOfStart("2026-09-04T23:30:00.000Z", 60)).toBe("2026-09-05T00:30:00.000Z");
   });
 });

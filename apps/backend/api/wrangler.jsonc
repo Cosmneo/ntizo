@@ -8,7 +8,36 @@
     "STAGE": "local",
     "LOG_LEVEL": "info",
     "MEDIA_PUBLIC_URL_BASE": "http://localhost:8788/api/media",
-    "APP_URL": "http://localhost:3000"
+    "APP_URL": "http://localhost:3000",
+
+    // M-Pesa (Vodacom Moçambique), read by the charge sweep in
+    // `src/scheduled.ts`. These three are CONFIGURATION, not secrets, and
+    // they are here in the open on purpose: which gateway a stage points at,
+    // which origin it announces and which shortcode it collects into are
+    // ordinary setup, and hiding them in the secret store would mean nobody
+    // reading this repository could tell dev from prod without asking. The
+    // two that ARE secrets are named below and set out of band.
+    //
+    // `MPESA_ENVIRONMENT` selects the host: "development" is
+    // api.sandbox.vm.co.mz, anything else is api.vm.co.mz. Every stage below
+    // is on the sandbox except prod. Not inheritable — like `r2_buckets` and
+    // `triggers`, a named env that omits a `vars` key gets nothing rather
+    // than this one — so each stage repeats all three.
+    //
+    // **This value and the shortcode below it must agree, and `MpesaClient`
+    // refuses to charge if they do not** — in both directions, because both
+    // mismatches are reachable from one forgotten edit here:
+    //
+    //   production + 171717   -> MpesaSandboxShortcodeInProductionError
+    //                            (real money to Vodacom's shared test merchant)
+    //   development + any other shortcode
+    //                         -> MpesaLiveShortcodeInSandboxError
+    //                            (every charge fails as an unknown shortcode,
+    //                             silently, looking exactly like customers
+    //                             ignoring their prompts)
+    "MPESA_ENVIRONMENT": "development",
+    "MPESA_ORIGIN": "developer.mpesa.vm.co.mz",
+    "MPESA_SERVICE_PROVIDER_CODE": "171717"
   },
 
   // SECRETS — deliberately absent from every `vars` block above and below.
@@ -32,6 +61,35 @@
   // Resend calls us). So CD asserts it: `deploy-api` POSTs an unsigned body to
   // the new version's preview URL and requires a 401, before the flip. A 500
   // there means this secret is missing on that stage.
+  //
+  // `MPESA_API_KEY` and `MPESA_PUBLIC_KEY` are the two M-Pesa credentials,
+  // and they are secrets for different reasons: the first is the credential
+  // itself — anyone holding it can initiate collections against this
+  // merchant's shortcode — and the second is the RSA public key the first is
+  // encrypted with, which is not sensitive in itself but is issued per
+  // application alongside it and is meaningless apart from it. Set the same
+  // way as everything above, per stage:
+  //
+  //   wrangler secret put MPESA_API_KEY --env dev      # and qa, prod
+  //   wrangler secret put MPESA_PUBLIC_KEY --env dev   # and qa, prod
+  //
+  // NAMES ONLY here — no value for either appears anywhere in this
+  // repository, including in a test, a fixture, a comment, or a committed
+  // `.env`. The client's tests run against a stub and generate their own
+  // throwaway key pair; the real call is proved by hand against the sandbox.
+  //
+  // Absent, `MpesaPaymentCharge` reports every charge as
+  // `NTIZO-MPESA-NOT-CONFIGURED` rather than throwing, so the sweep keeps
+  // running and the affected bookings fall to their payment window. That is
+  // deliberately quiet, which means it needs looking for: an unconfigured
+  // stage looks exactly like a stage where every customer ignored their
+  // prompt, apart from that code in the log line.
+  //
+  // `MPESA_INITIATOR_IDENTIFIER` and `MPESA_SECURITY_CREDENTIAL`, which the
+  // predecessor platform also carries, are deliberately NOT here. They are
+  // used only by B2C (paying a provider out) and reversal (refunding), both
+  // out of this plan's scope; the predecessor's own values for them are
+  // three-character placeholders rather than credentials.
 
   // Provider identity documents.
   //
@@ -63,7 +121,10 @@
         "STAGE": "dev",
         "LOG_LEVEL": "info",
         "MEDIA_PUBLIC_URL_BASE": "https://pub-292f4ba0836f4ea88891c12dffdd4711.r2.dev",
-        "APP_URL": "https://dev.ntizo.co.mz"
+        "APP_URL": "https://dev.ntizo.co.mz",
+        "MPESA_ENVIRONMENT": "development",
+        "MPESA_ORIGIN": "developer.mpesa.vm.co.mz",
+        "MPESA_SERVICE_PROVIDER_CODE": "171717"
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-dev" },
@@ -84,7 +145,10 @@
         "STAGE": "qa",
         "LOG_LEVEL": "info",
         "MEDIA_PUBLIC_URL_BASE": "https://pub-5989f9bee8264cbf986a8bd2c8bd1e69.r2.dev",
-        "APP_URL": "https://qa.ntizo.co.mz"
+        "APP_URL": "https://qa.ntizo.co.mz",
+        "MPESA_ENVIRONMENT": "development",
+        "MPESA_ORIGIN": "developer.mpesa.vm.co.mz",
+        "MPESA_SERVICE_PROVIDER_CODE": "171717"
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-qa" },
@@ -99,7 +163,24 @@
         "STAGE": "prod",
         "LOG_LEVEL": "warn",
         "MEDIA_PUBLIC_URL_BASE": "https://pub-a476c46654eb4872983914195f2918d8.r2.dev",
-        "APP_URL": "https://ntizo.co.mz"
+        "APP_URL": "https://ntizo.co.mz",
+        // The one stage on the live gateway. `MPESA_SERVICE_PROVIDER_CODE`
+        // stays 171717 here only because no production shortcode has been
+        // issued yet — it is Vodacom's shared SANDBOX shortcode, and a live
+        // charge carrying it would move a real customer's money to a test
+        // merchant.
+        //
+        // This is not left to whoever reads that paragraph. `MpesaClient`
+        // refuses the pairing outright: a non-development environment plus
+        // this shortcode throws
+        // `MpesaSandboxShortcodeInProductionError` before any request is
+        // made, so this stage cannot charge anybody until the shortcode is
+        // replaced. It fails loudly (a counted failure in
+        // `[scheduled] booking charge sweep: N attempted, M failed`) rather
+        // than quietly, and the message names both values.
+        "MPESA_ENVIRONMENT": "production",
+        "MPESA_ORIGIN": "developer.mpesa.vm.co.mz",
+        "MPESA_SERVICE_PROVIDER_CODE": "171717"
       },
       "r2_buckets": [
         { "binding": "DOCUMENTS_BUCKET", "bucket_name": "ntizo-documents-prod" },

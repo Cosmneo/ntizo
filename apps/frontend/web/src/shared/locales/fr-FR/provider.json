@@ -29,6 +29,7 @@
   "settings": "Paramètres",
   "account": "Compte",
   "noActiveProvider": "Aucun prestataire actif.",
+  "commissionRateLabel": "Part de la plateforme",
   "welcomeTitle": "Bienvenue ! Configurons votre profil de prestataire.",
   "welcomeSubtitle": "Choisissez comment démarrer. Vous pourrez toujours modifier ces informations plus tard.",
   "setMeUpAutomatically": "Configurer automatiquement",

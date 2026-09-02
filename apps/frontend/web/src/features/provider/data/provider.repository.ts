@@ -25,6 +25,7 @@ const BY_ID = `
       photos { key url }
       documents { id type status fileName uploadedAt reviewedAt rejectionReason }
       reverificationRequestedAt
+      commissionBps
       members { userId email name role joinedAt }
       invites { id email role status }
     }

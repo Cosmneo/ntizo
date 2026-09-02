@@ -192,6 +192,30 @@ export const serviceDetailReadModel = z.object({
   providerLogoUrl: z.string().nullable(),
   providerCity: z.string().nullable(),
   providerDistrict: z.string().nullable(),
+  /**
+   * The same two facts `serviceReadModel` already publishes to a browse card,
+   * reaching the two screens that ask a customer to commit: the service's own
+   * page and checkout's rail.
+   *
+   * **Neither is a new disclosure.** Both are already public — on the browse
+   * card above, and on `providerPublicReadModel` — and both are already
+   * rendered beside this business's name elsewhere in the product. What was
+   * missing was the route to *this* model: they used to be `Omit`ted from
+   * `ServiceDetailRow` on the grounds that nothing rendered them, which was
+   * true until the approved checkout rail did.
+   *
+   * The **provider's** score, not the service's, exactly as on the card:
+   * nothing aggregates reviews per service, so both surfaces label it as the
+   * business's. Null rather than 0 for a business nobody has reviewed — zero
+   * is a score a person could have given, and printing it would tell every
+   * visitor this is the worst business on the platform.
+   *
+   * `providerVerified` is "the platform has accepted at least one of this
+   * business's documents", never `status === "active"`, which every listed
+   * provider is by definition. A badge that is always lit says nothing.
+   */
+  providerVerified: z.boolean(),
+  providerRatingAverage: z.number().nullable(),
   categoryCode: z.string(),
   categoryName: z.string(),
   name: z.string(),

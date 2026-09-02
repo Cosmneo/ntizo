@@ -18,6 +18,39 @@ export interface InfraEnvBindings {
   APP_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  /**
+   * Vodacom Moçambique's M-Pesa gateway, read by `MpesaPaymentCharge` when
+   * the cron charges an accepted booking.
+   *
+   * **Optional, unlike everything above, and that is not laziness.** A local
+   * `wrangler dev`, a script, and every test that builds this shape genuinely
+   * run with none of them, and the code path that reads them says so: a stage
+   * missing the two secrets produces a named charge failure
+   * (`NTIZO-MPESA-NOT-CONFIGURED`) rather than an exception, so the sweep
+   * keeps running and the booking falls to its payment window like any other
+   * unpaid one. Making them required would force every existing
+   * `infraStore.runAsync` caller to supply values it has no use for.
+   *
+   * They live here rather than only on the Worker's own bindings — the shape
+   * `RESEND_WEBHOOK_SECRET` uses — because unlike that secret these are read
+   * from inside `packages/backend`, by an adapter in the Booking context.
+   * A binding only the app layer reads belongs on `AppBindings`; one this
+   * package reads has to be here.
+   *
+   * `MPESA_ENVIRONMENT`, `MPESA_ORIGIN` and `MPESA_SERVICE_PROVIDER_CODE` are
+   * plain configuration and live in `wrangler.jsonc` as `vars`, in the open,
+   * where anybody reading the repository can see how a stage is pointed at
+   * the sandbox. Only the two below are secrets.
+   */
+  MPESA_API_KEY?: string;
+  /** Base64 DER (SPKI), one line, exactly as the developer portal issues it. */
+  MPESA_PUBLIC_KEY?: string;
+  /** `development` for the sandbox host, anything else for production. */
+  MPESA_ENVIRONMENT?: string;
+  /** The `Origin` header the gateway insists on — `developer.mpesa.vm.co.mz`. */
+  MPESA_ORIGIN?: string;
+  /** The merchant shortcode being paid. `171717` in the sandbox. */
+  MPESA_SERVICE_PROVIDER_CODE?: string;
 }
 
 /**

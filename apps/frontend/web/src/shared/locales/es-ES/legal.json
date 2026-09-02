@@ -68,7 +68,7 @@
   },
   "terms": {
     "title": "Términos del Servicio",
-    "updated": "26 de agosto de 2026",
+    "updated": "31 de agosto de 2026",
     "intro": "Estos términos rigen el uso de Ntizo. Al crear una cuenta, los aceptas. Si no estás de acuerdo con algo de aquí, no uses la plataforma — y dinos por qué, que es información útil.",
     "sections": [
       {
@@ -91,7 +91,7 @@
         "heading": "Reservas, precios y la tarifa de servicio",
         "body": [
           "El precio de un servicio lo fija el proveedor y se muestra antes de confirmar.",
-          "Sobre ese precio se añade una tarifa de servicio de la plataforma, que pagas tú, el cliente. Actualmente es del 10%. Siempre se muestra antes de confirmar la reserva, y nunca se descuenta al proveedor: el precio que fija es el que recibe.",
+          "Se aplica una tarifa de servicio de la plataforma a cada reserva, como porcentaje del precio que fija el proveedor. La tarifa se descuenta de lo que recibe el proveedor — no se añade a lo que pagas tú, el cliente: el precio que se te muestra es el precio que pagas. El porcentaje varía según el proveedor, y se le muestra antes de publicar un servicio.",
           "Las cancelaciones siguen las condiciones mostradas en el momento de la reserva."
         ]
       },

@@ -443,37 +443,17 @@ export function Stories() {
 }
 
 /**
- * The standard commission, as a whole percentage.
- *
- * Mirrors `platform_settings.default_commission_bps` (1000 bps). It is a
- * constant rather than a fetched value because the rate is per-provider and an
- * administrator can move any single one of them — there is no public field
- * that answers "what does Ntizo charge", and inventing one to feed a marketing
- * headline would publish a settings table to every crawler. If the default
- * ever changes, this is the one place the page says it.
- */
-const COMMISSION_PERCENT = 10;
-
-/**
  * The offer made to somebody thinking about listing their work.
  *
- * The number used to be `0%`, over copy saying the fee was the customer's and
- * sat on top of the provider's price. That was reversed on 2026-08-30: the
- * commission is taken from the provider, calculated on the price they set, and
- * the customer pays the listed price with nothing added. `Booking` has always
- * computed it that way — only this page disagreed, and a home page promising
- * a provider they keep everything is the most expensive place to be wrong.
+ * The copy here is deliberately not a headline percentage. The commission is
+ * per-provider — an administrator can move any single one — so a number
+ * printed on a marketing page would be wrong for everybody not on the default,
+ * and there is no public field that answers "what does Ntizo charge" without
+ * publishing a settings table to every crawler. It says a stated percentage,
+ * shown before you list, instead.
  */
 export function ProviderCall() {
-  const { t, i18n } = useTranslation("landing");
-  // Through `Intl` rather than a "%" glued to a digit: several of the
-  // languages this page ships in put a space before the sign, and one of them
-  // is already in the file as "10 %".
-  const rate = new Intl.NumberFormat(i18n.resolvedLanguage ?? i18n.language, {
-    style: "percent",
-    maximumFractionDigits: 0,
-  }).format(COMMISSION_PERCENT / 100);
-
+  const { t } = useTranslation("landing");
   return (
     <section className="pb-24 pt-4">
       <div className="page-shell">
@@ -486,14 +466,11 @@ export function ProviderCall() {
             aria-hidden="true"
             className="absolute -bottom-6 right-10 h-24 w-24 rounded-full bg-[color:var(--l-accent)] opacity-[.16]"
           />
-          <span className="font-rounded block text-6xl font-extrabold leading-none tracking-tighter text-[color:var(--l-accent)] tabular-nums sm:text-[6rem]">
-            {rate}
-          </span>
-          <h2 className="font-rounded mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
-            {t("commissionTitle")}
+          <h2 className="font-rounded text-3xl font-extrabold tracking-tight sm:text-5xl">
+            {t("zeroFeeTitle")}
           </h2>
           <p className="mx-auto mt-4 max-w-[48ch] text-white/75">
-            {t("commissionBody", { rate })}
+            {t("zeroFeeBody")}
           </p>
           {/* The page, not the sign-up form. This block makes an offer;
               sending someone straight to a password field answers a question
@@ -502,7 +479,7 @@ export function ProviderCall() {
             to="/become-provider"
             className="font-rounded mt-8 inline-block rounded-full bg-[color:var(--l-accent)] px-9 py-4 font-extrabold text-white"
           >
-            {t("commissionCta")}
+            {t("zeroFeeCta")}
           </Link>
         </div>
       </div>

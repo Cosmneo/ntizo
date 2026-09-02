@@ -1,0 +1,143 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { Timer } from "lucide-react";
+
+/** Milliseconds left on the hold, floored at zero and never `NaN`. */
+function remainingFrom(expiresAt: string): number {
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  return Number.isFinite(ms) ? Math.max(0, ms) : 0;
+}
+
+/**
+ * `MM:SS`, rounded up.
+ *
+ * Up, not down: a thirty-minute hold reads "30:00" the instant it starts
+ * rather than "29:59", and the display only reaches "00:00" at the moment
+ * the hold is actually gone — which is the moment this component stops
+ * showing it at all.
+ */
+function formatRemaining(remainingMs: number): string {
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+/**
+ * How long the draft's hold on the slot has left, driven by the booking's own
+ * `expiresAt` rather than by a duration counted down in the browser.
+ *
+ * Reading the server's instant is what makes a refresh, a slow page, and a
+ * backgrounded tab all harmless: every tick recomputes from the wall clock,
+ * so a throttled interval loses accuracy for a second and never loses the
+ * deadline. A local "30 minutes from mount" would drift away from the clock
+ * the server will actually enforce, and the customer would find the slot gone
+ * while the page still promised them four minutes.
+ *
+ * **Zero is a navigation, not a reading of `00:00`.** The slot has been
+ * released by then; leaving the customer on a page that still asks for their
+ * address, under a timer that has stopped, is a form that cannot be
+ * submitted and does not say so. So this sends them back to step 1 with the
+ * service kept and a sentence explaining what happened, which is the same
+ * answer the design's own failure table gives for "the draft's thirty minutes
+ * ran out mid-flow".
+ *
+ * The navigation lives here rather than in a callback each step supplies for
+ * itself: steps 2 and 3 would write the identical handler, and one of the two
+ * copies is where it eventually stops matching the other.
+ *
+ * `role="timer"` rather than a bare paragraph, and deliberately not an
+ * assertive live region: a screen reader announcing a new number every second
+ * would drown out the form the customer is trying to fill in. `timer` is a
+ * live region whose default is `off`, so the label names what this is and the
+ * digits stay available to anyone who goes looking for them.
+ *
+ * Nothing mounts this on step 1 — there is no draft, and therefore no hold,
+ * until step 1's own confirm creates one. It is built here because it belongs
+ * to checkout rather than to any one of its pages, and because step 1 is
+ * where the clock it reads is started.
+ */
+export function CheckoutCountdown({
+  expiresAt,
+  serviceId,
+  optionId,
+  sending = false,
+}: {
+  /** ISO 8601, straight off the draft. */
+  expiresAt: string;
+  /** Which service to send the customer back to when the hold lapses. */
+  serviceId: string;
+  /**
+   * Which package the lapsed draft was for, so step 1 re-opens on it.
+   *
+   * Optional, and it should be supplied by every caller that has it. Sending
+   * the customer back without it is the same silent downgrade to the
+   * cheapest option that `/book/$serviceId`'s own `optionId` exists to
+   * prevent, arriving one page later: somebody who chose the 900 package,
+   * spent twenty-nine minutes on step 2 and let the hold lapse would restart
+   * on the 500 one. The prop is here now, while the signature is still being
+   * set, rather than after steps 2 and 3 are written against a shape that
+   * cannot express it. `booking.byId` carries `serviceOptionId` — it did not
+   * when this comment was first written, and steps 2 and 3 had to carry both
+   * ids in the URL until it did — so those pages read the option off the
+   * booking they are already loading rather than off a link that could
+   * disagree with it.
+   */
+  optionId?: string;
+  /**
+   * A write is in flight for this booking, so **do not navigate at zero**.
+   *
+   * The send is two sequential round trips (the profile, then the submit) and
+   * this is a Mozambican mobile connection: pressing "Enviar pedido" in the
+   * last seconds of the hold is not a rare accident. The server accepts that
+   * submit — the checkout-hold sweep runs on a one-minute cadence, so a draft
+   * a second past its deadline is still a `DRAFT` — and without this guard
+   * the countdown fires mid-flight and tells the customer their slot was
+   * released while their request is landing. They then book a second slot,
+   * and the one-draft rule does not clean up the first: `findOpenDraftForCustomer`
+   * filters `status = 'DRAFT'` and a sent request is not one. The provider
+   * gets two requests for one job.
+   *
+   * The navigation is deferred, not cancelled. If the send fails, this goes
+   * back to `false` with `remainingMs` still at zero and the effect below
+   * runs — the hold really did lapse, and by then that is the true thing to
+   * say.
+   */
+  sending?: boolean;
+}) {
+  const { t } = useTranslation("checkout");
+  const navigate = useNavigate();
+  const [remainingMs, setRemainingMs] = useState(() => remainingFrom(expiresAt));
+
+  useEffect(() => {
+    setRemainingMs(remainingFrom(expiresAt));
+    const id = setInterval(() => setRemainingMs(remainingFrom(expiresAt)), 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  useEffect(() => {
+    if (remainingMs > 0 || sending) return;
+    // `replace`, so the back button does not walk the customer into the page
+    // whose hold has just lapsed.
+    void navigate({
+      to: "/book/$serviceId",
+      params: { serviceId },
+      search: { expired: true, ...(optionId ? { optionId } : {}) },
+      replace: true,
+    });
+  }, [remainingMs, sending, navigate, serviceId, optionId]);
+
+  if (remainingMs <= 0) return null;
+
+  return (
+    <p
+      role="timer"
+      aria-label={t("holdRemainingLabel")}
+      className="type-caption inline-flex items-center gap-1.5 rounded-full bg-[var(--color-muted)] px-3 py-1.5 font-semibold tabular-nums"
+    >
+      <Timer className="h-3.5 w-3.5" aria-hidden="true" />
+      {t("holdRemaining", { time: formatRemaining(remainingMs) })}
+    </p>
+  );
+}

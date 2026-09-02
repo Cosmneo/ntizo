@@ -129,7 +129,7 @@
   "providerDetailDecision": "Decisão",
   "providerDetailDecisionHint": "Só as mudanças de estado permitidas a partir daqui são oferecidas.",
   "providerDetailNoActions": "Arquivado é definitivo — não há nada a decidir a partir daqui.",
-  "providerDetailCommissionHint": "A taxa cobrada ao cliente. O prestador vê-a mas não a altera.",
+  "providerDetailCommissionHint": "A percentagem descontada do pagamento deste prestador. O prestador vê-a mas não a altera.",
   "providerDetailCommissionSave": "Guardar comissão",
   "providerDetailCommissionRange": "Entre 0 e 100%.",
   "providerDetailWallet": "Carteira",

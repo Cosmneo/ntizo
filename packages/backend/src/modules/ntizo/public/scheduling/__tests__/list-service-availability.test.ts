@@ -112,11 +112,17 @@ function countingRepo(inner: ScheduleRepositoryPort) {
   return { repo, calls };
 }
 
+// Well before every fixture date this file uses (earliest is 2026-01-01), so
+// the past-slot filter never touches a test that isn't specifically about it
+// — a suite decoupled from which day it actually runs on, per follow-up #104.
+const FAR_PAST_NOW = () => new Date("2020-01-01T00:00:00.000Z");
+
 function makeProjection(
   repoOverrides: Parameters<typeof fakeRepo>[0] = {},
   busy: ReturnType<typeof fakeBusy> = fakeBusy(),
+  now: () => Date = FAR_PAST_NOW,
 ) {
-  return new ListServiceAvailability(fakeRepo(repoOverrides), busy as unknown as BusyIntervalsPort);
+  return new ListServiceAvailability(fakeRepo(repoOverrides), busy as unknown as BusyIntervalsPort, now);
 }
 
 /**
@@ -687,6 +693,59 @@ describe("ListServiceAvailability", () => {
     const result = await projection.execute(ONE_WEDNESDAY);
 
     expect(result.days[0]!.starts.map((s) => s.minuteOfDay)).toEqual([540, 570, 600, 630]);
+  });
+
+  test("today's own day drops the starts already gone and keeps the ones still ahead", async () => {
+    // A window whose first day is `now`'s own civil date is the only case
+    // that can fail: any `from` in the future is ahead of every clock this
+    // test could pass, so it can never exercise the filter at all.
+    //
+    // Maputo is UTC+2. Local 12:00 on 2026-08-12 is "2026-08-12T10:00:00Z";
+    // "now" sits fifteen minutes past that, inside the grid's own 30-minute
+    // step, so both the boundary before it (12:00) and the one right after
+    // it (12:30) are exercised in the same assertion.
+    const projection = makeProjection({}, fakeBusy(), () => new Date("2026-08-12T10:15:00.000Z"));
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    const minutes = result.days[0]!.starts.map((s) => s.minuteOfDay);
+    // 08:00 through 12:00 local are all behind "now" — long gone, not merely
+    // the single nearest one.
+    expect(minutes).not.toContain(480);
+    expect(minutes).not.toContain(720);
+    // 12:30 local is fifteen minutes ahead of "now" and still bookable.
+    expect(minutes[0]).toBe(750);
+    expect(minutes.at(-1)).toBe(1020);
+    expect(minutes).toHaveLength(10);
+  });
+
+  test("a start exactly on now is refused, matching the write rather than approximating it", async () => {
+    // `SlotValidityReaderPort.check` refuses `startsAt <= now`, not
+    // `startsAt < now`. Asserting only that an earlier start is missing
+    // cannot tell those two rules apart — both would drop it. Only the
+    // instant equal to `now` itself tells `<` and `<=` apart, which is why
+    // this test pins "now" exactly on a grid line rather than merely before
+    // one.
+    const exactlyNoon = "2026-08-12T10:00:00.000Z"; // local 12:00, minuteOfDay 720
+    const projection = makeProjection({}, fakeBusy(), () => new Date(exactlyNoon));
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    const minutes = result.days[0]!.starts.map((s) => s.minuteOfDay);
+    expect(minutes).not.toContain(720);
+    // The very next grid line, thirty minutes later, proves this isn't the
+    // whole day being wiped out — only the exact match is gone.
+    expect(minutes).toContain(750);
+  });
+
+  test("a day entirely in the past comes back with no starts, not an error or a missing key", async () => {
+    // "now" sits at the start of the day after the one requested, in the
+    // same UTC-offset zone the schedule reads, so every start on 2026-08-12
+    // is unambiguously behind it.
+    const projection = makeProjection({}, fakeBusy(), () => new Date("2026-08-13T00:00:00.000Z"));
+    const result = await projection.execute(ONE_WEDNESDAY);
+
+    expect(result.days).toHaveLength(1);
+    expect(result.days[0]!.date).toBe("2026-08-12");
+    expect(result.days[0]!.starts).toEqual([]);
   });
 });
 

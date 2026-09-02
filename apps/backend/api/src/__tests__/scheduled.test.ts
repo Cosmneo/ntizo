@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { infraStore } from "@ntizo/backend/shared/infra";
 import { Db } from "@ntizo/backend/shared/infra/database";
 import { NotifyUnreadInternalCommand } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
-import { scheduled, SWEEP_LIMIT } from "../scheduled";
+import {
+  ChargeAcceptedBookingsInternalCommand,
+  SweepDueBookingsInternalCommand,
+} from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import { scheduled, SWEEP_LIMIT, BOOKING_SWEEP_LIMIT, BOOKING_CHARGE_LIMIT } from "../scheduled";
 import handler from "../index";
 import type { AppBindings } from "../types";
 
@@ -32,14 +36,52 @@ import type { AppBindings } from "../types";
  * 3. `scheduled` exists in this file but is never attached to the Worker's
  *    default export, so Cloudflare never calls it and the sweep never runs.
  *    Guarded by "wires `scheduled` into the worker's default export" below.
+ * 4. `scheduled` used to run both sweeps under one shared `try`, notification
+ *    first — so anything `notifyUnread.execute` threw skipped the
+ *    booking sweep entirely, silently reinstating the permanent slot
+ *    leak that sweep exists to prevent, from a context that has nothing to
+ *    do with bookings. Guarded by "runs the booking sweep even when
+ *    the notify-unread sweep throws" below (Task 5 of the booking-seams
+ *    repair plan), which forces the notify-unread sweep to throw and proves
+ *    the booking sweep still ran to completion regardless.
  *
- * Tests 1 and 3 run the real sweep against the real dev database (via
- * `process.env.DATABASE_URL`, which `bun test` loads from `.env`) rather than
- * a fake repository, because the whole point is to prove the *wiring* down to
- * a real `getDb()` call — a fake repository would never notice a missing
- * `infraStore.runAsync`. This is safe to run repeatedly: the messaging tables
- * hold zero rows, so `claimDueForNotice` always returns `[]` and the sweep
- * never raises a notification, sends an email, or writes anything.
+ * 5. `scheduled` runs the charge sweep — the cron's third question, added by
+ *    Task 5 of the payment-and-confirmation-order plan — under one of the
+ *    other two sweeps' `try`, so anything either of them throws skips the
+ *    only thing on this platform that collects money. Guarded by "runs the
+ *    charge sweep even when both sweeps before it throw" below.
+ *
+ * Tests 1, 3, 4 and 5 run the real notification and deadline sweeps against
+ * the real dev database (via `process.env.DATABASE_URL`, which `bun test`
+ * loads from `.env`) rather than a fake repository, because the whole point is
+ * to prove the *wiring* down to a real `getDb()` call — a fake repository
+ * would never notice a missing `infraStore.runAsync`. Those two are safe to
+ * run repeatedly: the messaging and booking tables hold zero *due* rows, so
+ * `claimDueForNotice` and `findDueForSweep` return `[]` and nothing is
+ * notified, emailed or expired.
+ *
+ * **The charge sweep is stubbed for every test in this file, and that is not
+ * belt-and-braces.** Two things made running it for real wrong:
+ *
+ * 1. `findAwaitingCharge` selects `PENDING_PAYMENT` rows with a *future*
+ *    deadline — the one predicate in this codebase that points forward. The
+ *    backend suite's `booking-charge-sweep.test.ts` inserts exactly such rows
+ *    into this same shared database, and `turbo run test` runs the two
+ *    workspaces concurrently. This sweep would select the other suite's
+ *    fixtures, write `charge_attempts` and `last_charge_attempt_at` onto them,
+ *    and return `{ attempted: 1 }` — a CI gate that is a coin flip, and a red
+ *    in the other suite that looks like a bug in `recordChargeAttempt`.
+ * 2. The safety of the first point used to be asserted as "the sweep never
+ *    reaches `PaymentChargePort`". It does reach it; it only dies at
+ *    `resolveMpesaConfig` returning null because `ENV` below carries no M-Pesa
+ *    keys. Anyone adding those keys to `ENV` — an obvious thing to do when
+ *    debugging a charge — would turn `bun run test` into a real USSD push at
+ *    a real handset.
+ *
+ * So `beforeEach` stubs `ChargeAcceptedBookingsInternalCommand.prototype.execute`
+ * outright. Nothing is lost: what these tests need to prove about the third
+ * sweep is that `scheduled` *calls* it, with the right limit, in its own
+ * `try` — all of which a spy shows better than a live run.
  */
 
 const ENV = {
@@ -82,8 +124,23 @@ function fakeExecutionContext() {
 }
 
 const originalClose = Db.closeDbConnection;
+
+/**
+ * Stubbed for every test, restored after every test. See this file's header
+ * for why a live charge sweep here corrupts the backend suite's fixtures and
+ * is one env var away from pushing a real payment prompt.
+ */
+let chargeSpy: ReturnType<typeof spyOn<ChargeAcceptedBookingsInternalCommand, "execute">>;
+
+beforeEach(() => {
+  chargeSpy = spyOn(ChargeAcceptedBookingsInternalCommand.prototype, "execute").mockImplementation(
+    async () => ({ attempted: 0, failed: 0 }),
+  );
+});
+
 afterEach(() => {
   Db.closeDbConnection = originalClose;
+  chargeSpy.mockRestore();
 });
 
 describe("the scheduled worker", () => {
@@ -150,11 +207,35 @@ describe("the scheduled worker", () => {
     Db.closeDbConnection = async () => {
       order.push("close");
     };
+
+    // Fix round 2: the deferred work now finishes when *this test* says so,
+    // never on a timer.
+    //
+    // The previous version resolved it from a 20ms `setTimeout` and then
+    // asserted `order` was still empty the moment `scheduled()` returned —
+    // which quietly assumed `scheduled()` returns in under 20ms. That held
+    // while the only real work in it was one sweep against an empty table;
+    // it stopped holding once a second sweep joined, because the booking
+    // sweep is a live round trip to Neon. The timer then elapsed *during*
+    // `scheduled()`, `order` already read `["delivery", "close"]` at the
+    // first assertion, and the test failed consistently — against behaviour
+    // that was entirely correct. The assertion was racing the code under
+    // test rather than measuring it.
+    //
+    // A promise this test resolves itself, after it has checked `order` is
+    // empty, cannot lose that race however long `scheduled()` takes. The
+    // final assertion is untouched and is still the whole point: the close
+    // is chained BEHIND the delivery, not registered beside it.
+    let letDeliveryFinish!: () => void;
+    const deliveryHeld = new Promise<void>((resolve) => {
+      letDeliveryFinish = resolve;
+    });
+
     const executeSpy = spyOn(NotifyUnreadInternalCommand.prototype, "execute").mockImplementation(
       async () => {
         infraStore.waitUntil(
           (async () => {
-            await new Promise((resolve) => setTimeout(resolve, 20));
+            await deliveryHeld;
             order.push("delivery");
           })(),
         );
@@ -165,12 +246,15 @@ describe("the scheduled worker", () => {
     const { ctx, scheduledPromises } = fakeExecutionContext();
     await scheduled(fakeController(), ENV, ctx);
 
-    // The run itself did not pay for the delivery — it is still in flight.
+    // The run itself did not pay for the delivery — it is still in flight,
+    // and now provably so: nothing but the line below can finish it.
     expect(order).toEqual([]);
+
+    letDeliveryFinish();
 
     await Promise.all(scheduledPromises);
     // The close is registered as a SECOND task chained behind the first, not
-    // beside it: it must not run before the 20ms delivery finishes.
+    // beside it: it must not run before the delivery finishes.
     expect(order).toEqual(["delivery", "close"]);
 
     executeSpy.mockRestore();
@@ -187,5 +271,89 @@ describe("the scheduled worker", () => {
     const { ctx, scheduledPromises } = fakeExecutionContext();
     await handler.scheduled(fakeController(), ENV, ctx);
     await Promise.all(scheduledPromises);
+  });
+
+  it("runs the booking sweep even when the notify-unread sweep throws", async () => {
+    // Before Task 5 of the booking-seams repair plan, both sweeps ran under
+    // one shared `try`, notification first — so a throw here never even
+    // reached the booking sweep below it, and `scheduled()` itself rejected.
+    // Forcing the throw here and then asserting the booking sweep still ran
+    // to completion is the only way to tell that shape apart from the fixed
+    // one: both shapes call `notifyUnread.execute` once, so a call-count
+    // assertion on that spy alone cannot distinguish them.
+    const notifySpy = spyOn(NotifyUnreadInternalCommand.prototype, "execute").mockImplementation(
+      async () => {
+        throw new Error("notify-unread sweep blew up");
+      },
+    );
+    const sweepDueSpy = spyOn(SweepDueBookingsInternalCommand.prototype, "execute");
+
+    const { ctx, scheduledPromises } = fakeExecutionContext();
+
+    // `scheduled()` itself must not reject: a cron invocation has nobody to
+    // report a rejection to, and the fixed shape logs each sweep's own
+    // failure instead of letting it propagate past the other sweep.
+    await scheduled(fakeController(), ENV, ctx);
+
+    expect(sweepDueSpy).toHaveBeenCalledTimes(1);
+    expect(sweepDueSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_SWEEP_LIMIT });
+    // Resolved, not merely called — the dev database holds zero due
+    // bookings, so this is always { swept: 0, failed: 0 }, same reasoning as
+    // test 1's assertion on the notify-unread sweep's own result. `swept`,
+    // not `expired`: the sweep gives two of its three clocks an expiry and
+    // the third a cancellation, so a count named for one of the two endings
+    // would be wrong for whichever bookings got the other — see
+    // `SweepDueBookingsInternalCommand.execute`.
+    await expect(sweepDueSpy.mock.results[0]?.value).resolves.toEqual({
+      swept: 0,
+      failed: 0,
+    });
+
+    await Promise.all(scheduledPromises);
+    notifySpy.mockRestore();
+    sweepDueSpy.mockRestore();
+  });
+
+  it("runs the charge sweep even when both sweeps before it throw", async () => {
+    // The same shape as the test above, one sweep further along. The charge
+    // sweep is last in `scheduled`, which makes it the one with the most
+    // `try` blocks upstream of it that could swallow it — and it is the only
+    // one of the three whose failing silently means a provider blocks their
+    // Saturday for a booking nobody was ever asked to pay for.
+    //
+    // Both predecessors are forced to throw at once, because either of them
+    // sharing a `try` with this one would produce the same visible symptom:
+    // `chargeAccepted.execute` never called.
+    const notifySpy = spyOn(NotifyUnreadInternalCommand.prototype, "execute").mockImplementation(
+      async () => {
+        throw new Error("notify-unread sweep blew up");
+      },
+    );
+    const sweepDueSpy = spyOn(SweepDueBookingsInternalCommand.prototype, "execute").mockImplementation(
+      async () => {
+        throw new Error("booking deadline sweep blew up");
+      },
+    );
+
+    const { ctx, scheduledPromises } = fakeExecutionContext();
+
+    // Still no rejection out of `scheduled()` itself: a cron invocation has
+    // nobody to report one to.
+    await scheduled(fakeController(), ENV, ctx);
+
+    expect(chargeSpy).toHaveBeenCalledTimes(1);
+    // Its own limit, two orders of magnitude below the sweeps' — a charge is
+    // a blocking round trip to a handset, not a database write. Passing
+    // `BOOKING_SWEEP_LIMIT` here by copy-paste would budget two hundred
+    // minute-long calls into one cron invocation.
+    expect(chargeSpy.mock.calls[0]?.[0]).toEqual({ limit: BOOKING_CHARGE_LIMIT });
+    // Called, with the right budget, after both sweeps ahead of it threw —
+    // which is the whole claim. What it *returns* is this file's own stub
+    // (see the header), so asserting on the value would be asserting on the
+    // stub rather than on `scheduled`.
+
+    await Promise.all(scheduledPromises);
+    notifySpy.mockRestore();
+    sweepDueSpy.mockRestore();
   });
 });

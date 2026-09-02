@@ -29,6 +29,7 @@
   "settings": "Settings",
   "account": "Account",
   "noActiveProvider": "No active provider.",
+  "commissionRateLabel": "Platform's share",
   "welcomeTitle": "Welcome! Let's get you set up as a provider.",
   "welcomeSubtitle": "Choose how you want to start. You can always change these details later.",
   "setMeUpAutomatically": "Set me up automatically",

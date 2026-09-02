@@ -68,7 +68,7 @@
   },
   "terms": {
     "title": "Conditions d’utilisation",
-    "updated": "26 août 2026",
+    "updated": "31 août 2026",
     "intro": "Ces conditions régissent votre utilisation de Ntizo. Créer un compte vaut acceptation. Si vous n’êtes pas d’accord avec quelque chose ici, n’utilisez pas la plateforme — et dites-nous pourquoi, c’est une information utile.",
     "sections": [
       {
@@ -91,7 +91,7 @@
         "heading": "Réservations, prix et frais de service",
         "body": [
           "Le prix d’une prestation est fixé par le prestataire et affiché avant confirmation.",
-          "S’y ajoutent des frais de service de la plateforme, payés par vous, le client. Ils sont actuellement de 10 %. Ils sont toujours affichés avant la confirmation, et ne sont jamais prélevés sur le prestataire : le prix qu’il fixe est celui qu’il reçoit.",
+          "Des frais de service de la plateforme s’appliquent à chaque réservation, en pourcentage du prix fixé par le prestataire. Ils sont prélevés sur ce que reçoit le prestataire, non ajoutés à ce que vous payez en tant que client : le prix affiché est le prix que vous payez. Le pourcentage varie selon le prestataire, et lui est affiché avant qu’il ne propose un service.",
           "Les annulations suivent les conditions affichées au moment de la réservation."
         ]
       },

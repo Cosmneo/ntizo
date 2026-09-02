@@ -29,6 +29,7 @@
   "settings": "Definições",
   "account": "Conta",
   "noActiveProvider": "Sem prestador ativo.",
+  "commissionRateLabel": "Parte da plataforma",
   "welcomeTitle": "Bem-vindo! Vamos configurá-lo como prestador.",
   "welcomeSubtitle": "Escolha como quer começar. Pode sempre alterar estes detalhes mais tarde.",
   "setMeUpAutomatically": "Configurar automaticamente",

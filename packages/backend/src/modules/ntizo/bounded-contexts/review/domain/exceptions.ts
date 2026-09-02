@@ -106,10 +106,11 @@ export class CannotReviewOwnBusinessError extends ForbiddenError {
 /**
  * Refused because this person has not been served yet.
  *
- * Thrown only by whatever `ReviewEligibilityPort` is bound at bootstrap. The
- * adapter that ships today cannot answer the question — see that port — so this
- * is not reachable in the current build. It exists now so the command already
- * has the branch, and turning the rule on later is an adapter swap rather than
+ * Thrown by `SubmitReviewCommand` when whatever `ReviewEligibilityPort` is
+ * bound at bootstrap answers `allowed: false` — today,
+ * `BookingReviewEligibilityAdapter` refusing a first-time reviewer with no
+ * `COMPLETED` booking against this provider. The branch existed on the command
+ * before the check did, so turning the rule on was an adapter swap rather than
  * a change to the use case.
  */
 export class ReviewNotEarnedError extends ForbiddenError {

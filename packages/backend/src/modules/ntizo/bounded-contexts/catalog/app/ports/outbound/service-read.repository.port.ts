@@ -121,18 +121,24 @@ export interface ServiceDetailOptionRow {
 }
 
 /**
- * `Omit`s `providerRatingAverage`/`providerReviewCount`/`providerVerified`
- * rather than inheriting them as `ServicePublicRow` requires: nothing on the
- * service's own page reads any of the three — `serviceDetailReadModel` has no
- * such fields, and `GetServiceProjection` never looks at them — so
- * `getPublishedById` runs neither the review join nor the verified join to
- * populate them. A query that ran on every single-service page load to
- * satisfy a type relationship, for data nothing renders, would be a real cost
- * paid for nothing. If this page ever wants any of them, adding the join back
- * is one line, and it will be wanted for a reason.
+ * `Omit`s `providerReviewCount` alone, and the two that used to be omitted
+ * beside it are now inherited — because the reason for leaving them out
+ * expired.
+ *
+ * That reason was: nothing on the service's own page read any of the three,
+ * so `getPublishedById` should run neither the review join nor the verified
+ * join to satisfy a type relationship for data nothing renders. The comment
+ * ended "if this page ever wants any of them, adding the join back is one
+ * line, and it will be wanted for a reason." It is: the approved checkout
+ * rail prints `Hélder Cossa · 4,8 ★ · Verificado`, and a customer about to
+ * hold a slot is precisely the reader that trust line is for.
+ *
+ * **The count stays out**, on the same argument the other two just lost.
+ * Nothing renders "de 37 avaliações" on either of these screens — the rail
+ * has one line and the score is the whole of it — so the review join is now
+ * paid for, but the extra column is still bought for nothing.
  */
-export interface ServiceDetailRow
-  extends Omit<ServicePublicRow, "providerRatingAverage" | "providerReviewCount" | "providerVerified"> {
+export interface ServiceDetailRow extends Omit<ServicePublicRow, "providerReviewCount"> {
   providerLogoKey: string | null;
   providerCity: string | null;
   providerDistrict: string | null;

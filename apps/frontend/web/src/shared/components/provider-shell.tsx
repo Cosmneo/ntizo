@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Plus, Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Percent, Plus, Search } from "lucide-react";
 import {
   Separator,
   SidebarInset,
@@ -10,6 +11,8 @@ import { AppSidebar } from "@/shared/components/app-sidebar/app-sidebar";
 import { HeaderActions } from "@/shared/components/header-actions";
 import { NotificationBellLink } from "@/shared/components/notification-bell-link";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { useProviderDetail } from "@/features/provider/viewmodel/use-providers";
+import { formatCommission } from "@/shared/domain/commission-format";
 import {
   PageHeaderContext,
   type PageHeaderState,
@@ -17,6 +20,7 @@ import {
 import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
 
 export function ProviderShell({ children }: { children: ReactNode }) {
+  const { t, i18n } = useTranslation("provider");
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
   const [action, setAction] = useState<ReactNode>(null);
 
@@ -45,6 +49,24 @@ export function ProviderShell({ children }: { children: ReactNode }) {
   // keeps it from firing early instead.
   const { activeProvider } = useActiveProvider();
   const providerId = activeProvider?.id ?? "";
+
+  // Read here, not by each page that happens to fetch it anyway (Settings
+  // already does, for its own form). `ProviderShell` wraps every route under
+  // `/provider/$slug`, and only a guard against a session gates entry to that
+  // whole subtree -- a bookmark straight to `/services/new` or an
+  // already-open tab never passes through Overview, so a rate shown only
+  // there was reachable on the common path and not on every path. Reading it
+  // in the one component every one of those routes renders through is what
+  // makes "shown before they list a service" true regardless of which door a
+  // returning provider used.
+  const { data: shellDetail } = useProviderDetail(activeProvider?.id);
+  const commissionRate =
+    shellDetail?.commissionBps == null
+      ? null
+      : formatCommission(
+          shellDetail.commissionBps,
+          i18n.resolvedLanguage ?? i18n.language,
+        );
 
   return (
     <PageHeaderContext.Provider value={headerCtx}>
@@ -118,6 +140,29 @@ export function ProviderShell({ children }: { children: ReactNode }) {
               )}
             </div>
           </header>
+          {/* Its own row, not a squeeze into the one above. That header's
+              trigger, title, search, bell and New-service button already
+              once collided on a 390px screen (see the comment on `header`
+              above) — competing this figure for the same space would risk
+              the same bug for the one element here that a Terms clause
+              depends on. A full-width strip costs nothing from that row and
+              needs no breakpoint to hide behind, so it stays legible on the
+              phone a bookmarked deep link is just as likely to arrive from. */}
+          {activeProvider && (
+            <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border bg-muted/40 px-4 text-xs text-muted-foreground sm:px-6">
+              <Percent className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {/* `min-w-0` beside `truncate`, for the reason the header row
+                  above already documents: a flex child defaults to
+                  `min-width: auto` and refuses to shrink, so `truncate` alone
+                  does nothing and the row overflows instead. No current
+                  translation is long enough to reach that — Dutch's
+                  "Aandeel van het platform" is the longest at 25 characters —
+                  but the label is translated copy and the rate beside it is
+                  the one thing here that must stay readable. */}
+              <span className="min-w-0 truncate">{t("commissionRateLabel")}</span>
+              <span className="shrink-0 font-medium text-foreground">{commissionRate ?? "—"}</span>
+            </div>
+          )}
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>

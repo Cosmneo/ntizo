@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ntizo — mock: detalhe de prestador e de serviço</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ————————————————————————————————————————————————
+   Tokens — copiados de packages/frontend/src/styles/globals.css
+   Nada aqui inventa uma cor, um raio ou um tamanho de letra.
+   ———————————————————————————————————————————————— */
+:root{
+  --color-primary:#006ffd;
+  --color-primary-deep:#0a4fbd;
+  --color-primary-foreground:#fff;
+  --color-foreground:#13171b;
+  --color-muted-foreground:#71727a;
+  --color-border:#e5e5e5;
+  --color-border-strong:#d7dbe3;
+  --color-muted:#f2f8fe;
+  --color-background:#fff;
+  --color-surface-raised:#eef2f9;
+  --color-success:#21b872;
+  --color-warning:#ffb020;
+  --radius-field:8px;
+  --radius-card-sm:12px;
+  --radius-card:16px;
+  --shadow-xs:0 1px 2px rgba(19,23,27,.05);
+  --shadow-sm:0 1px 3px rgba(19,23,27,.06), 0 6px 16px -10px rgba(19,23,27,.14);
+  --font-display:"Poppins",ui-sans-serif,system-ui,sans-serif;
+  --font-sans:"Inter",ui-sans-serif,system-ui,sans-serif;
+}
+
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0;
+  background:var(--color-background);
+  color:var(--color-foreground);
+  font-family:var(--font-sans);
+}
+img,svg{display:block;max-width:100%;}
+a{color:inherit;text-decoration:none;}
+ul,ol,dl,dd{margin:0;padding:0;}
+li{list-style:none;}
+h1,h2,h3,p,figure{margin:0;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
+:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;border-radius:4px;}
+
+/* Escala tipográfica — as classes .type-* do design system */
+.type-display{font-family:var(--font-display);font-weight:600;font-size:clamp(30px,3.6vw,42px);line-height:1.1;letter-spacing:-.025em;}
+.type-h1{font-family:var(--font-display);font-weight:600;font-size:28px;line-height:1.25;letter-spacing:-.01em;}
+.type-h2{font-family:var(--font-display);font-weight:600;font-size:22px;line-height:1.3;letter-spacing:-.01em;}
+.type-h3{font-family:var(--font-display);font-weight:500;font-size:18px;line-height:1.35;}
+.type-body{font-family:var(--font-sans);font-weight:400;font-size:15px;line-height:1.55;}
+.type-body-medium{font-family:var(--font-sans);font-weight:500;font-size:14px;line-height:1.5;}
+.type-caption{font-family:var(--font-sans);font-weight:400;font-size:12px;line-height:1.45;}
+.type-button{font-family:var(--font-sans);font-weight:700;font-size:15px;line-height:1;}
+.muted{color:var(--color-muted-foreground);}
+
+.page-shell{width:min(1320px,100% - 3rem);margin-inline:auto;}
+
+/* ——— Barra do mock (não faz parte do produto) ——— */
+.mockbar{
+  position:sticky;top:0;z-index:60;
+  background:#13171b;color:#fff;
+  display:flex;align-items:center;gap:16px;
+  padding:8px 24px;font-size:12px;
+}
+.mockbar__tag{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.06em;text-transform:uppercase;}
+.mockbar__tabs{display:flex;gap:4px;margin-left:auto;}
+.mockbar__tab{border-radius:999px;padding:5px 14px;font-weight:600;color:rgba(255,255,255,.62);}
+.mockbar__tab[aria-selected="true"]{background:var(--color-primary);color:#fff;}
+
+/* ——— Cabeçalho real da app ——— */
+.site-header{
+  position:sticky;top:33px;z-index:50;
+  border-bottom:1px solid var(--color-border);
+  background:var(--color-background);
+}
+.site-header__inner{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;height:84px;}
+.brand{font-family:var(--font-display);font-weight:600;font-size:24px;letter-spacing:-.03em;color:var(--color-primary);}
+.nav{display:flex;gap:2px;justify-self:center;background:var(--color-muted);padding:4px;border-radius:999px;}
+.nav a{display:flex;align-items:center;gap:6px;border-radius:999px;padding:10px 16px;font-size:14px;font-weight:600;color:var(--color-muted-foreground);}
+.nav a[aria-current]{background:var(--color-primary);color:#fff;}
+.header-actions{justify-self:end;display:flex;align-items:center;gap:14px;}
+.header-actions__lang{font-size:14px;font-weight:600;color:var(--color-muted-foreground);}
+.avatar-chip{width:38px;height:38px;border-radius:999px;background:#13171b;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;}
+
+/* ——— Botões ——— */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  white-space:nowrap;border-radius:var(--radius-card-sm);
+  font-family:var(--font-sans);font-weight:700;font-size:15px;line-height:1;
+  height:44px;padding:0 20px;transition:background-color .15s,border-color .15s,color .15s;
+}
+.btn--primary{background:var(--color-primary);color:#fff;}
+.btn--primary:hover{background:var(--color-primary-deep);}
+.btn--outline{border:1px solid var(--color-border-strong);background:var(--color-background);}
+.btn--outline:hover{border-color:var(--color-muted-foreground);}
+.btn--sm{height:38px;padding:0 16px;font-size:14px;}
+.btn--block{width:100%;}
+.btn[disabled]{opacity:.5;cursor:not-allowed;}
+
+/* ——— Marcadores de fotografia ——— */
+.ph{
+  position:relative;overflow:hidden;
+  background-color:#eceef4;
+  background-image:repeating-linear-gradient(135deg,rgba(19,23,27,.05) 0 1px,transparent 1px 10px);
+}
+.ph::after{
+  content:attr(data-label);
+  position:absolute;left:12px;bottom:12px;
+  font:11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:#8b8f9c;background:rgba(255,255,255,.8);
+  padding:5px 8px;border-radius:6px;
+}
+.ph--mini::after{display:none;}
+
+/* ——— Migalhas ——— */
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:22px 0 14px;font-size:13px;color:var(--color-muted-foreground);}
+.crumbs a:hover{color:var(--color-foreground);text-decoration:underline;}
+.crumbs__sep{opacity:.5;}
+.crumbs__here{color:var(--color-foreground);}
+
+/* ——— Galeria em colagem ——— */
+.gallery{display:grid;grid-template-columns:minmax(0,1.72fr) minmax(0,1fr);gap:12px;height:clamp(340px,40vw,520px);}
+.gallery__main{border-radius:var(--radius-card);height:100%;}
+.gallery__side{display:grid;grid-template-rows:1fr 1fr auto;gap:12px;min-height:0;}
+.gallery__side .ph{border-radius:var(--radius-card);height:100%;}
+.badge-verified{
+  position:absolute;top:16px;left:16px;
+  display:inline-flex;align-items:center;gap:6px;
+  background:#fff;color:var(--color-success);
+  border-radius:999px;padding:8px 14px;
+  font-size:13px;font-weight:700;box-shadow:var(--shadow-sm);
+}
+
+/* ——— Duas colunas ——— */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 22rem;gap:2.5rem;align-items:start;padding:40px 0 72px;}
+
+/* ——— Cabeçalho do conteúdo ——— */
+.eyebrow{font-size:15px;color:var(--color-muted-foreground);}
+.eyebrow a{color:var(--color-primary);font-weight:600;}
+.eyebrow a:hover{text-decoration:underline;}
+.title{margin-top:6px;}
+.headline-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;margin-top:14px;font-size:15px;}
+.rating{display:inline-flex;align-items:center;gap:7px;}
+.rating__star{color:var(--color-warning);font-size:15px;}
+.rating__score{font-weight:700;}
+.rating__count{color:var(--color-primary);text-decoration:underline;text-underline-offset:3px;}
+.headline-meta__where{color:var(--color-muted-foreground);}
+
+/* ——— Linha de factos ——— */
+.facts{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;
+  margin-top:28px;padding:22px 0;
+  border-top:1px solid var(--color-border);border-bottom:1px solid var(--color-border);
+}
+.facts dt{font-size:11px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted-foreground);}
+.facts dd{margin-top:6px;font-size:15px;font-weight:600;}
+
+/* ——— Secções ——— */
+.section{margin-top:44px;}
+.section__head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
+.section > .prose{margin-top:14px;max-width:64ch;}
+.prose p + p{margin-top:14px;}
+.prose{font-size:15px;line-height:1.65;}
+
+/* ——— Lista de serviços / opções ——— */
+.rows{margin-top:8px;}
+.row{
+  display:grid;grid-template-columns:112px minmax(0,1fr) auto;
+  gap:22px;align-items:start;
+  padding:24px 0;border-bottom:1px solid var(--color-border);
+}
+.row:first-child{border-top:1px solid var(--color-border);}
+.row__thumb{width:112px;aspect-ratio:4/3;border-radius:var(--radius-card-sm);}
+.row__name{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:-.01em;}
+.row__desc{margin-top:6px;font-size:14px;line-height:1.55;color:var(--color-muted-foreground);max-width:52ch;}
+.row__meta{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:13px;color:var(--color-muted-foreground);}
+.row__mode{color:var(--color-success);font-weight:600;}
+.row__side{display:grid;justify-items:end;gap:12px;min-width:172px;}
+.row__price{font-family:var(--font-display);font-weight:600;font-size:22px;letter-spacing:-.01em;white-space:nowrap;}
+.row__price small{font-size:14px;font-weight:500;color:var(--color-muted-foreground);}
+.row__price--quote{font-size:17px;color:var(--color-muted-foreground);}
+
+/* Opções seleccionáveis (página de serviço) */
+.option{
+  width:100%;text-align:left;
+  display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:16px;align-items:center;
+  padding:18px;border:1px solid var(--color-border);border-radius:var(--radius-card-sm);
+}
+.options{display:grid;gap:10px;margin-top:16px;}
+.option + .option{margin:0;}
+.option:hover{border-color:var(--color-muted-foreground);}
+.option[aria-checked="true"]{border-color:var(--color-primary);background:color-mix(in srgb,var(--color-primary) 7%,transparent);}
+.option__dot{width:20px;height:20px;border-radius:999px;border:2px solid var(--color-border-strong);}
+.option[aria-checked="true"] .option__dot{border-color:var(--color-primary);border-width:6px;}
+.option__name{display:block;font-weight:600;font-size:15px;}
+.option__meta{display:block;margin-top:4px;font-size:13px;color:var(--color-muted-foreground);}
+.option__price{font-family:var(--font-display);font-weight:600;font-size:18px;white-space:nowrap;}
+
+/* ——— Quem executa ——— */
+.performers{display:flex;flex-wrap:wrap;gap:22px;margin-top:16px;}
+.performer{display:grid;justify-items:center;gap:8px;width:76px;}
+.performer .ph{width:56px;height:56px;border-radius:999px;}
+.performer span{font-size:13px;font-weight:500;}
+
+/* ——— Avaliações ——— */
+.reviews__summary{
+  display:grid;grid-template-columns:auto minmax(0,1fr);gap:44px;align-items:center;
+  margin-top:18px;padding:24px 28px;
+  border:1px solid var(--color-border);border-radius:var(--radius-card);background:var(--color-muted);
+}
+.score{display:grid;gap:6px;justify-items:start;}
+.score__value{font-family:var(--font-display);font-weight:600;font-size:52px;line-height:1;letter-spacing:-.03em;}
+.score__stars{color:var(--color-warning);font-size:17px;letter-spacing:2px;}
+.histogram{display:grid;gap:8px;}
+.hist-row{display:grid;grid-template-columns:14px minmax(0,1fr) 20px;gap:14px;align-items:center;font-size:13px;color:var(--color-muted-foreground);}
+.hist-bar{height:7px;border-radius:999px;background:rgba(19,23,27,.09);overflow:hidden;}
+.hist-bar span{display:block;height:100%;border-radius:999px;background:#13171b;}
+.hist-row b{text-align:right;font-weight:400;font-variant-numeric:tabular-nums;}
+
+.review-list{margin-top:26px;}
+.review{padding:24px 0;border-top:1px solid var(--color-border);}
+.review__head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;}
+.review__avatar{width:42px;height:42px;border-radius:999px;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;}
+.review__name{font-weight:600;font-size:15px;}
+.review__sub{margin-top:2px;font-size:13px;color:var(--color-muted-foreground);}
+.review__stars{color:var(--color-warning);font-size:14px;letter-spacing:2px;}
+.review__body{margin-top:14px;font-size:15px;line-height:1.6;max-width:62ch;}
+.reviews__more{margin-top:26px;}
+.reviews__note{margin-top:6px;font-size:13px;color:var(--color-muted-foreground);}
+
+/* ——— Coluna lateral ——— */
+.rail{position:sticky;top:141px;display:grid;gap:16px;}
+.card{border:1px solid var(--color-border);border-radius:var(--radius-card);background:var(--color-background);padding:24px;box-shadow:var(--shadow-sm);}
+.card--flat{box-shadow:none;}
+.card__label{font-size:11px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted-foreground);}
+.price{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;}
+.price b{font-family:var(--font-display);font-weight:600;font-size:30px;letter-spacing:-.02em;}
+.price span{font-size:14px;color:var(--color-muted-foreground);}
+.price__note{margin-top:8px;font-size:14px;line-height:1.5;color:var(--color-muted-foreground);}
+.rail__actions{display:grid;gap:10px;margin-top:20px;}
+.rail__hint{margin-top:10px;text-align:center;font-size:12px;line-height:1.5;color:var(--color-muted-foreground);}
+.trust{display:grid;gap:12px;margin-top:22px;padding-top:20px;border-top:1px solid var(--color-border);}
+.trust li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;font-size:13px;line-height:1.5;color:var(--color-foreground);}
+.trust svg{margin-top:2px;color:var(--color-success);}
+.hours{display:grid;gap:10px;margin-top:14px;}
+.hours div{display:flex;justify-content:space-between;gap:16px;font-size:14px;}
+.hours dd{font-weight:600;font-variant-numeric:tabular-nums;}
+.hours .closed{font-weight:500;color:var(--color-muted-foreground);}
+.hours__note{margin-top:14px;font-size:12px;line-height:1.5;color:var(--color-muted-foreground);}
+
+/* Resumo do preço no rail da página de serviço */
+.breakdown{display:grid;gap:9px;margin-top:18px;padding-top:18px;border-top:1px solid var(--color-border);}
+.breakdown div{display:flex;justify-content:space-between;gap:16px;font-size:14px;}
+.breakdown dt{color:var(--color-muted-foreground);}
+.breakdown dd{font-variant-numeric:tabular-nums;}
+.breakdown .total{padding-top:9px;border-top:1px solid var(--color-border);font-weight:700;}
+.breakdown .total dt{color:var(--color-foreground);}
+
+/* Cartão do prestador no rail */
+.provider-card__top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;}
+.provider-card__logo{width:48px;height:48px;border-radius:var(--radius-card-sm);}
+.provider-card__name{font-weight:600;font-size:15px;}
+.provider-card__sub{margin-top:3px;font-size:13px;color:var(--color-muted-foreground);}
+
+/* ——— Ecrãs estreitos ——— */
+@media (max-width:1023px){
+  .layout{grid-template-columns:minmax(0,1fr);gap:32px;}
+  .rail{position:static;}
+  .nav{display:none;}
+}
+@media (max-width:719px){
+  .page-shell{width:min(1320px,100% - 2rem);}
+  .gallery{grid-template-columns:minmax(0,1fr);height:auto;}
+  .gallery__main{aspect-ratio:4/3;}
+  .gallery__side{grid-template-rows:auto;grid-template-columns:1fr 1fr;}
+  .gallery__side .ph{aspect-ratio:4/3;height:auto;}
+  .gallery__more{grid-column:1/-1;}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;}
+  .row{grid-template-columns:72px minmax(0,1fr);gap:16px;}
+  .row__thumb{width:72px;}
+  .row__side{grid-column:2;justify-items:start;}
+  .reviews__summary{grid-template-columns:minmax(0,1fr);gap:22px;padding:20px;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+
+[hidden]{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="mockbar">
+  <span class="mockbar__tag">mock · dados fictícios</span>
+  <div class="mockbar__tabs" role="tablist">
+    <button class="mockbar__tab" role="tab" aria-selected="true" data-page="provider">Detalhe do prestador</button>
+    <button class="mockbar__tab" role="tab" aria-selected="false" data-page="service">Detalhe do serviço</button>
+  </div>
+</div>
+
+<header class="site-header">
+  <div class="page-shell site-header__inner">
+    <a class="brand" href="#">ntizo</a>
+    <nav class="nav">
+      <a href="#">Explorar</a>
+      <a href="#" data-nav="service">Serviços</a>
+      <a href="#" data-nav="provider" aria-current="page">Prestadores</a>
+    </nav>
+    <div class="header-actions">
+      <span class="header-actions__lang">PT</span>
+      <a class="btn btn--outline btn--sm" href="#">Oferecer serviços</a>
+      <span class="avatar-chip">NTC</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ PRESTADOR ═══════════════════════════ -->
+<main id="page-provider">
+  <div class="page-shell">
+    <nav class="crumbs" aria-label="Migalhas">
+      <a href="#">Prestadores</a><span class="crumbs__sep">/</span>
+      <a href="#">Electricidade</a><span class="crumbs__sep">/</span>
+      <span class="crumbs__here">Hélder Cossa</span>
+    </nav>
+
+    <div class="gallery">
+      <div class="ph gallery__main" data-label="foto principal do negócio">
+        <span class="badge-verified">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Documentos verificados
+        </span>
+      </div>
+      <div class="gallery__side">
+        <div class="ph" data-label="espaço de trabalho"></div>
+        <div class="ph" data-label="trabalho concluído"></div>
+        <button class="btn btn--outline btn--block gallery__more">Ver as 8 fotos</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <p class="eyebrow">Individual · Electricidade</p>
+        <h1 class="type-display title">Hélder Cossa</h1>
+
+        <p class="headline-meta">
+          <span class="rating">
+            <span class="rating__star">★</span>
+            <b class="rating__score">4,8</b>
+            <a class="rating__count" href="#avaliacoes">4 avaliações</a>
+          </span>
+          <span class="headline-meta__where">Sommerschield, Maputo</span>
+        </p>
+
+        <dl class="facts">
+          <div><dt>Categoria</dt><dd>Electricidade</dd></div>
+          <div><dt>Onde atende</dt><dd>Em sua casa</dd></div>
+          <div><dt>Serviços</dt><dd>3 publicados</dd></div>
+          <div><dt>Na Ntizo desde</dt><dd>Março 2025</dd></div>
+        </dl>
+
+        <section class="section">
+          <h2 class="type-h2">Sobre</h2>
+          <div class="prose">
+            <p>Electricista certificado com nove anos de trabalho em Maputo. Faço instalações novas, montagem e correcção de quadros eléctricos, e resolvo avarias urgentes ao domicílio, incluindo fins de semana.</p>
+            <p>Trabalho sozinho, por isso cada marcação tem hora confirmada por mim antes de avançar. Levo o material básico; material específico é orçamentado à parte e mostrado antes da compra.</p>
+          </div>
+        </section>
+
+        <section class="section" id="servicos">
+          <h2 class="type-h2">Serviços</h2>
+          <ul class="rows">
+            <li class="row">
+              <div class="ph row__thumb ph--mini"></div>
+              <div>
+                <h3 class="row__name">Avaria eléctrica urgente</h3>
+                <p class="row__desc">Deslocação, diagnóstico e reparação de curto-circuitos, tomadas e iluminação que deixaram de funcionar.</p>
+                <p class="row__meta"><span>60 min</span><span>Em sua casa</span><span class="row__mode">Preço fixo</span></p>
+              </div>
+              <div class="row__side">
+                <p class="row__price">1200 MZN</p>
+                <button class="btn btn--primary btn--sm">Ver disponibilidade</button>
+              </div>
+            </li>
+            <li class="row">
+              <div class="ph row__thumb ph--mini"></div>
+              <div>
+                <h3 class="row__name">Instalação eléctrica de obra nova</h3>
+                <p class="row__desc">Traçado, tubagem e cablagem para casas em construção ou remodelação. Visita técnica primeiro.</p>
+                <p class="row__meta"><span>mínimo 4 h</span><span>Em sua casa</span><span class="row__mode">Por hora</span></p>
+              </div>
+              <div class="row__side">
+                <p class="row__price">800 MZN <small>/ h</small></p>
+                <button class="btn btn--primary btn--sm">Ver disponibilidade</button>
+              </div>
+            </li>
+            <li class="row">
+              <div class="ph row__thumb ph--mini"></div>
+              <div>
+                <h3 class="row__name">Projecto eléctrico de raiz</h3>
+                <p class="row__desc">Levantamento, desenho do quadro e memória descritiva para licenciamento. O preço depende da área da casa.</p>
+                <p class="row__meta"><span>Em sua casa</span><span class="row__mode">Sob orçamento</span></p>
+              </div>
+              <div class="row__side">
+                <p class="row__price row__price--quote">Sob orçamento</p>
+                <button class="btn btn--outline btn--sm">Pedir orçamento</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <section class="section" id="avaliacoes">
+          <h2 class="type-h2">Avaliações</h2>
+          <div class="reviews__summary">
+            <div class="score">
+              <p class="score__value">4,8</p>
+              <p class="score__stars" aria-hidden="true">★★★★★</p>
+              <p class="type-caption muted">4 avaliações</p>
+            </div>
+            <div class="histogram">
+              <div class="hist-row"><span>5</span><span class="hist-bar"><span style="width:75%"></span></span><b>3</b></div>
+              <div class="hist-row"><span>4</span><span class="hist-bar"><span style="width:25%"></span></span><b>1</b></div>
+              <div class="hist-row"><span>3</span><span class="hist-bar"><span style="width:0%"></span></span><b>0</b></div>
+              <div class="hist-row"><span>2</span><span class="hist-bar"><span style="width:0%"></span></span><b>0</b></div>
+              <div class="hist-row"><span>1</span><span class="hist-bar"><span style="width:0%"></span></span><b>0</b></div>
+            </div>
+          </div>
+
+          <ul class="review-list">
+            <li class="review">
+              <div class="review__head">
+                <span class="review__avatar" style="background:#006ffd">TM</span>
+                <div>
+                  <p class="review__name">Teresa Mondlane</p>
+                  <p class="review__sub">Julho 2026</p>
+                </div>
+                <span class="review__stars" aria-label="5 de 5">★★★★★</span>
+              </div>
+              <p class="review__body">Chegou uma hora depois da chamada, num sábado. Encontrou o problema no quadro e explicou tudo antes de mexer. Preço igual ao combinado.</p>
+            </li>
+            <li class="review">
+              <div class="review__head">
+                <span class="review__avatar" style="background:#13171b">RC</span>
+                <div>
+                  <p class="review__name">Rui Chembene</p>
+                  <p class="review__sub">Junho 2026</p>
+                </div>
+                <span class="review__stars" aria-label="5 de 5">★★★★★</span>
+              </div>
+              <p class="review__body">Trabalho limpo e bem organizado. Deixou o quadro etiquetado e mandou fotos no fim.</p>
+            </li>
+            <li class="review">
+              <div class="review__head">
+                <span class="review__avatar" style="background:#21b872">SG</span>
+                <div>
+                  <p class="review__name">Sandra Guambe</p>
+                  <p class="review__sub">Maio 2026</p>
+                </div>
+                <span class="review__stars" aria-label="4 de 5">★★★★<span style="opacity:.28">★</span></span>
+              </div>
+              <p class="review__body">Resolveu bem, mas atrasou-se cerca de trinta minutos em relação à hora marcada. Avisou por mensagem.</p>
+            </li>
+          </ul>
+
+          <div class="reviews__more">
+            <button class="btn btn--outline">Ver todas as avaliações</button>
+            <p class="reviews__note">A mostrar 3 de 4 avaliações.</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Coluna lateral -->
+      <aside class="rail">
+        <div class="card">
+          <p class="price"><b>1200 MZN</b><span>a partir de</span></p>
+          <p class="price__note">O mais barato dos 3 serviços publicados.</p>
+
+          <div class="rail__actions">
+            <button class="btn btn--primary btn--block">Enviar mensagem</button>
+            <a class="btn btn--outline btn--block" href="#servicos">Ver serviços</a>
+          </div>
+
+          <ul class="trust">
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>Documento de identidade e certificação profissional verificados pela Ntizo.</span>
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>As mensagens ficam guardadas na Ntizo, por isso o que for combinado fica escrito.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card card--flat">
+          <p class="card__label">Disponibilidade</p>
+          <dl class="hours">
+            <div><dt>Segunda a sexta</dt><dd>08:00 – 18:00</dd></div>
+            <div><dt>Sábado</dt><dd>09:00 – 14:00</dd></div>
+            <div><dt>Domingo</dt><dd class="closed">Fechado</dd></div>
+          </dl>
+          <p class="hours__note">Horário habitual. As horas livres de cada serviço são as que aparecem no calendário.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════════════════ SERVIÇO ═══════════════════════════ -->
+<main id="page-service" hidden>
+  <div class="page-shell">
+    <nav class="crumbs" aria-label="Migalhas">
+      <a href="#">Início</a><span class="crumbs__sep">/</span>
+      <a href="#">Electricidade</a><span class="crumbs__sep">/</span>
+      <span class="crumbs__here">Avaria eléctrica urgente</span>
+    </nav>
+
+    <div class="gallery">
+      <div class="ph gallery__main" data-label="foto principal do serviço"></div>
+      <div class="gallery__side">
+        <div class="ph" data-label="quadro reparado"></div>
+        <div class="ph" data-label="material usado"></div>
+        <button class="btn btn--outline btn--block gallery__more">Ver as 5 fotos</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <p class="eyebrow"><a href="#">Hélder Cossa</a> · Individual · Electricidade</p>
+        <h1 class="type-display title">Avaria eléctrica urgente</h1>
+
+        <p class="headline-meta">
+          <span class="rating">
+            <span class="rating__star">★</span>
+            <b class="rating__score">4,8</b>
+            <a class="rating__count" href="#avaliacoes-servico">4 avaliações</a>
+          </span>
+          <span class="headline-meta__where">Sommerschield, Maputo</span>
+        </p>
+
+        <dl class="facts">
+          <div><dt>Duração</dt><dd>60 min</dd></div>
+          <div><dt>Onde atende</dt><dd>Em sua casa</dd></div>
+          <div><dt>Modo de preço</dt><dd>Preço fixo</dd></div>
+          <div><dt>Categoria</dt><dd>Electricidade</dd></div>
+        </dl>
+
+        <section class="section">
+          <h2 class="type-h2">Sobre este serviço</h2>
+          <div class="prose">
+            <p>Deslocação, diagnóstico e reparação de curto-circuitos, tomadas e pontos de iluminação que deixaram de funcionar. Levo ferramenta e material básico — disjuntores, fita, tomadas correntes.</p>
+            <p>Se a avaria exigir material específico, mostro o orçamento antes de comprar. O preço abaixo cobre a deslocação e a primeira hora de trabalho.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section__head">
+            <h2 class="type-h2">Opções</h2>
+            <p class="type-caption muted">Escolha uma para ver o total</p>
+          </div>
+          <div class="options" role="radiogroup" aria-label="Opções">
+            <button class="option" role="radio" aria-checked="true" data-price="1200" data-name="Diagnóstico e reparação" data-meta="60 min · preço fixo">
+              <span class="option__dot" aria-hidden="true"></span>
+              <span>
+                <span class="option__name">Diagnóstico e reparação</span>
+                <span class="option__meta">60 min · uma avaria</span>
+              </span>
+              <span class="option__price">1200 MZN</span>
+            </button>
+            <button class="option" role="radio" aria-checked="false" data-price="1900" data-name="Diagnóstico alargado" data-meta="120 min · preço fixo">
+              <span class="option__dot" aria-hidden="true"></span>
+              <span>
+                <span class="option__name">Diagnóstico alargado</span>
+                <span class="option__meta">120 min · toda a casa</span>
+              </span>
+              <span class="option__price">1900 MZN</span>
+            </button>
+            <button class="option" role="radio" aria-checked="false" data-price="2400" data-name="Urgência fora de horas" data-meta="60 min · preço fixo">
+              <span class="option__dot" aria-hidden="true"></span>
+              <span>
+                <span class="option__name">Urgência fora de horas</span>
+                <span class="option__meta">60 min · noites e domingos</span>
+              </span>
+              <span class="option__price">2400 MZN</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="type-h2">Quem executa</h2>
+          <div class="performers">
+            <div class="performer"><span class="ph ph--mini"></span><span>Hélder</span></div>
+          </div>
+        </section>
+
+        <section class="section" id="avaliacoes-servico">
+          <h2 class="type-h2">Avaliações</h2>
+          <p class="reviews__note" style="margin-top:6px">Avaliações sobre Hélder Cossa — na Ntizo avalia-se o prestador, não cada serviço.</p>
+          <div class="reviews__summary">
+            <div class="score">
+              <p class="score__value">4,8</p>
+              <p class="score__stars" aria-hidden="true">★★★★★</p>
+              <p class="type-caption muted">4 avaliações</p>
+            </div>
+            <div class="histogram">
+              <div class="hist-row"><span>5</span><span class="hist-bar"><span style="width:75%"></span></span><b>3</b></div>
+              <div class="hist-row"><span>4</span><span class="hist-bar"><span style="width:25%"></span></span><b>1</b></div>
+              <div class="hist-row"><span>3</span><span class="hist-bar"><span style="width:0%"></span></span><b>0</b></div>
+              <div class="hist-row"><span>2</span><span class="hist-bar"><span style="width:0%"></span></span><b>0</b></div>
+              <div class="hist-row"><span>1</span><span class="hist-bar"><span style="width:0%"></span></span><b>0</b></div>
+            </div>
+          </div>
+          <ul class="review-list">
+            <li class="review">
+              <div class="review__head">
+                <span class="review__avatar" style="background:#006ffd">TM</span>
+                <div>
+                  <p class="review__name">Teresa Mondlane</p>
+                  <p class="review__sub">Julho 2026</p>
+                </div>
+                <span class="review__stars" aria-label="5 de 5">★★★★★</span>
+              </div>
+              <p class="review__body">Chegou uma hora depois da chamada, num sábado. Encontrou o problema no quadro e explicou tudo antes de mexer. Preço igual ao combinado.</p>
+            </li>
+            <li class="review">
+              <div class="review__head">
+                <span class="review__avatar" style="background:#21b872">SG</span>
+                <div>
+                  <p class="review__name">Sandra Guambe</p>
+                  <p class="review__sub">Maio 2026</p>
+                </div>
+                <span class="review__stars" aria-label="4 de 5">★★★★<span style="opacity:.28">★</span></span>
+              </div>
+              <p class="review__body">Resolveu bem, mas atrasou-se cerca de trinta minutos em relação à hora marcada. Avisou por mensagem.</p>
+            </li>
+          </ul>
+          <div class="reviews__more"><button class="btn btn--outline">Ver todas as avaliações</button></div>
+        </section>
+      </div>
+
+      <!-- Coluna lateral -->
+      <aside class="rail">
+        <div class="card">
+          <p class="price"><b id="rail-price">1200 MZN</b><span>preço fixo</span></p>
+          <p class="price__note"><span id="rail-option">Diagnóstico e reparação</span> · <span id="rail-meta">60 min · preço fixo</span></p>
+
+          <dl class="breakdown">
+            <div><dt>Serviço</dt><dd id="bd-base">1200 MZN</dd></div>
+            <div><dt>Taxa de serviço Ntizo (10%)</dt><dd id="bd-fee">120 MZN</dd></div>
+            <div class="total"><dt>Total</dt><dd id="bd-total">1320 MZN</dd></div>
+          </dl>
+
+          <div class="rail__actions">
+            <button class="btn btn--primary btn--block">Ver disponibilidade</button>
+            <button class="btn btn--outline btn--block">Enviar mensagem</button>
+          </div>
+          <p class="rail__hint">As reservas ainda não estão abertas na Ntizo. Combine a hora por mensagem.</p>
+
+          <ul class="trust">
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>Documento de identidade e certificação profissional verificados pela Ntizo.</span>
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>O total já inclui a taxa de serviço. Não há custos acrescentados depois.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card card--flat">
+          <p class="card__label">Disponibilidade</p>
+          <dl class="hours">
+            <div><dt>Segunda a sexta</dt><dd>08:00 – 18:00</dd></div>
+            <div><dt>Sábado</dt><dd>09:00 – 14:00</dd></div>
+            <div><dt>Domingo</dt><dd class="closed">Fechado</dd></div>
+          </dl>
+          <p class="hours__note">Horário habitual. As horas livres deste serviço são as que aparecem no calendário.</p>
+        </div>
+
+        <div class="card card--flat">
+          <div class="provider-card__top">
+            <span class="ph provider-card__logo ph--mini"></span>
+            <div>
+              <p class="provider-card__name">Hélder Cossa</p>
+              <p class="provider-card__sub">Individual · Sommerschield, Maputo</p>
+            </div>
+          </div>
+          <a class="btn btn--outline btn--block btn--sm" href="#" style="margin-top:16px">Ver o prestador</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Alternar entre as duas páginas
+  const pages = { provider: document.getElementById('page-provider'), service: document.getElementById('page-service') };
+  function show(wanted) {
+      document.querySelectorAll('.mockbar__tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.page === wanted)));
+      Object.entries(pages).forEach(([key, el]) => { el.hidden = key !== wanted; });
+      document.querySelectorAll('.nav a').forEach((a) => {
+        if (a.dataset.nav === wanted) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+  }
+  if (location.hash === '#servico') show('service');
+  document.querySelectorAll('.mockbar__tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const wanted = tab.dataset.page;
+      document.querySelectorAll('.mockbar__tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      Object.entries(pages).forEach(([key, el]) => { el.hidden = key !== wanted; });
+      document.querySelectorAll('.nav a').forEach((a) => {
+        if (a.dataset.nav === wanted) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+      window.scrollTo({ top: 0 });
+    });
+  });
+
+  // A opção escolhida no corpo comanda o preço do rail
+  const fmt = (n) => new Intl.NumberFormat('pt-MZ').format(n) + ' MZN';
+  document.querySelectorAll('.option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.option').forEach((o) => o.setAttribute('aria-checked', String(o === opt)));
+      const base = Number(opt.dataset.price);
+      const fee = Math.round(base * 0.1);
+      document.getElementById('rail-price').textContent = fmt(base);
+      document.getElementById('rail-option').textContent = opt.dataset.name;
+      document.getElementById('rail-meta').textContent = opt.dataset.meta;
+      document.getElementById('bd-base').textContent = fmt(base);
+      document.getElementById('bd-fee').textContent = fmt(fee);
+      document.getElementById('bd-total').textContent = fmt(base + fee);
+    });
+  });
+</script>
+</body>
+</html>

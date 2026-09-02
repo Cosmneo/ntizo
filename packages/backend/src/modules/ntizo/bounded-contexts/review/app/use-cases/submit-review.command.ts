@@ -22,11 +22,12 @@ import type { ReviewRepositoryPort } from "../ports/outbound/review.repository.p
  *
  * The order of the refusals is deliberate: existence first, so a caller
  * probing ids learns nothing about who works where; then the own-business rule,
- * which is the one that actually protects the average; then eligibility, which
- * is the rule the platform wants and cannot yet enforce (see
- * `ReviewEligibilityPort`). Validation of the score itself lives in the
- * aggregate, and runs last because it is the only one whose message is about
- * what the caller typed rather than about who they are.
+ * which is the one that actually protects the average; then eligibility —
+ * whether this caller has a `COMPLETED` booking with this provider, answered
+ * by whatever `ReviewEligibilityPort` is bound at bootstrap
+ * (`BookingReviewEligibilityAdapter`). Validation of the score itself lives in
+ * the aggregate, and runs last because it is the only one whose message is
+ * about what the caller typed rather than about who they are.
  */
 export class SubmitReviewCommand {
   constructor(
