@@ -1,0 +1,5209 @@
+# Company Pages and Support Inbox Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Six public company pages (About, Contact, Message support, FAQ, Share feedback, Careers) in one shared editorial frame, a `support` bounded context that stores what the three forms send and emails the team, and an admin queue at `/admin/support` to work it.
+
+**Architecture:** Backend: a new `support` bounded context modelled line-for-line on `review` (aggregate, Drizzle repository, use cases, write-tier mutations, read-tier admin query, mounted in `apps/backend/api/src/graphql/private.ts`), plus an inbox email adapter on the shared `EmailServicePort`. Frontend: a `features/company` feature with one `CompanyPage` frame, one `SupportForm` parameterised by kind, a new `company` i18n namespace in eight locales, and an admin page on the `/admin/reviews` pattern.
+
+**Tech Stack:** Bun, Hono, `@cosmneo/onion-lasagna` GraphQL field kit, Drizzle + Postgres (Neon), Resend 4.8, React 19, TanStack Start/Router/Query, react-i18next, Tailwind 4, vitest (web, shared), `bun test` (backend), Playwright (e2e).
+
+**Spec:** `docs/superpowers/specs/2026-09-02-company-pages-design.md` — read it first; the approved copy is in `docs/superpowers/specs/2026-09-02-company-pages.mockup.html` beside it.
+
+## Global Constraints
+
+- **No accent hairline before eyebrow labels, anywhere.** Owner's rule (spec, "Decisions"). Eyebrows are letter-spaced uppercase text only. Do not add `h-px w-8` or any rule beside a label, in code or in tests' fixtures.
+- **No number that lives in `platform_settings` appears in copy**: not 2 hours, 15 minutes, 30 minutes, 10%, 3 days. Say "o prazo indicado no pedido" / "the time shown on the request".
+- **Contact channels are exactly**: `ola@ntizo.co.mz` (general and careers), `suporte@ntizo.co.mz` (support, and where the forms email), `privacidade@ntizo.co.mz` (data). Instagram `https://www.instagram.com/ntizo.mz/`, LinkedIn `https://www.linkedin.com/company/ntizo/`. No phone, no street address. Every occurrence in code reads `CONTACT` from `apps/frontend/web/src/shared/lib/contact.ts` (Task 8).
+- **Eight locales, pt-MZ first**: `pt-MZ` is authored from the mockup and is the parity reference; `pt-PT`, `en-US`, `es-ES`, `fr-FR`, `de-DE`, `it-IT`, `nl-NL` carry exactly the same dotted key set (the gate in `src/shared/locales/__tests__/locales.test.ts` enforces it). Each language must read as its own language, not a word-for-word transfer.
+- **Every FAQ answer states only what the product does today** (spec, "Perguntas frequentes"): M-Pesa is the only charge method; no refund path; no customer-initiated cancellation; hourly and quote-priced services are booked by messaging the provider; verification is one identity document reviewed by a person.
+- **Routes for the six pages are top-level** (`src/routes/about.tsx`, not under `_public`), `ssr: true`, each with its own `<head>` title.
+- **Commit style** as the repo does: `feat(company): …`, `feat(support): …`, `test(web): …`, `docs: …`; body explains why; end every message with
+
+  ```
+  Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+  Claude-Session: https://claude.ai/code/session_01BzDMYE843QBMp8tfP3aKpf
+  ```
+- **Where commands run**: backend tests `cd packages/backend && bun test <path>`; shared tests `cd packages/shared && bunx vitest run <path>`; web tests `cd apps/frontend/web && bunx vitest run <path>`; typecheck in each package with `bun run typecheck`; lint with `bun run lint`.
+- **Database-backed backend tests** (`packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/*`) need `DEV_DB_URL` (see `packages/backend/.env`) and the new migration applied to that database first (`cd packages/backend && bun run db:ntizo:dev:migrate`). They run against the shared dev database with a random suffix per run and best-effort cleanup — copy that discipline exactly.
+- **Work in a worktree** branched from `origin/dev` (superpowers:using-git-worktrees). Another session is committing on `feat/real-home-page` in the main working tree; do not work there.
+
+---
+
+## File structure
+
+**Shared package** (`packages/shared/src`)
+- `enums/support-enums/index.ts` — kinds, topics per kind, statuses, the reference helper. One definition both tiers and the frontend import.
+- `read-models/system/support/support-request-admin.schema.ts` (+ `index.ts`, registered in `system/index.ts`) — the admin projection.
+
+**Backend** (`packages/backend/src`)
+- `modules/ntizo/shared/infrastructure/database/support/schemas/support-request.schema.ts` (+ `schemas/index.ts`, `support/index.ts`; `database/schemas.ts` re-exports) — the table.
+- `modules/ntizo/drizzle.config.ts` — `ntizo_support` in `schemaFilter`.
+- `modules/ntizo/bounded-contexts/support/domain/aggregates/support-request.aggregate.ts` — rules.
+- `modules/ntizo/bounded-contexts/support/domain/exceptions.ts` — refusals with public codes.
+- `modules/ntizo/bounded-contexts/support/app/ports/outbound/support-request.repository.port.ts` — persistence port.
+- `modules/ntizo/bounded-contexts/support/app/ports/outbound/support-inbox.port.ts` — "tell the team" port.
+- `modules/ntizo/bounded-contexts/support/app/use-cases/submit-support-request.command.ts`, `list-support-requests-for-admin.query.ts`, `set-support-request-status.command.ts`.
+- `modules/ntizo/bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository.ts`.
+- `modules/ntizo/bounded-contexts/support/infrastructure/outbound-adapters/email-support-inbox.adapter.ts`.
+- `modules/ntizo/bounded-contexts/support/bootstrap/index.ts`, `index.ts`.
+- `modules/ntizo/write/support/{graphql/schema/mutations.ts, graphql/handlers/mutations.handlers.ts, index.ts}`; `modules/ntizo/write/schema.ts` merges it.
+- `modules/ntizo/read/support/{graphql/schema/queries.ts, graphql/handlers/queries.handlers.ts, bootstrap/index.ts, index.ts}`; `modules/ntizo/read/schema.ts` merges it.
+- `shared/infrastructure/email/email-service.port.ts` (+ `resend-email-service.adapter.ts`, `console-email-service.adapter.ts`) — `replyTo`.
+- `shared/infrastructure/stores/infra-store.ts` — `SUPPORT_INBOX_EMAIL?`.
+
+**API** (`apps/backend/api`)
+- `src/graphql/private.ts` — mounts the three new fields.
+- `src/middlewares/config.middleware.ts`, `src/scheduled.ts`, `wrangler.jsonc` — carry `SUPPORT_INBOX_EMAIL`.
+
+**Web** (`apps/frontend/web/src`)
+- `shared/lib/contact.ts` — the addresses.
+- `shared/components/site-header.tsx` — `current: "none"`.
+- `features/landing/ui/footer.tsx` — Empresa column, `suporte@`, M-Pesa only.
+- `features/become-provider/ui/become-provider-page.tsx` — mailto from `CONTACT`; eyebrow without rule.
+- `features/legal/ui/legal-page.tsx` — address interpolated.
+- `shared/lib/i18n.ts` — `company` namespace.
+- `shared/locales/<8>/company.json` — new; `landing.json`, `legal.json`, `admin.json` — additions.
+- `shared/locales/__tests__/locales.test.ts` — `company`, `landing`, `legal` join the gate.
+- `features/company/domain/support-form-validation.ts` — pure validation, import-free.
+- `features/company/ui/company-page.tsx` — the frame (band, strip, footer) and `Eyebrow`.
+- `features/company/ui/about-page.tsx`, `careers-page.tsx`, `faq-page.tsx`, `faq-index.tsx`, `support-form.tsx`, `support-request-page.tsx`.
+- `features/company/data/support-request.repository.ts`, `features/company/viewmodel/use-submit-support-request.ts`.
+- `routes/about.tsx`, `contact.tsx`, `support.tsx`, `faq.tsx`, `feedback.tsx`, `careers.tsx`.
+- `features/admin/support/{data/admin-support.repository.ts, viewmodel/use-admin-support.ts, ui/support-page.tsx}`; `routes/admin/support.tsx`; `shared/lib/admin-navigation.ts`.
+- Tests beside each, named in the tasks.
+
+**E2E** (`apps/e2e/tests/company.spec.ts`).
+
+**Docs**: `docs/superpowers/follow-ups.md` gains entries #126–#131.
+
+---
+
+### Task 1: The support vocabulary, shared by every tier
+
+**Files:**
+- Create: `packages/shared/src/enums/support-enums/index.ts`
+- Modify: `packages/shared/src/enums/index.ts`
+- Test: `packages/shared/src/enums/__tests__/support-enums.test.ts`
+
+**Interfaces:**
+- Produces: `SUPPORT_REQUEST_KINDS`, `SupportRequestKind`, `supportRequestKindSchema`, `SUPPORT_TOPICS`, `SupportTopic`, `isSupportTopicForKind(kind, topic)`, `SUPPORT_REQUEST_STATUSES`, `SupportRequestStatus`, `supportRequestStatusSchema`, `supportEmailRequired(kind)`, `SUPPORT_REFERENCE_LENGTH`, `supportReferenceOf(id)` — all from `@ntizo/shared` (and `@ntizo/shared/enums`).
+
+- [ ] **Step 1: Write the failing test**
+
+`packages/shared/src/enums/__tests__/support-enums.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import {
+  SUPPORT_REQUEST_KINDS,
+  SUPPORT_TOPICS,
+  isSupportTopicForKind,
+  supportEmailRequired,
+  supportReferenceOf,
+} from "../support-enums";
+
+describe("support enums", () => {
+  it("names the three forms", () => {
+    expect(SUPPORT_REQUEST_KINDS).toEqual(["contact", "support", "feedback"]);
+  });
+
+  it("gives every kind its own topics, ending in a catch-all where the list is a set of reasons", () => {
+    expect(SUPPORT_TOPICS.contact).toEqual(["general", "partnership", "press", "provider", "other"]);
+    expect(SUPPORT_TOPICS.support).toEqual(["account", "booking", "payment", "provider_account", "other"]);
+    expect(SUPPORT_TOPICS.feedback).toEqual(["idea", "problem", "praise"]);
+  });
+
+  it("refuses a topic that belongs to another kind", () => {
+    expect(isSupportTopicForKind("support", "booking")).toBe(true);
+    expect(isSupportTopicForKind("contact", "booking")).toBe(false);
+    expect(isSupportTopicForKind("feedback", "other")).toBe(false);
+  });
+
+  it("only feedback may arrive without a way to reply", () => {
+    expect(supportEmailRequired("contact")).toBe(true);
+    expect(supportEmailRequired("support")).toBe(true);
+    expect(supportEmailRequired("feedback")).toBe(false);
+  });
+
+  it("derives the six-character reference from the id's first hex characters, upper-cased", () => {
+    expect(supportReferenceOf("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b")).toBe("7F3A2C");
+  });
+});
+```
+
+- [ ] **Step 2: Run it to see it fail**
+
+Run: `cd packages/shared && bunx vitest run src/enums/__tests__/support-enums.test.ts`
+Expected: FAIL — cannot resolve `../support-enums`.
+
+- [ ] **Step 3: Write the enums**
+
+`packages/shared/src/enums/support-enums/index.ts`:
+
+```ts
+import { z } from "zod";
+
+/**
+ * The three things somebody can write to us about, named after the form each
+ * arrives from. One vocabulary for the write tier, the read tier and the
+ * frontend, so a topic added to the form cannot be one the aggregate refuses.
+ */
+export const SUPPORT_REQUEST_KINDS = ["contact", "support", "feedback"] as const;
+export type SupportRequestKind = (typeof SUPPORT_REQUEST_KINDS)[number];
+export const supportRequestKindSchema = z.enum(SUPPORT_REQUEST_KINDS);
+
+/**
+ * What each form asks the person to file their message under. Stored as text
+ * on the row; validated against this list by the aggregate, per kind.
+ */
+export const SUPPORT_TOPICS = {
+  contact: ["general", "partnership", "press", "provider", "other"],
+  support: ["account", "booking", "payment", "provider_account", "other"],
+  feedback: ["idea", "problem", "praise"],
+} as const satisfies Record<SupportRequestKind, readonly string[]>;
+export type SupportTopic = (typeof SUPPORT_TOPICS)[SupportRequestKind][number];
+
+export function isSupportTopicForKind(kind: SupportRequestKind, topic: string): topic is SupportTopic {
+  return (SUPPORT_TOPICS[kind] as readonly string[]).includes(topic);
+}
+
+export const SUPPORT_REQUEST_STATUSES = ["open", "resolved"] as const;
+export type SupportRequestStatus = (typeof SUPPORT_REQUEST_STATUSES)[number];
+export const supportRequestStatusSchema = z.enum(SUPPORT_REQUEST_STATUSES);
+
+/** Feedback may arrive with no way to reply; a question or a problem needs one. */
+export function supportEmailRequired(kind: SupportRequestKind): boolean {
+  return kind !== "feedback";
+}
+
+/**
+ * The reference a person quotes back to us: the first six hex characters of
+ * the request id, upper-cased. Six of a uuid's first group are contiguous,
+ * so the admin search can match `id::text ILIKE '<ref>%'` without stripping
+ * hyphens.
+ */
+export const SUPPORT_REFERENCE_LENGTH = 6;
+export function supportReferenceOf(id: string): string {
+  return id.replace(/-/g, "").slice(0, SUPPORT_REFERENCE_LENGTH).toUpperCase();
+}
+```
+
+Append to `packages/shared/src/enums/index.ts`:
+
+```ts
+export * from "./support-enums";
+```
+
+- [ ] **Step 4: Run the test and the typecheck**
+
+Run: `cd packages/shared && bunx vitest run src/enums/__tests__/support-enums.test.ts && bun run typecheck`
+Expected: 5 passed; typecheck clean.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/shared/src/enums/support-enums/index.ts packages/shared/src/enums/index.ts packages/shared/src/enums/__tests__/support-enums.test.ts
+git commit -m "feat(shared): the support request vocabulary — kinds, topics, statuses, reference"
+```
+
+---
+
+### Task 2: The `support_request` table and its migration
+
+**Files:**
+- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/support/schemas/support-request.schema.ts`
+- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/support/schemas/index.ts`
+- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/support/index.ts`
+- Modify: `packages/backend/src/modules/ntizo/shared/infrastructure/database/schemas.ts`
+- Modify: `packages/backend/src/modules/ntizo/drizzle.config.ts` (the `schemaFilter` array)
+- Generated: `packages/backend/src/modules/ntizo/shared/infrastructure/migrations/00NN_support_request.sql` (+ `meta/`)
+
+**Interfaces:**
+- Produces: `supportSchema` (pgSchema `ntizo_support`), `supportRequest` table, `SupportRequestRecord`, `NewSupportRequestRecord`.
+
+- [ ] **Step 1: Write the table**
+
+`support-request.schema.ts`:
+
+```ts
+import { index, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { user } from "../../user/schemas/user.schema";
+
+export const supportSchema = pgSchema("ntizo_support");
+
+/**
+ * One message sent through the contact, support or feedback form.
+ *
+ * The row is the source of truth: the email to the team is sent after it is
+ * written and may fail without losing anything (see `SubmitSupportRequestCommand`).
+ *
+ * `kind`, `topic` and `status` are text rather than enums, like `review.status`:
+ * the allowed values are the aggregate's rule (and `@ntizo/shared`'s list), and
+ * a Postgres enum would make adding a topic a migration.
+ *
+ * `requester_user_id` and `resolved_by_user_id` are `set null` on delete:
+ * deleting an account must not delete what the team was told, nor the record
+ * of who resolved it — but neither may keep pointing at a row that is gone.
+ *
+ * `ip_address` exists for the per-IP rate limit and for abuse; the privacy
+ * policy discloses it (Task 14).
+ */
+export const supportRequest = supportSchema.table(
+  "support_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** `contact` | `support` | `feedback` — see `SUPPORT_REQUEST_KINDS`. */
+    kind: text("kind").notNull(),
+    /** One of the kind's topics — see `SUPPORT_TOPICS`. */
+    topic: text("topic").notNull(),
+    name: text("name").notNull(),
+    /** Null only on feedback, which may arrive without a way to reply. */
+    email: text("email"),
+    message: text("message").notNull(),
+    requesterUserId: text("requester_user_id").references(() => user.id, { onDelete: "set null" }),
+    /** The UI language at submission, so the reply comes in it. */
+    locale: text("locale").notNull(),
+    /** The page the form was reached from; the feedback page sends it, the others do not. */
+    originPath: text("origin_path"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    /** `open` | `resolved` — see `SUPPORT_REQUEST_STATUSES`. */
+    status: text("status").notNull().default("open"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedByUserId: text("resolved_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The admin list: open first, newest first.
+    index("support_request_status_created_idx").on(t.status, t.createdAt),
+    // The rate limit: "how many from this address in the last hour".
+    index("support_request_ip_created_idx").on(t.ipAddress, t.createdAt),
+    index("support_request_kind_idx").on(t.kind),
+  ],
+);
+
+export type SupportRequestRecord = typeof supportRequest.$inferSelect;
+export type NewSupportRequestRecord = typeof supportRequest.$inferInsert;
+```
+
+`support/schemas/index.ts`:
+
+```ts
+export * from "./support-request.schema";
+```
+
+`support/index.ts`:
+
+```ts
+export * from "./schemas";
+```
+
+In `database/schemas.ts`, after `export * from "./review";`, add:
+
+```ts
+export * from "./support";
+```
+
+In `drizzle.config.ts`, in `schemaFilter`, after `"ntizo_review",` add `"ntizo_support",`.
+
+- [ ] **Step 2: Typecheck**
+
+Run: `cd packages/backend && bun run typecheck`
+Expected: clean.
+
+- [ ] **Step 3: Generate the migration**
+
+Run: `cd packages/backend && bun run db:ntizo:generate --name support_request`
+Expected: a new file `src/modules/ntizo/shared/infrastructure/migrations/00NN_support_request.sql` and an updated `meta/_journal.json` + snapshot. Open the SQL and confirm it contains `CREATE SCHEMA "ntizo_support";`, `CREATE TABLE "ntizo_support"."support_request"`, the two foreign keys to `"ntizo_user"."user"` with `ON DELETE set null`, and the three indexes. If it contains anything touching another schema, stop: the schema filter or an earlier migration is out of step, and that needs a person.
+
+- [ ] **Step 4: Apply it to the dev database**
+
+Run: `cd packages/backend && bun run db:ntizo:dev:migrate` (needs `DEV_DB_URL`).
+Expected: the migration applies; the command exits 0.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo/shared/infrastructure/database/support packages/backend/src/modules/ntizo/shared/infrastructure/database/schemas.ts packages/backend/src/modules/ntizo/drizzle.config.ts packages/backend/src/modules/ntizo/shared/infrastructure/migrations
+git commit -m "feat(support): the support_request table, in its own schema"
+```
+
+---
+
+### Task 3: The `SupportRequest` aggregate and its refusals
+
+**Files:**
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/domain/exceptions.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/domain/aggregates/support-request.aggregate.ts`
+- Test: `packages/backend/src/modules/ntizo/bounded-contexts/support/__tests__/support-request.aggregate.test.ts`
+
+**Interfaces:**
+- Consumes: Task 1's enums.
+- Produces: `SupportRequest` with `static create(input)`, `static reconstitute(props)`, getters for every prop, `withId(id)`, `resolve(at, byUserId)`, `reopen()`, `get reference()`; the constants `NAME_MIN/MAX`, `MESSAGE_MIN/MAX`, `EMAIL_MAX`, `ORIGIN_PATH_MAX`, `LOCALE_MAX`; errors `SupportNameInvalidError`, `SupportMessageInvalidError`, `SupportEmailRequiredError`, `SupportEmailInvalidError`, `SupportTopicInvalidError`, `SupportRateLimitedError`, `SupportRequestNotFoundError`.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+import { describe, expect, it } from "bun:test";
+import {
+  MESSAGE_MAX,
+  NAME_MAX,
+  SupportRequest,
+} from "../domain/aggregates/support-request.aggregate";
+import {
+  SupportEmailInvalidError,
+  SupportEmailRequiredError,
+  SupportMessageInvalidError,
+  SupportNameInvalidError,
+  SupportTopicInvalidError,
+} from "../domain/exceptions";
+
+/** A complete, valid support message; each test takes one thing away. */
+function input(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) {
+  return {
+    kind: "support" as const,
+    topic: "booking",
+    name: "  Joana Matola ",
+    email: " Joana@Exemplo.com ",
+    message: "A reserva de sábado não aparece na minha conta.",
+    locale: "pt-MZ",
+    originPath: null,
+    requesterUserId: "u-1",
+    ipAddress: "197.218.0.1",
+    userAgent: "Mozilla/5.0",
+    ...over,
+  };
+}
+
+describe("SupportRequest.create — normalisation", () => {
+  it("trims the name and the message, and lower-cases the email", () => {
+    const r = SupportRequest.create(input());
+    expect(r.name).toBe("Joana Matola");
+    expect(r.email).toBe("joana@exemplo.com");
+    expect(r.message).toBe("A reserva de sábado não aparece na minha conta.");
+    expect(r.status).toBe("open");
+    expect(r.id).toBeNull();
+  });
+
+  it("stores an empty feedback email as none, not as an empty string", () => {
+    const r = SupportRequest.create(input({ kind: "feedback", topic: "idea", email: "   " }));
+    expect(r.email).toBeNull();
+  });
+
+  it("cuts an over-long origin path rather than refusing the message for it", () => {
+    const r = SupportRequest.create(input({ originPath: `/services/${"x".repeat(300)}` }));
+    expect(r.originPath!.length).toBe(200);
+  });
+});
+
+describe("SupportRequest.create — refusals", () => {
+  it("refuses a name that is too short or too long", () => {
+    expect(() => SupportRequest.create(input({ name: "J" }))).toThrow(SupportNameInvalidError);
+    expect(() => SupportRequest.create(input({ name: "x".repeat(NAME_MAX + 1) }))).toThrow(SupportNameInvalidError);
+  });
+
+  it("refuses a message that is too short or too long", () => {
+    expect(() => SupportRequest.create(input({ message: "olá" }))).toThrow(SupportMessageInvalidError);
+    expect(() => SupportRequest.create(input({ message: "x".repeat(MESSAGE_MAX + 1) }))).toThrow(SupportMessageInvalidError);
+  });
+
+  it("requires an email on contact and support, but not on feedback", () => {
+    expect(() => SupportRequest.create(input({ kind: "contact", topic: "general", email: null }))).toThrow(SupportEmailRequiredError);
+    expect(() => SupportRequest.create(input({ email: "" }))).toThrow(SupportEmailRequiredError);
+    expect(SupportRequest.create(input({ kind: "feedback", topic: "praise", email: null })).email).toBeNull();
+  });
+
+  it("refuses an email that is not shaped like one, on feedback too", () => {
+    expect(() => SupportRequest.create(input({ email: "joana" }))).toThrow(SupportEmailInvalidError);
+    expect(() => SupportRequest.create(input({ kind: "feedback", topic: "idea", email: "not an email" }))).toThrow(SupportEmailInvalidError);
+  });
+
+  it("refuses a topic that belongs to another kind", () => {
+    expect(() => SupportRequest.create(input({ kind: "contact", topic: "booking" }))).toThrow(SupportTopicInvalidError);
+  });
+});
+
+describe("SupportRequest — resolving", () => {
+  const saved = SupportRequest.create(input()).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
+
+  it("resolve records who and when, and reopen clears both", () => {
+    const at = new Date("2026-09-02T10:00:00.000Z");
+    const resolved = saved.resolve(at, "admin-1");
+    expect(resolved.status).toBe("resolved");
+    expect(resolved.resolvedAt).toEqual(at);
+    expect(resolved.resolvedByUserId).toBe("admin-1");
+
+    const reopened = resolved.reopen();
+    expect(reopened.status).toBe("open");
+    expect(reopened.resolvedAt).toBeNull();
+    expect(reopened.resolvedByUserId).toBeNull();
+  });
+
+  it("is idempotent in both directions — two administrators pressing the same button is not an error", () => {
+    const at = new Date("2026-09-02T10:00:00.000Z");
+    const once = saved.resolve(at, "admin-1");
+    const twice = once.resolve(new Date("2026-09-02T11:00:00.000Z"), "admin-2");
+    expect(twice.resolvedAt).toEqual(at);
+    expect(twice.resolvedByUserId).toBe("admin-1");
+    expect(saved.reopen()).toBe(saved);
+  });
+
+  it("derives the reference from the id", () => {
+    expect(saved.reference).toBe("7F3A2C");
+    expect(() => SupportRequest.create(input()).reference).toThrow();
+  });
+});
+```
+
+- [ ] **Step 2: Run to see them fail**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/support-request.aggregate.test.ts`
+Expected: FAIL — modules not found.
+
+- [ ] **Step 3: Write the exceptions**
+
+`domain/exceptions.ts`:
+
+```ts
+import { NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
+
+/**
+ * The support context's refusals.
+ *
+ * Each extends a kit error so `getGraphQLErrorCode` recognises it and the
+ * GraphQL layer does not mask it to INTERNAL_ERROR — the same trap the review
+ * context documents. The `code` strings are a PUBLIC CONTRACT: the form
+ * branches on `SUPPORT_RATE_LIMITED` to say something different.
+ */
+
+export class SupportNameInvalidError extends UnprocessableError {
+  constructor(public readonly length: number) {
+    super({
+      message: `A name must be between 2 and 80 characters — got ${length}`,
+      code: "SUPPORT_NAME_INVALID",
+    });
+    this.name = "SupportNameInvalidError";
+  }
+}
+
+export class SupportMessageInvalidError extends UnprocessableError {
+  constructor(public readonly length: number) {
+    super({
+      message: `A message must be between 10 and 2000 characters — got ${length}`,
+      code: "SUPPORT_MESSAGE_INVALID",
+    });
+    this.name = "SupportMessageInvalidError";
+  }
+}
+
+export class SupportEmailRequiredError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "An email address is needed so we can reply",
+      code: "SUPPORT_EMAIL_REQUIRED",
+    });
+    this.name = "SupportEmailRequiredError";
+  }
+}
+
+export class SupportEmailInvalidError extends UnprocessableError {
+  constructor() {
+    super({ message: "That does not look like an email address", code: "SUPPORT_EMAIL_INVALID" });
+    this.name = "SupportEmailInvalidError";
+  }
+}
+
+export class SupportTopicInvalidError extends UnprocessableError {
+  constructor(public readonly kind: string, public readonly topic: string) {
+    super({
+      message: `"${topic}" is not a topic of the ${kind} form`,
+      code: "SUPPORT_TOPIC_INVALID",
+    });
+    this.name = "SupportTopicInvalidError";
+  }
+}
+
+/**
+ * Refused because this address has sent too much too recently.
+ *
+ * An `UnprocessableError` rather than a `ForbiddenError`: nothing about who
+ * the caller is decides it, only how often they have written. The form shows
+ * its own sentence for this code and keeps what was typed.
+ */
+export class SupportRateLimitedError extends UnprocessableError {
+  constructor(public readonly max: number, public readonly windowMinutes: number) {
+    super({
+      message: `At most ${max} messages every ${windowMinutes} minutes from one address — try again later, or write to us by email`,
+      code: "SUPPORT_RATE_LIMITED",
+    });
+    this.name = "SupportRateLimitedError";
+  }
+}
+
+export class SupportRequestNotFoundError extends NotFoundError {
+  constructor(public readonly requestId: string) {
+    super({ message: `No support request with id "${requestId}"`, code: "SUPPORT_REQUEST_NOT_FOUND" });
+    this.name = "SupportRequestNotFoundError";
+  }
+}
+```
+
+- [ ] **Step 4: Write the aggregate**
+
+`domain/aggregates/support-request.aggregate.ts`:
+
+```ts
+import {
+  isSupportTopicForKind,
+  supportEmailRequired,
+  supportReferenceOf,
+  type SupportRequestKind,
+  type SupportRequestStatus,
+  type SupportTopic,
+} from "@ntizo/shared";
+import {
+  SupportEmailInvalidError,
+  SupportEmailRequiredError,
+  SupportMessageInvalidError,
+  SupportNameInvalidError,
+  SupportTopicInvalidError,
+} from "../exceptions";
+
+export const NAME_MIN = 2;
+export const NAME_MAX = 80;
+export const MESSAGE_MIN = 10;
+export const MESSAGE_MAX = 2000;
+export const EMAIL_MAX = 254;
+export const ORIGIN_PATH_MAX = 200;
+export const LOCALE_MAX = 16;
+
+/** Something, an @, something, a dot, something. Not RFC 5322 — a reply has to reach it, that is all. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export interface SupportRequestProps {
+  readonly id: string | null;
+  readonly kind: SupportRequestKind;
+  readonly topic: SupportTopic;
+  readonly name: string;
+  readonly email: string | null;
+  readonly message: string;
+  readonly requesterUserId: string | null;
+  readonly locale: string;
+  readonly originPath: string | null;
+  readonly ipAddress: string | null;
+  readonly userAgent: string | null;
+  readonly status: SupportRequestStatus;
+  readonly resolvedAt: Date | null;
+  readonly resolvedByUserId: string | null;
+  readonly createdAt: Date | null;
+}
+
+/**
+ * One message somebody sent us through a form.
+ *
+ * Small, like `Review`, and an aggregate for the same reason: a handful of
+ * rules — a name and a message within bounds, an email unless it is feedback,
+ * a topic that belongs to the form it came from — that must hold identically
+ * from the API, from a test, and from any future import.
+ *
+ * **Normalised once, here.** Names and messages are trimmed; the email is
+ * trimmed and lower-cased so the admin search finds `Joana@…` under `joana@…`;
+ * an empty email is `null`, never `""`. The origin path and the locale are
+ * telemetry, not the person's words, so an over-long one is cut rather than
+ * refused — refusing a message because the URL it came from was long would be
+ * punishing the person for our own routing.
+ *
+ * `resolve` and `reopen` are idempotent: two administrators pressing the same
+ * button at once is an ordinary thing, not an error, and the first press wins.
+ */
+export class SupportRequest {
+  private constructor(private readonly props: SupportRequestProps) {}
+
+  static create(input: {
+    kind: SupportRequestKind;
+    topic: string;
+    name: string;
+    email: string | null;
+    message: string;
+    locale: string;
+    originPath: string | null;
+    requesterUserId: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+  }): SupportRequest {
+    const name = input.name.trim();
+    if (name.length < NAME_MIN || name.length > NAME_MAX) throw new SupportNameInvalidError(name.length);
+
+    const message = input.message.trim();
+    if (message.length < MESSAGE_MIN || message.length > MESSAGE_MAX) {
+      throw new SupportMessageInvalidError(message.length);
+    }
+
+    const email = (input.email ?? "").trim().toLowerCase() || null;
+    if (email === null && supportEmailRequired(input.kind)) throw new SupportEmailRequiredError();
+    if (email !== null && (email.length > EMAIL_MAX || !EMAIL_SHAPE.test(email))) {
+      throw new SupportEmailInvalidError();
+    }
+
+    if (!isSupportTopicForKind(input.kind, input.topic)) {
+      throw new SupportTopicInvalidError(input.kind, input.topic);
+    }
+
+    return new SupportRequest({
+      id: null,
+      kind: input.kind,
+      topic: input.topic,
+      name,
+      email,
+      message,
+      requesterUserId: input.requesterUserId,
+      locale: input.locale.trim().slice(0, LOCALE_MAX) || "en-US",
+      originPath: input.originPath?.trim().slice(0, ORIGIN_PATH_MAX) || null,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent?.slice(0, 512) ?? null,
+      status: "open",
+      resolvedAt: null,
+      resolvedByUserId: null,
+      createdAt: null,
+    });
+  }
+
+  /** A row as the repository read it back. No validation: it was validated when written. */
+  static reconstitute(props: SupportRequestProps): SupportRequest {
+    return new SupportRequest(props);
+  }
+
+  get id(): string | null { return this.props.id; }
+  get kind(): SupportRequestKind { return this.props.kind; }
+  get topic(): SupportTopic { return this.props.topic; }
+  get name(): string { return this.props.name; }
+  get email(): string | null { return this.props.email; }
+  get message(): string { return this.props.message; }
+  get requesterUserId(): string | null { return this.props.requesterUserId; }
+  get locale(): string { return this.props.locale; }
+  get originPath(): string | null { return this.props.originPath; }
+  get ipAddress(): string | null { return this.props.ipAddress; }
+  get userAgent(): string | null { return this.props.userAgent; }
+  get status(): SupportRequestStatus { return this.props.status; }
+  get resolvedAt(): Date | null { return this.props.resolvedAt; }
+  get resolvedByUserId(): string | null { return this.props.resolvedByUserId; }
+  get createdAt(): Date | null { return this.props.createdAt; }
+
+  /** The six characters a person quotes back. Only a stored request has one. */
+  get reference(): string {
+    if (!this.props.id) throw new Error("A support request has no reference until it is stored");
+    return supportReferenceOf(this.props.id);
+  }
+
+  /** The same request, now stored. The repository calls this with the id Postgres assigned. */
+  withId(id: string, createdAt: Date = new Date()): SupportRequest {
+    return new SupportRequest({ ...this.props, id, createdAt });
+  }
+
+  resolve(at: Date, byUserId: string): SupportRequest {
+    if (this.props.status === "resolved") return this;
+    return new SupportRequest({ ...this.props, status: "resolved", resolvedAt: at, resolvedByUserId: byUserId });
+  }
+
+  reopen(): SupportRequest {
+    if (this.props.status === "open") return this;
+    return new SupportRequest({ ...this.props, status: "open", resolvedAt: null, resolvedByUserId: null });
+  }
+}
+```
+
+- [ ] **Step 5: Run the tests**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/support-request.aggregate.test.ts`
+Expected: 10 pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/support
+git commit -m "feat(support): the SupportRequest aggregate and its refusals"
+```
+
+---
+
+### Task 4: The repository, against the real table
+
+**Files:**
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/ports/outbound/support-request.repository.port.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository.ts`
+- Test: `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts`
+
+**Interfaces:**
+- Consumes: `SupportRequest` (Task 3), `supportRequest` table (Task 2), `supportReferenceOf` (Task 1).
+- Produces: `SupportRequestRepositoryPort` with `insert(request): Promise<SupportRequest>`, `findById(id): Promise<SupportRequest | null>`, `saveStatus(request): Promise<boolean>`, `countFromIpSince(ipAddress, since): Promise<number>`, `listForAdmin(input): Promise<SupportRequestAdminPage>`; the row shape `SupportRequestAdminRow`; `DrizzleSupportRequestRepository`.
+
+- [ ] **Step 1: Write the port**
+
+`support-request.repository.port.ts`:
+
+```ts
+import type { SupportRequestKind, SupportRequestStatus, SupportTopic } from "@ntizo/shared";
+import type { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
+
+/** One request as the administration list shows it. Everything on the row: this screen is the investigation. */
+export interface SupportRequestAdminRow {
+  id: string;
+  reference: string;
+  kind: SupportRequestKind;
+  topic: SupportTopic;
+  name: string;
+  email: string | null;
+  message: string;
+  requesterUserId: string | null;
+  locale: string;
+  originPath: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  status: SupportRequestStatus;
+  /** ISO 8601, or null while open. */
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+export interface SupportRequestListInput {
+  limit: number;
+  offset: number;
+  kind?: SupportRequestKind;
+  status?: SupportRequestStatus;
+  /** Matches the name, the email, the message, or the id's leading characters (the reference). */
+  search?: string;
+}
+
+export interface SupportRequestAdminPage {
+  items: SupportRequestAdminRow[];
+  /** Rows matching the filters, for pagination. */
+  total: number;
+  /** Open rows across the whole table, whatever the filters — the queue's badge. */
+  openCount: number;
+}
+
+export interface SupportRequestRepositoryPort {
+  /** Writes a new row and returns the same request carrying its id and creation time. */
+  insert(request: SupportRequest): Promise<SupportRequest>;
+  findById(id: string): Promise<SupportRequest | null>;
+  /** Writes `status`, `resolvedAt` and `resolvedByUserId`. False when no such row. */
+  saveStatus(request: SupportRequest): Promise<boolean>;
+  /** How many rows this address has written since `since`. The rate limit. */
+  countFromIpSince(ipAddress: string, since: Date): Promise<number>;
+  listForAdmin(input: SupportRequestListInput): Promise<SupportRequestAdminPage>;
+}
+```
+
+- [ ] **Step 2: Write the failing repository test**
+
+`support-request-repository.test.ts` (in `shared/infrastructure/database/__tests__/`, beside `booking-repository.test.ts`, whose harness it copies):
+
+```ts
+/**
+ * `DrizzleSupportRequestRepository` against the real dev database, same
+ * mechanism as `booking-repository.test.ts`: `getDb()` resolves through the
+ * request-scoped context, and `__runWithTransactionContextForTests` binds this
+ * file's own `DEV_DB_URL` client into it for one test body.
+ *
+ * Rows are scoped by a random `suffix` in the name, and cleaned up by that
+ * suffix, so a concurrent run in another worktree cannot collide or be
+ * cleaned up by this one.
+ */
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { eq, like } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
+import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
+import { user } from "../user/schemas/user.schema";
+import { supportRequest } from "../support/schemas/support-request.schema";
+import { SupportRequest } from "../../../../bounded-contexts/support/domain/aggregates/support-request.aggregate";
+import { DrizzleSupportRequestRepository } from "../../../../bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository";
+import { bestEffortCleanup, DEV_DB_COLD_START_TIMEOUT_MS, openDevDbConnection } from "./dev-db-test-connection";
+
+setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
+
+const sql = openDevDbConnection();
+const db = drizzle(sql, { schema: authSchema });
+const repo = new DrizzleSupportRequestRepository();
+const suffix = crypto.randomUUID();
+const NAME = `Support Repo Test ${suffix}`;
+const IP = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+
+let requesterId: string;
+
+beforeAll(async () => {
+  requesterId = crypto.randomUUID();
+  await db.insert(user).values({
+    id: requesterId,
+    email: `support-repo-${suffix}@ntizo.test`,
+    role: "customer",
+    status: "active",
+  });
+});
+
+afterAll(async () => {
+  await bestEffortCleanup([
+    () => db.delete(supportRequest).where(like(supportRequest.name, `${NAME}%`)),
+    () => db.delete(user).where(eq(user.id, requesterId)),
+    () => sql.end({ timeout: 5 }),
+  ]);
+}, DEV_DB_COLD_START_TIMEOUT_MS);
+
+function fresh(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) {
+  return SupportRequest.create({
+    kind: "support",
+    topic: "booking",
+    name: NAME,
+    email: `joana-${suffix}@exemplo.com`,
+    message: "A reserva de sábado não aparece na minha conta.",
+    locale: "pt-MZ",
+    originPath: null,
+    requesterUserId: requesterId,
+    ipAddress: IP,
+    userAgent: "test",
+    ...over,
+  });
+}
+
+describe("DrizzleSupportRequestRepository", () => {
+  test("insert returns the request with an id and a creation time, and findById reads it back whole", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const saved = await repo.insert(fresh());
+      expect(saved.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(saved.createdAt).toBeInstanceOf(Date);
+      expect(saved.reference).toHaveLength(6);
+
+      const found = await repo.findById(saved.id!);
+      expect(found).not.toBeNull();
+      expect(found!.name).toBe(NAME);
+      expect(found!.email).toBe(`joana-${suffix}@exemplo.com`);
+      expect(found!.kind).toBe("support");
+      expect(found!.topic).toBe("booking");
+      expect(found!.requesterUserId).toBe(requesterId);
+      expect(found!.status).toBe("open");
+      expect(found!.ipAddress).toBe(IP);
+    }, { commit: true });
+  });
+
+  test("findById answers null for an id nobody has", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      expect(await repo.findById(crypto.randomUUID())).toBeNull();
+    });
+  });
+
+  test("saveStatus writes the resolution and reports whether the row existed", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const saved = await repo.insert(fresh());
+      const at = new Date("2026-09-02T10:00:00.000Z");
+      expect(await repo.saveStatus(saved.resolve(at, requesterId))).toBe(true);
+
+      const found = await repo.findById(saved.id!);
+      expect(found!.status).toBe("resolved");
+      expect(found!.resolvedAt).toEqual(at);
+      expect(found!.resolvedByUserId).toBe(requesterId);
+
+      const ghost = SupportRequest.reconstitute({ ...fresh(), id: crypto.randomUUID() } as never);
+      expect(await repo.saveStatus(ghost)).toBe(false);
+    }, { commit: true });
+  });
+
+  test("countFromIpSince counts only this address, only since the moment given", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const before = await repo.countFromIpSince(IP, new Date(Date.now() - 60 * 60 * 1000));
+      await repo.insert(fresh());
+      await repo.insert(fresh({ ipAddress: "10.255.255.254" }));
+      const after = await repo.countFromIpSince(IP, new Date(Date.now() - 60 * 60 * 1000));
+      expect(after).toBe(before + 1);
+      expect(await repo.countFromIpSince(IP, new Date(Date.now() + 60 * 1000))).toBe(0);
+    }, { commit: true });
+  });
+
+  test("listForAdmin filters by kind and status, searches four fields, and counts open rows across the table", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const a = await repo.insert(fresh({ message: `Mensagem única ${suffix} sobre uma reserva.` }));
+      const b = await repo.insert(fresh({ kind: "feedback", topic: "idea", email: null, message: `Uma ideia ${suffix} para a página inicial.` }));
+      await repo.saveStatus(b.resolve(new Date(), requesterId));
+
+      const bySuffix = await repo.listForAdmin({ limit: 50, offset: 0, search: suffix });
+      expect(bySuffix.items.map((r) => r.id)).toEqual(expect.arrayContaining([a.id, b.id]));
+      expect(bySuffix.total).toBeGreaterThanOrEqual(2);
+
+      const openOnly = await repo.listForAdmin({ limit: 50, offset: 0, search: suffix, status: "open" });
+      expect(openOnly.items.map((r) => r.id)).toContain(a.id);
+      expect(openOnly.items.map((r) => r.id)).not.toContain(b.id);
+
+      const feedbackOnly = await repo.listForAdmin({ limit: 50, offset: 0, search: suffix, kind: "feedback" });
+      expect(feedbackOnly.items.map((r) => r.id)).toEqual([b.id]);
+
+      const byReference = await repo.listForAdmin({ limit: 50, offset: 0, search: a.reference.toLowerCase() });
+      expect(byReference.items.map((r) => r.id)).toContain(a.id);
+      expect(byReference.items.find((r) => r.id === a.id)!.reference).toBe(a.reference);
+
+      // openCount ignores the filters: it is the badge for the whole queue.
+      expect(feedbackOnly.openCount).toBe(openOnly.openCount);
+      expect(openOnly.openCount).toBeGreaterThanOrEqual(1);
+    }, { commit: true });
+  });
+});
+```
+
+- [ ] **Step 3: Run it to see it fail**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts`
+Expected: FAIL — repository module not found.
+
+- [ ] **Step 4: Write the repository**
+
+`infrastructure/repositories/drizzle/support-request.repository.ts`:
+
+```ts
+import { and, count, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { supportReferenceOf, type SupportRequestKind, type SupportRequestStatus, type SupportTopic } from "@ntizo/shared";
+import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
+import { supportRequest } from "../../../../../shared/infrastructure/database/support/schemas";
+import { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
+import type {
+  SupportRequestAdminPage,
+  SupportRequestListInput,
+  SupportRequestRepositoryPort,
+} from "../../../app/ports/outbound/support-request.repository.port";
+
+type Row = typeof supportRequest.$inferSelect;
+
+function toAggregate(row: Row): SupportRequest {
+  return SupportRequest.reconstitute({
+    id: row.id,
+    kind: row.kind as SupportRequestKind,
+    topic: row.topic as SupportTopic,
+    name: row.name,
+    email: row.email,
+    message: row.message,
+    requesterUserId: row.requesterUserId,
+    locale: row.locale,
+    originPath: row.originPath,
+    ipAddress: row.ipAddress,
+    userAgent: row.userAgent,
+    status: row.status as SupportRequestStatus,
+    resolvedAt: row.resolvedAt,
+    resolvedByUserId: row.resolvedByUserId,
+    createdAt: row.createdAt,
+  });
+}
+
+export class DrizzleSupportRequestRepository implements SupportRequestRepositoryPort {
+  async insert(entity: SupportRequest): Promise<SupportRequest> {
+    const [row] = await getDb()
+      .insert(supportRequest)
+      .values({
+        kind: entity.kind,
+        topic: entity.topic,
+        name: entity.name,
+        email: entity.email,
+        message: entity.message,
+        requesterUserId: entity.requesterUserId,
+        locale: entity.locale,
+        originPath: entity.originPath,
+        ipAddress: entity.ipAddress,
+        userAgent: entity.userAgent,
+        status: entity.status,
+      })
+      .returning({ id: supportRequest.id, createdAt: supportRequest.createdAt });
+    return entity.withId(row!.id, row!.createdAt);
+  }
+
+  async findById(id: string): Promise<SupportRequest | null> {
+    const [row] = await getDb().select().from(supportRequest).where(eq(supportRequest.id, id)).limit(1);
+    return row ? toAggregate(row) : null;
+  }
+
+  async saveStatus(entity: SupportRequest): Promise<boolean> {
+    if (!entity.id) return false;
+    const rows = await getDb()
+      .update(supportRequest)
+      .set({
+        status: entity.status,
+        resolvedAt: entity.resolvedAt,
+        resolvedByUserId: entity.resolvedByUserId,
+      })
+      .where(eq(supportRequest.id, entity.id))
+      .returning({ id: supportRequest.id });
+    return rows.length > 0;
+  }
+
+  async countFromIpSince(ipAddress: string, since: Date): Promise<number> {
+    const [row] = await getDb()
+      .select({ n: count() })
+      .from(supportRequest)
+      .where(and(eq(supportRequest.ipAddress, ipAddress), gte(supportRequest.createdAt, since)));
+    return row?.n ?? 0;
+  }
+
+  /**
+   * The queue, as the administrator works it.
+   *
+   * The search covers the four things somebody would type: a name, an email,
+   * a phrase from the message, and the reference a person quoted back —
+   * which is the id's leading hex characters, so `id::text ILIKE 'ref%'`
+   * finds it without stripping hyphens (see `supportReferenceOf`).
+   *
+   * `openCount` is counted over the whole table, unfiltered: it is the number
+   * beside the queue's name, and must not change when somebody searches.
+   */
+  async listForAdmin(input: SupportRequestListInput): Promise<SupportRequestAdminPage> {
+    const db = getDb();
+    const term = input.search?.trim();
+    const matches = term
+      ? or(
+          ilike(supportRequest.name, `%${term}%`),
+          ilike(supportRequest.email, `%${term}%`),
+          ilike(supportRequest.message, `%${term}%`),
+          ilike(sql`${supportRequest.id}::text`, `${term}%`),
+        )
+      : undefined;
+    const filter = and(
+      input.kind ? eq(supportRequest.kind, input.kind) : undefined,
+      input.status ? eq(supportRequest.status, input.status) : undefined,
+      matches,
+    );
+
+    const [rows, [totals], [open]] = await Promise.all([
+      db
+        .select()
+        .from(supportRequest)
+        .where(filter)
+        .orderBy(desc(supportRequest.createdAt))
+        .limit(input.limit)
+        .offset(input.offset),
+      db.select({ n: count() }).from(supportRequest).where(filter),
+      db.select({ n: count() }).from(supportRequest).where(eq(supportRequest.status, "open")),
+    ]);
+
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        reference: supportReferenceOf(r.id),
+        kind: r.kind as SupportRequestKind,
+        topic: r.topic as SupportTopic,
+        name: r.name,
+        email: r.email,
+        message: r.message,
+        requesterUserId: r.requesterUserId,
+        locale: r.locale,
+        originPath: r.originPath,
+        ipAddress: r.ipAddress,
+        userAgent: r.userAgent,
+        status: r.status as SupportRequestStatus,
+        resolvedAt: r.resolvedAt?.toISOString() ?? null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      total: totals?.n ?? 0,
+      openCount: open?.n ?? 0,
+    };
+  }
+}
+```
+
+- [ ] **Step 5: Run the test**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts`
+Expected: 5 pass (the first query may take ~25 s while Neon wakes; that is the cold start, not a failure).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/support packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts
+git commit -m "feat(support): the repository, with the admin list and the per-address count"
+```
+
+---
+
+### Task 5: Telling the team — the inbox port, `replyTo`, and the address in env
+
+**Files:**
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/ports/outbound/support-inbox.port.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/infrastructure/outbound-adapters/email-support-inbox.adapter.ts`
+- Modify: `packages/backend/src/shared/infrastructure/email/email-service.port.ts` (add `replyTo?`)
+- Modify: `packages/backend/src/shared/infrastructure/email/resend-email-service.adapter.ts` (pass it)
+- Modify: `packages/backend/src/shared/infrastructure/email/console-email-service.adapter.ts` (print it)
+- Modify: `packages/backend/src/shared/infrastructure/stores/infra-store.ts` (`SUPPORT_INBOX_EMAIL?: string` on `InfraEnvBindings`)
+- Modify: `apps/backend/api/src/middlewares/config.middleware.ts`, `apps/backend/api/src/scheduled.ts` (pass it through), `apps/backend/api/wrangler.jsonc` (a `vars` entry on all four stages)
+- Test: `packages/backend/src/modules/ntizo/bounded-contexts/support/__tests__/email-support-inbox.adapter.test.ts`
+
+**Interfaces:**
+- Produces: `SupportInboxPort { notify(request: SupportRequest): Promise<void> }`, `EmailSupportInboxAdapter`, `buildSupportInboxEmail({ request, stage, adminUrl })`.
+
+- [ ] **Step 1: Widen `EmailMessage`**
+
+In `email-service.port.ts`, add to `EmailMessage`:
+
+```ts
+  /**
+   * Where a reply to this message should go, when that is not `EMAIL_FROM`.
+   *
+   * The support inbox is the reason this exists: a message forwarded to the
+   * team on somebody's behalf must be answerable by pressing Reply, and
+   * without this the answer goes to `noreply@`.
+   */
+  replyTo?: string;
+```
+
+In `resend-email-service.adapter.ts`, inside `client.emails.send({ ... })`, after `text: message.textBody,` add:
+
+```ts
+      ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+```
+
+(Resend 4.8.0's `CreateEmailOptions` names it `replyTo`; `reply_to` is the older spelling and is not the one the installed types accept.)
+
+In `console-email-service.adapter.ts`, after the `subject` line in the printed block add:
+
+```ts
+        ...(message.replyTo ? [`│ reply-to: ${message.replyTo}`] : []),
+```
+
+- [ ] **Step 2: Carry the address in env**
+
+In `infra-store.ts`, inside `InfraEnvBindings`, after `MPESA_SERVICE_PROVIDER_CODE?: string;` (the last M-Pesa entry) add:
+
+```ts
+  /**
+   * Where a contact, support or feedback form's message is forwarded.
+   *
+   * Optional for the same reason the M-Pesa pair is: a local run, a script
+   * and every test that builds this shape genuinely have none, and the
+   * adapter that reads it says so (it logs and keeps the row) rather than
+   * throwing. Configuration, not a secret, so it lives in `wrangler.jsonc`.
+   */
+  SUPPORT_INBOX_EMAIL?: string;
+```
+
+In `config.middleware.ts` and in `scheduled.ts`, in the object passed to `infraStore.runAsync`, after `MPESA_SERVICE_PROVIDER_CODE: env.MPESA_SERVICE_PROVIDER_CODE,` add:
+
+```ts
+      SUPPORT_INBOX_EMAIL: env.SUPPORT_INBOX_EMAIL,
+```
+
+In `wrangler.jsonc`, add `"SUPPORT_INBOX_EMAIL": "suporte@ntizo.co.mz"` to the top-level `vars` (local — the console adapter prints it) and to each of the `dev`, `qa` and `prod` `vars` blocks, after `"APP_URL"`. The subject carries the stage on every stage but prod, so a dev submission in the real inbox is recognisable.
+
+- [ ] **Step 3: Write the failing adapter test**
+
+```ts
+import { describe, expect, it } from "bun:test";
+import { infraStore } from "../../../../../shared/infrastructure/stores/infra-store";
+import type { EmailMessage, EmailServicePort, SendResult } from "../../../../../shared/infrastructure/email";
+import { SupportRequest } from "../domain/aggregates/support-request.aggregate";
+import { buildSupportInboxEmail, EmailSupportInboxAdapter } from "../infrastructure/outbound-adapters/email-support-inbox.adapter";
+
+class CapturingEmail implements EmailServicePort {
+  sent: EmailMessage[] = [];
+  async sendEmail(message: EmailMessage): Promise<SendResult> {
+    this.sent.push(message);
+    return { messageId: "m-1" };
+  }
+}
+
+const BASE_ENV = {
+  STAGE: "dev" as const,
+  LOG_LEVEL: "info",
+  DATABASE_URL: "",
+  BETTER_AUTH_SECRET: "x",
+  RESEND_API_KEY: "",
+  EMAIL_FROM: "Ntizo <noreply@ntizo.co.mz>",
+  APP_URL: "https://dev.ntizo.co.mz",
+  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_SECRET: "",
+};
+
+function stored(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) {
+  return SupportRequest.create({
+    kind: "support",
+    topic: "booking",
+    name: "Joana Matola",
+    email: "joana@exemplo.com",
+    message: "A reserva de sábado não aparece na minha conta.\n<b>não é html</b>",
+    locale: "pt-MZ",
+    originPath: "/support",
+    requesterUserId: "u-1",
+    ipAddress: "197.218.0.1",
+    userAgent: "Mozilla/5.0",
+    ...over,
+  }).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
+}
+
+describe("EmailSupportInboxAdapter", () => {
+  it("sends to the configured inbox with the requester as reply-to", async () => {
+    const email = new CapturingEmail();
+    await infraStore.runAsync({ ...BASE_ENV, SUPPORT_INBOX_EMAIL: "suporte@ntizo.co.mz" }, async () => {
+      await new EmailSupportInboxAdapter(email).notify(stored());
+    });
+    expect(email.sent).toHaveLength(1);
+    const m = email.sent[0]!;
+    expect(m.to).toEqual(["suporte@ntizo.co.mz"]);
+    expect(m.replyTo).toBe("joana@exemplo.com");
+    expect(m.subject).toBe("[Ntizo dev] Suporte: Uma reserva — Joana Matola");
+    expect(m.textBody).toContain("Referência: 7F3A2C");
+    expect(m.textBody).toContain("https://dev.ntizo.co.mz/admin/support");
+    expect(m.htmlBody).toContain("&lt;b&gt;não é html&lt;/b&gt;");
+  });
+
+  it("omits reply-to when the person gave no email, and drops the stage tag on prod", async () => {
+    const email = new CapturingEmail();
+    await infraStore.runAsync({ ...BASE_ENV, STAGE: "prod", SUPPORT_INBOX_EMAIL: "suporte@ntizo.co.mz" }, async () => {
+      await new EmailSupportInboxAdapter(email).notify(stored({ kind: "feedback", topic: "idea", email: null }));
+    });
+    const m = email.sent[0]!;
+    expect(m.replyTo).toBeUndefined();
+    expect(m.subject).toBe("[Ntizo] Feedback: Uma ideia — Joana Matola");
+  });
+
+  it("sends nothing, and does not throw, when no inbox is configured", async () => {
+    const email = new CapturingEmail();
+    await infraStore.runAsync({ ...BASE_ENV }, async () => {
+      await new EmailSupportInboxAdapter(email).notify(stored());
+    });
+    expect(email.sent).toEqual([]);
+  });
+
+  it("builds a subject from the kind and topic labels the team reads in", () => {
+    const { subject } = buildSupportInboxEmail({ request: stored({ kind: "contact", topic: "press" }), stage: "qa", adminUrl: "x" });
+    expect(subject).toBe("[Ntizo qa] Contacto: Imprensa — Joana Matola");
+  });
+});
+```
+
+- [ ] **Step 4: Run to see it fail**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/email-support-inbox.adapter.test.ts`
+Expected: FAIL — adapter module not found.
+
+- [ ] **Step 5: Write the port and the adapter**
+
+`app/ports/outbound/support-inbox.port.ts`:
+
+```ts
+import type { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
+
+/**
+ * Tells the team a request arrived.
+ *
+ * Called after the row is stored, never before, and allowed to fail: the row
+ * is the source of truth and the admin queue shows it regardless. See
+ * `SubmitSupportRequestCommand`.
+ */
+export interface SupportInboxPort {
+  notify(request: SupportRequest): Promise<void>;
+}
+```
+
+`infrastructure/outbound-adapters/email-support-inbox.adapter.ts`:
+
+```ts
+import type { SupportRequestKind, SupportTopic } from "@ntizo/shared";
+import { LazyEmailServiceAdapter, type EmailServicePort } from "../../../../../shared/infrastructure/email";
+import { infraStore } from "../../../../../shared/infrastructure/stores/infra-store";
+import type { SupportInboxPort } from "../../app/ports/outbound/support-inbox.port";
+import type { SupportRequest } from "../../domain/aggregates/support-request.aggregate";
+
+/** The team reads Portuguese; these are for the subject line, not for the person who wrote. */
+const KIND_LABEL: Record<SupportRequestKind, string> = {
+  contact: "Contacto",
+  support: "Suporte",
+  feedback: "Feedback",
+};
+
+const TOPIC_LABEL: Record<SupportTopic, string> = {
+  general: "Pergunta geral",
+  partnership: "Parceria",
+  press: "Imprensa",
+  provider: "Sou prestador",
+  other: "Outro",
+  account: "A minha conta",
+  booking: "Uma reserva",
+  payment: "Um pagamento",
+  provider_account: "A minha conta de prestador",
+  idea: "Uma ideia",
+  problem: "Algo não funcionou",
+  praise: "Gostei de algo",
+};
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * The email the team gets. Every field, the reference, and a link to the queue.
+ *
+ * The stage is in the subject everywhere but prod, so a message sent from the
+ * dev app into the real inbox announces itself as one.
+ */
+export function buildSupportInboxEmail(params: {
+  request: SupportRequest;
+  stage: string;
+  adminUrl: string;
+}): { subject: string; html: string; text: string } {
+  const { request, stage, adminUrl } = params;
+  const tag = stage === "prod" ? "[Ntizo]" : `[Ntizo ${stage}]`;
+  const subject = `${tag} ${KIND_LABEL[request.kind]}: ${TOPIC_LABEL[request.topic]} — ${request.name}`;
+
+  const lines: Array<[string, string]> = [
+    ["Referência", request.reference],
+    ["Tipo", KIND_LABEL[request.kind]],
+    ["Assunto", TOPIC_LABEL[request.topic]],
+    ["Nome", request.name],
+    ["Email", request.email ?? "(não deu)"],
+    ["Idioma", request.locale],
+    ["Conta", request.requesterUserId ?? "(sem sessão)"],
+    ["Página", request.originPath ?? "—"],
+    ["IP", request.ipAddress ?? "—"],
+  ];
+
+  const text = [
+    ...lines.map(([k, v]) => `${k}: ${v}`),
+    "",
+    request.message,
+    "",
+    `Fila: ${adminUrl}`,
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html>
+  <body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f6f6f6;margin:0;padding:24px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;">
+      <tr><td>
+        <h1 style="font-size:18px;font-weight:600;color:#111;margin:0 0 16px;">${escapeHtml(subject)}</h1>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:13px;color:#333;margin:0 0 16px;">
+          ${lines.map(([k, v]) => `<tr><td style="padding:2px 12px 2px 0;color:#888;">${escapeHtml(k)}</td><td style="padding:2px 0;">${escapeHtml(v)}</td></tr>`).join("\n          ")}
+        </table>
+        <p style="font-size:14px;color:#111;line-height:1.6;white-space:pre-wrap;border-left:3px solid #006ffd;padding-left:12px;margin:0 0 24px;">${escapeHtml(request.message)}</p>
+        <p style="font-size:12px;color:#888;margin:0;">Fila: <a href="${escapeHtml(adminUrl)}">${escapeHtml(adminUrl)}</a></p>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+
+  return { subject, html, text };
+}
+
+export class EmailSupportInboxAdapter implements SupportInboxPort {
+  constructor(
+    // Lazy, like the provider and notification contexts: Resend where a key
+    // exists, the console adapter on a local machine.
+    private readonly email: EmailServicePort = new LazyEmailServiceAdapter(),
+  ) {}
+
+  async notify(request: SupportRequest): Promise<void> {
+    const env = infraStore.getEnv();
+    const inbox = env.SUPPORT_INBOX_EMAIL?.trim();
+    if (!inbox) {
+      console.warn("[support] SUPPORT_INBOX_EMAIL is not set on this stage — request stored, nobody emailed", {
+        requestId: request.id,
+      });
+      return;
+    }
+    const { subject, html, text } = buildSupportInboxEmail({
+      request,
+      stage: env.STAGE ?? "local",
+      adminUrl: `${env.APP_URL}/admin/support`,
+    });
+    await this.email.sendEmail({
+      to: [inbox],
+      subject,
+      htmlBody: html,
+      textBody: text,
+      ...(request.email ? { replyTo: request.email } : {}),
+    });
+  }
+}
+```
+
+- [ ] **Step 6: Run the tests and both typechecks**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/email-support-inbox.adapter.test.ts && bun run typecheck && cd ../../apps/backend/api && bun run typecheck`
+Expected: 4 pass; both typechecks clean.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add packages/backend/src/shared/infrastructure/email packages/backend/src/shared/infrastructure/stores/infra-store.ts packages/backend/src/modules/ntizo/bounded-contexts/support apps/backend/api/src/middlewares/config.middleware.ts apps/backend/api/src/scheduled.ts apps/backend/api/wrangler.jsonc
+git commit -m "feat(support): email the inbox after the row is written, with the requester as reply-to"
+```
+
+---
+
+### Task 6: The three use cases and the context's bootstrap
+
+**Files:**
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/use-cases/submit-support-request.command.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/use-cases/set-support-request-status.command.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/bootstrap/index.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/index.ts`
+- Test: `packages/backend/src/modules/ntizo/bounded-contexts/support/__tests__/support-commands.test.ts`
+
+**Interfaces:**
+- Consumes: `SupportRequestRepositoryPort` (Task 4), `SupportInboxPort` (Task 5), the aggregate and errors (Task 3).
+- Produces: `SubmitSupportRequestCommand.execute(input): Promise<{ requestId: string; reference: string }>`, `ListSupportRequestsForAdminQuery.execute(input): Promise<SupportRequestAdminPage>` with `MAX_ADMIN_LIMIT = 100`, `SetSupportRequestStatusCommand.execute({ requestId, status, actorUserId }): Promise<{ status }>`, `bootstrapSupport()` returning `{ adapters, useCases: { submitSupportRequest, listSupportRequestsForAdmin, setSupportRequestStatus } }`, `SupportBootstrap`; constants `RATE_LIMIT_MAX = 5`, `RATE_LIMIT_WINDOW_MS = 3_600_000`.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+import { describe, expect, it } from "bun:test";
+import { SupportRequest } from "../domain/aggregates/support-request.aggregate";
+import { SupportRateLimitedError, SupportRequestNotFoundError } from "../domain/exceptions";
+import {
+  RATE_LIMIT_MAX,
+  SubmitSupportRequestCommand,
+} from "../app/use-cases/submit-support-request.command";
+import { ListSupportRequestsForAdminQuery } from "../app/use-cases/list-support-requests-for-admin.query";
+import { SetSupportRequestStatusCommand } from "../app/use-cases/set-support-request-status.command";
+import type {
+  SupportRequestAdminPage,
+  SupportRequestListInput,
+  SupportRequestRepositoryPort,
+} from "../app/ports/outbound/support-request.repository.port";
+import type { SupportInboxPort } from "../app/ports/outbound/support-inbox.port";
+
+class FakeRepo implements SupportRequestRepositoryPort {
+  inserted: SupportRequest[] = [];
+  statusSaved: SupportRequest[] = [];
+  listCalls: SupportRequestListInput[] = [];
+  constructor(
+    private readonly opts: { countFromIp?: number; existing?: SupportRequest | null; saveStatusExists?: boolean } = {},
+  ) {}
+  async insert(request: SupportRequest): Promise<SupportRequest> {
+    const stored = request.withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", new Date("2026-09-02T10:00:00.000Z"));
+    this.inserted.push(stored);
+    return stored;
+  }
+  async findById(): Promise<SupportRequest | null> {
+    return this.opts.existing ?? null;
+  }
+  async saveStatus(request: SupportRequest): Promise<boolean> {
+    this.statusSaved.push(request);
+    return this.opts.saveStatusExists ?? true;
+  }
+  async countFromIpSince(): Promise<number> {
+    return this.opts.countFromIp ?? 0;
+  }
+  async listForAdmin(input: SupportRequestListInput): Promise<SupportRequestAdminPage> {
+    this.listCalls.push(input);
+    return { items: [], total: 0, openCount: 3 };
+  }
+}
+
+class CapturingInbox implements SupportInboxPort {
+  notified: SupportRequest[] = [];
+  constructor(private readonly fails = false) {}
+  async notify(request: SupportRequest): Promise<void> {
+    if (this.fails) throw new Error("Resend is down");
+    this.notified.push(request);
+  }
+}
+
+function input(over: Partial<Parameters<SubmitSupportRequestCommand["execute"]>[0]> = {}) {
+  return {
+    kind: "support" as const,
+    topic: "booking",
+    name: "Joana Matola",
+    email: "joana@exemplo.com",
+    message: "A reserva de sábado não aparece na minha conta.",
+    locale: "pt-MZ",
+    originPath: null,
+    requesterUserId: "u-1",
+    ipAddress: "197.218.0.1",
+    userAgent: "Mozilla/5.0",
+    ...over,
+  };
+}
+
+describe("SubmitSupportRequestCommand", () => {
+  it("stores the request, then tells the inbox, and answers with the id and the reference", async () => {
+    const repo = new FakeRepo();
+    const inbox = new CapturingInbox();
+    const out = await new SubmitSupportRequestCommand(repo, inbox).execute(input());
+
+    expect(out).toEqual({ requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" });
+    expect(repo.inserted).toHaveLength(1);
+    expect(repo.inserted[0]!.name).toBe("Joana Matola");
+    expect(inbox.notified).toHaveLength(1);
+    // The inbox gets the STORED request — the one with an id and therefore a reference.
+    expect(inbox.notified[0]!.id).toBe("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
+  });
+
+  it("a failing inbox does not fail the submission — the row is the source of truth", async () => {
+    const repo = new FakeRepo();
+    const out = await new SubmitSupportRequestCommand(repo, new CapturingInbox(true)).execute(input());
+    expect(out.reference).toBe("7F3A2C");
+    expect(repo.inserted).toHaveLength(1);
+  });
+
+  it("refuses the sixth message from one address inside the window, and stores nothing", async () => {
+    const repo = new FakeRepo({ countFromIp: RATE_LIMIT_MAX });
+    const inbox = new CapturingInbox();
+    await expect(new SubmitSupportRequestCommand(repo, inbox).execute(input())).rejects.toThrow(SupportRateLimitedError);
+    expect(repo.inserted).toEqual([]);
+    expect(inbox.notified).toEqual([]);
+  });
+
+  it("allows the fifth", async () => {
+    const repo = new FakeRepo({ countFromIp: RATE_LIMIT_MAX - 1 });
+    await new SubmitSupportRequestCommand(repo, new CapturingInbox()).execute(input());
+    expect(repo.inserted).toHaveLength(1);
+  });
+
+  it("skips the count when the request carries no address rather than refusing everyone behind a missing header", async () => {
+    const repo = new FakeRepo({ countFromIp: 99 });
+    await new SubmitSupportRequestCommand(repo, new CapturingInbox()).execute(input({ ipAddress: null }));
+    expect(repo.inserted).toHaveLength(1);
+  });
+});
+
+describe("ListSupportRequestsForAdminQuery", () => {
+  it("bounds the page, drops an empty search, and passes the filters through", async () => {
+    const repo = new FakeRepo();
+    const q = new ListSupportRequestsForAdminQuery(repo);
+    await q.execute({ limit: 500, offset: -3, search: "   ", kind: "feedback", status: "open" });
+    expect(repo.listCalls[0]).toEqual({ limit: 100, offset: 0, kind: "feedback", status: "open" });
+    await q.execute({});
+    expect(repo.listCalls[1]).toEqual({ limit: 25, offset: 0 });
+  });
+});
+
+describe("SetSupportRequestStatusCommand", () => {
+  const stored = SupportRequest.create(input()).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
+
+  it("resolves an open request, recording who did it", async () => {
+    const repo = new FakeRepo({ existing: stored });
+    const out = await new SetSupportRequestStatusCommand(repo).execute({
+      requestId: stored.id!,
+      status: "resolved",
+      actorUserId: "admin-1",
+    });
+    expect(out).toEqual({ status: "resolved" });
+    expect(repo.statusSaved[0]!.status).toBe("resolved");
+    expect(repo.statusSaved[0]!.resolvedByUserId).toBe("admin-1");
+  });
+
+  it("reopens a resolved one", async () => {
+    const repo = new FakeRepo({ existing: stored.resolve(new Date(), "admin-1") });
+    await new SetSupportRequestStatusCommand(repo).execute({ requestId: stored.id!, status: "open", actorUserId: "admin-2" });
+    expect(repo.statusSaved[0]!.status).toBe("open");
+    expect(repo.statusSaved[0]!.resolvedByUserId).toBeNull();
+  });
+
+  it("refuses an id nobody has", async () => {
+    const repo = new FakeRepo({ existing: null });
+    await expect(
+      new SetSupportRequestStatusCommand(repo).execute({ requestId: "nope", status: "resolved", actorUserId: "admin-1" }),
+    ).rejects.toThrow(SupportRequestNotFoundError);
+  });
+});
+```
+
+- [ ] **Step 2: Run to see them fail**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/support-commands.test.ts`
+Expected: FAIL — use-case modules not found.
+
+- [ ] **Step 3: Write the submit command**
+
+`app/use-cases/submit-support-request.command.ts`:
+
+```ts
+import type { SupportRequestKind } from "@ntizo/shared";
+import { SupportRequest } from "../../domain/aggregates/support-request.aggregate";
+import { SupportRateLimitedError } from "../../domain/exceptions";
+import type { SupportInboxPort } from "../ports/outbound/support-inbox.port";
+import type { SupportRequestRepositoryPort } from "../ports/outbound/support-request.repository.port";
+
+/** Messages one address may send inside the window before being asked to wait. */
+export const RATE_LIMIT_MAX = 5;
+export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+export interface SubmitSupportRequestInput {
+  kind: SupportRequestKind;
+  topic: string;
+  name: string;
+  email: string | null;
+  message: string;
+  locale: string;
+  originPath: string | null;
+  /** From the session, when there is one. Never from the form. */
+  requesterUserId: string | null;
+  /** From the request, for the rate limit. Never from the form. */
+  ipAddress: string | null;
+  userAgent: string | null;
+}
+
+/**
+ * Somebody wrote to us through a form.
+ *
+ * Three steps, in an order that matters:
+ *
+ * 1. **The rate limit**, counted in the table rather than in memory or a
+ *    cache: a Worker isolate remembers nothing between requests, and the
+ *    table already has the rows. Five an hour per address is generous for a
+ *    person and useless for a script. No address in the context — which
+ *    should not happen behind Cloudflare — skips the check rather than
+ *    refusing everybody behind a missing header.
+ * 2. **The row.** This is the whole point. Once it is written the request
+ *    exists, whatever happens next.
+ * 3. **The inbox**, after the write returns, and allowed to fail. A Resend
+ *    outage is logged with the id and nothing else; the admin queue shows
+ *    the row regardless. Not an outbox event: nothing consumes one, and
+ *    at-most-once to an inbox that has a queue behind it is enough.
+ */
+export class SubmitSupportRequestCommand {
+  constructor(
+    private readonly repo: SupportRequestRepositoryPort,
+    private readonly inbox: SupportInboxPort,
+  ) {}
+
+  async execute(input: SubmitSupportRequestInput): Promise<{ requestId: string; reference: string }> {
+    if (input.ipAddress) {
+      const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+      const recent = await this.repo.countFromIpSince(input.ipAddress, since);
+      if (recent >= RATE_LIMIT_MAX) {
+        throw new SupportRateLimitedError(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS / 60_000);
+      }
+    }
+
+    const stored = await this.repo.insert(SupportRequest.create(input));
+
+    try {
+      await this.inbox.notify(stored);
+    } catch (error) {
+      console.error("[support] the inbox could not be told about a request — it is stored and in the queue", {
+        requestId: stored.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    return { requestId: stored.id!, reference: stored.reference };
+  }
+}
+```
+
+- [ ] **Step 4: Write the admin query and the status command**
+
+`app/use-cases/list-support-requests-for-admin.query.ts`:
+
+```ts
+import type { SupportRequestKind, SupportRequestStatus } from "@ntizo/shared";
+import type {
+  SupportRequestAdminPage,
+  SupportRequestRepositoryPort,
+} from "../ports/outbound/support-request.repository.port";
+
+export const MAX_ADMIN_LIMIT = 100;
+const DEFAULT_LIMIT = 25;
+
+/**
+ * The queue, for the screen that works it. Authorisation is the edge's job,
+ * as with every other administration read here.
+ */
+export class ListSupportRequestsForAdminQuery {
+  constructor(private readonly repo: SupportRequestRepositoryPort) {}
+
+  async execute(
+    input: {
+      limit?: number;
+      offset?: number;
+      kind?: SupportRequestKind;
+      status?: SupportRequestStatus;
+      search?: string;
+    } = {},
+  ): Promise<SupportRequestAdminPage> {
+    const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), MAX_ADMIN_LIMIT);
+    const offset = Math.max(input.offset ?? 0, 0);
+    // An empty search is no search — see `ListReviewsForAdminQuery`.
+    const search = input.search?.trim() || undefined;
+    return this.repo.listForAdmin({
+      limit,
+      offset,
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.status ? { status: input.status } : {}),
+      ...(search ? { search } : {}),
+    });
+  }
+}
+```
+
+`app/use-cases/set-support-request-status.command.ts`:
+
+```ts
+import type { SupportRequestStatus } from "@ntizo/shared";
+import { SupportRequestNotFoundError } from "../../domain/exceptions";
+import type { SupportRequestRepositoryPort } from "../ports/outbound/support-request.repository.port";
+
+/**
+ * An administrator marking a request done, or taking that back.
+ *
+ * One command carrying the target status rather than a resolve/reopen pair,
+ * for the reason `setReviewFeatured` gives about itself: two endpoints make
+ * every caller ask which state it is in first, and get it wrong under a race.
+ * The aggregate makes both directions idempotent, so the race is harmless.
+ */
+export class SetSupportRequestStatusCommand {
+  constructor(private readonly repo: SupportRequestRepositoryPort) {}
+
+  async execute(input: {
+    requestId: string;
+    status: SupportRequestStatus;
+    actorUserId: string;
+  }): Promise<{ status: SupportRequestStatus }> {
+    const current = await this.repo.findById(input.requestId);
+    if (!current) throw new SupportRequestNotFoundError(input.requestId);
+
+    const next =
+      input.status === "resolved" ? current.resolve(new Date(), input.actorUserId) : current.reopen();
+    const saved = await this.repo.saveStatus(next);
+    if (!saved) throw new SupportRequestNotFoundError(input.requestId);
+
+    return { status: next.status };
+  }
+}
+```
+
+- [ ] **Step 5: Write the bootstrap and the index**
+
+`bootstrap/index.ts`:
+
+```ts
+import { DrizzleSupportRequestRepository } from "../infrastructure/repositories/drizzle/support-request.repository";
+import { EmailSupportInboxAdapter } from "../infrastructure/outbound-adapters/email-support-inbox.adapter";
+import { SubmitSupportRequestCommand } from "../app/use-cases/submit-support-request.command";
+import { ListSupportRequestsForAdminQuery } from "../app/use-cases/list-support-requests-for-admin.query";
+import { SetSupportRequestStatusCommand } from "../app/use-cases/set-support-request-status.command";
+
+export function bootstrapSupport() {
+  const supportRequestRepository = new DrizzleSupportRequestRepository();
+  const inbox = new EmailSupportInboxAdapter();
+  return {
+    adapters: { supportRequestRepository, inbox },
+    useCases: {
+      submitSupportRequest: new SubmitSupportRequestCommand(supportRequestRepository, inbox),
+      listSupportRequestsForAdmin: new ListSupportRequestsForAdminQuery(supportRequestRepository),
+      setSupportRequestStatus: new SetSupportRequestStatusCommand(supportRequestRepository),
+    },
+  };
+}
+
+export type SupportBootstrap = ReturnType<typeof bootstrapSupport>;
+```
+
+`index.ts`:
+
+```ts
+export * from "./bootstrap";
+export { SupportRequest } from "./domain/aggregates/support-request.aggregate";
+export { SubmitSupportRequestCommand } from "./app/use-cases/submit-support-request.command";
+export { ListSupportRequestsForAdminQuery } from "./app/use-cases/list-support-requests-for-admin.query";
+export { SetSupportRequestStatusCommand } from "./app/use-cases/set-support-request-status.command";
+export type {
+  SupportRequestAdminPage,
+  SupportRequestAdminRow,
+  SupportRequestRepositoryPort,
+} from "./app/ports/outbound/support-request.repository.port";
+export type { SupportInboxPort } from "./app/ports/outbound/support-inbox.port";
+```
+
+- [ ] **Step 6: Run the tests**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support && bun run typecheck`
+Expected: every support test passes (aggregate 10, adapter 4, commands 9); typecheck clean.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add packages/backend/src/modules/ntizo/bounded-contexts/support
+git commit -m "feat(support): submit, list for admin, set status — and the context's bootstrap"
+```
+
+---
+
+### Task 7: GraphQL — the anonymous mutation, the admin query, the admin mutation, and the mount
+
+**Files:**
+- Create: `packages/shared/src/read-models/system/support/support-request-admin.schema.ts`, `packages/shared/src/read-models/system/support/index.ts`
+- Modify: `packages/shared/src/read-models/system/index.ts`
+- Create: `packages/backend/src/modules/ntizo/write/support/graphql/schema/mutations.ts`
+- Create: `packages/backend/src/modules/ntizo/write/support/graphql/handlers/mutations.handlers.ts`
+- Create: `packages/backend/src/modules/ntizo/write/support/index.ts`
+- Modify: `packages/backend/src/modules/ntizo/write/schema.ts`
+- Create: `packages/backend/src/modules/ntizo/read/support/graphql/schema/queries.ts`
+- Create: `packages/backend/src/modules/ntizo/read/support/graphql/handlers/queries.handlers.ts`
+- Create: `packages/backend/src/modules/ntizo/read/support/bootstrap/index.ts`
+- Create: `packages/backend/src/modules/ntizo/read/support/index.ts`
+- Modify: `packages/backend/src/modules/ntizo/read/schema.ts`
+- Modify: `apps/backend/api/src/graphql/private.ts`
+- Test: `packages/backend/src/modules/ntizo/write/support/__tests__/mutations.test.ts`
+
+**Interfaces:**
+- Produces GraphQL fields (emitted names follow the kit's `<group><Field>` convention, as `reviewAllForAdmin` does): `supportRequestSubmit(input: SupportRequestSubmitInput!): { requestId, reference }`, `supportRequestSetStatus(input: SupportRequestSetStatusInput!): { status }`, `supportRequestAllForAdmin(input: SupportRequestAllForAdminInput!): SupportRequestAdminPage`.
+- Produces `supportRequestAdminReadModel`, `SupportRequestAdminDTO`, `supportRequestAdminPageReadModel`, `SupportRequestAdminPageDTO` from `@ntizo/shared/read-models`.
+
+- [ ] **Step 1: The read model**
+
+`packages/shared/src/read-models/system/support/support-request-admin.schema.ts`:
+
+```ts
+import { z } from "zod";
+import { supportRequestKindSchema, supportRequestStatusSchema } from "../../../enums/support-enums";
+
+/**
+ * One request as the administration queue sees it.
+ *
+ * Everything on the row, including the address it was sent from: unlike the
+ * review projection, this screen IS the investigation — it is where somebody
+ * decides whether a message is a customer in trouble or a script.
+ */
+export const supportRequestAdminReadModel = z.object({
+  id: z.string().min(1),
+  /** The six characters the person was shown. */
+  reference: z.string().length(6),
+  kind: supportRequestKindSchema,
+  topic: z.string().min(1),
+  name: z.string(),
+  email: z.string().nullable(),
+  message: z.string(),
+  requesterUserId: z.string().nullable(),
+  locale: z.string(),
+  originPath: z.string().nullable(),
+  ipAddress: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  status: supportRequestStatusSchema,
+  /** ISO 8601, or null while open. */
+  resolvedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export type SupportRequestAdminDTO = z.infer<typeof supportRequestAdminReadModel>;
+
+export const supportRequestAdminPageReadModel = z.object({
+  items: z.array(supportRequestAdminReadModel),
+  total: z.number().int().min(0),
+  /** Open across the whole table, whatever the filters — the queue's badge. */
+  openCount: z.number().int().min(0),
+});
+
+export type SupportRequestAdminPageDTO = z.infer<typeof supportRequestAdminPageReadModel>;
+```
+
+`support/index.ts`: `export * from "./support-request-admin.schema";`
+
+Append to `read-models/system/index.ts`: `export * from "./support";`
+
+- [ ] **Step 2: The write schema**
+
+`write/support/graphql/schema/mutations.ts`:
+
+```ts
+import { z } from "zod";
+import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
+import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { supportRequestKindSchema, supportRequestStatusSchema } from "@ntizo/shared";
+import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
+
+/**
+ * Somebody writing to us through a form. **Anonymous callers are allowed** —
+ * the first mutation on this tier that is — because the person most likely
+ * to need support is the one who cannot sign in.
+ *
+ * The bounds here refuse obvious nonsense cheaply; the aggregate is where the
+ * rules are defined (2–80, 10–2000, email unless feedback, topic per kind).
+ *
+ * `website` is the honeypot. Visually hidden on the form, filled only by a
+ * script that fills every field; the handler answers a filled one with a
+ * success it never wrote. It must ACCEPT a value — refusing it would tell the
+ * script which field to skip.
+ */
+export const submitSupportRequest = defineMutation({
+  input: zodSchema(
+    z.object({
+      kind: supportRequestKindSchema,
+      topic: z.string().trim().min(1).max(40),
+      name: z.string().trim().min(1).max(120),
+      email: z.string().trim().max(254).nullable(),
+      message: z.string().trim().min(1).max(4000),
+      locale: z.string().trim().min(2).max(16),
+      originPath: z.string().max(400).nullable(),
+      website: z.string().max(400).optional(),
+    }),
+  ),
+  output: zodSchema(z.object({ requestId: z.string().min(1), reference: z.string().length(6) })),
+  docs: { summary: "Send a message to the team through the contact, support or feedback form", tags: ["Support"] },
+});
+
+/** An administrator marking a request resolved, or reopening it. */
+export const setSupportRequestStatus = defineMutation({
+  input: zodSchema(
+    z.object({
+      requestId: z.string().uuid(),
+      status: supportRequestStatusSchema,
+    }),
+  ),
+  output: zodSchema(z.object({ status: supportRequestStatusSchema })),
+  docs: { summary: "Mark a support request resolved, or reopen it", tags: ["Support", "Admin"] },
+});
+
+export const supportWriteSchema = defineGraphQLSchema(
+  { supportRequest: { submit: submitSupportRequest, setStatus: setSupportRequestStatus } },
+  { defaults: { context: ntizoGraphqlContextSchema } },
+);
+```
+
+- [ ] **Step 3: The write handlers**
+
+`write/support/graphql/handlers/mutations.handlers.ts`:
+
+```ts
+import { graphqlRoutes, type GraphQLHandlerContext } from "@cosmneo/onion-lasagna/graphql/server";
+import { ForbiddenError } from "@cosmneo/onion-lasagna";
+import { asNtizoGraphqlContext } from "../../../../graphql/context";
+import type { SupportBootstrap } from "../../../../bounded-contexts/support/bootstrap";
+import { supportWriteSchema } from "../schema/mutations";
+
+export interface SupportWriteModule {
+  readonly support: SupportBootstrap;
+}
+
+/** Copied rather than shared, as the review handlers' own is — tiers do not import each other here. */
+function requireAdmin(ctx: GraphQLHandlerContext): string {
+  const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
+  if (!requesterUserId || role !== "admin") {
+    throw new ForbiddenError({ message: "Only administrators may work the support queue", code: "ADMIN_ONLY" });
+  }
+  return requesterUserId;
+}
+
+export function createSupportWriteHandlers(mod: SupportWriteModule) {
+  const uc = mod.support.useCases;
+
+  return graphqlRoutes(supportWriteSchema)
+    .handle("supportRequest.submit", async (args, ctx) => {
+      const { website, ...form } = args.input;
+      // The trap sprung. A success the script cannot tell from a real one,
+      // and no row, no email, no count against the address.
+      if (website && website.trim() !== "") {
+        return { requestId: crypto.randomUUID(), reference: crypto.randomUUID().slice(0, 6).toUpperCase() };
+      }
+      const { requesterUserId, ipAddress, userAgent } = asNtizoGraphqlContext(ctx);
+      return uc.submitSupportRequest.execute({ ...form, requesterUserId, ipAddress, userAgent });
+    })
+    .handle("supportRequest.setStatus", async (args, ctx) => {
+      const actorUserId = requireAdmin(ctx);
+      return uc.setSupportRequestStatus.execute({ ...args.input, actorUserId });
+    })
+    .build();
+}
+```
+
+`write/support/index.ts`:
+
+```ts
+export { supportWriteSchema } from "./graphql/schema/mutations";
+export { createSupportWriteHandlers, type SupportWriteModule } from "./graphql/handlers/mutations.handlers";
+```
+
+In `write/schema.ts`: import `supportWriteSchema` from `"./support/graphql/schema/mutations"` and add it as the last argument of `mergeGraphQLSchemas(...)`.
+
+- [ ] **Step 4: The read schema, handlers, bootstrap**
+
+`read/support/graphql/schema/queries.ts`:
+
+```ts
+import { z } from "zod";
+import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
+import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { supportRequestKindSchema, supportRequestStatusSchema } from "@ntizo/shared";
+import { supportRequestAdminPageReadModel } from "@ntizo/shared/read-models";
+import { MAX_ADMIN_LIMIT } from "../../../../bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query";
+import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
+
+/** The support queue. Guarded by the handler, which refuses anyone who is not an admin. */
+export const listSupportRequestsForAdmin = defineQuery({
+  input: zodSchema(
+    z.object({
+      // Optional, not `.default()` — a zod default does not survive into the emitted schema.
+      limit: z.number().int().min(1).max(MAX_ADMIN_LIMIT).optional(),
+      offset: z.number().int().min(0).optional(),
+      kind: supportRequestKindSchema.optional(),
+      status: supportRequestStatusSchema.optional(),
+      // Bounded: the string ends up in a LIKE pattern.
+      search: z.string().trim().max(120).optional(),
+    }),
+  ),
+  output: zodSchema(supportRequestAdminPageReadModel),
+  docs: { summary: "Every support request, for administration", tags: ["Admin", "Support"] },
+});
+
+export const supportReadSchema = defineGraphQLSchema(
+  { supportRequest: { allForAdmin: listSupportRequestsForAdmin } },
+  { defaults: { context: ntizoGraphqlContextSchema } },
+);
+```
+
+`read/support/graphql/handlers/queries.handlers.ts`:
+
+```ts
+import { graphqlRoutes } from "@cosmneo/onion-lasagna/graphql/server";
+import { ForbiddenError } from "@cosmneo/onion-lasagna";
+import { asNtizoGraphqlContext } from "../../../../graphql/context";
+import { supportReadSchema } from "../schema/queries";
+import type { ListSupportRequestsForAdminQuery } from "../../../../bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query";
+
+export interface SupportReadModule {
+  readonly listSupportRequestsForAdmin: ListSupportRequestsForAdminQuery;
+}
+
+export function createSupportReadHandlers(mod: SupportReadModule) {
+  return graphqlRoutes(supportReadSchema)
+    .handleWithUseCase("supportRequest.allForAdmin", {
+      argsMapper: (args, ctx) => {
+        const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
+        if (!requesterUserId || role !== "admin") {
+          throw new ForbiddenError({ message: "Only administrators may read the support queue", code: "ADMIN_ONLY" });
+        }
+        return args.input;
+      },
+      useCase: mod.listSupportRequestsForAdmin,
+      responseMapper: (output) => output,
+    })
+    .build();
+}
+```
+
+`read/support/bootstrap/index.ts`:
+
+```ts
+import { DrizzleSupportRequestRepository } from "../../../bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository";
+import { ListSupportRequestsForAdminQuery } from "../../../bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query";
+import type { SupportReadModule } from "../graphql/handlers/queries.handlers";
+
+/** Its own adapter rather than `bootstrapSupport()`'s — a read mount owns no inbox. */
+export function bootstrapSupportRead(): {
+  adapters: { supportRequestRepository: DrizzleSupportRequestRepository };
+  useCases: SupportReadModule;
+} {
+  const supportRequestRepository = new DrizzleSupportRequestRepository();
+  return {
+    adapters: { supportRequestRepository },
+    useCases: { listSupportRequestsForAdmin: new ListSupportRequestsForAdminQuery(supportRequestRepository) },
+  };
+}
+
+export type SupportReadBootstrap = ReturnType<typeof bootstrapSupportRead>;
+```
+
+`read/support/index.ts`:
+
+```ts
+export * from "./bootstrap";
+export { supportReadSchema } from "./graphql/schema/queries";
+export { createSupportReadHandlers, type SupportReadModule } from "./graphql/handlers/queries.handlers";
+```
+
+In `read/schema.ts`: import `supportReadSchema` from `"./support/graphql/schema/queries"` and add it as the last argument of `mergeGraphQLSchemas(...)`.
+
+- [ ] **Step 5: Mount in the composition root**
+
+In `apps/backend/api/src/graphql/private.ts`:
+
+Imports, beside the review ones:
+
+```ts
+import { createSupportWriteHandlers } from "@ntizo/backend/modules/ntizo/write/support";
+import { bootstrapSupportRead, createSupportReadHandlers } from "@ntizo/backend/modules/ntizo/read/support";
+import { bootstrapSupport } from "@ntizo/backend/modules/ntizo/bounded-contexts/support";
+```
+
+Inside `buildPrivateGraphQLFields`, after `const reviewRead = bootstrapReviewRead();`:
+
+```ts
+  const support = bootstrapSupport();
+  const supportRead = bootstrapSupportRead();
+```
+
+In the `fields` array, after `...createReviewReadHandlers(reviewRead.useCases),`:
+
+```ts
+      ...createSupportReadHandlers(supportRead.useCases),
+```
+
+and after `...createReviewWriteHandlers({ review }),`:
+
+```ts
+      ...createSupportWriteHandlers({ support }),
+```
+
+- [ ] **Step 6: Write the handler tests**
+
+`write/support/__tests__/mutations.test.ts`:
+
+```ts
+import { describe, expect, it } from "bun:test";
+import type { NtizoGraphqlContext } from "../../../graphql/context";
+import type { SupportBootstrap } from "../../../bounded-contexts/support/bootstrap";
+import { createSupportWriteHandlers } from "../graphql/handlers/mutations.handlers";
+import { supportWriteSchema } from "../graphql/schema/mutations";
+
+function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
+  return {
+    requesterUserId: null,
+    email: null,
+    firstName: null,
+    lastName: null,
+    role: "customer",
+    requestId: null,
+    ipAddress: "197.218.0.1",
+    userAgent: "Mozilla/5.0",
+    ...overrides,
+  };
+}
+
+function makeModule(calls: { submit: unknown[]; setStatus: unknown[] }) {
+  return {
+    support: {
+      adapters: {} as never,
+      useCases: {
+        submitSupportRequest: {
+          execute: async (input: unknown) => {
+            calls.submit.push(input);
+            return { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" };
+          },
+        },
+        listSupportRequestsForAdmin: { execute: async () => ({ items: [], total: 0, openCount: 0 }) },
+        setSupportRequestStatus: {
+          execute: async (input: unknown) => {
+            calls.setStatus.push(input);
+            return { status: "resolved" as const };
+          },
+        },
+      },
+    } as unknown as SupportBootstrap,
+  };
+}
+
+const FORM = {
+  kind: "support" as const,
+  topic: "booking",
+  name: "Joana Matola",
+  email: "joana@exemplo.com",
+  message: "A reserva de sábado não aparece na minha conta.",
+  locale: "pt-MZ",
+  originPath: null,
+};
+
+describe("the support write schema", () => {
+  it("exposes submit and setStatus", () => {
+    const fields = Object.keys(
+      (supportWriteSchema as unknown as { fields: { supportRequest: object } }).fields.supportRequest,
+    ).sort();
+    expect(fields).toEqual(["setStatus", "submit"]);
+  });
+});
+
+describe("createSupportWriteHandlers", () => {
+  it("lets an anonymous caller submit, stamping the address and no user from the context", async () => {
+    const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
+    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.submit")!;
+    const out = await field.handler({ ...FORM, requesterUserId: "victim" }, ctx());
+    expect(out).toEqual({ requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" });
+    expect(calls.submit).toEqual([{ ...FORM, requesterUserId: null, ipAddress: "197.218.0.1", userAgent: "Mozilla/5.0" }]);
+  });
+
+  it("stamps the session's user id when there is one", async () => {
+    const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
+    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.submit")!;
+    await field.handler(FORM, ctx({ requesterUserId: "u-session" }));
+    expect((calls.submit[0] as { requesterUserId: string }).requesterUserId).toBe("u-session");
+  });
+
+  it("answers a filled honeypot with a success it never wrote", async () => {
+    const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
+    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.submit")!;
+    const out = (await field.handler({ ...FORM, website: "http://spam.example" }, ctx())) as { requestId: string; reference: string };
+    expect(out.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(out.reference).toHaveLength(6);
+    expect(calls.submit).toEqual([]);
+  });
+
+  it("refuses setStatus from anyone who is not an administrator, before the use case runs", async () => {
+    const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
+    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.setStatus")!;
+    const args = { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", status: "resolved" };
+    await expect(field.handler(args, ctx({ requesterUserId: "u-1", role: "customer" }))).rejects.toThrow("administrators");
+    await expect(field.handler(args, ctx({ requesterUserId: null, role: "admin" }))).rejects.toThrow("administrators");
+    expect(calls.setStatus).toEqual([]);
+  });
+
+  it("stamps the administrator as the actor on setStatus", async () => {
+    const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
+    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.setStatus")!;
+    await field.handler(
+      { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", status: "resolved", actorUserId: "victim" },
+      ctx({ requesterUserId: "admin-1", role: "admin" }),
+    );
+    expect(calls.setStatus).toEqual([
+      { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", status: "resolved", actorUserId: "admin-1" },
+    ]);
+  });
+});
+```
+
+- [ ] **Step 7: Run everything that guards the wiring**
+
+Run:
+
+```bash
+cd packages/shared && bun run typecheck
+cd ../backend && bun test src/modules/ntizo/write/support src/modules/ntizo/__tests__/fitness-tier-segregation.test.ts src/modules/ntizo/public/__tests__/public-imports.guard.test.ts && bun run typecheck
+cd ../../apps/backend/api && bun test src/graphql/__tests__/schema-mount.test.ts && bun run typecheck
+```
+
+Expected: the five handler tests pass; tier segregation passes (read = queries only, write = mutations only); the public-imports guard passes; `schema-mount.test.ts` passes — it is the test that goes red if a field is in the schema and not in `private.ts`; all typechecks clean.
+
+- [ ] **Step 8: Prove it on the wire, once**
+
+Start the API locally (`cd apps/backend/api && bun run dev`, Node 22 on the PATH for wrangler — see the dev-environment memory) and POST, signed out:
+
+```bash
+curl -s http://localhost:8788/graphql -H 'content-type: application/json' -H 'x-graphql-csrf: 1' \
+  -d '{"query":"mutation($i: SupportRequestSubmitInput!){ supportRequestSubmit(input:$i){ requestId reference } }","variables":{"i":{"kind":"support","topic":"booking","name":"Curl Test","email":"curl@example.test","message":"Uma mensagem de teste com mais de dez caracteres.","locale":"pt-MZ","originPath":null}}}'
+```
+
+Expected: `{"data":{"supportRequestSubmit":{"requestId":"…","reference":"…"}}}`, and the console email printed in the API log with `reply-to: curl@example.test`. Delete the row afterwards (`DELETE FROM ntizo_support.support_request WHERE name = 'Curl Test'` against the dev database) so it does not sit in the real queue.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add packages/shared/src/read-models packages/backend/src/modules/ntizo/write/support packages/backend/src/modules/ntizo/write/schema.ts packages/backend/src/modules/ntizo/read/support packages/backend/src/modules/ntizo/read/schema.ts apps/backend/api/src/graphql/private.ts
+git commit -m "feat(support): supportRequest.submit (anonymous, honeypotted), allForAdmin and setStatus, mounted"
+```
+
+---
+
+### Task 8: One place for the addresses; the footer, the legal pages and the provider pitch read it
+
+**Files:**
+- Create: `apps/frontend/web/src/shared/lib/contact.ts`
+- Modify: `apps/frontend/web/src/features/landing/ui/footer.tsx`
+- Modify: `apps/frontend/web/src/features/become-provider/ui/become-provider-page.tsx`
+- Modify: `apps/frontend/web/src/features/legal/ui/legal-page.tsx`
+- Modify: `apps/frontend/web/src/shared/components/site-header.tsx`
+- Modify: `apps/frontend/web/src/shared/locales/<8>/landing.json`, `apps/frontend/web/src/shared/locales/<8>/legal.json`
+- Modify: `apps/frontend/web/src/shared/locales/__tests__/locales.test.ts`
+- Test: `apps/frontend/web/src/features/landing/ui/__tests__/footer.test.tsx`
+
+**Interfaces:**
+- Produces: `CONTACT = { general, support, privacy, instagram, linkedin }` from `@/shared/lib/contact`; `SiteHeader` accepts `current="none"`; landing keys `footer.links.{about,contact,messageSupport,faq,feedback,careers}`; legal key `contact` takes `{{email}}`.
+
+- [ ] **Step 1: The constants**
+
+`apps/frontend/web/src/shared/lib/contact.ts`:
+
+```ts
+/**
+ * How to reach Ntizo, written once.
+ *
+ * Three addresses on one domain, decided 2026-09-02. Before this the code
+ * carried `hello@ntizo.com` in the footer, `ola@ntizo.com` on the provider
+ * pitch and `privacidade@ntizo.co.mz` in the policies — three domains' worth
+ * of promises, two of them to inboxes nobody reads. Everything that prints an
+ * address reads it from here; nothing types one in.
+ */
+export const CONTACT = {
+  /** General correspondence, partnerships, press, and careers. */
+  general: "ola@ntizo.co.mz",
+  /** Customers and providers with a problem; where the forms are forwarded. */
+  support: "suporte@ntizo.co.mz",
+  /** Data requests, as the privacy policy says. */
+  privacy: "privacidade@ntizo.co.mz",
+  instagram: "https://www.instagram.com/ntizo.mz/",
+  linkedin: "https://www.linkedin.com/company/ntizo/",
+} as const;
+```
+
+- [ ] **Step 2: Write the failing footer test**
+
+`apps/frontend/web/src/features/landing/ui/__tests__/footer.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { Footer } from "../footer";
+
+/**
+ * The footer's promises, pinned.
+ *
+ * The Empresa column used to be six `href="#"` links; it is now seven routes
+ * that exist. The payment row used to advertise four methods the checkout
+ * refuses; it now names the one that charges. Both are the kind of thing a
+ * later edit quietly puts back.
+ */
+function renderFooter() {
+  const rootRoute = createRootRoute();
+  const stub = (path: string) =>
+    createRoute({ getParentRoute: () => rootRoute, path, component: () => <p>{path}</p> });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      createRoute({ getParentRoute: () => rootRoute, path: "/", component: Footer }),
+      ...["/about", "/contact", "/support", "/faq", "/feedback", "/become-provider", "/careers", "/terms", "/privacy", "/admin"].map(stub),
+    ]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  render(<RouterProvider router={router} />);
+}
+
+describe("Footer", () => {
+  it("links the seven company pages, in the reference's order", () => {
+    renderFooter();
+    const company = screen.getByRole("heading", { name: /^company$/i }).parentElement!;
+    const hrefs = Array.from(company.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["/about", "/contact", "/support", "/faq", "/feedback", "/become-provider", "/careers"]);
+  });
+
+  it("prints the support address on the ntizo.co.mz domain and nothing on .com", () => {
+    renderFooter();
+    expect(screen.getByRole("link", { name: "suporte@ntizo.co.mz" })).toHaveAttribute("href", "mailto:suporte@ntizo.co.mz");
+    expect(document.body.textContent).not.toContain("ntizo.com");
+  });
+
+  it("advertises only the payment method the checkout actually charges", () => {
+    renderFooter();
+    expect(screen.getByText("M-Pesa")).toBeInTheDocument();
+    expect(screen.queryByText("e-Mola")).toBeNull();
+    expect(screen.queryByText("Visa")).toBeNull();
+    expect(screen.queryByText("Mastercard")).toBeNull();
+  });
+});
+```
+
+The first assertion needs the column title to be a heading. In `FooterCol`, change `<div style={footerTitle}>{title}</div>` to `<h2 style={footerTitle}>{title}</h2>` (the style already sets the size; add `margin: 0` to `footerTitle`'s object — `marginBottom: 16` stays, so write `marginTop: 0`).
+
+- [ ] **Step 3: Run it to see it fail**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/landing/ui/__tests__/footer.test.tsx`
+Expected: FAIL — one link in the Empresa column, `hello@ntizo.com` present, four chips.
+
+- [ ] **Step 4: Rewrite the footer's three places**
+
+In `footer.tsx`:
+
+Add `import { CONTACT } from "@/shared/lib/contact";`.
+
+Replace the Support column's `FooterMeta` with:
+
+```tsx
+            <FooterMeta
+              label={t("footer.supportEmailLabel")}
+              value={CONTACT.support}
+              href={`mailto:${CONTACT.support}`}
+            />
+```
+
+Replace the Company column (keep the existing comment about the links coming back; add one line saying they are back as of 2026-09-02) with:
+
+```tsx
+          <FooterCol title={t("footer.company")}>
+            <FooterLink to="/about">{t("footer.links.about")}</FooterLink>
+            <FooterLink to="/contact">{t("footer.links.contact")}</FooterLink>
+            <FooterLink to="/support">{t("footer.links.messageSupport")}</FooterLink>
+            <FooterLink to="/faq">{t("footer.links.faq")}</FooterLink>
+            <FooterLink to="/feedback">{t("footer.links.feedback")}</FooterLink>
+            <FooterLink to="/become-provider">{t("footer.becomeProvider")}</FooterLink>
+            <FooterLink to="/careers">{t("footer.links.careers")}</FooterLink>
+          </FooterCol>
+```
+
+Replace the four `PayChip`s with one, and the comment above them with:
+
+```tsx
+              {/* One chip, because one method charges. e-Mola, Visa and
+                  Mastercard stood here until 2026-09-02, advertising methods
+                  the checkout refuses — see the FAQ's "que métodos aceitam".
+                  Each returns the day its charge path ships
+                  (follow-ups #129). */}
+              <PayChip color="#e60000">M-Pesa</PayChip>
+```
+
+Replace the two social `href`s with `CONTACT.instagram` and `CONTACT.linkedin`.
+
+- [ ] **Step 5: The provider pitch, the legal pages, the header**
+
+`become-provider-page.tsx`: add `import { CONTACT } from "@/shared/lib/contact";` and change the closing band's `href="mailto:ola@ntizo.com"` to `href={\`mailto:${CONTACT.general}\`}`. Confirm the `Eyebrow` component has **no** rule element (no `h-px w-8` span; the class list is `font-rounded inline-flex items-center text-[12px] font-bold tracking-[0.18em] uppercase …`). If this worktree's copy still has the span, remove it and its `gap-3`, and write the doc comment: *"It used to carry a short accent-coloured rule to its left. The rule left on 2026-09-02 at the owner's request: it is the kind of flourish that reads as machine-made, and it must not appear on any page."*
+
+`legal-page.tsx`: add `import { CONTACT } from "@/shared/lib/contact";` and change `{t("contact")}` to `{t("contact", { email: CONTACT.privacy })}`.
+
+`site-header.tsx`: widen the prop — `current?: "explore" | "categories" | "services" | "providers" | "none";` — and add above it:
+
+```tsx
+  /**
+   * Which pill is lit. `"none"` for pages outside the three destinations —
+   * the company pages — so the header does not claim they are "Explore".
+   * `endsWith("none")` matches no nav key, which is the whole mechanism.
+   */
+```
+
+- [ ] **Step 6: The locale keys**
+
+In every `landing.json`, inside `footer`, add a `links` object. In every `legal.json`, replace the address in `contact` with `{{email}}`.
+
+| Locale | `footer.links` |
+|---|---|
+| pt-MZ | `{"about":"Sobre","contact":"Contacto","messageSupport":"Falar com o suporte","faq":"Perguntas frequentes","feedback":"Dar feedback","careers":"Carreiras"}` |
+| pt-PT | `{"about":"Sobre","contact":"Contacto","messageSupport":"Falar com o suporte","faq":"Perguntas frequentes","feedback":"Dar feedback","careers":"Carreiras"}` |
+| en-US | `{"about":"About","contact":"Contact","messageSupport":"Message support","faq":"FAQ","feedback":"Share feedback","careers":"Careers"}` |
+| es-ES | `{"about":"Sobre nosotros","contact":"Contacto","messageSupport":"Escribir a soporte","faq":"Preguntas frecuentes","feedback":"Enviar opinión","careers":"Empleo"}` |
+| fr-FR | `{"about":"À propos","contact":"Contact","messageSupport":"Écrire au support","faq":"Questions fréquentes","feedback":"Donner votre avis","careers":"Carrières"}` |
+| de-DE | `{"about":"Über uns","contact":"Kontakt","messageSupport":"Support schreiben","faq":"Häufige Fragen","feedback":"Feedback geben","careers":"Karriere"}` |
+| it-IT | `{"about":"Chi siamo","contact":"Contatti","messageSupport":"Scrivi all'assistenza","faq":"Domande frequenti","feedback":"Lascia un feedback","careers":"Lavora con noi"}` |
+| nl-NL | `{"about":"Over ons","contact":"Contact","messageSupport":"Support berichten","faq":"Veelgestelde vragen","feedback":"Feedback geven","careers":"Werken bij"}` |
+
+`legal.json` `contact`, per locale (the sentence as it is today with the address replaced by `{{email}}`):
+
+| Locale | `contact` |
+|---|---|
+| en-US | `Questions about this document? Write to {{email}}.` |
+| pt-MZ / pt-PT | `Dúvidas sobre este documento? Escreva para {{email}}.` |
+| es-ES | `¿Dudas sobre este documento? Escribe a {{email}}.` |
+| fr-FR | `Des questions sur ce document ? Écrivez à {{email}}.` |
+| de-DE | `Fragen zu diesem Dokument? Schreiben Sie an {{email}}.` |
+| it-IT | `Domande su questo documento? Scrivi a {{email}}.` |
+| nl-NL | `Vragen over dit document? Schrijf naar {{email}}.` |
+
+Then add `landing` and `legal` to the parity gate. In `locales.test.ts`, add the sixteen imports beside the `checkout` ones (`import deDELanding from "../de-DE/landing.json";` … and the same for `legal`), and two entries in `NAMESPACES`:
+
+```ts
+  landing: {
+    "de-DE": deDELanding, "en-US": enUSLanding, "es-ES": esESLanding, "fr-FR": frFRLanding,
+    "it-IT": itITLanding, "nl-NL": nlNLLanding, "pt-MZ": ptMZLanding, "pt-PT": ptPTLanding,
+  },
+  legal: {
+    "de-DE": deDELegal, "en-US": enUSLegal, "es-ES": esESLegal, "fr-FR": frFRLegal,
+    "it-IT": itITLegal, "nl-NL": nlNLLegal, "pt-MZ": ptMZLegal, "pt-PT": ptPTLegal,
+  },
+```
+
+(Both namespaces were checked on 2026-09-02 to already agree across the eight files, so this widens the gate without a fix-up.)
+
+- [ ] **Step 7: Run the tests, the parity gate, typecheck and lint**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/landing src/shared/locales && bun run typecheck && bun run lint`
+Expected: footer tests pass, landing-page tests still pass, parity passes for `directory`, `checkout`, `landing`, `legal`; typecheck and lint clean.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/frontend/web/src/shared/lib/contact.ts apps/frontend/web/src/features/landing apps/frontend/web/src/features/become-provider apps/frontend/web/src/features/legal apps/frontend/web/src/shared/components/site-header.tsx apps/frontend/web/src/shared/locales
+git commit -m "feat(web): one place for the addresses; the footer's company column, on ntizo.co.mz, M-Pesa alone"
+```
+
+---
+
+### Task 9: The `company` namespace — the words, in eight languages
+
+**Files:**
+- Create: `apps/frontend/web/src/shared/locales/pt-MZ/company.json` (the reference — written first, from the mockup)
+- Create: `apps/frontend/web/src/shared/locales/{en-US,pt-PT,es-ES,fr-FR,de-DE,it-IT,nl-NL}/company.json`
+- Modify: `apps/frontend/web/src/shared/lib/i18n.ts`
+- Modify: `apps/frontend/web/src/shared/locales/__tests__/locales.test.ts`
+- Test: `apps/frontend/web/src/shared/locales/__tests__/company-content.test.ts`
+
+**Interfaces:**
+- Produces: namespace `company` with the key tree below, identical in all eight files; `t("faq.groups", { returnObjects: true })` returns `FaqGroup[]` where `FaqGroup = { id: "customers" | "providers" | "payments"; title: string; items: { q: string; a: string }[] }`; `t("careers.how", { returnObjects: true })` returns `{ title: string; body: string }[]`.
+
+- [ ] **Step 1: Write the failing content test**
+
+`company-content.test.ts` — the parity gate compares dotted paths, but an array is one leaf to it, so a locale could drop an FAQ question unnoticed. This pins the shape:
+
+```ts
+import { describe, expect, it } from "vitest";
+import deDE from "../de-DE/company.json";
+import enUS from "../en-US/company.json";
+import esES from "../es-ES/company.json";
+import frFR from "../fr-FR/company.json";
+import itIT from "../it-IT/company.json";
+import nlNL from "../nl-NL/company.json";
+import ptMZ from "../pt-MZ/company.json";
+import ptPT from "../pt-PT/company.json";
+
+const LOCALES = { "de-DE": deDE, "en-US": enUS, "es-ES": esES, "fr-FR": frFR, "it-IT": itIT, "nl-NL": nlNL, "pt-MZ": ptMZ, "pt-PT": ptPT };
+
+describe("company namespace — the arrays the parity gate cannot see into", () => {
+  const ref = ptMZ.faq.groups.map((g) => ({ id: g.id, n: g.items.length }));
+
+  for (const [locale, bundle] of Object.entries(LOCALES)) {
+    it(`${locale} has the same FAQ groups, in the same order, with the same number of questions`, () => {
+      expect(bundle.faq.groups.map((g) => ({ id: g.id, n: g.items.length }))).toEqual(ref);
+      for (const g of bundle.faq.groups) {
+        for (const item of g.items) {
+          expect(item.q.trim()).not.toBe("");
+          expect(item.a.trim()).not.toBe("");
+        }
+      }
+    });
+
+    it(`${locale} has three "how we work" principles`, () => {
+      expect(bundle.careers.how).toHaveLength(3);
+    });
+
+    it(`${locale} quotes no platform_settings number`, () => {
+      // The durations and the rate live in `platform_settings` and change
+      // without the page knowing — the spec forbids them in static copy.
+      const text = JSON.stringify(bundle);
+      expect(text).not.toMatch(/\b2\s?h\b|\b2 horas\b|\b2 hours\b|\b15 min|\b30 min|\b10\s?%/i);
+    });
+  }
+
+  it("pt-MZ has 8 + 7 + 5 questions", () => {
+    expect(ref).toEqual([
+      { id: "customers", n: 8 },
+      { id: "providers", n: 7 },
+      { id: "payments", n: 5 },
+    ]);
+  });
+});
+```
+
+- [ ] **Step 2: Run it to see it fail**
+
+Run: `cd apps/frontend/web && bunx vitest run src/shared/locales/__tests__/company-content.test.ts`
+Expected: FAIL — the files do not exist.
+
+- [ ] **Step 3: Write `pt-MZ/company.json` — the reference, verbatim**
+
+```json
+{
+  "shared": {
+    "stillQuestions": "Ainda tem dúvidas?",
+    "links": {
+      "faq": { "title": "Perguntas frequentes", "body": "Reservas, pagamentos, verificação e como os prestadores recebem." },
+      "support": { "title": "Falar com o suporte", "body": "Um problema com uma reserva, um pagamento ou a sua conta." },
+      "contact": { "title": "Contacto", "body": "Parcerias, imprensa, ou simplesmente um olá." },
+      "feedback": { "title": "Dar feedback", "body": "Uma ideia, algo que não funcionou, ou o que gostou." }
+    }
+  },
+  "about": {
+    "headTitle": "Sobre a Ntizo",
+    "eyebrow": "Sobre a Ntizo",
+    "heading": "Serviços locais em quem pode",
+    "headingAccent": "confiar",
+    "lede": "A Ntizo liga quem precisa de um serviço a quem o sabe fazer. Prestadores verificados, preço à vista, e o pagamento só depois de o prestador confirmar a hora.",
+    "missionEyebrow": "A nossa missão",
+    "missionTitle": "Tornar a contratação de um serviço tão simples e segura como uma compra numa loja.",
+    "mission1": "Em Moçambique, encontrar um bom canalizador, uma cabeleireira ou um explicador ainda depende de conhecer alguém que conheça alguém. O preço combina-se por telefone, a hora falha, e quando corre mal não há a quem recorrer.",
+    "mission2": "A Ntizo existe para mudar isso. Cada prestador é verificado antes de aparecer nos resultados, cada serviço tem o preço à vista, e cada reserva fica registada de ponta a ponta, da hora marcada ao pagamento.",
+    "howEyebrow": "Como funciona",
+    "howTitle": "Três passos, e nenhum deles é pagar antes de saber se vai acontecer.",
+    "steps": {
+      "search": { "title": "Procure e compare", "body": "Veja serviços por categoria e cidade, com o preço, as avaliações de quem já os usou e o selo de verificado." },
+      "book": { "title": "Reserve a hora", "body": "Escolha o dia e a hora no calendário do prestador e diga onde o serviço acontece. O pedido segue para ele confirmar." },
+      "pay": { "title": "Pague depois da confirmação", "body": "Só depois de o prestador confirmar a hora recebe o pedido de pagamento no telemóvel. Antes disso não é cobrado nada." }
+    },
+    "principlesEyebrow": "No que acreditamos",
+    "principlesTitle": "Quatro regras que não mudam, seja qual for o serviço.",
+    "principles": {
+      "price": { "title": "O preço é o preço.", "body": "O valor que vê no anúncio é o valor que paga. A comissão da plataforma sai do lado do prestador, nunca do seu." },
+      "verification": { "title": "Verificação antes de visibilidade.", "body": "Nenhum prestador aparece nos resultados sem ter enviado um documento de identidade e sem uma pessoa da Ntizo o ter revisto." },
+      "payAfter": { "title": "Pagar só depois do sim.", "body": "O pedido de pagamento só chega depois de o prestador confirmar a hora. Se ele não confirmar ou recusar, não há nada a cobrar." },
+      "local": { "title": "Feito para aqui, pronto para crescer.", "body": "M-Pesa, português, as cidades onde vivemos. E uma plataforma desenhada para servir outros países quando chegar a altura." }
+    },
+    "customersEyebrow": "Para clientes",
+    "customersTitle": "Encontre, reserve e pague num só sítio.",
+    "customersBody": "Sem telefonemas para saber o preço, sem esperar por uma resposta que não vem. Cada reserva tem uma hora, um valor e um registo.",
+    "customersCta": "Explorar serviços",
+    "providersEyebrow": "Para prestadores",
+    "providersTitle": "A sua agenda, os seus preços, os seus clientes.",
+    "providersBody": "Publique os serviços, defina quando está disponível e receba pedidos confirmados. A Ntizo trata do calendário, do pagamento e de o dar a conhecer.",
+    "providersCta": "Torne-se prestador"
+  },
+  "contact": {
+    "headTitle": "Contacto",
+    "eyebrow": "Contacto",
+    "heading": "Fale connosco.",
+    "lede": "Parcerias, imprensa, uma pergunta sobre a plataforma ou simplesmente um olá. Respondemos em dias úteis.",
+    "messagePlaceholder": "Diga-nos o que tem em mente.",
+    "cards": {
+      "email": { "title": "Por email", "body": "Para quem prefere escrever directamente." },
+      "social": { "title": "Nas redes", "body": "Novidades, bastidores e os prestadores que destacamos." },
+      "support": { "title": "É cliente com um problema?", "body": "Uma reserva, um pagamento, a sua conta.", "cta": "Falar com o suporte" }
+    }
+  },
+  "support": {
+    "headTitle": "Falar com o suporte",
+    "eyebrow": "Suporte",
+    "heading": "Precisa de ajuda com algo?",
+    "lede": "Uma reserva, um pagamento, a sua conta. Conte-nos o que se passa e tratamos disso consigo.",
+    "messagePlaceholder": "Diga-nos o que aconteceu. Se for sobre uma reserva, inclua a data e o nome do prestador.",
+    "cards": {
+      "email": { "title": "Por email", "body": "Para quem prefere escrever directamente." },
+      "expect": { "title": "O que esperar", "body": "Uma pessoa lê, ninguém é robô. Respondemos em dias úteis, para o email que indicar." },
+      "faq": { "title": "Talvez já esteja respondido", "body": "Reservas, pagamentos, verificação.", "cta": "Ver perguntas frequentes" }
+    }
+  },
+  "feedback": {
+    "headTitle": "Dar feedback",
+    "eyebrow": "Feedback",
+    "heading": "Diga-nos o que acha.",
+    "lede": "Uma ideia, algo que não funcionou, ou o que gostou. Lemos tudo, e é isto que decide o que construímos a seguir.",
+    "messagePlaceholder": "O que gostava que fosse diferente? Se algo falhou, diga-nos onde estava e o que esperava.",
+    "cards": {
+      "read": { "title": "Lemos tudo", "body": "Cada mensagem chega a uma pessoa da equipa. Nem todas têm resposta, mas todas contam." },
+      "support": { "title": "Problemas com uma reserva?", "body": "Isso é para o suporte, que responde.", "cta": "Falar com o suporte" },
+      "faq": { "title": "Talvez já esteja respondido", "body": "Reservas, pagamentos, verificação.", "cta": "Ver perguntas frequentes" }
+    }
+  },
+  "form": {
+    "signInHint": "Tem conta?",
+    "signInLink": "Entre",
+    "signInHintRest": "e preenchemos o nome e o email por si.",
+    "name": "Nome",
+    "namePlaceholder": "O seu nome",
+    "email": "Email",
+    "emailPlaceholder": "Para onde respondemos",
+    "emailOptional": "Opcional. Só se quiser resposta.",
+    "topic": "Assunto",
+    "message": "Mensagem",
+    "privacyNote": "Guardamos esta mensagem para lhe responder. Mais nada.",
+    "privacyLink": "Política de privacidade",
+    "submit": "Enviar mensagem",
+    "sending": "A enviar…",
+    "errors": {
+      "nameRequired": "Diga-nos como se chama.",
+      "emailRequired": "Precisamos de um email para responder.",
+      "emailInvalid": "Este email não parece completo.",
+      "messageTooShort": "Escreva pelo menos 10 caracteres.",
+      "rateLimited": "Recebemos várias mensagens deste dispositivo há pouco. Tente de novo dentro de uma hora, ou escreva para {{email}}.",
+      "generic": "Não conseguimos enviar. Tente de novo, ou escreva-nos para {{email}}."
+    },
+    "success": {
+      "title": "Recebemos a sua mensagem.",
+      "replyTo": "Respondemos para {{email}} em dias úteis, no idioma em que nos escreveu.",
+      "noEmail": "Obrigado. Lemos tudo o que nos chega.",
+      "reference": "Referência: {{reference}}",
+      "home": "Voltar ao início",
+      "faq": "Ver perguntas frequentes"
+    }
+  },
+  "topics": {
+    "contact": { "general": "Pergunta geral", "partnership": "Parceria", "press": "Imprensa", "provider": "Sou prestador", "other": "Outro" },
+    "support": { "account": "A minha conta", "booking": "Uma reserva", "payment": "Um pagamento", "provider_account": "A minha conta de prestador", "other": "Outro assunto" },
+    "feedback": { "idea": "Uma ideia", "problem": "Algo não funcionou", "praise": "Gostei de algo" }
+  },
+  "faq": {
+    "headTitle": "Perguntas frequentes",
+    "eyebrow": "Perguntas frequentes",
+    "heading": "As respostas que procura.",
+    "lede": "Como funciona a reserva, quando paga, o que significa o selo de verificado e como os prestadores recebem.",
+    "notFoundTitle": "Não encontrou?",
+    "notFoundBody": "Fale com o suporte. Uma pessoa responde em dias úteis.",
+    "notFoundCta": "Falar com o suporte",
+    "groups": [
+      {
+        "id": "customers",
+        "title": "Clientes",
+        "items": [
+          { "q": "Como funciona uma reserva?", "a": "Escolhe o serviço, o dia e a hora no calendário do prestador, e diz onde o serviço acontece. O pedido segue para o prestador confirmar. Só depois de ele confirmar a hora recebe o pedido de pagamento no telemóvel." },
+          { "q": "Quando é que pago?", "a": "Depois de o prestador confirmar a hora, e nunca antes. Se ele não responder dentro do prazo indicado no pedido, ou recusar, o pedido é encerrado e não é cobrado nada." },
+          { "q": "Que métodos de pagamento aceitam?", "a": "Neste momento, M-Pesa (Vodacom). O pedido de pagamento chega ao seu telemóvel e confirma-o com o PIN. Outros métodos estão a caminho." },
+          { "q": "O preço que vejo é o que pago?", "a": "Sim. O valor do anúncio é o valor cobrado. A comissão da Ntizo é descontada do lado do prestador, não é somada ao seu." },
+          { "q": "O que significa o selo de verificado?", "a": "Que o prestador enviou um documento de identidade (BI, DIRE ou passaporte) e que uma pessoa da Ntizo o reviu antes de o perfil ficar visível." },
+          { "q": "Alguns serviços dizem \"sob orçamento\" ou \"por hora\". Como reservo?", "a": "Esses ainda não se reservam directamente. Envie uma mensagem ao prestador a partir da página do serviço para combinar o preço e a hora." },
+          { "q": "Posso cancelar uma reserva?", "a": "Antes de o prestador confirmar, o pedido ainda não o compromete a nada. Depois de confirmar e pagar, fale com o suporte o quanto antes com a data e o nome do prestador, e tratamos do caso consigo." },
+          { "q": "Como deixo uma avaliação?", "a": "Só quem teve um serviço concluído com um prestador o pode avaliar. Cada pessoa tem uma avaliação por prestador, e pode mudá-la quando quiser." }
+        ]
+      },
+      {
+        "id": "providers",
+        "title": "Prestadores",
+        "items": [
+          { "q": "Quem pode ser prestador?", "a": "Uma pessoa que oferece o seu próprio trabalho, ou um estabelecimento com equipa. Precisa de um documento de identidade, de um meio para receber (M-Pesa, e-Mola ou conta bancária) e de aceitar os termos." },
+          { "q": "Quanto custa?", "a": "Registar-se e publicar serviços é gratuito. A Ntizo cobra uma comissão sobre cada serviço pago, descontada do valor que lhe é pago. A sua taxa está indicada na sua área de prestador." },
+          { "q": "Quando é que recebo?", "a": "O cliente paga depois de confirmar a hora, e o valor fica retido até o serviço estar concluído. Depois disso passa para a sua carteira, onde fica disponível para levantar após o período de retenção indicado." },
+          { "q": "Como funciona a verificação?", "a": "Envia um documento de identidade durante o registo. Uma pessoa da Ntizo revê o pedido; até lá o perfil fica pendente e fora dos resultados. Avisamos por email quando estiver aprovado." },
+          { "q": "Posso ter uma equipa?", "a": "Sim. Um estabelecimento convida membros por email. Cada um tem a sua disponibilidade, e as horas que os clientes vêem contam com quantas pessoas estão livres." },
+          { "q": "Como defino a minha disponibilidade?", "a": "Define os dias e horas em que trabalha, a duração de cada serviço e o intervalo entre serviços. A Ntizo gera as horas que os clientes podem escolher. Pode bloquear dias específicos." },
+          { "q": "O que acontece se não responder a um pedido?", "a": "Tem um prazo, indicado no pedido, para confirmar ou recusar. Passado esse prazo o pedido expira e o cliente é avisado para escolher outra hora ou outro prestador." }
+        ]
+      },
+      {
+        "id": "payments",
+        "title": "Pagamentos e segurança",
+        "items": [
+          { "q": "Os meus dados de pagamento ficam guardados?", "a": "Guardamos o número de telemóvel associado ao M-Pesa ou e-Mola e o país. Não guardamos números de cartão." },
+          { "q": "Posso partilhar o meu número ou email nas mensagens?", "a": "As mensagens não permitem números de telefone nem emails. É o que mantém a reserva, o pagamento e a avaliação dentro da plataforma, onde há registo e a quem recorrer." },
+          { "q": "O que acontece se o serviço não for feito?", "a": "O pagamento fica retido até o serviço estar concluído. Se algo correr mal, fale com o suporte com a data e o nome do prestador. Analisamos o caso com as duas partes." },
+          { "q": "Como tratam os meus dados?", "a": "Recolhemos só o necessário para ligar clientes e prestadores. Está tudo na Política de Privacidade, escrita para ser lida." },
+          { "q": "Como apago a minha conta?", "a": "Escreva para privacidade@ntizo.co.mz a partir do email da conta. Apagamos os seus dados, excepto o que a lei nos obriga a guardar, e respondemos no prazo de 30 dias." }
+        ]
+      }
+    ]
+  },
+  "careers": {
+    "headTitle": "Carreiras",
+    "eyebrow": "Carreiras",
+    "heading": "Construa a Ntizo connosco.",
+    "lede": "Somos uma equipa pequena a construir a infra-estrutura dos serviços locais em Moçambique. Não temos vagas abertas neste momento, mas lemos todas as candidaturas.",
+    "buildingEyebrow": "O que estamos a construir",
+    "building1": "Um mercado onde um cliente encontra, reserva e paga um serviço com a mesma confiança com que compra numa loja, e onde um prestador tem agenda, preços e pagamentos sem precisar de uma empresa por trás.",
+    "building2": "Começámos por Moçambique, com M-Pesa e em português. A plataforma é desenhada desde o primeiro dia para servir outros países, outras moedas e outras línguas.",
+    "howEyebrow": "Como trabalhamos",
+    "how": [
+      { "title": "Escrevemos antes de construir.", "body": "Cada decisão tem um documento com o porquê, para que quem chegar depois não a tenha de adivinhar." },
+      { "title": "Enviamos cedo, corrigimos depressa.", "body": "Preferimos uma versão real nas mãos de um cliente a uma versão perfeita numa apresentação." },
+      { "title": "Quem usa vem primeiro.", "body": "Falamos com prestadores e clientes antes de decidir por eles." }
+    ],
+    "openingsEyebrow": "Vagas abertas",
+    "openingsTitle": "Nenhuma neste momento.",
+    "openingsBody": "Se acha que devíamos estar a falar consigo mesmo assim, escreva-nos. Diga o que faz bem, o que já construiu, e porquê a Ntizo. Respondemos a todas.",
+    "openingsCta": "Candidatura espontânea",
+    "openingsHint": "Abre o seu email para {{email}} com o assunto já preenchido.",
+    "mailSubject": "Candidatura espontânea"
+  }
+}
+```
+
+**One check before the file is final.** The providers' "Quanto custa?" answer says the rate is shown in the provider area. Run `grep -rln "commission" apps/frontend/web/src/features/provider` — if a provider-facing screen renders the commission (the 2026-08-31 commission-visibility plan), keep the sentence. If nothing does, replace the last sentence in every locale with the fallback: pt *"A taxa é-lhe indicada antes de publicar."*, en *"Your rate is shown to you before you publish."*, and the equivalent in the others.
+
+- [ ] **Step 4: Write `en-US/company.json`, verbatim**
+
+```json
+{
+  "shared": {
+    "stillQuestions": "Still have questions?",
+    "links": {
+      "faq": { "title": "FAQ", "body": "Bookings, payments, verification, and how providers get paid." },
+      "support": { "title": "Message support", "body": "A problem with a booking, a payment or your account." },
+      "contact": { "title": "Contact", "body": "Partnerships, press, or simply a hello." },
+      "feedback": { "title": "Share feedback", "body": "An idea, something that did not work, or something you liked." }
+    }
+  },
+  "about": {
+    "headTitle": "About Ntizo",
+    "eyebrow": "About Ntizo",
+    "heading": "Local services you can",
+    "headingAccent": "trust",
+    "lede": "Ntizo connects people who need a service with people who know how to do it. Verified providers, the price up front, and payment only after the provider confirms the time.",
+    "missionEyebrow": "Our mission",
+    "missionTitle": "Make hiring a service as simple and as safe as buying in a shop.",
+    "mission1": "In Mozambique, finding a good plumber, a hairdresser or a tutor still depends on knowing someone who knows someone. The price is agreed over the phone, the time slips, and when it goes wrong there is nobody to turn to.",
+    "mission2": "Ntizo exists to change that. Every provider is verified before they appear in results, every service shows its price, and every booking is on record from start to finish, from the time agreed to the payment.",
+    "howEyebrow": "How it works",
+    "howTitle": "Three steps, and none of them is paying before you know it will happen.",
+    "steps": {
+      "search": { "title": "Search and compare", "body": "Browse services by category and city, with the price, reviews from people who used them, and the verified badge." },
+      "book": { "title": "Book the time", "body": "Pick the day and time on the provider's calendar and say where the service happens. The request goes to the provider to confirm." },
+      "pay": { "title": "Pay after confirmation", "body": "Only once the provider confirms the time do you get the payment prompt on your phone. Nothing is charged before that." }
+    },
+    "principlesEyebrow": "What we believe",
+    "principlesTitle": "Four rules that never change, whatever the service.",
+    "principles": {
+      "price": { "title": "The price is the price.", "body": "The amount you see on the listing is the amount you pay. The platform's commission comes out of the provider's side, never yours." },
+      "verification": { "title": "Verification before visibility.", "body": "No provider appears in results without having sent an identity document and without a person at Ntizo having reviewed it." },
+      "payAfter": { "title": "Pay only after the yes.", "body": "The payment prompt arrives only after the provider confirms the time. If they do not confirm, or decline, there is nothing to charge." },
+      "local": { "title": "Built for here, ready to grow.", "body": "M-Pesa, Portuguese, the cities we live in. And a platform designed to serve other countries when the time comes." }
+    },
+    "customersEyebrow": "For customers",
+    "customersTitle": "Find, book and pay in one place.",
+    "customersBody": "No phone calls to learn the price, no waiting for a reply that never comes. Every booking has a time, an amount and a record.",
+    "customersCta": "Explore services",
+    "providersEyebrow": "For providers",
+    "providersTitle": "Your calendar, your prices, your customers.",
+    "providersBody": "Publish your services, set when you are available, and receive confirmed requests. Ntizo handles the calendar, the payment and getting you found.",
+    "providersCta": "Become a provider"
+  },
+  "contact": {
+    "headTitle": "Contact",
+    "eyebrow": "Contact",
+    "heading": "Talk to us.",
+    "lede": "Partnerships, press, a question about the platform, or simply a hello. We reply on working days.",
+    "messagePlaceholder": "Tell us what is on your mind.",
+    "cards": {
+      "email": { "title": "By email", "body": "For anyone who would rather write directly." },
+      "social": { "title": "On social", "body": "News, behind the scenes, and the providers we feature." },
+      "support": { "title": "A customer with a problem?", "body": "A booking, a payment, your account.", "cta": "Message support" }
+    }
+  },
+  "support": {
+    "headTitle": "Message support",
+    "eyebrow": "Support",
+    "heading": "Need help with something?",
+    "lede": "A booking, a payment, your account. Tell us what is going on and we will sort it out with you.",
+    "messagePlaceholder": "Tell us what happened. If it is about a booking, include the date and the provider's name.",
+    "cards": {
+      "email": { "title": "By email", "body": "For anyone who would rather write directly." },
+      "expect": { "title": "What to expect", "body": "A person reads it, nobody is a robot. We reply on working days, to the email you give." },
+      "faq": { "title": "It may already be answered", "body": "Bookings, payments, verification.", "cta": "See the FAQ" }
+    }
+  },
+  "feedback": {
+    "headTitle": "Share feedback",
+    "eyebrow": "Feedback",
+    "heading": "Tell us what you think.",
+    "lede": "An idea, something that did not work, or something you liked. We read all of it, and it is what decides what we build next.",
+    "messagePlaceholder": "What would you like to be different? If something failed, tell us where you were and what you expected.",
+    "cards": {
+      "read": { "title": "We read everything", "body": "Every message reaches a person on the team. Not all get a reply, but all of them count." },
+      "support": { "title": "Trouble with a booking?", "body": "That is for support, which replies.", "cta": "Message support" },
+      "faq": { "title": "It may already be answered", "body": "Bookings, payments, verification.", "cta": "See the FAQ" }
+    }
+  },
+  "form": {
+    "signInHint": "Have an account?",
+    "signInLink": "Sign in",
+    "signInHintRest": "and we will fill in your name and email for you.",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "Where we reply",
+    "emailOptional": "Optional. Only if you want a reply.",
+    "topic": "Topic",
+    "message": "Message",
+    "privacyNote": "We keep this message to reply to you. Nothing else.",
+    "privacyLink": "Privacy policy",
+    "submit": "Send message",
+    "sending": "Sending…",
+    "errors": {
+      "nameRequired": "Tell us your name.",
+      "emailRequired": "We need an email to reply to.",
+      "emailInvalid": "That email does not look complete.",
+      "messageTooShort": "Write at least 10 characters.",
+      "rateLimited": "We received several messages from this device just now. Try again in an hour, or write to {{email}}.",
+      "generic": "We could not send it. Try again, or write to us at {{email}}."
+    },
+    "success": {
+      "title": "We got your message.",
+      "replyTo": "We will reply to {{email}} on working days, in the language you wrote to us in.",
+      "noEmail": "Thank you. We read everything that reaches us.",
+      "reference": "Reference: {{reference}}",
+      "home": "Back to home",
+      "faq": "See the FAQ"
+    }
+  },
+  "topics": {
+    "contact": { "general": "General question", "partnership": "Partnership", "press": "Press", "provider": "I am a provider", "other": "Other" },
+    "support": { "account": "My account", "booking": "A booking", "payment": "A payment", "provider_account": "My provider account", "other": "Something else" },
+    "feedback": { "idea": "An idea", "problem": "Something did not work", "praise": "Something I liked" }
+  },
+  "faq": {
+    "headTitle": "FAQ",
+    "eyebrow": "Frequently asked questions",
+    "heading": "The answers you are looking for.",
+    "lede": "How booking works, when you pay, what the verified badge means, and how providers get paid.",
+    "notFoundTitle": "Not here?",
+    "notFoundBody": "Message support. A person replies on working days.",
+    "notFoundCta": "Message support",
+    "groups": [
+      {
+        "id": "customers",
+        "title": "Customers",
+        "items": [
+          { "q": "How does a booking work?", "a": "You pick the service, the day and the time on the provider's calendar, and say where the service happens. The request goes to the provider to confirm. Only once they confirm the time do you get the payment prompt on your phone." },
+          { "q": "When do I pay?", "a": "After the provider confirms the time, and never before. If they do not reply within the time shown on the request, or decline, the request is closed and nothing is charged." },
+          { "q": "Which payment methods do you accept?", "a": "Right now, M-Pesa (Vodacom). The payment prompt arrives on your phone and you confirm it with your PIN. Other methods are on the way." },
+          { "q": "Is the price I see the price I pay?", "a": "Yes. The listed amount is the amount charged. Ntizo's commission is deducted on the provider's side, not added to yours." },
+          { "q": "What does the verified badge mean?", "a": "That the provider sent an identity document (national ID, DIRE or passport) and that a person at Ntizo reviewed it before the profile became visible." },
+          { "q": "Some services say \"on quote\" or \"per hour\". How do I book those?", "a": "Those cannot be booked directly yet. Send the provider a message from the service page to agree the price and the time." },
+          { "q": "Can I cancel a booking?", "a": "Before the provider confirms, the request commits you to nothing. After confirming and paying, message support as soon as you can with the date and the provider's name, and we will handle it with you." },
+          { "q": "How do I leave a review?", "a": "Only someone who has had a completed service with a provider can review them. Each person has one review per provider, and can change it whenever they like." }
+        ]
+      },
+      {
+        "id": "providers",
+        "title": "Providers",
+        "items": [
+          { "q": "Who can be a provider?", "a": "A person offering their own work, or an establishment with a team. You need an identity document, a way to be paid (M-Pesa, e-Mola or a bank account), and to accept the terms." },
+          { "q": "What does it cost?", "a": "Signing up and publishing services is free. Ntizo takes a commission on each paid service, deducted from what is paid to you. Your rate is shown in your provider area." },
+          { "q": "When do I get paid?", "a": "The customer pays after you confirm the time, and the amount is held until the service is completed. After that it moves to your wallet, where it becomes available to withdraw after the holding period shown there." },
+          { "q": "How does verification work?", "a": "You send an identity document during sign-up. A person at Ntizo reviews the request; until then the profile is pending and out of results. We email you when it is approved." },
+          { "q": "Can I have a team?", "a": "Yes. An establishment invites members by email. Each has their own availability, and the times customers see account for how many people are free." },
+          { "q": "How do I set my availability?", "a": "Set the days and hours you work, how long each service takes, and the gap between services. Ntizo generates the times customers can choose. You can block specific days." },
+          { "q": "What happens if I do not answer a request?", "a": "You have a deadline, shown on the request, to confirm or decline. Once it passes the request expires and the customer is told to pick another time or another provider." }
+        ]
+      },
+      {
+        "id": "payments",
+        "title": "Payments and safety",
+        "items": [
+          { "q": "Is my payment data stored?", "a": "We store the phone number linked to M-Pesa or e-Mola and the country. We do not store card numbers." },
+          { "q": "Can I share my number or email in messages?", "a": "Messages do not allow phone numbers or emails. That is what keeps the booking, the payment and the review on the platform, where there is a record and someone to turn to." },
+          { "q": "What happens if the service is not done?", "a": "The payment is held until the service is completed. If something goes wrong, message support with the date and the provider's name. We look at the case with both sides." },
+          { "q": "How do you handle my data?", "a": "We collect only what is needed to connect customers and providers. It is all in the Privacy Policy, written to be read." },
+          { "q": "How do I delete my account?", "a": "Write to privacidade@ntizo.co.mz from the account's email. We delete your data, except what the law requires us to keep, and reply within 30 days." }
+        ]
+      }
+    ]
+  },
+  "careers": {
+    "headTitle": "Careers",
+    "eyebrow": "Careers",
+    "heading": "Build Ntizo with us.",
+    "lede": "We are a small team building the infrastructure for local services in Mozambique. There are no open roles right now, but we read every application.",
+    "buildingEyebrow": "What we are building",
+    "building1": "A marketplace where a customer finds, books and pays for a service with the same confidence as buying in a shop, and where a provider has a calendar, prices and payments without needing a company behind them.",
+    "building2": "We started with Mozambique, with M-Pesa and in Portuguese. The platform is designed from day one to serve other countries, other currencies and other languages.",
+    "howEyebrow": "How we work",
+    "how": [
+      { "title": "We write before we build.", "body": "Every decision has a document with the why, so whoever comes next does not have to guess it." },
+      { "title": "We ship early and fix fast.", "body": "We would rather have a real version in a customer's hands than a perfect one in a presentation." },
+      { "title": "Whoever uses it comes first.", "body": "We talk to providers and customers before deciding for them." }
+    ],
+    "openingsEyebrow": "Open roles",
+    "openingsTitle": "None right now.",
+    "openingsBody": "If you think we should be talking to you anyway, write to us. Tell us what you do well, what you have built, and why Ntizo. We reply to every one.",
+    "openingsCta": "Spontaneous application",
+    "openingsHint": "Opens your email to {{email}} with the subject already filled in.",
+    "mailSubject": "Spontaneous application"
+  }
+}
+```
+
+- [ ] **Step 5: Write the other six**
+
+`pt-PT/company.json`: start as a copy of pt-MZ and change only what Portugal says differently: `telemóvel` stays (both), "BI" becomes "cartão de cidadão ou BI" in the verified-badge and verification answers, and "Moçambique" stays where it is a fact about the company. Everything else is identical.
+
+`es-ES`, `fr-FR`, `de-DE`, `it-IT`, `nl-NL`: translate **every** value of `pt-MZ/company.json` (use `en-US` as the second reference for tone), keeping every key, every `{{email}}` / `{{reference}}` placeholder, the three FAQ group `id`s (`customers`, `providers`, `payments`), 8 + 7 + 5 questions in the same order, and three `careers.how` entries. Rules that apply to every language:
+
+- The `about.heading` + `about.headingAccent` pair renders as `{heading} <accent>{headingAccent}</accent>.` — pick the word order of the target language so the accent word is the LAST word of the sentence (es: `Servicios locales en los que puede` + `confiar`; fr: `Des services locaux en qui vous pouvez avoir` + `confiance`; de: `Lokale Dienstleistungen, denen Sie` + `vertrauen`; it: `Servizi locali di cui potersi` + `fidare`; nl: `Lokale diensten die u kunt` + `vertrouwen`).
+- Product nouns stay as the product uses them: M-Pesa, e-Mola, Ntizo, DIRE, PIN.
+- `privacidade@ntizo.co.mz` stays in the delete-account answer in every language.
+- No duration or percentage anywhere (the content test greps for them).
+- Formal register in de/fr/nl/it (Sie / vous / u / lei), tú in es — matching each locale's existing `landing.json`.
+
+- [ ] **Step 6: Register the namespace**
+
+In `i18n.ts`: for each of the eight locales add `import <loc>Company from "@/shared/locales/<locale>/company.json";` beside the `Checkout` import, add `company: <loc>Company` to that locale's entry in `resources`, and add `"company"` to the `ns` array.
+
+In `locales.test.ts`: add the eight `Company` imports and a `company` entry in `NAMESPACES`, same shape as `checkout`.
+
+- [ ] **Step 7: Run the gate, the content test, typecheck**
+
+Run: `cd apps/frontend/web && bunx vitest run src/shared/locales && bun run typecheck`
+Expected: parity passes for `company` (all eight declare the same paths, none empty); `company-content.test.ts` passes (25 tests); typecheck clean.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/frontend/web/src/shared/locales apps/frontend/web/src/shared/lib/i18n.ts
+git commit -m "feat(company): the company namespace — every word of the six pages, in eight languages"
+```
+
+---
+
+### Task 10: The shared frame, and the two editorial pages that use it first (About, Careers)
+
+**Files:**
+- Create: `apps/frontend/web/src/features/company/ui/company-page.tsx`
+- Create: `apps/frontend/web/src/features/company/ui/about-page.tsx`
+- Create: `apps/frontend/web/src/features/company/ui/careers-page.tsx`
+- Create: `apps/frontend/web/src/routes/about.tsx`, `apps/frontend/web/src/routes/careers.tsx`
+- Create: `apps/frontend/web/src/features/company/ui/__tests__/render-company-page.tsx` (test helper, no tests of its own)
+- Test: `apps/frontend/web/src/features/company/ui/__tests__/company-pages.test.tsx`
+
+**Interfaces:**
+- Produces: `CompanyPage({ page, eyebrow, title, lede, centred?, children })`, `CompanyPageId`, `Eyebrow({ children, onDark? })`, `SectionHeading({ eyebrow, title, blurb? })`, `renderCompanyPage(Page, at?)` from the helper file, `AboutPage`, `CareersPage`.
+
+- [ ] **Step 1: Write the helper, then the failing tests**
+
+`render-company-page.tsx` — a helper, not a test file, so that importing it from three suites does not run one suite's tests three times:
+
+```tsx
+import { render } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import type { ComponentType } from "react";
+
+/**
+ * Every company page in a router that knows every route they link to. The
+ * header reads the session, so a QueryClient is needed and left unseeded —
+ * the signed-out branch is the one these pages are mostly read in.
+ */
+export function renderCompanyPage(Page: ComponentType, at = "/") {
+  const rootRoute = createRootRoute();
+  const stub = (path: string) =>
+    createRoute({ getParentRoute: () => rootRoute, path, component: () => <p>{path}</p> });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      createRoute({ getParentRoute: () => rootRoute, path: at, component: Page }),
+      ...[
+        "/about", "/contact", "/support", "/faq", "/feedback", "/careers",
+        "/", "/services", "/providers", "/become-provider", "/sign-in", "/sign-up",
+        "/terms", "/privacy", "/admin",
+      ].filter((p) => p !== at).map(stub),
+    ]),
+    history: createMemoryHistory({ initialEntries: [at] }),
+  });
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return { qc };
+}
+```
+
+`company-pages.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { screen } from "@testing-library/react";
+import { AboutPage } from "../about-page";
+import { CareersPage } from "../careers-page";
+import { renderCompanyPage } from "./render-company-page";
+
+/** The strip's links, as hrefs, in order. */
+function stripHrefs() {
+  const strip = screen.getByRole("heading", { name: /still have questions/i }).parentElement!;
+  return Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+}
+
+describe("AboutPage", () => {
+  it("leads with the title, the mission, the three steps and the four principles", () => {
+    renderCompanyPage(AboutPage, "/about");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Local services you can trust.");
+    expect(screen.getByText("Make hiring a service as simple and as safe as buying in a shop.")).toBeInTheDocument();
+    for (const step of ["Search and compare", "Book the time", "Pay after confirmation"]) {
+      expect(screen.getByRole("heading", { name: step })).toBeInTheDocument();
+    }
+    for (const rule of ["The price is the price.", "Verification before visibility.", "Pay only after the yes.", "Built for here, ready to grow."]) {
+      expect(screen.getByRole("heading", { name: rule })).toBeInTheDocument();
+    }
+  });
+
+  it("sends customers to services and providers to the pitch", () => {
+    renderCompanyPage(AboutPage, "/about");
+    expect(screen.getByRole("link", { name: /explore services/i })).toHaveAttribute("href", "/services");
+    expect(screen.getByRole("link", { name: /become a provider/i })).toHaveAttribute("href", "/become-provider");
+  });
+
+  it("offers FAQ, support and contact at the bottom — and not itself", () => {
+    renderCompanyPage(AboutPage, "/about");
+    expect(stripHrefs()).toEqual(["/faq", "/support", "/contact"]);
+  });
+
+  it("draws no accent rule beside its eyebrows", () => {
+    renderCompanyPage(AboutPage, "/about");
+    // The owner's rule: no hairline flourish before uppercase labels.
+    expect(document.querySelector(".h-px.w-8")).toBeNull();
+  });
+});
+
+describe("CareersPage", () => {
+  it("says there are no open roles and opens the mail client with the subject filled in", () => {
+    renderCompanyPage(CareersPage, "/careers");
+    expect(screen.getByRole("heading", { name: "None right now." })).toBeInTheDocument();
+    const cta = screen.getByRole("link", { name: /spontaneous application/i });
+    expect(cta).toHaveAttribute("href", "mailto:ola@ntizo.co.mz?subject=Spontaneous%20application");
+  });
+
+  it("lists the three ways of working", () => {
+    renderCompanyPage(CareersPage, "/careers");
+    for (const h of ["We write before we build.", "We ship early and fix fast.", "Whoever uses it comes first."]) {
+      expect(screen.getByRole("heading", { name: h })).toBeInTheDocument();
+    }
+  });
+
+  it("offers FAQ, support and contact at the bottom", () => {
+    renderCompanyPage(CareersPage, "/careers");
+    expect(stripHrefs()).toEqual(["/faq", "/support", "/contact"]);
+  });
+});
+```
+
+- [ ] **Step 2: Run to see them fail**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company`
+Expected: FAIL — modules not found.
+
+- [ ] **Step 3: Write the frame**
+
+`company-page.tsx`:
+
+```tsx
+import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { ArrowRight } from "lucide-react";
+import { LANDING_VARS } from "@/features/landing/ui/sections";
+import { ACCENT, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import { Footer } from "@/features/landing/ui/footer";
+import { SiteHeader } from "@/shared/components/site-header";
+
+export type CompanyPageId = "about" | "contact" | "support" | "faq" | "feedback" | "careers";
+
+/**
+ * The strip's candidates, in priority order. A page shows the first three
+ * that are not itself — so About gets FAQ, support and contact, and the form
+ * pages get feedback in the cell their own link would have taken.
+ */
+const STRIP: ReadonlyArray<{ id: CompanyPageId; to: string }> = [
+  { id: "faq", to: "/faq" },
+  { id: "support", to: "/support" },
+  { id: "contact", to: "/contact" },
+  { id: "feedback", to: "/feedback" },
+];
+
+/**
+ * The frame every company page wears.
+ *
+ * A compact dark band with the site header over it and the title left, not
+ * the provider pitch's 660px hero: six secondary pages in a row with that
+ * hero would tire the reader and push the answer under the fold on a phone.
+ * Decided in brainstorming, 2026-09-02, against a light top and against the
+ * full hero.
+ *
+ * Below the page's own sections, the "still have questions?" strip and the
+ * footer, the same on all six — which is how a reader who landed on the
+ * wrong page reaches the right one without scrolling for the footer.
+ */
+export function CompanyPage({
+  page,
+  eyebrow,
+  title,
+  lede,
+  centred = false,
+  children,
+}: {
+  page: CompanyPageId;
+  eyebrow: string;
+  title: ReactNode;
+  lede: string;
+  /** The form pages centre their band, because the form under it is centred. */
+  centred?: boolean;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation("company");
+  const strip = STRIP.filter((link) => link.id !== page).slice(0, 3);
+
+  return (
+    <main style={{ ...LANDING_VARS, background: PAGE_TOP }} className="text-[color:var(--l-navy)]">
+      <header className="relative isolate overflow-hidden" style={{ background: NAVY }}>
+        <span
+          aria-hidden="true"
+          className="absolute -top-40 -left-32 -z-10 h-[420px] w-[420px] rounded-full opacity-[0.14]"
+          style={{ background: ACCENT }}
+        />
+        <span
+          aria-hidden="true"
+          className="absolute -right-24 -bottom-36 -z-10 h-[320px] w-[320px] rounded-full opacity-[0.14]"
+          style={{ background: ACCENT }}
+        />
+        <SiteHeader overlay current="none" />
+        <div className={`page-shell pt-28 pb-16 text-white md:pt-32 md:pb-20 ${centred ? "text-center" : ""}`}>
+          <Eyebrow onDark>{eyebrow}</Eyebrow>
+          <h1
+            className={`font-rounded mt-5 max-w-[18ch] text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance ${
+              centred ? "mx-auto" : ""
+            }`}
+          >
+            {title}
+          </h1>
+          <p className={`mt-5 max-w-[54ch] text-[17px] leading-relaxed text-white/80 ${centred ? "mx-auto" : ""}`}>
+            {lede}
+          </p>
+        </div>
+      </header>
+
+      {children}
+
+      <section className="page-shell border-t py-14" style={{ borderColor: "var(--l-border)" }}>
+        <h2 className="m-0">
+          <Eyebrow>{t("shared.stillQuestions")}</Eyebrow>
+        </h2>
+        <div
+          className="mt-5 grid overflow-hidden rounded-[16px] border md:grid-cols-3"
+          style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+        >
+          {strip.map((link) => (
+            <Link
+              key={link.id}
+              to={link.to}
+              className="group border-t p-6 no-underline first:border-t-0 md:border-t-0 md:border-l md:first:border-l-0"
+              style={{ borderColor: "var(--l-border)", color: "inherit" }}
+            >
+              <span className="font-rounded flex items-center gap-2 text-[15px] font-extrabold">
+                {t(`shared.links.${link.id}.title`)}
+                <ArrowRight
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  style={{ color: ACCENT }}
+                  aria-hidden="true"
+                />
+              </span>
+              <span className="mt-1.5 block text-sm leading-relaxed text-[color:var(--l-muted)]">
+                {t(`shared.links.${link.id}.body`)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <Footer />
+    </main>
+  );
+}
+
+/**
+ * A small uppercase label above a heading. Letter-spacing and weight keep it
+ * from floating; there is no rule beside it, by the owner's rule.
+ */
+export function Eyebrow({ children, onDark = false }: { children: string; onDark?: boolean }) {
+  return (
+    <span
+      className={`font-rounded inline-flex items-center text-[12px] font-bold tracking-[0.18em] uppercase ${
+        onDark ? "text-white/65" : "text-[color:var(--l-muted)]"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A section's opening: eyebrow, heading, and an optional sentence. */
+export function SectionHeading({ eyebrow, title, blurb }: { eyebrow: string; title: string; blurb?: string }) {
+  return (
+    <div className="max-w-[62ch]">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="font-rounded mt-4 text-[clamp(1.7rem,3.4vw,2.5rem)] leading-[1.08] font-extrabold tracking-[-0.025em] text-balance">
+        {title}
+      </h2>
+      {blurb && <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">{blurb}</p>}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Write the About page**
+
+`about-page.tsx`:
+
+```tsx
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { ArrowRight } from "lucide-react";
+import { ACCENT } from "@/features/landing/ui/palette";
+import { CompanyPage, Eyebrow, SectionHeading } from "./company-page";
+
+/**
+ * Who Ntizo is, told through what the product does — mission, the three
+ * steps, four principles, two audiences. No founding year, no city, no names:
+ * the owner chose (2026-09-02) not to publish them.
+ */
+export function AboutPage() {
+  const { t } = useTranslation("company");
+
+  return (
+    <CompanyPage
+      page="about"
+      eyebrow={t("about.eyebrow")}
+      title={
+        <>
+          {t("about.heading")} <span style={{ color: ACCENT }}>{t("about.headingAccent")}</span>.
+        </>
+      }
+      lede={t("about.lede")}
+    >
+      <section className="page-shell py-16 md:py-20">
+        <div className="grid gap-10 md:grid-cols-[1.1fr_1fr] md:gap-16">
+          <div>
+            <Eyebrow>{t("about.missionEyebrow")}</Eyebrow>
+            <p className="font-rounded mt-4 max-w-[24ch] text-[clamp(1.6rem,3vw,2.2rem)] leading-[1.12] font-extrabold tracking-[-0.02em] text-balance">
+              {t("about.missionTitle")}
+            </p>
+          </div>
+          <div className="text-[16px] leading-relaxed text-[color:var(--l-muted)]">
+            <p>{t("about.mission1")}</p>
+            <p className="mt-4">{t("about.mission2")}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-shell border-t py-16 md:py-20" style={{ borderColor: "var(--l-border)" }}>
+        <SectionHeading eyebrow={t("about.howEyebrow")} title={t("about.howTitle")} />
+        <ol className="mt-12 grid gap-10 p-0 md:grid-cols-3">
+          {(["search", "book", "pay"] as const).map((key, i) => (
+            <li key={key} className="list-none">
+              <span className="font-rounded text-[13px] font-extrabold tracking-[0.06em] tabular-nums" style={{ color: ACCENT }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h3 className="font-rounded mt-3 text-[1.25rem] font-extrabold tracking-[-0.01em]">
+                {t(`about.steps.${key}.title`)}
+              </h3>
+              <p className="mt-2 leading-relaxed text-[color:var(--l-muted)]">{t(`about.steps.${key}.body`)}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="page-shell border-t py-16 md:py-20" style={{ borderColor: "var(--l-border)" }}>
+        <SectionHeading eyebrow={t("about.principlesEyebrow")} title={t("about.principlesTitle")} />
+        <div
+          className="mt-10 grid overflow-hidden rounded-[20px] border md:grid-cols-2"
+          style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+        >
+          {(["price", "verification", "payAfter", "local"] as const).map((key, i) => (
+            <article
+              key={key}
+              className={`border-t p-7 first:border-t-0 md:p-8 ${i % 2 === 1 ? "md:border-l" : ""} ${i < 2 ? "md:border-t-0" : ""}`}
+              style={{ borderColor: "var(--l-border)" }}
+            >
+              <h3 className="font-rounded text-[1.15rem] font-extrabold tracking-[-0.01em]">
+                {t(`about.principles.${key}.title`)}
+              </h3>
+              <p className="mt-2 leading-relaxed text-[color:var(--l-muted)]">{t(`about.principles.${key}.body`)}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="page-shell border-t py-16 md:py-20" style={{ borderColor: "var(--l-border)" }}>
+        <div className="grid gap-5 md:grid-cols-2">
+          <Audience
+            eyebrow={t("about.customersEyebrow")}
+            title={t("about.customersTitle")}
+            body={t("about.customersBody")}
+            cta={t("about.customersCta")}
+            to="/services"
+            primary
+          />
+          <Audience
+            eyebrow={t("about.providersEyebrow")}
+            title={t("about.providersTitle")}
+            body={t("about.providersBody")}
+            cta={t("about.providersCta")}
+            to="/become-provider"
+          />
+        </div>
+      </section>
+    </CompanyPage>
+  );
+}
+
+function Audience({
+  eyebrow, title, body, cta, to, primary = false,
+}: { eyebrow: string; title: string; body: string; cta: string; to: string; primary?: boolean }) {
+  return (
+    <article className="rounded-[20px] border p-7 md:p-8" style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h3 className="font-rounded mt-3 text-[clamp(1.3rem,2.2vw,1.6rem)] font-extrabold tracking-[-0.02em]">{title}</h3>
+      <p className="mt-3 leading-relaxed text-[color:var(--l-muted)]">{body}</p>
+      <Link
+        to={to}
+        className={`font-rounded mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-extrabold no-underline ${
+          primary ? "text-white" : "border"
+        }`}
+        style={primary ? { background: ACCENT } : { borderColor: "rgba(19,23,27,.25)", color: "inherit" }}
+      >
+        {cta}
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </Link>
+    </article>
+  );
+}
+```
+
+- [ ] **Step 5: Write the Careers page**
+
+`careers-page.tsx`:
+
+```tsx
+import { useTranslation } from "react-i18next";
+import { ArrowRight } from "lucide-react";
+import { ACCENT } from "@/features/landing/ui/palette";
+import { CONTACT } from "@/shared/lib/contact";
+import { CompanyPage, Eyebrow } from "./company-page";
+
+interface Principle {
+  title: string;
+  body: string;
+}
+
+/**
+ * No open roles, said plainly, and a spontaneous application by email. The
+ * three "how we work" sentences are the only copy on the six pages not
+ * derived from the code; the owner approved them.
+ */
+export function CareersPage() {
+  const { t } = useTranslation("company");
+  const how = t("careers.how", { returnObjects: true }) as Principle[] | string;
+  const mailto = `mailto:${CONTACT.general}?subject=${encodeURIComponent(t("careers.mailSubject"))}`;
+
+  return (
+    <CompanyPage page="careers" eyebrow={t("careers.eyebrow")} title={t("careers.heading")} lede={t("careers.lede")}>
+      <section className="page-shell py-16 md:py-20">
+        <div className="grid gap-12 md:grid-cols-2 md:gap-16">
+          <div>
+            <Eyebrow>{t("careers.buildingEyebrow")}</Eyebrow>
+            <p className="mt-4 text-[16px] leading-relaxed text-[color:var(--l-muted)]">{t("careers.building1")}</p>
+            <p className="mt-4 text-[16px] leading-relaxed text-[color:var(--l-muted)]">{t("careers.building2")}</p>
+          </div>
+          <div>
+            <Eyebrow>{t("careers.howEyebrow")}</Eyebrow>
+            <ul className="mt-4 grid gap-5 p-0">
+              {Array.isArray(how) &&
+                how.map((p) => (
+                  <li key={p.title} className="list-none">
+                    <h3 className="font-rounded text-[1.1rem] font-extrabold tracking-[-0.01em]">{p.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-[color:var(--l-muted)]">{p.body}</p>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-shell pb-16 md:pb-20">
+        <div
+          className="flex flex-col gap-6 rounded-[20px] border p-7 md:flex-row md:items-center md:justify-between md:p-8"
+          style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+        >
+          <div>
+            <Eyebrow>{t("careers.openingsEyebrow")}</Eyebrow>
+            <h2 className="font-rounded mt-3 text-[clamp(1.4rem,2.4vw,1.8rem)] font-extrabold tracking-[-0.02em]">
+              {t("careers.openingsTitle")}
+            </h2>
+            <p className="mt-3 max-w-[56ch] leading-relaxed text-[color:var(--l-muted)]">{t("careers.openingsBody")}</p>
+          </div>
+          <a
+            href={mailto}
+            className="font-rounded inline-flex shrink-0 items-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-extrabold text-white no-underline"
+            style={{ background: ACCENT }}
+          >
+            {t("careers.openingsCta")}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
+        </div>
+        <p className="mt-3 text-right text-sm text-[color:var(--l-muted)]">
+          {t("careers.openingsHint", { email: CONTACT.general })}
+        </p>
+      </section>
+    </CompanyPage>
+  );
+}
+```
+
+- [ ] **Step 6: Write the two routes**
+
+`routes/about.tsx`:
+
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import i18n from "@/shared/lib/i18n";
+import { AboutPage } from "@/features/company/ui/about-page";
+
+/**
+ * Top level, not under `_public`, for the reason `/privacy` gives: `_public`
+ * redirects anyone with a session away, and the signed-in are exactly who
+ * reads this. `ssr: true` because it is the kind of page a crawler indexes.
+ */
+export const Route = createFileRoute("/about")({
+  ssr: true,
+  head: () => ({ meta: [{ title: `${i18n.t("about.headTitle", { ns: "company" })} · Ntizo` }] }),
+  component: AboutPage,
+});
+```
+
+`routes/careers.tsx`: the same with `"/careers"`, `careers.headTitle`, `CareersPage` from `@/features/company/ui/careers-page`.
+
+- [ ] **Step 7: Run the tests, typecheck, lint**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company && bun run typecheck && bun run lint`
+Expected: 7 pass; typecheck clean (the route tree regenerates on the first `vite`/`tsc` run — if `routeTree.gen.ts` does not pick the new files up, run `bunx vite build --mode development` once, or start `bun run dev` for a moment); lint clean, including the boundaries rules (ui imports ui and shared only).
+
+- [ ] **Step 8: Look at it**
+
+Start the app (`bun run dev` in `apps/frontend/web`, API running per the dev-environment memory) and open `/about` and `/careers` at desktop and at 390px wide. Check: the header sits over the band with the white logo and no lit pill; the band is ~300px, not a full screen; no hairline beside any eyebrow; the strip stacks on the phone; the footer's Empresa column shows seven links.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add apps/frontend/web/src/features/company apps/frontend/web/src/routes/about.tsx apps/frontend/web/src/routes/careers.tsx apps/frontend/web/src/routeTree.gen.ts
+git commit -m "feat(company): the shared frame, and the About and Careers pages"
+```
+
+---
+
+### Task 11: The FAQ — three groups on one page, a sticky index
+
+**Files:**
+- Create: `apps/frontend/web/src/features/company/ui/faq-index.tsx`
+- Create: `apps/frontend/web/src/features/company/ui/faq-page.tsx`
+- Create: `apps/frontend/web/src/routes/faq.tsx`
+- Test: `apps/frontend/web/src/features/company/ui/__tests__/faq-page.test.tsx`
+
+**Interfaces:**
+- Consumes: `CompanyPage`, `Eyebrow` (Task 10); `faq.groups` (Task 9).
+- Produces: `FaqPage`, `FaqIndex({ groups, activeId, onPick })`, `FaqGroup` type.
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { FaqPage } from "../faq-page";
+import { renderCompanyPage } from "./render-company-page";
+
+describe("FaqPage", () => {
+  it("renders all twenty questions, grouped, with the first of each group open", () => {
+    renderCompanyPage(FaqPage, "/faq");
+    const details = document.querySelectorAll("details");
+    expect(details).toHaveLength(20);
+    const open = Array.from(details).filter((d) => d.open).map((d) => d.querySelector("summary")!.textContent);
+    expect(open).toEqual(["How does a booking work?", "Who can be a provider?", "Is my payment data stored?"]);
+    for (const group of ["Customers", "Providers", "Payments and safety"]) {
+      expect(screen.getByRole("heading", { level: 2, name: group })).toBeInTheDocument();
+    }
+  });
+
+  it("answers with the truth about payment methods and cancellation", () => {
+    renderCompanyPage(FaqPage, "/faq");
+    expect(screen.getByText(/Right now, M-Pesa \(Vodacom\)/)).toBeInTheDocument();
+    expect(screen.getByText(/the request commits you to nothing/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/refund/i);
+  });
+
+  it("opens and closes a question", async () => {
+    renderCompanyPage(FaqPage, "/faq");
+    const summary = screen.getByText("When do I pay?");
+    const details = summary.closest("details")!;
+    expect(details.open).toBe(false);
+    await userEvent.click(summary);
+    expect(details.open).toBe(true);
+  });
+
+  it("indexes the three groups with their counts, and links the way out to support", () => {
+    renderCompanyPage(FaqPage, "/faq");
+    const index = screen.getByRole("navigation", { name: /sections/i });
+    expect(index).toHaveTextContent("Customers");
+    expect(index).toHaveTextContent("8");
+    expect(index).toHaveTextContent("Providers");
+    expect(index).toHaveTextContent("7");
+    expect(index).toHaveTextContent("Payments and safety");
+    expect(index).toHaveTextContent("5");
+    expect(screen.getAllByRole("link", { name: /message support/i })[0]).toHaveAttribute("href", "/support");
+  });
+
+  it("offers support, contact and feedback at the bottom — not itself", () => {
+    renderCompanyPage(FaqPage, "/faq");
+    const strip = screen.getByRole("heading", { name: /still have questions/i }).parentElement!;
+    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/support", "/contact", "/feedback"]);
+  });
+});
+```
+
+- [ ] **Step 2: Run to see it fail**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company/ui/__tests__/faq-page.test.tsx`
+Expected: FAIL — module not found.
+
+- [ ] **Step 3: Write the index**
+
+`faq-index.tsx`:
+
+```tsx
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { ACCENT } from "@/features/landing/ui/palette";
+import type { FaqGroup } from "./faq-page";
+
+/**
+ * The way through the page: one entry per group with its count, and the way
+ * out when the answer is not here.
+ *
+ * A sticky column on a desktop and a row of chips on a phone — the same
+ * list, styled twice, so neither can drift. The `nav` is labelled because
+ * an unlabelled one announces "navigation" beside the site's own.
+ */
+export function FaqIndex({
+  groups,
+  activeId,
+  onPick,
+}: {
+  groups: readonly FaqGroup[];
+  activeId: string;
+  onPick: (id: string) => void;
+}) {
+  const { t } = useTranslation("company");
+
+  return (
+    <nav aria-label={t("faq.eyebrow")} className="md:sticky md:top-24">
+      <ul className="m-0 flex gap-2 overflow-x-auto p-0 md:flex-col md:gap-0 md:overflow-visible">
+        {groups.map((group) => {
+          const active = group.id === activeId;
+          return (
+            <li key={group.id} className="list-none shrink-0">
+              <button
+                type="button"
+                onClick={() => onPick(group.id)}
+                aria-current={active ? "true" : undefined}
+                className={`rounded-full border px-3.5 py-2 text-sm font-semibold md:w-full md:rounded-none md:border-0 md:border-l-2 md:px-3 md:text-left ${
+                  active ? "md:border-l-[color:var(--l-accent)]" : "md:border-l-transparent"
+                }`}
+                style={
+                  active
+                    ? { color: ACCENT, borderColor: ACCENT }
+                    : { color: "var(--l-muted)", borderColor: "var(--l-border)" }
+                }
+              >
+                {group.title}
+                <span className="ml-1.5 font-normal text-[color:var(--l-muted)]">· {group.items.length}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div
+        className="mt-6 hidden rounded-[16px] border p-5 md:block"
+        style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+      >
+        <p className="font-rounded m-0 text-[15px] font-extrabold">{t("faq.notFoundTitle")}</p>
+        <p className="mt-1 text-sm leading-relaxed text-[color:var(--l-muted)]">{t("faq.notFoundBody")}</p>
+        <Link
+          to="/support"
+          className="font-rounded mt-4 inline-flex items-center rounded-full px-5 py-2.5 text-[13px] font-extrabold text-white no-underline"
+          style={{ background: ACCENT }}
+        >
+          {t("faq.notFoundCta")}
+        </Link>
+      </div>
+    </nav>
+  );
+}
+```
+
+- [ ] **Step 4: Write the page**
+
+`faq-page.tsx`:
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { ACCENT } from "@/features/landing/ui/palette";
+import { CompanyPage } from "./company-page";
+import { FaqIndex } from "./faq-index";
+
+export interface FaqGroup {
+  id: "customers" | "providers" | "payments";
+  title: string;
+  items: { q: string; a: string }[];
+}
+
+/**
+ * Twenty questions in three groups, all on one page.
+ *
+ * All on one page rather than tabs, decided 2026-09-02: Ctrl+F works, a
+ * shared link lands on the question, and a crawler sees all of it. Native
+ * `<details>` — no library — with the first of each group open so the page
+ * does not start as a wall of closed rows.
+ *
+ * The index highlights the group under the reader's eye by watching each
+ * group's heading; jsdom has no `IntersectionObserver`, so the page settles
+ * on the first group there and the test does not depend on scroll.
+ */
+export function FaqPage() {
+  const { t } = useTranslation("company");
+  const raw = t("faq.groups", { returnObjects: true }) as FaqGroup[] | string;
+  const groups = Array.isArray(raw) ? raw : [];
+  const [activeId, setActiveId] = useState<string>(groups[0]?.id ?? "customers");
+  const headings = useRef(new Map<string, HTMLElement>());
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible) setActiveId((visible.target as HTMLElement).dataset["group"] ?? "customers");
+      },
+      { rootMargin: "-20% 0px -70% 0px" },
+    );
+    for (const el of headings.current.values()) observer.observe(el);
+    return () => observer.disconnect();
+  }, [groups.length]);
+
+  function jumpTo(id: string) {
+    setActiveId(id);
+    headings.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  return (
+    <CompanyPage page="faq" eyebrow={t("faq.eyebrow")} title={t("faq.heading")} lede={t("faq.lede")}>
+      <section className="page-shell grid gap-8 py-14 md:grid-cols-[220px_1fr] md:gap-14 md:py-20">
+        <FaqIndex groups={groups} activeId={activeId} onPick={jumpTo} />
+
+        <div>
+          {groups.map((group, gi) => (
+            <section key={group.id} id={`faq-${group.id}`} className={gi === 0 ? "" : "mt-14"}>
+              <h2
+                ref={(el) => {
+                  if (el) headings.current.set(group.id, el);
+                }}
+                data-group={group.id}
+                className="font-rounded scroll-mt-28 text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em]"
+              >
+                {group.title}
+              </h2>
+              <div className="mt-5 grid gap-3">
+                {group.items.map((item, i) => (
+                  <details
+                    key={item.q}
+                    open={i === 0}
+                    className="group rounded-[12px] border open:border-[color:var(--l-accent)]"
+                    style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+                  >
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+                      {item.q}
+                      <span aria-hidden="true" className="text-lg leading-none group-open:hidden" style={{ color: ACCENT }}>+</span>
+                      <span aria-hidden="true" className="hidden text-lg leading-none group-open:inline" style={{ color: ACCENT }}>−</span>
+                    </summary>
+                    <p className="m-0 px-5 pb-5 text-[15px] leading-relaxed text-[color:var(--l-muted)]">{item.a}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          ))}
+
+          <div
+            className="mt-12 flex flex-col gap-4 rounded-[16px] border p-6 md:hidden"
+            style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+          >
+            <p className="font-rounded m-0 text-[15px] font-extrabold">{t("faq.notFoundTitle")}</p>
+            <p className="m-0 text-sm text-[color:var(--l-muted)]">{t("faq.notFoundBody")}</p>
+            <Link
+              to="/support"
+              className="font-rounded inline-flex w-fit items-center rounded-full px-5 py-2.5 text-[13px] font-extrabold text-white no-underline"
+              style={{ background: ACCENT }}
+            >
+              {t("faq.notFoundCta")}
+            </Link>
+          </div>
+        </div>
+      </section>
+    </CompanyPage>
+  );
+}
+```
+
+- [ ] **Step 5: The route**
+
+`routes/faq.tsx`: as `about.tsx`, with `"/faq"`, `faq.headTitle`, `FaqPage` from `@/features/company/ui/faq-page`.
+
+- [ ] **Step 6: Run the tests, typecheck, lint**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company && bun run typecheck && bun run lint`
+Expected: all company tests pass (12); clean.
+
+- [ ] **Step 7: Look at it** — `/faq` at desktop: the index sticks while scrolling and the lit group follows; on a phone the index is a chip row and the "Not here?" card sits under the last group.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/frontend/web/src/features/company apps/frontend/web/src/routes/faq.tsx apps/frontend/web/src/routeTree.gen.ts
+git commit -m "feat(company): the FAQ — three groups on one page, with a sticky index"
+```
+
+---
+
+### Task 12: The form, and the three pages built on it (Contact, Support, Feedback)
+
+**Files:**
+- Create: `apps/frontend/web/src/features/company/domain/support-form-validation.ts`
+- Create: `apps/frontend/web/src/features/company/data/support-request.repository.ts`
+- Create: `apps/frontend/web/src/features/company/viewmodel/use-submit-support-request.ts`
+- Create: `apps/frontend/web/src/features/company/ui/support-form.tsx`
+- Create: `apps/frontend/web/src/features/company/ui/support-request-page.tsx`
+- Create: `apps/frontend/web/src/routes/contact.tsx`, `support.tsx`, `feedback.tsx`
+- Test: `apps/frontend/web/src/features/company/domain/__tests__/support-form-validation.test.ts`, `apps/frontend/web/src/features/company/ui/__tests__/support-form.test.tsx`
+
+**Interfaces:**
+- Consumes: `SUPPORT_TOPICS`, `supportEmailRequired` (`@ntizo/shared`); `sessionGraphql`, `GraphqlError` (`@/shared/lib/graphql/session-graphql`); `useCurrentUser`; `CONTACT`; `CompanyPage`.
+- Produces: `validateSupportForm(values, { emailRequired }): SupportFormErrors`; `submitSupportRequest(input): Promise<{ requestId; reference }>` and `SubmitSupportRequestInput`; `useSubmitSupportRequest()` (a `useMutation`); `SupportForm({ kind, messagePlaceholder })`; `SupportRequestPage({ kind })`.
+
+- [ ] **Step 1: The validation, and its failing test**
+
+`domain/__tests__/support-form-validation.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { validateSupportForm } from "../support-form-validation";
+
+const ok = { name: "Joana Matola", email: "joana@exemplo.com", message: "A reserva de sábado não aparece." };
+
+describe("validateSupportForm", () => {
+  it("passes a complete form", () => {
+    expect(validateSupportForm(ok, { emailRequired: true })).toEqual({});
+  });
+  it("needs a name of at least two characters", () => {
+    expect(validateSupportForm({ ...ok, name: " J " }, { emailRequired: true })).toEqual({ name: "required" });
+  });
+  it("needs an email when the kind requires one, and a well-formed one whenever one is given", () => {
+    expect(validateSupportForm({ ...ok, email: "" }, { emailRequired: true })).toEqual({ email: "required" });
+    expect(validateSupportForm({ ...ok, email: "" }, { emailRequired: false })).toEqual({});
+    expect(validateSupportForm({ ...ok, email: "joana" }, { emailRequired: false })).toEqual({ email: "invalid" });
+  });
+  it("needs at least ten characters of message", () => {
+    expect(validateSupportForm({ ...ok, message: "olá   " }, { emailRequired: true })).toEqual({ message: "tooShort" });
+  });
+});
+```
+
+`domain/support-form-validation.ts` (import-free — the boundaries lint requires it):
+
+```ts
+export interface SupportFormValues {
+  name: string;
+  email: string;
+  message: string;
+}
+
+export interface SupportFormErrors {
+  name?: "required";
+  email?: "required" | "invalid";
+  message?: "tooShort";
+}
+
+/** The same bounds the aggregate enforces, checked before the round trip so the refusal lands beside the field. */
+export const NAME_MIN = 2;
+export const NAME_MAX = 80;
+export const MESSAGE_MIN = 10;
+export const MESSAGE_MAX = 2000;
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateSupportForm(
+  values: SupportFormValues,
+  options: { emailRequired: boolean },
+): SupportFormErrors {
+  const errors: SupportFormErrors = {};
+  if (values.name.trim().length < NAME_MIN) errors.name = "required";
+  const email = values.email.trim();
+  if (email === "") {
+    if (options.emailRequired) errors.email = "required";
+  } else if (!EMAIL_SHAPE.test(email)) {
+    errors.email = "invalid";
+  }
+  if (values.message.trim().length < MESSAGE_MIN) errors.message = "tooShort";
+  return errors;
+}
+```
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company/domain` — Expected: 4 pass.
+
+- [ ] **Step 2: The repository and the hook**
+
+`data/support-request.repository.ts`:
+
+```ts
+import type { SupportRequestKind } from "@ntizo/shared";
+import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
+
+const SUBMIT = `
+  mutation SupportRequestSubmit($input: SupportRequestSubmitInput!) {
+    supportRequestSubmit(input: $input) { requestId reference }
+  }`;
+
+export interface SubmitSupportRequestInput {
+  kind: SupportRequestKind;
+  topic: string;
+  name: string;
+  email: string | null;
+  message: string;
+  locale: string;
+  originPath: string | null;
+  /** The honeypot. Always sent, always empty for a person. */
+  website: string;
+}
+
+/**
+ * Through the private endpoint, not `publicGraphql`: the public mount serves
+ * queries only and builds an empty context, so it has neither the address
+ * the rate limit counts on nor the session the prefill comes from. The
+ * private mount accepts anonymous callers (`requesterUserId: null`) and this
+ * is the first mutation that relies on it — see the spec.
+ */
+export async function submitSupportRequest(
+  input: SubmitSupportRequestInput,
+): Promise<{ requestId: string; reference: string }> {
+  const d = await sessionGraphql<{ supportRequestSubmit: { requestId: string; reference: string } }>(SUBMIT, {
+    input,
+  });
+  return d.supportRequestSubmit;
+}
+```
+
+`viewmodel/use-submit-support-request.ts`:
+
+```ts
+import { useMutation } from "@tanstack/react-query";
+import { submitSupportRequest, type SubmitSupportRequestInput } from "../data/support-request.repository";
+
+/** Not retried: a retry after a rate-limit refusal is exactly what the limit refuses. */
+export function useSubmitSupportRequest() {
+  return useMutation({
+    mutationFn: (input: SubmitSupportRequestInput) => submitSupportRequest(input),
+    retry: false,
+  });
+}
+```
+
+- [ ] **Step 3: Write the failing form tests**
+
+`ui/__tests__/support-form.test.tsx`:
+
+```tsx
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { CurrentUserDTO } from "@ntizo/shared";
+import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
+import { SupportRequestPage } from "../support-request-page";
+import { renderCompanyPage } from "./render-company-page";
+
+const fakes = vi.hoisted(() => ({ submit: vi.fn() }));
+vi.mock("@/features/company/data/support-request.repository", () => ({
+  submitSupportRequest: fakes.submit,
+}));
+
+function SupportPage() {
+  return <SupportRequestPage kind="support" />;
+}
+function FeedbackPage() {
+  return <SupportRequestPage kind="feedback" />;
+}
+
+function user(): CurrentUserDTO {
+  return {
+    id: "u-1", email: "joana@exemplo.com", role: "customer", status: "active", createdAt: "2026-01-01T00:00:00.000Z",
+    name: "Joana Matola", firstName: "Joana", lastName: "Matola", displayName: "Joana", avatarUrl: null, avatarKey: null,
+    phoneNumber: null, bio: null, language: "pt-MZ", timezone: "Africa/Maputo", dateOfBirth: null, gender: null,
+  };
+}
+
+beforeEach(() => {
+  fakes.submit.mockReset();
+  fakes.submit.mockResolvedValue({ requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" });
+});
+afterEach(() => vi.clearAllMocks());
+
+describe("SupportRequestPage — support", () => {
+  it("validates before sending and lands the refusal beside the field", async () => {
+    renderCompanyPage(SupportPage, "/support");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+    expect(screen.getByText("Tell us your name.")).toBeInTheDocument();
+    expect(screen.getByText("We need an email to reply to.")).toBeInTheDocument();
+    expect(screen.getByText("Write at least 10 characters.")).toBeInTheDocument();
+    expect(fakes.submit).not.toHaveBeenCalled();
+  });
+
+  it("sends what was typed, with the locale, the first topic by default, and an empty honeypot", async () => {
+    renderCompanyPage(SupportPage, "/support");
+    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+    await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
+    await userEvent.type(screen.getByLabelText("Message"), "A reserva de sábado não aparece na minha conta.");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    await waitFor(() => expect(fakes.submit).toHaveBeenCalledTimes(1));
+    expect(fakes.submit.mock.calls[0]![0]).toEqual({
+      kind: "support",
+      topic: "account",
+      name: "Joana Matola",
+      email: "joana@exemplo.com",
+      message: "A reserva de sábado não aparece na minha conta.",
+      locale: expect.stringMatching(/^en/),
+      originPath: null,
+      website: "",
+    });
+  });
+
+  it("replaces the form with the reference and the reply address on success", async () => {
+    renderCompanyPage(SupportPage, "/support");
+    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+    await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
+    await userEvent.type(screen.getByLabelText("Message"), "A reserva de sábado não aparece na minha conta.");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    expect(await screen.findByRole("heading", { name: "We got your message." })).toBeInTheDocument();
+    expect(screen.getByText("Reference: 7F3A2C")).toBeInTheDocument();
+    expect(screen.getByText(/We will reply to joana@exemplo.com/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Message")).toBeNull();
+  });
+
+  it("says the rate-limit sentence, with the support address, and keeps what was typed", async () => {
+    fakes.submit.mockRejectedValue(
+      new GraphqlError(200, [{ message: "too many", extensions: { code: "UNPROCESSABLE", originalCode: "SUPPORT_RATE_LIMITED" } }]),
+    );
+    renderCompanyPage(SupportPage, "/support");
+    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+    await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
+    await userEvent.type(screen.getByLabelText("Message"), "A reserva de sábado não aparece na minha conta.");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    expect(await screen.findByText(/Try again in an hour, or write to suporte@ntizo.co.mz/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Message")).toHaveValue("A reserva de sábado não aparece na minha conta.");
+  });
+
+  it("prefills name and email from the session and hides the sign-in hint", async () => {
+    const { qc } = renderCompanyPage(SupportPage, "/support");
+    qc.setQueryData(["user", "me"], user());
+    await waitFor(() => expect(screen.getByLabelText("Name")).toHaveValue("Joana Matola"));
+    expect(screen.getByLabelText("Email")).toHaveValue("joana@exemplo.com");
+    expect(screen.queryByText(/have an account/i)).toBeNull();
+  });
+
+  it("offers sign-in carrying the way back, when signed out", () => {
+    renderCompanyPage(SupportPage, "/support");
+    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/sign-in?next=%2Fsupport");
+  });
+
+  it("hides the honeypot from people", () => {
+    renderCompanyPage(SupportPage, "/support");
+    const trap = document.querySelector('input[name="website"]')!;
+    expect(trap).toHaveAttribute("tabindex", "-1");
+    expect(trap).toHaveAttribute("aria-hidden", "true");
+  });
+});
+
+describe("SupportRequestPage — feedback", () => {
+  it("lets the email be empty, sends the page it came from, and thanks without a reply line", async () => {
+    renderCompanyPage(FeedbackPage, "/feedback");
+    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+    await userEvent.type(screen.getByLabelText("Message"), "Gostava de filtrar por bairro na lista de serviços.");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    await waitFor(() => expect(fakes.submit).toHaveBeenCalledTimes(1));
+    expect(fakes.submit.mock.calls[0]![0]).toMatchObject({ kind: "feedback", topic: "idea", email: null, originPath: "/feedback" });
+    expect(await screen.findByText("Thank you. We read everything that reaches us.")).toBeInTheDocument();
+    expect(screen.queryByText(/We will reply to/)).toBeNull();
+  });
+});
+```
+
+The `["user", "me"]` key is `userQueries.me()`'s — check `features/user/data/user.repository.ts` and use whatever it exports (`userQueries.me().queryKey`) rather than the literal if they differ.
+
+- [ ] **Step 4: Run to see them fail**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company/ui/__tests__/support-form.test.tsx`
+Expected: FAIL — modules not found.
+
+- [ ] **Step 5: Write the form**
+
+`ui/support-form.tsx`:
+
+```tsx
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { ArrowRight, Check } from "lucide-react";
+import { SUPPORT_TOPICS, supportEmailRequired, type SupportRequestKind } from "@ntizo/shared";
+import { Input, Label, Select } from "@ntizo/frontend-ui";
+import { ACCENT } from "@/features/landing/ui/palette";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
+import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
+import { CONTACT } from "@/shared/lib/contact";
+import { MESSAGE_MAX, NAME_MAX, validateSupportForm, type SupportFormErrors } from "../domain/support-form-validation";
+import { useSubmitSupportRequest } from "../viewmodel/use-submit-support-request";
+
+/**
+ * One form, three kinds.
+ *
+ * What differs by kind is the topic list, whether an email is required, and
+ * whether the page it came from is sent (feedback only — "I was on the
+ * services page" is the whole context of half of it). Everything else —
+ * prefill, the trap, the success state, the errors — is the same and lives
+ * here once.
+ *
+ * **Prefill is a suggestion, not a lock.** The fields fill from the session
+ * once and stay editable: somebody writing on a colleague's behalf, or from a
+ * shared account, should be able to say so.
+ *
+ * **The trap** is `website`: visually hidden, out of the tab order, hidden
+ * from screen readers. A script that fills every field fills it; the server
+ * answers with a success it never wrote.
+ */
+export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequestKind; messagePlaceholder: string }) {
+  const { t, i18n } = useTranslation("company");
+  const { data: user } = useCurrentUser();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const topics = SUPPORT_TOPICS[kind];
+  const emailRequired = supportEmailRequired(kind);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [topic, setTopic] = useState<string>(topics[0]);
+  const [message, setMessage] = useState("");
+  const [website, setWebsite] = useState("");
+  const [attempted, setAttempted] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  useEffect(() => {
+    if (!user || prefilled) return;
+    setName((n) => n || user.name);
+    setEmail((e) => e || user.email);
+    setPrefilled(true);
+  }, [user, prefilled]);
+
+  const submit = useSubmitSupportRequest();
+  const errors: SupportFormErrors = attempted ? validateSupportForm({ name, email, message }, { emailRequired }) : {};
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setAttempted(true);
+    if (Object.keys(validateSupportForm({ name, email, message }, { emailRequired })).length > 0) return;
+    submit.mutate({
+      kind,
+      topic,
+      name: name.trim(),
+      email: email.trim() === "" ? null : email.trim(),
+      message: message.trim(),
+      locale: i18n.resolvedLanguage ?? i18n.language,
+      originPath: kind === "feedback" ? pathname : null,
+      website,
+    });
+  }
+
+  if (submit.data) {
+    const replyEmail = email.trim();
+    return (
+      <div
+        className="rounded-[20px] border p-8 text-center md:p-10"
+        style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+      >
+        <span
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full"
+          style={{ background: `color-mix(in srgb, ${ACCENT} 12%, transparent)`, color: ACCENT }}
+        >
+          <Check className="h-6 w-6" aria-hidden="true" />
+        </span>
+        <h2 className="font-rounded mt-4 text-[clamp(1.4rem,2.4vw,1.8rem)] font-extrabold tracking-[-0.02em]">
+          {t("form.success.title")}
+        </h2>
+        <p className="mx-auto mt-2 max-w-[46ch] leading-relaxed text-[color:var(--l-muted)]">
+          {replyEmail ? t("form.success.replyTo", { email: replyEmail }) : t("form.success.noEmail")}
+        </p>
+        <p className="mt-4 inline-block rounded-md px-3 py-1.5 font-mono text-sm" style={{ background: "var(--color-muted)" }}>
+          {t("form.success.reference", { reference: submit.data.reference })}
+        </p>
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link to="/" className="font-rounded rounded-full border px-6 py-3 text-[14px] font-bold no-underline" style={{ borderColor: "rgba(19,23,27,.25)", color: "inherit" }}>
+            {t("form.success.home")}
+          </Link>
+          <Link to="/faq" className="font-rounded rounded-full border px-6 py-3 text-[14px] font-bold no-underline" style={{ borderColor: "rgba(19,23,27,.25)", color: "inherit" }}>
+            {t("form.success.faq")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const serverError = submit.error
+    ? submit.error instanceof GraphqlError && submit.error.code === "SUPPORT_RATE_LIMITED"
+      ? t("form.errors.rateLimited", { email: CONTACT.support })
+      : t("form.errors.generic", { email: CONTACT.support })
+    : null;
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      noValidate
+      className="rounded-[20px] border p-6 md:p-8"
+      style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+    >
+      {!user && (
+        <p className="m-0 mb-5 text-sm text-[color:var(--l-muted)]">
+          {t("form.signInHint")}{" "}
+          <Link to="/sign-in" search={{ next: pathname }} className="font-semibold" style={{ color: ACCENT }}>
+            {t("form.signInLink")}
+          </Link>{" "}
+          {t("form.signInHintRest")}
+        </p>
+      )}
+
+      <div className="grid gap-5">
+        <Field label={t("form.name")} htmlFor="support-name" error={errors.name && t("form.errors.nameRequired")}>
+          <Input
+            id="support-name"
+            name="name"
+            autoComplete="name"
+            maxLength={NAME_MAX}
+            placeholder={t("form.namePlaceholder")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-invalid={errors.name ? true : undefined}
+          />
+        </Field>
+
+        <Field
+          label={t("form.email")}
+          htmlFor="support-email"
+          hint={emailRequired ? undefined : t("form.emailOptional")}
+          error={errors.email && t(errors.email === "required" ? "form.errors.emailRequired" : "form.errors.emailInvalid")}
+        >
+          <Input
+            id="support-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder={t("form.emailPlaceholder")}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={errors.email ? true : undefined}
+          />
+        </Field>
+
+        <Field label={t("form.topic")} htmlFor="support-topic">
+          <Select
+            id="support-topic"
+            name="topic"
+            value={topic}
+            onChange={setTopic}
+            options={topics.map((value) => ({ value, label: t(`topics.${kind}.${value}`) }))}
+          />
+        </Field>
+
+        <Field label={t("form.message")} htmlFor="support-message" error={errors.message && t("form.errors.messageTooShort")}>
+          <textarea
+            id="support-message"
+            name="message"
+            rows={6}
+            maxLength={MESSAGE_MAX}
+            placeholder={messagePlaceholder}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            aria-invalid={errors.message ? true : undefined}
+            className="type-body w-full rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
+          />
+        </Field>
+
+        {/* The trap. Off-screen, out of the tab order, invisible to assistive
+            tech; `autoComplete="off"` so a browser does not fill it for a
+            person either. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">
+          <label htmlFor="support-website">Website</label>
+          <input
+            id="support-website"
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {serverError && (
+        <p role="alert" className="mt-5 text-sm text-[var(--color-destructive)]">
+          {serverError}
+        </p>
+      )}
+
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="m-0 max-w-[48ch] text-xs leading-relaxed text-[color:var(--l-muted)]">
+          {t("form.privacyNote")}{" "}
+          <Link to="/privacy" className="underline" style={{ color: "inherit" }}>
+            {t("form.privacyLink")}
+          </Link>
+        </p>
+        <button
+          type="submit"
+          disabled={submit.isPending}
+          className="font-rounded inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-extrabold text-white disabled:opacity-60"
+          style={{ background: ACCENT }}
+        >
+          {submit.isPending ? t("form.sending") : t("form.submit")}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Field({
+  label, htmlFor, hint, error, children,
+}: { label: string; htmlFor: string; hint?: string; error?: string | false; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {hint && <p className="mt-1 mb-0 text-xs text-[color:var(--l-muted)]">{hint}</p>}
+      <div className="mt-2">{children}</div>
+      {error && <p className="mt-1.5 mb-0 text-xs text-[var(--color-destructive)]">{error}</p>}
+    </div>
+  );
+}
+```
+
+`form` needs `position: relative` for the trap's absolute offset — add `relative` to the form's className.
+
+- [ ] **Step 6: Write the page the three routes share**
+
+`ui/support-request-page.tsx`:
+
+```tsx
+import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import type { SupportRequestKind } from "@ntizo/shared";
+import { ACCENT } from "@/features/landing/ui/palette";
+import { CONTACT } from "@/shared/lib/contact";
+import { CompanyPage, type CompanyPageId } from "./company-page";
+import { SupportForm } from "./support-form";
+
+/** Which three cards sit under each form, and where the third one goes. */
+const CARDS: Record<SupportRequestKind, ReadonlyArray<{ key: string; kind: "email" | "social" | "link"; to?: string }>> = {
+  contact: [
+    { key: "email", kind: "email" },
+    { key: "social", kind: "social" },
+    { key: "support", kind: "link", to: "/support" },
+  ],
+  support: [
+    { key: "email", kind: "email" },
+    { key: "expect", kind: "link" },
+    { key: "faq", kind: "link", to: "/faq" },
+  ],
+  feedback: [
+    { key: "read", kind: "link" },
+    { key: "support", kind: "link", to: "/support" },
+    { key: "faq", kind: "link", to: "/faq" },
+  ],
+};
+
+const EMAIL_FOR: Record<SupportRequestKind, string> = {
+  contact: CONTACT.general,
+  support: CONTACT.support,
+  feedback: CONTACT.support,
+};
+
+/**
+ * Contact, Support and Feedback: a centred band, the form, three cards.
+ *
+ * Single centred column, decided 2026-09-02 against a side rail: the form is
+ * what the page is for, and the alternatives sit under it rather than beside
+ * it. Each kind's copy lives under its own key in the `company` namespace;
+ * `page` doubles as that key.
+ */
+export function SupportRequestPage({ kind }: { kind: SupportRequestKind }) {
+  const { t } = useTranslation("company");
+  const page: CompanyPageId = kind;
+
+  return (
+    <CompanyPage page={page} eyebrow={t(`${kind}.eyebrow`)} title={t(`${kind}.heading`)} lede={t(`${kind}.lede`)} centred>
+      <section className="page-shell py-12 md:py-16">
+        <div className="mx-auto max-w-[640px]">
+          <SupportForm kind={kind} messagePlaceholder={t(`${kind}.messagePlaceholder`)} />
+        </div>
+
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {CARDS[kind].map((card) => (
+            <article
+              key={card.key}
+              className="rounded-[16px] border p-5"
+              style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+            >
+              <h2 className="font-rounded m-0 text-[15px] font-extrabold">{t(`${kind}.cards.${card.key}.title`)}</h2>
+              <p className="mt-1.5 mb-0 text-sm leading-relaxed text-[color:var(--l-muted)]">
+                {card.kind === "email" && (
+                  <>
+                    <a href={`mailto:${EMAIL_FOR[kind]}`} className="font-semibold no-underline" style={{ color: "var(--l-navy)" }}>
+                      {EMAIL_FOR[kind]}
+                    </a>
+                    <br />
+                  </>
+                )}
+                {t(`${kind}.cards.${card.key}.body`)}
+                {card.kind === "social" && (
+                  <>
+                    <br />
+                    <a href={CONTACT.instagram} target="_blank" rel="noopener noreferrer" className="font-semibold" style={{ color: ACCENT }}>Instagram</a>
+                    {" · "}
+                    <a href={CONTACT.linkedin} target="_blank" rel="noopener noreferrer" className="font-semibold" style={{ color: ACCENT }}>LinkedIn</a>
+                  </>
+                )}
+              </p>
+              {card.to && (
+                <Link to={card.to} className="mt-3 inline-flex items-center text-sm font-semibold no-underline" style={{ color: ACCENT }}>
+                  {t(`${kind}.cards.${card.key}.cta`)} →
+                </Link>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+    </CompanyPage>
+  );
+}
+```
+
+- [ ] **Step 7: The three routes**
+
+`routes/support.tsx`:
+
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import i18n from "@/shared/lib/i18n";
+import { SupportRequestPage } from "@/features/company/ui/support-request-page";
+
+/** Top level, outside `_public`, like `/about` — the signed-in are who need it. */
+export const Route = createFileRoute("/support")({
+  ssr: true,
+  head: () => ({ meta: [{ title: `${i18n.t("support.headTitle", { ns: "company" })} · Ntizo` }] }),
+  component: () => <SupportRequestPage kind="support" />,
+});
+```
+
+`routes/contact.tsx` and `routes/feedback.tsx`: the same with `"/contact"` / `contact.headTitle` / `kind="contact"`, and `"/feedback"` / `feedback.headTitle` / `kind="feedback"`.
+
+- [ ] **Step 8: Run the tests, typecheck, lint**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/company && bun run typecheck && bun run lint`
+Expected: all company tests pass (domain 4, pages 7, faq 5, form 8); clean.
+
+- [ ] **Step 9: Prove it end to end by hand, once**
+
+With the API and the app running, signed out, open `/support`, fill the form, send. Expected: the success panel with a reference; the API log shows the console email with `reply-to`; the row is in `ntizo_support.support_request`. Delete the row afterwards.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add apps/frontend/web/src/features/company apps/frontend/web/src/routes/contact.tsx apps/frontend/web/src/routes/support.tsx apps/frontend/web/src/routes/feedback.tsx apps/frontend/web/src/routeTree.gen.ts
+git commit -m "feat(company): one form, three pages — contact, support and feedback"
+```
+
+---
+
+### Task 13: The queue — `/admin/support`
+
+**Files:**
+- Create: `apps/frontend/web/src/features/admin/support/data/admin-support.repository.ts`
+- Create: `apps/frontend/web/src/features/admin/support/viewmodel/use-admin-support.ts`
+- Create: `apps/frontend/web/src/features/admin/support/ui/support-page.tsx`
+- Create: `apps/frontend/web/src/routes/admin/support.tsx`
+- Modify: `apps/frontend/web/src/shared/lib/admin-navigation.ts`
+- Modify: `apps/frontend/web/src/shared/locales/<8>/admin.json`
+- Test: `apps/frontend/web/src/features/admin/support/ui/__tests__/support-page.test.tsx`
+
+**Interfaces:**
+- Consumes: `SupportRequestAdminDTO`, `SupportRequestAdminPageDTO` (`@ntizo/shared/read-models`); `sessionGraphql`; `CollectionCard`; `usePageHeader`; `Badge`, `Button` (`@ntizo/frontend-ui`).
+- Produces: `adminSupportQueries.all(search)`, `setSupportRequestStatus(requestId, status)`, `ADMIN_SUPPORT_PAGE_SIZE = 25`, `AdminSupportSearch`; `useAdminSupport(search)`, `useSetSupportRequestStatus()`; `AdminSupportPage`.
+
+- [ ] **Step 1: The repository and the hooks**
+
+`data/admin-support.repository.ts`:
+
+```ts
+import { queryOptions } from "@tanstack/react-query";
+import type { SupportRequestKind, SupportRequestStatus } from "@ntizo/shared";
+import type { SupportRequestAdminPageDTO } from "@ntizo/shared/read-models";
+import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
+
+const ALL = `
+  query SupportRequestAllForAdmin($input: SupportRequestAllForAdminInput!) {
+    supportRequestAllForAdmin(input: $input) {
+      items {
+        id reference kind topic name email message requesterUserId locale
+        originPath ipAddress userAgent status resolvedAt createdAt
+      }
+      total
+      openCount
+    }
+  }`;
+
+const SET_STATUS = `
+  mutation SupportRequestSetStatus($input: SupportRequestSetStatusInput!) {
+    supportRequestSetStatus(input: $input) { status }
+  }`;
+
+export const ADMIN_SUPPORT_PAGE_SIZE = 25;
+
+export interface AdminSupportSearch {
+  offset?: number;
+  kind?: SupportRequestKind;
+  status?: SupportRequestStatus;
+  search?: string;
+}
+
+export const adminSupportQueries = {
+  /** The whole search is the key: "resolved" is a different result set from "open". */
+  all: (search: AdminSupportSearch) =>
+    queryOptions({
+      queryKey: ["admin", "support", search] as const,
+      queryFn: async (): Promise<SupportRequestAdminPageDTO> => {
+        const d = await sessionGraphql<{ supportRequestAllForAdmin: SupportRequestAdminPageDTO }>(ALL, {
+          input: {
+            limit: ADMIN_SUPPORT_PAGE_SIZE,
+            offset: search.offset ?? 0,
+            ...(search.kind ? { kind: search.kind } : {}),
+            ...(search.status ? { status: search.status } : {}),
+            ...(search.search ? { search: search.search } : {}),
+          },
+        });
+        return d.supportRequestAllForAdmin;
+      },
+    }),
+};
+
+export async function setSupportRequestStatus(requestId: string, status: SupportRequestStatus): Promise<void> {
+  await sessionGraphql(SET_STATUS, { input: { requestId, status } });
+}
+```
+
+`viewmodel/use-admin-support.ts`:
+
+```ts
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SupportRequestStatus } from "@ntizo/shared";
+import { adminSupportQueries, setSupportRequestStatus, type AdminSupportSearch } from "../data/admin-support.repository";
+
+export function useAdminSupport(search: AdminSupportSearch) {
+  return useQuery(adminSupportQueries.all(search));
+}
+
+/** Not optimistic: `openCount` rides on the same payload and would have to be kept in step by hand. */
+export function useSetSupportRequestStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, status }: { requestId: string; status: SupportRequestStatus }) =>
+      setSupportRequestStatus(requestId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "support"] }),
+  });
+}
+```
+
+- [ ] **Step 2: Write the failing page test**
+
+```tsx
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider, createMemoryHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import type { SupportRequestAdminDTO } from "@ntizo/shared/read-models";
+import { AdminSupportPage } from "../support-page";
+
+const fakes = vi.hoisted(() => ({ setStatus: vi.fn() }));
+vi.mock("@/features/admin/support/data/admin-support.repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/admin/support/data/admin-support.repository")>();
+  return { ...actual, setSupportRequestStatus: fakes.setStatus };
+});
+
+function row(over: Partial<SupportRequestAdminDTO> = {}): SupportRequestAdminDTO {
+  return {
+    id: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C", kind: "support", topic: "booking",
+    name: "Joana Matola", email: "joana@exemplo.com", message: "A reserva de sábado não aparece na minha conta.",
+    requesterUserId: "u-1", locale: "pt-MZ", originPath: null, ipAddress: "197.218.0.1", userAgent: "Mozilla/5.0",
+    status: "open", resolvedAt: null, createdAt: "2026-09-02T10:00:00.000Z", ...over,
+  };
+}
+
+function renderPage(items: SupportRequestAdminDTO[]) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // The default search: first page, open only. Seeded so no fetch happens.
+  qc.setQueryData(["admin", "support", { offset: 0, status: "open" }], { items, total: items.length, openCount: items.length });
+  const rootRoute = createRootRoute();
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      createRoute({ getParentRoute: () => rootRoute, path: "/", component: AdminSupportPage }),
+      createRoute({ getParentRoute: () => rootRoute, path: "/admin/users", component: () => <p>users</p> }),
+    ]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  render(
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return qc;
+}
+
+beforeEach(() => fakes.setStatus.mockReset().mockResolvedValue(undefined));
+
+describe("AdminSupportPage", () => {
+  it("lists a request with its kind, topic, who wrote, and the reference", () => {
+    renderPage([row()]);
+    expect(screen.getByText("Joana Matola")).toBeInTheDocument();
+    expect(screen.getByText("joana@exemplo.com")).toBeInTheDocument();
+    expect(screen.getByText("Support")).toBeInTheDocument();
+    expect(screen.getByText("A booking")).toBeInTheDocument();
+    expect(screen.getByText("#7F3A2C")).toBeInTheDocument();
+    expect(screen.getByText(/1 open request/)).toBeInTheDocument();
+  });
+
+  it("offers a reply by email with the reference in the subject", () => {
+    renderPage([row()]);
+    expect(screen.getByRole("link", { name: /reply by email/i })).toHaveAttribute(
+      "href",
+      "mailto:joana@exemplo.com?subject=%5BNtizo%20%237F3A2C%5D%20A%20booking",
+    );
+  });
+
+  it("marks a request resolved and refetches the queue", async () => {
+    const qc = renderPage([row()]);
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    await userEvent.click(screen.getByRole("button", { name: /mark resolved/i }));
+    await waitFor(() => expect(fakes.setStatus).toHaveBeenCalledWith("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", "resolved"));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith({ queryKey: ["admin", "support"] }));
+  });
+
+  it("says the queue is empty in words", () => {
+    renderPage([]);
+    expect(screen.getByText("Nothing to answer.")).toBeInTheDocument();
+  });
+
+  it("expands a row to the whole message and where it came from", async () => {
+    renderPage([row({ originPath: "/services/abc" })]);
+    await userEvent.click(screen.getByRole("button", { name: /show details/i }));
+    expect(screen.getByText("/services/abc")).toBeInTheDocument();
+    expect(screen.getByText("197.218.0.1")).toBeInTheDocument();
+  });
+});
+```
+
+- [ ] **Step 3: Run to see it fail**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/admin/support`
+Expected: FAIL — module not found.
+
+- [ ] **Step 4: Write the page**
+
+`ui/support-page.tsx`:
+
+```tsx
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { Inbox, Mail } from "lucide-react";
+import type { SupportRequestKind, SupportRequestStatus } from "@ntizo/shared";
+import type { SupportRequestAdminDTO } from "@ntizo/shared/read-models";
+import { Badge, Button } from "@ntizo/frontend-ui";
+import { CollectionCard } from "@/shared/components/collection-card";
+import { usePageHeader } from "@/shared/lib/page-header";
+import { ADMIN_SUPPORT_PAGE_SIZE } from "../data/admin-support.repository";
+import { useAdminSupport, useSetSupportRequestStatus } from "../viewmodel/use-admin-support";
+
+const KINDS: readonly SupportRequestKind[] = ["contact", "support", "feedback"];
+
+/**
+ * The support queue: what people wrote through the three forms, and whether
+ * anybody has answered yet.
+ *
+ * On the `/admin/reviews` pattern. Open requests by default — the queue is
+ * worked, not browsed — with kind and status filters and a search that also
+ * matches the reference a person quoted back. A row expands to the whole
+ * message and where it came from; the two actions are "reply by email" (a
+ * mailto with the reference in the subject, because the reply happens in the
+ * inbox, not here — spec, "What the context deliberately does not do") and
+ * resolve/reopen.
+ */
+export function AdminSupportPage() {
+  const { t, i18n } = useTranslation("admin");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+
+  const [kind, setKind] = useState<SupportRequestKind | undefined>(undefined);
+  const [status, setStatus] = useState<SupportRequestStatus | undefined>("open");
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const query = useAdminSupport({
+    offset,
+    ...(kind ? { kind } : {}),
+    ...(status ? { status } : {}),
+    ...(search.trim() ? { search: search.trim() } : {}),
+  });
+  const setRequestStatus = useSetSupportRequestStatus();
+
+  usePageHeader(t("supportTitle"), t("supportSubtitle"));
+
+  const rows = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
+  const openCount = query.data?.openCount ?? 0;
+  const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
+  const topicLabel = (r: SupportRequestAdminDTO) => t(`topics.${r.kind}.${r.topic}`, { ns: "company", defaultValue: r.topic });
+
+  function resetPage() {
+    setOffset(0);
+  }
+
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      {query.error && <p className="type-body text-[var(--color-destructive)]">{t("supportError")}</p>}
+      {setRequestStatus.error && <p className="type-body text-[var(--color-destructive)]">{t("supportStatusFailed")}</p>}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="type-body">{t("supportOpenCount", { count: openCount })}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant={kind === undefined ? "default" : "outline"} size="sm" onClick={() => { setKind(undefined); resetPage(); }}>
+            {t("supportKindAll")}
+          </Button>
+          {KINDS.map((k) => (
+            <Button key={k} variant={kind === k ? "default" : "outline"} size="sm" onClick={() => { setKind(k); resetPage(); }}>
+              {t(`supportKind.${k}`)}
+            </Button>
+          ))}
+          <span className="mx-1 hidden w-px bg-[var(--color-border)] sm:block" aria-hidden="true" />
+          <Button variant={status === "open" ? "default" : "outline"} size="sm" onClick={() => { setStatus("open"); resetPage(); }}>
+            {t("supportStatus.open")}
+          </Button>
+          <Button variant={status === "resolved" ? "default" : "outline"} size="sm" onClick={() => { setStatus("resolved"); resetPage(); }}>
+            {t("supportStatus.resolved")}
+          </Button>
+          <Button variant={status === undefined ? "default" : "outline"} size="sm" onClick={() => { setStatus(undefined); resetPage(); }}>
+            {t("supportStatusAll")}
+          </Button>
+        </div>
+      </div>
+
+      <CollectionCard
+        title={t("supportTitle")}
+        shown={rows.length}
+        total={total}
+        loading={query.isLoading}
+        search={search}
+        onSearchChange={(value) => { setSearch(value); resetPage(); }}
+        searchPlaceholder={t("supportSearchPlaceholder")}
+        columns={[
+          { key: "request", label: t("supportRequest"), className: "pl-5" },
+          { key: "kind", label: t("supportKindColumn"), skeletonWidth: "w-20", skeletonShape: "badge" },
+          { key: "topic", label: t("supportTopic"), skeletonWidth: "w-28" },
+          { key: "date", label: t("supportDate"), align: "right", skeletonWidth: "w-24" },
+          { key: "actions", label: t("supportAction"), align: "right", className: "pr-5", skeletonWidth: "w-40" },
+        ]}
+        emptyText={t("supportEmpty")}
+        emptyTitle={t("supportEmptyTitle")}
+        emptyBadge={Inbox}
+        noMatchesText={t("supportNoMatches")}
+        noMatchesTitle={t("supportNoMatchesTitle")}
+        filtered={kind !== undefined || status !== "open" || search.trim() !== ""}
+        rows={rows.map((r) => ({
+          key: r.id,
+          primary: (
+            <RequestSummary
+              request={r}
+              expanded={expanded === r.id}
+              onToggle={() => setExpanded((cur) => (cur === r.id ? null : r.id))}
+            />
+          ),
+          cells: {
+            kind: <Badge tone={r.kind === "support" ? "warning" : r.kind === "feedback" ? "info" : "neutral"}>{t(`supportKind.${r.kind}`)}</Badge>,
+            topic: <span className="block max-w-[22ch] truncate">{topicLabel(r)}</span>,
+            date: <span className="tabular-nums text-[var(--color-muted-foreground)]">{dateFormat.format(new Date(r.createdAt))}</span>,
+          },
+          actions: (
+            <span className="flex items-center justify-end gap-2">
+              {r.email && (
+                <a
+                  href={`mailto:${r.email}?subject=${encodeURIComponent(`[Ntizo #${r.reference}] ${topicLabel(r)}`)}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm font-semibold no-underline"
+                >
+                  <Mail className="h-4 w-4" aria-hidden="true" />
+                  {t("supportReply")}
+                </a>
+              )}
+              <Button
+                variant={r.status === "open" ? "default" : "outline"}
+                size="sm"
+                disabled={setRequestStatus.isPending}
+                onClick={() => setRequestStatus.mutate({ requestId: r.id, status: r.status === "open" ? "resolved" : "open" })}
+              >
+                {r.status === "open" ? t("supportResolve") : t("supportReopen")}
+              </Button>
+            </span>
+          ),
+        }))}
+      />
+
+      {total > ADMIN_SUPPORT_PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - ADMIN_SUPPORT_PAGE_SIZE))}>
+            {t("supportPrevious")}
+          </Button>
+          <Button variant="outline" size="sm" disabled={offset + ADMIN_SUPPORT_PAGE_SIZE >= total} onClick={() => setOffset((o) => o + ADMIN_SUPPORT_PAGE_SIZE)}>
+            {t("supportNext")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Who wrote, what they said (two lines, or all of it), and where from. */
+function RequestSummary({ request, expanded, onToggle }: { request: SupportRequestAdminDTO; expanded: boolean; onToggle: () => void }) {
+  const { t } = useTranslation("admin");
+  return (
+    <div className="min-w-0">
+      <p className="type-body-medium m-0 flex flex-wrap items-center gap-x-2 font-semibold">
+        {request.requesterUserId ? (
+          <Link to="/admin/users" search={{ q: request.email ?? request.name } as never} className="no-underline" style={{ color: "inherit" }}>
+            {request.name}
+          </Link>
+        ) : (
+          request.name
+        )}
+        <span className="type-caption font-mono text-[var(--color-muted-foreground)]">#{request.reference}</span>
+      </p>
+      <p className="type-caption m-0 text-[var(--color-muted-foreground)]">
+        {request.email ?? t("supportNoEmail")} · {request.locale}
+      </p>
+      <p className={`type-caption mt-1 mb-0 whitespace-pre-wrap text-[var(--color-foreground)] ${expanded ? "" : "line-clamp-2"}`}>
+        {request.message}
+      </p>
+      {expanded && (
+        <dl className="type-caption mt-2 mb-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[var(--color-muted-foreground)]">
+          <dt>{t("supportOrigin")}</dt><dd className="m-0">{request.originPath ?? "—"}</dd>
+          <dt>{t("supportIp")}</dt><dd className="m-0">{request.ipAddress ?? "—"}</dd>
+          <dt>{t("supportUserAgent")}</dt><dd className="m-0 break-all">{request.userAgent ?? "—"}</dd>
+        </dl>
+      )}
+      <button type="button" onClick={onToggle} className="type-caption mt-1 font-semibold text-[var(--color-primary)]">
+        {expanded ? t("supportHideDetails") : t("supportShowDetails")}
+      </button>
+    </div>
+  );
+}
+```
+
+Check `routes/admin/users.tsx` for the name of its search param (the users page has a search box; if it does not read one from the URL, drop the `search` prop on the `Link` and link to `/admin/users` plainly).
+
+- [ ] **Step 5: The route and the navigation entry**
+
+`routes/admin/support.tsx`:
+
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { AdminSupportPage } from "@/features/admin/support/ui/support-page";
+
+export const Route = createFileRoute("/admin/support")({
+  component: AdminSupportPage,
+});
+```
+
+In `admin-navigation.ts`: import `Inbox` from `lucide-react`, and after the `nav.users` item add:
+
+```ts
+      // After users, before the catalog: a queue of messages arriving, worked
+      // daily like the provider queue — not content the platform curates.
+      { titleKey: "nav.support", url: "/admin/support", icon: Inbox },
+```
+
+- [ ] **Step 6: The admin strings**
+
+Add to every `admin.json`. pt-MZ and en-US verbatim; pt-PT copies pt-MZ; es/fr/de/it/nl translated from these two with the same keys (`{{count}}` kept; `_one`/`_other` plural forms kept).
+
+pt-MZ:
+
+```json
+"nav": { "...existing": "...", "support": "Suporte" },
+"supportTitle": "Suporte",
+"supportSubtitle": "O que as pessoas nos escreveram pelos formulários, e o que ainda está por responder.",
+"supportOpenCount_one": "{{count}} pedido aberto",
+"supportOpenCount_other": "{{count}} pedidos abertos",
+"supportKindAll": "Todos",
+"supportKind": { "contact": "Contacto", "support": "Suporte", "feedback": "Feedback" },
+"supportKindColumn": "Tipo",
+"supportStatus": { "open": "Abertos", "resolved": "Resolvidos" },
+"supportStatusAll": "Todos",
+"supportRequest": "Pedido",
+"supportTopic": "Assunto",
+"supportDate": "Recebido",
+"supportAction": "Acções",
+"supportSearchPlaceholder": "Procurar por nome, email, texto ou referência",
+"supportEmpty": "Nada por responder.",
+"supportEmptyTitle": "Fila vazia",
+"supportNoMatches": "Nenhum pedido corresponde a esta pesquisa.",
+"supportNoMatchesTitle": "Sem resultados",
+"supportError": "Não foi possível carregar os pedidos.",
+"supportStatusFailed": "Não foi possível alterar esse pedido. Tente de novo.",
+"supportReply": "Responder por email",
+"supportResolve": "Marcar resolvido",
+"supportReopen": "Reabrir",
+"supportPrevious": "Anterior",
+"supportNext": "Seguinte",
+"supportNoEmail": "sem email",
+"supportOrigin": "Página",
+"supportIp": "IP",
+"supportUserAgent": "Navegador",
+"supportShowDetails": "Mostrar detalhes",
+"supportHideDetails": "Esconder detalhes"
+```
+
+en-US:
+
+```json
+"nav": { "...existing": "...", "support": "Support" },
+"supportTitle": "Support",
+"supportSubtitle": "What people wrote to us through the forms, and what is still unanswered.",
+"supportOpenCount_one": "{{count}} open request",
+"supportOpenCount_other": "{{count}} open requests",
+"supportKindAll": "All",
+"supportKind": { "contact": "Contact", "support": "Support", "feedback": "Feedback" },
+"supportKindColumn": "Kind",
+"supportStatus": { "open": "Open", "resolved": "Resolved" },
+"supportStatusAll": "All",
+"supportRequest": "Request",
+"supportTopic": "Topic",
+"supportDate": "Received",
+"supportAction": "Actions",
+"supportSearchPlaceholder": "Search a name, an email, the text, or a reference",
+"supportEmpty": "Nothing to answer.",
+"supportEmptyTitle": "Queue empty",
+"supportNoMatches": "No request matches this search.",
+"supportNoMatchesTitle": "No results",
+"supportError": "The requests could not be loaded.",
+"supportStatusFailed": "That request could not be changed. Try again.",
+"supportReply": "Reply by email",
+"supportResolve": "Mark resolved",
+"supportReopen": "Reopen",
+"supportPrevious": "Previous",
+"supportNext": "Next",
+"supportNoEmail": "no email",
+"supportOrigin": "Page",
+"supportIp": "IP",
+"supportUserAgent": "Browser",
+"supportShowDetails": "Show details",
+"supportHideDetails": "Hide details"
+```
+
+Then add `admin` to the parity gate in `locales.test.ts` the same way `landing` and `legal` were added in Task 8 (it agrees across the eight files today).
+
+- [ ] **Step 7: Run the tests, typecheck, lint**
+
+Run: `cd apps/frontend/web && bunx vitest run src/features/admin/support src/shared/locales && bun run typecheck && bun run lint`
+Expected: 5 pass; parity passes for `admin`; clean.
+
+- [ ] **Step 8: Look at it** — sign in as an administrator, open `/admin/support`: the nav shows "Support" after Users; the queue lists the row from Task 12's manual check if it still exists; resolve it; switch to "Resolved" and see it there; "Reply by email" opens the mail client with `[Ntizo #…]` in the subject.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add apps/frontend/web/src/features/admin/support apps/frontend/web/src/routes/admin/support.tsx apps/frontend/web/src/shared/lib/admin-navigation.ts apps/frontend/web/src/shared/locales apps/frontend/web/src/routeTree.gen.ts
+git commit -m "feat(admin): the support queue — filter, search by reference, reply by email, resolve"
+```
+
+---
+
+### Task 14: The privacy sentence, the follow-ups, and the end-to-end proof
+
+**Files:**
+- Modify: `apps/frontend/web/src/shared/locales/<8>/legal.json` (one sentence appended to `privacy.sections[0].body`)
+- Modify: `docs/superpowers/follow-ups.md`
+- Create: `apps/e2e/tests/company.spec.ts`
+
+- [ ] **Step 1: The privacy sentence**
+
+Append one string to the `body` array of the first section of `privacy` (the "what we collect" section) in each locale:
+
+| Locale | Sentence |
+|---|---|
+| pt-MZ / pt-PT | `O que nos escreve pelos formulários de contacto, suporte e feedback, com o endereço IP de onde foi enviado, para lhe respondermos e travarmos abusos.` |
+| en-US | `What you write to us through the contact, support and feedback forms, with the IP address it was sent from, so we can reply and stop abuse.` |
+| es-ES | `Lo que nos escribes a través de los formularios de contacto, soporte y opinión, con la dirección IP desde la que se envió, para responderte y frenar abusos.` |
+| fr-FR | `Ce que vous nous écrivez via les formulaires de contact, de support et d'avis, avec l'adresse IP d'envoi, pour vous répondre et prévenir les abus.` |
+| de-DE | `Was Sie uns über die Kontakt-, Support- und Feedback-Formulare schreiben, samt der IP-Adresse, von der es gesendet wurde, damit wir antworten und Missbrauch unterbinden können.` |
+| it-IT | `Ciò che ci scrivi tramite i moduli di contatto, assistenza e feedback, con l'indirizzo IP da cui è stato inviato, per risponderti e fermare gli abusi.` |
+| nl-NL | `Wat u ons schrijft via de contact-, support- en feedbackformulieren, met het IP-adres van waaruit het is verzonden, zodat we kunnen antwoorden en misbruik kunnen tegengaan.` |
+
+Run: `cd apps/frontend/web && bunx vitest run src/shared/locales` — Expected: the `legal` gate still passes (arrays are one leaf; every locale's array grew by one).
+
+- [ ] **Step 2: The follow-ups**
+
+Append to `docs/superpowers/follow-ups.md`, continuing its numbering (the last entry is #125 as of 2026-09-02; use the next numbers if more were added since):
+
+```markdown
+## #126 — Reply to a support request from inside the admin queue
+
+`/admin/support` replies with a `mailto:`; the thread lives in the inbox and the queue cannot show what was said.
+
+**Trigger:** the first week the inbox has more than a handful of open requests a day.
+
+---
+
+## #127 — Tell the requester when their request is resolved
+
+Resolving a request writes `resolved_at` and nothing reaches the person who wrote.
+
+**Trigger:** the same as #126.
+
+---
+
+## #128 — Read the support address from `platform_settings.support_email`
+
+The column exists and nothing reads it; the address is a constant in `shared/lib/contact.ts` and a `var` in `wrangler.jsonc`.
+
+**Trigger:** the address has to change without a deploy.
+
+---
+
+## #129 — The payment chips return to the footer
+
+The footer advertises M-Pesa alone because it is the only method that charges (`MpesaPaymentCharge` is the sole `PaymentChargePort` adapter). e-Mola, Visa and Mastercard were removed on 2026-09-02.
+
+**Trigger:** the day e-Mola or card charging ships, its chip returns the same day — and the FAQ's "que métodos aceitam" answer changes with it, in eight languages.
+
+---
+
+## #130 — A careers listing
+
+`/careers` says there are no open roles and takes spontaneous applications by email.
+
+**Trigger:** the first open role.
+
+---
+
+## #131 — A captcha on the support forms
+
+The forms carry a honeypot and a five-per-hour-per-address count in the table.
+
+**Trigger:** the honeypot and the count stop being enough, measured in the admin queue.
+
+---
+
+## #85 — updated 2026-09-02
+
+The FAQ now answers "can I share my number in messages?" and says why. The contact-detection refusal copy in messaging should point there.
+```
+
+- [ ] **Step 3: Write the e2e spec**
+
+`apps/e2e/tests/company.spec.ts`:
+
+```ts
+import { test, expect } from "@playwright/test";
+import { createVerifiedUser } from "../fixtures/auth";
+import { fillSignInForm } from "../fixtures/ui";
+import { sql } from "../fixtures/db";
+
+/**
+ * The seam no unit test can see: a real anonymous visitor sending the real
+ * form through the real private endpoint (which must accept a caller with no
+ * session — the first mutation that relies on it), the row landing in a real
+ * table, and a real administrator finding it by the reference the visitor
+ * was shown and resolving it. Verified by mutation: commenting out
+ * `...createSupportWriteHandlers` in `apps/backend/api/src/graphql/private.ts`
+ * turns this red.
+ *
+ * Cleanup is by the name this spec chose, in `finally`, never a global DELETE.
+ */
+test("a visitor writes to support, and an administrator resolves it", async ({ page, browser }) => {
+  const suffix = crypto.randomUUID().slice(0, 8);
+  const name = `E2E Support ${suffix}`;
+  let reference = "";
+  let admin: Awaited<ReturnType<typeof createVerifiedUser>> | undefined;
+
+  try {
+    await page.goto("/support");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Need help with something?");
+
+    await page.getByLabel("Name").fill(name);
+    await page.getByLabel("Email").fill(`e2e-support-${suffix}@example.test`);
+    await page.getByLabel("Message").fill("A booking for Saturday does not show in my account.");
+    await page.getByRole("button", { name: /send message/i }).click();
+
+    await expect(page.getByRole("heading", { name: "We got your message." })).toBeVisible();
+    const refText = await page.getByText(/^Reference: /).textContent();
+    reference = refText!.replace("Reference: ", "").trim();
+    expect(reference).toMatch(/^[0-9A-F]{6}$/);
+
+    // The row exists, open, with the reference derived from its id.
+    const rows = await sql()<{ id: string; status: string }[]>`
+      SELECT id::text, status FROM ntizo_support.support_request WHERE name = ${name}`;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe("open");
+    expect(rows[0]!.id.replace(/-/g, "").slice(0, 6).toUpperCase()).toBe(reference);
+
+    admin = await createVerifiedUser("admin", { firstName: "Ada", lastName: "Admin" });
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    await adminPage.goto("/sign-in");
+    await fillSignInForm(adminPage, admin);
+    await adminPage.waitForURL(/\/admin/);
+
+    await adminPage.goto("/admin/support");
+    await adminPage.getByPlaceholder(/search a name/i).fill(reference);
+    const row = adminPage.getByText(`#${reference}`);
+    await expect(row).toBeVisible();
+    await adminPage.getByRole("button", { name: /mark resolved/i }).first().click();
+
+    // Open is the default filter, so a resolved request leaves the list.
+    await expect(row).toBeHidden();
+
+    const after = await sql()<{ status: string; resolved_by_user_id: string | null }[]>`
+      SELECT status, resolved_by_user_id FROM ntizo_support.support_request WHERE name = ${name}`;
+    expect(after[0]!.status).toBe("resolved");
+    expect(after[0]!.resolved_by_user_id).toBe(admin.id);
+
+    await adminContext.close();
+  } finally {
+    await sql()`DELETE FROM ntizo_support.support_request WHERE name = ${name}`;
+    if (admin) {
+      await sql()`DELETE FROM ntizo_user.user WHERE id = ${admin.id}`;
+      await sql()`DELETE FROM better_auth."user" WHERE id = ${admin.id}`;
+    }
+  }
+});
+```
+
+Check `apps/e2e/tests/auth.spec.ts`'s own cleanup for the exact user-deletion statements it uses (table names and order) and match them; the two statements above are the shape, not necessarily the exact tables.
+
+- [ ] **Step 4: Run it**
+
+Run: `cd apps/e2e && bunx playwright test tests/company.spec.ts` (the harness starts both servers against the throwaway database and applies every migration from zero, so the new table exists; see `apps/e2e/fixtures/db.ts`).
+Expected: 1 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/frontend/web/src/shared/locales docs/superpowers/follow-ups.md apps/e2e/tests/company.spec.ts
+git commit -m "feat(company): the privacy sentence, the follow-ups, and the end-to-end proof"
+```
+
+---
+
+### Task 15: Everything green, then hand it over
+
+**Files:** none new.
+
+- [ ] **Step 1: The full gates**
+
+Run, from the repo root:
+
+```bash
+bun run typecheck && bun run lint && bun run test
+```
+
+(or `turbo run typecheck lint test` — whichever `package.json` at the root defines). Expected: every package clean. The backend suite runs against the shared dev database and is known to flake under load (`follow-ups.md` #124) — a red there is re-run once in isolation before it is reported as a failure, per the CI-quota memory: classify before reporting.
+
+- [ ] **Step 2: Walk the six pages and the queue once more** in the browser, signed out and signed in, on a desktop and at 390px: `/about`, `/contact`, `/support`, `/faq`, `/feedback`, `/careers`, `/admin/support`. Check every link in every strip and in the footer's Empresa column lands.
+
+- [ ] **Step 3: Hand over**
+
+Use superpowers:finishing-a-development-branch. The branch merges to `dev`. The PR description names the spec, lists the six routes, the new GraphQL fields, the migration (`00NN_support_request.sql`, applied to dev already), the new `SUPPORT_INBOX_EMAIL` var, and the follow-ups #126–#131.
+
+---
+
+## Self-review notes (already applied)
+
+- **Spec coverage:** pages and frame (Tasks 10–12); copy and eight locales (Task 9); contact channels and footer, including M-Pesa only (Task 8); `support` context — table, aggregate, use cases, inbox email with `replyTo`, honeypot, rate limit (Tasks 2–7); admin queue and nav (Task 13); privacy sentence, follow-ups, e2e (Task 14); the owner's eyebrow rule (Global Constraints, Task 8 Step 5, Task 10 test).
+- **Endpoint correction carried from the spec:** the form talks to the private `/graphql` mount through `sessionGraphql` (Task 12 Step 2), not `publicGraphql`.
+- **Type consistency:** `SupportRequest.withId(id, createdAt)`, `reference`, `resolve(at, byUserId)`, `reopen()` (Task 3) are what Tasks 4–7 call; `SupportRequestRepositoryPort.insert/findById/saveStatus/countFromIpSince/listForAdmin` (Task 4) are what Task 6's fake implements; the GraphQL field names `supportRequestSubmit`, `supportRequestSetStatus`, `supportRequestAllForAdmin` (Task 7) are what Tasks 12–13's documents query; the `company` keys used by Tasks 10–13 all exist in Task 9's file.
