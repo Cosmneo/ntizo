@@ -441,10 +441,17 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                   a reader who meets them on two devices must not be told
                   different things. `where` disappears on its own for a
                   booking whose service carries no location type, which is the
-                  `leftJoin`'s answer rather than a state the data can reach. */}
-              <p className="type-caption text-[var(--color-muted-foreground)]">
-                {whereAndLength}
-              </p>
+                  `leftJoin`'s answer rather than a state the data can reach.
+                  Guarded the same way the rail guards its own copy of this
+                  line: unreachable today, since `durationMinutes` is
+                  `.int().positive()` and `useWhereAndLength` always has a
+                  length to word, but an empty paragraph is a cheap enough
+                  insurance against that constraint ever loosening. */}
+              {whereAndLength && (
+                <p className="type-caption text-[var(--color-muted-foreground)]">
+                  {whereAndLength}
+                </p>
+              )}
             </div>
 
             {!storable ? (

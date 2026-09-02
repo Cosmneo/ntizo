@@ -125,7 +125,14 @@ export function DateStrip({
             <button
               key={dateIso}
               type="button"
-              disabled={past || closed}
+              // `aria-disabled`, not `disabled`: a native `disabled` button is
+              // pulled out of the tab order entirely, which means the very
+              // `aria-label` built below it — the full date plus "fechado" —
+              // can never be announced for a past or closed day. This card
+              // still needs to be *reachable*, just not *usable*, so it stays
+              // focusable and the no-op below stands in for the click a real
+              // `disabled` attribute would have refused for free.
+              aria-disabled={past || closed}
               aria-pressed={selected}
               // The weekday letter and the caption are both inside the card,
               // but a button with an `aria-label` is announced by that label
@@ -143,9 +150,12 @@ export function DateStrip({
               ]
                 .filter(Boolean)
                 .join(", ")}
-              onClick={() => onSelectDate(dateIso)}
+              onClick={() => {
+                if (past || closed) return;
+                onSelectDate(dateIso);
+              }}
               className={cn(
-                "grid gap-1 rounded-[var(--radius-card-sm)] border px-1 py-2 text-center transition-colors disabled:pointer-events-none",
+                "grid gap-1 rounded-[var(--radius-card-sm)] border px-1 py-2 text-center transition-colors aria-disabled:pointer-events-none",
                 selected
                   ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
                   : "border-[var(--color-border)] hover:border-[var(--color-muted-foreground)]",

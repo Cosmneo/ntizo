@@ -34,6 +34,17 @@ function lengthLadder(minMinutes: number | null, stepMinutes: number | null, max
  * printed from a constant. "Manhã 08:00 às 12:00" over a provider who opens
  * at 06:00 is a sentence about somebody else's business, and the two hours it
  * hides are exactly the ones an early customer came looking for.
+ *
+ * **`to` is the end of the last appointment, not the start of it.** A
+ * morning whose last bookable start is 10:30 used to read "06:00 às 10:30" —
+ * the moment the last appointment *begins* — directly above that same card
+ * reading "10:30 · até 12:00". The heading was answering a different
+ * question than the customer reading it: not "when does the last start
+ * begin" but "how much of the morning is still available", which is
+ * `last.startsAt` plus the appointment's own length. Absent on an hourly
+ * service (`durationMinutes` null): there is no fixed length until the
+ * customer picks one, so the last start is the only honest answer, same as
+ * the card underneath it, whose own `until` is absent for the same reason.
  */
 function HalfDay({
   heading,
@@ -57,6 +68,8 @@ function HalfDay({
 
   const first = starts[0]!;
   const last = starts[starts.length - 1]!;
+  const lastEndsAt =
+    durationMinutes === null ? last.startsAt : endOfStart(last.startsAt, durationMinutes);
 
   return (
     <div className="grid gap-2">
@@ -67,7 +80,7 @@ function HalfDay({
         <span className="type-caption tabular-nums text-[var(--color-muted-foreground)]">
           {t("availabilityHalfDayRange", {
             from: formatTime(first.startsAt, locale, timezone),
-            to: formatTime(last.startsAt, locale, timezone),
+            to: formatTime(lastEndsAt, locale, timezone),
           })}
         </span>
       </div>

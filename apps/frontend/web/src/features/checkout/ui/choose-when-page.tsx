@@ -252,7 +252,7 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   // already in flight for the site header above, so reading it costs nothing
   // and spares an anonymous visitor a guaranteed `UNAUTHENTICATED` round trip
   // on a page that has only asked them to pick a time.
-  const { data: viewer } = useCurrentUser();
+  const { data: viewer, isPending: viewerPending } = useCurrentUser();
   const { data: addresses = [], isPending: addressesLoading } = useMyAddresses({
     enabled: Boolean(viewer),
   });
@@ -261,6 +261,25 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   // customer can still say where on step 2, which retries the list itself.
   // Nothing here is worth blocking a slot for.
   const where = openingWhere(pickedWhere, addresses, Boolean(viewer) && !addressesLoading);
+  /**
+   * Whether the app has actually found out what this customer's address
+   * situation is, as opposed to not knowing yet.
+   *
+   * Not the same test as `where`'s own `settled` argument above, on
+   * purpose. That one only has to be stable — "other" is the right answer
+   * for a visitor with no address book to read, forever, whether or not
+   * `useMyAddresses` has ever run — so it is safe for an anonymous visitor
+   * to sit at `false` for the life of the page. `canConfirm` needs a
+   * stronger promise: a *signed-in* customer's saved addresses have to have
+   * actually loaded before "outro endereço" can be recorded on their
+   * behalf, because unlike the anonymous case, their true answer is still
+   * in flight and can turn out to be a real saved address.
+   *
+   * `viewerPending` alone is what a signed-in customer needs; an anonymous
+   * one (`viewer` resolved to `null`) needs nothing more once `useCurrentUser`
+   * itself has answered, because `useMyAddresses` never fires for them.
+   */
+  const addressChoiceSettled = !viewerPending && (!viewer || !addressesLoading);
 
   const week = weekOf(anchorDate);
   const { data, isPending, isError, error, refetch } = useServiceAvailability({
@@ -480,9 +499,24 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
    * Requiring the start to be one the grid is actually showing closes all
    * three at once, and keeps a rule worth stating plainly: this page never
    * offers to book something it is not showing.
+   *
+   * **`addressChoiceSettled` closes a fourth.** `confirm` below records
+   * `where` — "outro endereço" when it is `{ kind: "other" }` — into the
+   * draft the moment the booking is created, and `where` falls open to
+   * `{ kind: "other" }` whenever `pickedWhere` is still null, which is every
+   * press before the customer has touched the where-cards. A signed-in
+   * customer landing on a warm calendar with a slot already in the URL can
+   * reach and press Continuar before `useCurrentUser` or `useMyAddresses`
+   * has answered — and until then, the chooser is honestly showing "outro
+   * endereço" not because that is their answer but because their real one
+   * has not arrived. A customer who is still loading cannot be said to have
+   * chosen anything.
    */
   const canConfirm =
-    Boolean(option && selectedStart && search.memberId) && !isHourly && !pending;
+    Boolean(option && selectedStart && search.memberId) &&
+    !isHourly &&
+    !pending &&
+    addressChoiceSettled;
 
   const minutes = option ? optionDurationMinutes(option) : null;
   /**

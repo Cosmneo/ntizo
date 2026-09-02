@@ -2762,6 +2762,17 @@ All three already import their tables from `shared/infrastructure/database`, whi
 helpers belong: shared *schema* is not a context boundary crossing, and lifting them there is
 what the existing comment's own reasoning points at without taking the step.
 
+**The three copies are not one shape, and the lift has to know that.** `read/booking`'s
+`reviewAggregate` selects `providerId` and `average` only; the catalogue's copy
+(`bounded-contexts/catalog/.../service-read.repository.ts`) and the provider page's also select
+`count: sql\`count(*)\``. That is not drift — checkout's rail has never rendered a review count,
+so the booking reader never asked for one — but "lift them into `shared/infrastructure/database`"
+reads as though a single function would serve all three call sites. Doing that naively (one
+shared `reviewAggregate` selecting all three columns) would quietly hand checkout a `count` column
+it does not use today and did not ask for, the same kind of silent widening this entry exists to
+prevent one row up. The lift needs a way to ask for the average alone — a parameter, or a base
+aggregate the count is layered onto — not a single fixed projection.
+
 Not done at the time because it touches two other contexts and their tests inside what was
 otherwise a visual redesign of three pages.
 
@@ -2929,8 +2940,10 @@ switching it to `innerJoin` leaves the projection suite green. The left join is 
 a case it catches, then, but by the asymmetry of being wrong. A needless left join costs one
 nullable field the rail already handles; an inner join that ever failed to match would remove a
 booking from its own customer's checkout, which then tells them nothing is being held for them,
-and nothing anywhere would fail. Mutating the rating's left join to inner on this branch produced
-exactly that outcome, silently. Snapshotting the column ends the question.
+and nothing anywhere would fail. A mutation check that flipped the *rating*'s left join to inner
+on this branch was caught, not silent: `list-my-bookings.projection.test.ts`'s
+`GetMyBookingProjection` case fails when the booking vanishes. Snapshotting the column ends the
+question.
 
 **Trigger:** the first provider who changes a published service's location type while a booking
 for it is open — or #113 being taken, since both are one migration on the same table and the same
@@ -2967,3 +2980,36 @@ and no amount of care on new copy reduces it.
 **Trigger:** the first non-Portuguese launch market, or any decision to show a language picker to
 customers — because until then nothing routes a real reader to these files, and after it
 everything does.
+
+---
+
+## #121 — `getPublishedById` and `findForCustomer` pay a whole-table aggregate cost for a one-row read
+
+`reviewAggregate` and `verifiedAggregate` (both copies — the catalogue's and the booking reader's,
+see #115) carry a `GROUP BY` and a `SELECT DISTINCT`. Postgres cannot push a join qualifier into
+either: there is no parameterized path from `provider.id = ?` into a subquery shaped like that
+without `LATERAL`. `listPublished` and `listForCustomer` pay that cost deliberately — they are
+browsing many rows, so the aggregate has to run in full regardless of how it is asked.
+
+`getPublishedById` (`bounded-contexts/catalog/.../service-read.repository.ts:621`) and
+`findForCustomer` (`read/booking/.../booking-read.repository.ts:43`) are not: each fetches exactly
+one row, by a key neither aggregate subquery ever sees, so Postgres still runs a hash aggregate
+over every published review and a distinct over every accepted document to answer a lookup that
+only ever wanted one provider's two numbers.
+
+**Free today because `review` and `provider_document` are small.** A hash aggregate over a few
+hundred rows costs nothing next to the network round trip around it, which is why the comment this
+entry replaces could say "the cost is one keyed lookup" and nothing caught it — the sentence was
+wrong on every call and free on every one of them.
+
+The fix is to make the two single-row readers correlated — a `LATERAL` join keyed on
+`provider.id`, or two scalar subqueries in the select list — and leave the whole-table form to the
+two readers that genuinely browse. Not done here: it touches two bounded contexts and their tests,
+inside what this branch is otherwise a visual pass over three checkout pages — the same reasoning
+that deferred #115, which this shares its root cause with (the same duplicated aggregates).
+
+**Trigger:** not a date — nothing about calendar time changes what this query costs. `review` or
+`provider_document` crossing a size where the hash aggregate or the distinct stops being free: a
+slow-query log entry naming either subquery, or a provider/review count high enough that
+`EXPLAIN ANALYZE` on `getPublishedById` shows measurable time spent on `review_agg` or
+`verified_agg` rather than on the indexed lookups around them.

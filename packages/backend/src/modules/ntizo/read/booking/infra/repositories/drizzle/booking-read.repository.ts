@@ -161,8 +161,11 @@ function coerceRating(average: string | null): number | null {
  * are not comparable. A left join that never finds nothing costs one nullable
  * field the consumer already handles. An inner join that ever fails to match
  * removes the booking from its own customer's checkout, which then tells them
- * nothing is being held for them — and nothing anywhere fails. Mutating the
- * rating's left join to inner on this branch produced exactly that, silently.
+ * nothing is being held for them — and nothing anywhere fails. A mutation
+ * check that flipped the *rating*'s left join to inner was applied on this
+ * branch, and it was caught, not silent:
+ * `list-my-bookings.projection.test.ts`'s `GetMyBookingProjection` case
+ * fails when the booking vanishes.
  */
 function selectedColumns(
   reviewAgg: ReturnType<typeof reviewAggregate>,

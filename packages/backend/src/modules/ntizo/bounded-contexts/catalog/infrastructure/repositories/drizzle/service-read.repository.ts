@@ -624,9 +624,15 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
     const db = getDb();
     // The same two aggregates `listPublished` builds, on this page for the
     // first time: the service page and checkout's rail both print the
-    // business's score and its verified badge beside its name. One row is
-    // being fetched, so the cost is one keyed lookup into each aggregate
-    // rather than the whole-table scan a browse page pays.
+    // business's score and its verified badge beside its name. Fetching one
+    // row does **not** make either aggregate cheap: both carry a `GROUP BY`
+    // or `DISTINCT`, which Postgres cannot correlate to this call's single
+    // `provider.id` — there is no parameterized path without `LATERAL` — so
+    // `review_agg` hash-aggregates every published review and `verified_agg`
+    // distincts every accepted document, in full, on every call, exactly as
+    // `listPublished` does for a whole page of rows. Free today because both
+    // tables are small; see follow-up #121 for the real fix and why it is
+    // not done here.
     const reviewAgg = reviewAggregate(db);
     const verifiedAgg = verifiedAggregate(db);
 

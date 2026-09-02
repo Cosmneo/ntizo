@@ -41,6 +41,9 @@ const fakes = vi.hoisted(() => {
     service: null as ServiceDetailDTO | null,
     /** Null is an anonymous visitor — this page is public and reachable signed out. */
     viewer: null as { id: string } | null,
+    // `false` by default so every existing fixture keeps reading as
+    // "`useCurrentUser` has already answered" without having to say so.
+    viewerPending: false,
     addresses: [] as AddressDTO[],
     addressesLoading: false,
     // A one-value store, so a test can hand the page what a *refetch* came
@@ -89,7 +92,7 @@ vi.mock("@/features/directory/services/viewmodel/use-service-detail", () => ({
  */
 vi.mock("@/features/user/viewmodel/use-current-user", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  useCurrentUser: () => ({ data: fakes.viewer }),
+  useCurrentUser: () => ({ data: fakes.viewer, isPending: fakes.viewerPending }),
 }));
 
 vi.mock("@/features/account/viewmodel/use-addresses", async (importOriginal) => ({
@@ -346,6 +349,7 @@ function renderChooseWhen({
   availability,
   addresses = [],
   addressesLoading = false,
+  viewerPending = false,
 }: {
   serviceId: string;
   /** `null` is an anonymous visitor — the command refuses one with `UNAUTHENTICATED`. */
@@ -362,6 +366,8 @@ function renderChooseWhen({
   /** The customer's address book, which only a signed-in visitor has one of. */
   addresses?: AddressDTO[];
   addressesLoading?: boolean;
+  /** `useCurrentUser` still in flight — the window `canConfirm` has to stay closed for. */
+  viewerPending?: boolean;
 }) {
   fakes.service = service ?? serviceFixture(serviceId, performers ? { performers } : {});
   // The same `session` decides both halves of being signed in: whether the
@@ -369,6 +375,7 @@ function renderChooseWhen({
   // Two switches for one fact is how a test ends up asserting a page state
   // no customer can be in.
   fakes.viewer = session === null ? null : { id: session.userId };
+  fakes.viewerPending = viewerPending;
   fakes.addresses = addresses;
   fakes.addressesLoading = addressesLoading;
   fakes.availability = {
@@ -919,9 +926,21 @@ describe("ChooseWhenPage", () => {
       await screen.findByRole("button", { name: /4 de setembro, 2 livres/i }),
     ).toBeInTheDocument();
     // A day the response covers with nothing on it says so, and cannot be
-    // chosen.
+    // chosen — but a native `disabled` button is pulled out of the tab
+    // order, which would make this very label unreachable to a screen
+    // reader. `aria-disabled` keeps the card focusable and its "fechado"
+    // announced while leaving it unusable: still not disabled by the
+    // platform's own rules, still marked disabled to assistive tech, and
+    // still reachable by keyboard.
     const closed = screen.getByRole("button", { name: /5 de setembro, fechado/i });
-    expect(closed).toBeDisabled();
+    expect(closed).not.toBeDisabled();
+    expect(closed).toHaveAttribute("aria-disabled", "true");
+    closed.focus();
+    expect(closed).toHaveFocus();
+
+    // Reachable is not the same as usable: pressing it must not select it.
+    await userEvent.click(closed);
+    expect(closed).toHaveAttribute("aria-pressed", "false");
   });
 
   it("counts starts, not seats", async () => {
@@ -971,10 +990,16 @@ describe("ChooseWhenPage", () => {
     });
 
     expect(await screen.findByText("Manhã")).toBeInTheDocument();
-    expect(screen.getByText("06:00 às 10:30")).toBeInTheDocument();
+    // `opt-1` — the cheapest, and the fallback this fixture books — runs 60
+    // minutes. The last morning start is 10:30, so the morning heading has to
+    // read past it, to 11:30: "06:00 às 10:30" is the moment the *last*
+    // appointment begins, not how much of the morning is actually bookable,
+    // and it would sit directly above a card reading "10:30 · até 11:30" and
+    // contradict it.
+    expect(screen.getByText("06:00 às 11:30")).toBeInTheDocument();
     // Noon belongs to the afternoon, which is where the second range starts.
     expect(screen.getByText("Tarde")).toBeInTheDocument();
-    expect(screen.getByText("12:00 às 17:00")).toBeInTheDocument();
+    expect(screen.getByText("12:00 às 18:00")).toBeInTheDocument();
   });
 
   it("draws only bookable starts, with no struck-through occupied ones", async () => {
@@ -1148,5 +1173,44 @@ describe("ChooseWhenPage", () => {
 
     expect(await screen.findByRole("radio", { name: /Outro endereço/ })).toBeChecked();
     expect(screen.queryByRole("radio", { name: /Casa a1/ })).not.toBeInTheDocument();
+  });
+
+  it("will not hold a slot for a signed-in customer whose own session has not answered yet", async () => {
+    // A customer landing on `?startsAt=…&memberId=…` with the calendar
+    // already warm can reach this page with a time pre-selected before
+    // `useCurrentUser` resolves. Confirming while it is still in flight would
+    // record "outro endereço" — `where` falls open to `{ kind: "other" }`
+    // whenever nothing has been clicked — for a customer who may well have a
+    // saved address nobody asked about yet.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      at: `/book/svc-1?memberId=mem-1&startsAt=${encodeURIComponent(NINE)}`,
+      addresses: [addressFixture("a1", { isDefault: true })],
+      viewerPending: true,
+    });
+
+    expect(await screen.findByRole("button", { name: /^09:00/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
+  });
+
+  it("will not hold a slot for a signed-in customer whose address book has not answered yet", async () => {
+    // The second half of the same window: `useCurrentUser` has already named
+    // a real customer, but `useMyAddresses` — gated behind it — has not
+    // come back yet, so `where` is still reading the empty default list.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      at: `/book/svc-1?memberId=mem-1&startsAt=${encodeURIComponent(NINE)}`,
+      addresses: [addressFixture("a1", { isDefault: true })],
+      addressesLoading: true,
+    });
+
+    expect(await screen.findByRole("button", { name: /^09:00/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
   });
 });
