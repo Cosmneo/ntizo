@@ -16,6 +16,19 @@ import { BrandMark } from "@/shared/components/brand-mark";
  * component reads correctly at 40px in a rail and at 600px on a detail page
  * without a caller passing a number.
  *
+ * **The ground is not `--color-muted`.** That token is `#f2f8fe` — the exact
+ * value the landing page paints itself — so a card whose photo was missing
+ * dissolved into the page behind it and the tile read as a hole rather than as
+ * a picture's place.
+ *
+ * It is mixed toward the brand blue rather than toward the border grey, and
+ * the amount was measured rather than guessed: 82% muted against `--color-border`
+ * computes to rgb(240,245,249) beside a page of rgb(242,248,254), a difference
+ * of three points nobody can see. Mixing 12% of `--color-primary` in gives
+ * rgb(213,232,254), which separates from both the page and the white card
+ * while staying the same soft blue the rest of the product uses. Expressed as
+ * `color-mix` on the tokens so it still follows if the palette moves.
+ *
  * `aria-hidden`, because this says nothing a reader needs: the heading beside
  * it already names what the picture would have shown, and announcing "no
  * image" is an apology nobody asked for.
@@ -26,7 +39,8 @@ export function MediaFallback({ className }: { className?: string }) {
       aria-hidden="true"
       data-testid="media-fallback"
       className={cn(
-        "grid h-full w-full place-items-center bg-[var(--color-muted)]",
+        "grid h-full w-full place-items-center",
+        "bg-[color-mix(in_srgb,var(--color-muted)_88%,var(--color-primary))]",
         className,
       )}
     >
