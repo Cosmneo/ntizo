@@ -202,7 +202,7 @@ class FakeThreadRepository implements ThreadRepositoryPort {
     const row = this.threads.get(threadId);
     if (!row) return null;
     if (row.customerUserId === viewerUserId) return row;
-    if ((this.members.get(row.providerId) ?? []).includes(viewerUserId)) return row;
+    if (row.providerId !== null && (this.members.get(row.providerId) ?? []).includes(viewerUserId)) return row;
     return null;
   }
 

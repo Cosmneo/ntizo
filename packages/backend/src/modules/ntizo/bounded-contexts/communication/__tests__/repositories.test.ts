@@ -426,7 +426,7 @@ describe("insert and listForThread", () => {
       const now = new Date(Date.parse("2026-08-07T00:00:00.000Z") + (i + 1) * 1000);
       await __runWithTransactionContextForTests(db, async () => {
         const id = await messages.insert(
-          Message.compose({ threadId: opened.id, senderUserId: customerId, body, now }),
+          Message.compose({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body, now }),
         );
         inserted.push(id);
       });
@@ -472,10 +472,10 @@ describe("listForThread — a shared created_at", () => {
     const tiedAt = new Date("2026-08-16T00:05:00.000Z");
     const [tiedA, tiedB] = await __runWithTransactionContextForTests(db, async () => [
       await messages.insert(
-        Message.compose({ threadId: opened.id, senderUserId: customerId, body: "tied a", now: tiedAt }),
+        Message.compose({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "tied a", now: tiedAt }),
       ),
       await messages.insert(
-        Message.compose({ threadId: opened.id, senderUserId: customerId, body: "tied b", now: tiedAt }),
+        Message.compose({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "tied b", now: tiedAt }),
       ),
     ]);
 
@@ -506,11 +506,11 @@ describe("markReadForViewer", () => {
 
     const [customerMessage] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "hello" })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "hello" })
       .returning({ id: message.id });
     const [providerMessage] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: staffId, body: "hi back" })
+      .values({ threadId: opened.id, senderUserId: staffId, senderSide: "provider", body: "hi back" })
       .returning({ id: message.id });
 
     await __runWithTransactionContextForTests(db, async () => {
@@ -535,11 +535,11 @@ describe("markReadForViewer", () => {
 
     const [fromStaff1] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: staffId, body: "from staff 1" })
+      .values({ threadId: opened.id, senderUserId: staffId, senderSide: "provider", body: "from staff 1" })
       .returning({ id: message.id });
     const [fromCustomer] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "from customer" })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "from customer" })
       .returning({ id: message.id });
 
     // staffId2 reads. A wrong implementation comparing `senderUserId !==
@@ -579,11 +579,12 @@ describe("claimDueForNotice / markNotified", () => {
 
     const [dueUnread] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "due, unread", notifyDueAt: past })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "due, unread", notifyDueAt: past })
       .returning({ id: message.id });
     await db.insert(message).values({
       threadId: opened.id,
       senderUserId: customerId,
+      senderSide: "customer",
       body: "due, but already read",
       notifyDueAt: past,
       readAt: now,
@@ -591,6 +592,7 @@ describe("claimDueForNotice / markNotified", () => {
     await db.insert(message).values({
       threadId: opened.id,
       senderUserId: customerId,
+      senderSide: "customer",
       body: "due, but already notified",
       notifyDueAt: past,
       notifiedAt: now,
@@ -598,6 +600,7 @@ describe("claimDueForNotice / markNotified", () => {
     await db.insert(message).values({
       threadId: opened.id,
       senderUserId: customerId,
+      senderSide: "customer",
       body: "not yet due",
       notifyDueAt: future,
     });
@@ -636,7 +639,7 @@ describe("claimDueForNotice / markNotified", () => {
     const past = new Date(now.getTime() - 60_000);
     const [inserted] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "due, unread", notifyDueAt: past })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "due, unread", notifyDueAt: past })
       .returning({ id: message.id });
 
     await __runWithTransactionContextForTests(db, async () => {
@@ -671,14 +674,14 @@ describe("countUnreadForViewer", () => {
     );
 
     // Thread A: two unread from the provider, one read, one the customer sent.
-    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, body: "unread 1" });
-    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, body: "unread 2" });
+    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, senderSide: "provider", body: "unread 1" });
+    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, senderSide: "provider", body: "unread 2" });
     await db
       .insert(message)
-      .values({ threadId: threadA.id, senderUserId: staffId, body: "already read", readAt: new Date() });
+      .values({ threadId: threadA.id, senderUserId: staffId, senderSide: "provider", body: "already read", readAt: new Date() });
     await db
       .insert(message)
-      .values({ threadId: threadA.id, senderUserId: customerId, body: "the customer's own message" });
+      .values({ threadId: threadA.id, senderUserId: customerId, senderSide: "customer", body: "the customer's own message" });
     // Thread B: nothing unread.
 
     await __runWithTransactionContextForTests(db, async () => {
@@ -717,6 +720,7 @@ describe("attachment", () => {
         Message.compose({
           threadId,
           senderUserId: customerId,
+          senderSide: "customer",
           body: "",
           attachmentCount: 2,
           now: new Date("2026-08-17T00:01:00.000Z"),
@@ -726,6 +730,7 @@ describe("attachment", () => {
         Message.compose({
           threadId,
           senderUserId: customerId,
+          senderSide: "customer",
           body: "no files here",
           now: new Date("2026-08-17T00:02:00.000Z"),
         }),

@@ -1,4 +1,4 @@
-import { UnprocessableError } from "@cosmneo/onion-lasagna";
+import { NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
 
 /**
  * The communication context's refusals.
@@ -185,5 +185,91 @@ export class CursorInvalidError extends UnprocessableError {
       code: "COMMUNICATION_CURSOR_INVALID",
     });
     this.name = "CursorInvalidError";
+  }
+}
+
+/** Refused because the subject is empty after trimming, or longer than `SUPPORT_SUBJECT_MAX`. */
+export class SupportSubjectInvalidError extends UnprocessableError {
+  constructor(
+    public readonly length: number,
+    public readonly max: number,
+  ) {
+    super({
+      message:
+        length === 0
+          ? "A support request needs a subject."
+          : `A subject may be at most ${max} characters; this one is ${length}.`,
+      code: "SUPPORT_SUBJECT_INVALID",
+    });
+    this.name = "SupportSubjectInvalidError";
+  }
+}
+
+/** Refused because the caller asked to speak for a provider they are not a member of — or named no provider at all. */
+export class SupportNotAMemberError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "You can only open a request on behalf of a provider you belong to.",
+      code: "SUPPORT_NOT_A_MEMBER",
+    });
+    this.name = "SupportNotAMemberError";
+  }
+}
+
+/** Refused because the booking named is not the requester's — same answer as "no such booking", on purpose. */
+export class SupportBookingNotYoursError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "That booking is not yours to ask about.",
+      code: "SUPPORT_BOOKING_NOT_YOURS",
+    });
+    this.name = "SupportBookingNotYoursError";
+  }
+}
+
+/**
+ * The admin side's refusal: the id names no support request. Deliberately
+ * also the answer for an id that names an *inquiry* thread — the admin
+ * slices are scoped to `type = 'support'`, and an admin must not learn from
+ * the difference that a private conversation exists at that id.
+ */
+export class SupportRequestNotFoundError extends NotFoundError {
+  constructor() {
+    super({
+      message: "No such support request.",
+      code: "SUPPORT_REQUEST_NOT_FOUND",
+    });
+    this.name = "SupportRequestNotFoundError";
+  }
+}
+
+export class SupportAlreadyResolvedError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "This request is already resolved.",
+      code: "SUPPORT_ALREADY_RESOLVED",
+    });
+    this.name = "SupportAlreadyResolvedError";
+  }
+}
+
+/** A domain guard: `reopen` only makes sense on a resolved request. Never reaches the wire — `SendMessageCommand` checks the status first. */
+export class SupportRequestNotResolvedError extends UnprocessableError {
+  constructor() {
+    super({
+      message: "This request is not resolved, so it cannot be reopened.",
+      code: "SUPPORT_NOT_RESOLVED",
+    });
+    this.name = "SupportRequestNotResolvedError";
+  }
+}
+
+export class SupportTooManyOpenError extends UnprocessableError {
+  constructor(public readonly max: number) {
+    super({
+      message: `You already have ${max} open requests. Wait for an answer, or reply on one of them.`,
+      code: "SUPPORT_TOO_MANY_OPEN",
+    });
+    this.name = "SupportTooManyOpenError";
   }
 }

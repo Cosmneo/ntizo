@@ -35,6 +35,7 @@ function thread(props: Partial<Parameters<typeof Thread.rehydrate>[0]> & { id: s
 function message(props: Partial<Parameters<typeof Message.rehydrate>[0]> & { id: string; threadId: string }): Message {
   return Message.rehydrate({
     senderUserId: "u-customer",
+    senderSide: "customer",
     body: "hi",
     readAt: null,
     notifyDueAt: null,

@@ -118,6 +118,7 @@ export class SendMessageCommand {
     const message = Message.compose({
       threadId: input.threadId,
       senderUserId: input.senderUserId,
+      senderSide: "customer", // TODO(Task 5): resolve the real side instead of hardcoding it.
       body: trimmedBody,
       attachmentCount: attachments.length,
       now: this.now(),
