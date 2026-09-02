@@ -15,6 +15,7 @@ import {
   NAVY,
   PAGE_TOP,
 } from "@/features/landing/ui/palette";
+import { CONTACT } from "@/shared/lib/contact";
 
 /**
  * The two brands' own colours, kept out of the markup so the pair reads as a
@@ -52,16 +53,22 @@ export function Footer() {
                 reaches somebody beats a number that does not. */}
             <FooterMeta
               label={t("footer.supportEmailLabel")}
-              value="hello@ntizo.com"
-              href="mailto:hello@ntizo.com"
+              value={CONTACT.support}
+              href={`mailto:${CONTACT.support}`}
             />
           </FooterCol>
 
           {/* About, Contact, FAQ and Careers used to sit around this link,
               all four on `href="#"`. A footer of eleven links where six go
               nowhere teaches a reader that none of them work; they come back
-              one at a time, as the pages behind them are written. */}
+              one at a time, as the pages behind them are written. Five of the
+              seven are back as of 2026-09-02. "Falar com o suporte" and
+              "Perguntas frequentes" return with the help center's `/help` —
+              follow-ups #132. */}
           <FooterCol title={t("footer.company")}>
+            <FooterLink to="/about">{t("footer.links.about")}</FooterLink>
+            <FooterLink to="/contact">{t("footer.links.contact")}</FooterLink>
+            <FooterLink to="/feedback">{t("footer.links.feedback")}</FooterLink>
             {/* The public pitch, not registration. A link labelled "become a
                 provider" that opens a sign-up form skips the part where someone
                 finds out what they would be signing up for — and that page's
@@ -69,6 +76,7 @@ export function Footer() {
             <FooterLink to="/become-provider">
               {t("footer.becomeProvider")}
             </FooterLink>
+            <FooterLink to="/careers">{t("footer.links.careers")}</FooterLink>
           </FooterCol>
 
           <FooterCol title={t("footer.legal")}>
@@ -93,14 +101,14 @@ export function Footer() {
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <SocialIcon
-                href="https://www.instagram.com/ntizo.mz/"
+                href={CONTACT.instagram}
                 label="Instagram"
                 background={INSTAGRAM}
               >
                 <InstagramGlyph />
               </SocialIcon>
               <SocialIcon
-                href="https://www.linkedin.com/company/ntizo/"
+                href={CONTACT.linkedin}
                 label="LinkedIn"
                 background={LINKEDIN}
               >
@@ -120,17 +128,12 @@ export function Footer() {
                 flexWrap: "wrap",
               }}
             >
-              {/* Mobile money first, cards after: this is the order most of
-                  Mozambique actually pays in. The four that left — AMEX,
-                  PayPal, Apple Pay, G Pay — were never accepted; a footer
-                  advertising a payment method the checkout will refuse is a
-                  promise made to someone who has not paid yet. */}
+              {/* One chip, because one method charges. e-Mola, Visa and
+                  Mastercard stood here until 2026-09-02, advertising methods
+                  the checkout refuses — see the FAQ's "que métodos aceitam".
+                  Each returns the day its charge path ships
+                  (follow-ups #129). */}
               <PayChip color="#e60000">M-Pesa</PayChip>
-              {/* TODO(ntizo): approximate. Nobody has checked this against
-                  e-Mola's brand manual — replace it with their own hex. */}
-              <PayChip color="#f58220">e-Mola</PayChip>
-              <PayChip color="#1a1f71">Visa</PayChip>
-              <PayChip color="#eb001b">Mastercard</PayChip>
             </div>
           </div>
         </div>
@@ -155,7 +158,7 @@ function FooterCol({
 }) {
   return (
     <div>
-      <div style={footerTitle}>{title}</div>
+      <h2 style={footerTitle}>{title}</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {children}
       </div>
@@ -324,6 +327,7 @@ const footerTitle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 700,
   color: NAVY,
+  marginTop: 0,
   marginBottom: 16,
   textTransform: "uppercase",
   letterSpacing: "0.06em",

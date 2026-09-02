@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { CONTACT } from "@/shared/lib/contact";
 
 /**
  * The shared shape of both legal documents.
@@ -56,7 +57,7 @@ export function LegalPage({ docKey }: { docKey: "privacy" | "terms" }) {
           ))}
 
         <p className="mt-12 border-t border-[var(--color-border)] pt-6 text-sm text-[var(--color-muted-foreground)]">
-          {t("contact")}
+          {t("contact", { email: CONTACT.privacy })}
         </p>
       </div>
     </main>

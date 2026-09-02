@@ -14,6 +14,12 @@
     "support": "Hilfe",
     "company": "Unternehmen",
     "legal": "Rechtliches",
+    "links": {
+      "about": "Über uns",
+      "contact": "Kontakt",
+      "feedback": "Feedback geben",
+      "careers": "Karriere"
+    },
     "becomeProvider": "Anbieter werden",
     "terms": "Nutzungsbedingungen",
     "privacy": "Datenschutzerklärung",

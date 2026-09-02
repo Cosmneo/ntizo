@@ -1,7 +1,7 @@
 {
   "backHome": "← Zurück zur Startseite",
   "lastUpdated": "Zuletzt aktualisiert: {{date}}",
-  "contact": "Fragen zu diesem Dokument? Schreiben Sie an privacidade@ntizo.co.mz.",
+  "contact": "Fragen zu diesem Dokument? Schreiben Sie an {{email}}.",
   "privacy": {
     "title": "Datenschutzerklärung",
     "updated": "26. August 2026",

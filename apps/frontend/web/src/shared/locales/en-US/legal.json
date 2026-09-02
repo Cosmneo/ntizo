@@ -1,7 +1,7 @@
 {
   "backHome": "← Back to home",
   "lastUpdated": "Last updated: {{date}}",
-  "contact": "Questions about this document? Write to privacidade@ntizo.co.mz.",
+  "contact": "Questions about this document? Write to {{email}}.",
   "privacy": {
     "title": "Privacy Policy",
     "updated": "26 August 2026",

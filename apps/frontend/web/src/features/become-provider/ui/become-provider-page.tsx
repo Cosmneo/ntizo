@@ -7,6 +7,7 @@ import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { SiteHeader } from "@/shared/components/site-header";
 import { Footer } from "@/features/landing/ui/footer";
+import { CONTACT } from "@/shared/lib/contact";
 
 /**
  * The public case for becoming a provider.
@@ -52,7 +53,11 @@ export function BecomeProviderPage() {
 
 type T = (key: string) => string;
 
-/** The eyebrow, with the rule that keeps it from floating. */
+/**
+ * It used to carry a short accent-coloured rule to its left. The rule left
+ * on 2026-09-02 at the owner's request: it is the kind of flourish that
+ * reads as machine-made, and it must not appear on any page.
+ */
 function Eyebrow({
   children,
   onDark = false,
@@ -62,15 +67,10 @@ function Eyebrow({
 }) {
   return (
     <span
-      className={`font-rounded inline-flex items-center gap-3 text-[12px] font-bold tracking-[0.18em] uppercase ${
+      className={`font-rounded inline-flex items-center text-[12px] font-bold tracking-[0.18em] uppercase ${
         onDark ? "text-white/65" : "text-[color:var(--l-muted)]"
       }`}
     >
-      <span
-        aria-hidden="true"
-        className="h-px w-8"
-        style={{ background: ACCENT }}
-      />
       {children}
     </span>
   );
@@ -493,7 +493,7 @@ function Closing({ cta, t }: { cta: CtaTarget; t: T }) {
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <PrimaryCta cta={cta} label={t("cta")} />
           <a
-            href="mailto:ola@ntizo.com"
+            href={`mailto:${CONTACT.general}`}
             className="font-rounded inline-flex items-center justify-center rounded-full border border-white/25 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/60 hover:bg-white/10"
           >
             {t("closingTalk")}

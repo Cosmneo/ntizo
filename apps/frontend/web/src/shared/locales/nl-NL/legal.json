@@ -1,7 +1,7 @@
 {
   "backHome": "← Terug naar home",
   "lastUpdated": "Laatst bijgewerkt: {{date}}",
-  "contact": "Vragen over dit document? Schrijf naar privacidade@ntizo.co.mz.",
+  "contact": "Vragen over dit document? Schrijf naar {{email}}.",
   "privacy": {
     "title": "Privacybeleid",
     "updated": "26 augustus 2026",

@@ -14,6 +14,12 @@
     "support": "Ondersteuning",
     "company": "Bedrijf",
     "legal": "Juridisch",
+    "links": {
+      "about": "Over ons",
+      "contact": "Contact",
+      "feedback": "Feedback geven",
+      "careers": "Werken bij"
+    },
     "becomeProvider": "Word aanbieder",
     "terms": "Servicevoorwaarden",
     "privacy": "Privacybeleid",
