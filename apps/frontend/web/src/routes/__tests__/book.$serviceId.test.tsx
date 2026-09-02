@@ -209,7 +209,7 @@ describe("the /book/$serviceId route", () => {
     // real one is load-bearing.
     const { heldOptionIds } = renderRoute("/book/svc-1?optionId=opt-2");
 
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() => expect(heldOptionIds()).toEqual(["opt-2"]));
@@ -226,7 +226,7 @@ describe("the /book/$serviceId route", () => {
 
   it("ignores an `expired` that is neither true nor \"true\"", async () => {
     renderRoute("/book/svc-1?expired=banana");
-    await screen.findByRole("button", { name: /09:00/ });
+    await screen.findByRole("button", { name: /^09:00/ });
     expect(screen.queryByText(/a hora foi libertada/i)).not.toBeInTheDocument();
   });
 
@@ -238,7 +238,7 @@ describe("the /book/$serviceId route", () => {
     // search wholesale, so the campaign tag is gone and the chosen package is
     // not.
     const { router } = renderRoute("/book/svc-1?optionId=opt-2&utm_source=whatsapp");
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
 
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
@@ -251,7 +251,7 @@ describe("the /book/$serviceId route", () => {
 
   it("primes the service through its loader rather than suspending mid-render", async () => {
     renderRoute("/book/svc-1");
-    await screen.findByRole("button", { name: /09:00/ });
+    await screen.findByRole("button", { name: /^09:00/ });
     // `useServiceDetail` is a suspense query; without the loader the route
     // ships a fallback where a crawler and a customer both expect the page.
     expect(fakes.prefetch).toHaveBeenCalledWith(expect.anything(), "svc-1");
@@ -263,10 +263,13 @@ describe("the /book/$serviceId route", () => {
     // component instance, and the week somebody paged to for one service
     // greets them on another's calendar.
     const { router } = renderRoute("/book/svc-1");
-    await screen.findByRole("button", { name: /09:00/ });
+    await screen.findByRole("button", { name: /^09:00/ });
 
     await userEvent.click(screen.getByRole("button", { name: /pr[óo]xima semana/i }));
-    const pagedAway = screen.getByRole("button", { name: /11/ });
+    // Named in full, because a day card now announces its free-time count too
+    // and a bare "11" would eventually match "11 livres" on somebody else's
+    // date.
+    const pagedAway = screen.getByRole("button", { name: /11 de setembro/i });
     expect(pagedAway).toHaveAttribute("aria-pressed", "true");
 
     await router.navigate({ to: "/book/$serviceId", params: { serviceId: "svc-2" } });

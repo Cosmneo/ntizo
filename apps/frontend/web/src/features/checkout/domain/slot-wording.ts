@@ -17,6 +17,31 @@ export interface SlotWording {
   end: string;
 }
 
+/**
+ * The same appointment written short, for the rail: "4/09" rather than
+ * "Sábado, 5 de setembro".
+ *
+ * A second shape rather than a `short`/`long` flag on `SlotWording`, because
+ * the two are read in different places for different reasons and only one of
+ * them is a heading. The rail sits beside a form in a 20rem column and has to
+ * put the date and both clock times on one line; the confirm page's summary
+ * gives the date a line of its own and can afford the full weekday.
+ */
+export interface CompactSlot {
+  /**
+   * The civil date as **the locale's own short form**, whatever that turns out
+   * to be — "4/09" in `pt-MZ` and `pt-PT`, "Sep 4" in `en-US`, "4 sept." in
+   * `fr-FR`. The mockup writes "4 Set", and the CLDR data for the launch
+   * locale simply does not: it resolves a numeric day and month to a numeric
+   * short date. Hand-writing month abbreviations per locale to match the
+   * picture is exactly the job `Intl` exists to do, and it would be eight
+   * more strings to keep in step.
+   */
+  date: string;
+  start: string;
+  end: string;
+}
+
 /** One instant, for a deadline rather than a range. */
 export interface MomentWording {
   /**
@@ -82,6 +107,33 @@ export function slotWording(
     // the day it began on, which is the day the customer will be waiting.
     date: capitalise(start.date),
     start: start.time,
+    end: momentWording(endsAt, locale, timeZone).time,
+  };
+}
+
+/**
+ * The rail's own wording of the appointment, in the service's zone and on
+ * exactly the same terms as `slotWording` — including that `timeZone` is
+ * passed at every call and never defaulted. The rail and the summary print
+ * the same booking on the same screen, and two clocks on one page make
+ * whichever the customer checks against the other look wrong.
+ */
+export function compactSlotWording(
+  startsAt: string,
+  endsAt: string,
+  locale: string,
+  timeZone: string,
+): CompactSlot {
+  return {
+    // The *start's* date, for the reason `slotWording` gives: a job running to
+    // midnight belongs to the day it began on, which is the day the customer
+    // will be waiting.
+    date: new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      timeZone,
+    }).format(new Date(startsAt)),
+    start: momentWording(startsAt, locale, timeZone).time,
     end: momentWording(endsAt, locale, timeZone).time,
   };
 }

@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, PackageX } from "lucide-react";
+import type { AddressDTO } from "@ntizo/shared";
 import type { ServiceDetailDTO, ServiceDetailOptionDTO } from "@ntizo/shared/read-models";
 import { addDays, localDateAt } from "@ntizo/shared/datetime";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { SiteHeader } from "@/shared/components/site-header";
 import { EmptyCard } from "@/shared/components/empty-card";
-import { weekOf } from "@/features/directory/availability/domain/day-strip";
+import { endOfStart, startsByDate, weekOf } from "@/features/directory/availability/domain/day-strip";
 import { distinctMemberIds, panelMode } from "@/features/directory/availability/domain/types";
 import type { Start } from "@/features/directory/availability/domain/types";
 import { useServiceAvailability } from "@/features/directory/availability/viewmodel/use-service-availability";
@@ -15,12 +16,16 @@ import { DateStrip } from "@/features/directory/availability/ui/date-strip";
 import { MemberPicker } from "@/features/directory/availability/ui/member-picker";
 import { TimeGrid } from "@/features/directory/availability/ui/time-grid";
 import {
-  formatAmount,
   optionDurationMinutes,
   serviceDetailPanel,
 } from "@/features/directory/services/domain/service-card";
 import { useServiceDetail } from "@/features/directory/services/viewmodel/use-service-detail";
+import { useMyAddresses } from "@/features/account/viewmodel/use-addresses";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useCreateBooking } from "@/features/checkout/viewmodel/use-checkout";
+import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
+import { saveDraftDetails } from "@/features/checkout/domain/draft-store";
+import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
 import { CheckoutSteps } from "@/features/checkout/ui/checkout-steps";
 
 /** What `/book/$serviceId` carries in its URL. */
@@ -89,6 +94,46 @@ const STALE_GRID_CODES: ReadonlySet<string> = new Set([
 /** The device's own IANA zone — the only clock available before the first response names the service's own. */
 function deviceTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** Which address this checkout is for: one the customer has saved, or one they will type on step 2. */
+type WhereChoice = { kind: "saved"; addressId: string } | { kind: "other" };
+
+/**
+ * Which of the where-cards is filled in, given what the customer has clicked
+ * so far.
+ *
+ * Untouched opens on the address book's default — the one they told us to
+ * assume — and on "other" when they have no saved address at all, which is
+ * also what an anonymous visitor and a list that failed to load resolve to.
+ * There is always exactly one answer, so the confirm is never disabled for a
+ * reason nobody can see.
+ *
+ * **`settled` is why the membership test is safe**, the same argument step 2's
+ * `openingAddressId` makes: honouring a chosen id unconditionally while the
+ * list is still in flight stops it flickering back to the default on the
+ * first render, and once the list *has* answered, an id it does not contain
+ * is an id this page cannot draw a checked radio for — the customer deleted
+ * that address in another tab. Falling back then leaves the group with
+ * something checked rather than nothing.
+ */
+function openingWhere(
+  picked: WhereChoice | null,
+  addresses: readonly AddressDTO[],
+  settled: boolean,
+): WhereChoice {
+  if (picked && (picked.kind === "other" || !settled || addresses.some((a) => a.id === picked.addressId))) {
+    return picked;
+  }
+  const fallback = addresses.find((a) => a.isDefault) ?? addresses[0];
+  return fallback ? { kind: "saved", addressId: fallback.id } : { kind: "other" };
+}
+
+/** One saved address as a single line: enough to tell two of them apart, not the whole record. */
+function addressSummary(address: AddressDTO): string {
+  return [address.line1, [address.district, address.city].filter(Boolean).join(", ")]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**
@@ -201,6 +246,21 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   );
   const [browsedDate, setBrowsedDate] = useState(anchorDate);
   const [selectedLengthMinutes, setSelectedLengthMinutes] = useState<number | null>(null);
+  const [pickedWhere, setPickedWhere] = useState<WhereChoice | null>(null);
+
+  // **This page is public**, and the address book is not. `useCurrentUser` is
+  // already in flight for the site header above, so reading it costs nothing
+  // and spares an anonymous visitor a guaranteed `UNAUTHENTICATED` round trip
+  // on a page that has only asked them to pick a time.
+  const { data: viewer } = useCurrentUser();
+  const { data: addresses = [], isPending: addressesLoading } = useMyAddresses({
+    enabled: Boolean(viewer),
+  });
+  // A list that failed is not an empty one, but on *this* page both come to
+  // the same thing: there is nothing to draw a saved card from, and the
+  // customer can still say where on step 2, which retries the list itself.
+  // Nothing here is worth blocking a slot for.
+  const where = openingWhere(pickedWhere, addresses, Boolean(viewer) && !addressesLoading);
 
   const week = weekOf(anchorDate);
   const { data, isPending, isError, error, refetch } = useServiceAvailability({
@@ -344,8 +404,20 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
       // far side reads them off the booking it is already loading. Sending a
       // second copy in the URL would be a second source for one fact, and the
       // one a shared link can get wrong.
-      ({ bookingId }) =>
-        void navigate({ to: "/booking/$bookingId/details", params: { bookingId } }),
+      ({ bookingId }) => {
+        // **The choice moves to step 1; the write does not.** The address is
+        // not on `booking.create`'s input — the schema has no such field —
+        // and it still travels on `booking.submit`, so this is the same two
+        // writes it always was. What is recorded here is the *decision*, in
+        // the tab's own store, keyed by the booking that has this instant
+        // come into existence. `null` is "outro endereço": a positive answer
+        // meaning the customer will type one on step 2, not an absence.
+        saveDraftDetails(bookingId, {
+          addressId: where.kind === "saved" ? where.addressId : null,
+          description: "",
+        });
+        void navigate({ to: "/booking/$bookingId/details", params: { bookingId } });
+      },
       // Swallowed on purpose: `errorCode` already carries the failure
       // reactively and the message below renders from it. Rethrowing here
       // would only add an unhandled rejection saying the same thing.
@@ -408,6 +480,17 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
   const canConfirm =
     Boolean(option && selectedStart && search.memberId) && !isHourly && !pending;
 
+  const minutes = option ? optionDurationMinutes(option) : null;
+  /**
+   * How long the appointment on a time card runs.
+   *
+   * Null on an hourly package rather than `minMinutes`: the length is the
+   * customer's to choose from the ladder underneath, and printing "até 10:00"
+   * on every card before they have chosen would state a finishing time the
+   * booking has not got.
+   */
+  const cardDurationMinutes = isHourly ? null : minutes;
+
   let body: React.ReactNode;
   if (panel.kind === "quote") {
     // A quote service has no fixed price and no fixed length, so there is no
@@ -458,6 +541,11 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
           selectedDate={shownDate}
           todayIso={todayIso}
           locale={locale}
+          // How many bookable times each day carries, so the strip can say so
+          // on the card rather than making the customer open seven days to
+          // find out. Read off the same response the grid draws from, which
+          // is what keeps the number and the times under it in agreement.
+          startsByDate={startsByDate(data.days)}
           onSelectDate={selectDate}
           onPreviousWeek={() => goToWeek(addDays(anchorDate, -7))}
           onNextWeek={() => goToWeek(addDays(anchorDate, 7))}
@@ -482,6 +570,7 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
         <TimeGrid
           starts={day?.starts ?? []}
           pricingMode={data.pricingMode}
+          durationMinutes={cardDurationMinutes}
           minMinutes={option?.minMinutes ?? null}
           stepMinutes={option?.stepMinutes ?? null}
           locale={locale}
@@ -491,11 +580,40 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
           onSelectStart={selectStart}
           onSelectLength={setSelectedLengthMinutes}
         />
+        <WhereSection
+          addresses={addresses}
+          loading={Boolean(viewer) && addressesLoading}
+          chosen={where}
+          onChoose={setPickedWhere}
+        />
       </div>
     );
   }
 
-  const minutes = option ? optionDurationMinutes(option) : null;
+  /**
+   * The appointment as the rail prints it, or null while there is nothing to
+   * print.
+   *
+   * **From `selectedStart`, never from `search.startsAt`** — the same rule
+   * `canConfirm` follows, and for the same reason: the URL is the customer's
+   * claim, the grid is the platform's answer, and a rail that named a time
+   * the grid is not showing would be a second place this page can offer
+   * something that does not exist.
+   *
+   * On an hourly package the end follows whichever length is currently
+   * selected, because that is the only thing that makes one; with none
+   * chosen it falls back to the minimum, which is what the ladder opens on.
+   */
+  const railMinutes = isHourly ? (selectedLengthMinutes ?? minutes) : minutes;
+  const railSlot =
+    data && selectedStart && railMinutes !== null
+      ? compactSlotWording(
+          selectedStart.startsAt,
+          endOfStart(selectedStart.startsAt, railMinutes),
+          locale,
+          data.timezone,
+        )
+      : null;
 
   return (
     <>
@@ -534,38 +652,31 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
           {/* 100px, not 0: the site header is 84px and sticky, so a rail
               pinned to the top of the viewport would slide under it. */}
           <aside className="grid gap-4 lg:sticky lg:top-[100px]">
-            <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
-              <p className="type-caption text-[var(--color-muted-foreground)]">
-                {service.providerName}
-              </p>
-              <h2 className="type-h3 mt-1 font-semibold">{service.name}</h2>
-              {option && (
-                <>
-                  {/* The price the customer pays, exactly as the provider set
-                      it. There is no fee line here and no breakdown, because
-                      there is nothing to break down: the commission comes out
-                      of the provider's payout, so a split shown here would
-                      invent a charge the customer is not being asked for. */}
-                  <p className="type-h3 mt-4 font-semibold tabular-nums">
-                    {formatAmount(option.amountMinor, option.currency, locale)}
-                    {isHourly && (
-                      <span className="type-body font-normal text-[var(--color-muted-foreground)]">
-                        {` ${td("priceHourlySuffix")}`}
-                      </span>
-                    )}
-                  </p>
-                  <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">
-                    {option.name}
-                    {minutes !== null &&
-                      ` · ${td(isHourly ? "serviceMinimumMinutes" : "serviceDurationMinutes", {
-                        count: minutes,
-                      })}`}
-                  </p>
-                </>
-              )}
-
+            {/* No `onChangeSlot`: this page *is* where the slot is changed,
+                and an "Alterar" pointing at the grid two inches to its left
+                would be a control that does nothing. */}
+            <CheckoutRail
+              imageUrl={service.imageUrls[0] ?? null}
+              serviceName={service.name}
+              providerName={service.providerName}
+              optionName={option?.name ?? null}
+              slot={railSlot}
+              locationType={service.locationType}
+              // The *package's* own figure, not whatever length is currently
+              // selected: on an hourly option this reads "Mínimo de 60 min",
+              // which stays true however long the customer picks, while the
+              // finishing time in the panel above follows the pick.
+              durationMinutes={minutes}
+              // Null rather than zero when there is no package: a quote
+              // service reaches this page and has no priced option at all,
+              // and `Intl` throws on the blank currency code a `?? 0` would
+              // have to be paired with.
+              priceMinor={option?.amountMinor ?? null}
+              currency={option?.currency ?? ""}
+              hourly={isHourly}
+            >
               {failed && (
-                <p role="alert" className="mt-4 text-sm text-[var(--color-destructive)]">
+                <p role="alert" className="text-sm text-[var(--color-destructive)]">
                   {errorCode
                     ? t(`createError.${errorCode}`, { defaultValue: t("createErrorGeneric") })
                     : t("createErrorGeneric")}
@@ -579,7 +690,7 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
               {isHourly && (
                 <p
                   id="checkout-hourly-notice"
-                  className="type-caption mt-4 text-[var(--color-muted-foreground)]"
+                  className="type-caption text-[var(--color-muted-foreground)]"
                 >
                   {t("hourlyNotBookable")}
                 </p>
@@ -587,17 +698,98 @@ function ChooseWhen({ service }: { service: ServiceDetailDTO }) {
 
               <Button
                 type="button"
-                className="mt-4 w-full"
+                className="w-full"
                 disabled={!canConfirm}
                 {...(isHourly ? { "aria-describedby": "checkout-hourly-notice" } : {})}
                 onClick={confirm}
               >
                 {t("continueAction")}
               </Button>
-            </div>
+            </CheckoutRail>
           </aside>
         </div>
       </main>
     </>
+  );
+}
+
+/**
+ * "Onde é o serviço", on step 1 rather than step 2.
+ *
+ * **Only the choice moved; the write did not.** Nothing here reaches the
+ * server: `booking.create` has no address field to send one to, and the
+ * address still travels on `booking.submit`. What this collects is recorded
+ * in the tab's own store the moment the draft exists — see `confirm` — so
+ * step 2 opens on the answer already given instead of asking it twice.
+ *
+ * "Outro endereço" is always offered and is the only card when there is
+ * nothing saved to choose between, which is the same reasoning step 2's
+ * address book uses for showing its form to a customer with an empty list:
+ * the next step is the empty state, not a dead list. It is also what an
+ * anonymous visitor sees, because their address book is not readable until
+ * they have signed in — and this page is public.
+ */
+function WhereSection({
+  addresses,
+  loading,
+  chosen,
+  onChoose,
+}: {
+  addresses: readonly AddressDTO[];
+  loading: boolean;
+  chosen: WhereChoice;
+  onChoose: (choice: WhereChoice) => void;
+}) {
+  const { t } = useTranslation("checkout");
+
+  return (
+    <fieldset className="grid gap-3 border-0 p-0">
+      <legend className="type-h3 font-semibold">{t("whereHeading")}</legend>
+
+      {loading ? (
+        <Skeleton className="h-20 w-full" />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {addresses.map((address) => (
+            <label
+              key={address.id}
+              className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4"
+            >
+              <input
+                type="radio"
+                name="checkout-where"
+                value={address.id}
+                checked={chosen.kind === "saved" && chosen.addressId === address.id}
+                onChange={() => onChoose({ kind: "saved", addressId: address.id })}
+                className="mt-1 h-4 w-4 accent-[var(--color-primary)]"
+              />
+              <span className="min-w-0">
+                <span className="type-body-medium block font-semibold">{address.label}</span>
+                <span className="type-caption block text-[var(--color-muted-foreground)]">
+                  {addressSummary(address)}
+                </span>
+              </span>
+            </label>
+          ))}
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4">
+            <input
+              type="radio"
+              name="checkout-where"
+              value="other"
+              checked={chosen.kind === "other"}
+              onChange={() => onChoose({ kind: "other" })}
+              className="mt-1 h-4 w-4 accent-[var(--color-primary)]"
+            />
+            <span className="min-w-0">
+              <span className="type-body-medium block font-semibold">{t("whereOther")}</span>
+              <span className="type-caption block text-[var(--color-muted-foreground)]">
+                {t("whereOtherHint")}
+              </span>
+            </span>
+          </label>
+        </div>
+      )}
+    </fieldset>
   );
 }

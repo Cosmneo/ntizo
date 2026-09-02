@@ -10,6 +10,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import type { AddressDTO } from "@ntizo/shared";
 import type { ServiceAvailabilityDTO, ServiceDetailDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
@@ -38,6 +39,10 @@ const fakes = vi.hoisted(() => {
     refetch: vi.fn(),
     availability: {} as Record<string, unknown>,
     service: null as ServiceDetailDTO | null,
+    /** Null is an anonymous visitor — this page is public and reachable signed out. */
+    viewer: null as { id: string } | null,
+    addresses: [] as AddressDTO[],
+    addressesLoading: false,
     // A one-value store, so a test can hand the page what a *refetch* came
     // back with. React Query's own refetch is what this stands in for, and
     // "the grid after the server answered again" is a state the page has to
@@ -73,7 +78,34 @@ vi.mock("@/features/directory/services/viewmodel/use-service-detail", () => ({
   useServiceDetail: () => fakes.service,
 }));
 
+/**
+ * The session and the address book, spread over their real modules rather
+ * than replacing them.
+ *
+ * `use-current-user` also exports the sign-out cache clear, and `use-addresses`
+ * the three address mutations; a wholesale replacement would delete both from
+ * anything else this tree happens to render. Only the two read hooks this page
+ * uses are stood in for.
+ */
+vi.mock("@/features/user/viewmodel/use-current-user", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useCurrentUser: () => ({ data: fakes.viewer }),
+}));
+
+vi.mock("@/features/account/viewmodel/use-addresses", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  // A **disabled** query answers the way React Query's does — no data, and
+  // pending forever — rather than handing back the fixture anyway. Otherwise
+  // dropping `enabled` from the call site would leave every test green while
+  // production fired a session query at an anonymous visitor.
+  useMyAddresses: ({ enabled = true }: { enabled?: boolean } = {}) =>
+    enabled
+      ? { data: fakes.addresses, isPending: fakes.addressesLoading }
+      : { data: undefined, isPending: true },
+}));
+
 const { ChooseWhenPage } = await import("../choose-when-page");
+const { readDraftDetails } = await import("@/features/checkout/domain/draft-store");
 
 /** The one moment this whole file is pinned to: Friday 4 September 2026, midday UTC. */
 const NOW = "2026-09-04T12:00:00.000Z";
@@ -165,6 +197,11 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
  * `startsAt` carries — a test that asserts on "09:00" while the grid formats
  * in Africa/Maputo would be asserting on 11:00 and would pass or fail for
  * reasons that have nothing to do with the page.
+ *
+ * **Every time-button query below is anchored — `/^09:00/`, not `/09:00/`.** A
+ * card is now announced as the appointment it is ("09:00 até 10:00"), so an
+ * unanchored "10:00" matches both the 10:00 start and the 09:00 one's ending.
+ * The anchor names the start, which is the thing being clicked.
  */
 function availabilityFixture(serviceId: string): ServiceAvailabilityDTO {
   return {
@@ -268,6 +305,24 @@ function hourlyAvailability(serviceId: string): ServiceAvailabilityDTO {
   };
 }
 
+function addressFixture(id: string, over: Partial<AddressDTO> = {}): AddressDTO {
+  return {
+    id,
+    label: `Casa ${id}`,
+    country: "MZ",
+    city: "Maputo",
+    district: "Sommerschield",
+    line1: `Rua ${id}`,
+    line2: null,
+    postalCode: null,
+    directions: null,
+    latitude: null,
+    longitude: null,
+    isDefault: false,
+    ...over,
+  };
+}
+
 /** A refusal shaped exactly as the wire delivers one: coarse code outside, domain code inside. */
 function refusal(kitCode: string, domainCode: string): GraphqlError {
   return new GraphqlError(200, [
@@ -283,6 +338,8 @@ function renderChooseWhen({
   performers,
   service,
   availability,
+  addresses = [],
+  addressesLoading = false,
 }: {
   serviceId: string;
   /** `null` is an anonymous visitor — the command refuses one with `UNAUTHENTICATED`. */
@@ -296,8 +353,18 @@ function renderChooseWhen({
   service?: ServiceDetailDTO;
   /** An alternative calendar, likewise. */
   availability?: ServiceAvailabilityDTO;
+  /** The customer's address book, which only a signed-in visitor has one of. */
+  addresses?: AddressDTO[];
+  addressesLoading?: boolean;
 }) {
   fakes.service = service ?? serviceFixture(serviceId, performers ? { performers } : {});
+  // The same `session` decides both halves of being signed in: whether the
+  // address book is readable, and whether `booking.create` accepts the hold.
+  // Two switches for one fact is how a test ends up asserting a page state
+  // no customer can be in.
+  fakes.viewer = session === null ? null : { id: session.userId };
+  fakes.addresses = addresses;
+  fakes.addressesLoading = addressesLoading;
   fakes.availability = {
     data: availability ?? availabilityFixture(serviceId),
     isPending: false,
@@ -439,6 +506,11 @@ function renderChooseWhen({
 beforeEach(async () => {
   await i18n.changeLanguage("pt-MZ");
   vi.setSystemTime(new Date(NOW));
+  // The where-choice this page records for step 2 lives in the tab's own
+  // store, which jsdom shares across every test in this file. Cleared, or a
+  // test asserting "nothing was recorded" would read the previous one's
+  // answer.
+  sessionStorage.clear();
 });
 
 afterEach(async () => {
@@ -453,7 +525,7 @@ describe("ChooseWhenPage", () => {
     // empty grid having already decided. This is also what makes a slot
     // linkable and a refresh harmless.
     const { router } = renderChooseWhen({ serviceId: "svc-1" });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
 
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({
@@ -475,11 +547,11 @@ describe("ChooseWhenPage", () => {
       at: `/book/svc-1?memberId=mem-1&startsAt=${encodeURIComponent(NINE)}`,
     });
 
-    expect(await screen.findByRole("button", { name: /09:00/ })).toHaveAttribute(
+    expect(await screen.findByRole("button", { name: /^09:00/ })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: /10:00/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /^10:00/ })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
@@ -487,7 +559,7 @@ describe("ChooseWhenPage", () => {
 
   it("sends an anonymous visitor to sign in and back to the same slot", async () => {
     const { router } = renderChooseWhen({ serviceId: "svc-1", session: null });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     // `waitFor`, because the refusal travels a promise before the redirect
@@ -510,7 +582,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       createFails: { code: "SLOT_ALREADY_TAKEN" },
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     expect(await screen.findByText(/já foi marcada/i)).toBeInTheDocument();
@@ -523,7 +595,7 @@ describe("ChooseWhenPage", () => {
     // before they do. `toEqual`, not `toMatchObject` — an extra field here is
     // exactly the regression worth failing on.
     const { router, create } = renderChooseWhen({ serviceId: "svc-1" });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() =>
@@ -560,7 +632,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       at: "/book/svc-1?optionId=opt-2",
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() => expect(create.calls).toHaveLength(1));
@@ -577,11 +649,16 @@ describe("ChooseWhenPage", () => {
     // A regex, because the rail joins the package name and its length into
     // one line ("Corte e barba · 90 min") out of two text nodes.
     expect(await screen.findByText(/Corte e barba/)).toBeInTheDocument();
-    expect(screen.getByText(/700/)).toBeInTheDocument();
+    // `getAllByText`: the rail prints the price twice on purpose — once
+    // against "Serviço" and once as the total — and both must be this
+    // package's.
+    expect(screen.getAllByText(/700,00/).length).toBeGreaterThan(0);
     // Neither of the two prices a substitution would have printed: the
-    // cheapest, and the one carrying the default flag.
-    expect(screen.queryByText(/500/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/900/)).not.toBeInTheDocument();
+    // cheapest, and the one carrying the default flag. Anchored on the
+    // decimals, so "500" cannot be matched by a day card counting five free
+    // times.
+    expect(screen.queryByText(/500,00/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/900,00/)).not.toBeInTheDocument();
   });
 
   it("keeps the chosen package when the customer picks a time", async () => {
@@ -592,7 +669,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       at: "/book/svc-1?optionId=opt-2",
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
 
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({
@@ -610,7 +687,7 @@ describe("ChooseWhenPage", () => {
     // own price column promised, which reads "a partir de 500". The default
     // flag sits on `opt-3` precisely so falling back to it fails here.
     const { create } = renderChooseWhen({ serviceId: "svc-1" });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() => expect(create.calls).toHaveLength(1));
@@ -625,7 +702,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       at: "/book/svc-1?optionId=opt-gone",
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
 
     await waitFor(() => expect(create.calls).toHaveLength(1));
@@ -647,7 +724,7 @@ describe("ChooseWhenPage", () => {
 
     // Rendered in the service's zone, so 23:00 UTC reads as the 01:00 it is
     // to the provider and the customer standing in front of them.
-    expect(await screen.findByRole("button", { name: /01:00/ })).toHaveAttribute(
+    expect(await screen.findByRole("button", { name: /^01:00/ })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -662,7 +739,7 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       at: "/book/svc-1?memberId=mem-1&startsAt=2026-09-04T17%3A00%3A00.000Z",
     });
-    await screen.findByRole("button", { name: /09:00/ });
+    await screen.findByRole("button", { name: /^09:00/ });
     expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
   });
 
@@ -674,14 +751,14 @@ describe("ChooseWhenPage", () => {
       serviceId: "svc-1",
       createFails: { code: "SLOT_ALREADY_TAKEN" },
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
     await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
     expect(await screen.findByText(/já foi marcada/i)).toBeInTheDocument();
 
     // What the refetch comes back with: that start gone.
     rerenderWithout(NINE);
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: /09:00/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: /^09:00/ })).not.toBeInTheDocument(),
     );
     expect(screen.getByRole("button", { name: /continuar/i })).toBeDisabled();
   });
@@ -699,7 +776,7 @@ describe("ChooseWhenPage", () => {
       availability: hourlyAvailability("svc-1"),
       at: "/book/svc-1?optionId=opt-2",
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
 
     expect(await screen.findByRole("button", { name: "240 min" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "300 min" })).toBeInTheDocument();
@@ -729,7 +806,7 @@ describe("ChooseWhenPage", () => {
       service: hourlyService("svc-1"),
       availability: hourlyAvailability("svc-1"),
     });
-    await userEvent.click(await screen.findByRole("button", { name: /09:00/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
 
     const confirm = screen.getByRole("button", { name: /continuar/i });
     expect(confirm).toBeDisabled();
@@ -772,9 +849,274 @@ describe("ChooseWhenPage", () => {
     // The commission comes out of the provider's payout, so a breakdown here
     // would invent a fee the customer is not being charged. The price shown
     // is the option's own amount, unaltered.
+    //
+    // **Asserted on the money rather than on the word.** Looking only for
+    // "comissão" is what let a vacuous version of this test survive six
+    // reviews: the mockup's own fee line is called "Taxa Ntizo", and a
+    // 12% one rendered through this page's own formatter would have passed
+    // a wording check while adding a charge and changing the total. So every
+    // amount the page prints is read back, and there are exactly two of them
+    // — the service line and the total — both the package's own 500.
     renderChooseWhen({ serviceId: "svc-1" });
-    await screen.findByRole("button", { name: /09:00/ });
+    await screen.findByRole("button", { name: /^09:00/ });
+
+    const amounts = screen
+      .getAllByText(/MTn/)
+      // `Intl` separates the number from the currency with a non-breaking
+      // space, which is why `queryByText("500,00")` could not see
+      // "500,00 MTn" and why this normalises before comparing.
+      .map((node) => (node.textContent ?? "").replace(/\s+/g, " ").trim());
+    expect(amounts).toEqual(["500,00 MTn", "500,00 MTn"]);
     expect(screen.queryByText(/comiss/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/500/)).toBeInTheDocument();
+    expect(screen.queryByText(/taxa/i)).not.toBeInTheDocument();
+  });
+
+  it("prices the rail as Serviço, Deslocação and Total, and nothing else", async () => {
+    // The panel the owner approved, minus the fee line it drew. "Deslocação —
+    // Incluída" is a true sentence here because this fixture is
+    // `at_provider`… which is exactly why it must NOT appear: nobody is
+    // travelling to the customer, so there is no journey to include.
+    renderChooseWhen({ serviceId: "svc-1" });
+    await screen.findByRole("button", { name: /^09:00/ });
+
+    expect(screen.getByText("Serviço")).toBeInTheDocument();
+    expect(screen.getByText("Total")).toBeInTheDocument();
+    expect(screen.queryByText("Deslocação")).not.toBeInTheDocument();
+    // Neither of the two lines the mockup carries and this product cannot
+    // keep: nothing models a cancellation window, and materials do not exist
+    // in the catalogue.
+    expect(screen.queryByText(/cancelamento/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/material/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the travel line only where the provider is the one travelling", async () => {
+    renderChooseWhen({
+      serviceId: "svc-1",
+      service: serviceFixture("svc-1", { locationType: "at_customer" }),
+    });
+    await screen.findByRole("button", { name: /^09:00/ });
+
+    expect(screen.getByText("Deslocação")).toBeInTheDocument();
+    expect(screen.getByText("Incluída")).toBeInTheDocument();
+    // Still only two amounts: "included" is a word, not a second charge.
+    expect(screen.getAllByText(/MTn/)).toHaveLength(2);
+  });
+
+  it("counts the day's bookable start times on its card", async () => {
+    // "2 livres" is `days[i].starts.length` — how many appointments can be
+    // asked for that day. Deliberately not a seat count: the fixture's two
+    // starts carry one seat each here, and a page summing `seatsLeft` would
+    // be republishing the provider's capacity rather than answering "is this
+    // day worth opening".
+    renderChooseWhen({ serviceId: "svc-1" });
+    expect(
+      await screen.findByRole("button", { name: /4 de setembro, 2 livres/i }),
+    ).toBeInTheDocument();
+    // A day the response covers with nothing on it says so, and cannot be
+    // chosen.
+    const closed = screen.getByRole("button", { name: /5 de setembro, fechado/i });
+    expect(closed).toBeDisabled();
+  });
+
+  it("counts starts, not seats", async () => {
+    // The seat *index* is never exposed and a capacity count is a different,
+    // public fact — but the number on the card is neither. It is how many
+    // times a customer can pick, and a day whose single start seats five is
+    // one free time, not five.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      availability: {
+        ...availabilityFixture("svc-1"),
+        days: [
+          {
+            date: "2026-09-04",
+            starts: [
+              { minuteOfDay: 540, startsAt: NINE, maxMinutes: null, seatsLeft: 5, memberIds: ["mem-1"] },
+            ],
+          },
+        ],
+      },
+    });
+    expect(
+      await screen.findByRole("button", { name: /4 de setembro, 1 livre$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("groups the times into morning and afternoon, ranged from the starts that exist", async () => {
+    // **The headings are read off the day's own starts.** A provider who
+    // opens at 06:00 must not read "08:00 às 12:00", which is what a
+    // hardcoded range would have told them.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      availability: {
+        ...availabilityFixture("svc-1"),
+        days: [
+          {
+            date: "2026-09-04",
+            starts: [
+              { minuteOfDay: 360, startsAt: "2026-09-04T06:00:00.000Z", maxMinutes: null, seatsLeft: 1, memberIds: ["mem-1"] },
+              { minuteOfDay: 630, startsAt: "2026-09-04T10:30:00.000Z", maxMinutes: null, seatsLeft: 1, memberIds: ["mem-1"] },
+              { minuteOfDay: 720, startsAt: "2026-09-04T12:00:00.000Z", maxMinutes: null, seatsLeft: 1, memberIds: ["mem-1"] },
+              { minuteOfDay: 1020, startsAt: "2026-09-04T17:00:00.000Z", maxMinutes: null, seatsLeft: 1, memberIds: ["mem-1"] },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(await screen.findByText("Manhã")).toBeInTheDocument();
+    expect(screen.getByText("06:00 às 10:30")).toBeInTheDocument();
+    // Noon belongs to the afternoon, which is where the second range starts.
+    expect(screen.getByText("Tarde")).toBeInTheDocument();
+    expect(screen.getByText("12:00 às 17:00")).toBeInTheDocument();
+  });
+
+  it("draws only bookable starts, with no struck-through occupied ones", async () => {
+    // The availability query never returns a minute nobody is free at, so
+    // there is nothing to grey out — and manufacturing one would mean
+    // publishing a start that cannot be booked, the same trap as offering a
+    // time that has already passed. The legend says so: two states, not
+    // three.
+    renderChooseWhen({ serviceId: "svc-1" });
+    await screen.findByRole("button", { name: /^09:00/ });
+
+    expect(screen.getByText("Livre")).toBeInTheDocument();
+    expect(screen.getByText("Selecionado")).toBeInTheDocument();
+    expect(screen.queryByText(/ocupad/i)).not.toBeInTheDocument();
+  });
+
+  it("gives every time its own end, from the package's length", async () => {
+    // What turns a list of numbers into a list of appointments — and the only
+    // place on this page a customer reads how long they are booking somebody
+    // for.
+    renderChooseWhen({ serviceId: "svc-1", at: "/book/svc-1?optionId=opt-2" });
+    // `opt-2` runs 90 minutes, so 09:00 finishes at 10:30 and 10:00 at 11:30.
+    expect(await screen.findByRole("button", { name: "09:00 até 10:30" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "10:00 até 11:30" })).toBeInTheDocument();
+  });
+
+  it("says the rail's QUANDO panel is waiting rather than leaving it blank", async () => {
+    renderChooseWhen({ serviceId: "svc-1" });
+    expect(await screen.findByText(/escolha uma data e uma hora/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^09:00/ }));
+    // The package's own hour, in the service's zone, filled in as soon as
+    // there is something to fill in.
+    await waitFor(() =>
+      expect(screen.getByText(/09:00 – 10:00/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/escolha uma data e uma hora/i)).not.toBeInTheDocument();
+  });
+
+  it("never names a time in the rail that the grid is not showing", async () => {
+    // The same rule the confirm follows. A link naming a withdrawn slot must
+    // not get a rail quoting it back as though it were booked.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      at: "/book/svc-1?memberId=mem-1&startsAt=2026-09-04T17%3A00%3A00.000Z",
+    });
+    await screen.findByRole("button", { name: /^09:00/ });
+    expect(screen.getByText(/escolha uma data e uma hora/i)).toBeInTheDocument();
+    expect(screen.queryByText(/17:00/)).not.toBeInTheDocument();
+  });
+
+  it("renders the rail for a service with no priced package at all", async () => {
+    // A quote service has no option, so there is no amount and no currency —
+    // and `Intl.NumberFormat` throws on a blank currency code rather than
+    // printing a zero. This page is reachable for one: its own notice takes
+    // the calendar's place, but the rail beside it still renders, and a rail
+    // that formatted `0` in `""` would take the whole page down.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      service: serviceFixture("svc-1", { bookingMode: "quote", options: [] }),
+      availability: {
+        ...availabilityFixture("svc-1"),
+        bookingMode: "quote",
+        pricingMode: null,
+        days: [],
+      },
+    });
+
+    expect(await screen.findByText(/or[çc]amento/i)).toBeInTheDocument();
+    // The header still names what the customer is looking at; the price block
+    // is simply absent.
+    expect(screen.getByText("Corte de cabelo")).toBeInTheDocument();
+    expect(screen.queryByText("Total")).not.toBeInTheDocument();
+    expect(screen.queryByText(/MTn/)).not.toBeInTheDocument();
+  });
+
+  it("opens the where-choice on the address book's default", async () => {
+    renderChooseWhen({
+      serviceId: "svc-1",
+      addresses: [addressFixture("a1"), addressFixture("a2", { isDefault: true })],
+    });
+
+    expect(await screen.findByRole("radio", { name: /Casa a2/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Casa a1/ })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /Outro endereço/ })).not.toBeChecked();
+  });
+
+  it("offers only 'outro endereço' to a customer with nothing saved", async () => {
+    // The same reasoning step 2's address book uses for an empty list: the
+    // next step is the empty state, not a dead list of nothing.
+    renderChooseWhen({ serviceId: "svc-1", addresses: [] });
+
+    const other = await screen.findByRole("radio", { name: /Outro endereço/ });
+    expect(other).toBeChecked();
+    expect(screen.getAllByRole("radio", { name: /endereço|Casa/ })).toHaveLength(1);
+    expect(screen.getByText(/indica no passo seguinte/i)).toBeInTheDocument();
+  });
+
+  it("records the chosen address for step 2 without putting it on booking.create", async () => {
+    // **The choice moved to step 1; the write did not.** `booking.create` has
+    // no address field — the schema has none — and the address still travels
+    // on `booking.submit`. `toEqual`, not `toMatchObject`: an address
+    // appearing in this call is precisely the regression worth failing on.
+    const { create } = renderChooseWhen({
+      serviceId: "svc-1",
+      addresses: [addressFixture("a1", { isDefault: true }), addressFixture("a2")],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
+    await userEvent.click(screen.getByRole("radio", { name: /Casa a2/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    await waitFor(() => expect(create.calls).toHaveLength(1));
+    expect(create.calls[0]).toEqual({
+      serviceOptionId: "opt-1",
+      providerMemberId: "mem-1",
+      startsAt: NINE,
+      locale: "pt-MZ",
+    });
+    // Read back through the store's own reader rather than by key, because
+    // that reader is what step 2 will use.
+    expect(readDraftDetails("bk-1")).toEqual({ addressId: "a2", description: "" });
+  });
+
+  it("records 'outro endereço' as a positive answer, not as an absence", async () => {
+    // `null` here is "they will type one on step 2" and has to be
+    // distinguishable from "step 1 never ran" — which it is, because there is
+    // a record at all.
+    renderChooseWhen({
+      serviceId: "svc-1",
+      addresses: [addressFixture("a1", { isDefault: true })],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: /^09:00/ }));
+    await userEvent.click(screen.getByRole("radio", { name: /Outro endereço/ }));
+    await userEvent.click(screen.getByRole("button", { name: /continuar/i }));
+
+    await waitFor(() => expect(readDraftDetails("bk-1")).not.toBeNull());
+    expect(readDraftDetails("bk-1")).toEqual({ addressId: null, description: "" });
+  });
+
+  it("does not read the address book for a visitor who has not signed in", async () => {
+    // This page is public. Firing a session query for an anonymous visitor
+    // buys a guaranteed `UNAUTHENTICATED` round trip and an error state on a
+    // page that has only asked them to pick a time — so the choice falls back
+    // to "outro", which is the truthful answer for somebody with no address
+    // book to read.
+    renderChooseWhen({ serviceId: "svc-1", session: null, addresses: [addressFixture("a1")] });
+
+    expect(await screen.findByRole("radio", { name: /Outro endereço/ })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: /Casa a1/ })).not.toBeInTheDocument();
   });
 });
