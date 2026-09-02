@@ -57,6 +57,16 @@ export enum NotificationType {
   // --- messages ----------------------------------------------------------
   NewMessage = "NEW_MESSAGE",
 
+  // --- support -----------------------------------------------------------
+  /** To every admin: somebody opened a request. */
+  SupportRequestOpened = "SUPPORT_REQUEST_OPENED",
+  /** To every admin: the requester wrote again and nobody read it in time. */
+  SupportRequestMessage = "SUPPORT_REQUEST_MESSAGE",
+  /** To the requester side: the platform answered and it sat unread. */
+  SupportReply = "SUPPORT_REPLY",
+  /** To the requester side: an admin marked the request resolved. */
+  SupportRequestResolved = "SUPPORT_REQUEST_RESOLVED",
+
   // --- marketing ---------------------------------------------------------
   Promotional = "PROMOTIONAL",
   Newsletter = "NEWSLETTER",
@@ -146,6 +156,10 @@ export function bucketForNotificationType(
     case NotificationType.ProviderVerified:
     case NotificationType.TeamInvitation:
     case NotificationType.NewMessage:
+    case NotificationType.SupportRequestOpened:
+    case NotificationType.SupportRequestMessage:
+    case NotificationType.SupportReply:
+    case NotificationType.SupportRequestResolved:
       return null;
   }
 }

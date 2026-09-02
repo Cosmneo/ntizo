@@ -1,44 +1,20 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { hasContact } from "@ntizo/shared/text";
-import { ACCEPTED_ATTACHMENT_TYPES, type AcceptedAttachmentType } from "@ntizo/shared/attachments";
-import { Message, MAX_ATTACHMENTS } from "../../domain/aggregates/message.aggregate";
-import {
-  AttachmentNotAvailableError,
-  MessageContainsContactError,
-  ThreadNotVisibleError,
-  TooManyAttachmentsError,
-} from "../../domain/exceptions";
+import type { SenderSide } from "../../../../shared/infrastructure/database/communication/enums";
+import { Message } from "../../domain/aggregates/message.aggregate";
+import { MessageContainsContactError, ThreadNotVisibleError } from "../../domain/exceptions";
 import type { ThreadRepositoryPort } from "../ports/outbound/thread.repository.port";
 import type { MessageRepositoryPort } from "../ports/outbound/message.repository.port";
-import type { AttachmentRepositoryPort, NewAttachment } from "../ports/outbound/attachment.repository.port";
+import type { AttachmentRepositoryPort } from "../ports/outbound/attachment.repository.port";
 import type { AttachmentStoragePort } from "../ports/outbound/attachment-storage.port";
+import type { SupportRequestRepositoryPort } from "../ports/outbound/support-request.repository.port";
+import { resolveAttachments, type AttachmentDescriptor } from "./resolve-attachments";
 
-/** Narrows `stored.contentType` (a plain `string` — storage does not know about `AcceptedAttachmentType`) to the list `sniffContentType` is allowed to return. */
-function isAcceptedAttachmentType(contentType: string): contentType is AcceptedAttachmentType {
-  return (ACCEPTED_ATTACHMENT_TYPES as readonly string[]).includes(contentType);
-}
-
-/**
- * What an untrusted caller may say about one file it wants to attach: only
- * the key it was uploaded under. Nothing else — `contentType`, `sizeBytes`,
- * and `fileName` are all deliberately absent from this shape.
- *
- * `SendMessageCommand` never trusts any of those three off the wire. The
- * first two are the guarantee `sniffContentType` (Task 3) and the upload
- * route (Task 5) exist to provide: a client that uploaded a genuine JPEG and
- * then claimed a different type in `sendMessage` would undo it one hop
- * later. `fileName` used to ride along here too — the upload route already
- * runs `hasContact` on it and stamps the clean result onto the object as
- * `customMetadata.originalName`, but a client could still send back ANY
- * string under `fileName` in this separate call, one request later,
- * defeating that check entirely. All three are read back from storage
- * instead — see `resolveAttachments` — which is also where `NewAttachment`
- * (the trusted shape `AttachmentRepositoryPort.insertMany` accepts) gets
- * built.
- */
-export interface AttachmentDescriptor {
-  storageKey: string;
-}
+// Re-exported so `index.ts` and the write handlers keep importing
+// `AttachmentDescriptor` from this file, exactly where they do today —
+// `resolveAttachments` moved to its own module (see that file), but this
+// type's public home did not.
+export type { AttachmentDescriptor };
 
 export interface SendMessageInput {
   threadId: string;
@@ -55,7 +31,8 @@ export interface SendMessageInput {
 
 /**
  * Sending into an existing conversation — the customer on it, or any member
- * of its provider.
+ * of its provider, on an inquiry; the requester's side or an admin, on a
+ * support request.
  *
  * Visibility is resolved once, by `findVisible`, and its answer IS the
  * authorization decision: the same predicate the customer's and the
@@ -85,13 +62,17 @@ export interface SendMessageInput {
  * sites (body, file name) that used to be missing. The composer already
  * runs the identical check as someone types, and the upload route already
  * runs it on a file's name; this is what makes the body check a GATE rather
- * than a hint a `curl` can skip.
+ * than a hint a `curl` can skip. Since phase 2, this gate is skipped on a
+ * support thread — see the comment at the check itself — and a requester
+ * writing on a resolved request reopens it, inside the same transaction as
+ * the message that means it.
  */
 export class SendMessageCommand {
   constructor(
     private readonly threads: ThreadRepositoryPort,
     private readonly messages: MessageRepositoryPort,
     private readonly attachments: AttachmentRepositoryPort,
+    private readonly supportRequests: SupportRequestRepositoryPort,
     private readonly attachmentStorage: AttachmentStoragePort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly now: () => Date = () => new Date(),
@@ -101,24 +82,34 @@ export class SendMessageCommand {
     const visible = await this.threads.findVisible(input.threadId, input.senderUserId);
     if (!visible) throw new ThreadNotVisibleError();
 
-    // The gate the spec's own reasoning for `packages/shared` exists to
-    // make true: `hasContact` runs on the CLIENT (as someone types, for
-    // feedback) and on the FILE NAME (the upload route, Task 5) — but until
-    // this line, never on the body a `curl` can post straight past both.
-    // Checked on the trimmed body, before `resolveAttachments` (which does
-    // real I/O against storage) and before the transaction even opens — the
-    // same cheap-check-first ordering `resolveAttachments` itself already
-    // uses for `MAX_ATTACHMENTS`.
+    const isSupport = visible.type === "support";
+
+    // The contact gate is an anti-disintermediation rule between a customer
+    // and a provider. Between a person and the platform's own support it
+    // would refuse exactly what support needs — a phone number to call back.
     const trimmedBody = input.body.trim();
-    if (hasContact(trimmedBody)) throw new MessageContainsContactError();
+    if (!isSupport && hasContact(trimmedBody)) throw new MessageContainsContactError();
+
+    // The side is a fact about the thread and who is writing, decided here
+    // and written on the row — never inferred later from a role. On a
+    // support request the requester's side is the audience; on an inquiry
+    // it is customer-or-not, and `findVisible` already proved a non-customer
+    // is a member.
+    const senderSide: SenderSide = isSupport
+      ? visible.providerId === null
+        ? "customer"
+        : "provider"
+      : visible.customerUserId === input.senderUserId
+        ? "customer"
+        : "provider";
 
     const descriptors = input.attachments ?? [];
-    const attachments = await this.resolveAttachments(input.senderUserId, descriptors);
+    const attachments = await resolveAttachments(this.attachmentStorage, input.senderUserId, descriptors);
 
     const message = Message.compose({
       threadId: input.threadId,
       senderUserId: input.senderUserId,
-      senderSide: "customer", // TODO(Task 5): resolve the real side instead of hardcoding it.
+      senderSide,
       body: trimmedBody,
       attachmentCount: attachments.length,
       now: this.now(),
@@ -130,83 +121,16 @@ export class SendMessageCommand {
         await this.attachments.insertMany(id, attachments);
       }
       await this.threads.touch(input.threadId, message.createdAt);
+      // A requester writing on a resolved request is the requester saying
+      // "not solved" — the only reopen there is, in the same transaction as
+      // the message that means it.
+      if (isSupport) {
+        const request = await this.supportRequests.findByThreadId(input.threadId);
+        if (request && request.status === "resolved") {
+          await this.supportRequests.save(request.reopen());
+        }
+      }
       return { id };
     });
-  }
-
-  /**
-   * Turns what the caller claimed into what `AttachmentRepositoryPort.insertMany`
-   * is allowed to trust — that port's own doc comment says it does not
-   * re-validate, so this is where that assumption is made true.
-   *
-   * Checks per descriptor, in this order because the cheaper ones come
-   * first:
-   *
-   * 1. `storageKey` must start with `attachment/<senderUserId>/` — a plain
-   *    string comparison, no I/O, and the fast way to refuse a key that was
-   *    never this sender's to begin with.
-   * 2. The object's own metadata, read from storage, must agree: it must
-   *    exist at all, and its `customMetadata.uploadedByUserId` must name
-   *    this same sender. This is an INDEPENDENT record of the same fact —
-   *    not derived from the key's prefix — and fetching it is also how
-   *    `contentType`, `sizeBytes` and `fileName` are learned, never from the
-   *    descriptor (which no longer carries a `fileName` at all — see
-   *    `AttachmentDescriptor`'s own doc comment for why). It is also the
-   *    only check that proves the file exists, closing "a message pointing
-   *    at a file that is not there".
-   * 3. The stored `contentType` must be one `ACCEPTED_ATTACHMENT_TYPES`
-   *    lists. Unreachable today — `sniffContentType` only ever stamps an
-   *    accepted type or refuses the upload outright — but the point of
-   *    exporting that list from `@ntizo/shared/attachments` was that it
-   *    CONSTRAINS, not merely documents; this is the boundary that makes
-   *    that true rather than aspirational.
-   * 4. The stored `originalName` must not be null. Every object the real
-   *    upload route writes carries one (`customMetadata.originalName`); its
-   *    absence means this object did not come through that route, which is
-   *    reason enough to refuse it the same way a missing object is refused.
-   *
-   * All four reasons — and a caller-forged key that never had the right
-   * prefix — throw the identical `AttachmentNotAvailableError`; see that
-   * class's own doc comment for why they must stay indistinguishable.
-   *
-   * Checked against `MAX_ATTACHMENTS` before any of the above: refusing a
-   * six-attachment request outright is cheaper than resolving five of them
-   * against storage only for `Message.compose` to refuse the count anyway.
-   */
-  private async resolveAttachments(
-    senderUserId: string,
-    descriptors: AttachmentDescriptor[],
-  ): Promise<NewAttachment[]> {
-    if (descriptors.length > MAX_ATTACHMENTS) {
-      throw new TooManyAttachmentsError(descriptors.length, MAX_ATTACHMENTS);
-    }
-
-    const ownPrefix = `attachment/${senderUserId}/`;
-
-    return await Promise.all(
-      descriptors.map(async (descriptor): Promise<NewAttachment> => {
-        if (!descriptor.storageKey.startsWith(ownPrefix)) {
-          throw new AttachmentNotAvailableError();
-        }
-
-        const stored = await this.attachmentStorage.head(descriptor.storageKey);
-        if (!stored || stored.uploadedByUserId !== senderUserId) {
-          throw new AttachmentNotAvailableError();
-        }
-        if (!isAcceptedAttachmentType(stored.contentType)) {
-          throw new AttachmentNotAvailableError();
-        }
-        if (stored.originalName === null) {
-          throw new AttachmentNotAvailableError();
-        }
-
-        return {
-          storageKey: descriptor.storageKey,
-          fileName: stored.originalName,
-          contentType: stored.contentType,
-          sizeBytes: stored.sizeBytes,
-        };
-      }),
-    );
   }
 }
