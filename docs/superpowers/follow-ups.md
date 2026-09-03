@@ -3591,3 +3591,37 @@ told about, and nothing anywhere is red.
 **Trigger:** the day a real delayed-jobs adapter replaces the no-op. The fix is to move the raise
 ahead of the scheduling call, or wrap the scheduling the way the raise is already wrapped — the
 ordering is arbitrary today and load-bearing the moment the adapter is real.
+
+## #150 — The dashboard's unread count only sees the first page of threads
+
+`OverviewPage` sums `unreadCount` over `useProviderThreads`' first page, which is what the
+design settled for, because the communication read has no aggregate. A workspace with more
+threads than one page holds will show an undercount, and the number will change as the
+inbox is scrolled elsewhere in the session.
+
+**Trigger:** the first provider whose inbox is longer than a page and who notices the two
+screens disagree; the fix is a `communicationProviderUnreadCount` beside the notification
+context's, which already has one.
+
+## #151 — The stats read has no index for its date windows
+
+`booking_provider_status_idx` (`provider_id`, `status`) serves the dashboard's counts, but the
+thirty-day sums filter on `completed_at` and the confirmed series on `confirmed_at`, neither
+of which is indexed. At a workspace's row counts this is a scan of a few hundred rows and
+costs nothing; at a marketplace's it is a scan of the table.
+
+**Trigger:** the dashboard appearing in a slow-query log, or the first workspace with tens of
+thousands of bookings — then `(provider_id, completed_at)` and `(provider_id, confirmed_at)`,
+or a rollup table if the numbers are wanted platform-wide.
+
+## #152 — The dashboard's cards cannot tell an empty workspace from a failed read
+
+Only the stats query renders an alert (`features/provider/ui/overview.tsx`): `stats.isError`
+gates a banner, but the recent-bookings, rating and services queries have no equivalent check.
+If any of them fails, `recent.data?.items ?? []` and `services.data ?? []` fall back to empty
+arrays and `rating.data?.average` falls back to `null`, so the cards render "Ainda sem
+reservas", "—" and `0` — exactly what an untouched workspace looks like, not what a broken
+read looks like.
+
+**Trigger:** the first provider who reports a blank dashboard that is not blank, or the next
+page that copies this pattern; the fix is one shared "could not read" state per card.
