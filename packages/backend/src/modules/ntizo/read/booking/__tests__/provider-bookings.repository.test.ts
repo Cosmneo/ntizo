@@ -12,12 +12,22 @@
  * `__runWithTransactionContextForTests` with this file's own `DEV_DB_URL`
  * client bound into it.
  *
- * The fixture seeds one workspace with three bookings in three different
- * states — a `DRAFT`, an `AWAITING_PROVIDER` and a `CONFIRMED` whose slot is
- * already behind us — because the thing under test is which of them each tab
- * shows. A fixture with one booking cannot fail if the tab filter were
- * dropped. The `DRAFT` is load-bearing twice over: it is the customer's own
- * unfinished checkout, and no query here may ever show it to the provider.
+ * The fixture seeds one workspace with five bookings in five different states
+ * — a `DRAFT`, a second draft moved to `EXPIRED`, an `AWAITING_PROVIDER`, a
+ * `CONFIRMED` whose slot is already behind us and a `CONFIRMED` still ahead of
+ * us — because the thing under test is which of them each tab shows. A fixture
+ * with one booking cannot fail if the tab filter were dropped, and one with a
+ * single `CONFIRMED` cannot tell `upcoming` from `history`.
+ *
+ * The `DRAFT` is load-bearing twice over: it is the customer's own unfinished
+ * checkout, and no query here may ever show it to the provider. The **expired**
+ * draft is the same claim one step on, and the one a status filter alone gets
+ * wrong: `EXPIRED` is one of the history tab's statuses, so an abandoned
+ * step-1 checkout is hidden only by `askedOfProvider()` — the `EXISTS` on the
+ * `submitted_by_customer` change row. That is why every submitted fixture below
+ * writes that row exactly as `SubmitBookingCommand` does; a fixture that
+ * skipped it would be indistinguishable from an abandoned draft, which is the
+ * point.
  *
  * Fixtures follow the neighbouring file's pattern: a fresh provider and
  * provider member under a random `suffix`, so this run's `providerMemberId`
@@ -75,8 +85,10 @@ let categoryId: string;
 let serviceId: string;
 let serviceOptionId: string;
 let draftId: string;
+let expiredDraftId: string;
 let awaitingId: string;
 let confirmedPastId: string;
+let confirmedFutureId: string;
 
 beforeAll(async () => {
   customerId = crypto.randomUUID();
@@ -157,6 +169,24 @@ beforeAll(async () => {
     );
     draftId = draft.id as string;
 
+    // The same abandoned checkout one deadline later. `Booking.expire` moves a
+    // draft past its hold — or one superseded by a second checkout — straight
+    // to `EXPIRED`, a status the history tab lists, and no `submitted_by_customer`
+    // row is ever written for it because nobody submitted anything.
+    const expiredDraft = (
+      await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            startsAt: new Date("2027-03-01T13:00:00.000Z"),
+            expiresAt: new Date("2027-02-28T13:30:00.000Z"),
+          }),
+        ),
+        1,
+      )
+    ).expire(now);
+    await commit(expiredDraft, BookingStatus.Draft);
+    expiredDraftId = expiredDraft.id as string;
+
     const awaiting = (
       await writeRepo.insert(
         Booking.create(
@@ -170,15 +200,7 @@ beforeAll(async () => {
     ).submit(now, new Date("2027-02-28T13:00:00.000Z"), address(), "Depilação completa");
     await commit(awaiting, BookingStatus.Draft);
     awaitingId = awaiting.id as string;
-    await writeRepo.appendChange({
-      bookingId: awaitingId,
-      changedByUserId: customerId,
-      reason: "submitted_by_customer",
-      previousStartsAt: null,
-      previousEndsAt: null,
-      previousProviderMemberId: null,
-      previousPriceMinor: null,
-    });
+    await recordSubmission(awaitingId);
 
     // A slot that has already happened, created as such: nothing on the
     // aggregate or in the database refuses a past `startsAt`, so the history
@@ -201,6 +223,7 @@ beforeAll(async () => {
       null,
     );
     await commit(submittedPast, BookingStatus.Draft);
+    await recordSubmission(submittedPast.id as string);
     const accepted = submittedPast.accept(
       new Date("2020-05-31T08:30:00.000Z"),
       new Date("2020-05-31T09:00:00.000Z"),
@@ -209,6 +232,29 @@ beforeAll(async () => {
     const paid = accepted.markPaid(`mpesa-${suffix}`, new Date("2020-05-31T08:45:00.000Z"));
     await commit(paid, BookingStatus.PendingPayment);
     confirmedPastId = paid.id as string;
+
+    // The same walk with a slot still ahead of `now`, which is the only thing
+    // that separates the two: `upcoming` and `history` share the two live
+    // statuses and split them on `startsAt` against the filter's `now`. Without
+    // this booking that split is never exercised in either direction.
+    const submittedFuture = (
+      await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            startsAt: new Date("2027-03-01T15:00:00.000Z"),
+            expiresAt: new Date("2027-02-28T15:30:00.000Z"),
+          }),
+        ),
+        1,
+      )
+    ).submit(now, new Date("2027-02-28T17:00:00.000Z"), address(), null);
+    await commit(submittedFuture, BookingStatus.Draft);
+    await recordSubmission(submittedFuture.id as string);
+    const acceptedFuture = submittedFuture.accept(now, new Date("2027-02-28T18:00:00.000Z"));
+    await commit(acceptedFuture, BookingStatus.AwaitingProvider);
+    const paidFuture = acceptedFuture.markPaid(`mpesa-future-${suffix}`, now);
+    await commit(paidFuture, BookingStatus.PendingPayment);
+    confirmedFutureId = paidFuture.id as string;
   });
 });
 
@@ -274,6 +320,28 @@ function address() {
  * assertions instead, several tests away from the line that actually went
  * wrong.
  */
+/**
+ * The `submitted_by_customer` change row `SubmitBookingCommand` appends in the
+ * same transaction as the `DRAFT` → `AWAITING_PROVIDER` hop.
+ *
+ * Not a detail of the timeline test: the reader's `askedOfProvider()` treats
+ * this row as the definition of "the provider was asked about this booking",
+ * so a fixture that walked `submit` without writing it would be invisible to
+ * every provider-side query here — and would look exactly like the abandoned
+ * draft two tests are about.
+ */
+async function recordSubmission(bookingId: string): Promise<void> {
+  await writeRepo.appendChange({
+    bookingId,
+    changedByUserId: customerId,
+    reason: "submitted_by_customer",
+    previousStartsAt: null,
+    previousEndsAt: null,
+    previousProviderMemberId: null,
+    previousPriceMinor: null,
+  });
+}
+
 async function commit(entity: Booking, expected: Booking["status"]): Promise<void> {
   const written = await writeRepo.save(entity, expected);
   if (!written) {
@@ -306,6 +374,93 @@ describe("DrizzleBookingReadRepository, provider side", () => {
         0,
       );
       expect(rows.map((r) => r.id)).toEqual([confirmedPastId]);
+    });
+  });
+
+  test("history never shows a draft that merely expired", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      // `EXPIRED` is one of the history tab's statuses, so the `<> 'DRAFT'`
+      // guard alone lets an abandoned step-1 checkout through — carrying the
+      // customer's first name and the service into a list of things the
+      // provider is supposed to have answered. Nobody asked them anything.
+      const rows = await readRepo.listForProvider(
+        providerId,
+        { tab: "history", q: null, memberId: null, now },
+        20,
+        0,
+      );
+      expect(rows.map((r) => r.id)).toEqual([confirmedPastId]);
+
+      // The count shares `providerWhere`, so it has to agree — a total the
+      // list cannot fill is the same defect one line further on.
+      expect(
+        await readRepo.countForProvider(providerId, {
+          tab: "history",
+          q: null,
+          memberId: null,
+          now,
+        }),
+      ).toBe(1);
+
+      // And the row is not reachable by id either: a link is as much a leak
+      // as a list.
+      expect(await readRepo.findForProvider(expiredDraftId, providerId)).toBeNull();
+    });
+  });
+
+  test("upcoming lists the confirmed booking whose slot is still ahead, history does not", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const upcoming = await readRepo.listForProvider(
+        providerId,
+        { tab: "upcoming", q: null, memberId: null, now },
+        20,
+        0,
+      );
+      expect(upcoming.map((r) => r.id)).toEqual([confirmedFutureId]);
+      expect(
+        await readRepo.countForProvider(providerId, {
+          tab: "upcoming",
+          q: null,
+          memberId: null,
+          now,
+        }),
+      ).toBe(1);
+
+      // The other half of the same split: the two tabs share `CONFIRMED` and
+      // are told apart only by `startsAt` against `now`, so each has to be
+      // asserted to exclude the other's booking.
+      const history = await readRepo.listForProvider(
+        providerId,
+        { tab: "history", q: null, memberId: null, now },
+        20,
+        0,
+      );
+      expect(history.map((r) => r.id)).not.toContain(confirmedFutureId);
+      expect(upcoming.map((r) => r.id)).not.toContain(confirmedPastId);
+    });
+  });
+
+  test("the member filter counts only that member's bookings", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      // Every booking in this fixture is assigned to the workspace's one
+      // member, so the filter has to be proven in both directions: naming that
+      // member changes nothing, and naming any other empties the tab.
+      expect(
+        await readRepo.countForProvider(providerId, {
+          tab: "requests",
+          q: null,
+          memberId,
+          now,
+        }),
+      ).toBe(1);
+      expect(
+        await readRepo.countForProvider(providerId, {
+          tab: "requests",
+          q: null,
+          memberId: crypto.randomUUID(),
+          now,
+        }),
+      ).toBe(0);
     });
   });
 

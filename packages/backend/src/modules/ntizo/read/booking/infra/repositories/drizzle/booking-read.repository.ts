@@ -5,6 +5,7 @@ import {
   count,
   desc,
   eq,
+  exists,
   gte,
   ilike,
   inArray,
@@ -124,6 +125,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
           eq(booking.id, bookingId),
           eq(booking.providerId, providerId),
           sql`${booking.status} <> 'DRAFT'`,
+          askedOfProvider(),
         ),
       )
       .limit(1);
@@ -412,9 +414,44 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
   return and(
     eq(booking.providerId, providerId),
     sql`${booking.status} <> 'DRAFT'`,
+    askedOfProvider(),
     byTab,
     byMember,
     bySearch,
+  );
+}
+
+/**
+ * A booking the provider was actually asked about: one that left `DRAFT`
+ * through `submit`, which writes this change row in the same transaction as
+ * the hop (see `SubmitBookingCommand`).
+ *
+ * **The `<> 'DRAFT'` guard beside this one is not enough on its own.** A draft
+ * whose checkout hold ran out, or one superseded by the customer starting a
+ * second checkout (`CreateBookingCommand`), is moved to `EXPIRED` by
+ * `Booking.expire` — and `EXPIRED` is one of `PROVIDER_TAB_STATUSES.history`.
+ * Without this clause every abandoned step-1 checkout would surface in the
+ * provider's history as an "Expirada" row carrying the customer's first name
+ * and the service, inflate the tab's total, and answer `findForProvider`. Such
+ * a row has the *status* of a finished booking and none of its history: nobody
+ * ever asked the provider anything, which is the same reason a live `DRAFT` is
+ * hidden from them.
+ *
+ * A correlated `EXISTS` rather than a join, because this is a test on the
+ * booking and not a column to select: a join to an append-only log would
+ * multiply a booking by its number of change rows.
+ */
+function askedOfProvider() {
+  return exists(
+    getDb()
+      .select({ one: sql`1` })
+      .from(bookingChange)
+      .where(
+        and(
+          eq(bookingChange.bookingId, booking.id),
+          eq(bookingChange.reason, "submitted_by_customer"),
+        ),
+      ),
   );
 }
 
