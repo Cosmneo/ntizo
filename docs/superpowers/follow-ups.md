@@ -3245,3 +3245,35 @@ attribute changing.
 
 **Trigger:** before any locale other than Portuguese has real users, and before anyone
 investigates the hydration warning on its own — it is a symptom of this, not a separate bug.
+
+## #126 — Bookings the provider cannot act on after acceptance
+
+Phase 1 of `2026-09-02-provider-bookings-and-dashboard-design.md` mounts accept and decline
+and nothing else. `MARKED_DONE` is in the enum with no transition; reschedule and cancel by
+the provider are drawn in the state machine with no command. A `CONFIRMED` booking whose start
+has passed sits in Histórico as "Confirmada" forever.
+
+**Trigger:** the first provider who asks why a finished job still says confirmed, or the wallet
+release work, which needs "done" to exist.
+
+## #127 — Three booking notifications have no email
+
+`BOOKING_CONFIRMED`, `PROVIDER_BOOKING_CONFIRMED` and `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER`
+raise in-app rows only. `deliver-notification.internal.command.ts` renders nothing for a type
+without a template, by design.
+
+**Trigger:** the notification-preferences work, or the first provider who missed a payment
+landing because they were not in the app.
+
+## #128 — A confirmed booking's timeline has no "paid" hop
+
+`mark-booking-paid.command.ts` changes the status and raises the two confirmation notifications
+but writes no `booking_change` row, so the provider's timeline (Task 3's `timelineOf`, which
+draws creation + `booking_change` rows + the pending deadline) ends at "Aceite" for a paid
+booking — the moment the customer paid is invisible, and `paymentRef` sits only in the technical
+details.
+
+**Trigger:** the first provider who asks when a booking was paid, or the wallet-release work,
+which will want the paid instant on the record; the fix is one
+`appendChange({ reason: "paid_by_customer" })` in the command plus the
+`timelineReason.paid_by_customer` key in the eight locales.
