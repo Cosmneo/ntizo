@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   BOOKING_DECLINE_REASONS,
+  STATS_WINDOW_DAYS,
   providerBookingDetailReadModel,
   providerBookingReadModel,
+  providerBookingStatsReadModel,
 } from "../provider-booking.schema";
 import { NotificationType, bucketForNotificationType } from "../../../../enums";
 
@@ -68,5 +70,48 @@ describe("decline reasons and notification types", () => {
   it("the two new notification types are transactional", () => {
     expect(bucketForNotificationType(NotificationType.BookingAccepted)).toBeNull();
     expect(bucketForNotificationType(NotificationType.ProviderBookingConfirmed)).toBeNull();
+  });
+});
+
+const day = (date: string) => ({ date, requests: 0, confirmed: 0 });
+const thirtyDays = Array.from({ length: STATS_WINDOW_DAYS }, (_, i) =>
+  day(`2026-08-${String(i + 5).padStart(2, "0")}`),
+);
+
+const stats = {
+  awaitingResponse: 3,
+  awaitingPayment: 1,
+  upcomingToday: 2,
+  upcomingWeek: 5,
+  completedLast30: 9,
+  declinedLast30: 1,
+  revenueLast30Minor: 1_240_000,
+  pipelineMinor: 630_000,
+  currency: "MZN",
+  perDay: thirtyDays,
+};
+
+describe("providerBookingStatsReadModel", () => {
+  it("accepts a full month of numbers", () => {
+    expect(providerBookingStatsReadModel.parse(stats)).toEqual(stats);
+  });
+
+  it("insists on exactly thirty days — a chart with holes lies about the shape", () => {
+    expect(() =>
+      providerBookingStatsReadModel.parse({ ...stats, perDay: thirtyDays.slice(1) }),
+    ).toThrow();
+  });
+
+  it("refuses a day that is not a plain date", () => {
+    expect(() =>
+      providerBookingStatsReadModel.parse({
+        ...stats,
+        perDay: [{ ...day("2026-08-05T00:00:00.000Z") }, ...thirtyDays.slice(1)],
+      }),
+    ).toThrow();
+  });
+
+  it("refuses money it cannot show — a negative payout is a bug upstream, not a number", () => {
+    expect(() => providerBookingStatsReadModel.parse({ ...stats, revenueLast30Minor: -1 })).toThrow();
   });
 });
