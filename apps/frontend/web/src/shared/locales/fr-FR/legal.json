@@ -15,7 +15,8 @@
           "Les adresses que vous enregistrez pour recevoir des services, y compris la ville, le quartier, les indications d’accès et les coordonnées du point que vous placez.",
           "Les moyens de paiement : nous conservons l’identifiant du compte mobile (un numéro M-Pesa ou e-Mola, par exemple) et le pays. Nous ne conservons pas de numéros de carte.",
           "Si vous êtes prestataire : les pièces d’identité téléversées pour la vérification, et l’état de cette vérification.",
-          "Des données techniques pour chaque session : adresse IP et identification du navigateur, afin de savoir quand une session est la vôtre et quand elle ne l’est pas."
+          "Des données techniques pour chaque session : adresse IP et identification du navigateur, afin de savoir quand une session est la vôtre et quand elle ne l’est pas.",
+          "Ce que vous nous écrivez via les formulaires de contact et d'avis, avec l'adresse IP d'envoi, pour vous répondre et prévenir les abus."
         ]
       },
       {

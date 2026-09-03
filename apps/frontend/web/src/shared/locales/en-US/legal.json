@@ -15,7 +15,8 @@
           "Addresses you save for receiving services, including city, district, access directions, and the coordinates of the point you place on the map.",
           "Payment methods: we store the mobile account identifier (an M-Pesa or e-Mola number, for example) and the country. We do not store card numbers.",
           "If you are a provider: identity documents you upload for verification, and the status of that verification.",
-          "Technical data for each session: IP address and browser identification, so we can tell when a session is yours and when it is not."
+          "Technical data for each session: IP address and browser identification, so we can tell when a session is yours and when it is not.",
+          "What you write to us through the contact and feedback forms, with the IP address it was sent from, so we can reply and stop abuse."
         ]
       },
       {

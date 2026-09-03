@@ -15,7 +15,8 @@
           "Moradas que registe para receber serviços, incluindo cidade, bairro, indicações de acesso e coordenadas geográficas do ponto que marcar.",
           "Métodos de pagamento: guardamos o identificador da conta móvel (por exemplo, o número M-Pesa ou e-Mola) e o país. Não guardamos números de cartão.",
           "Se for prestador: documentos de identificação que carregue para verificação, e o estado dessa verificação.",
-          "Dados técnicos de cada sessão: endereço IP e identificação do navegador, para sabermos quando uma sessão é sua e quando não é."
+          "Dados técnicos de cada sessão: endereço IP e identificação do navegador, para sabermos quando uma sessão é sua e quando não é.",
+          "O que nos escreve pelos formulários de contacto e feedback, com o endereço IP de onde foi enviado, para lhe respondermos e travarmos abusos."
         ]
       },
       {

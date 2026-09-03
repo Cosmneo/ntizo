@@ -15,7 +15,8 @@
           "Adressen die je opslaat om diensten te ontvangen, inclusief stad, wijk, aanwijzingen voor de toegang en de coördinaten van het punt dat je aangeeft.",
           "Betaalmethoden: we bewaren de identificatie van de mobiele rekening (bijvoorbeeld het M-Pesa- of e-Mola-nummer) en het land. Kaartnummers bewaren we niet.",
           "Ben je dienstverlener: identiteitsdocumenten die je uploadt voor verificatie, en de status daarvan.",
-          "Technische gegevens per sessie: IP-adres en browseridentificatie, zodat we weten wanneer een sessie van jou is en wanneer niet."
+          "Technische gegevens per sessie: IP-adres en browseridentificatie, zodat we weten wanneer een sessie van jou is en wanneer niet.",
+          "Wat u ons schrijft via de contact- en feedbackformulieren, met het IP-adres van waaruit het is verzonden, zodat we kunnen antwoorden en misbruik kunnen tegengaan."
         ]
       },
       {

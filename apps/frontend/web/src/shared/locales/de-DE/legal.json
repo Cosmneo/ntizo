@@ -15,7 +15,8 @@
           "Adressen, die Sie für den Empfang von Leistungen speichern, einschließlich Stadt, Stadtteil, Zufahrtshinweisen und den Koordinaten des von Ihnen gesetzten Punktes.",
           "Zahlungsmethoden: Wir speichern die Kennung des Mobilkontos (etwa die M-Pesa- oder e-Mola-Nummer) und das Land. Kartennummern speichern wir nicht.",
           "Wenn Sie Anbieter sind: die zur Verifizierung hochgeladenen Ausweisdokumente und den Stand dieser Verifizierung.",
-          "Technische Daten je Sitzung: IP-Adresse und Browserkennung, damit wir erkennen, wann eine Sitzung Ihre ist und wann nicht."
+          "Technische Daten je Sitzung: IP-Adresse und Browserkennung, damit wir erkennen, wann eine Sitzung Ihre ist und wann nicht.",
+          "Was Sie uns über die Kontakt- und Feedback-Formulare schreiben, samt der IP-Adresse, von der es gesendet wurde, damit wir antworten und Missbrauch unterbinden können."
         ]
       },
       {

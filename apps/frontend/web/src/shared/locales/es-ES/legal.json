@@ -15,7 +15,8 @@
           "Direcciones que guardes para recibir servicios, incluidas ciudad, barrio, indicaciones de acceso y las coordenadas del punto que marques.",
           "Métodos de pago: guardamos el identificador de la cuenta móvil (por ejemplo, el número de M-Pesa o e-Mola) y el país. No guardamos números de tarjeta.",
           "Si eres proveedor: los documentos de identidad que subas para la verificación, y el estado de esa verificación.",
-          "Datos técnicos de cada sesión: dirección IP e identificación del navegador, para saber cuándo una sesión es tuya y cuándo no."
+          "Datos técnicos de cada sesión: dirección IP e identificación del navegador, para saber cuándo una sesión es tuya y cuándo no.",
+          "Lo que nos escribes a través de los formularios de contacto y opinión, con la dirección IP desde la que se envió, para responderte y frenar abusos."
         ]
       },
       {
