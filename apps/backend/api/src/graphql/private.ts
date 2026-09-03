@@ -30,10 +30,15 @@ import {
   createCommunicationReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/communication";
 import {
+  bootstrapSupportRead,
+  createSupportReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/support";
+import {
   bootstrapBookingRead,
   createBookingReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/booking";
 import { createCommunicationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/communication";
+import { createSupportWriteHandlers } from "@ntizo/backend/modules/ntizo/write/support";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import { createNotificationWriteHandlers } from "@ntizo/backend/modules/ntizo/write/notification";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
@@ -107,6 +112,7 @@ export function buildPrivateGraphQLFields(): {
   const notification = bootstrapNotification();
   const activityRead = bootstrapActivityRead();
   const communicationRead = bootstrapCommunicationRead();
+  const supportRead = bootstrapSupportRead();
   const communication = bootstrapCommunication({
     raiseNotification: notification.useCases.internal.raiseNotification,
     // Reads the CURRENT request's `ATTACHMENTS_BUCKET` via
@@ -138,8 +144,10 @@ export function buildPrivateGraphQLFields(): {
       ...createNotificationReadHandlers({ notificationRead }),
       ...createActivityReadHandlers({ activityRead }),
       ...createCommunicationReadHandlers({ communicationRead }),
+      ...createSupportReadHandlers({ supportRead }),
       ...createReviewReadHandlers(reviewRead.useCases),
       ...createCommunicationWriteHandlers({ communication }),
+      ...createSupportWriteHandlers({ communication }),
       ...createProviderWriteHandlers({ provider, workflows }),
       ...createCatalogWriteHandlers({ catalog }),
       ...createSchedulingWriteHandlers({ scheduling }),

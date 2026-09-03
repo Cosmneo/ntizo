@@ -6,6 +6,7 @@ import {
   type AttachmentRepositoryPort,
 } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
 import { getAuth } from "@ntizo/backend/modules/better-auth";
+import { isPlatformAdmin } from "./admin-access";
 import type { AppBindings } from "./types";
 
 /**
@@ -183,7 +184,17 @@ export function mountAttachments(app: Hono<{ Bindings: AppBindings }>, deps: Att
     const id = c.req.param("id");
     if (!UUID_RE.test(id)) return c.json({ error: "FORBIDDEN" }, 403);
 
-    const row = await deps.attachmentRepository.findVisible(id, session.user.id);
+    // A participant first — the closed pair `findVisible` admits. Then, and
+    // only for an administrator, a file on a support thread: the admin is
+    // not a participant and must not be admitted as one, but the requester
+    // sent that file *to* the platform, and the platform must be able to
+    // open it. Never an admin bypass on `findVisible` itself: that would
+    // let an admin download any file in any private conversation by id,
+    // which is phase 3's question, not this one's.
+    let row = await deps.attachmentRepository.findVisible(id, session.user.id);
+    if (!row && (await isPlatformAdmin(session.user.id))) {
+      row = await deps.attachmentRepository.findOnSupportThread(id);
+    }
     if (!row) return c.json({ error: "FORBIDDEN" }, 403);
 
     const bucket = c.env.ATTACHMENTS_BUCKET;

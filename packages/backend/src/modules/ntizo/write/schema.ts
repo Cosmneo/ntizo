@@ -7,6 +7,7 @@ import { reviewWriteSchema } from "./review/graphql/schema/mutations";
 import { notificationWriteSchema } from "./notification/graphql/schema/mutations";
 import { communicationWriteSchema } from "./communication/graphql/schema/mutations";
 import { bookingWriteSchema } from "./booking/graphql/schema/mutations";
+import { supportWriteSchema } from "./support/graphql/schema/mutations";
 
 /** The WRITE-side schema barrel — mutations only, across all bounded contexts. */
 export const writeSchema = mergeGraphQLSchemas(
@@ -18,4 +19,5 @@ export const writeSchema = mergeGraphQLSchemas(
   notificationWriteSchema,
   communicationWriteSchema,
   bookingWriteSchema,
+  supportWriteSchema,
 );
