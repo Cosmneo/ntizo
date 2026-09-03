@@ -306,5 +306,6 @@
   "supportResolve": "Marcar como resuelta",
   "supportResolvedNotice": "Marcada como resuelta. Si el solicitante responde, se reabre.",
   "supportPlatformSender": "Soporte de Ntizo",
-  "supportNotFound": "Esta solicitud no existe."
+  "supportNotFound": "Esta solicitud no existe.",
+  "supportLoadError": "No se pudo cargar la solicitud."
 }

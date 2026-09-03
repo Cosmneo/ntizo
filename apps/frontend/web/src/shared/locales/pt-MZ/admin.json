@@ -306,5 +306,6 @@
   "supportResolve": "Marcar como resolvido",
   "supportResolvedNotice": "Marcado como resolvido. Se o requerente responder, o pedido reabre.",
   "supportPlatformSender": "Suporte Ntizo",
-  "supportNotFound": "Este pedido não existe."
+  "supportNotFound": "Este pedido não existe.",
+  "supportLoadError": "Não foi possível carregar o pedido."
 }

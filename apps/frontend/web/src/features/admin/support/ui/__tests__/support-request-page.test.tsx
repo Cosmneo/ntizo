@@ -40,6 +40,7 @@ async function renderPage(over: Partial<SupportRequestSummaryDTO> = {}) {
     routeTree: rootRoute.addChildren([
       createRoute({ getParentRoute: () => rootRoute, path: "/admin/support/$threadId", component: AdminSupportRequestPage }),
       createRoute({ getParentRoute: () => rootRoute, path: "/admin/support", component: () => <p>queue</p> }),
+      createRoute({ getParentRoute: () => rootRoute, path: "/admin/providers/$providerId", component: () => <p>provider</p> }),
     ]),
     history: createMemoryHistory({ initialEntries: ["/admin/support/t-1"] }),
   });
@@ -90,5 +91,13 @@ describe("AdminSupportRequestPage", () => {
     // notice, and is the fact this test actually cares about: not just
     // that the status reads resolved, but that a reply reopens it.
     expect(screen.getByText(/reopens/i)).toBeInTheDocument();
+  });
+
+  it("names the provider on a provider request, and links to it", async () => {
+    await renderPage({ audience: "provider", providerId: "p-1", providerName: "Salão X" });
+    expect(screen.getByRole("link", { name: "Salão X" })).toHaveAttribute(
+      "href",
+      "/admin/providers/p-1",
+    );
   });
 });

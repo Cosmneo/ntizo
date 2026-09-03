@@ -39,7 +39,6 @@ import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminContactRouteImport } from './routes/admin/contact'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminReviewsRouteImport } from './routes/admin/reviews'
-import { Route as AdminSupportRouteImport } from './routes/admin/support'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as BookServiceIdRouteImport } from './routes/book.$serviceId'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
@@ -59,6 +58,7 @@ import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
+import { Route as AdminSupportIndexRouteImport } from './routes/admin/support.index'
 import { Route as AdminSupportThreadIdRouteImport } from './routes/admin/support.$threadId'
 import { Route as BookingBookingIdConfirmRouteImport } from './routes/booking.$bookingId.confirm'
 import { Route as BookingBookingIdDetailsRouteImport } from './routes/booking.$bookingId.details'
@@ -221,11 +221,6 @@ const AdminReviewsRoute = AdminReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminSupportRoute = AdminSupportRouteImport.update({
-  id: '/support',
-  path: '/support',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -326,10 +321,15 @@ const AdminProvidersProviderIdRoute =
     path: '/providers/$providerId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminSupportIndexRoute = AdminSupportIndexRouteImport.update({
+  id: '/support/',
+  path: '/support/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminSupportThreadIdRoute = AdminSupportThreadIdRouteImport.update({
-  id: '/$threadId',
-  path: '/$threadId',
-  getParentRoute: () => AdminSupportRoute,
+  id: '/support/$threadId',
+  path: '/support/$threadId',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const BookingBookingIdConfirmRoute = BookingBookingIdConfirmRouteImport.update({
   id: '/booking/$bookingId/confirm',
@@ -425,7 +425,6 @@ export interface FileRoutesByFullPath {
   '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
-  '/admin/support': typeof AdminSupportRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -456,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account/': typeof CustomerAccountIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
+  '/admin/support/': typeof AdminSupportIndexRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
   '/provider/$slug/services/': typeof ProviderSlugServicesIndexRoute
 }
@@ -485,7 +485,6 @@ export interface FileRoutesByTo {
   '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
-  '/admin/support': typeof AdminSupportRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -516,6 +515,7 @@ export interface FileRoutesByTo {
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account': typeof CustomerAccountIndexRoute
   '/admin/providers': typeof AdminProvidersIndexRoute
+  '/admin/support': typeof AdminSupportIndexRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
   '/provider/$slug/services': typeof ProviderSlugServicesIndexRoute
 }
@@ -551,7 +551,6 @@ export interface FileRoutesById {
   '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
-  '/admin/support': typeof AdminSupportRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -582,6 +581,7 @@ export interface FileRoutesById {
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/_customer/account/': typeof CustomerAccountIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
+  '/admin/support/': typeof AdminSupportIndexRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
   '/provider/$slug/services/': typeof ProviderSlugServicesIndexRoute
 }
@@ -616,7 +616,6 @@ export interface FileRouteTypes {
     | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
-    | '/admin/support'
     | '/admin/users'
     | '/book/$serviceId'
     | '/provider/no-provider'
@@ -647,6 +646,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/wallet'
     | '/account/'
     | '/admin/providers/'
+    | '/admin/support/'
     | '/provider/$slug/services/$serviceId'
     | '/provider/$slug/services/'
   fileRoutesByTo: FileRoutesByTo
@@ -676,7 +676,6 @@ export interface FileRouteTypes {
     | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
-    | '/admin/support'
     | '/admin/users'
     | '/book/$serviceId'
     | '/provider/no-provider'
@@ -707,6 +706,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/wallet'
     | '/account'
     | '/admin/providers'
+    | '/admin/support'
     | '/provider/$slug/services/$serviceId'
     | '/provider/$slug/services'
   id:
@@ -741,7 +741,6 @@ export interface FileRouteTypes {
     | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
-    | '/admin/support'
     | '/admin/users'
     | '/book/$serviceId'
     | '/provider/no-provider'
@@ -772,6 +771,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/wallet'
     | '/_customer/account/'
     | '/admin/providers/'
+    | '/admin/support/'
     | '/provider/$slug/services/$serviceId'
     | '/provider/$slug/services/'
   fileRoutesById: FileRoutesById
@@ -1013,13 +1013,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReviewsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/support': {
-      id: '/admin/support'
-      path: '/support'
-      fullPath: '/admin/support'
-      preLoaderRoute: typeof AdminSupportRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -1153,12 +1146,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProvidersProviderIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/support/': {
+      id: '/admin/support/'
+      path: '/support'
+      fullPath: '/admin/support/'
+      preLoaderRoute: typeof AdminSupportIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/support/$threadId': {
       id: '/admin/support/$threadId'
-      path: '/$threadId'
+      path: '/support/$threadId'
       fullPath: '/admin/support/$threadId'
       preLoaderRoute: typeof AdminSupportThreadIdRouteImport
-      parentRoute: typeof AdminSupportRoute
+      parentRoute: typeof AdminRouteRoute
     }
     '/booking/$bookingId/confirm': {
       id: '/booking/$bookingId/confirm'
@@ -1310,29 +1310,18 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
   PublicRouteRouteChildren,
 )
 
-interface AdminSupportRouteChildren {
-  AdminSupportThreadIdRoute: typeof AdminSupportThreadIdRoute
-}
-
-const AdminSupportRouteChildren: AdminSupportRouteChildren = {
-  AdminSupportThreadIdRoute: AdminSupportThreadIdRoute,
-}
-
-const AdminSupportRouteWithChildren = AdminSupportRoute._addFileChildren(
-  AdminSupportRouteChildren,
-)
-
 interface AdminRouteRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminContactRoute: typeof AdminContactRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
-  AdminSupportRoute: typeof AdminSupportRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminProvidersProviderIdRoute: typeof AdminProvidersProviderIdRoute
+  AdminSupportThreadIdRoute: typeof AdminSupportThreadIdRoute
   AdminProvidersIndexRoute: typeof AdminProvidersIndexRoute
+  AdminSupportIndexRoute: typeof AdminSupportIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1341,11 +1330,12 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminContactRoute: AdminContactRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminReviewsRoute: AdminReviewsRoute,
-  AdminSupportRoute: AdminSupportRouteWithChildren,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminProvidersProviderIdRoute: AdminProvidersProviderIdRoute,
+  AdminSupportThreadIdRoute: AdminSupportThreadIdRoute,
   AdminProvidersIndexRoute: AdminProvidersIndexRoute,
+  AdminSupportIndexRoute: AdminSupportIndexRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

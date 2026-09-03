@@ -306,5 +306,6 @@
   "supportResolve": "Als erledigt markieren",
   "supportResolvedNotice": "Als erledigt markiert. Antwortet der Anfragende, wird die Anfrage wieder geöffnet.",
   "supportPlatformSender": "Ntizo-Support",
-  "supportNotFound": "Diese Anfrage gibt es nicht."
+  "supportNotFound": "Diese Anfrage gibt es nicht.",
+  "supportLoadError": "Die Anfrage konnte nicht geladen werden."
 }
