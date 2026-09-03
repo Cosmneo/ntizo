@@ -72,7 +72,14 @@ import { sql } from "../fixtures/db";
  * requestAudience, … }`). Order: notification_delivery and notification
  * (matched by `payload->>'threadId'`, not cascaded from the thread), then
  * the thread (cascades to support_request and message per
- * `thread.schema.ts`), then both users in both schemas.
+ * `thread.schema.ts`), then both users in both schemas. This order assumes
+ * the delivery row already exists by the time `finally` runs — it may not:
+ * `RaiseNotificationInternalCommand`'s own doc comment says the deliverer is,
+ * in production, "a decorator that defers the real work past the response",
+ * so a delivery written after this DELETE would be missed. Harmless here (a
+ * per-run-reset database, and `notification_delivery.notification_id` is
+ * `onDelete: "set null"`, never a dangling FK), just an orphaned row rather
+ * than a leaked one.
  */
 async function signIn(page: Page, user: VerifiedUser, expectedUrl: string | RegExp): Promise<void> {
   await page.goto("/sign-in");
@@ -128,9 +135,24 @@ test("a customer asks for help, and an administrator answers and closes it", asy
     // messaging.spec.ts for the same redirect on the same shape of account).
     await signIn(customerPage, customer, "http://localhost:3000/");
 
-    // The launcher, on an ordinary page.
-    await customerPage.getByRole("button", { name: /help/i }).click();
-    await expect(customerPage.getByRole("dialog")).toBeVisible();
+    // The launcher, on an ordinary page. Both `routes/index.tsx` and
+    // `routes/__root.tsx` (which mounts `<HelpCenter />`) are `ssr: true`, so
+    // this button is in the server-rendered HTML — and passes Playwright's
+    // actionability check — before React has necessarily finished hydrating
+    // and attached its `onClick`. A click inside that window is an ordinary
+    // DOM click nothing is listening for yet and is silently lost: the exact
+    // failure `startThreadFromProviderPage` in `messaging.spec.ts` documents
+    // and reproduced empirically there ("toBeVisible() immediately followed
+    // by one .click() reproducibly clicked nothing, with no error"). Sharpest
+    // under `bun run e2e -- help-center` run alone, with nothing else having
+    // warmed the root layout module first. Retrying the click itself, not
+    // just the wait for it, is what recovers — same pattern, same reason.
+    const launcher = customerPage.getByRole("button", { name: /help/i });
+    await expect(launcher).toBeVisible();
+    await expect(async () => {
+      await launcher.click();
+      await expect(customerPage.getByRole("dialog")).toBeVisible({ timeout: 1_500 });
+    }).toPass({ timeout: 15_000 });
 
     await customerPage.getByRole("button", { name: /send a message/i }).click();
     await customerPage.getByLabel(/subject/i).fill(subject);
@@ -168,17 +190,26 @@ test("a customer asks for help, and an administrator answers and closes it", asy
     await expect(adminPage.getByText(/^resolved$/i)).toBeVisible();
 
     // Back on the customer's side: the reply is labelled as the platform's,
-    // and the request now says resolved.
+    // and the request now says resolved. `reload()` is a full navigation —
+    // the same SSR-before-hydration window the first launcher click above
+    // has to retry through, reopened from scratch.
     await customerPage.reload();
-    await customerPage.getByRole("button", { name: /help/i }).click();
+    const launcherAfterReload = customerPage.getByRole("button", { name: /help/i });
+    await expect(launcherAfterReload).toBeVisible();
+    await expect(async () => {
+      await launcherAfterReload.click();
+      await expect(customerPage.getByRole("dialog")).toBeVisible({ timeout: 1_500 });
+    }).toPass({ timeout: 15_000 });
     await customerPage.getByRole("button", { name: /my requests/i }).click();
     await customerPage.getByRole("button", { name: new RegExp(subject) }).click();
     await expect(customerPage.getByText(answer)).toBeVisible();
     await expect(customerPage.getByText("Ntizo Support")).toBeVisible();
   } finally {
-    await cleanup(threadId, [customer, admin]);
+    // Contexts closed before cleanup — matching `messaging.spec.ts`'s order,
+    // not diverging from the file this spec is modelled on.
     await customerCtx?.close();
     await adminCtx?.close();
+    await cleanup(threadId, [customer, admin]);
   }
 });
 
@@ -200,6 +231,11 @@ test("the support fields refuse a customer", async ({ page }) => {
     // preflight-protected without the `x-graphql-csrf` header
     // `session-graphql.ts` sends — reaching the resolver, and the
     // `ADMIN_ONLY` refusal, is exactly the point of this request.
+    // `messaging.spec.ts`'s own raw-fetch helper sends that header and its
+    // comment calls it "required by the server's CSRF-prevention plugin" —
+    // that comment is not accurate for a JSON body, per the plugin's own
+    // source above. Left that file alone; the omission here is deliberate,
+    // not a copy that missed the header.
     const refused = await page.evaluate(async () => {
       const res = await fetch("/graphql", {
         method: "POST",
