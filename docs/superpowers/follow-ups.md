@@ -1972,38 +1972,33 @@ then if no such screen has appeared, or wire it up if one has.
 
 ---
 
-## 78. `Sheet` is called a dialog but is not modal, and the bottom nav paints over its backdrop
+## 78. `Sheet` is modal now, except its background is never marked `inert`
 
-`packages/frontend/src/components/sheet.tsx` is a deliberately minimal primitive: `SheetContent`
-renders a `z-40` backdrop and a `z-50` fixed panel, and that is all. There is **no focus trap, no
-Escape handler, no focus move on open, no focus restore on close and no `inert`/`aria-hidden` on the
-background.** Tab from the last control in a sheet lands on the page underneath it.
+**Narrowed 2026-09-03 — most of this entry is closed.** The help center's frontend branch made
+`Sheet` real: `SheetContent` (`packages/frontend/src/components/sheet.tsx`) now runs a focus trap
+(Tab wraps inside the panel), an Escape handler, moves focus in on open and restores it on close,
+and carries `role="dialog"` + `aria-modal="true"` unconditionally — no longer a claim the primitive
+couldn't back (`c039bb0c`, with the trap's jsdom false-negative and a context-churn bug fixed in
+`a7bffb43`). The backdrop is `z-50`, above `MobileNav`'s `z-40`, with a comment naming this entry so
+nobody drops it back to `z-40` without reading why. Every consumer that used to nest its own
+`role="dialog"` to compensate — `rule-drawer.tsx`, `service-facets.tsx` (`MobileFilterBar`),
+`provider-facets.tsx` (`MobileDirectoryFilterBar`), `mobile-search-sheet.tsx`
+(`MobileSearchSheet`) — now names the primitive's own dialog via `SheetContent`'s `labelledBy`
+prop instead of drawing a second one.
 
-The three browse sheets (`MobileSearchSheet`, `MobileFilterBar`, `MobileDirectoryFilterBar`) carry
-`role="dialog"` + `aria-labelledby`, which they earn — the primitive draws a bare div, so without
-them a screen reader gets the fields with no boundary and no name. They deliberately do **not** carry
-`aria-modal="true"`, which was dropped in task 21's review: `aria-modal` asserts that everything
-outside the node is inert, and a false claim of modality is strictly worse than no claim, because it
-tells assistive tech to ignore exactly the controls keyboard focus is about to land on.
-`features/provider/availability/ui/rule-drawer.tsx` still carries `aria-modal="true"` over the same
-primitive and has the same problem.
+**What is still open:** the background is never given `inert` or `aria-hidden` while a sheet is
+open — `Sheet`'s fix list named this specifically ("background `inert`, and a backdrop above every
+fixed chrome the app has"), and only the backdrop half landed. `aria-modal="true"` is now an honest
+claim for a keyboard user, because the trap really holds; it is not a mechanical guarantee for a
+screen-reader user navigating by swipe or virtual cursor rather than Tab, where `aria-modal` is a
+signal some assistive tech honors and some does not. Marking every sibling of the open sheet
+`inert` (or `aria-hidden`) would make that unreachable regardless of how the AT gets there, and
+nothing in this branch did that — the app has no single place today that knows "this is everything
+that isn't the sheet" the way a portal-rendered dialog would.
 
-Second, smaller defect in the same primitive: the backdrop is `z-40`, and `MobileNav`
-(`shared/components/mobile-nav.tsx`) is also `z-40` and later in the DOM — `__root.tsx` renders it
-after the page content. Equal z-index resolves on tree order, so below `md` the bottom nav paints
-**over** the sheet's backdrop and stays tappable behind a sheet short enough not to cover it. A
-reader can navigate away from underneath an open dialog.
-
-The fix is one of two, not both: give `Sheet` real modality (focus trap, Escape, focus restore,
-background `inert`, and a backdrop above every fixed chrome the app has), and then put `aria-modal`
-back everywhere; or accept it as a non-modal disclosure panel and stop the `role="dialog"` too. It
-was left alone here because it is a shared primitive with callers outside this branch, and changing
-its focus behaviour is not a thing to do inside a listings redesign.
-
-**Trigger:** the first keyboard or screen-reader accessibility pass on the customer app, or the first
-report of the bottom nav being tappable behind an open sheet — whichever comes first. Also urgent if
-a fourth caller adopts `Sheet` for anything the user must not be able to escape from mid-flow
-(a payment confirmation, a destructive confirm).
+**Trigger:** the first screen-reader pass that reaches a background control while a sheet is open
+via anything other than Tab, or the next component that needs a dialog and can justify building
+the portal/`inert` wiring `Sheet` still lacks.
 
 ---
 
@@ -3325,7 +3320,17 @@ The forms carry a honeypot and a five-per-hour-per-address count in the table.
 
 ---
 
-## #132 — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
+## ~~#132 — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip~~ — RESOLVED 2026-09-03
+
+The help center's frontend landed (`06c89186`, refined in `fa1a02dd`). The Empresa column's footer
+now carries both: `footer.links.support` is a button that opens the help panel
+(`help.composeNew()`), and `footer.links.faq` links `/help`. `CompanyPage`'s `STRIP` list carries a
+`help` entry ahead of `about`, and `shared.links.help` (as `company.json`'s `help` key) is written,
+not copied, in all eight locales.
+
+---
+
+## #132 (original) — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
 
 The Empresa column shows five of the reference's seven links. The two missing ones belong to the help center (`2026-09-02-help-center-design.md`): "Perguntas frequentes" → `/help`, "Falar com o suporte" → the panel (or `/help` until it exists). The `CompanyPage` strip's `STRIP` list gets a `help` entry ahead of `about` at the same time, and `shared.links.help` joins the `company` namespace in eight languages.
 
@@ -3407,7 +3412,18 @@ opposite meanings about who actually answered.
 
 ---
 
-## #137 — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side
+## ~~#137 — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side~~ — RESOLVED 2026-09-03
+
+Plan B closed both halves. `notification-presentation.ts`'s `PRESENTATION` map now carries
+`SUPPORT_REQUEST_OPENED`, `SUPPORT_REQUEST_MESSAGE`, `SUPPORT_REPLY` and `SUPPORT_REQUEST_RESOLVED`
+(`e80a75ad`), each with a sentence in `notifications.json` in all eight locales. On the wire side,
+`Thread.providerId` (`features/messaging/domain/types.ts`) is `string | null`, and the `?? ""`
+lines in `use-threads.ts`/`use-provider-threads.ts` are gone — there is no `providerId ?? ""` left
+anywhere in the app (`b949ed74`).
+
+---
+
+## #137 (original) — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side
 
 `notifications.json`'s `type` map has no `supportRequestOpened`, `supportRequestMessage`,
 `supportReply` or `supportRequestResolved` key (only `welcome`, `providerWorkspaceWelcome`,
@@ -3528,3 +3544,78 @@ still tells the admins about it regardless of the request's status. A `WHERE sta
 look once it actually bites.
 
 **Trigger:** the second admin account, or the first duplicate "request resolved" notification.
+
+---
+
+## #150 — The FAQ answers exist in two languages, and six locales read English
+
+`help.json`'s `faq.*` values are copies of en-US in `es-ES`, `de-DE`, `fr-FR`, `it-IT` and
+`nl-NL` (pt-PT copies pt-MZ), so those readers get translated chrome and English answers. The
+parity test only compares keys, so nothing goes red as they diverge.
+
+**Trigger:** the first user in one of those five languages, or the same moment follow-up #120
+(the app's other untranslated copy) is picked up.
+
+---
+
+## #151 — The panel's request list fetches on every page
+
+`HelpCenter` is mounted at the root and calls `useSupportRequests` unconditionally, so a
+signed-in reader's support list is fetched (and refetched on focus) on pages where the panel is
+never opened. It is one query with the messaging cache's ordinary staleness, not a poll, but it
+is work nobody asked for.
+
+**Trigger:** the first time the network tab is looked at on the landing page, or a query-count
+budget.
+
+---
+
+## #152 — The admin queue has no search
+
+`supportRequests` takes `status` and `audience` and nothing else, so a request is found by
+scrolling the open list. `/admin/contact` searches by reference and name.
+
+**Trigger:** the first day the open list needs more than one page.
+
+---
+
+## #153 — `supportOpenCount` is fetched by the queue page, not by the sidebar
+
+The spec wanted a badge on the nav entry; `NavItem` has no badge field and adding one touches
+every zone's sidebar. The count is on the queue page instead.
+
+**Trigger:** the next time somebody asks why they have to open the queue to know it has work.
+
+---
+
+## #154 — A resolved request cannot be reopened from the admin side
+
+`supportResolve` is one-way; the requester's reply reopens it (plan A). An admin who resolves
+the wrong request has no undo.
+
+**Trigger:** the first mis-resolve.
+
+---
+
+## #155 — The help-center e2e spec has never been executed
+
+`apps/e2e/tests/help-center.spec.ts` was written, typechecked, linted and its cases collected
+via `playwright test --list`, but never run: this environment has no Docker, no Postgres binary,
+and nothing on port 55432, which the throwaway e2e database needs. Its selectors were each
+verified against the real components and locale files, and its cleanup order against the real
+Drizzle cascade rules, but no assertion in it has ever fired.
+
+**Trigger:** the next time anyone has the throwaway Postgres up — `bun run e2e -- help-center`,
+then the brief's Step 3 mutation check (comment out `<HelpCenter />` and confirm the spec
+actually fails).
+
+---
+
+## #156 — `/help` has no `FAQPage` structured data
+
+The design spec mentions it; the plan deliberately left it out because the app has no structured
+data anywhere, `CompanyPage` owns the document head, and adding the first `ld+json` inside a page
+task would have been a second unreviewed decision.
+
+**Trigger:** the first time anyone looks at how the FAQ ranks in search, or the first other page
+that wants structured data.
