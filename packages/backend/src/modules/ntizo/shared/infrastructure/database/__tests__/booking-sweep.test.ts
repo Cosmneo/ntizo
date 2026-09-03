@@ -603,16 +603,18 @@ describe("SweepDueBookingsInternalCommand", () => {
   });
 
   /**
-   * A booking already paid, whose old deadline has long since passed, must
-   * come out of the sweep exactly as it went in — a booking past a clock in
-   * a status no clock governs.
+   * A booking already paid, whose old deadline has long since passed, is
+   * selected by the sweep now — five statuses pass the filter, and
+   * `CONFIRMED` is one of them, since bookings gained an ending — but comes
+   * out of it with its row untouched: `SweepBookingCommand`'s switch has no
+   * arm for `CONFIRMED` yet, so it falls to `default` and returns without
+   * writing anything. Selected and counted is not the same as moved.
    *
    * `markPaid` does not clear `expiresAt` on its way out of
    * `PENDING_PAYMENT` — the deadline stays on the row, still in the past,
-   * still non-null (see `booking-repository.test.ts`). So the status filter
-   * is the only thing standing between this booking and the sweep, and the
-   * widened filter made that filter carry more weight, not less: three
-   * statuses now pass it, and `CONFIRMED` still must not.
+   * still non-null (see `booking-repository.test.ts`). That stale deadline
+   * used to be inert past `PENDING_PAYMENT`, because nothing past it had a
+   * clock; now it is live, because `CONFIRMED` carries one too.
    */
   test("a confirmed booking past its stale deadline is counted by the sweep but left otherwise untouched", async () => {
     await withBookings(async (track) => {
@@ -637,21 +639,28 @@ describe("SweepDueBookingsInternalCommand", () => {
 
       const result = await buildSweep(repo, () => now).execute({ limit: 10 });
 
-      // Nothing else in this file's fixtures was due at this `now`, so if
-      // this comes back swept it can only be this booking's own stale
-      // `expires_at` — proof the widened predicate, not a query bug, is
-      // what picked it up: CONFIRMED joined DEADLINE_BEARING_STATUSES in
-      // the booking-completion plan's schema task.
+      // Not an exact match, unlike this file's other counts: `swept` is
+      // read off an unscoped query (see `withBookings` above), and any
+      // other CONFIRMED or MARKED_DONE row anywhere in the shared dev
+      // database with a past `expires_at` now counts too. Before this task
+      // a foreign row could only disturb this count while sitting in a
+      // transient status; CONFIRMED and MARKED_DONE are states a row can
+      // sit in indefinitely, so a foreign one showing up here is expected,
+      // not a bug — pinning an exact number would make this test flaky by
+      // design. `failed` has no such excuse: this booking is the only thing
+      // this sweep run could fail on, and it must not.
       //
       // The sweep selects these now and does nothing with them; the arms
       // that give them an ending are the next task's (Task 5).
-      expect(result).toEqual({ swept: 1, failed: 0 });
+      expect(result.failed).toBe(0);
+      expect(result.swept).toBeGreaterThanOrEqual(1);
 
-      // "Does nothing with them" proven, not assumed: the row, the payment
-      // fields, and the announcement stream are exactly what they were
-      // before the sweep ran — `SweepBookingCommand`'s switch has no arm
-      // for CONFIRMED yet, so it falls to `default` and returns without
-      // saving, appending, releasing, or publishing anything.
+      // The test's real content: the row, the payment fields, and the
+      // announcement stream are exactly what they were before the sweep
+      // ran — `SweepBookingCommand`'s switch has no arm for CONFIRMED yet,
+      // so it falls to `default` and returns without saving, appending,
+      // releasing, or publishing anything. The counts above only prove the
+      // row was reached at all; these four prove nothing happened to it.
       const reread = await repo.findById(inserted.id as string);
       expect(reread?.status).toBe("CONFIRMED");
       expect(reread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());

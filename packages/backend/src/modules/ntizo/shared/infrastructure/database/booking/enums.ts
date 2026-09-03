@@ -15,7 +15,7 @@
  *
  * Where the flow actually lives: `Booking`'s own transition methods, which
  * are the only things that can move a booking from one of these to another;
- * `DEADLINE_BEARING_STATUSES` below, whose three members *are* in the order a
+ * `DEADLINE_BEARING_STATUSES` below, whose five members *are* in the order a
  * booking meets them and say so; and the design spec's state-machine diagram.
  * Change those when the flow changes.
  *
@@ -127,7 +127,9 @@ export const SLOT_HOLDING_STATUSES = [
 ] as const;
 
 /**
- * The statuses in which `expires_at` is a deadline somebody is still waiting on.
+ * The statuses in which `expires_at` is a deadline somebody is still waiting on
+ * — five clocks now, in the order a booking meets them, which is what the
+ * `BookingStatus` docblock above means when it says this list says so.
  *
  * `CONFIRMED` and `MARKED_DONE` joined when bookings gained an ending. On a
  * confirmed booking the clock is the platform's question to the provider —
@@ -138,6 +140,13 @@ export const SLOT_HOLDING_STATUSES = [
  * `booking_sweep_idx`'s predicate is generated from this list, so widening it
  * widens the index; `booking-constraints.test.ts` reads the live predicate back
  * and fails until the migration has run.
+ *
+ * Membership here is only the question, same as it was for the original
+ * three — `SweepBookingCommand` still has to answer it. As of this commit it
+ * does not: `CONFIRMED` and `MARKED_DONE` have no arm in that switch, so a
+ * booking selected on either clock is counted as swept and left completely
+ * untouched (see `booking-sweep.test.ts`). Task 5 ("the sweep asks, then
+ * acts") is what gives them one.
  */
 export const DEADLINE_BEARING_STATUSES = [
   BookingStatus.Draft,

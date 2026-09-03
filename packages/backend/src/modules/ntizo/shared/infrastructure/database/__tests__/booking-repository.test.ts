@@ -598,11 +598,16 @@ describe("findDueForSweep", () => {
       // (the booking-completion plan's schema task) precisely so a row
       // like this one is *not* invisible to the sweep forever — it is now
       // the platform's question to the provider ("how did it go?"), not a
-      // leftover payment clock, and the sweep's backfill gives every
-      // already-`CONFIRMED` row exactly this deadline for exactly this
-      // reason. `findDueForSweep` alone cannot tell "just paid" from
-      // "confirmed appointment has ended" apart — that distinction is
-      // `SweepDueBookingsInternalCommand`'s job, not this query's.
+      // leftover payment clock. That is a different clock from the one on
+      // a row that was already `CONFIRMED` when that migration ran: those
+      // got the migration's hand-added backfill, `expires_at` set to
+      // `ends_at` once, as a one-time fix for a stale value already on the
+      // row — this booking is paid fresh, after the migration, through the
+      // ordinary code path, so the backfill never touches it; `markPaid`
+      // simply never clears what was already there. `findDueForSweep`
+      // alone cannot tell "just paid" from "confirmed appointment has
+      // ended" apart — that distinction is `SweepDueBookingsInternalCommand`'s
+      // job, not this query's.
       const paidStale = await repo.insert(
         pendingBooking(
           bookingInput({
