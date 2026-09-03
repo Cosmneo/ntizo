@@ -3,8 +3,12 @@ import type { ProviderBookingDTO } from "@ntizo/shared/read-models";
 export type ProviderBookingStatus = ProviderBookingDTO["status"];
 export type BadgeTone = "info" | "success" | "danger" | "warning" | "neutral";
 
+/** The three the page offers. The wire knows a fourth — see `ProviderQueryTab`. */
 export const PROVIDER_TABS = ["requests", "upcoming", "history"] as const;
 export type ProviderTab = (typeof PROVIDER_TABS)[number];
+
+/** What the repository may ask for: the three tabs, plus "everything, newest first" for the dashboard. */
+export type ProviderQueryTab = ProviderTab | "all";
 
 /** The spec's chip table. Warning is reserved for the one status that is a task. */
 export const STATUS_TONE: Record<ProviderBookingStatus, BadgeTone> = {
@@ -51,3 +55,6 @@ export function timeLeftWording(deadlineIso: string, now: Date): string | null {
 
 /** Rows per page of the provider's bookings list; the repository and the UI's pager share it. */
 export const PROVIDER_BOOKINGS_PAGE_SIZE = 20;
+
+/** How many rows "Reservas recentes" shows. Eight is the wireframe's, and one screen's worth. */
+export const RECENT_BOOKINGS_LIMIT = 8;
