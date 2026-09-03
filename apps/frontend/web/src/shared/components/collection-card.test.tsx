@@ -18,7 +18,25 @@ const columns = [
   { key: "actions", label: "Actions" },
 ];
 
-function renderCard(overrides: Partial<Parameters<typeof CollectionCard>[0]> = {}) {
+/**
+ * `Partial` over the component's own props loses the search union's
+ * guarantee — a discriminated union flattened by `Partial` no longer keeps
+ * `hideSearch` correlated with the three fields it gates, and every override
+ * in this file only ever touches the non-search half anyway. Search stays a
+ * plain optional trio here rather than pulled from the component's type.
+ */
+function renderCard(
+  overrides: Partial<
+    Omit<
+      Parameters<typeof CollectionCard>[0],
+      "hideSearch" | "search" | "onSearchChange" | "searchPlaceholder"
+    >
+  > & {
+    search?: string;
+    onSearchChange?: (value: string) => void;
+    searchPlaceholder?: string;
+  } = {},
+) {
   return render(
     <CollectionCard
       title="People"
@@ -73,7 +91,10 @@ describe("CollectionCard", () => {
 
   it("omits a column marked hideOnCard", () => {
     renderCard({
-      columns: [...columns.slice(0, 2), { key: "date", label: "Date", hideOnCard: true }],
+      columns: [
+        ...columns.slice(0, 2),
+        { key: "date", label: "Date", hideOnCard: true },
+      ],
     });
     const card = screen.getByRole("list").querySelector("li")!;
     expect(within(card).queryByText("Date")).toBeNull();
@@ -156,7 +177,13 @@ describe("CollectionCard while loading", () => {
    * just jumps when the data lands.
    */
   function renderLoading(overrides = {}) {
-    return renderCard({ loading: true, rows: [], shown: 0, total: 0, ...overrides });
+    return renderCard({
+      loading: true,
+      rows: [],
+      shown: 0,
+      total: 0,
+      ...overrides,
+    });
   }
 
   it("draws a placeholder row per requested placeholder, with a cell per column", () => {
@@ -186,7 +213,10 @@ describe("CollectionCard while loading", () => {
   it("follows hideOnCard, so the placeholder is not taller than the card it stands in for", () => {
     const { container } = renderLoading({
       skeletonPlaceholders: 1,
-      columns: [...columns.slice(0, 2), { key: "date", label: "Date", hideOnCard: true }],
+      columns: [
+        ...columns.slice(0, 2),
+        { key: "date", label: "Date", hideOnCard: true },
+      ],
     });
     expect(container.querySelectorAll("dl > div")).toHaveLength(1);
   });

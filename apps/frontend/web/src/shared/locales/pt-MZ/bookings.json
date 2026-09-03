@@ -34,7 +34,5 @@
   "reference": "Referência {{ref}}",
   "minutes": "{{count}} min",
   "verified": "Verificado",
-  "searchPlaceholder": "Pesquisar serviço ou prestador",
-  "noMatches": "Nenhuma reserva corresponde à pesquisa.",
   "loadMore": "Mais"
 }

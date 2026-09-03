@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
+import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 import {
   CUSTOMER_BOOKING_TABS,
   canCancel,
@@ -16,32 +17,6 @@ import {
 } from "../domain/status";
 import { useMyBookings } from "../viewmodel/use-my-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
-
-/**
- * Any amount in minor units, printed the way this screen's approved mockup
- * and the read model's own contract ask for: whole units, grouped, and the
- * ISO code rather than a localised symbol.
- *
- * The rest of the app's money helpers (`formatAmount`, `formatHeadlinePrice`)
- * leave `currencyDisplay` at its default and accept `pt-MZ`'s narrow symbol
- * for MZN ("MTn") — a choice those call sites make deliberately (see
- * `service-card.ts`). This row is a customer's own receipt of what they pay,
- * the mockup writes "MZN" on every line, and the ISO code is unambiguous in
- * a market that also uses ZAR and USD day to day; a local symbol is not.
- */
-function formatPrice(
-  amountMinor: number,
-  currency: string,
-  locale: string,
-): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    currencyDisplay: "code",
-    maximumFractionDigits: 0,
-    useGrouping: "always",
-  }).format(amountMinor / 100);
-}
 
 /** The countdown's colour: amber while the provider is deciding, blue while the customer is. */
 function countdownTone(status: CustomerBookingStatus): string {
@@ -61,10 +36,11 @@ function countdownTone(status: CustomerBookingStatus): string {
  * bookmarked or refreshed page landing on "page 2" is worth more than an
  * infinite-scroll accumulator built for a workspace with hundreds of rows.
  *
- * `bookingMine` carries no search parameter — the provider's `q` has no
- * counterpart here — so the search box `CollectionCard` requires is answered
- * locally, over whatever page is currently on screen, rather than sent to
- * the server.
+ * No search box: the mockup draws none, `bookingMine` carries no `q` the way
+ * the provider's `bookingForProvider` does, and a client-side filter over a
+ * paged list would tell a customer "no matches" about a booking that is
+ * merely on the next page. `CollectionCard`'s `hideSearch` opts out of the
+ * control entirely rather than shipping one that lies.
  */
 export function BookingsPage() {
   const { t, i18n } = useTranslation("bookings");
@@ -76,8 +52,6 @@ export function BookingsPage() {
   };
   const tab: CustomerBookingTab = search.tab ?? CUSTOMER_BOOKING_TABS[0];
   const offset = search.offset ?? 0;
-
-  const [typed, setTyped] = useState("");
 
   const query = useMyBookings({ tab, offset });
   const data = query.data;
@@ -92,14 +66,6 @@ export function BookingsPage() {
     void navigate({ to: "/bookings", search: { tab: next } });
 
   const items = data?.items ?? [];
-  const term = typed.trim().toLowerCase();
-  const visible = term
-    ? items.filter((b) =>
-        `${b.serviceName} ${b.optionName} ${b.providerName}`
-          .toLowerCase()
-          .includes(term),
-      )
-    : items;
 
   return (
     <div>
@@ -147,12 +113,10 @@ export function BookingsPage() {
       <div className="mt-4">
         <CollectionCard
           title={t(`tab.${tab}`)}
-          shown={visible.length}
+          shown={items.length}
           total={data?.total ?? 0}
           loading={query.isLoading}
-          search={typed}
-          onSearchChange={setTyped}
-          searchPlaceholder={t("searchPlaceholder")}
+          hideSearch
           columns={[
             { key: "service", label: t("col.service"), className: "pl-5" },
             { key: "when", label: t("col.when"), skeletonWidth: "w-28" },
@@ -181,9 +145,13 @@ export function BookingsPage() {
               {t("emptyAction")}
             </Link>
           }
-          noMatchesText={t("noMatches")}
-          filtered={term !== ""}
-          rows={visible.map((b) => {
+          // Unreachable with `hideSearch` — there is no filter left to hide
+          // anything behind — but the prop is still required, and reusing
+          // the empty state's own body is truer than inventing a sentence
+          // for a state this page cannot enter.
+          noMatchesText={t("emptyBody")}
+          filtered={false}
+          rows={items.map((b) => {
             const slot = compactSlotWording(
               b.startsAt,
               b.endsAt,
@@ -192,8 +160,15 @@ export function BookingsPage() {
             );
             const deadline = deadlineOf(b);
             const left = deadline ? timeLeftWording(deadline, now) : null;
-            const showCancel = canCancel(b.status);
+            // `canCancel` and `canPay` are the domain's answer, and both are
+            // true for `PENDING_PAYMENT` — cancelling is still on the table
+            // right up until it's paid, which is exactly what the detail
+            // page (both buttons at once) needs to know. This list's own row
+            // has room for one action, and paying is the one actually being
+            // waited on there; a waiting-for-provider row has nothing to pay
+            // yet, so it gets the only action that applies: cancel.
             const showPay = canPay(b.status);
+            const showCancel = canCancel(b.status) && !showPay;
             return {
               key: b.id,
               primary: (
@@ -241,35 +216,30 @@ export function BookingsPage() {
                 ),
                 price: (
                   <span className="tabular-nums">
-                    {formatPrice(b.priceMinor, b.currency, locale)}
+                    {formatHeadlinePrice(b.priceMinor, b.currency, locale)}
                   </span>
                 ),
               },
-              // Empty for every status but the two the customer can act on —
-              // a confirmed booking has nothing left to do on this list; see
-              // `canCancel`/`canPay`.
-              actions:
-                showCancel || showPay ? (
-                  <span className="inline-flex items-center justify-end gap-3">
-                    {showCancel && (
-                      // A `<button>`, not a link: it opens a dialog rather than
-                      // navigating (wired in Task 9). Styled quietly, as the
-                      // mockup draws it — this is not the page's primary action.
-                      <button
-                        type="button"
-                        disabled
-                        className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        {t("cancel")}
-                      </button>
-                    )}
-                    {showPay && (
-                      <Button type="button" size="sm" disabled>
-                        {t("pay")}
-                      </Button>
-                    )}
-                  </span>
-                ) : undefined,
+              // One action, never two: a confirmed booking has nothing to do
+              // here at all, and a `PENDING_PAYMENT` row shows only Pagar —
+              // both buttons together belong to the detail page, not this
+              // row (see the comment on `showPay`/`showCancel` above).
+              actions: showPay ? (
+                <Button type="button" size="sm" disabled>
+                  {t("pay")}
+                </Button>
+              ) : showCancel ? (
+                // A `<button>`, not a link: it opens a dialog rather than
+                // navigating (wired in Task 9). Styled quietly, as the
+                // mockup draws it — this is not the page's primary action.
+                <button
+                  type="button"
+                  disabled
+                  className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {t("cancel")}
+                </button>
+              ) : undefined,
             };
           })}
         />

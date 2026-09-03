@@ -68,95 +68,130 @@ export interface CollectionRow {
   actions?: React.ReactNode;
 }
 
-export function CollectionCard({
-  title,
-  shown,
-  total,
-  loading,
-  search,
-  onSearchChange,
-  searchPlaceholder,
-  onOpenFilters,
-  activeFilterCount = 0,
-  columns,
-  rows,
-  emptyText,
-  emptyTitle,
-  emptyBadge,
-  emptyAction,
-  noMatchesText,
-  noMatchesTitle,
-  filtered,
-  skeletonPlaceholders = 5,
-  reorder,
-}: {
-  title: string;
-  shown: number;
-  /** Before filtering. With a filter on, one number is a lie about the whole. */
-  total: number;
-  loading: boolean;
-  search: string;
-  onSearchChange: (value: string) => void;
-  searchPlaceholder: string;
-  /** Omit to render no filter button — some lists have nothing to filter by. */
-  onOpenFilters?: () => void;
-  activeFilterCount?: number;
-  /** The first is the primary column; the rest are cells, in order. */
-  columns: readonly CollectionColumn[];
-  rows: readonly CollectionRow[];
-  /**
-   * What to say when the list is empty.
-   *
-   * Reads as the card's body when `emptyTitle` is given and as its title when
-   * it is not, so a caller that has only ever passed one sentence keeps
-   * working and says the same thing it always did.
-   */
-  emptyText: string;
-  /** The headline over `emptyText`. */
-  emptyTitle?: string;
-  /** The glyph badged onto the brand mark — what this list would hold. */
-  emptyBadge?: ComponentType<{ className?: string }>;
-  /** The way out of the empty state, when the reader has one. */
-  emptyAction?: ReactNode;
-  /** Shown when filters hid everything — a different situation from empty. */
-  noMatchesText: string;
-  /** The headline over `noMatchesText`. Same fallback as `emptyTitle`. */
-  noMatchesTitle?: string;
-  /**
-   * Whether anything is currently filtering the list.
-   *
-   * Asked rather than deduced from `total === 0`, because a list filtered on
-   * the server cannot know its own unfiltered size: the admin queue searched
-   * for something with no matches would otherwise announce that the platform
-   * has no providers at all.
-   */
-  filtered: boolean;
-  /** How many rows to draw while loading. Five fills a screen without lying. */
-  skeletonPlaceholders?: number;
-  /**
-   * Makes the table rows draggable, and reports the new order.
-   *
-   * Desktop only, and that is not an omission: HTML5 drag events do not fire
-   * for touch, and a handle a finger cannot use is a control that lies about
-   * being one. A list that offers this must also offer moving a row from its
-   * menu — which works by keyboard, by touch, and by mouse — and that lives
-   * with the caller, because only the caller knows what its rows can do.
-   */
-  reorder?: {
-    /** The complete list of row keys, in their new order. */
-    onReorder: (orderedKeys: string[]) => void;
-    /** Accessible name for the handle, e.g. "Reorder". */
-    handleLabel: string;
+/**
+ * Whether this list has a search box, and — when it does — what drives it.
+ *
+ * A union rather than three optional fields: a list that opts out of search
+ * has nothing to be inconsistent about, but a list that keeps it must still
+ * supply all three, the same guarantee three separate required fields gave
+ * before `hideSearch` existed. Split out for `CollectionCard`'s own
+ * readability — the intersection below is what the component actually takes.
+ */
+type CollectionCardSearchProps =
+  | {
+      /**
+       * No search box at all.
+       *
+       * For a list with nothing to search by, and for a list whose only
+       * possible search is over the page currently loaded — paged data
+       * behind a client-side filter tells a reader "no matches" about a row
+       * that is merely on the next page, which is worse than no search box.
+       */
+      hideSearch: true;
+      search?: undefined;
+      onSearchChange?: undefined;
+      searchPlaceholder?: undefined;
+    }
+  | {
+      hideSearch?: false;
+      search: string;
+      onSearchChange: (value: string) => void;
+      searchPlaceholder: string;
+    };
+
+export function CollectionCard(
+  props: {
+    title: string;
+    shown: number;
+    /** Before filtering. With a filter on, one number is a lie about the whole. */
+    total: number;
+    loading: boolean;
+    /** Omit to render no filter button — some lists have nothing to filter by. */
+    onOpenFilters?: () => void;
+    activeFilterCount?: number;
+    /** The first is the primary column; the rest are cells, in order. */
+    columns: readonly CollectionColumn[];
+    rows: readonly CollectionRow[];
     /**
-     * Set when dragging cannot express a real order right now — a filtered or
-     * searched list is a subset, and rearranging a subset says nothing about
-     * where those rows sit among the ones not shown. The handles are drawn
-     * disabled with this as their tooltip rather than removed, so the control
-     * does not vanish and reappear as somebody types.
+     * What to say when the list is empty.
+     *
+     * Reads as the card's body when `emptyTitle` is given and as its title when
+     * it is not, so a caller that has only ever passed one sentence keeps
+     * working and says the same thing it always did.
      */
-    disabledReason?: string | undefined;
-  };
-}) {
+    emptyText: string;
+    /** The headline over `emptyText`. */
+    emptyTitle?: string;
+    /** The glyph badged onto the brand mark — what this list would hold. */
+    emptyBadge?: ComponentType<{ className?: string }>;
+    /** The way out of the empty state, when the reader has one. */
+    emptyAction?: ReactNode;
+    /** Shown when filters hid everything — a different situation from empty. */
+    noMatchesText: string;
+    /** The headline over `noMatchesText`. Same fallback as `emptyTitle`. */
+    noMatchesTitle?: string;
+    /**
+     * Whether anything is currently filtering the list.
+     *
+     * Asked rather than deduced from `total === 0`, because a list filtered on
+     * the server cannot know its own unfiltered size: the admin queue searched
+     * for something with no matches would otherwise announce that the platform
+     * has no providers at all.
+     */
+    filtered: boolean;
+    /** How many rows to draw while loading. Five fills a screen without lying. */
+    skeletonPlaceholders?: number;
+    /**
+     * Makes the table rows draggable, and reports the new order.
+     *
+     * Desktop only, and that is not an omission: HTML5 drag events do not fire
+     * for touch, and a handle a finger cannot use is a control that lies about
+     * being one. A list that offers this must also offer moving a row from its
+     * menu — which works by keyboard, by touch, and by mouse — and that lives
+     * with the caller, because only the caller knows what its rows can do.
+     */
+    reorder?: {
+      /** The complete list of row keys, in their new order. */
+      onReorder: (orderedKeys: string[]) => void;
+      /** Accessible name for the handle, e.g. "Reorder". */
+      handleLabel: string;
+      /**
+       * Set when dragging cannot express a real order right now — a filtered or
+       * searched list is a subset, and rearranging a subset says nothing about
+       * where those rows sit among the ones not shown. The handles are drawn
+       * disabled with this as their tooltip rather than removed, so the control
+       * does not vanish and reappear as somebody types.
+       */
+      disabledReason?: string | undefined;
+    };
+  } & CollectionCardSearchProps,
+) {
+  // `search`/`onSearchChange`/`searchPlaceholder`/`hideSearch` stay on
+  // `props` rather than joining this destructure: TypeScript only narrows a
+  // discriminated union through property accesses on one shared expression
+  // (`props.hideSearch`, then `props.onSearchChange`), and pulling the four
+  // into their own bindings below would sever that — each would widen back
+  // to independently optional, and the `!props.hideSearch` check further
+  // down would no longer prove the other three are present.
+  const {
+    title,
+    shown,
+    total,
+    loading,
+    onOpenFilters,
+    activeFilterCount = 0,
+    columns,
+    rows,
+    emptyText,
+    emptyTitle,
+    emptyBadge,
+    emptyAction,
+    noMatchesText,
+    noMatchesTitle,
+    filtered,
+    skeletonPlaceholders = 5,
+    reorder,
+  } = props;
   const { t } = useTranslation("provider");
   const isEmpty = !loading && rows.length === 0;
   // The first column is the primary block, rendered from `row.primary`; the
@@ -212,16 +247,18 @@ export function CollectionCard({
         </div>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5">
-          <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-            <Input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-              className="pl-9"
-            />
-          </div>
+          {!props.hideSearch && (
+            <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+              <Input
+                value={props.search}
+                onChange={(e) => props.onSearchChange(e.target.value)}
+                placeholder={props.searchPlaceholder}
+                aria-label={props.searchPlaceholder}
+                className="pl-9"
+              />
+            </div>
+          )}
           {onOpenFilters && (
             <Button type="button" variant="outline" onClick={onOpenFilters}>
               <SlidersHorizontal className="h-4 w-4" />
@@ -268,7 +305,10 @@ export function CollectionCard({
               />
             ) : isEmpty ? (
               <tr>
-                <td colSpan={columns.length + (reorder ? 1 : 0)} className="p-0">
+                <td
+                  colSpan={columns.length + (reorder ? 1 : 0)}
+                  className="p-0"
+                >
                   {emptyCard}
                 </td>
               </tr>
@@ -504,7 +544,9 @@ function CardSkeleton({
             <div className="min-w-0 flex-1">
               <PrimarySkeleton />
             </div>
-            {hasActions && <Skeleton className="h-8 w-8 shrink-0 rounded-full" />}
+            {hasActions && (
+              <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+            )}
           </div>
           <dl className="mt-3 grid gap-2 border-t border-[var(--color-border)] pt-3">
             {pairs.map((column) => (
