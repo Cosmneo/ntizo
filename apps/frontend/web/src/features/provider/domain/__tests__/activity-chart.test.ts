@@ -41,14 +41,25 @@ describe("chartGeometry", () => {
   });
 
   it("gives a day with a single booking a bar you can see", () => {
+    // A busy day beside the quiet one is what makes this test able to fail.
+    // At a max of 200 the single booking's natural height is
+    // (1 / 200) * 166 ≈ 0.83px — a bar nobody could see, so the floor has to
+    // do something. Against the window's own max of 4 it would come out at
+    // ~41px and pass whether the floor existed or not.
+    const requestsOn = (i: number, fallback: number) => {
+      if (i === 0) return 1;
+      if (i === 29) return 200;
+      return fallback;
+    };
     const one = days.map((d, i) => ({
       ...d,
-      requests: i === 0 ? 1 : d.requests,
+      requests: requestsOn(i, d.requests),
       confirmed: i === 0 ? 0 : d.confirmed,
     }));
-    const { bars } = chartGeometry(one);
+    const { bars, max } = chartGeometry(one);
+    expect(max).toBe(200);
     const first = bars.find((b) => b.key.startsWith(one[0]!.date))!;
-    expect(first.height).toBeGreaterThanOrEqual(CHART.minBar);
+    expect(first.height).toBe(CHART.minBar);
   });
 
   it("never divides by zero on a month with no bookings", () => {
