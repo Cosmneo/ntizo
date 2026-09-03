@@ -4,9 +4,10 @@ import { contactRequestKindSchema, contactRequestStatusSchema } from "../../../e
 /**
  * One request as the administration queue sees it.
  *
- * Everything on the row, including the address it was sent from: unlike the
- * review projection, this screen IS the investigation — it is where somebody
+ * What the queue shows, including the address it was sent from: unlike the
+ * review projection, this screen is the investigation — it is where somebody
  * decides whether a message is a customer in trouble or a script.
+ * `resolvedByUserId` is left out; nothing displays it.
  */
 export const contactRequestAdminReadModel = z.object({
   id: z.string().min(1),

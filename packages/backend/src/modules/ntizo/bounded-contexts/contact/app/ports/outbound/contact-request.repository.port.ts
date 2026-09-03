@@ -1,7 +1,7 @@
 import type { ContactRequestKind, ContactRequestStatus, ContactTopic } from "@ntizo/shared";
 import type { ContactRequest } from "../../../domain/aggregates/contact-request.aggregate";
 
-/** One request as the administration list shows it. Everything on the row: this screen is the investigation. */
+/** One request as the administration list shows it. What the queue shows: every column an administrator reads — not `resolvedByUserId`, which nothing displays. */
 export interface ContactRequestAdminRow {
   id: string;
   reference: string;
