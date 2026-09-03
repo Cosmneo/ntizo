@@ -3685,3 +3685,64 @@ different kind of target from a route and wants that decision made once, for all
 
 **Trigger:** the first "I tapped the notification and nothing happened", or the next notification
 type that has somewhere to go.
+
+---
+
+## #160 — The sheet's focus trap will fight a portalled menu, the day one lands inside a sheet
+
+The trap added in `c968597c` recovers focus with `if (!active || !panelRef.current.contains(active))`
+— anything focused outside the panel's DOM subtree is pulled back to the first focusable element
+inside it. That is exactly right for the bug it fixes (Tab escaping to the site header after an
+in-panel button unmounts), and it is correct for every current caller: `createPortal` appears only
+in `dropdown-menu.tsx`, and no `DropdownMenu` or `CitySelect` is rendered inside a `SheetContent`
+today. Verified caller by caller at the time of writing.
+
+But a portalled child renders outside the panel's subtree while being visually and logically inside
+it, so the day somebody puts a dropdown, a combobox or a date picker inside a sheet, its menu items
+become untabbable: focus lands in the portal, `contains` says false, and the trap yanks it back.
+The failure will look like "the dropdown inside the sheet is broken", not like a focus-trap bug,
+which is why it is worth writing down now rather than rediscovering then.
+
+The fix, when it is needed, is to test containment against the panel *and* any element the panel
+owns by `aria-owns`/`aria-controls`, or to have the sheet register portalled subtrees it should
+treat as inside.
+
+**Trigger:** the first `DropdownMenu`, `CitySelect` or any other portalling component placed inside
+a `SheetContent`.
+
+---
+
+## #161 — A reader with no workspace at all gets an error and a "Try again" that can never succeed
+
+`help-center.tsx` decides the provider audience's readiness from `!isLoading` on `providers.mine`,
+which is correct for the two states it was built for — still loading, and failed — and was verified
+against React Query 5.99.0's `isLoading = isPending && isFetching`. The third state falls through
+it: a signed-in reader with zero provider memberships settles successfully with an empty list, so
+`isLoading` is false and `activeProvider` is null, and the panel shows the workspace-failed message
+with a retry button. Retrying re-runs a query that will keep succeeding and keep returning nothing.
+
+Reachable because `routes/provider/provider-guard.ts` checks only for a session, not for membership
+— so anyone signed in can open `/provider/<any-slug>/…` and then the panel. Rare, and it fails
+closed rather than filing a wrong request, which is why it is a follow-up and not a fix: the honest
+screen for that reader says they have no workspace and offers the personal request instead of a
+retry.
+
+**Trigger:** the first support ticket that says "it keeps telling me to try again", or whenever
+`provider-guard.ts` gains a real membership check — at which point this state stops being reachable
+and this entry can be closed unfixed.
+
+---
+
+## #162 — Typing in the FAQ search closes an answer the reader had just opened
+
+`FaqResults` is keyed by the query string, so every keystroke remounts it and resets `openId`. That
+is what makes the good behaviour work — narrowing to exactly one match seeds that answer open, so a
+popular question clicked on the home screen arrives already showing its answer — and the same
+mechanism is what discards the reader's own expansion as they keep typing.
+
+Defensible as-is: a reader who is still typing is still searching, and the list under them is
+changing anyway. But it was a consequence of the seeding rather than a decision anyone made, and it
+is not written down at the call site.
+
+**Trigger:** the first time someone opens an answer, types one more letter to narrow the list
+further, and finds it closed — or a decision to seed `openId` without remounting.
