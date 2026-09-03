@@ -17,11 +17,19 @@ export function useMyBooking(bookingId: string) {
  * Cancel, then drop every cached read of this customer's bookings: the row
  * changes tab, the three counts change with it, and the detail's status and
  * timeline both move.
+ *
+ * **`onSettled`, not `onSuccess`.** A refusal is still news about this
+ * booking's true state — `BOOKING_TRANSITION` means the provider already
+ * answered or the payment already landed while the dialog sat open — and
+ * the cache holding the pre-refusal answer is exactly what leaves a dead
+ * Cancelar button live after `CancelDialog` closes. Every settlement drops
+ * it; a plain network hiccup just re-fetches the same true answer, which
+ * costs a request and nothing else.
  */
 export function useCancelBooking() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (bookingId: string) => cancelBooking(bookingId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
   });
 }

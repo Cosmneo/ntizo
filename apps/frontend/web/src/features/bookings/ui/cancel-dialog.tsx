@@ -38,6 +38,18 @@ export function CancelDialog({
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const cancel = useCancelBooking();
   const when = momentWording(booking.startsAt, locale, booking.timezone);
+  /**
+   * `BOOKING_TRANSITION` means the booking already left the state this
+   * dialog was drawn for — the provider answered, or the payment landed,
+   * while it sat open — so a retry would refuse identically forever, and
+   * "tente novamente" would be a lie. Every other code (`NOT_BOOKING_CUSTOMER`,
+   * a dropped connection) gets the generic refusal, which likewise promises
+   * no retry, because none of them are ones this dialog can tell apart from
+   * "try again and it might work" — see `provider/bookings/ui/booking-page.tsx`'s
+   * own `onError` for the precedent this follows.
+   */
+  const moved =
+    (cancel.error as { code?: string } | null)?.code === "BOOKING_TRANSITION";
 
   return (
     <Dialog
@@ -57,13 +69,15 @@ export function CancelDialog({
             })}
           </DialogDescription>
         </DialogHeader>
-        {/* A refused cancel is almost always a race — the deadline or the
-            provider moved while this was open — so it says so and leaves the
-            dialog open rather than closing over a booking that did not, in
-            fact, get cancelled. */}
+        {/* Stays open on a refusal — never closes as if it had succeeded —
+            and the cache still drops (`useCancelBooking` invalidates on
+            every settlement, not only success): a `BOOKING_TRANSITION`
+            means the row behind this dialog is already wrong, and leaving
+            it cached would survive the dialog closing as a dead Cancelar
+            button over a booking that can no longer be cancelled. */}
         {cancel.isError && (
           <p role="alert" className="type-caption -mt-2 mb-2 text-[var(--color-destructive)]">
-            {t("cancelDialogError")}
+            {t(moved ? "cancelDialogMoved" : "cancelDialogError")}
           </p>
         )}
         <DialogFooter>

@@ -65,6 +65,11 @@ function renderDialog(qc: QueryClient, onClose = vi.fn()) {
   return { onClose };
 }
 
+/** What `sessionGraphql` throws for a refused mutation — `GraphqlError`'s own shape, minus the parts this dialog never reads. */
+function refusal(code: string): Error & { code: string } {
+  return Object.assign(new Error("refused"), { code });
+}
+
 /**
  * The locale is pinned, not inherited: every assertion here reads Portuguese
  * copy and the suite's default resolves to English (`test/setup.ts`) — the
@@ -126,5 +131,48 @@ describe("CancelDialog", () => {
 
     expect(onClose).toHaveBeenCalled();
     expect(fakes.graphql).not.toHaveBeenCalled();
+  });
+
+  // `BOOKING_TRANSITION`: the provider answered or the payment landed while
+  // this dialog sat open. A retry would refuse identically forever, so the
+  // message says the booking moved on rather than inviting one — and the
+  // cache still drops, so the row behind this dialog stops offering Cancelar
+  // the moment it closes.
+  it("says the booking has already moved on, and still drops the cache, on a transition refusal", async () => {
+    fakes.graphql.mockRejectedValue(refusal("BOOKING_TRANSITION"));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { onClose } = renderDialog(qc);
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+
+    expect(await screen.findByText(/já avançou/)).toBeInTheDocument();
+    expect(screen.queryByText(/tente novamente/i)).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["bookings"] }),
+    );
+  });
+
+  // Every other refusal — a stranger's id, a dropped connection — gets the
+  // generic message, which the dialog must not close over (it never
+  // succeeded) and must not dress up as a retry that would work.
+  it("stays open on any other refusal, without promising a retry", async () => {
+    fakes.graphql.mockRejectedValue(refusal("NOT_BOOKING_CUSTOMER"));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { onClose } = renderDialog(qc);
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+
+    expect(
+      await screen.findByText("Não foi possível cancelar esta reserva."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/tente novamente/i)).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Cancelar reserva" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["bookings"] }),
+    );
   });
 });
