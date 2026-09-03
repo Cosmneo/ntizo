@@ -31,20 +31,29 @@ export function Sheet({
 }) {
   const [uncontrolled, setUncontrolled] = React.useState(false);
   const open = controlledOpen ?? uncontrolled;
-  const setOpen = React.useCallback(
-    (v: boolean) => {
-      setUncontrolled(v);
-      onOpenChange?.(v);
-    },
-    [onOpenChange],
-  );
-  // Stable identity across renders that don't actually change `open` or
-  // `onOpenChange` — SheetContent's focus-trap effect keys off this object,
-  // and a fresh one on every render (e.g. every keystroke inside the panel,
-  // which re-renders the whole tree down to this provider) would tear the
-  // trap down and rebuild it mid-render, yanking focus off whatever the
-  // caller is actively typing into.
-  const value = React.useMemo(() => ({ open, setOpen }), [open, setOpen]);
+
+  // A ref, not a dependency: `onOpenChange` is routinely a fresh closure
+  // every render — an inline arrow at the call site, as
+  // `week-rules.tsx`'s `onOpenChange={(open) => !open && setEditing(null)}`
+  // is — and `setOpen`'s own identity must never follow it. `value` below is
+  // what SheetContent's focus-trap effect keys off, so churning it on any
+  // re-render that merely passed a new closure (a `rules` prop update from a
+  // refetch while the panel is open, say) would tear the trap down and
+  // rebuild it, yanking focus off whatever the caller has it on — the same
+  // failure mode a fresh `value` object caused, through a different door.
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
+
+  // Empty deps: this identity is fixed for the component's whole lifetime.
+  const setOpen = React.useCallback((v: boolean) => {
+    setUncontrolled(v);
+    onOpenChangeRef.current?.(v);
+  }, []);
+
+  // `setOpen` never changes, so `open` is the only real input here.
+  const value = React.useMemo(() => ({ open, setOpen }), [open]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -111,9 +120,16 @@ export function SheetContent({
         return;
       }
       if (event.key !== "Tab" || !panelRef.current) return;
+      // No filtering beyond the `FOCUSABLE` selector itself (its
+      // `:not([disabled])` clauses already do the real work): no sheet in
+      // this codebase hides a focusable descendant behind `display: none`
+      // while leaving it in the DOM, and an `offsetParent` check is dead
+      // weight under jsdom, where nothing has layout — every element's
+      // `offsetParent` reads `null`, so that check silently emptied
+      // `focusable` on every Tab press and the wrap below never ran.
       const focusable = Array.from(
         panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
-      ).filter((el) => el.offsetParent !== null || el === panelRef.current);
+      );
       if (focusable.length === 0) {
         event.preventDefault();
         return;
