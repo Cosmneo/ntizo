@@ -52,6 +52,7 @@ function noRowRepository(): AttachmentRepositoryPort {
     insertMany: async () => {},
     listForMessages: async () => new Map(),
     findVisible: async () => null,
+    findOnSupportThread: async () => null,
   };
 }
 
@@ -65,6 +66,7 @@ function repoWithRow(
     listForMessages: async () => new Map(),
     findVisible: async (id, viewerUserId) =>
       row !== null && id === row.id && viewerUserId === ownerUserId ? row : null,
+    findOnSupportThread: async () => null,
   };
 }
 
@@ -411,6 +413,7 @@ describe("GET /api/communication/attachments/:id", () => {
       findVisible: async (id) => {
         throw new Error(`invalid input syntax for type uuid: "${id}"`);
       },
+      findOnSupportThread: async () => null,
     };
     const { bucket } = fakeBucket();
     const request = await subject(
