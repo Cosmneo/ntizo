@@ -28,6 +28,18 @@ export enum NotificationType {
   BookingCancelledByProvider = "BOOKING_CANCELLED_BY_PROVIDER",
   BookingCompleted = "BOOKING_COMPLETED",
   ReviewRequest = "REVIEW_REQUEST",
+  /** The appointment ended and nobody closed the booking. Asked of the provider, not asserted. */
+  ProviderBookingCloseReminder = "PROVIDER_BOOKING_CLOSE_REMINDER",
+  /** The provider says the work is done. Starts the customer's window, so the customer must hear it. */
+  BookingMarkedDone = "BOOKING_MARKED_DONE",
+  /** The provider never answered, so the platform closed it for them. */
+  ProviderBookingAutoClosed = "PROVIDER_BOOKING_AUTO_CLOSED",
+  /** One for the administrators: a booking the platform had to close alone. */
+  AdminBookingAutoClosed = "ADMIN_BOOKING_AUTO_CLOSED",
+  /** The customer disputed inside the window. */
+  BookingDisputed = "BOOKING_DISPUTED",
+  /** An administrator decided a dispute. Both sides hear the same thing. */
+  BookingDisputeResolved = "BOOKING_DISPUTE_RESOLVED",
 
   // --- booking, provider side -------------------------------------------
   ProviderBookingReceived = "PROVIDER_BOOKING_RECEIVED",
@@ -142,6 +154,12 @@ export function bucketForNotificationType(
     case NotificationType.BookingDeclined:
     case NotificationType.BookingCancelledByProvider:
     case NotificationType.BookingCompleted:
+    case NotificationType.ProviderBookingCloseReminder:
+    case NotificationType.BookingMarkedDone:
+    case NotificationType.ProviderBookingAutoClosed:
+    case NotificationType.AdminBookingAutoClosed:
+    case NotificationType.BookingDisputed:
+    case NotificationType.BookingDisputeResolved:
     case NotificationType.ProviderBookingReceived:
     case NotificationType.ProviderBookingConfirmed:
     case NotificationType.ProviderBookingCancelledByCustomer:
