@@ -1,0 +1,149 @@
+{
+  "launcher": "Help",
+  "title": "Help centre",
+  "greeting": "Hi 👋 How can we help?",
+  "close": "Close",
+  "back": "Back",
+  "searchLabel": "Search help",
+  "searchPlaceholder": "Search — cancellation, payment, verification",
+  "searchNoResults": "We couldn't find anything for \"{{query}}\".",
+  "searchNoResultsAction": "Talk to us",
+  "actionMessage": "Send a message",
+  "actionMessageBody": "Talk to our support team",
+  "actionRequests": "My requests",
+  "actionRequestsBody": "Previous conversations",
+  "popularTitle": "Popular questions",
+  "browseAll": "Browse all questions",
+  "signedOutTitle": "Sign in to talk to support",
+  "signedOutBody": "You need an account so we can open a request on your behalf. If you can't sign in, write to {{email}}.",
+  "signIn": "Sign in",
+  "requestsTitle": "My requests",
+  "requestsEmptyTitle": "You haven't written yet",
+  "requestsEmptyBody": "When you open a support request, it will show up here.",
+  "requestsError": "We couldn't load your requests.",
+  "newRequestTitle": "Send a message",
+  "subjectLabel": "Subject",
+  "subjectPlaceholder": "In a few words",
+  "subjectHint": "{{count}}/120",
+  "bookingChip": "About the {{service}} booking",
+  "bookingChipRemove": "Not about this booking",
+  "submit": "Send",
+  "submitting": "Sending…",
+  "audienceProvider": "On behalf of {{provider}}",
+  "status": {
+    "open": "Open",
+    "resolved": "Resolved"
+  },
+  "resolvedNotice": "This request was marked resolved. Reply to reopen it.",
+  "platformSender": "Ntizo Support",
+  "error": {
+    "SUPPORT_SUBJECT_INVALID": "The subject must be between 1 and 120 characters.",
+    "SUPPORT_NOT_A_MEMBER": "You don't belong to this provider.",
+    "SUPPORT_BOOKING_NOT_YOURS": "That booking isn't yours.",
+    "SUPPORT_TOO_MANY_OPEN": "You already have 10 open requests. Reply on one of them.",
+    "MESSAGE_EMPTY": "Write your message.",
+    "UNAUTHENTICATED": "Sign in to talk to support.",
+    "GENERIC": "We couldn't send the request. Try again."
+  },
+  "page": {
+    "headTitle": "Help centre",
+    "eyebrow": "Help",
+    "title": "Frequently asked questions",
+    "lede": "The answers we give most often. If yours isn't here, talk to us.",
+    "contactTitle": "Still need help?",
+    "contactBody": "Open a request and we will reply here.",
+    "contactAction": "Talk to support",
+    "contactEmail": "Or write to {{email}}."
+  },
+  "faq": {
+    "customers": {
+      "title": "Customers",
+      "howBookingWorks": {
+        "q": "How does a booking work?",
+        "a": "You pick the service, the day and the time on the provider's calendar, and say where the service happens. The request goes to the provider to confirm. Only once they confirm the time do you get the payment prompt on your phone."
+      },
+      "whenIPay": {
+        "q": "When do I pay?",
+        "a": "After the provider confirms the time, and never before. If they do not reply within the time shown on the request, or decline, the request is closed and nothing is charged."
+      },
+      "paymentMethods": {
+        "q": "Which payment methods do you accept?",
+        "a": "Right now, M-Pesa (Vodacom). The payment prompt arrives on your phone and you confirm it with your PIN. Other methods are on the way."
+      },
+      "priceIsPrice": {
+        "q": "Is the price I see the price I pay?",
+        "a": "Yes. The listed amount is the amount charged. Ntizo's commission is deducted on the provider's side, not added to yours."
+      },
+      "verifiedBadge": {
+        "q": "What does the verified badge mean?",
+        "a": "That the provider sent an identity document (national ID, DIRE or passport) and that a person at Ntizo reviewed it before the profile became visible."
+      },
+      "quoteAndHourly": {
+        "q": "Some services say \"on quote\" or \"per hour\". How do I book those?",
+        "a": "Those cannot be booked directly yet. Send the provider a message from the service page to agree the price and the time."
+      },
+      "cancelBooking": {
+        "q": "Can I cancel a booking?",
+        "a": "Before the provider confirms, the request commits you to nothing. After confirming and paying, message support as soon as you can with the date and the provider's name, and we will handle it with you."
+      },
+      "leaveReview": {
+        "q": "How do I leave a review?",
+        "a": "Only someone who has had a completed service with a provider can review them. Each person has one review per provider, and can change it whenever they like."
+      }
+    },
+    "providers": {
+      "title": "Providers",
+      "whoCanBe": {
+        "q": "Who can be a provider?",
+        "a": "A person offering their own work, or an establishment with a team. You need an identity document, a way to be paid (M-Pesa, e-Mola or a bank account), and to accept the terms."
+      },
+      "whatItCosts": {
+        "q": "What does it cost?",
+        "a": "Signing up and publishing services is free. Ntizo takes a commission on each paid service, deducted from what is paid to you. Your rate is shown in your provider area."
+      },
+      "whenPaid": {
+        "q": "When do I get paid?",
+        "a": "The customer pays after you confirm the time, and the amount is held until the service is completed. After that it moves to your wallet, where it becomes available to withdraw after the holding period shown there."
+      },
+      "verification": {
+        "q": "How does verification work?",
+        "a": "You send an identity document during sign-up. A person at Ntizo reviews the request; until then the profile is pending and out of results. We email you when it is approved."
+      },
+      "team": {
+        "q": "Can I have a team?",
+        "a": "Yes. An establishment invites members by email. Each has their own availability, and the times customers see account for how many people are free."
+      },
+      "availability": {
+        "q": "How do I set my availability?",
+        "a": "Set the days and hours you work, how long each service takes, and the gap between services. Ntizo generates the times customers can choose. You can block specific days."
+      },
+      "noAnswer": {
+        "q": "What happens if I do not answer a request?",
+        "a": "You have a deadline, shown on the request, to confirm or decline. Once it passes the request expires and the customer is told to pick another time or another provider."
+      }
+    },
+    "payments": {
+      "title": "Payments and safety",
+      "paymentDataStored": {
+        "q": "Is my payment data stored?",
+        "a": "We store the phone number linked to M-Pesa or e-Mola and the country. We do not store card numbers."
+      },
+      "shareContact": {
+        "q": "Can I share my number or email in messages?",
+        "a": "Messages do not allow phone numbers or emails. That is what keeps the booking, the payment and the review on the platform, where there is a record and someone to turn to."
+      },
+      "serviceNotDone": {
+        "q": "What happens if the service is not done?",
+        "a": "The payment is held until the service is completed. If something goes wrong, message support with the date and the provider's name. We look at the case with both sides."
+      },
+      "dataHandling": {
+        "q": "How do you handle my data?",
+        "a": "We collect only what is needed to connect customers and providers. It is all in the Privacy Policy, written to be read."
+      },
+      "deleteAccount": {
+        "q": "How do I delete my account?",
+        "a": "Write to privacidade@ntizo.co.mz from the account's email. We delete your data, except what the law requires us to keep, and reply within 30 days."
+      }
+    }
+  }
+}
