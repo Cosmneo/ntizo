@@ -146,6 +146,27 @@ describe("CollectionCard", () => {
     renderCard();
     expect(screen.queryByRole("button", { name: /filter/i })).toBeNull();
   });
+
+  it("renders no search box when no search is offered, and shows the action instead", () => {
+    render(
+      <CollectionCard
+        title="Reservas recentes"
+        shown={1}
+        total={1}
+        loading={false}
+        columns={[{ key: "who", label: "Cliente" }]}
+        rows={[{ key: "b1", primary: <span>Ana</span>, cells: { who: "Ana" } }]}
+        emptyTitle="Vazio"
+        emptyText="Nada"
+        noMatchesTitle="Sem resultados"
+        noMatchesText="Nada"
+        filtered={false}
+        action={<a href="/provider/estudio/bookings">Ver todas</a>}
+      />,
+    );
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver todas" })).toBeInTheDocument();
+  });
 });
 
 describe("CollectionCard while loading", () => {
