@@ -348,6 +348,22 @@ export class NotProviderMemberError extends ForbiddenError {
 }
 
 /**
+ * The caller is signed in, but this booking is somebody else's.
+ *
+ * Only writes raise it. The reads answer `null` for a stranger's booking and
+ * for a missing one alike, deliberately undistinguished — see
+ * `BookingReadRepositoryPort.findForCustomer`. A write is different: by then
+ * the caller is claiming one specific booking, and a silent no-op would leave
+ * a button that appears to do nothing.
+ */
+export class BookingNotYoursError extends ForbiddenError {
+  constructor() {
+    super({ message: "This booking is not yours", code: "BOOKING_NOT_YOURS" });
+    this.name = "BookingNotYoursError";
+  }
+}
+
+/**
  * Refused because the caller trying to submit a booking is not the
  * customer it belongs to.
  *
