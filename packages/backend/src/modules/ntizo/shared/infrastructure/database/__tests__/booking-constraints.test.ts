@@ -498,6 +498,20 @@ describe("booking_member_slot_no_overlap", () => {
     }
   });
 
+  test("a confirmed booking carries the clock the sweep will read", async () => {
+    const rows = await sql`
+      select column_name from information_schema.columns
+      where table_schema = 'ntizo_booking' and table_name = 'booking' and column_name = 'reminded_at'`;
+    expect(rows).toHaveLength(1);
+  });
+
+  test("a support request knows whether it is a dispute", async () => {
+    const rows = await sql`
+      select column_name from information_schema.columns
+      where table_schema = 'ntizo_communication' and table_name = 'support_request' and column_name = 'kind'`;
+    expect(rows).toHaveLength(1);
+  });
+
   /**
    * The charge sweep's own index, checked the same way and for the same
    * reason as the deadline sweep's above: a partial index whose predicate

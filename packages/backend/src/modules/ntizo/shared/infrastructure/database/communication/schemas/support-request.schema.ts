@@ -27,6 +27,13 @@ export const supportRequest = communicationSchema.table(
     audience: varchar("audience", { length: 16 }).notNull(),
     subject: varchar("subject", { length: 120 }).notNull(),
     bookingId: uuid("booking_id").references(() => booking.id),
+    /**
+     * What this request is. A dispute moves a booking when it is resolved and
+     * an ordinary request does not, so the difference is a column rather than
+     * an inference from "has a booking id" — which would break the first time
+     * somebody asks a normal question about a booking they are disputing.
+     */
+    kind: varchar("kind", { length: 16 }).notNull().default("support"),
     status: varchar("status", { length: 16 }).notNull(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     resolvedByUserId: text("resolved_by_user_id").references(() => user.id),
@@ -34,6 +41,7 @@ export const supportRequest = communicationSchema.table(
   },
   (t) => [
     check("support_request_audience_known", sql`${t.audience} in ('customer', 'provider')`),
+    check("support_request_kind_known", sql`${t.kind} in ('support', 'dispute')`),
     check("support_request_status_known", sql`${t.status} in ('open', 'resolved')`),
     // `open` ⇔ not resolved. A row that says one and carries the other is a
     // bug, and the database is the one place that can refuse it every time.

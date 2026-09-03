@@ -130,6 +130,13 @@ export const booking = bookingSchema.table(
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /**
+     * When the platform asked the provider to close this booking. Null until
+     * it has asked, which is what tells the sweep's second firing apart from
+     * its first — an explicit flag rather than an inference from two dates
+     * that would read correctly and mean something else.
+     */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
     declinedAt: timestamp("declined_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     markedDoneAt: timestamp("marked_done_at", { withTimezone: true }),

@@ -127,41 +127,22 @@ export const SLOT_HOLDING_STATUSES = [
 ] as const;
 
 /**
- * The statuses in which `expires_at` is a deadline somebody is still
- * standing on — the design's three clocks, in the order a booking meets
- * them.
+ * The statuses in which `expires_at` is a deadline somebody is still waiting on.
  *
- * Each is stamped by the hop that enters the status, from its own
- * `platform_settings` column: `Booking.create` writes the checkout hold,
- * `submit` overwrites it with the provider's response window, `accept`
- * overwrites that with the payment window. By the time the sweep
- * reads the row, whichever clock applies is already *in* the column — which
- * is why `findDueForSweep` is one predicate (`expires_at <= now AND status
- * IN (…)`) and not three queries, and why nothing in the repository has to
- * join `platform_settings` to ask how long a window was.
+ * `CONFIRMED` and `MARKED_DONE` joined when bookings gained an ending. On a
+ * confirmed booking the clock is the platform's question to the provider —
+ * first "the appointment ended, tell us how it went", then, seven days later
+ * and only if nobody answered, the platform closing it alone. On a marked-done
+ * booking it is the customer's window.
  *
- * A subset of `SLOT_HOLDING_STATUSES`, and not by coincidence: a live
- * deadline is the platform holding somebody's calendar while it waits for
- * an answer. But not the same list, and the two must not be merged.
- * `CONFIRMED` and `MARKED_DONE` also hold the slot and also still carry the
- * `expires_at` they were given — `markPaid` deliberately stopped nulling it
- * (see `BookingProps.expiresAt`) — so the only thing keeping a paid booking
- * out of the sweep is its absence from *this* list. Add a status to
- * `SLOT_HOLDING_STATUSES` and forget this one and the new status simply
- * never expires; add it here without meaning to and the sweep starts
- * cancelling sales that already happened.
- *
- * **Membership here is not the whole answer — it is only the question.**
- * What each of the three becomes when its clock runs out is different:
- * `DRAFT` and `AWAITING_PROVIDER` expire (`Booking.expire`), while
- * `PENDING_PAYMENT` is *cancelled* with a reason (`Booking.cancel`),
- * because by then a provider has committed their calendar and is owed an
- * explanation rather than a status change nobody narrates. Adding a fourth
- * member here without answering that question for it leaves
- * `SweepBookingCommand` with nothing to do for the rows it now selects.
+ * `booking_sweep_idx`'s predicate is generated from this list, so widening it
+ * widens the index; `booking-constraints.test.ts` reads the live predicate back
+ * and fails until the migration has run.
  */
 export const DEADLINE_BEARING_STATUSES = [
   BookingStatus.Draft,
   BookingStatus.AwaitingProvider,
   BookingStatus.PendingPayment,
+  BookingStatus.Confirmed,
+  BookingStatus.MarkedDone,
 ] as const;

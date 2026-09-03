@@ -267,6 +267,13 @@
       "when": 1788452552715,
       "tag": "0037_yummy_ultimates",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1788476230596,
+      "tag": "0038_clean_klaw",
+      "breakpoints": true
     }
   ]
 }
