@@ -93,7 +93,7 @@ The same page, three times, from one `SupportForm` component that takes a `kind`
 | Topic field | Pergunta geral · Parceria · Imprensa · Sou prestador · Outro | A minha conta · Uma reserva · Um pagamento · A minha conta de prestador · Outro assunto | Uma ideia · Algo não funcionou · Gostei de algo |
 | Email | required | required | optional, "se quiser resposta" |
 | Cards below | ola@ntizo.co.mz · Instagram e LinkedIn · "É cliente com um problema? Fale com o suporte" | suporte@ntizo.co.mz · O que esperar · Perguntas frequentes | "Lemos tudo" · "Problemas com uma reserva? Fale com o suporte" · Perguntas frequentes |
-| Extra | — | — | records the page the visitor came from (`origin_path`), silently |
+| Extra | — | — | records the page the visitor came from (`origin_path`), carried as `?from=` by the links that lead here and kept only when internal |
 
 The form itself: name, email, topic (select), message (textarea), and a visually hidden `website` field no person will fill. Above it, when signed out: *"Tem conta? Entre e preenchemos o nome e o email por si."* linking to sign-in with `next` set to the current path. When signed in, name and email are prefilled from the session and stay editable. Beside the submit button, one line: *"Guardamos esta mensagem para lhe responder. Mais nada."* with a link to the privacy policy.
 

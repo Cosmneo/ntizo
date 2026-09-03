@@ -22,8 +22,14 @@ import type { FunctionComponent } from "react";
  * `FunctionComponent`, not `ComponentType`: `createRoute`'s `component` wants
  * a function (or lazy) component, and `ComponentType` widens to include class
  * components, which this router's types refuse.
+ *
+ * `initialEntry` defaults to `at`: most callers want the router to land
+ * exactly on the route path they registered the page at. A caller that needs
+ * a query string on the way in (a `?from=` carried into `/feedback`, say)
+ * passes it separately — `at` still names the route path, `initialEntry` is
+ * what history actually starts on.
  */
-export async function renderCompanyPage(Page: FunctionComponent, at = "/") {
+export async function renderCompanyPage(Page: FunctionComponent, at = "/", initialEntry = at) {
   const rootRoute = createRootRoute();
   const stub = (path: string) =>
     createRoute({ getParentRoute: () => rootRoute, path, component: () => <p>{path}</p> });
@@ -36,7 +42,7 @@ export async function renderCompanyPage(Page: FunctionComponent, at = "/") {
         "/terms", "/privacy", "/admin",
       ].filter((p) => p !== at).map(stub),
     ]),
-    history: createMemoryHistory({ initialEntries: [at] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   await router.load();

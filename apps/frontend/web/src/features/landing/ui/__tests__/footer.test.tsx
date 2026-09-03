@@ -42,7 +42,7 @@ describe("Footer", () => {
     await renderFooter();
     const company = screen.getByRole("heading", { name: /^company$/i }).parentElement!;
     const hrefs = Array.from(company.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/about", "/contact", "/feedback", "/become-provider", "/careers"]);
+    expect(hrefs).toEqual(["/about", "/contact", "/feedback?from=%2F", "/become-provider", "/careers"]);
   });
 
   it("prints the support address on the ntizo.co.mz domain and nothing on .com", async () => {

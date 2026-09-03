@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 import { LANDING_VARS } from "@/features/landing/ui/sections";
@@ -51,6 +51,7 @@ export function CompanyPage({
   children: ReactNode;
 }) {
   const { t } = useTranslation("company");
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const strip = STRIP.filter((link) => link.id !== page).slice(0, 3);
 
   return (
@@ -96,6 +97,7 @@ export function CompanyPage({
             <Link
               key={link.id}
               to={link.to}
+              search={link.id === "feedback" ? { from: pathname } : undefined}
               className="group border-t p-6 no-underline first:border-t-0 md:border-t-0 md:border-l md:first:border-l-0"
               style={{ borderColor: "var(--l-border)", color: "inherit" }}
             >

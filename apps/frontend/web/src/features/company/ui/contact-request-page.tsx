@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import type { ContactRequestKind } from "@ntizo/shared";
 import { ACCENT } from "@/features/landing/ui/palette";
@@ -30,6 +30,7 @@ const CARDS: Record<ContactRequestKind, ReadonlyArray<{ key: string; kind: "emai
  */
 export function ContactRequestPage({ kind }: { kind: ContactRequestKind }) {
   const { t } = useTranslation("company");
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
     <CompanyPage page={kind} eyebrow={t(`${kind}.eyebrow`)} title={t(`${kind}.heading`)} lede={t(`${kind}.lede`)} centred>
@@ -66,7 +67,12 @@ export function ContactRequestPage({ kind }: { kind: ContactRequestKind }) {
                 )}
               </p>
               {card.to && (
-                <Link to={card.to} className="mt-3 inline-flex items-center text-sm font-semibold no-underline" style={{ color: ACCENT }}>
+                <Link
+                  to={card.to}
+                  search={card.to === "/feedback" ? { from: pathname } : undefined}
+                  className="mt-3 inline-flex items-center text-sm font-semibold no-underline"
+                  style={{ color: ACCENT }}
+                >
                   {t(`${kind}.cards.${card.key}.cta`)} →
                 </Link>
               )}

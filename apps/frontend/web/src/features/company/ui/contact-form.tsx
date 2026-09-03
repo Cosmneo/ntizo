@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Check } from "lucide-react";
 import { CONTACT_TOPICS, contactEmailRequired, type ContactRequestKind } from "@ntizo/shared";
@@ -8,6 +8,7 @@ import { ACCENT } from "@/features/landing/ui/palette";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import { CONTACT } from "@/shared/lib/contact";
+import { isSafeInternalPath } from "@/shared/lib/zones";
 import { MESSAGE_MAX, NAME_MAX, validateContactForm, type ContactFormErrors } from "../domain/contact-form-validation";
 import { useSubmitContactRequest } from "../viewmodel/use-submit-contact-request";
 
@@ -32,6 +33,10 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
   const { t, i18n } = useTranslation("company");
   const { data: user } = useCurrentUser();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // The page a feedback came from travels as `?from=`, carried by the links
+  // that lead to `/feedback`, and is kept only when it is an internal path.
+  const { from } = useSearch({ strict: false }) as { from?: string };
+  const originPath = kind === "feedback" && isSafeInternalPath(from ?? null) ? from! : null;
   const topics = CONTACT_TOPICS[kind];
   const emailRequired = contactEmailRequired(kind);
 
@@ -64,7 +69,7 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
       email: email.trim() === "" ? null : email.trim(),
       message: message.trim(),
       locale: i18n.resolvedLanguage ?? i18n.language,
-      originPath: kind === "feedback" ? pathname : null,
+      originPath,
       website,
     });
   }

@@ -36,7 +36,7 @@ describe("AboutPage", () => {
 
   it("offers contact, feedback and careers at the bottom — and not itself", async () => {
     await renderCompanyPage(AboutPage, "/about");
-    expect(stripHrefs()).toEqual(["/contact", "/feedback", "/careers"]);
+    expect(stripHrefs()).toEqual(["/contact", "/feedback?from=%2Fabout", "/careers"]);
   });
 
   it("draws no accent rule beside its eyebrows", async () => {
@@ -63,6 +63,6 @@ describe("CareersPage", () => {
 
   it("offers contact, feedback and about at the bottom", async () => {
     await renderCompanyPage(CareersPage, "/careers");
-    expect(stripHrefs()).toEqual(["/contact", "/feedback", "/about"]);
+    expect(stripHrefs()).toEqual(["/contact", "/feedback?from=%2Fcareers", "/about"]);
   });
 });

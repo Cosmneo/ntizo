@@ -121,20 +121,40 @@ describe("ContactRequestPage — contact", () => {
   it("offers feedback, about and careers at the bottom", async () => {
     await renderCompanyPage(ContactPage, "/contact");
     const strip = screen.getByRole("heading", { name: /see also/i }).parentElement!;
-    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/feedback", "/about", "/careers"]);
+    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/feedback?from=%2Fcontact", "/about", "/careers"]);
   });
 });
 
 describe("ContactRequestPage — feedback", () => {
   it("lets the email be empty, sends the page it came from, and thanks without a reply line", async () => {
+    await renderCompanyPage(FeedbackPage, "/feedback", "/feedback?from=%2Fservices%2Fabc");
+    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+    await userEvent.type(screen.getByLabelText("Message"), "Gostava de filtrar por bairro na lista de serviços.");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    await waitFor(() => expect(fakes.submit).toHaveBeenCalledTimes(1));
+    expect(fakes.submit.mock.calls[0]![0]).toMatchObject({ kind: "feedback", topic: "idea", email: null, originPath: "/services/abc" });
+    expect(await screen.findByText("Thank you. We read everything that reaches us.")).toBeInTheDocument();
+    expect(screen.queryByText(/We will reply to/)).toBeNull();
+  });
+
+  it("sends no origin when nothing carried a `from`", async () => {
     await renderCompanyPage(FeedbackPage, "/feedback");
     await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
     await userEvent.type(screen.getByLabelText("Message"), "Gostava de filtrar por bairro na lista de serviços.");
     await userEvent.click(screen.getByRole("button", { name: /send message/i }));
 
     await waitFor(() => expect(fakes.submit).toHaveBeenCalledTimes(1));
-    expect(fakes.submit.mock.calls[0]![0]).toMatchObject({ kind: "feedback", topic: "idea", email: null, originPath: "/feedback" });
-    expect(await screen.findByText("Thank you. We read everything that reaches us.")).toBeInTheDocument();
-    expect(screen.queryByText(/We will reply to/)).toBeNull();
+    expect(fakes.submit.mock.calls[0]![0]).toMatchObject({ originPath: null });
+  });
+
+  it("drops an external `from` rather than sending it as the origin", async () => {
+    await renderCompanyPage(FeedbackPage, "/feedback", "/feedback?from=https%3A%2F%2Fevil.test%2Fx");
+    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+    await userEvent.type(screen.getByLabelText("Message"), "Gostava de filtrar por bairro na lista de serviços.");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    await waitFor(() => expect(fakes.submit).toHaveBeenCalledTimes(1));
+    expect(fakes.submit.mock.calls[0]![0]).toMatchObject({ originPath: null });
   });
 });

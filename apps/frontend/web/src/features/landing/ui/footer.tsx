@@ -7,7 +7,7 @@
  * ended, leaving the reader nowhere to go but back.
  */
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BORDER,
   CARD,
@@ -27,6 +27,7 @@ const LINKEDIN = "#0A66C2";
 
 export function Footer() {
   const { t } = useTranslation("landing"); // t:Footer
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <>
       <footer style={footer}>
@@ -68,7 +69,7 @@ export function Footer() {
           <FooterCol title={t("footer.company")}>
             <FooterLink to="/about">{t("footer.links.about")}</FooterLink>
             <FooterLink to="/contact">{t("footer.links.contact")}</FooterLink>
-            <FooterLink to="/feedback">{t("footer.links.feedback")}</FooterLink>
+            <FooterLink to="/feedback" search={{ from: pathname }}>{t("footer.links.feedback")}</FooterLink>
             {/* The public pitch, not registration. A link labelled "become a
                 provider" that opens a sign-up form skips the part where someone
                 finds out what they would be signing up for — and that page's
@@ -169,15 +170,17 @@ function FooterCol({
 function FooterLink({
   to,
   href,
+  search,
   children,
 }: {
   to?: string;
   href?: string;
+  search?: Record<string, string>;
   children: React.ReactNode;
 }) {
   if (to)
     return (
-      <Link to={to} style={footerLink}>
+      <Link to={to} search={search} style={footerLink}>
         {children}
       </Link>
     );
