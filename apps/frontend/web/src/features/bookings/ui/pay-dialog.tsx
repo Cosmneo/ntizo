@@ -41,7 +41,82 @@ function maskMpesaNumber(e164: string): string {
 }
 
 type Phase = "waiting" | "needsPhone" | "over";
-type OverReason = "windowClosed" | "attemptsSpent" | "generic";
+/**
+ * Six endings, six sentences — one per fact this dialog can actually point
+ * to, and never a sentence that claims a cause nothing here observed:
+ *
+ * - `windowClosed` — the payment window ran out, either because the poll
+ *   read `EXPIRED` or because `deadlineOf` is already behind us, or because
+ *   the mutation itself refused with `BOOKING_PAYMENT_WINDOW_CLOSED`. All
+ *   three are the same fact seen at different moments.
+ * - `cancelled` — the poll read `CANCELLED`. A cancellation is not a
+ *   window running out, and saying so would blame the clock for something
+ *   a person (or the sweep, for a different reason) did.
+ * - `attemptsSpent` — `BOOKING_CHARGE_ATTEMPTS_SPENT`: the three tries are
+ *   gone.
+ * - `moved` — `BOOKING_INVALID_TRANSITION`: the booking left
+ *   `PENDING_PAYMENT` between this dialog opening and the mutation
+ *   landing, for a reason this dialog cannot ask after the fact. No retry
+ *   would land differently — the same reasoning `CancelDialog`'s own
+ *   `cancelDialogMoved` was built for.
+ * - `cannotComplete` — `NOT_BOOKING_CUSTOMER`, or the poll landing on a
+ *   status this dialog never opens against in the first place
+ *   (`AWAITING_PROVIDER`, `DRAFT`, …). Both are refusals with no honest
+ *   sentence to name past "this cannot go through right now" — inventing
+ *   one would be guessing a cause from its absence.
+ * - `generic` — anything else the mutation threw (no code at all, most
+ *   likely a dropped connection): the one ending where "try again in a
+ *   moment" is actually true.
+ */
+type OverReason =
+  | "windowClosed"
+  | "cancelled"
+  | "attemptsSpent"
+  | "moved"
+  | "cannotComplete"
+  | "generic";
+
+const OVER_REASON_KEY: Record<OverReason, string> = {
+  windowClosed: "payDialogWindowClosed",
+  cancelled: "payDialogCancelled",
+  attemptsSpent: "payDialogAttemptsSpent",
+  moved: "payDialogMoved",
+  cannotComplete: "payDialogCannotComplete",
+  generic: "payDialogError",
+};
+
+/**
+ * What the live poll alone says about this booking, independent of
+ * whatever the mutation is doing — `null` while there is nothing to say
+ * yet (still `PENDING_PAYMENT`, deadline still ahead) or once it is
+ * `CONFIRMED` (a separate effect closes the dialog for that case; this
+ * function is never asked to word success).
+ *
+ * The one rule this function exists to enforce: read the status that
+ * actually came back, never infer one from "not PENDING_PAYMENT, not
+ * CONFIRMED, so the window must have closed" — that inference is exactly
+ * what told a customer their payment window had run out on a booking a
+ * second tab had simply cancelled.
+ */
+function pollOverReason(
+  status: BookingDTO["status"],
+  deadline: string | null,
+  now: Date,
+): OverReason | null {
+  if (status === "EXPIRED") return "windowClosed";
+  if (status === "CANCELLED") return "cancelled";
+  if (status === "PENDING_PAYMENT") {
+    return deadline !== null && new Date(deadline).getTime() <= now.getTime()
+      ? "windowClosed"
+      : null;
+  }
+  if (status === "CONFIRMED") return null;
+  // AWAITING_PROVIDER, DRAFT, MARKED_DONE, COMPLETED, DISPUTED, DECLINED:
+  // none of them should ever reach this dialog — `canPay` only ever offers
+  // Pagar on a `PENDING_PAYMENT` row — but a read that disagrees this far
+  // gets a sentence that admits it does not know why, not one that guesses.
+  return "cannotComplete";
+}
 
 /**
  * Screen 6: the customer presses "Pagar" and this dialog takes over —
@@ -57,19 +132,21 @@ type OverReason = "windowClosed" | "attemptsSpent" | "generic";
  * this dialog reflects the outcome whenever it is next read. *Needing a
  * number* is reached only by `BOOKING_NO_CUSTOMER_PHONE` — the one refusal
  * with a remedy the customer can act on right here. *Over* is everything
- * else that means retrying would refuse identically: the payment window
- * closing (caught either by the poll noticing `deadlineOf` is behind us, or
- * by the mutation's own `BOOKING_PAYMENT_WINDOW_CLOSED`) and the three
- * charge attempts being spent (`BOOKING_CHARGE_ATTEMPTS_SPENT`) each get
- * their own sentence; anything else this dialog was not built to explain
- * (a stranger's id, a dropped connection) gets a generic one — still no
- * spinner, still not disguised as a retry that would work.
+ * else, worded per `OverReason` — see that type's own comment for the full
+ * list — and never guessed: the ending is read off what the poll (or the
+ * mutation's own code) actually reported, not inferred from the absence of
+ * `PENDING_PAYMENT`/`CONFIRMED`. That inference is exactly the bug this
+ * dialog shipped with once — a booking cancelled from a second tab, or by
+ * the sweep, read as "not pending, not confirmed" and was told its payment
+ * window had run out, which was never true. `pollOverReason` is where that
+ * reading now happens, and it is the one place allowed to say what a status
+ * other than `CONFIRMED` means.
  *
- * The window-closed check runs before the very first automatic attempt too:
- * a dialog opened against a row whose `expiresAt` had already passed (the
- * countdown the list showed when it was last read is now behind us) has no
- * reason to spend a request finding that out from the server when the prop
- * it was handed already says so.
+ * The poll's own reading runs before the very first automatic attempt too:
+ * a dialog opened against a row whose prop already reads `CANCELLED`,
+ * `EXPIRED` or past its `deadlineOf` has no reason to spend a request
+ * finding that out from the server when the prop it was handed already
+ * says so.
  */
 export function PayDialog({
   booking,
@@ -95,23 +172,25 @@ export function PayDialog({
   // `dataUpdatedAt` stands in for "now", advancing every time the poll
   // actually lands rather than on a timer this component keeps itself.
   const now = new Date(poll.dataUpdatedAt || Date.now());
-  const windowClosed =
-    liveStatus === "PENDING_PAYMENT"
-      ? deadline !== null && new Date(deadline).getTime() <= now.getTime()
-      : liveStatus !== "CONFIRMED";
+  // What the poll alone says — computed before any mutation-error reading,
+  // and given priority below, because it is the freshest, most authoritative
+  // fact this dialog has about the booking: a mutation error can only ever
+  // report what was true the instant it was sent.
+  const fromPoll = liveStatus === "CONFIRMED" ? null : pollOverReason(liveStatus, deadline, now);
 
   useEffect(() => {
     if (liveStatus === "CONFIRMED") onClose();
   }, [liveStatus, onClose]);
 
-  // The very first attempt, once, on mount — gated on the window's state at
-  // that instant (see this component's own doc comment): a booking already
-  // past its deadline when the dialog opened gets no wasted request.
+  // The very first attempt, once, on mount — gated on what the poll already
+  // says at that instant (see this component's own doc comment): a booking
+  // whose prop already reads `CANCELLED`, `EXPIRED` or past its deadline
+  // gets no wasted request.
   const attempted = useRef(false);
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
-    if (windowClosed) return;
+    if (fromPoll) return;
     pay.mutate(booking.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -120,12 +199,21 @@ export function PayDialog({
 
   let phase: Phase;
   let overReason: OverReason | null = null;
-  if (windowClosed || payErrorCode === "BOOKING_PAYMENT_WINDOW_CLOSED") {
+  if (fromPoll) {
+    phase = "over";
+    overReason = fromPoll;
+  } else if (payErrorCode === "BOOKING_PAYMENT_WINDOW_CLOSED") {
     phase = "over";
     overReason = "windowClosed";
   } else if (payErrorCode === "BOOKING_CHARGE_ATTEMPTS_SPENT") {
     phase = "over";
     overReason = "attemptsSpent";
+  } else if (payErrorCode === "BOOKING_INVALID_TRANSITION") {
+    phase = "over";
+    overReason = "moved";
+  } else if (payErrorCode === "NOT_BOOKING_CUSTOMER") {
+    phase = "over";
+    overReason = "cannotComplete";
   } else if (payErrorCode === "BOOKING_NO_CUSTOMER_PHONE") {
     phase = "needsPhone";
   } else if (pay.isError) {
@@ -238,13 +326,7 @@ export function PayDialog({
             <DialogHeader>
               <DialogTitle>{t("payDialogOverTitle")}</DialogTitle>
               <DialogDescription>
-                {t(
-                  overReason === "windowClosed"
-                    ? "payDialogWindowClosed"
-                    : overReason === "attemptsSpent"
-                      ? "payDialogAttemptsSpent"
-                      : "payDialogError",
-                )}
+                {t(OVER_REASON_KEY[overReason ?? "generic"])}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

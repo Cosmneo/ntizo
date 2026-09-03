@@ -211,12 +211,67 @@ describe("PayDialog", () => {
     ).toBeInTheDocument();
   });
 
-  // Neither `NOT_BOOKING_CUSTOMER` nor a dropped connection is one of the
-  // two refusals this dialog explains by name — both fall to the generic
-  // sentence, same as `CancelDialog`'s own fallback for a refusal it
-  // cannot tell apart from "try again and it might work".
-  it("falls back to a generic sentence for a refusal it does not name", async () => {
+  // `BOOKING_INVALID_TRANSITION` means the booking left `PENDING_PAYMENT`
+  // between this dialog opening and the mutation landing — the same fact
+  // `CancelDialog`'s `cancelDialogMoved` names, and the same reasoning: no
+  // retry would land differently, so this must not fall into the generic
+  // "try again" sentence the way it did before the review caught it.
+  it("says the booking has already moved on for a BOOKING_INVALID_TRANSITION refusal, not the generic retry sentence", async () => {
+    payImpl = () => Promise.reject(refusal("BOOKING_INVALID_TRANSITION"));
+    renderDialog(pendingPayment(), "+258849994567");
+
+    expect(
+      await screen.findByText("Esta reserva já avançou e já não pode ser paga."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tente novamente/)).not.toBeInTheDocument();
+  });
+
+  // Nothing here should ever fire against a real caller's own booking, but a
+  // refusal that does arrive must not promise a retry it cannot honour
+  // either — the same rule `BOOKING_INVALID_TRANSITION` gets, on a code with
+  // even less of a claimable cause to name.
+  it("does not promise a retry for a NOT_BOOKING_CUSTOMER refusal", async () => {
     payImpl = () => Promise.reject(refusal("NOT_BOOKING_CUSTOMER"));
+    renderDialog(pendingPayment(), "+258849994567");
+
+    expect(
+      await screen.findByText("Não foi possível concluir este pagamento."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tente novamente/)).not.toBeInTheDocument();
+  });
+
+  // The bug the review caught: a booking cancelled from elsewhere while this
+  // dialog sat open — not `PENDING_PAYMENT`, not `CONFIRMED` — used to be
+  // read as the payment window having run out, which was never true. The
+  // poll landing on `CANCELLED` must say exactly that, not guess a clock ran
+  // out.
+  it(
+    "says the booking was cancelled, not that the window closed, when the poll reads CANCELLED",
+    async () => {
+      let detailCalls = 0;
+      detailImpl = () => {
+        detailCalls += 1;
+        const booking =
+          detailCalls === 1 ? pendingPayment() : pendingPayment({ status: "CANCELLED" });
+        return Promise.resolve({ bookingById: toDetail(booking) });
+      };
+      renderDialog(pendingPayment(), "+258849994567");
+
+      expect(
+        await screen.findByText("Esta reserva foi cancelada. Já não há nada a pagar.", undefined, {
+          timeout: 10_000,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/O prazo para pagar terminou/)).not.toBeInTheDocument();
+    },
+    10_000,
+  );
+
+  // A codeless failure — a dropped connection, not one of the five refusals
+  // this command can throw — is the one ending where "try again in a
+  // moment" is actually an honest thing to say.
+  it("falls back to the generic retry sentence only for a refusal it cannot name", async () => {
+    payImpl = () => Promise.reject(new Error("network drop"));
     renderDialog(pendingPayment(), "+258849994567");
 
     expect(
