@@ -237,13 +237,30 @@ export function CollectionCard(
           <p className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
             {title}
           </p>
-          <p className="type-body mt-0.5">
+          {/*
+           * `<div>`, not `<p>`: the loading branch renders `Skeleton`, which
+           * is a `<div>` (packages/frontend/src/components/skeleton.tsx) —
+           * a `<p>` cannot contain one. That combination shipped for years
+           * with nobody hitting it because unit tests render this component
+           * pre-resolved (`loading: false`) or don't watch the console, but
+           * a real browser session that reaches this card *while its query
+           * is still in flight* hits it every time: React logs "In HTML,
+           * <div> cannot be a descendant of <p>… This will cause a
+           * hydration error", and the mismatched subtree is discarded and
+           * rebuilt client-side. Found while chasing a different bug
+           * (`apps/e2e/tests/customer-bookings.spec.ts`, and see
+           * `bookings.index.tsx`'s own doc comment for what that one
+           * actually was) — this fix is worth keeping on its own terms
+           * regardless: invalid HTML a real browser session hits on every
+           * page load of any `CollectionCard` still loading at first paint.
+           */}
+          <div className="type-body mt-0.5">
             {loading ? (
               <Skeleton className="h-[19px] w-24" />
             ) : (
               t("peopleShown", { shown, total })
             )}
-          </p>
+          </div>
         </div>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5">

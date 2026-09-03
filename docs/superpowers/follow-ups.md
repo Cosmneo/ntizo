@@ -3615,3 +3615,76 @@ branch ships — a free observation at a moment that is coming anyway. Tail the 
 If it never does across a handful of real presses, the fallback the cancelled spike described —
 clearing `last_charge_attempt_at` and letting the next cron tick pick the booking up — is still the
 documented way out.
+
+## #151 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` has no email template either
+
+Same gap as #146, one more type: `CancelBookingCommand`'s own doc comment says so directly — "It
+has no email template yet — in-app only, a known gap this command does not close." A provider who
+is not sitting in the app when a customer cancels finds out only the next time they open it.
+
+**Trigger:** same as #146 — the notification-preferences work, or the first provider who missed a
+cancellation because they were not in the app. Add it to whichever batch closes that entry rather
+than templating it alone.
+
+## #152 — A stale comment in `config.middleware.ts` still predicts the mutation this branch just shipped
+
+`apps/backend/api/src/middlewares/config.middleware.ts` (around lines 29-32) carries the M-Pesa env
+vars forward with a comment explaining why: "the moment a 'Pagar agora' mutation exists, a customer
+retrying from their own booking would otherwise reach an adapter that reports the stage as
+unconfigured." Task 11 of this plan is that mutation (`booking.pay`, `RequestBookingChargeCommand`).
+The reasoning is still correct — it is exactly why the env stays wired the way it is — but the
+comment narrates a future that already happened.
+
+**Trigger:** the next time this file is touched for an unrelated reason; reword the comment from
+"the moment it exists" to a plain statement of why the customer-initiated path needs these vars too.
+Cosmetic — nothing behaves differently either way.
+
+## #153 — The customer's booking read model carries no `providerId`
+
+Task 6's ruling recorded this rather than closing it: `CustomerBookingDetailDTO` has the provider's
+slug, name, verified mark and rating, but not the entity id `MessageProviderButton` needs to open a
+conversation from the booking detail page — the "Falar com o prestador" button the approved mockup
+draws. Reaching the provider today means going through the messages page and finding them by name
+instead of by one click from the booking that is actually the reason to write.
+
+**Trigger:** the day the mockup's button gets built. The fix is a one-column addition to
+`GetMyBookingProjection`'s select and `CustomerBookingDetailDTO` — the row already joins `provider`
+for the name and slug, so the id is already in scope, just not projected.
+
+## #154 — No per-tab ordering assertion on the customer's own bookings
+
+Task 2's review flagged this and the brief for that fix round matched it, so it was left rather than
+guessed at: `booking-read.repository.test.ts` proves `listForCustomer` puts the right bookings in the
+right tab and pages them correctly, but nothing asserts the *order* within a tab — newest request
+first while waiting, soonest slot first looking forward, most recent first looking back
+(`customerOrder` in `booking-read.repository.ts`). A regression that quietly reversed one of those
+three `ORDER BY` clauses would pass every existing test in the file.
+
+**Trigger:** the next edit to `customerOrder` or to `booking-read.repository.test.ts` — add one
+multi-row fixture per tab asserting the sequence, alongside whatever else that edit is already
+touching.
+
+## #155 — `pay-dialog.tsx` and `cancel-dialog.tsx` share a small amount of shape
+
+Both are a `Dialog` opened for exactly one booking, both own their own mutation and error mapping,
+both render a title, a body built from the same slot wording, a "keep/cancel" footer pair. Task 12's
+review called the duplication small enough to leave rather than force a shared abstraction ahead of
+a third caller — `PayDialog` is nearly three times `CancelDialog`'s size (342 lines against 117) once
+the phone-number step and the polling state are counted, so the honest shared surface is a handful
+of lines, not the whole component.
+
+**Trigger:** a third booking-action dialog (a decline-style confirmation for the customer, say, or a
+reschedule). Two callers sharing a little shape is a coincidence; three sharing the same little shape
+is a pattern worth a `BookingActionDialog` wrapper.
+
+## #156 — The money column reads "Valor" for the customer and "Preço" for the provider
+
+`bookings.json`'s `col.price` is "Valor" on the customer's own page; `provider.json`'s `col.price` is
+"Preço" on the provider's list of the exact same bookings. Task 5's implementer flagged this as a
+deliberate divergence — the customer mockup was signed off with "Valor" specifically — but it is the
+one place in the product where the same column, over the same rows, is named two different things
+depending on who is looking, and nothing records that the difference was chosen rather than missed.
+
+**Trigger:** the next visual audit that puts both zones' tables side by side, or a customer support
+ticket asking why the two don't match. If it turns out to be an oversight rather than a choice after
+all, it is a one-line change in either locale file, repeated across all eight languages.

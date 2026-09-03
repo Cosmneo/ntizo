@@ -16,6 +16,7 @@ import enUSMessaging from "@/shared/locales/en-US/messaging.json";
 import enUSLegal from "@/shared/locales/en-US/legal.json";
 import enUSCheckout from "@/shared/locales/en-US/checkout.json";
 import enUSCompany from "@/shared/locales/en-US/company.json";
+import enUSBookings from "@/shared/locales/en-US/bookings.json";
 import ptPTCommon from "@/shared/locales/pt-PT/common.json";
 import ptPTAuth from "@/shared/locales/pt-PT/auth.json";
 import ptPTProvider from "@/shared/locales/pt-PT/provider.json";
@@ -30,6 +31,7 @@ import ptPTMessaging from "@/shared/locales/pt-PT/messaging.json";
 import ptPTLegal from "@/shared/locales/pt-PT/legal.json";
 import ptPTCheckout from "@/shared/locales/pt-PT/checkout.json";
 import ptPTCompany from "@/shared/locales/pt-PT/company.json";
+import ptPTBookings from "@/shared/locales/pt-PT/bookings.json";
 import ptMZCommon from "@/shared/locales/pt-MZ/common.json";
 import ptMZAuth from "@/shared/locales/pt-MZ/auth.json";
 import ptMZProvider from "@/shared/locales/pt-MZ/provider.json";
@@ -59,6 +61,7 @@ import esESMessaging from "@/shared/locales/es-ES/messaging.json";
 import esESLegal from "@/shared/locales/es-ES/legal.json";
 import esESCheckout from "@/shared/locales/es-ES/checkout.json";
 import esESCompany from "@/shared/locales/es-ES/company.json";
+import esESBookings from "@/shared/locales/es-ES/bookings.json";
 import deDECommon from "@/shared/locales/de-DE/common.json";
 import deDEAuth from "@/shared/locales/de-DE/auth.json";
 import deDEProvider from "@/shared/locales/de-DE/provider.json";
@@ -73,6 +76,7 @@ import deDEMessaging from "@/shared/locales/de-DE/messaging.json";
 import deDELegal from "@/shared/locales/de-DE/legal.json";
 import deDECheckout from "@/shared/locales/de-DE/checkout.json";
 import deDECompany from "@/shared/locales/de-DE/company.json";
+import deDEBookings from "@/shared/locales/de-DE/bookings.json";
 import frFRCommon from "@/shared/locales/fr-FR/common.json";
 import frFRAuth from "@/shared/locales/fr-FR/auth.json";
 import frFRProvider from "@/shared/locales/fr-FR/provider.json";
@@ -87,6 +91,7 @@ import frFRMessaging from "@/shared/locales/fr-FR/messaging.json";
 import frFRLegal from "@/shared/locales/fr-FR/legal.json";
 import frFRCheckout from "@/shared/locales/fr-FR/checkout.json";
 import frFRCompany from "@/shared/locales/fr-FR/company.json";
+import frFRBookings from "@/shared/locales/fr-FR/bookings.json";
 import itITCommon from "@/shared/locales/it-IT/common.json";
 import itITAuth from "@/shared/locales/it-IT/auth.json";
 import itITProvider from "@/shared/locales/it-IT/provider.json";
@@ -101,6 +106,7 @@ import itITMessaging from "@/shared/locales/it-IT/messaging.json";
 import itITLegal from "@/shared/locales/it-IT/legal.json";
 import itITCheckout from "@/shared/locales/it-IT/checkout.json";
 import itITCompany from "@/shared/locales/it-IT/company.json";
+import itITBookings from "@/shared/locales/it-IT/bookings.json";
 import nlNLCommon from "@/shared/locales/nl-NL/common.json";
 import nlNLAuth from "@/shared/locales/nl-NL/auth.json";
 import nlNLProvider from "@/shared/locales/nl-NL/provider.json";
@@ -115,6 +121,7 @@ import nlNLMessaging from "@/shared/locales/nl-NL/messaging.json";
 import nlNLLegal from "@/shared/locales/nl-NL/legal.json";
 import nlNLCheckout from "@/shared/locales/nl-NL/checkout.json";
 import nlNLCompany from "@/shared/locales/nl-NL/company.json";
+import nlNLBookings from "@/shared/locales/nl-NL/bookings.json";
 
 /**
  * Regional locale codes, matching the backend"s `Locale` enum and the doazores
@@ -146,6 +153,7 @@ const resources = {
     legal: enUSLegal,
     checkout: enUSCheckout,
     company: enUSCompany,
+    bookings: enUSBookings,
   },
   "pt-PT": {
     common: ptPTCommon,
@@ -162,6 +170,7 @@ const resources = {
     legal: ptPTLegal,
     checkout: ptPTCheckout,
     company: ptPTCompany,
+    bookings: ptPTBookings,
   },
   "pt-MZ": {
     common: ptMZCommon,
@@ -195,6 +204,7 @@ const resources = {
     legal: esESLegal,
     checkout: esESCheckout,
     company: esESCompany,
+    bookings: esESBookings,
   },
   "de-DE": {
     common: deDECommon,
@@ -211,6 +221,7 @@ const resources = {
     legal: deDELegal,
     checkout: deDECheckout,
     company: deDECompany,
+    bookings: deDEBookings,
   },
   "fr-FR": {
     common: frFRCommon,
@@ -227,6 +238,7 @@ const resources = {
     legal: frFRLegal,
     checkout: frFRCheckout,
     company: frFRCompany,
+    bookings: frFRBookings,
   },
   "it-IT": {
     common: itITCommon,
@@ -243,6 +255,7 @@ const resources = {
     legal: itITLegal,
     checkout: itITCheckout,
     company: itITCompany,
+    bookings: itITBookings,
   },
   "nl-NL": {
     common: nlNLCommon,
@@ -259,6 +272,7 @@ const resources = {
     legal: nlNLLegal,
     checkout: nlNLCheckout,
     company: nlNLCompany,
+    bookings: nlNLBookings,
   },
 };
 
