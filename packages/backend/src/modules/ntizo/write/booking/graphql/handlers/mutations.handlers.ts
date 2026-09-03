@@ -63,5 +63,19 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
         description: args.input.description ?? null,
       }),
     )
+    .handle("booking.accept", async (args, ctx) => {
+      await uc.acceptBooking.execute({ bookingId: args.input.bookingId, requesterUserId: requireUser(ctx) });
+      return { bookingId: args.input.bookingId };
+    })
+    .handle("booking.decline", async (args, ctx) => {
+      await uc.declineBooking.execute({
+        bookingId: args.input.bookingId,
+        requesterUserId: requireUser(ctx),
+        // `undefined` reaches the command as "no reason given", which it
+        // records as `declined_without_reason`.
+        ...(args.input.reason ? { reason: args.input.reason } : {}),
+      });
+      return { bookingId: args.input.bookingId };
+    })
     .build();
 }
