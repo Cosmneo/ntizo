@@ -10,6 +10,9 @@ import { BY_LOCALE as PROVIDER_VERIFIED_BY_LOCALE } from "../infrastructure/temp
 import { BY_LOCALE as PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE } from "../infrastructure/templates/provider-documents-required.template";
 import { BY_LOCALE as TEAM_INVITATION_BY_LOCALE } from "../infrastructure/templates/team-invitation.template";
 import { BY_LOCALE as NEW_MESSAGE_BY_LOCALE, newMessageTemplate } from "../infrastructure/templates/new-message.template";
+import { BY_LOCALE as PROVIDER_BOOKING_RECEIVED_BY_LOCALE } from "../infrastructure/templates/provider-booking-received.template";
+import { BY_LOCALE as BOOKING_ACCEPTED_BY_LOCALE } from "../infrastructure/templates/booking-accepted.template";
+import { BY_LOCALE as BOOKING_DECLINED_BY_LOCALE } from "../infrastructure/templates/booking-declined.template";
 
 const renderer = new LocalTemplateRenderer();
 
@@ -50,6 +53,33 @@ const PAYLOADS: Record<string, Record<string, unknown>> = {
     role: "staff",
   },
   [NotificationType.NewMessage]: { threadId: "thread-1" },
+  [NotificationType.ProviderBookingReceived]: {
+    bookingId: "bk-1",
+    serviceName: "Corte de cabelo",
+    startsAt: "2026-09-05T09:00:00.000Z",
+    timezone: "Africa/Maputo",
+    customerFirstName: "Ana",
+    respondBy: "2026-09-04T11:00:00.000Z",
+  },
+  [NotificationType.BookingAccepted]: {
+    bookingId: "bk-1",
+    serviceName: "Corte de cabelo",
+    providerName: "Estúdio Mavalane",
+    startsAt: "2026-09-05T09:00:00.000Z",
+    payBy: "2026-09-04T11:00:00.000Z",
+    priceMinor: 80000,
+    currency: "MZN",
+  },
+  [NotificationType.BookingDeclined]: {
+    bookingId: "bk-1",
+    serviceName: "Corte de cabelo",
+    providerName: "Estúdio Mavalane",
+    startsAt: "2026-09-05T09:00:00.000Z",
+    payBy: "2026-09-04T11:00:00.000Z",
+    priceMinor: 80000,
+    currency: "MZN",
+    reason: "outside_area",
+  },
 };
 
 describe("every template renders in every locale", () => {
@@ -204,6 +234,9 @@ describe("every template's locale table actually has all eight keys", () => {
     [NotificationType.ProviderDocumentsRequired]: PROVIDER_DOCUMENTS_REQUIRED_BY_LOCALE,
     [NotificationType.TeamInvitation]: TEAM_INVITATION_BY_LOCALE,
     [NotificationType.NewMessage]: NEW_MESSAGE_BY_LOCALE,
+    [NotificationType.ProviderBookingReceived]: PROVIDER_BOOKING_RECEIVED_BY_LOCALE,
+    [NotificationType.BookingAccepted]: BOOKING_ACCEPTED_BY_LOCALE,
+    [NotificationType.BookingDeclined]: BOOKING_DECLINED_BY_LOCALE,
   };
 
   for (const [type, table] of Object.entries(TABLES)) {
