@@ -108,12 +108,10 @@ export function BookingsPage() {
     });
   }, [query.data, offset]);
 
-  // At offset zero the answer *is* the list, read straight through rather
-  // than waited for — the accumulator above only catches up after the paint,
-  // so a cached tab would otherwise draw an empty card for one frame. From
-  // the second page on, `loaded` is the only thing that remembers the rows
-  // above the one the server has just sent, and `answered` likewise falls
-  // back to the previous page while the next is in flight.
+  // The answer the count, the chips and the pager are read off: the one in
+  // hand, falling back to the previous page while the next is in flight, so
+  // none of the three blinks out for the length of a request meant to extend
+  // the list.
   const data = query.data ?? page;
   // Measured from the moment the page was answered, not from whenever React
   // last re-rendered — see the provider list's own `now`, which this mirrors.
@@ -125,15 +123,20 @@ export function BookingsPage() {
   const setTab = (next: CustomerBookingTab) =>
     void navigate({ to: "/bookings", search: { tab: next } });
 
+  // At offset zero the answer *is* the list, read straight through rather
+  // than waited for — the accumulator above only catches up after the paint,
+  // so a cached tab would otherwise draw an empty card for one frame. From
+  // the second page on, `loaded` is the only thing that remembers the rows
+  // above the one the server has just sent.
+  //
   // The `DRAFT` filter is belt to `customerWhere`'s braces: the repository
   // already excludes drafts from every tab, and the branch rule is that a
   // draft appears in no tab and on no customer page. Filtering here means a
   // read that ever disagreed would drop a row rather than offer to cancel a
   // checkout the customer does not believe exists.
-  const visible = (offset === 0 ? (query.data?.items ?? []) : loaded).filter(
+  const items = (offset === 0 ? (query.data?.items ?? []) : loaded).filter(
     (b) => b.status !== "DRAFT",
   );
-  const items = visible;
   // The whole row rather than an id: the dialog needs the slot's date and
   // the provider's name, and `items` is already the answer this render has
   // — a second lookup by id would only reintroduce the chance of it missing.
