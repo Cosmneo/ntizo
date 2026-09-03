@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import i18n from "@/shared/lib/i18n";
 
 /**
  * Loaded through Vite's glob import rather than `node:fs`. This app is a
@@ -30,6 +31,17 @@ const locales = [...new Set(entries.map((e) => e.locale))].sort();
 const namespaces = [...new Set(entries.map((e) => e.namespace))].sort();
 const find = (locale: string, namespace: string) =>
   entries.find((e) => e.locale === locale && e.namespace === namespace)?.data;
+
+/**
+ * The one place a namespace's *file* name and its i18next *key* diverge:
+ * `become-provider.json` on disk, `becomeProvider` wherever the app calls
+ * `useTranslation`/registers it in `i18n.ts` — every other namespace here is
+ * one word, so the file name already is the key. A literal kebab-to-camel
+ * conversion, not a lookup table naming that one file, so a second
+ * multi-word namespace added later needs no edit here to be found correctly.
+ */
+const toI18nextNamespace = (fileName: string): string =>
+  fileName.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 
 /** Every leaf key, dotted — `nav.platform`, not `nav`. */
 function leafKeys(value: unknown, prefix = ""): string[] {
@@ -68,6 +80,42 @@ describe("locale parity", () => {
     expect(locales).toContain(REFERENCE);
     expect(locales.length).toBeGreaterThan(1);
     expect(namespaces.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * Every check below compares one JSON file to another — it cannot see
+   * whether the *application* ever loads the file it just compared.
+   * `i18n.ts` imports every locale/namespace pair by hand into a `resources`
+   * object passed to `i18next.init()`, and a namespace added after a
+   * locale's own entry was last touched is an easy file to forget: exactly
+   * one locale (`pt-MZ`) carried the `bookings` namespace from the day that
+   * feature's list page landed, and the gap survived a full review cycle of
+   * this branch, because nothing compared the files on disk to the object
+   * `i18n.ts` actually built. A reader in any of the other seven locales got
+   * the raw key ids (`tab.waiting`, `status.AWAITING_PROVIDER`) and
+   * English-formatted money on every page this branch shipped, silently —
+   * found only because an end-to-end test happened to load that page in a
+   * browser (`apps/e2e/tests/customer-bookings.spec.ts`).
+   *
+   * `i18n.hasResourceBundle` is asked directly rather than re-reading
+   * `i18n.ts`'s source: it is the same object i18next itself resolves a
+   * `useTranslation(ns)` call against, so this fails on exactly the
+   * condition a real reader would hit, not on a string this test would
+   * otherwise have to keep in sync with the source file's own shape.
+   */
+  describe("every namespace on disk is registered in i18n.ts for every locale", () => {
+    for (const locale of locales) {
+      for (const ns of namespaces) {
+        it(`${locale} registers the "${ns}" namespace`, () => {
+          expect(
+            i18n.hasResourceBundle(locale, toI18nextNamespace(ns)),
+            `${ns}.json exists in locales/${locale}/ but i18n.ts's \`resources\` map never ` +
+              `registers "${toI18nextNamespace(ns)}" for "${locale}" — every reader in this ` +
+              `locale sees raw key ids and no formatting for whatever this namespace covers.`,
+          ).toBe(true);
+        });
+      }
+    }
   });
 
   for (const locale of locales.filter((l) => l !== REFERENCE)) {

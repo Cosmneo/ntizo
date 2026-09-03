@@ -234,4 +234,29 @@ describe("CollectionCard while loading", () => {
     renderLoading({ search: "sal" });
     expect(screen.getByPlaceholderText("Search")).toBeTruthy();
   });
+
+  /**
+   * The header's own count line (`{loading ? <Skeleton /> : t("peopleShown",
+   * …)}`) used to sit inside a `<p>`, and `Skeleton` is unconditionally a
+   * `<div>` — invalid HTML. React's own reconciler builds the DOM by calling
+   * `appendChild` directly rather than parsing a markup string, so this
+   * exact defect was always inspectable in a plain client render; nothing
+   * about it needs real SSR or hydration to reproduce (proved by reverting
+   * the fix and rerunning this one test: it fails on jsdom alone, well
+   * before a browser ever gets involved). What made it invisible here was
+   * narrower — `renderCard`'s own `loading={false}` default meant no case in
+   * this file, before now, ever rendered the branch that held it. Found by a
+   * real browser session hitting this card mid-fetch, where an SSR pass
+   * turns the same defect into a visible hydration-mismatch warning
+   * (`apps/e2e/tests/customer-bookings.spec.ts`). This assertion is the
+   * general form of the check that would have caught it here first: no
+   * block element inside a paragraph, anywhere this component renders while
+   * loading, not only the one spot it happened.
+   */
+  it("nests no block element inside a paragraph while loading", () => {
+    const { container } = renderLoading();
+    for (const p of container.querySelectorAll("p")) {
+      expect(p.querySelector("div"), `<p> contains a <div>: ${p.outerHTML}`).toBeNull();
+    }
+  });
 });

@@ -3616,15 +3616,16 @@ If it never does across a handful of real presses, the fallback the cancelled sp
 clearing `last_charge_attempt_at` and letting the next cron tick pick the booking up — is still the
 documented way out.
 
-## #151 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` has no email template either
+## #151 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` confirmed still email-less, cross-referencing #146
 
-Same gap as #146, one more type: `CancelBookingCommand`'s own doc comment says so directly — "It
-has no email template yet — in-app only, a known gap this command does not close." A provider who
-is not sitting in the app when a customer cancels finds out only the next time they open it.
+Not a new gap — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` is already one of the three types #146
+names. This is that entry confirmed from the write side: `CancelBookingCommand`'s own doc comment
+says so directly — "It has no email template yet — in-app only, a known gap this command does not
+close." Recorded here only so a future reader who reaches this command first is pointed at #146
+rather than filing the same gap twice.
 
-**Trigger:** same as #146 — the notification-preferences work, or the first provider who missed a
-cancellation because they were not in the app. Add it to whichever batch closes that entry rather
-than templating it alone.
+**Trigger:** see #146 — the notification-preferences work, or the first provider who missed a
+cancellation because they were not in the app. Closes with that entry, not on its own.
 
 ## #152 — A stale comment in `config.middleware.ts` still predicts the mutation this branch just shipped
 
@@ -3688,3 +3689,30 @@ depending on who is looking, and nothing records that the difference was chosen 
 **Trigger:** the next visual audit that puts both zones' tables side by side, or a customer support
 ticket asking why the two don't match. If it turns out to be an oversight rather than a choice after
 all, it is a one-line change in either locale file, repeated across all eight languages.
+
+## #157 — A parity gate that compares files to each other cannot see whether the app loads them
+
+What actually let `bookings` ship unregistered in seven of eight locales (found and fixed in this
+same task, see the commit that introduced `#151`-`#156`) was not a missing test — `i18n-parity.test.ts`
+already existed and ran on every one of this branch's own CI passes. It compares each locale's JSON
+file to `en-US`'s, key for key, placeholder for placeholder. Every one of those comparisons agreed:
+the seven missing locales' `bookings.json` files were byte-correct, so the gate had nothing to
+disagree about. What it never asked is whether `i18n.ts`'s hand-maintained `resources` object —
+the thing i18next actually reads — carries the file it just finished comparing. A namespace whose
+JSON is perfect in all eight languages and registered in one still ships seven languages of raw key
+ids, and a gate built entirely out of file-to-file comparisons has no way to notice, by
+construction.
+
+This is now closed for `i18n.ts` specifically: a new assertion beside the existing parity checks
+(`i18n-parity.test.ts`, `describe("every namespace on disk is registered in i18n.ts for every
+locale")`) walks the same glob of files on disk and asks `i18n.hasResourceBundle(locale, ns)` of the
+real, initialized i18next instance — the same object a `useTranslation` call resolves against —
+rather than comparing JSON to JSON a second way. It would have caught this the day `bookings.json`
+landed for `en-US` and nowhere else.
+
+**Trigger:** the next namespace added to this app. If it ships with its JSON files in all eight
+locales but the new registration test above still goes red for seven of them, that is this exact
+failure mode recurring — the fix is the same one-line-per-locale addition to `i18n.ts`'s `resources`
+object this task made, not a change to the test. If the registration test itself is ever the thing
+that gets deleted or weakened (rather than a namespace forgetting to register), this entry is the
+record of why it exists.
