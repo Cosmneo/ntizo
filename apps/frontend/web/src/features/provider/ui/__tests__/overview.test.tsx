@@ -143,7 +143,10 @@ function bookingFixture(over: Partial<ProviderBookingDTO> = {}): ProviderBooking
   };
 }
 
-/** Only `status` is read by the dashboard; the rest is what the wire actually sends. */
+/**
+ * Only `status` is read by the dashboard; the rest is what the wire actually
+ * sends.
+ */
 function serviceFixture(id: string, status: "published" | "draft") {
   return {
     id,
@@ -160,6 +163,13 @@ function serviceFixture(id: string, status: "published" | "draft") {
     memberIds: [],
   };
 }
+
+/** Two published and one draft: the card reads a plural and a singular. */
+const SERVICES = [
+  serviceFixture("svc-1", "published"),
+  serviceFixture("svc-2", "published"),
+  serviceFixture("svc-3", "draft"),
+];
 
 /** Two conversations, two unread between them — the number the card shows. */
 const THREADS = [
@@ -215,13 +225,23 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-function renderOverview({ statsFails = false }: { statsFails?: boolean } = {}) {
+function renderOverview({
+  statsFails = false,
+  stats = STATS,
+  services = SERVICES,
+  reviews = REVIEWS,
+}: {
+  statsFails?: boolean;
+  stats?: typeof STATS;
+  services?: typeof SERVICES;
+  reviews?: typeof REVIEWS;
+} = {}) {
   fakes.session.mockReset();
   fakes.publik.mockReset();
   fakes.session.mockImplementation(async (query: string) => {
     if (query.includes("BookingStatsForProvider")) {
       if (statsFails) throw new Error("the numbers are unreachable");
-      return { bookingStatsForProvider: STATS };
+      return { bookingStatsForProvider: stats };
     }
     if (query.includes("BookingForProvider")) {
       return {
@@ -241,13 +261,7 @@ function renderOverview({ statsFails = false }: { statsFails?: boolean } = {}) {
       };
     }
     if (query.includes("ServiceMine")) {
-      return {
-        serviceMine: [
-          serviceFixture("svc-1", "published"),
-          serviceFixture("svc-2", "published"),
-          serviceFixture("svc-3", "draft"),
-        ],
-      };
+      return { serviceMine: services };
     }
     if (query.includes("ProviderThreads")) {
       return { communicationProviderThreads: { items: THREADS, nextCursor: null } };
@@ -255,7 +269,7 @@ function renderOverview({ statsFails = false }: { statsFails?: boolean } = {}) {
     return {};
   });
   fakes.publik.mockImplementation(async (query: string) => {
-    if (query.includes("ProviderReviews")) return { reviewByProvider: REVIEWS };
+    if (query.includes("ProviderReviews")) return { reviewByProvider: reviews };
     return {};
   });
 
@@ -400,6 +414,25 @@ describe("OverviewPage", () => {
     expect(screen.getByText("Já descontada a comissão.")).toBeInTheDocument();
   });
 
+  /**
+   * Controller ruling R10. Nothing writes `COMPLETED` yet, so every workspace
+   * reads a zero here today, and "already net of commission" over a zero
+   * explains a deduction that never happened. The number is unchanged — the
+   * sentence under it is what tells a provider why it is zero — and the
+   * pipeline line, the one figure a busy week still shows, stays either way.
+   */
+  it("says why the revenue is zero when nothing has been completed", async () => {
+    renderOverview({
+      stats: { ...STATS, completedLast30: 0, revenueLast30Minor: 0 },
+    });
+
+    expect(
+      await screen.findByText("Ainda nada concluído nos últimos 30 dias."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Já descontada a comissão.")).toBeNull();
+    expect(screen.getByText(/6[\s .]?300/)).toBeInTheDocument(); // still the pipeline
+  });
+
   it("shows the public rating and links to where it is written", async () => {
     renderOverview();
 
@@ -439,7 +472,7 @@ describe("OverviewPage", () => {
     // the bubbling `mouseover`, and a dispatched native `mouseenter` reaches
     // no listener at all.
     fireEvent.mouseOver(days[0]!);
-    const first = await screen.findByText(/1 pedidos, 0 confirmadas/);
+    const first = await screen.findByText(/pedidos 1 · confirmadas 0/);
     // Anchored 1.67% into the plot and pulled back by 1.67% of its own width:
     // the two cancel to a left edge inside the card rather than half a label
     // outside it.
@@ -447,7 +480,7 @@ describe("OverviewPage", () => {
     expect(first.style.transform).toBe("translateX(-1.67%)");
 
     fireEvent.mouseOver(days[15]!);
-    const middle = await screen.findByText(/0 pedidos, 0 confirmadas/);
+    const middle = await screen.findByText(/pedidos 0 · confirmadas 0/);
     // The middle of the window keeps the centring it always had.
     expect(Number.parseFloat(middle.style.left)).toBeCloseTo(51.67, 2);
     expect(middle.style.transform).toBe("translateX(-51.67%)");
@@ -459,6 +492,25 @@ describe("OverviewPage", () => {
     expect(await screen.findByText("Reservas recentes")).toBeInTheDocument();
     expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Ver todas" })).toBeInTheDocument();
+  });
+
+  /**
+   * What the card *is*, not merely that it rendered. The transport answers
+   * any `BookingForProvider`, so narrowing the list to the requests tab, or
+   * asking for a full page of twenty, would leave every assertion above green
+   * while the card stopped being "the newest eight, whatever state they are
+   * in" — the one thing that distinguishes it from the bookings list.
+   */
+  it("asks for the newest eight across every tab", async () => {
+    renderOverview();
+    await screen.findByText("Reservas recentes");
+
+    const call = fakes.session.mock.calls.find((c) =>
+      String(c[0]).includes("BookingForProvider"),
+    );
+    expect(call?.[1]).toMatchObject({
+      input: { providerId: "prov-1", tab: "all", limit: 8, offset: 0 },
+    });
   });
 
   it("leaves the price off the recent list — the dashboard is not the ledger", async () => {
@@ -476,8 +528,34 @@ describe("OverviewPage", () => {
     renderOverview();
 
     expect(await screen.findByText("2 publicados")).toBeInTheDocument();
-    expect(screen.getByText("1 rascunhos")).toBeInTheDocument();
+    expect(screen.getByText("1 rascunho")).toBeInTheDocument();
     expect(screen.getByText("2 por ler")).toBeInTheDocument();
+  });
+
+  /**
+   * Every count on this page goes through i18next's plural resolution, which
+   * only happens when a suffixed key exists — a lone `"{{count}} avaliações"`
+   * reads "1 avaliações" and no test notices. So one workspace with exactly
+   * one of each: one review, one published service, one draft. The public
+   * provider page already says "1 avaliação" about the same review; this is
+   * the assertion that keeps the two from disagreeing.
+   */
+  it("reads one of a thing in the singular", async () => {
+    renderOverview({
+      reviews: {
+        summary: {
+          average: 5,
+          count: 1,
+          histogram: { one: 0, two: 0, three: 0, four: 0, five: 1 },
+        },
+        reviews: [],
+      },
+      services: [serviceFixture("svc-1", "published"), serviceFixture("svc-2", "draft")],
+    });
+
+    expect(await screen.findByText("1 avaliação")).toBeInTheDocument();
+    expect(screen.getByText("1 publicado")).toBeInTheDocument();
+    expect(screen.getByText("1 rascunho")).toBeInTheDocument();
   });
 
   it("says so when the numbers cannot be read, and offers to ask again", async () => {

@@ -134,8 +134,20 @@ export function OverviewPage() {
               {t("overview.pipeline", { amount: money(s?.pipelineMinor ?? 0) })}
               {/* The figure above is the payout, not the listed price. Saying
                   so is the difference between a number the provider can plan
-                  against and one they will query. */}
-              <span className="block">{t("overview.revenueHint")}</span>
+                  against and one they will query.
+
+                  Except when nothing has been completed: the revenue sums only
+                  `COMPLETED` bookings, nothing writes that status yet, and a
+                  commission note over a zero explains a deduction that has not
+                  happened. Controller ruling R10 — the number stays what it
+                  is, the sentence under it says why it is zero. The pipeline
+                  line above is unchanged either way; it is the one figure a
+                  provider with a full week still has. */}
+              <span className="block">
+                {s && s.completedLast30 === 0
+                  ? t("overview.nothingCompleted")
+                  : t("overview.revenueHint")}
+              </span>
             </>
           }
         />
