@@ -15,10 +15,10 @@ function row(over: Partial<SupportRequestSummaryDTO> = {}): SupportRequestSummar
   };
 }
 
-async function renderPage(items: SupportRequestSummaryDTO[]) {
+async function renderPage(items: SupportRequestSummaryDTO[], nextCursor: string | null = null) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   qc.setQueryData(["admin", "support", { status: "open" }], {
-    pages: [{ items, nextCursor: null }],
+    pages: [{ items, nextCursor }],
     pageParams: [null],
   });
   qc.setQueryData(["admin", "support", "openCount"], items.length);
@@ -61,6 +61,15 @@ describe("AdminSupportPage", () => {
       "href",
       "/admin/support/t-1",
     );
+  });
+
+  it("does not claim a total it cannot know while another page remains", async () => {
+    // A non-null `nextCursor` means the backend has more — "1 of 1 shown"
+    // would be a lie the queue cannot back up, since `supportRequests` never
+    // returns a count. The header must fall back to a plain "N shown".
+    await renderPage([row()], "2026-09-03T10:00:00.000Z|t-1");
+    expect(screen.getByText("1 shown")).toBeInTheDocument();
+    expect(screen.queryByText(/of 1/)).not.toBeInTheDocument();
   });
 
   it("defaults to open and lets the filter change", async () => {

@@ -71,6 +71,12 @@ export function AdminSupportPage() {
         title={t("supportTitle")}
         shown={requests.length}
         total={requests.length}
+        // `supportRequests` is cursor-paged and never returns a count: once
+        // another page exists, `requests.length` is only how many are
+        // loaded so far, not the whole. Rather than pass it off as `total`
+        // (a lie the moment `hasMore` is true), tell `CollectionCard` the
+        // total is not known and let it say "N shown" instead of "N of N".
+        totalUnknown={hasMore}
         loading={loading}
         search=""
         onSearchChange={() => {}}
@@ -103,13 +109,24 @@ export function AdminSupportPage() {
           ),
           cells: {
             who:
-              request.audience === "provider" && request.providerId ? (
-                <Link to="/admin/providers/$providerId" params={{ providerId: request.providerId }}>
-                  {request.providerName}
-                </Link>
+              request.audience === "provider" ? (
+                request.providerId ? (
+                  <Link to="/admin/providers/$providerId" params={{ providerId: request.providerId }}>
+                    {request.providerName}
+                  </Link>
+                ) : (
+                  // An orphaned provider request — the provider it named no
+                  // longer resolves to an id. Falling back to the requester's
+                  // name would misattribute the row to the wrong person, so
+                  // this shows the provider's own (unlinked) name, or a dash
+                  // if even that degraded to empty.
+                  <span>{request.providerName || "—"}</span>
+                )
               ) : (
                 <span>{request.requesterName}</span>
               ),
+            // Blank, not "0": an unread count of none reads faster as an
+            // empty cell than as a zero sitting among genuine counts.
             unread: <span className="tabular-nums">{request.unreadForAdmin || ""}</span>,
             status: (
               <Badge tone={request.status === "open" ? "info" : "neutral"}>

@@ -89,10 +89,15 @@ export function CollectionCard({
   filtered,
   skeletonPlaceholders = 5,
   reorder,
+  totalUnknown = false,
 }: {
   title: string;
   shown: number;
-  /** Before filtering. With a filter on, one number is a lie about the whole. */
+  /**
+   * Before filtering. With a filter on, one number is a lie about the whole
+   * — and so is this one, whenever `totalUnknown` is set, no matter what it
+   * holds; pass anything (e.g. `shown` again) and it is ignored.
+   */
   total: number;
   loading: boolean;
   search: string;
@@ -156,6 +161,14 @@ export function CollectionCard({
      */
     disabledReason?: string | undefined;
   };
+  /**
+   * Set when `total` is not an authoritative count — a cursor-paged list
+   * that has not reached its last page, say, where the backend never
+   * returns a count at all. Swaps the header's "N of N shown" for a plain
+   * "N shown": asserting a total the caller cannot know is worse than not
+   * asserting one.
+   */
+  totalUnknown?: boolean;
 }) {
   const { t } = useTranslation("provider");
   const isEmpty = !loading && rows.length === 0;
@@ -205,6 +218,8 @@ export function CollectionCard({
           <p className="type-body mt-0.5">
             {loading ? (
               <Skeleton className="h-[19px] w-24" />
+            ) : totalUnknown ? (
+              t("peopleShownPartial", { shown })
             ) : (
               t("peopleShown", { shown, total })
             )}

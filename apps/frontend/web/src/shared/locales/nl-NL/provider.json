@@ -177,6 +177,7 @@
   },
   "peopleTitle": "Mensen in de werkruimte",
   "peopleShown": "{{shown}} van {{total}} getoond",
+  "peopleShownPartial": "{{shown}} getoond",
   "peopleSearchPlaceholder": "Zoek mensen of rollen",
   "peopleFilter": "Filteren",
   "peoplePerson": "Persoon",

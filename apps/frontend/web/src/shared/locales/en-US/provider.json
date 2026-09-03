@@ -177,6 +177,7 @@
   },
   "peopleTitle": "Workspace people",
   "peopleShown": "{{shown}} of {{total}} shown",
+  "peopleShownPartial": "{{shown}} shown",
   "peopleSearchPlaceholder": "Search people or roles",
   "peopleFilter": "Filter",
   "peoplePerson": "Person",

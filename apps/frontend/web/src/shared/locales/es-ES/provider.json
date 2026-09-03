@@ -177,6 +177,7 @@
   },
   "peopleTitle": "Personas del espacio",
   "peopleShown": "{{shown}} de {{total}} mostradas",
+  "peopleShownPartial": "{{shown}} mostradas",
   "peopleSearchPlaceholder": "Buscar personas o roles",
   "peopleFilter": "Filtrar",
   "peoplePerson": "Persona",
