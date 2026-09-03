@@ -84,13 +84,12 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       .select({ bucket: customerBucket(now), n: count() })
       .from(booking)
       .where(and(eq(booking.customerId, customerId), sql`${booking.status} <> 'DRAFT'`))
-      // `1`, not `customerBucket(now)` again: calling the builder a second
-      // time binds a second, distinct parameter for `now`, and Postgres
-      // requires a `GROUP BY` expression to be the *same* parse tree as the
-      // one it is grouping — two placeholders bound to an equal value are
-      // still two different expressions to it. The ordinal sidesteps that by
-      // naming the first SELECT list item instead of re-emitting it.
-      .groupBy(sql`1`);
+      // `bucket`, the alias `customerBucket` gives its CASE — not
+      // `customerBucket(now)` again and not an ordinal. See that function's
+      // own comment for why the CASE cannot be repeated here, and why the
+      // alias is what a column added ahead of `bucket` in this SELECT list
+      // cannot silently mis-group.
+      .groupBy(sql`bucket`);
 
     const counts = { waiting: 0, upcoming: 0, history: 0 };
     for (const row of rows) {
@@ -459,11 +458,21 @@ function customerBucket(now: Date) {
   // one for an untyped raw parameter — the same reason `customerWhere`
   // reaches for `gte(booking.startsAt, filter.now)` instead of writing the
   // comparison out by hand.
+  //
+  // `.as("bucket")` names the SELECT list item so `countsForCustomer` can
+  // `GROUP BY bucket` — Postgres resolves an unqualified `GROUP BY` name
+  // against an output alias when nothing in the FROM list matches it. The
+  // alias is not cosmetic: the CASE cannot simply be *repeated* in the
+  // `GROUP BY` instead, because building it a second time would bind a
+  // second, distinct parameter for `now`, and Postgres treats the two
+  // resulting expressions as different parse trees even though both are
+  // bound to the same value — the query is then rejected with "column
+  // booking.status must appear in the GROUP BY clause".
   return sql<string>`case
     when ${booking.status} in ('AWAITING_PROVIDER','PENDING_PAYMENT') then 'waiting'
     when ${booking.status} = 'CONFIRMED' and ${gte(booking.startsAt, now)} then 'upcoming'
     else 'history'
-  end`;
+  end`.as("bucket");
 }
 
 /**
