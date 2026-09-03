@@ -173,10 +173,14 @@ export function BookingsPage() {
               key: b.id,
               primary: (
                 <div>
-                  <p className="type-body-medium font-semibold">
+                  <Link
+                    to="/bookings/$bookingId"
+                    params={{ bookingId: b.id }}
+                    className="type-body-medium font-semibold hover:underline"
+                  >
                     {b.serviceName}
                     {b.optionName ? ` · ${b.optionName}` : ""}
-                  </p>
+                  </Link>
                   <p className="type-caption mt-0.5 flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
                     {b.providerName}
                     {b.providerVerified && (

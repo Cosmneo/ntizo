@@ -42,6 +42,7 @@
   "loadError": "Nous n'avons pas pu ouvrir cette réservation. Vérifiez votre connexion et réessayez.",
   "storageBlockedTitle": "Ce navigateur ne conserve pas vos informations",
   "storageBlockedBody": "Nous devons conserver vos informations dans cet onglet jusqu'à l'envoi de la demande, et ce navigateur ne le permet pas. Ouvrez la page dans une fenêtre normale (non privée) ou autorisez les données du site. Votre horaire reste réservé.",
+  "viewBookingAction": "Voir ma réservation",
   "browseMoreAction": "Voir d'autres services",
   "sentTitle": "Demande envoyée",
   "sentBody": "Nous avons envoyé votre demande à {{provider}}. Il a jusqu'à {{time}} le {{date}} pour confirmer, et vous ne payez qu'après cela.",

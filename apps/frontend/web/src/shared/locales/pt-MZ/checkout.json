@@ -42,6 +42,7 @@
   "loadError": "Não foi possível abrir esta reserva. Verifique a ligação e tente de novo.",
   "storageBlockedTitle": "Este navegador não guarda os seus dados",
   "storageBlockedBody": "Precisamos de guardar os seus dados neste separador até enviar o pedido, e este navegador não permite. Abra a página numa janela normal (não anónima) ou permita os dados do site. A hora continua reservada para si.",
+  "viewBookingAction": "Ver a minha reserva",
   "browseMoreAction": "Ver outros serviços",
   "sentTitle": "Pedido enviado",
   "sentBody": "Enviámos o seu pedido a {{provider}}. Tem até às {{time}} de {{date}} para confirmar, e só paga depois disso.",
