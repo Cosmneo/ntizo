@@ -11,6 +11,31 @@ export function useProviderBookings(input: ProviderBookingsPageInput) {
   return useQuery(providerBookingQueries.page(input));
 }
 
+/**
+ * How many requests are waiting — the sidebar's badge.
+ *
+ * The *same* query the list's "Pedidos" tab runs, deliberately: an identical
+ * key means a provider who opens that tab pays for one request rather than
+ * two, and answering a booking drops the badge and the row together on the
+ * one invalidation `useAnswerBooking` already fires. `select` narrows it to
+ * the single number the badge draws, so a refetch that comes back with the
+ * same total re-renders nothing.
+ */
+export function useAwaitingCount(providerId: string | undefined) {
+  const query = useQuery({
+    ...providerBookingQueries.page({
+      providerId: providerId ?? "",
+      tab: "requests",
+      q: "",
+      memberId: null,
+      offset: 0,
+    }),
+    select: (page) => page.total,
+    staleTime: 30_000,
+  });
+  return query.data ?? 0;
+}
+
 export function useProviderBooking(providerId: string, bookingId: string) {
   return useQuery(providerBookingQueries.detail(providerId, bookingId));
 }
