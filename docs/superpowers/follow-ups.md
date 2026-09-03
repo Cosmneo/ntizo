@@ -3277,3 +3277,35 @@ details.
 which will want the paid instant on the record; the fix is one
 `appendChange({ reason: "paid_by_customer" })` in the command plus the
 `timelineReason.paid_by_customer` key in the eight locales.
+
+## #129 — The kit's Dialog has no role, focus trap or Escape handling, and the decline dialog now depends on it
+
+`packages/frontend/src/components/dialog.tsx` renders its content inline: no `role="dialog"`, no
+`aria-modal`, nothing that traps focus inside it and no Escape-to-close. Sighted mouse users get a
+modal; everybody else gets a panel that appeared in the middle of the page, with the rest of the
+document still reachable behind it by Tab and nothing but the Cancel button to leave by.
+
+The provider's decline confirmation (`apps/frontend/web/src/features/provider/bookings/ui/decline-dialog.tsx`)
+is the first destructive action put behind it — a radio group and a "Recusar pedido" that a customer
+feels. That raises the cost of the gap from awkward to unsafe: a keyboard-only provider who opens it
+by accident has no way out that does not involve guessing where the Cancel button is in the tab
+order of a page that is still fully focusable.
+
+**Trigger:** the accessibility pass, or the first keyboard-only provider who cannot leave the
+dialog — whichever comes first. Every other consumer of the kit's Dialog inherits the fix.
+
+## #130 — The accept and submit notifications sit behind `scheduleBookingDeadline`
+
+In `accept-booking.command.ts` and `submit-booking.command.ts` the notification raise runs *after*
+the call to `scheduleBookingDeadline`, outside the transaction that already committed the status
+change. Today that is safe by accident: `BookingRowDelayedJobs` is a no-op adapter, so there is
+nothing in the scheduling call that can throw.
+
+A real scheduler can. A queue that is down, a network timeout, a malformed payload — any of them
+would abort the rest of the block, and the notification of a write that has already committed would
+simply never be raised. The provider is left with a booking waiting for them that they were never
+told about, and nothing anywhere is red.
+
+**Trigger:** the day a real delayed-jobs adapter replaces the no-op. The fix is to move the raise
+ahead of the scheduling call, or wrap the scheduling the way the raise is already wrapped — the
+ordering is arbitrary today and load-bearing the moment the adapter is real.
