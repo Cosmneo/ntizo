@@ -25,6 +25,7 @@ describe("useHelpCenter", () => {
   it("opening a thread selects it and shows the conversation", () => {
     const { result } = renderHook(() => useHelpCenter(), { wrapper });
     act(() => result.current.openThread("t-1"));
+    expect(result.current.open).toBe(true);
     expect(result.current.screen).toBe("conversation");
     expect(result.current.selectedThreadId).toBe("t-1");
   });
@@ -43,10 +44,13 @@ describe("useHelpCenter", () => {
 
   it("closing forgets the prefill and the search, and keeps the panel closed", () => {
     const { result } = renderHook(() => useHelpCenter(), { wrapper });
+    act(() => result.current.openThread("t-1"));
     act(() => result.current.composeNew({ bookingId: "b-1", serviceName: "Corte" }));
     act(() => result.current.setQuery("reembolso"));
     act(() => result.current.close());
     expect(result.current.open).toBe(false);
+    expect(result.current.screen).toBe("home");
+    expect(result.current.selectedThreadId).toBeNull();
     expect(result.current.prefill).toBeNull();
     expect(result.current.query).toBe("");
   });
