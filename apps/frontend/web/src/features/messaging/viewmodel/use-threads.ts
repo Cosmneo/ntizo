@@ -22,7 +22,11 @@ export function useThreads() {
   const query = useInfiniteQuery(messagingQueries.mine());
 
   const threads: Thread[] =
-    query.data?.pages.flatMap((page) => page.items) ?? [];
+    query.data?.pages.flatMap((page) => page.items).map((row) => ({
+      ...row,
+      // Plan B makes the domain type nullable; until then a support row degrades to "".
+      providerId: row.providerId ?? "",
+    })) ?? [];
 
   return {
     threads,

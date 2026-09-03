@@ -13,6 +13,10 @@ const twoThreadPage: ThreadPageDTO = {
   items: [
     {
       id: "t1",
+      // `type`/`support` are Task 8 additions to `threadSummaryReadModel` —
+      // both rows here are ordinary inquiries, unrelated to what this file
+      // tests.
+      type: "inquiry",
       providerId: "p1",
       providerName: "Studio X",
       customerName: "Ana Silva",
@@ -20,9 +24,11 @@ const twoThreadPage: ThreadPageDTO = {
       lastMessagePreview: "Olá, tudo bem?",
       lastMessageHasAttachment: false,
       unreadCount: 2,
+      support: null,
     },
     {
       id: "t2",
+      type: "inquiry",
       providerId: "p2",
       providerName: "Studio Y",
       customerName: "Carlos Mendes",
@@ -30,6 +36,7 @@ const twoThreadPage: ThreadPageDTO = {
       lastMessagePreview: "Confirmado para amanhã",
       lastMessageHasAttachment: false,
       unreadCount: 0,
+      support: null,
     },
   ],
   nextCursor: "cursor-2",
@@ -41,6 +48,9 @@ const twoMessagePage: MessagePageDTO = {
       id: "m1",
       threadId: "t1",
       senderUserId: "u-customer",
+      // `senderSide` is a Task 8 addition to `messageReadModel`, unrelated
+      // to what this file tests.
+      senderSide: "customer",
       body: "Olá, tudo bem?",
       readAt: null,
       createdAt: "2026-01-02T10:00:00.000Z",
@@ -53,6 +63,7 @@ const twoMessagePage: MessagePageDTO = {
       id: "m2",
       threadId: "t1",
       senderUserId: "u-provider",
+      senderSide: "provider",
       body: "Tudo bem, em que posso ajudar?",
       readAt: "2026-01-02T10:05:00.000Z",
       createdAt: "2026-01-02T09:00:00.000Z",

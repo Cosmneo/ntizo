@@ -1,6 +1,7 @@
 import { DrizzleThreadRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/thread.repository";
 import { DrizzleMessageRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/message.repository";
 import { DrizzleAttachmentRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/attachment.repository";
+import { DrizzleSupportRequestRepository } from "../../../bounded-contexts/communication/infrastructure/repositories/drizzle/support-request.repository";
 import { DrizzleProviderReader } from "../../../bounded-contexts/communication/infrastructure/outbound-adapters/cross-bc/provider-reader.adapter";
 import { DrizzleProviderNameReader } from "../infra/repositories/drizzle/provider-name-reader.adapter";
 import { DrizzleCustomerNameReader } from "../infra/repositories/drizzle/customer-name-reader.adapter";
@@ -28,6 +29,7 @@ export function bootstrapCommunicationRead() {
   const threadRepository = new DrizzleThreadRepository();
   const messageRepository = new DrizzleMessageRepository();
   const attachmentRepository = new DrizzleAttachmentRepository();
+  const supportRequestRepository = new DrizzleSupportRequestRepository();
   const providerReader = new DrizzleProviderReader();
   const providerNameReader = new DrizzleProviderNameReader();
   const customerNameReader = new DrizzleCustomerNameReader();
@@ -38,6 +40,7 @@ export function bootstrapCommunicationRead() {
       threadRepository,
       messageRepository,
       attachmentRepository,
+      supportRequestRepository,
       providerReader,
       providerNameReader,
       customerNameReader,
@@ -50,6 +53,7 @@ export function bootstrapCommunicationRead() {
         providerNameReader,
         customerNameReader,
         threadPreviewReader,
+        supportRequestRepository,
       ),
       listProviderThreads: new ListProviderThreadsProjection(
         threadRepository,
@@ -58,6 +62,7 @@ export function bootstrapCommunicationRead() {
         providerNameReader,
         customerNameReader,
         threadPreviewReader,
+        supportRequestRepository,
       ),
       listThreadMessages: new ListThreadMessagesProjection(
         threadRepository,

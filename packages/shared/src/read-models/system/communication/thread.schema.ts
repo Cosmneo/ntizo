@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/** What a support row adds to an inbox line. Null on an inquiry. */
+export const threadSupportReadModel = z.object({
+  subject: z.string(),
+  status: z.enum(["open", "resolved"]),
+  audience: z.enum(["customer", "provider"]),
+  bookingId: z.string().nullable(),
+});
+
 /**
  * One row of somebody's inbox — a customer's list of the providers they have
  * messaged, or a provider's list of the customers who have messaged them.
@@ -38,10 +46,18 @@ import { z } from "zod";
  * rendered the "no messages yet" placeholder next to a bold unread badge on
  * a thread just sorted to the top. `.catch(false)` for the same
  * degrade-not-fail reason the other three fields get one.
+ *
+ * `type` and `support` are phase 2 additions: `type` says whether this row
+ * is an inquiry or a support request, and `providerId`/`support` follow
+ * from it — a personal support request has no provider, so `providerId` is
+ * nullable, and `support` (the request's own subject, status, audience and
+ * booking) is null on every inquiry row.
  */
 export const threadSummaryReadModel = z.object({
   id: z.string(),
-  providerId: z.string(),
+  type: z.enum(["inquiry", "support"]),
+  /** Null on a personal support request — there is no provider on it. */
+  providerId: z.string().nullable(),
   providerName: z.string().catch(""),
   /** The customer's own current display name — see this model's own doc comment on which side reads which field. */
   customerName: z.string().catch(""),
@@ -49,6 +65,7 @@ export const threadSummaryReadModel = z.object({
   lastMessagePreview: z.string().catch(""),
   lastMessageHasAttachment: z.boolean().catch(false),
   unreadCount: z.number().int().min(0),
+  support: threadSupportReadModel.nullable(),
 });
 
 /**
@@ -64,5 +81,6 @@ export const threadPageReadModel = z.object({
   nextCursor: z.string().nullable(),
 });
 
+export type ThreadSupportDTO = z.infer<typeof threadSupportReadModel>;
 export type ThreadSummaryDTO = z.infer<typeof threadSummaryReadModel>;
 export type ThreadPageDTO = z.infer<typeof threadPageReadModel>;
