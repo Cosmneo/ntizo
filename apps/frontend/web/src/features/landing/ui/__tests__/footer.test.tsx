@@ -79,6 +79,20 @@ describe("Footer", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  it("sits the support button's label at the same edge as its neighbours", async () => {
+    // The column is a flex column, so every row stretches to its full width.
+    // An `<a>` keeps its text at the start of that box; a `<button>` centres
+    // it, because `text-align: center` comes from the browser's own stylesheet
+    // and Tailwind's preflight does not reset it — it resets the padding,
+    // border, background and font, which is exactly why this read as a link in
+    // every respect except that its label floated in the middle of the column.
+    // Asserting the declared style rather than a measured position: jsdom does
+    // no layout, so a geometric check here would pass on anything.
+    await renderFooter();
+    const support = screen.getByRole("button", { name: /talk to support/i });
+    expect(support.style.textAlign).toBe("start");
+  });
+
   it("prints the support address on the ntizo.co.mz domain and nothing on .com", async () => {
     await renderFooter();
     expect(screen.getByRole("link", { name: "suporte@ntizo.co.mz" })).toHaveAttribute("href", "mailto:suporte@ntizo.co.mz");
