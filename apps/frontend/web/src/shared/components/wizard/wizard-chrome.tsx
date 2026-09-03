@@ -321,7 +321,16 @@ export function StepFooter({
   );
 }
 
-/** A labelled field with room for its error. */
+/**
+ * A labelled field with room for its error.
+ *
+ * `content-start`, because a field shares its grid row with whatever sits
+ * beside it. A grid child is stretched to the row's height, and this inner
+ * grid then spread its own rows into that height — so a field next to a
+ * taller one (a neighbour with a hint, or an error under it) drew its box a
+ * line below its label. Packed to the top, label and box stay together and
+ * the spare height is left empty underneath, where nobody reads it.
+ */
 export function Field({
   label,
   hint,
@@ -336,7 +345,7 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid content-start gap-1.5">
       <label htmlFor={htmlFor} className="type-body-medium font-semibold">
         {label}
       </label>

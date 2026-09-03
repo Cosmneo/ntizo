@@ -231,18 +231,6 @@ export function PhaseProvider({
           />
         </Field>
 
-        <Field
-          label={ta("addrLine1")}
-          hint={t("location.streetHint")}
-          htmlFor="street"
-        >
-          <Input
-            id="street"
-            value={draft.street}
-            onChange={(e) => onChange({ street: e.target.value })}
-          />
-        </Field>
-
         <Field label={t("location.postalCodeLabel")} htmlFor="postal-code">
           <Input
             id="postal-code"
@@ -250,6 +238,25 @@ export function PhaseProvider({
             onChange={(e) => onChange({ postalCode: e.target.value })}
           />
         </Field>
+
+        {/* Full width, and after the two short pairs. It is the one field
+            here with a hint, and beside "Bairro" that hint pushed its box a
+            line lower than its neighbour's, so the row read as two fields at
+            two heights. Alone on its row, the hint costs nobody an alignment;
+            and a street line is the widest thing typed on this screen. */}
+        <div className="sm:col-span-2">
+          <Field
+            label={ta("addrLine1")}
+            hint={t("location.streetHint")}
+            htmlFor="street"
+          >
+            <Input
+              id="street"
+              value={draft.street}
+              onChange={(e) => onChange({ street: e.target.value })}
+            />
+          </Field>
+        </div>
 
         {/* Full width, and last. It is the field that carries the most in this
             market — many places here have no numbered street — so it gets room
