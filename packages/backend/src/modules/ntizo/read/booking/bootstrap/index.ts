@@ -1,6 +1,9 @@
 import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
 import { GetMyBookingProjection } from "../app/use-cases/get-my-booking.projection";
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
+import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
+import { GetProviderBookingProjection } from "../app/use-cases/get-provider-booking.projection";
+import { DrizzleProviderReadRepository } from "../../provider/infra/repositories/drizzle/provider-read.repository";
 
 /**
  * A reader of its own, not a reuse of `DrizzleBookingRepository` — the
@@ -35,6 +38,10 @@ export function bootstrapBookingRead() {
       // The same repository, because both read the same columns off the same
       // table for the same customer — only the `WHERE` differs.
       getMine: new GetMyBookingProjection(repo),
+      listForProvider: new ListProviderBookingsProjection(repo),
+      getForProvider: new GetProviderBookingProjection(repo),
+      /** Only `isMember` is used, and only to answer "may this person look" — the wallet's arrangement. */
+      providerRead: new DrizzleProviderReadRepository(),
     },
   };
 }
