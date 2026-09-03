@@ -125,10 +125,14 @@ export class DrizzleMessageRepository implements MessageRepositoryPort {
   }
 
   /**
-   * `UPDATE ... FROM thread`, not a plain `UPDATE message`: which messages
-   * count as "the other side" depends on the thread's `customer_user_id`, so
+   * `UPDATE ... FROM thread`, not a plain `UPDATE message`: "the other side"
+   * is now `sender_side <> viewerSide(viewer)`, and `viewerSide` reads the
+   * thread's `customer_user_id`, `type` and `provider_id` to answer that, so
    * the join has to be in the statement doing the writing, not resolved by a
-   * caller beforehand.
+   * caller beforehand. `viewerSide` places a stranger on `provider` — the
+   * right answer for a member, meaningless for a stranger — so `findVisible`
+   * is still what keeps a stranger who merely guesses a `threadId` out, for
+   * the same reason `mark-thread-read.command.ts`'s class comment gives.
    */
   async markReadForViewer(threadId: string, viewerUserId: string, at: Date): Promise<number> {
     const rows = await getDb()

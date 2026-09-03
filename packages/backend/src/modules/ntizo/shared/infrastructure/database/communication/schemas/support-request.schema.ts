@@ -38,7 +38,9 @@ export const supportRequest = communicationSchema.table(
     // `open` ⇔ not resolved. A row that says one and carries the other is a
     // bug, and the database is the one place that can refuse it every time.
     check("support_request_resolved_consistent", sql`(${t.status} = 'open') = (${t.resolvedAt} IS NULL)`),
-    // The admin queue's "open, oldest first" scan.
+    // Serves `countOpen` and the admin queue's `status` / `audience` filters —
+    // not the queue's ordering, which is the thread's `last_message_at`, a
+    // column this table doesn't have.
     index("idx_support_request_status_created").on(t.status, t.createdAt.desc(), t.threadId.desc()),
   ],
 );

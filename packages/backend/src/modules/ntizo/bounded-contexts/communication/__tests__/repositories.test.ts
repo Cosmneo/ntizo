@@ -317,6 +317,32 @@ describe("findVisible", () => {
     expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, strangerId))).toBeNull();
     expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, staffId))).toBeNull();
   });
+
+  test("a member of another provider does not see a provider request opened on the first provider's behalf", async () => {
+    // A second provider with its own member, entirely separate from
+    // `providerId`/`staffId`/`staffId2` above — proving the scope really is
+    // per-provider `provider_member` membership, not merely "any member of
+    // any provider".
+    const otherProviderId = await makeProvider(ownerId, "visibility-provider-2");
+    const otherMemberId = newUser();
+    await db.insert(user).values({ id: otherMemberId, email: `${otherMemberId}@ntizo.test`, role: "customer", status: "active" });
+    await db.insert(providerMember).values({ providerId: otherProviderId, userId: otherMemberId, role: "staff" });
+
+    const requestId = await __runWithTransactionContextForTests(db, () =>
+      threads.openSupport(staffId, providerId, new Date("2026-08-18T00:00:00.000Z")),
+    );
+    supportThreadIds.push(requestId);
+
+    await __runWithTransactionContextForTests(db, async () => {
+      // A member of the second provider — no relation to `providerId` at
+      // all — sees nothing.
+      expect(await threads.findVisible(requestId, otherMemberId)).toBeNull();
+      // `staffId2` did not open this request but is a member of the same
+      // provider it was opened on behalf of — resolved through
+      // `provider_member`, not "only the opener".
+      expect(await threads.findVisible(requestId, staffId2)).not.toBeNull();
+    });
+  });
 });
 
 describe("listForCustomer", () => {
@@ -809,6 +835,47 @@ describe("attachment", () => {
       await __runWithTransactionContextForTests(db, async () => {
         expect(await attachments.findVisible(attachmentId, customer2Id)).toBeNull();
         expect(await attachments.findVisible(crypto.randomUUID(), customerId)).toBeNull();
+      });
+    });
+  });
+
+  describe("findOnSupportThread", () => {
+    test("an attachment on an inquiry thread is not found — the whole scope is thread.type = 'support'", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        expect(await attachments.findOnSupportThread(attachmentId)).toBeNull();
+      });
+    });
+
+    test("the same attachment shape on a support thread is found", async () => {
+      const supportThreadId = await __runWithTransactionContextForTests(db, () =>
+        threads.openSupport(customerId, null, new Date("2026-08-17T02:00:00.000Z")),
+      );
+      supportThreadIds.push(supportThreadId);
+
+      const [supportMessage] = await db
+        .insert(message)
+        .values({ threadId: supportThreadId, senderUserId: customerId, senderSide: "customer", body: "" })
+        .returning({ id: message.id });
+
+      await __runWithTransactionContextForTests(db, async () => {
+        await attachments.insertMany(supportMessage!.id, [
+          {
+            storageKey: "communication/attachment-test/support.png",
+            fileName: "support.png",
+            contentType: "image/png",
+            sizeBytes: 333,
+          },
+        ]);
+      });
+
+      const [row] = await db
+        .select({ id: attachment.id })
+        .from(attachment)
+        .where(eq(attachment.messageId, supportMessage!.id));
+
+      await __runWithTransactionContextForTests(db, async () => {
+        const found = await attachments.findOnSupportThread(row!.id);
+        expect(found?.id).toBe(row!.id);
       });
     });
   });

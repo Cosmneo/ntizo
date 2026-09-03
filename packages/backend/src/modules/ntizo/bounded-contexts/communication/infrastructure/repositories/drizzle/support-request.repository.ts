@@ -55,10 +55,15 @@ function toListItem(r: ListRow): SupportRequestListItem {
 }
 
 /**
- * Every read here joins `thread` and is therefore scoped to support
- * threads by construction: an inquiry has no `support_request` row, so the
- * inner join drops it. That, not a `WHERE type = 'support'`, is what keeps
- * the admin slices away from private conversations.
+ * Scoped to support requests by construction, not by convention: an inquiry
+ * has no `support_request` row at all, so every read of this table — joined
+ * with `thread` or not — can only ever see support requests. `findByThreadId`
+ * and `countOpen` read `support_request` alone and are just as scoped as the
+ * joined reads below; the joins in `countOpenForRequester`, `listForAdmin`
+ * and `findListItem` exist to order by `thread.last_message_at` and to pull
+ * the thread's `customer_user_id` / `provider_id` columns into the result,
+ * not to keep the admin slices away from private conversations — that
+ * guarantee needs no join at all.
  */
 export class DrizzleSupportRequestRepository implements SupportRequestRepositoryPort {
   async insert(request: SupportRequest): Promise<void> {

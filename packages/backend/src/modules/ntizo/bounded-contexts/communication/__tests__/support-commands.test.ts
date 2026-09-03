@@ -5,6 +5,7 @@ import { ReplyToSupportRequestCommand } from "../app/use-cases/reply-to-support-
 import { ResolveSupportRequestCommand } from "../app/use-cases/resolve-support-request.command";
 import { MarkSupportRequestReadCommand } from "../app/use-cases/mark-support-request-read.command";
 import {
+  MessageEmptyError,
   SupportAlreadyResolvedError,
   SupportBookingNotYoursError,
   SupportNotAMemberError,
@@ -164,6 +165,14 @@ describe("opening a personal request", () => {
     ).rejects.toBeInstanceOf(SupportTooManyOpenError);
   });
 
+  it("refuses an empty body with no attachments before writing anything", async () => {
+    const { command } = openCommand();
+    await expect(
+      command.execute({ requesterUserId: customerId, audience: "customer", subject: "x", body: "   " }),
+    ).rejects.toBeInstanceOf(MessageEmptyError);
+    expect(uow.writes).toHaveLength(0);
+  });
+
   it("a failing admin notification does not undo the request", async () => {
     const raised = new FakeRaiseNotification();
     raised.failOn(() => true);
@@ -248,6 +257,22 @@ describe("the admin commands", () => {
     const raised = new FakeRaiseNotification();
     await new ResolveSupportRequestCommand(threads, requests, raised, () => NOW).execute({ threadId: "t1", adminUserId: "admin-1" });
     expect(raised.calls[0]).toMatchObject({ audience: "provider", providerId, payload: { requestAudience: "provider", providerId } });
+  });
+
+  it("a failing notification does not undo the resolution", async () => {
+    const open = SupportRequest.open({ threadId: "t1", audience: "customer", subject: "Reembolso", bookingId: null, now: NOW });
+    const requests = new FakeSupportRequestRepository(new Map([["t1", open]]));
+    const threads = new FakeThreadRepository({ visibleRow: supportRow });
+    const raised = new FakeRaiseNotification();
+    raised.failOn(() => true);
+    const resolve = new ResolveSupportRequestCommand(threads, requests, raised, () => NOW);
+
+    // The `console.error` this logs on the way out is expected output for
+    // this test, not a failure — the raise really did fail, on purpose.
+    const out = await resolve.execute({ threadId: "t1", adminUserId: "admin-1" });
+
+    expect(out).toEqual({ threadId: "t1", status: "resolved" });
+    expect(requests.saved[0]?.status).toBe("resolved");
   });
 
   it("resolve twice is refused; resolve on a missing request is not found", async () => {

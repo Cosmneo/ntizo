@@ -12,14 +12,13 @@ export interface MarkThreadReadInput {
  *
  * `findVisible` is checked first, the same gate `SendMessageCommand` uses —
  * and it is load-bearing here, not a formality `markReadForViewer` would
- * make redundant. That statement's own "other side" predicate is resolved
- * against the thread's `customer_user_id`, not against who is asking: for
- * any `viewerUserId` that is not the thread's customer, `fromTheOtherSide`
- * matches every message the real customer sent, membership or not. A
+ * make redundant. That statement's own "other side" predicate is now
+ * `sender_side <> viewerSide(viewer)`, and `viewerSide` places anyone who is
+ * not the thread's customer on `provider` — including a stranger. A
  * stranger who is neither the customer nor a member of the provider but
  * merely guesses a real `threadId` would otherwise still succeed at marking
- * that customer's messages read. `findVisible` is what actually excludes
- * them, before that statement ever runs.
+ * every provider-side message in that thread read. `findVisible` is what
+ * actually excludes them, before that statement ever runs.
  *
  * Returns how many messages were actually marked rather than a bare "ok" —
  * a caller polling for unread state can use it directly instead of asking

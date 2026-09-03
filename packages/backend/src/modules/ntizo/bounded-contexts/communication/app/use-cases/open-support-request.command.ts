@@ -4,6 +4,7 @@ import type { SupportAudience } from "../../../../shared/infrastructure/database
 import { Message } from "../../domain/aggregates/message.aggregate";
 import { MAX_OPEN_SUPPORT_REQUESTS, SupportRequest } from "../../domain/aggregates/support-request.aggregate";
 import {
+  MessageEmptyError,
   SupportBookingNotYoursError,
   SupportNotAMemberError,
   SupportTooManyOpenError,
@@ -83,6 +84,11 @@ export class OpenSupportRequestCommand {
     if (open >= MAX_OPEN_SUPPORT_REQUESTS) throw new SupportTooManyOpenError(MAX_OPEN_SUPPORT_REQUESTS);
 
     const attachments = await resolveAttachments(this.attachmentStorage, input.requesterUserId, input.attachments ?? []);
+    // `Message.compose` re-checks this once the transaction is open — this is
+    // the cheap check first, before any I/O the transaction would have to
+    // unwind: an empty body with no attachments is refused here, not after
+    // the thread and request rows are already inserted.
+    if (input.body.trim().length === 0 && attachments.length === 0) throw new MessageEmptyError();
     const now = this.now();
 
     const threadId = await this.unitOfWork.atomicExecute(async () => {

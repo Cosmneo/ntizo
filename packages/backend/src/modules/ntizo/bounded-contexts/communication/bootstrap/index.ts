@@ -59,6 +59,11 @@ export function bootstrapCommunication(deps: CommunicationBootstrapDeps) {
   const unitOfWork = new DrizzleUnitOfWork();
 
   return {
+    // `attachmentRepository` is exposed here, not only wired into
+    // `sendMessage`, because Task 5's download route needs `findVisible`
+    // directly — it is a permission check plus a row fetch, not a use case
+    // — the same reason `admin-access.ts` and `api.ts` reach other
+    // contexts' read repositories through `adapters` rather than a command.
     adapters: {
       threadRepository,
       messageRepository,
@@ -109,6 +114,8 @@ export function bootstrapCommunication(deps: CommunicationBootstrapDeps) {
       ),
       markSupportRequestRead: new MarkSupportRequestReadCommand(threadRepository, messageRepository),
       internal: {
+        // The delayed notice a cron sweeps — nobody asks for this, something
+        // schedules it. See scheduled.ts.
         notifyUnread: new NotifyUnreadInternalCommand(messageRepository, deps.raiseNotification, adminUserReader),
       },
     },
