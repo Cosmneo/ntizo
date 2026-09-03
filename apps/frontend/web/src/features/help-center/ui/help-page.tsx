@@ -52,10 +52,11 @@ export function HelpPage() {
             {t("page.contactAction")}
           </button>
           <p className="type-caption text-[var(--color-muted-foreground)]">
-            {t("page.contactEmail", { email: "" })}
+            {t("page.contactEmailPrefix")}{" "}
             <a href={`mailto:${CONTACT.support}`} className="text-[var(--color-primary)] hover:underline">
               {CONTACT.support}
             </a>
+            .
           </p>
         </section>
       </div>

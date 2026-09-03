@@ -54,7 +54,7 @@
     "contactTitle": "Still need help?",
     "contactBody": "Open a request and we will reply here.",
     "contactAction": "Talk to support",
-    "contactEmail": "Or write to {{email}}."
+    "contactEmailPrefix": "Or write to"
   },
   "faq": {
     "customers": {

@@ -67,7 +67,7 @@ export function Footer() {
             {/* A button, not a link: support is the panel, which opens over
                 whatever page the reader is on. `#132`'s "or `/help` until it
                 exists" no longer applies — it exists. */}
-            <button type="button" onClick={() => help.composeNew()} style={footerLink}>
+            <button type="button" onClick={() => help.composeNew()} style={{ ...footerLink, cursor: "pointer" }}>
               {t("footer.links.support")}
             </button>
             <FooterLink to="/help">{t("footer.links.faq")}</FooterLink>

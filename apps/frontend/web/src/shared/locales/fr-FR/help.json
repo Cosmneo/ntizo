@@ -54,7 +54,7 @@
     "contactTitle": "Besoin d'aide ?",
     "contactBody": "Ouvrez une demande et nous répondrons ici.",
     "contactAction": "Contacter le support",
-    "contactEmail": "Ou écrivez à {{email}}."
+    "contactEmailPrefix": "Ou écrivez à"
   },
   "faq": {
     "customers": {

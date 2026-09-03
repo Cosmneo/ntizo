@@ -54,7 +54,7 @@
     "contactTitle": "Nog hulp nodig?",
     "contactBody": "Open een aanvraag en we reageren hier.",
     "contactAction": "Praat met support",
-    "contactEmail": "Of mail naar {{email}}."
+    "contactEmailPrefix": "Of mail naar"
   },
   "faq": {
     "customers": {

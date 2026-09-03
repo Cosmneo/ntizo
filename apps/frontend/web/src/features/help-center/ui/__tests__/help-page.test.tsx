@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderHelpPage } from "./render-help-page";
 
@@ -31,11 +31,12 @@ describe("HelpPage", () => {
 
   it("offers the panel at the end rather than only an email", async () => {
     await renderHelpPage();
-    // At least one of each: `CompanyPage` renders the footer too, which now
-    // carries its own "Talk to support" button and its own copy of the
-    // support address, so this page's contact section is not the only place
-    // either appears.
-    expect(screen.getAllByRole("button", { name: /talk to support/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("link", { name: /suporte@ntizo\.co\.mz/ }).length).toBeGreaterThan(0);
+    // Scoped to the page's own contact section: `CompanyPage` renders the
+    // footer too, which carries its own "Talk to support" button and its
+    // own copy of the support address, so an unscoped query would still
+    // pass even if this page's own section were deleted.
+    const contactSection = screen.getByRole("heading", { name: /still need help/i }).closest("section")!;
+    expect(within(contactSection).getByRole("button", { name: /talk to support/i })).toBeInTheDocument();
+    expect(within(contactSection).getByRole("link", { name: /suporte@ntizo\.co\.mz/ })).toBeInTheDocument();
   });
 });
