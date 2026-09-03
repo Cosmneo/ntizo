@@ -33,6 +33,11 @@ const DETAIL = `
     }
   }`;
 
+const CANCEL = `
+  mutation BookingCancel($input: BookingCancelInput!) {
+    bookingCancel(input: $input) { bookingId }
+  }`;
+
 export interface MyBookingsPageInput {
   tab: CustomerBookingTab;
   offset: number;
@@ -69,3 +74,16 @@ export const myBookingQueries = {
       },
     }),
 };
+
+/**
+ * The customer calls it off. Takes only the booking: whose it is is on the
+ * booking, and the command checks the caller against it — never the
+ * client's claim. Refuses a stranger with `NOT_BOOKING_CUSTOMER` and a
+ * status past payment with `BOOKING_TRANSITION`; both surface through
+ * `GraphqlError.code` for whoever calls this to branch on.
+ */
+export async function cancelBooking(bookingId: string): Promise<void> {
+  await sessionGraphql<{ bookingCancel: { bookingId: string } }>(CANCEL, {
+    input: { bookingId },
+  });
+}

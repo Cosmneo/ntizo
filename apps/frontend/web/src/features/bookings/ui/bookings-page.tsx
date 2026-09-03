@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
+import type { BookingDTO } from "@ntizo/shared/read-models";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
@@ -17,6 +18,7 @@ import {
 } from "../domain/status";
 import { useMyBookings } from "../viewmodel/use-my-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
+import { CancelDialog } from "./cancel-dialog";
 
 /** The countdown's colour: amber while the provider is deciding, blue while the customer is. */
 function countdownTone(status: CustomerBookingStatus): string {
@@ -66,6 +68,10 @@ export function BookingsPage() {
     void navigate({ to: "/bookings", search: { tab: next } });
 
   const items = data?.items ?? [];
+  // The whole row rather than an id: the dialog needs the slot's date and
+  // the provider's name, and `items` is already the answer this render has
+  // — a second lookup by id would only reintroduce the chance of it missing.
+  const [cancelling, setCancelling] = useState<BookingDTO | null>(null);
 
   return (
     <div>
@@ -234,11 +240,11 @@ export function BookingsPage() {
                 </Button>
               ) : showCancel ? (
                 // A `<button>`, not a link: it opens a dialog rather than
-                // navigating (wired in Task 9). Styled quietly, as the
-                // mockup draws it — this is not the page's primary action.
+                // navigating. Styled quietly, as the mockup draws it — this
+                // is not the page's primary action.
                 <button
                   type="button"
-                  disabled
+                  onClick={() => setCancelling(b)}
                   className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
                 >
                   {t("cancel")}
@@ -264,6 +270,10 @@ export function BookingsPage() {
             {t("loadMore")}
           </Button>
         </div>
+      )}
+
+      {cancelling && (
+        <CancelDialog booking={cancelling} onClose={() => setCancelling(null)} />
       )}
     </div>
   );

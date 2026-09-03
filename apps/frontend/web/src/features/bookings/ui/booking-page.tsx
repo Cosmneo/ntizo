@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
@@ -19,6 +19,7 @@ import {
 } from "../domain/status";
 import { useMyBooking } from "../viewmodel/use-my-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
+import { CancelDialog } from "./cancel-dialog";
 
 const CAPTION =
   "type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase";
@@ -96,8 +97,8 @@ function DetailSection({
  * loading/error/not-found ladder, the `timeLeftWording` countdown, the
  * timeline's dot and `defaultValue` fallback — but answers a different
  * question. The provider's header is a decision (Aceitar/Recusar, live only
- * while undecided); this one is a status report, and its actions
- * (Pagar/Cancelar) stay visible and disabled until Tasks 9 and 12 wire them.
+ * while undecided); this one is a status report. Cancelar is wired (Task 9);
+ * Pagar stays visible and disabled until Task 12 wires it.
  *
  * **No reveal-gating.** The provider's page hides the customer's contact and
  * exact address until payment lands, because it is being shown someone
@@ -126,6 +127,10 @@ export function BookingPage() {
     () => new Date(query.dataUpdatedAt || Date.now()),
     [query.dataUpdatedAt],
   );
+  // Declared before the loading/error/not-found ladder below, with every
+  // other hook — a booking that later turns out not to exist must not have
+  // skipped a hook the render after it does.
+  const [cancelling, setCancelling] = useState(false);
 
   const back = (
     <Link
@@ -215,7 +220,12 @@ export function BookingPage() {
             (terminal) status — there is no live action left to offer. */}
         {showBoth ? (
           <div role="group" aria-label={t("actionsLabel")} className="flex gap-2.5">
-            <Button type="button" variant="outline" disabled className={DESTRUCTIVE_OUTLINE}>
+            <Button
+              type="button"
+              variant="outline"
+              className={DESTRUCTIVE_OUTLINE}
+              onClick={() => setCancelling(true)}
+            >
               {t("cancelBooking")}
             </Button>
             <Button type="button" disabled>
@@ -225,7 +235,12 @@ export function BookingPage() {
             </Button>
           </div>
         ) : showCancelOnly ? (
-          <Button type="button" variant="outline" disabled className={DESTRUCTIVE_OUTLINE}>
+          <Button
+            type="button"
+            variant="outline"
+            className={DESTRUCTIVE_OUTLINE}
+            onClick={() => setCancelling(true)}
+          >
             {t("cancelBooking")}
           </Button>
         ) : b.status === "CONFIRMED" ? (
@@ -412,6 +427,10 @@ export function BookingPage() {
           </section>
         </aside>
       </div>
+
+      {cancelling && (
+        <CancelDialog booking={b} onClose={() => setCancelling(false)} />
+      )}
     </div>
   );
 }
