@@ -1598,11 +1598,14 @@ g commit -m "feat(web): the bookings an administrator has to look at, and the tw
 
 ```bash
 export PATH="$HOME/.nvm/versions/node/v22.22.2/bin:$PATH"
-cd packages/shared     && bun run test && bun run typecheck
-cd ../backend          && bun test && bun run typecheck
-cd ../../apps/backend/api && bun run typecheck && bun test src
+cd packages/shared     && bun run test && bun run typecheck && bun run lint
+cd ../backend          && bun test && bun run typecheck && bun run lint
+cd ../frontend         && bun run lint
+cd ../../apps/backend/api && bun run typecheck && bun test src && bun run lint
 cd ../../frontend/web  && bun run test && bun run typecheck && bun run lint
 ```
+
+**Lint every package, not only the web app.** Phase 2's gate list ran lint in `apps/frontend/web` alone, and a backend lint error rode to `dev` unnoticed because of it (an unused fixture variable in `read/booking`'s repository test, fixed in this plan's Task 3). `packages/frontend` reports warnings and no errors; everywhere else the bar is zero errors, and in `apps/frontend/web` one known warning in `features/onboarding/viewmodel/use-onboarding.ts`.
 
 Expected: zero failures. Anything red in `bounded-contexts/communication` is worth checking against the branch's own base before calling it a regression — that suite has been flaky under dev-database contention before, and this plan touches it.
 
