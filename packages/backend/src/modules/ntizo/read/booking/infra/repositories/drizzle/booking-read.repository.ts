@@ -419,18 +419,53 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
 }
 
 /**
- * The accents Portuguese, Spanish and French names actually carry, folded
- * away. `unaccent` is a contrib extension this database does not have, and
- * `translate` needs none — a customer typing "goncalves" has to find
- * "Gonçalves", because that is how the name gets typed on a phone.
+ * The accents names in the launch markets carry — Portuguese, Spanish and
+ * French — and what each one folds to. **Both folds below read this one pair**,
+ * character for character, so a needle and a column can never be folded
+ * differently.
+ *
+ * That is the whole point of the pair being declared once, and it is not
+ * theoretical. These two folds were written independently at first: the SQL
+ * side listed 23 characters and the JS side stripped every Unicode combining
+ * mark via `normalize("NFD")`. `ñ` is a combining mark in NFD and was *not* in
+ * the 23, so the JS side over-stripped: a provider searching a customer named
+ * "Nuño" folded the needle to "nuno" while the column stayed "nuño", and the
+ * search missed the row — whether they typed the name exactly as it is spelled
+ * or without the tilde. "Peña" and "Muñoz" the same. Two alphabets that are
+ * *nearly* the same produce silent false negatives on precisely the names
+ * whose spelling made somebody reach for the search box.
+ *
+ * A character outside this pair is left alone by both sides, which is a miss
+ * the two agree on rather than a disagreement: an exactly-typed name still
+ * finds its own row. Widening the alphabet is a matter of adding to both
+ * strings together, and they must stay the same length.
+ */
+const ACCENTED = "áàâãäéèêëíìîïóòôõöúùûüçñýÿ";
+const PLAIN = "aaaaaeeeeiiiiooooouuuucnyy";
+
+/** `ACCENTED` → `PLAIN`, one character to one, for the JS side of the fold. */
+const FOLD: ReadonlyMap<string, string> = new Map(
+  [...ACCENTED].map((accented, i) => [accented, PLAIN[i]!] as const),
+);
+
+/**
+ * The column, lowercased and folded through `ACCENTED`/`PLAIN` by Postgres
+ * itself. `unaccent` is a contrib extension this database does not have;
+ * `translate` needs none, and takes the same alphabet the needle is folded
+ * with as two ordinary bind parameters.
  */
 function unaccented(column: AnyColumn) {
-  return sql<string>`translate(lower(${column}), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')`;
+  return sql<string>`translate(lower(${column}), ${ACCENTED}, ${PLAIN})`;
 }
 
-/** The same fold on the needle, so both sides of the `ilike` are in one alphabet. */
+/**
+ * The needle, folded through the same pair — never `normalize("NFD")`, which
+ * would strip marks `translate` keeps and put the two sides back into
+ * different alphabets. See `ACCENTED` for the search that went missing when
+ * they were.
+ */
 function unaccentedJs(value: string): string {
-  return value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return [...value.toLowerCase()].map((character) => FOLD.get(character) ?? character).join("");
 }
 
 /** Requests newest first; upcoming soonest first; history most recent first. Ties broken by id, as `listForCustomer` does. */

@@ -56,11 +56,16 @@ const now = new Date();
 const suffix = crypto.randomUUID();
 
 /**
- * Accented on purpose. The search lowers *and* strips accents on both sides,
- * and a service named without one could not tell a working `translate()` from
- * a plain `ilike` — the customer typing "depilacao" is the everyday case.
+ * Accented on purpose, and on two different characters on purpose.
+ *
+ * `ç`/`ã` cover the everyday case — the provider typing "depilacao" on a phone
+ * keyboard that will not produce a cedilla. `ñ` covers the case the two folds
+ * once disagreed about: it is a combining mark under `normalize("NFD")` but was
+ * missing from the SQL side's alphabet, so a name carrying it was unfindable by
+ * *either* spelling. See `ACCENTED` in the repository. A service named with no
+ * accent at all could not tell a working `translate()` from a plain `ilike`.
  */
-const SERVICE_NAME = "Depilação a Laser";
+const SERVICE_NAME = "Depilação e Uñas";
 
 let customerId: string;
 let ownerUserId: string;
@@ -321,8 +326,8 @@ describe("DrizzleBookingReadRepository, provider side", () => {
       expect(hit).toBe(1);
       expect(miss).toBe(0);
       // The accent half of the claim in this test's name: the needle carries
-      // none and the stored service name carries two, so only a query that
-      // strips them on the column side can match.
+      // none and the stored service name carries three, so only a query that
+      // folds them on the column side can match.
       const unaccentedNeedle = await readRepo.countForProvider(providerId, {
         tab: "requests",
         q: "depilacao",
@@ -330,6 +335,28 @@ describe("DrizzleBookingReadRepository, provider side", () => {
         now,
       });
       expect(unaccentedNeedle).toBe(1);
+
+      // `ñ`, both ways round, because the two folds once disagreed about
+      // exactly this character and the disagreement was silent: the JS side
+      // stripped it and the SQL side did not, so "Uñas" folded to "unas" while
+      // the column stayed "uñas" and *neither* spelling found the row. The
+      // exact one is the assertion that matters most — a provider who types a
+      // name the way it is actually spelled must not be the one who gets
+      // nothing back.
+      const exactSpelling = await readRepo.countForProvider(providerId, {
+        tab: "requests",
+        q: "Uñas",
+        memberId: null,
+        now,
+      });
+      const foldedSpelling = await readRepo.countForProvider(providerId, {
+        tab: "requests",
+        q: "unas",
+        memberId: null,
+        now,
+      });
+      expect(exactSpelling).toBe(1);
+      expect(foldedSpelling).toBe(1);
     });
   });
 
