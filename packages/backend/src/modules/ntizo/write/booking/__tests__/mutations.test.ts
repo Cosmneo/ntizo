@@ -6,6 +6,7 @@ import {
   cancelBooking,
   createBooking,
   declineBooking,
+  payBooking,
   submitBooking,
 } from "../graphql/schema/mutations";
 
@@ -208,19 +209,20 @@ describe("booking.submit input", () => {
 });
 
 /**
- * The provider's yes and no, and the customer's own cancel. All three take
- * only the booking id — the person comes from `requireUser(ctx)`, never
- * from this input, for the same reason `booking.create` and
- * `booking.submit` have no `customerId` field — see those schemas' own doc
- * comments.
+ * The provider's yes and no, the customer's own cancel, and the customer's
+ * own pay-now. All four take only the booking id — the person comes from
+ * `requireUser(ctx)`, never from this input, for the same reason
+ * `booking.create` and `booking.submit` have no `customerId` field — see
+ * those schemas' own doc comments.
  */
-describe("accept, decline and cancel", () => {
+describe("accept, decline, cancel and pay", () => {
   it("are mounted beside create and submit", () => {
     expect(Object.keys(bookingWriteSchema.fields.booking).sort()).toEqual([
       "accept",
       "cancel",
       "create",
       "decline",
+      "pay",
       "submit",
     ]);
   });
@@ -234,6 +236,7 @@ describe("accept, decline and cancel", () => {
     expect(shapeKeys(acceptBooking)).toEqual(["bookingId"]);
     expect(shapeKeys(declineBooking)).toEqual(["bookingId", "reason"]);
     expect(shapeKeys(cancelBooking)).toEqual(["bookingId"]);
+    expect(shapeKeys(payBooking)).toEqual(["bookingId"]);
   });
 
   it("refuses a free-text reason", () => {

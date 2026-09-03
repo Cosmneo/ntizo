@@ -145,6 +145,9 @@ class FakeRepo implements BookingRepositoryPort {
     return 1;
   }
   async abandonCharge(): Promise<void> {}
+  async chargeAttemptsOf(): Promise<number> {
+    return 0;
+  }
 }
 
 /** Records every `release` call, ordered against `unitOfWork` like every other fake here. */

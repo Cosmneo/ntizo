@@ -3591,3 +3591,27 @@ told about, and nothing anywhere is red.
 **Trigger:** the day a real delayed-jobs adapter replaces the no-op. The fix is to move the raise
 ahead of the scheduling call, or wrap the scheduling the way the raise is already wrapped — the
 ordering is arbitrary today and load-bearing the moment the adapter is real.
+
+## #150 — Watch the first real customer-initiated charge on dev
+
+Task 10's spike was ruled unnecessary rather than run: the mechanism `RequestBookingChargeCommand`
+schedules its gateway call through (`configMiddleware` → `infraStore.waitUntil` → `connection.ts`)
+already ships in production for email delivery and is covered by `wait-until.test.ts` and
+`deferred-booking-charge.test.ts`. What neither test proves is that a Worker actually keeps running
+this specific deferred promise — a C2B call, not an email — long enough to reach the processor, on
+the real dev stage, under a real eviction schedule. Nothing about the mechanism suggests it would
+behave differently, but nothing has watched it do so for this call either.
+
+The cost of being wrong is bounded and already tolerated by design: a Worker cut short mid-call
+leaves the attempt `recordChargeAttempt` claimed but the prompt never reaching a handset, silently,
+the same outcome an ordinary charge failure produces. The customer presses "Pagar" again or waits
+for the per-minute sweep; three such losses exhaust `BOOKING_CHARGE_ATTEMPT_LIMIT` and the booking
+falls to its payment window, cancelled, the same ending a customer who never answers reaches.
+
+**Trigger:** the first customer-initiated charge that reaches the dev (or a later) stage after this
+branch ships — a free observation at a moment that is coming anyway. Tail the Worker's logs
+(`bunx wrangler tail`) across one such request and confirm `[booking] a charge landed` or one of
+`ChargeBookingCommand`'s other outcome lines actually appears after the response was already sent.
+If it never does across a handful of real presses, the fallback the cancelled spike described —
+clearing `last_charge_attempt_at` and letting the next cron tick pick the booking up — is still the
+documented way out.

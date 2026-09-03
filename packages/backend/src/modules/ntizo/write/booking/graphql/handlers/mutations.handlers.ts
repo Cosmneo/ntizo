@@ -87,5 +87,12 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
       await uc.cancelBooking.execute({ bookingId: args.input.bookingId, requesterUserId: requireUser(ctx) });
       return { bookingId: args.input.bookingId };
     })
+    .handle("booking.pay", async (args, ctx) => {
+      await uc.requestBookingCharge.execute({
+        bookingId: args.input.bookingId,
+        requesterUserId: requireUser(ctx),
+      });
+      return { bookingId: args.input.bookingId };
+    })
     .build();
 }

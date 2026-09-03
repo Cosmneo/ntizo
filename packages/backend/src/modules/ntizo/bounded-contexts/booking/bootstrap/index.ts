@@ -18,6 +18,8 @@ import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-book
 import { ChargeBookingCommand } from "../app/use-cases/charge-booking.command";
 import { ChargeAcceptedBookingsInternalCommand } from "../app/use-cases/charge-accepted-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
+import { RequestBookingChargeCommand } from "../app/use-cases/request-booking-charge.command";
+import { DeferredBookingCharge } from "../infrastructure/inbound-adapters/deferred-booking-charge.adapter";
 import type { RaiseNotificationInternalPort } from "../app/ports/outbound/raise-notification.port";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
@@ -52,6 +54,14 @@ import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructu
  * and drives the first over each. `markBookingPaid` stops being constructed
  * inline here because `chargeBooking` needs the very same instance — see
  * where it is built below.
+ *
+ * `requestBookingCharge` is Task 11's addition and reuses that same
+ * `chargeBooking` instance rather than building a second one — it wraps it
+ * in `DeferredBookingCharge` first, which is the one difference between the
+ * customer's "Pagar" and the sweep's own call: this path must not block the
+ * request that asked for it on a gateway call that can take up to 110
+ * seconds, and the sweep's path must, because a cron invocation has nothing
+ * to hand `waitUntil` and no reason to return before it knows the outcome.
  */
 export interface BookingBootstrapDeps {
   /**
@@ -111,6 +121,15 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
     customerPhoneReader,
     paymentCharge,
     markBookingPaid,
+  );
+  // The customer-facing counterpart to `chargeAccepted` below: same
+  // `ChargeBookingCommand` instance, wrapped so the request that asks for it
+  // does not pay for the gateway call — see `DeferredBookingCharge`'s own
+  // doc comment for why this is the one place that wiring decision is made.
+  const requestBookingCharge = new RequestBookingChargeCommand(
+    bookingRepository,
+    customerPhoneReader,
+    new DeferredBookingCharge(chargeBooking),
   );
 
   return {
@@ -184,6 +203,7 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
       ),
       sweepBooking,
       chargeBooking,
+      requestBookingCharge,
       markBookingPaid,
       internal: {
         // The three clocks a cron sweeps — nobody asks for this, something

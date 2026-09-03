@@ -223,6 +223,9 @@ class FakeRepo implements BookingRepositoryPort {
     return 1;
   }
   async abandonCharge(): Promise<void> {}
+  async chargeAttemptsOf(): Promise<number> {
+    return 0;
+  }
 }
 
 /**

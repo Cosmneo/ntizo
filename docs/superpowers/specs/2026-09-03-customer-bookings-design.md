@@ -288,10 +288,16 @@ Beyond that, `booking.cancel` refuses a wrong status with `BOOKING_TRANSITION`, 
 
 ## Open questions this spec does not settle
 
-- **How long background work survives on the api Worker.** The pay mutation depends on the gateway call outliving the
-  response. The first task of the plan is to establish that on the dev stage and, if it does not hold, fall back to
-  clearing the cooldown so the next cron minute picks the booking up, which costs the customer up to a minute of
-  waiting and no correctness.
+- **What background work on the api Worker survives is known, not measured for this feature.** No probe was deployed
+  to the dev stage — the mechanism was already relied on in production before this task. `configMiddleware` registers
+  `c.executionCtx.waitUntil` into `infraStore`; `connection.ts` chains the per-request database close behind whatever
+  was deferred rather than beside it; `apps/backend/api/src/__tests__/wait-until.test.ts` asserts that ordering under
+  a real Hono app, including with no execution context at all (a test, a script); and notification's email delivery
+  already ships on this exact seam. The pay mutation schedules `ChargeBookingCommand` through the same seam —
+  `DeferredBookingCharge`, with its own test against `infraStore` for real, not a fake of it. If a Worker is evicted
+  mid-call, the attempt `recordChargeAttempt` already claimed is not returned: the booking falls to the path an
+  unanswered prompt already takes — the per-minute sweep, then the payment window's cancellation — bounded by the
+  same three-attempt limit every other charge is.
 - **Whether the countdown should keep running client-side** or refresh on read. The provider's list re-reads; this page
   polls while a dialog is open, which is a different rhythm.
 - **What the page shows when the window closes while it is open.** The booking becomes `CANCELLED` under the customer's

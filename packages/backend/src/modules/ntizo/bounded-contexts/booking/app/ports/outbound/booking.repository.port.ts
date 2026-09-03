@@ -338,4 +338,26 @@ export interface BookingRepositoryPort {
     at: Date;
     maxAttempts: number;
   }): Promise<void>;
+
+  /**
+   * This booking's `charge_attempts`, read alone — no aggregate loaded.
+   *
+   * `charge_attempts` is deliberately not part of `BookingProps` (see the
+   * column's own comment in `booking.schema.ts`): it is bookkeeping the
+   * sweep's compare-and-swap claims, not a fact the domain reasons about,
+   * and `Booking.restore` has no field to put a number in that changes
+   * underneath every claim without any status ever moving. `RequestBookingChargeCommand`
+   * needs it anyway, cheaply, ahead of anything that writes, to refuse a
+   * spent booking before touching it — and its own `findById` a moment
+   * earlier already answered every other question it asks, so a second
+   * aggregate load here would spend a full row fetch on one column already
+   * sitting in it.
+   *
+   * Same shape as `CustomerPhoneReaderPort.findPhoneNumber`: one column, by
+   * id, nothing else touched. Returns `0` — the column's own default — for
+   * an id that names no row, which no caller today can actually trigger: the
+   * one caller reads this immediately after its own `findById` confirmed the
+   * row exists.
+   */
+  chargeAttemptsOf(bookingId: string): Promise<number>;
 }

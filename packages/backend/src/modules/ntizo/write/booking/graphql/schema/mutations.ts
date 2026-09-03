@@ -160,6 +160,25 @@ export const cancelBooking = defineMutation({
   docs: { summary: "Cancel your own booking", tags: ["Booking"] },
 });
 
+/**
+ * The customer presses "Pagar" and asks to be charged now, rather than
+ * waiting for the sweep's next tick to reach this booking on its own.
+ *
+ * Takes only the booking, for the same reason `cancelBooking` does: whose it
+ * is, is on the row, and whether the caller is that customer is
+ * `RequestBookingChargeCommand`'s own check, not the client's claim to
+ * verify. Returns as soon as the prompt is *scheduled*, not once it has
+ * reached a handset — the gateway call behind it blocks for up to 110
+ * seconds and nobody may hold a request open to watch that; the page learns
+ * the outcome by re-reading the booking, the same way it already does after
+ * accept and decline.
+ */
+export const payBooking = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Pay your own booking now", tags: ["Booking"] },
+});
+
 export const bookingWriteSchema = defineGraphQLSchema(
   {
     booking: {
@@ -168,6 +187,7 @@ export const bookingWriteSchema = defineGraphQLSchema(
       accept: acceptBooking,
       decline: declineBooking,
       cancel: cancelBooking,
+      pay: payBooking,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

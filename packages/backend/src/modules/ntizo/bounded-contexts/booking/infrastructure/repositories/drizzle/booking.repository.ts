@@ -613,4 +613,18 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
       })
       .where(eq(booking.id, abandonment.bookingId));
   }
+
+  /**
+   * One column, no aggregate — see the port's own comment for why
+   * `charge_attempts` cannot be answered any other way: `toAggregate` has no
+   * field to put it in, on purpose.
+   */
+  async chargeAttemptsOf(bookingId: string): Promise<number> {
+    const [row] = await getDb()
+      .select({ chargeAttempts: booking.chargeAttempts })
+      .from(booking)
+      .where(eq(booking.id, bookingId))
+      .limit(1);
+    return row?.chargeAttempts ?? 0;
+  }
 }
