@@ -17,6 +17,7 @@ import { Booking } from "../../../domain/aggregates/booking.aggregate";
 import { SlotAlreadyTakenError } from "../../../domain/exceptions";
 import type {
   BookingChangeRecord,
+  BookingChargeState,
   BookingRepositoryPort,
 } from "../../../app/ports/outbound/booking.repository.port";
 
@@ -615,16 +616,22 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
   }
 
   /**
-   * One column, no aggregate — see the port's own comment for why
-   * `charge_attempts` cannot be answered any other way: `toAggregate` has no
-   * field to put it in, on purpose.
+   * Two columns, no aggregate — see the port's own comment for why neither
+   * can be answered any other way: `toAggregate` has no field to put them
+   * in, on purpose.
    */
-  async chargeAttemptsOf(bookingId: string): Promise<number> {
+  async chargeStateOf(bookingId: string): Promise<BookingChargeState> {
     const [row] = await getDb()
-      .select({ chargeAttempts: booking.chargeAttempts })
+      .select({
+        chargeAttempts: booking.chargeAttempts,
+        lastChargeAttemptAt: booking.lastChargeAttemptAt,
+      })
       .from(booking)
       .where(eq(booking.id, bookingId))
       .limit(1);
-    return row?.chargeAttempts ?? 0;
+    return {
+      attempts: row?.chargeAttempts ?? 0,
+      lastAttemptAt: row?.lastChargeAttemptAt ?? null,
+    };
   }
 }

@@ -23,7 +23,7 @@
  * checkout, and no query here may ever show it to the provider. The **expired**
  * draft is the same claim one step on, and the one a status filter alone gets
  * wrong: `EXPIRED` is one of the history tab's statuses, so an abandoned
- * step-1 checkout is hidden only by `askedOfProvider()` — the `EXISTS` on the
+ * step-1 checkout is hidden only by `submittedByCustomer()` — the `EXISTS` on the
  * `submitted_by_customer` change row. That is why every submitted fixture below
  * writes that row exactly as `SubmitBookingCommand` does; a fixture that
  * skipped it would be indistinguishable from an abandoned draft, which is the
@@ -324,7 +324,7 @@ function address() {
  * The `submitted_by_customer` change row `SubmitBookingCommand` appends in the
  * same transaction as the `DRAFT` → `AWAITING_PROVIDER` hop.
  *
- * Not a detail of the timeline test: the reader's `askedOfProvider()` treats
+ * Not a detail of the timeline test: the reader's `submittedByCustomer()` treats
  * this row as the definition of "the provider was asked about this booking",
  * so a fixture that walked `submit` without writing it would be invisible to
  * every provider-side query here — and would look exactly like the abandoned

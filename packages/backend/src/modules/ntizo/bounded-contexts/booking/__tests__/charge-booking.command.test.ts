@@ -202,8 +202,8 @@ class FakeRepo implements BookingRepositoryPort {
   }
   // Not this file's concern — `RequestBookingChargeCommand` is the only
   // caller, and it has its own test file with its own fake.
-  async chargeAttemptsOf(): Promise<number> {
-    return 0;
+  async chargeStateOf(): Promise<{ attempts: number; lastAttemptAt: Date | null }> {
+    return { attempts: 0, lastAttemptAt: null };
   }
 }
 

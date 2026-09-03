@@ -239,6 +239,23 @@ async function submitBooking(draft: Booking, startsAt: Date): Promise<Booking> {
   if (!written) {
     throw new Error(`fixture: submit of ${draft.id} matched no row`);
   }
+  // `SubmitBookingCommand` appends this row in the same transaction as the
+  // DRAFT -> AWAITING_PROVIDER hop; this fixture calls `submit` and `save`
+  // directly, bypassing the command, so it records the row by hand — the same
+  // thing `provider-bookings.repository.test.ts`'s own `recordSubmission`
+  // does for the provider side. Load-bearing, not decoration: `customerWhere`
+  // reads exactly this row as "the customer sent this request", so a fixture
+  // without one is indistinguishable from an abandoned checkout and appears
+  // in no tab at all.
+  await writeRepo.appendChange({
+    bookingId: submitted.id as string,
+    changedByUserId: submitted.customerId,
+    reason: "submitted_by_customer",
+    previousStartsAt: null,
+    previousEndsAt: null,
+    previousProviderMemberId: null,
+    previousPriceMinor: null,
+  });
   return submitted;
 }
 
@@ -630,21 +647,9 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         );
         created.push(draft.id as string);
 
+        // `submitBooking` writes the `submitted_by_customer` change row, as
+        // `SubmitBookingCommand` does — see that helper.
         const submitted = await submitBooking(draft, startsAt);
-        // `SubmitBookingCommand` appends this row in the same transaction as
-        // the DRAFT → AWAITING_PROVIDER hop; this fixture calls `submit` and
-        // `save` directly, bypassing the command, so it records the row by
-        // hand — the same thing `provider-bookings.repository.test.ts`'s own
-        // `recordSubmission` does for the provider side.
-        await writeRepo.appendChange({
-          bookingId: draft.id as string,
-          changedByUserId: customerAId,
-          reason: "submitted_by_customer",
-          previousStartsAt: null,
-          previousEndsAt: null,
-          previousProviderMemberId: null,
-          previousPriceMinor: null,
-        });
 
         const detail = await byId.execute({
           bookingId: draft.id as string,

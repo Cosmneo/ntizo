@@ -194,6 +194,26 @@ async function commit(entity: Booking, expected: Booking["status"]): Promise<voi
 }
 
 /**
+ * The `submitted_by_customer` change row `SubmitBookingCommand` appends in the
+ * same transaction as the `DRAFT` → `AWAITING_PROVIDER` hop — the same helper
+ * `provider-bookings.repository.test.ts` carries, for the same reason: this
+ * row is what `submittedByCustomer()` reads as "the request was actually
+ * sent", and a booking without one is an abandoned checkout however far its
+ * status has since travelled.
+ */
+async function recordSubmission(bookingId: string, customerId: string): Promise<void> {
+  await writeRepo.appendChange({
+    bookingId,
+    changedByUserId: customerId,
+    reason: "submitted_by_customer",
+    previousStartsAt: null,
+    previousEndsAt: null,
+    previousProviderMemberId: null,
+    previousPriceMinor: null,
+  });
+}
+
+/**
  * Walks a fresh booking through exactly the transitions its target status
  * requires — `create` always lands on `DRAFT`; `submit` reaches
  * `AWAITING_PROVIDER`; `accept` reaches `PENDING_PAYMENT`; `markPaid`
@@ -236,6 +256,12 @@ async function seedBooking(input: {
   const respondBy = new Date(startsAt.getTime() - 15 * 60 * 1000);
   const submitted = draft.submit(NOW, respondBy, address(), null);
   await commit(submitted, BookingStatus.Draft);
+  // In the same breath as the hop, exactly as `SubmitBookingCommand` does —
+  // and load-bearing, not decoration: `customerWhere`'s `submittedByCustomer()`
+  // treats this row as the definition of "the customer sent this request", so
+  // a fixture that walked `submit` without writing it would be invisible to
+  // every query here and indistinguishable from an abandoned draft.
+  await recordSubmission(id, input.customerId);
   if (input.status === "AWAITING_PROVIDER") return id;
 
   if (input.status === "DECLINED") {
@@ -263,6 +289,28 @@ describe("the customer's tabs", () => {
       for (const tab of ["waiting", "upcoming", "history"] as const) {
         const rows = await repo.listForCustomer(ALICE, { tab, now: NOW }, 20, 0);
         expect(rows).toEqual([]);
+      }
+      expect(await repo.countsForCustomer(ALICE, NOW)).toEqual({ waiting: 0, upcoming: 0, history: 0 });
+    });
+  });
+
+  // The half the `<> 'DRAFT'` guard above cannot catch, and the reason
+  // `customerWhere` reaches for `submittedByCustomer()` as well. A draft does
+  // not stay a draft: the checkout hold running out, or the customer starting
+  // a second checkout, moves it to `EXPIRED` — which is one of
+  // `CUSTOMER_TAB_STATUSES.history`. Without the `EXISTS`, every abandoned
+  // step-1 checkout would read as an "Expirada" row the customer never made,
+  // and inflate the chip over it.
+  test("never returns a draft that merely expired, in any tab or count", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const abandonedId = await seedBooking({ customerId: ALICE, status: "DRAFT" });
+      const abandoned = await writeRepo.findById(abandonedId);
+      if (!abandoned) throw new Error("fixture: the draft just seeded is not readable");
+      await commit(abandoned.expire(NOW), BookingStatus.Draft);
+
+      for (const tab of ["waiting", "upcoming", "history"] as const) {
+        expect(await repo.listForCustomer(ALICE, { tab, now: NOW }, 20, 0)).toEqual([]);
+        expect(await repo.countForCustomer(ALICE, { tab, now: NOW })).toBe(0);
       }
       expect(await repo.countsForCustomer(ALICE, NOW)).toEqual({ waiting: 0, upcoming: 0, history: 0 });
     });

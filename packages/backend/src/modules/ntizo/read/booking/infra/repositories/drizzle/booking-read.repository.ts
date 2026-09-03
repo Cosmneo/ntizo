@@ -83,7 +83,16 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     const rows = await getDb()
       .select({ bucket: customerBucket(now), n: count() })
       .from(booking)
-      .where(and(eq(booking.customerId, customerId), sql`${booking.status} <> 'DRAFT'`))
+      // The same two guards `customerWhere` carries, and for the same
+      // reasons — a chip counting rows the list does not show is a chip that
+      // disagrees with what is under it. See `submittedByCustomer()`.
+      .where(
+        and(
+          eq(booking.customerId, customerId),
+          sql`${booking.status} <> 'DRAFT'`,
+          submittedByCustomer(),
+        ),
+      )
       // `bucket`, the alias `customerBucket` gives its CASE — not
       // `customerBucket(now)` again and not an ordinal. See that function's
       // own comment for why the CASE cannot be repeated here, and why the
@@ -162,7 +171,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
           eq(booking.id, bookingId),
           eq(booking.providerId, providerId),
           sql`${booking.status} <> 'DRAFT'`,
-          askedOfProvider(),
+          submittedByCustomer(),
         ),
       )
       .limit(1);
@@ -427,6 +436,16 @@ function providerSelect() {
  * cannot forget it. The `upcoming` split is by `startsAt`, not `endsAt`: a
  * booking whose start has passed is no longer something the customer is
  * waiting for, even while the work is still happening.
+ *
+ * **`submittedByCustomer()` sits beside the `<> 'DRAFT'` guard for the reason
+ * that function gives, and it is the customer's reason as much as the
+ * provider's.** A draft does not stay a draft: the checkout hold running out,
+ * or the customer starting a second checkout, moves it to `EXPIRED` — which
+ * is one of `CUSTOMER_TAB_STATUSES.history`. Without this clause every
+ * abandoned step-1 checkout would surface in **Histórico** as an "Expirada"
+ * row carrying the service, the option and the price, inflate that tab's
+ * count chip, and open a detail page whose timeline says "Pedido enviado"
+ * about a request the customer never sent.
  */
 function customerWhere(customerId: string, filter: CustomerListFilter) {
   const live = inArray(booking.status, [...CUSTOMER_TAB_STATUSES.upcoming]);
@@ -441,7 +460,12 @@ function customerWhere(customerId: string, filter: CustomerListFilter) {
             and(live, lt(booking.startsAt, filter.now)),
           );
 
-  return and(eq(booking.customerId, customerId), sql`${booking.status} <> 'DRAFT'`, bucket);
+  return and(
+    eq(booking.customerId, customerId),
+    sql`${booking.status} <> 'DRAFT'`,
+    submittedByCustomer(),
+    bucket,
+  );
 }
 
 /** Newest request first while waiting; soonest first when looking forward; most recent first when looking back. */
@@ -505,7 +529,7 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
   return and(
     eq(booking.providerId, providerId),
     sql`${booking.status} <> 'DRAFT'`,
-    askedOfProvider(),
+    submittedByCustomer(),
     byTab,
     byMember,
     bySearch,
@@ -513,26 +537,34 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
 }
 
 /**
- * A booking the provider was actually asked about: one that left `DRAFT`
- * through `submit`, which writes this change row in the same transaction as
- * the hop (see `SubmitBookingCommand`).
+ * A booking that was actually *sent*: one that left `DRAFT` through `submit`,
+ * which writes this change row in the same transaction as the hop (see
+ * `SubmitBookingCommand`).
  *
  * **The `<> 'DRAFT'` guard beside this one is not enough on its own.** A draft
  * whose checkout hold ran out, or one superseded by the customer starting a
  * second checkout (`CreateBookingCommand`), is moved to `EXPIRED` by
- * `Booking.expire` — and `EXPIRED` is one of `PROVIDER_TAB_STATUSES.history`.
- * Without this clause every abandoned step-1 checkout would surface in the
- * provider's history as an "Expirada" row carrying the customer's first name
- * and the service, inflate the tab's total, and answer `findForProvider`. Such
- * a row has the *status* of a finished booking and none of its history: nobody
- * ever asked the provider anything, which is the same reason a live `DRAFT` is
- * hidden from them.
+ * `Booking.expire` — and `EXPIRED` is in *both* audiences' history bucket
+ * (`PROVIDER_TAB_STATUSES.history`, `CUSTOMER_TAB_STATUSES.history`).
+ * Without this clause every abandoned step-1 checkout would surface as an
+ * "Expirada" row carrying the service and the price, inflate the tab's total,
+ * and answer the detail read. Such a row has the *status* of a finished
+ * booking and none of its history: nobody ever asked the provider anything,
+ * and the customer never sent a request — which is the same reason a live
+ * `DRAFT` is hidden from both.
+ *
+ * **One function, read by both `providerWhere` and `customerWhere`**, for the
+ * reason `selectedColumns` gives one level up: the customer's query was
+ * written after the provider's and inherited none of its guards, which is
+ * exactly how the two sides of one booking start disagreeing about whether it
+ * exists. Named after the fact it tests — the change row's own reason — rather
+ * than after either audience, so neither can read as the other's business.
  *
  * A correlated `EXISTS` rather than a join, because this is a test on the
  * booking and not a column to select: a join to an append-only log would
  * multiply a booking by its number of change rows.
  */
-function askedOfProvider() {
+function submittedByCustomer() {
   return exists(
     getDb()
       .select({ one: sql`1` })

@@ -499,6 +499,40 @@ export class BookingPaymentWindowClosedError extends UnprocessableError {
 }
 
 /**
+ * Refused because the payment processor cannot charge anybody right now.
+ *
+ * `PaymentChargePort.readiness()` said no: no credentials on this stage, or a
+ * live gateway still carrying a sandbox shortcode. That is categorically not
+ * this customer's doing, and `ChargeBookingCommand` already refuses to spend
+ * an attempt on it — its own comment records what happened when the discovery
+ * was made *inside* the charge instead: "twelve minutes of misconfiguration
+ * permanently killed every booking accepted in that window, and then told
+ * their providers the customer did not pay".
+ *
+ * `RequestBookingChargeCommand` asks the same question in its synchronous
+ * half, because that is the half a customer is watching. Without it, a stage
+ * with no credentials answers every press of "Pagar" with "a prompt is on its
+ * way to your handset" and nothing is ever sent. This error is what the page
+ * turns into "try again in a moment" — the one ending where that sentence is
+ * true, since the fix is somebody else's and the booking is otherwise fine.
+ *
+ * `UnprocessableError`, matching the two beside it: the caller is entitled to
+ * ask, and what refuses them is the platform's own state rather than who they
+ * are. The processor's own code and description are logged, never returned —
+ * a customer has no use for a gateway's error code, and it is not theirs to
+ * read.
+ */
+export class BookingChargeUnavailableError extends UnprocessableError {
+  constructor(public readonly bookingId: string) {
+    super({
+      message: "Payments cannot be taken right now",
+      code: "BOOKING_CHARGE_UNAVAILABLE",
+    });
+    this.name = "BookingChargeUnavailableError";
+  }
+}
+
+/**
  * Refused because the provider a service option belongs to does not exist.
  *
  * Checked last among Task 8's refusals, once every fact the option itself

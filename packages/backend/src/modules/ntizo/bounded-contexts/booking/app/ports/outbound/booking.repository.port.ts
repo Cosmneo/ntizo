@@ -340,24 +340,38 @@ export interface BookingRepositoryPort {
   }): Promise<void>;
 
   /**
-   * This booking's `charge_attempts`, read alone — no aggregate loaded.
+   * This booking's charge ledger — `charge_attempts` and
+   * `last_charge_attempt_at` — read alone, no aggregate loaded.
    *
-   * `charge_attempts` is deliberately not part of `BookingProps` (see the
-   * column's own comment in `booking.schema.ts`): it is bookkeeping the
-   * sweep's compare-and-swap claims, not a fact the domain reasons about,
-   * and `Booking.restore` has no field to put a number in that changes
-   * underneath every claim without any status ever moving. `RequestBookingChargeCommand`
-   * needs it anyway, cheaply, ahead of anything that writes, to refuse a
-   * spent booking before touching it — and its own `findById` a moment
-   * earlier already answered every other question it asks, so a second
-   * aggregate load here would spend a full row fetch on one column already
-   * sitting in it.
+   * Neither column is part of `BookingProps` (see their own comments in
+   * `booking.schema.ts`): they are bookkeeping the sweep's compare-and-swap
+   * claims, not facts the domain reasons about, and `Booking.restore` has no
+   * field to put numbers in that change underneath every claim without any
+   * status ever moving. `RequestBookingChargeCommand` needs them anyway,
+   * cheaply, ahead of anything that writes — to refuse a spent booking before
+   * touching it, and to tell a customer pressing "Pagar" a second time that
+   * the prompt from a moment ago is still on its way rather than pushing a
+   * second one over it. Its own `findById` a moment earlier already answered
+   * every other question it asks, so a second aggregate load here would spend
+   * a full row fetch on two columns already sitting in it.
    *
-   * Same shape as `CustomerPhoneReaderPort.findPhoneNumber`: one column, by
-   * id, nothing else touched. Returns `0` — the column's own default — for
-   * an id that names no row, which no caller today can actually trigger: the
-   * one caller reads this immediately after its own `findById` confirmed the
-   * row exists.
+   * **Both columns, one read, because they are one fact.** The bound and the
+   * cooldown are always asked together and are always compared against the
+   * same instant; two single-column reads would be two round trips answering
+   * about a row that can move between them.
+   *
+   * Same shape as `CustomerPhoneReaderPort.findPhoneNumber`: by id, nothing
+   * else touched. Returns `{ attempts: 0, lastAttemptAt: null }` — the
+   * columns' own defaults — for an id that names no row, which no caller
+   * today can actually trigger: the one caller reads this immediately after
+   * its own `findById` confirmed the row exists.
    */
-  chargeAttemptsOf(bookingId: string): Promise<number>;
+  chargeStateOf(bookingId: string): Promise<BookingChargeState>;
+}
+
+/** What the charge ledger says about one booking. See `chargeStateOf`. */
+export interface BookingChargeState {
+  attempts: number;
+  /** `null` until the first attempt is claimed against this booking. */
+  lastAttemptAt: Date | null;
 }

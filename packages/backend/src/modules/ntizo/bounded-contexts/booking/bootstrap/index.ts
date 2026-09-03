@@ -129,6 +129,10 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
   const requestBookingCharge = new RequestBookingChargeCommand(
     bookingRepository,
     customerPhoneReader,
+    // The same adapter `chargeBooking` holds, asked the same synchronous
+    // question — see `RequestBookingChargeCommand`'s own doc comment for why
+    // the fast half has to ask it too rather than leaving it to the charge.
+    paymentCharge,
     new DeferredBookingCharge(chargeBooking),
   );
 

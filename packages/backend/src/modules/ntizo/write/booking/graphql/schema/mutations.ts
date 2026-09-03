@@ -172,10 +172,21 @@ export const cancelBooking = defineMutation({
  * seconds and nobody may hold a request open to watch that; the page learns
  * the outcome by re-reading the booking, the same way it already does after
  * accept and decline.
+ *
+ * **`promptAlreadySent` is the one field on the way back, and it is not a
+ * failure.** A press inside `BOOKING_CHARGE_RETRY_MINUTES` of the last
+ * attempt pushes nothing — the prompt from a moment ago may still be live on
+ * the handset, and a second one over it is a customer who can accept both.
+ * The customer still asked to be charged and a charge still is in flight, so
+ * this is not an error to raise; but the dialog must not repeat "we have sent
+ * you an M-Pesa request" as though it had sent a second. `true` is what it
+ * words differently. See `RequestBookingChargeOutcome`.
  */
 export const payBooking = defineMutation({
   input: zodSchema(z.object({ bookingId: z.string().min(1) })),
-  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(
+    z.object({ bookingId: z.string().min(1), promptAlreadySent: z.boolean() }),
+  ),
   docs: { summary: "Pay your own booking now", tags: ["Booking"] },
 });
 
