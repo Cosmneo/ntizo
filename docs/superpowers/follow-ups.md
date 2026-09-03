@@ -3328,8 +3328,6 @@ now carries both: `footer.links.support` is a button that opens the help panel
 `help` entry ahead of `about`, and `shared.links.help` (as `company.json`'s `help` key) is written,
 not copied, in all eight locales.
 
----
-
 ## #132 (original) — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
 
 The Empresa column shows five of the reference's seven links. The two missing ones belong to the help center (`2026-09-02-help-center-design.md`): "Perguntas frequentes" → `/help`, "Falar com o suporte" → the panel (or `/help` until it exists). The `CompanyPage` strip's `STRIP` list gets a `help` entry ahead of `about` at the same time, and `shared.links.help` joins the `company` namespace in eight languages.
@@ -3420,8 +3418,6 @@ Plan B closed both halves. `notification-presentation.ts`'s `PRESENTATION` map n
 `Thread.providerId` (`features/messaging/domain/types.ts`) is `string | null`, and the `?? ""`
 lines in `use-threads.ts`/`use-provider-threads.ts` are gone — there is no `providerId ?? ""` left
 anywhere in the app (`b949ed74`).
-
----
 
 ## #137 (original) — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side
 
@@ -3558,15 +3554,21 @@ parity test only compares keys, so nothing goes red as they diverge.
 
 ---
 
-## #151 — The panel's request list fetches on every page
+## ~~#151 — The panel's request list fetches on every page~~ — RESOLVED 2026-09-03
 
-`HelpCenter` is mounted at the root and calls `useSupportRequests` unconditionally, so a
-signed-in reader's support list is fetched (and refetched on focus) on pages where the panel is
-never opened. It is one query with the messaging cache's ordinary staleness, not a poll, but it
-is work nobody asked for.
+The entry as written understated it. `HelpCenter` is mounted at the root, and
+`messagingQueries.mine` carries no `enabled` guard of its own (unlike `forProvider` and `thread`
+beside it), so the list was fetched for **every visitor, signed out included** — two
+`communicationMyThreads` POSTs per anonymous view of `/`, `/help` or `/services/*`, each answered
+`UNAUTHENTICATED` and each retried once — and on `/admin` and inside checkout, where the panel
+cannot be opened at all. Not "one stale-ish query nobody asked for": failing requests on the
+public landing page.
 
-**Trigger:** the first time the network tab is looked at on the landing page, or a query-count
-budget.
+`useSupportRequests` now takes an `enabled` argument, and `HelpCenter` passes `signedIn &&
+(help.open || showsHelpLauncher(pathname))`: signed in, and either the panel is open or the
+launcher is on screen and needs its unread badge. The three zones `showsHelpLauncher` excludes
+fetch only once somebody actually opens the panel there — which the footer's "Falar com o
+suporte" and a booking's "need help" can still do.
 
 ---
 
@@ -3619,3 +3621,67 @@ task would have been a second unreviewed decision.
 
 **Trigger:** the first time anyone looks at how the FAQ ranks in search, or the first other page
 that wants structured data.
+
+---
+
+## #157 — Three details the design spec asks for that the help center's frontend does not have
+
+Each was dropped without an entry of its own, and each is a line of the spec rather than a
+judgement call taken against it:
+
+- **The requests list has no unread dot.** `help-requests` shows subject, status pill, last
+  message and a date; the spec's line is "subject, status pill, last message, relative time,
+  unread dot" (`2026-09-02-help-center-design.md`, the `help-requests` bullet). The count exists
+  — `Thread.unreadCount` is what the launcher badge sums — so this is a mark to render, not data
+  to fetch. The date is also absolute (`4 Sep`), not the relative time the same line asks for.
+- **The admin queue has no "opened" column.** The spec's columns are "subject, requester, last
+  message, unread, status, opened"; the table stops at status and last message. `createdAt` is
+  already on `supportRequestSummaryReadModel` and already selected by the query — nothing to add
+  behind it.
+- **A provider request does not name the member who opened it.** The spec's requester column is
+  "name, or provider name **with the member who opened**". The queue shows the provider's name
+  alone, so two requests from the same business are indistinguishable in the list;
+  `requesterName` is on the row and unused for that audience.
+
+**Trigger:** the first admin who has to open two requests from the same provider to tell them
+apart, or the first support conversation about "I replied and it still looks unread".
+
+---
+
+## #158 — `useActiveProvider` falls back to the reader's first workspace when the URL names one they do not own
+
+`use-active-provider.ts` resolves the slug against `providers.mine`, and when nothing matches it
+returns the stored id or `providers[0]` — never `null`. `/provider/$slug`'s `beforeLoad` checks
+only that a session exists (`provider-guard.ts`), so `/provider/somebody-elses-slug` renders, and
+every hook on the page reads the reader's *own* first workspace while the URL names another.
+
+Pre-existing, and this branch is the first caller to turn it into a **write** decision: the help
+panel derives `providerId` from `activeProvider` and files the request against it. Not a security
+hole — the backend re-checks membership on `communicationOpenSupportRequest`, and
+`providers.mine` cannot yield a provider the reader does not belong to — but the request lands on
+the wrong (own) workspace with no warning, and "Em nome de X" is the only signal that X is not
+what the address bar says.
+
+The fix is a membership check in the route's `beforeLoad`, which needs the slug resolved before
+render and therefore its own decision about where that resolution lives.
+
+**Trigger:** the first bookmark or shared link to another workspace's URL — or, sooner, the first
+time someone edits a slug in the address bar to see what happens.
+
+---
+
+## #159 — A support notification says which request it is about and still goes nowhere when clicked
+
+`notification-cell.tsx` makes the whole row a button whose only action is `onMarkRead`, with its
+own comment saying a type that needs to navigate belongs in "a `target` map beside
+`presentationFor`". `SUPPORT_REPLY` and the other three support types now name the request in
+their sentence (`e80a75ad`), which makes a row that does nothing when clicked read as broken
+rather than as by-design — a reader who has just been told "Ntizo replied about *Reembolso*" has
+no way from there to the reply but the help panel's "my requests".
+
+Pre-existing design, newly conspicuous. The `target` map the comment describes is the shape:
+support types would open the panel on that thread (`useHelpCenter().openThread`), which is a
+different kind of target from a route and wants that decision made once, for all types.
+
+**Trigger:** the first "I tapped the notification and nothing happened", or the next notification
+type that has somewhere to go.

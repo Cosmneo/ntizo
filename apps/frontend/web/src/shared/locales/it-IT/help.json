@@ -17,18 +17,14 @@
   "signedOutTitle": "Accedi per parlare con l'assistenza",
   "signedOutBody": "Devi avere un account perché possiamo aprire una richiesta a tuo nome. Se non riesci ad accedere, scrivi a {{email}}.",
   "signIn": "Accedi",
-  "requestsTitle": "Le mie richieste",
   "requestsEmptyTitle": "Non hai ancora scritto",
   "requestsEmptyBody": "Quando apri una richiesta di assistenza, comparirà qui.",
   "requestsError": "Non è stato possibile caricare le tue richieste.",
-  "newRequestTitle": "Invia un messaggio",
   "subjectLabel": "Oggetto",
   "subjectPlaceholder": "In poche parole",
   "subjectHint": "{{count}}/120",
   "bookingChip": "Sulla prenotazione di {{service}}",
   "bookingChipRemove": "Non riguarda questa prenotazione",
-  "submit": "Invia",
-  "submitting": "Invio…",
   "audienceProvider": "Per conto di {{provider}}",
   "workspaceLoading": "Stiamo verificando a quale fornitore si riferisce questa richiesta…",
   "workspaceError": "Non siamo riusciti a capire a quale fornitore si riferisce questa richiesta.",
@@ -47,6 +43,9 @@
     "SUPPORT_TOO_MANY_OPEN": "Hai già 10 richieste aperte. Rispondi su una di esse.",
     "MESSAGE_EMPTY": "Scrivi il tuo messaggio.",
     "UNAUTHENTICATED": "Accedi per parlare con l'assistenza.",
+    "TOO_MANY_ATTACHMENTS": "Un messaggio può contenere al massimo {{max}} file.",
+    "ATTACHMENT_NOT_AVAILABLE": "Uno di questi file non è più disponibile. Rimuovilo e riprova.",
+    "VALIDATION_ERROR": "Controlla l'oggetto e il messaggio e riprova.",
     "GENERIC": "Non è stato possibile inviare la richiesta. Riprova."
   },
   "page": {
@@ -61,7 +60,7 @@
   },
   "faq": {
     "customers": {
-      "title": "Customers",
+      "title": "Clienti",
       "howBookingWorks": {
         "q": "How does a booking work?",
         "a": "You pick the service, the day and the time on the provider's calendar, and say where the service happens. The request goes to the provider to confirm. Only once they confirm the time do you get the payment prompt on your phone."
@@ -96,7 +95,7 @@
       }
     },
     "providers": {
-      "title": "Providers",
+      "title": "Fornitori",
       "whoCanBe": {
         "q": "Who can be a provider?",
         "a": "A person offering their own work, or an establishment with a team. You need an identity document, a way to be paid (M-Pesa, e-Mola or a bank account), and to accept the terms."
@@ -127,7 +126,7 @@
       }
     },
     "payments": {
-      "title": "Payments and safety",
+      "title": "Pagamenti e sicurezza",
       "paymentDataStored": {
         "q": "Is my payment data stored?",
         "a": "We store the phone number linked to M-Pesa or e-Mola and the country. We do not store card numbers."

@@ -17,18 +17,14 @@
   "signedOutTitle": "Log in om met support te praten",
   "signedOutBody": "Je hebt een account nodig zodat we namens jou een aanvraag kunnen openen. Kun je niet inloggen? Mail dan naar {{email}}.",
   "signIn": "Inloggen",
-  "requestsTitle": "Mijn aanvragen",
   "requestsEmptyTitle": "Je hebt nog niet geschreven",
   "requestsEmptyBody": "Wanneer je een supportaanvraag opent, verschijnt die hier.",
   "requestsError": "Je aanvragen konden niet worden geladen.",
-  "newRequestTitle": "Bericht sturen",
   "subjectLabel": "Onderwerp",
   "subjectPlaceholder": "In een paar woorden",
   "subjectHint": "{{count}}/120",
   "bookingChip": "Over de boeking van {{service}}",
   "bookingChipRemove": "Niet over deze boeking",
-  "submit": "Versturen",
-  "submitting": "Bezig met versturen…",
   "audienceProvider": "Namens {{provider}}",
   "workspaceLoading": "We kijken om welke aanbieder deze aanvraag gaat…",
   "workspaceError": "We konden niet bepalen om welke aanbieder deze aanvraag gaat.",
@@ -38,7 +34,7 @@
     "resolved": "Opgelost"
   },
   "resolvedNotice": "Deze aanvraag is als opgelost gemarkeerd. Reageer om hem te heropenen.",
-  "platformSender": "Ntizo Support",
+  "platformSender": "Ntizo-ondersteuning",
   "conversationError": "Dit gesprek kon niet worden geladen.",
   "error": {
     "SUPPORT_SUBJECT_INVALID": "Het onderwerp moet tussen 1 en 120 tekens lang zijn.",
@@ -47,6 +43,9 @@
     "SUPPORT_TOO_MANY_OPEN": "Je hebt al 10 openstaande aanvragen. Reageer op een daarvan.",
     "MESSAGE_EMPTY": "Schrijf je bericht.",
     "UNAUTHENTICATED": "Log in om met support te praten.",
+    "TOO_MANY_ATTACHMENTS": "Een bericht mag maximaal {{max}} bestanden bevatten.",
+    "ATTACHMENT_NOT_AVAILABLE": "Een van deze bestanden is niet meer beschikbaar. Verwijder het en probeer het opnieuw.",
+    "VALIDATION_ERROR": "Controleer het onderwerp en het bericht en probeer het opnieuw.",
     "GENERIC": "De aanvraag kon niet worden verstuurd. Probeer het opnieuw."
   },
   "page": {
@@ -61,7 +60,7 @@
   },
   "faq": {
     "customers": {
-      "title": "Customers",
+      "title": "Klanten",
       "howBookingWorks": {
         "q": "How does a booking work?",
         "a": "You pick the service, the day and the time on the provider's calendar, and say where the service happens. The request goes to the provider to confirm. Only once they confirm the time do you get the payment prompt on your phone."
@@ -96,7 +95,7 @@
       }
     },
     "providers": {
-      "title": "Providers",
+      "title": "Aanbieders",
       "whoCanBe": {
         "q": "Who can be a provider?",
         "a": "A person offering their own work, or an establishment with a team. You need an identity document, a way to be paid (M-Pesa, e-Mola or a bank account), and to accept the terms."
@@ -127,7 +126,7 @@
       }
     },
     "payments": {
-      "title": "Payments and safety",
+      "title": "Betalingen en veiligheid",
       "paymentDataStored": {
         "q": "Is my payment data stored?",
         "a": "We store the phone number linked to M-Pesa or e-Mola and the country. We do not store card numbers."

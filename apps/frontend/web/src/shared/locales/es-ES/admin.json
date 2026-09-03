@@ -308,7 +308,7 @@
   "supportAlreadyResolved": "Otra persona ya ha resuelto esta solicitud.",
   "supportResolveError": "No se ha podido marcar la solicitud como resuelta.",
   "supportConversationError": "No se ha podido cargar la conversación.",
-  "supportPlatformSender": "Soporte de Ntizo",
+  "supportPlatformSender": "Soporte Ntizo",
   "supportNotFound": "Esta solicitud no existe.",
   "supportLoadError": "No se pudo cargar la solicitud."
 }

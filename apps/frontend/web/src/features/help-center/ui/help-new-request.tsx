@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { Badge } from "@ntizo/frontend-ui";
-import { type AttachmentDescriptor } from "@/features/messaging/domain/types";
+import { MAX_ATTACHMENTS, type AttachmentDescriptor } from "@/features/messaging/domain/types";
 import { MessageComposer } from "@/features/messaging/ui/message-composer";
 import type { HelpPrefill } from "@/features/help-center/viewmodel/use-help-center";
 
@@ -101,7 +101,11 @@ export function HelpNewRequest({
 
       {errorCode && (
         <p className="type-body text-[var(--color-destructive)]">
-          {t(`error.${errorCode}`, { defaultValue: t("error.GENERIC") })}
+          {/* `max` because `error.TOO_MANY_ATTACHMENTS` carries `{{max}}` —
+              borrowed verbatim from `messaging.sendError`, so the same
+              refusal reads the same in the panel as in `/messages` and
+              needs the same interpolation `MessageComposer` gives it. */}
+          {t(`error.${errorCode}`, { defaultValue: t("error.GENERIC"), max: MAX_ATTACHMENTS })}
         </p>
       )}
 
