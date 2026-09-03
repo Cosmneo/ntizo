@@ -64,5 +64,16 @@ export function createCommunicationWriteHandlers(mod: CommunicationWriteModule) 
         viewerUserId: requireUser(ctx),
       }),
     )
+    .handle("communication.openSupportRequest", async (args, ctx) =>
+      uc.openSupportRequest.execute({
+        requesterUserId: requireUser(ctx),
+        audience: args.input.audience,
+        providerId: args.input.providerId,
+        subject: args.input.subject,
+        body: args.input.body,
+        bookingId: args.input.bookingId,
+        attachments: args.input.attachments,
+      }),
+    )
     .build();
 }
