@@ -139,7 +139,13 @@ export function ActivityChart({
               // `max-w-full` and the placement together are what keep the
               // label on the card: the shift is only guaranteed to contain a
               // tooltip no wider than the plot it sits over.
-              className="type-caption pointer-events-none absolute -top-1 max-w-full rounded-[var(--radius-field)] bg-[var(--color-foreground)] px-2 py-1 text-[var(--color-background)]"
+              //
+              // `whitespace-nowrap` because an absolutely positioned box is
+              // shrink-to-fit: near the last days `left` sits close to 100%,
+              // the width left of the edge collapses, and the label folded
+              // onto four lines. The containment arithmetic is untouched — it
+              // only ever required the label be no wider than the plot.
+              className="type-caption pointer-events-none absolute -top-1 max-w-full whitespace-nowrap rounded-[var(--radius-field)] bg-[var(--color-foreground)] px-2 py-1 text-[var(--color-background)]"
               style={tooltipPlacement(groups[hovered]!.x, groups[hovered]!.width)}
             >
               {dayLabel(groups[hovered]!.day)}
