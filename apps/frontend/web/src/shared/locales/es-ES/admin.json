@@ -243,7 +243,7 @@
   "contactSubtitle": "Lo que las personas nos escribieron a través de los formularios de contacto y opinión, y lo que aún está sin responder.",
   "contactOpenCount_one": "{{count}} solicitud abierta",
   "contactOpenCount_other": "{{count}} solicitudes abiertas",
-  "contactKindAll": "Todos",
+  "contactKindAll": "Todas",
   "contactKind": {
     "contact": "Contacto",
     "feedback": "Opinión"

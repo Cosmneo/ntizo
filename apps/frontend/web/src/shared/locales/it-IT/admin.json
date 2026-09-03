@@ -245,7 +245,7 @@
   "contactOpenCount_other": "{{count}} richieste aperte",
   "contactKindAll": "Tutte",
   "contactKind": {
-    "contact": "Contatti",
+    "contact": "Contatto",
     "feedback": "Feedback"
   },
   "contactKindColumn": "Tipo",

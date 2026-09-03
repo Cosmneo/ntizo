@@ -22,7 +22,7 @@
     "howTitle": "Tres pasos, y ninguno de ellos es pagar antes de saber si va a suceder.",
     "steps": {
       "search": { "title": "Busca y compara", "body": "Consulta servicios por categoría y ciudad, con el precio, las opiniones de quienes ya los usaron y el distintivo de verificado." },
-      "book": { "title": "Reserva la hora", "body": "Elige el día y la hora en el calendario del proveedor e indica dónde tiene lugar el servicio. La solicitud pasa a que él la confirme." },
+      "book": { "title": "Reserva la hora", "body": "Elige el día y la hora en el calendario del proveedor e indica dónde tiene lugar el servicio. La solicitud se envía al proveedor para que la confirme." },
       "pay": { "title": "Paga después de la confirmación", "body": "Solo cuando el proveedor confirma la hora recibes la solicitud de pago en el móvil. Antes de eso no se cobra nada." }
     },
     "principlesEyebrow": "En qué creemos",
