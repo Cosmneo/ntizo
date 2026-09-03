@@ -102,9 +102,11 @@ Two firings on one status are told apart by `reminded_at`, a new nullable column
 by comparing timestamps — an explicit flag beats an inference that reads correctly and means
 something else.
 
-This costs a hand-written migration for `booking_sweep_idx`'s predicate, because Drizzle cannot
-express a partial index's `WHERE` from a constant. That is the cost the schema's own comment
-warns about, and the catalogue test will fail until the migration runs, which is the point.
+`booking_sweep_idx`'s predicate is generated from that same constant through `statusList`, so
+widening the constant widens the index by itself — the hand-written predicate the schema warns
+about belongs to the slot exclusion constraint, which this change does not touch. The catalogue
+test reads the live predicate back and compares it to the constant in both directions, so it
+fails until the generated migration is applied, which is the point.
 
 Checked and unaffected: `SLOT_HOLDING_STATUSES` already contains `MARKED_DONE` and does not
 contain `COMPLETED` or `DISPUTED`, so no booking starts or stops holding a slot and the
