@@ -67,7 +67,10 @@ class FakeRepo implements BookingReadRepositoryPort {
     this.calls.push(`find:${bookingId}:${providerId}`);
     return this.rows.find((r) => r.id === bookingId) ?? null;
   }
-  async timelineFor() { return this.changes; }
+  async timelineFor(bookingId: string) {
+    this.calls.push(`timeline:${bookingId}`);
+    return this.changes;
+  }
   async membersOf() { return this.members; }
 }
 
@@ -131,6 +134,11 @@ describe("toProviderBookingDetailDTO — the timeline", () => {
     const dto = toProviderBookingDetailDTO(row({ status: "PENDING_PAYMENT" }), [], NOW);
     expect(dto.timeline.at(-1)).toEqual({ at: "2026-09-04T11:00:00.000Z", reason: "pay_by", actor: "system", pending: true });
   });
+
+  it("draws no pending hop once the deadline is behind now", () => {
+    const dto = toProviderBookingDetailDTO(row({ expiresAt: new Date("2026-09-04T09:30:00.000Z") }), [], NOW);
+    expect(dto.timeline.some((e) => e.pending)).toBe(false);
+  });
 });
 
 describe("ListProviderBookingsProjection", () => {
@@ -170,5 +178,15 @@ describe("GetProviderBookingProjection", () => {
     const repo = new FakeRepo([]);
     expect(await new GetProviderBookingProjection(repo).execute({ providerId: "prov-1", bookingId: "bk-x", now: NOW })).toBeNull();
     expect(repo.calls).toEqual(["find:bk-x:prov-1"]);
+  });
+
+  it("maps a found row through the timeline, reaching it with the row's own id", async () => {
+    const repo = new FakeRepo(
+      [row()],
+      [{ changedAt: new Date("2026-09-04T09:30:00.000Z"), changedByUserId: "cust-1", reason: "submitted_by_customer" }],
+    );
+    const dto = await new GetProviderBookingProjection(repo).execute({ providerId: "prov-1", bookingId: "bk-1", now: NOW });
+    expect(dto?.timeline).toHaveLength(3);
+    expect(repo.calls).toEqual(["find:bk-1:prov-1", "timeline:bk-1"]);
   });
 });
