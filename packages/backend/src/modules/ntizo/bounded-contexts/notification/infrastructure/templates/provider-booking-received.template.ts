@@ -30,10 +30,10 @@ const EN: Copy = {
 
 const ES: Copy = {
   subject: "Nueva solicitud de reserva en Ntizo",
-  heading: "Tiene una solicitud por responder",
-  body: (service, who) => `${who} solicitó ${service}. Tiene un plazo para aceptar o rechazar; pasado ese plazo la solicitud caduca.`,
+  heading: "Tienes una solicitud por responder",
+  body: (service, who) => `${who} solicitó ${service}. Tienes un plazo para aceptar o rechazar; pasado ese plazo la solicitud caduca.`,
   cta: "Responder a la solicitud",
-  disclaimer: "Recibe este mensaje porque forma parte de un espacio de trabajo en Ntizo que recibió una solicitud.",
+  disclaimer: "Recibes este mensaje porque formas parte de un espacio de trabajo en Ntizo que recibió una solicitud.",
   nobody: "Un cliente",
 };
 

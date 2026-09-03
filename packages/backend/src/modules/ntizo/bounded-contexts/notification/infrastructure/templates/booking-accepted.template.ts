@@ -28,12 +28,12 @@ const EN: Copy = {
 };
 
 const ES: Copy = {
-  subject: "El prestador aceptó su solicitud",
-  heading: "Su solicitud fue aceptada",
+  subject: "El prestador aceptó tu solicitud",
+  heading: "Tu solicitud fue aceptada",
   body: (service, provider) =>
-    `${provider} aceptó ${service}. La solicitud de pago M-Pesa llega a su teléfono; confírmela antes de que termine el plazo.`,
+    `${provider} aceptó ${service}. La solicitud de pago M-Pesa llega a tu teléfono; confírmala antes de que termine el plazo.`,
   cta: "Ver la reserva",
-  disclaimer: "Recibe este mensaje porque tiene una reserva en Ntizo.",
+  disclaimer: "Recibes este mensaje porque tienes una reserva en Ntizo.",
 };
 
 const FR: Copy = {

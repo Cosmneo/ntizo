@@ -28,12 +28,12 @@ const EN: Copy = {
 };
 
 const ES: Copy = {
-  subject: "El prestador no pudo aceptar su solicitud",
-  heading: "Su solicitud no fue aceptada",
+  subject: "El prestador no pudo aceptar tu solicitud",
+  heading: "Tu solicitud no fue aceptada",
   body: (service, provider) =>
-    `${provider} no pudo aceptar ${service}. No se cobró nada. Puede elegir otro horario u otro prestador.`,
+    `${provider} no pudo aceptar ${service}. No se cobró nada. Puedes elegir otro horario u otro prestador.`,
   cta: "Buscar otro horario",
-  disclaimer: "Recibe este mensaje porque tenía una solicitud de reserva en Ntizo.",
+  disclaimer: "Recibes este mensaje porque tenías una solicitud de reserva en Ntizo.",
 };
 
 const FR: Copy = {
