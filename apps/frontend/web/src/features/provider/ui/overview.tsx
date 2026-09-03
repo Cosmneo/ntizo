@@ -100,7 +100,13 @@ export function OverviewPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* `xl:`, not `lg:`. Four columns at 1024px is where this grid was at
+          its narrowest of all: the sidebar is showing by then, so each card
+          gets a 134px content box — tighter than a 390px phone — while the
+          revenue card is drawing its money at the full 28px. Holding two
+          columns until 1280px gives those cards 318px there instead, and the
+          four-up step lands where the track is 198px. */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label={t("overview.awaitingTitle")}
           value={s?.awaitingResponse ?? 0}

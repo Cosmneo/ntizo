@@ -3626,3 +3626,27 @@ read looks like.
 
 **Trigger:** the first provider who reports a blank dashboard that is not blank, or the next
 page that copies this pattern; the fix is one shared "could not read" state per card.
+
+## #153 — The KPI cards size their money by the viewport, not by their own width
+
+`StatCard`'s value steps from 18px to 28px at `sm:`, and the grid steps from two columns to
+four at `xl:` — both keyed to the viewport, while what actually constrains the figure is the
+card's own track. The two move in opposite directions: past `xl` the track gets *narrower*
+than it was one pixel earlier, and the sidebar takes 16rem out of the measurement without
+any breakpoint knowing. Measured against `formatMoney` in pt-MZ at 28px, from the shipped
+Poppins SemiBold (`99 999,99 MTn` is 7.25em = 203px, `999 999,99 MTn` is 7.88em = 221px):
+
+- **at 1280px**, the first four-up width, the card's content box is 198px. The dashboard's own
+  fixture figure fits with 0.7px to spare, five figures clip by 5px, and a workspace netting
+  six figures a month clips by 19–22px.
+- **at 1440px** the box is 238px and every realistic payout fits; only a seven-figure MZN
+  month (245px) still crosses the border. From 1536px up the grid's `max-w-6xl` caps the box
+  at 242px, so it never gets better than that.
+
+The same mechanism bites once more on the way up: between 768px and ~829px the sidebar has
+appeared but the value is already at its 28px `sm:` size, and the two-up card is 190px.
+
+**Trigger:** the first workspace whose monthly payout reaches six figures, or the next zone
+page that copies this grid — then size the value from the card rather than the window
+(`@container` on `Card`, with the type step as a container query), which removes every band
+above at once instead of moving another breakpoint.
