@@ -1,0 +1,38 @@
+{
+  "title": "My bookings",
+  "lede": "Everything you've requested, where each one stands, and what's left to do.",
+  "tab": {
+    "waiting": "Waiting",
+    "upcoming": "Upcoming",
+    "history": "History"
+  },
+  "status": {
+    "AWAITING_PROVIDER": "Waiting for the provider",
+    "PENDING_PAYMENT": "Awaiting payment",
+    "CONFIRMED": "Confirmed",
+    "MARKED_DONE": "Completed",
+    "COMPLETED": "Completed",
+    "DISPUTED": "Disputed",
+    "DECLINED": "Declined",
+    "CANCELLED": "Cancelled",
+    "EXPIRED": "Expired"
+  },
+  "col": {
+    "service": "Service",
+    "when": "When",
+    "status": "Status",
+    "price": "Amount"
+  },
+  "emptyTitle": "No bookings yet",
+  "emptyBody": "Once you book a service, it'll show up here with the date, the status, and what's left to do.",
+  "emptyAction": "Browse services",
+  "respondIn": "responds in {{time}}",
+  "payIn": "ends in {{time}}",
+  "pay": "Pay",
+  "cancel": "Cancel",
+  "view": "View",
+  "reference": "Reference {{ref}}",
+  "minutes": "{{count}} min",
+  "verified": "Verified",
+  "loadMore": "More"
+}

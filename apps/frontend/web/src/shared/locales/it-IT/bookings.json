@@ -1,0 +1,38 @@
+{
+  "title": "Le mie prenotazioni",
+  "lede": "Tutto quello che hai richiesto, a che punto è ogni richiesta e cosa resta da fare.",
+  "tab": {
+    "waiting": "In attesa",
+    "upcoming": "In arrivo",
+    "history": "Cronologia"
+  },
+  "status": {
+    "AWAITING_PROVIDER": "In attesa del professionista",
+    "PENDING_PAYMENT": "In attesa di pagamento",
+    "CONFIRMED": "Confermata",
+    "MARKED_DONE": "Completata",
+    "COMPLETED": "Completata",
+    "DISPUTED": "Contestata",
+    "DECLINED": "Rifiutata",
+    "CANCELLED": "Annullata",
+    "EXPIRED": "Scaduta"
+  },
+  "col": {
+    "service": "Servizio",
+    "when": "Quando",
+    "status": "Stato",
+    "price": "Importo"
+  },
+  "emptyTitle": "Ancora nessuna prenotazione",
+  "emptyBody": "Quando prenoti un servizio, lo trovi qui con la data, lo stato e cosa resta da fare.",
+  "emptyAction": "Scopri i servizi",
+  "respondIn": "risponde tra {{time}}",
+  "payIn": "termina tra {{time}}",
+  "pay": "Paga",
+  "cancel": "Annulla",
+  "view": "Vedi",
+  "reference": "Riferimento {{ref}}",
+  "minutes": "{{count}} min",
+  "verified": "Verificato",
+  "loadMore": "Altro"
+}

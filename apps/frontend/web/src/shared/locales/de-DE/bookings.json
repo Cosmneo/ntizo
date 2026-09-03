@@ -1,0 +1,38 @@
+{
+  "title": "Meine Buchungen",
+  "lede": "Alles, was Sie angefragt haben, wo jede Anfrage gerade steht und was noch zu tun ist.",
+  "tab": {
+    "waiting": "Ausstehend",
+    "upcoming": "Bevorstehend",
+    "history": "Verlauf"
+  },
+  "status": {
+    "AWAITING_PROVIDER": "Warten auf den Anbieter",
+    "PENDING_PAYMENT": "Zahlung ausstehend",
+    "CONFIRMED": "Bestätigt",
+    "MARKED_DONE": "Abgeschlossen",
+    "COMPLETED": "Abgeschlossen",
+    "DISPUTED": "Strittig",
+    "DECLINED": "Abgelehnt",
+    "CANCELLED": "Storniert",
+    "EXPIRED": "Abgelaufen"
+  },
+  "col": {
+    "service": "Leistung",
+    "when": "Wann",
+    "status": "Status",
+    "price": "Betrag"
+  },
+  "emptyTitle": "Noch keine Buchungen",
+  "emptyBody": "Sobald Sie eine Leistung buchen, erscheint sie hier mit Datum, Status und dem, was noch zu tun ist.",
+  "emptyAction": "Leistungen entdecken",
+  "respondIn": "antwortet in {{time}}",
+  "payIn": "endet in {{time}}",
+  "pay": "Bezahlen",
+  "cancel": "Abbrechen",
+  "view": "Ansehen",
+  "reference": "Referenz {{ref}}",
+  "minutes": "{{count}} Min.",
+  "verified": "Verifiziert",
+  "loadMore": "Mehr"
+}

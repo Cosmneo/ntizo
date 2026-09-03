@@ -1,0 +1,38 @@
+{
+  "title": "Mijn boekingen",
+  "lede": "Alles wat je hebt aangevraagd, waar elke aanvraag staat en wat er nog moet gebeuren.",
+  "tab": {
+    "waiting": "In afwachting",
+    "upcoming": "Aankomend",
+    "history": "Geschiedenis"
+  },
+  "status": {
+    "AWAITING_PROVIDER": "Wacht op de dienstverlener",
+    "PENDING_PAYMENT": "Wacht op betaling",
+    "CONFIRMED": "Bevestigd",
+    "MARKED_DONE": "Afgerond",
+    "COMPLETED": "Afgerond",
+    "DISPUTED": "In geschil",
+    "DECLINED": "Geweigerd",
+    "CANCELLED": "Geannuleerd",
+    "EXPIRED": "Verlopen"
+  },
+  "col": {
+    "service": "Dienst",
+    "when": "Wanneer",
+    "status": "Status",
+    "price": "Bedrag"
+  },
+  "emptyTitle": "Nog geen boekingen",
+  "emptyBody": "Zodra je een dienst boekt, verschijnt die hier met de datum, de status en wat er nog moet gebeuren.",
+  "emptyAction": "Diensten ontdekken",
+  "respondIn": "reageert binnen {{time}}",
+  "payIn": "eindigt over {{time}}",
+  "pay": "Betalen",
+  "cancel": "Annuleren",
+  "view": "Bekijken",
+  "reference": "Referentie {{ref}}",
+  "minutes": "{{count}} min",
+  "verified": "Geverifieerd",
+  "loadMore": "Meer"
+}

@@ -1,0 +1,38 @@
+{
+  "title": "Mis reservas",
+  "lede": "Todo lo que has pedido, en qué punto está cada solicitud y qué queda por hacer.",
+  "tab": {
+    "waiting": "En espera",
+    "upcoming": "Próximas",
+    "history": "Historial"
+  },
+  "status": {
+    "AWAITING_PROVIDER": "Esperando al profesional",
+    "PENDING_PAYMENT": "Esperando pago",
+    "CONFIRMED": "Confirmada",
+    "MARKED_DONE": "Completada",
+    "COMPLETED": "Completada",
+    "DISPUTED": "En disputa",
+    "DECLINED": "Rechazada",
+    "CANCELLED": "Cancelada",
+    "EXPIRED": "Caducada"
+  },
+  "col": {
+    "service": "Servicio",
+    "when": "Cuándo",
+    "status": "Estado",
+    "price": "Importe"
+  },
+  "emptyTitle": "Todavía no hay reservas",
+  "emptyBody": "Cuando reserves un servicio, aparece aquí con la fecha, el estado y lo que queda por hacer.",
+  "emptyAction": "Explorar servicios",
+  "respondIn": "responde en {{time}}",
+  "payIn": "termina en {{time}}",
+  "pay": "Pagar",
+  "cancel": "Cancelar",
+  "view": "Ver",
+  "reference": "Referencia {{ref}}",
+  "minutes": "{{count}} min",
+  "verified": "Verificado",
+  "loadMore": "Más"
+}
