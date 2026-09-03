@@ -50,8 +50,6 @@ export interface BookingListRow {
   locationType: string | null;
 
   priceMinor: number;
-  commissionBps: number;
-  commissionMinor: number;
   currency: string;
 
   startsAt: Date;
@@ -83,6 +81,8 @@ export interface BookingListRow {
    * a consumer must check the status before trusting the date.
    */
   expiresAt: Date | null;
+
+  paidAt: Date | null;
 
   createdAt: Date;
 }

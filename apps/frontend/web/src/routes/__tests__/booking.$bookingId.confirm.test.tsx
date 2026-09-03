@@ -105,8 +105,6 @@ function bookingFixture(status: BookingDTO["status"]): BookingDTO {
     // travel line override this to `at_customer`.
     locationType: "at_provider",
     priceMinor: 90000,
-    commissionBps: 1000,
-    commissionMinor: 9000,
     currency: "MZN",
     startsAt: "2026-09-04T13:00:00.000Z",
     endsAt: "2026-09-04T14:30:00.000Z",
@@ -118,6 +116,7 @@ function bookingFixture(status: BookingDTO["status"]): BookingDTO {
     addressDirections: null,
     description: null,
     expiresAt: "2026-09-04T12:30:00.000Z",
+    paidAt: null,
     createdAt: NOW,
   };
 }

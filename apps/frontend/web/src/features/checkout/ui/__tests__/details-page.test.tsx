@@ -99,11 +99,12 @@ const NOW = "2026-09-04T12:00:00.000Z";
  * passing test asserting against a shape reality had left behind, which reads
  * as coverage. The compiler is now the thing that notices.
  *
- * `commissionBps` and `commissionMinor` come with the type, and that matters
- * for one test in particular: a fixture without them could not fail the "no
- * commission on this page" case, because it would be asserting that a number
- * nobody supplied is not rendered.
+ * There is no `commissionBps`/`commissionMinor` to carry any more: both left
+ * `bookingReadModel` itself on 2026-09-03, so the "no commission on this
+ * page" case below no longer needs a fixture that supplies a real value and
+ * relies on the page not printing it — there is no field left to print.
  *
+
  * The rating is **4.2 and not 4.8 or 5**: it has to be a value no default and
  * no other fixture in this repo would produce, or the trust-line assertion
  * passes against a rail that ignored the booking entirely.
@@ -130,8 +131,6 @@ function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
     // travel line override this to `at_customer`.
     locationType: "at_provider",
     priceMinor: 90000,
-    commissionBps: 1000,
-    commissionMinor: 9000,
     currency: "MZN",
     startsAt: "2026-09-04T13:00:00.000Z",
     endsAt: "2026-09-04T14:30:00.000Z",
@@ -147,6 +146,7 @@ function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
     addressDirections: null,
     description: null,
     expiresAt: "2026-09-04T12:30:00.000Z",
+    paidAt: null,
     createdAt: NOW,
     ...over,
   };

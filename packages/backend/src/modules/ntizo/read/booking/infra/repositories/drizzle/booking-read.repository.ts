@@ -295,8 +295,6 @@ function selectedColumns(
      */
     locationType: service.locationType,
     priceMinor: booking.priceMinor,
-    commissionBps: booking.commissionBps,
-    commissionMinor: booking.commissionMinor,
     currency: booking.currency,
     startsAt: booking.startsAt,
     endsAt: booking.endsAt,
@@ -308,6 +306,7 @@ function selectedColumns(
     addressDirections: booking.addressDirections,
     description: booking.description,
     expiresAt: booking.expiresAt,
+    paidAt: booking.paidAt,
     createdAt: booking.createdAt,
   };
 }
