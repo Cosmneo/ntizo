@@ -60,30 +60,54 @@ export function BookingsPage() {
    * screen that disagree — the card's own header saying twenty and the footer
    * saying forty — and would make "Mais" mean "lose what you were reading".
    *
-   * `page` is the request's own answer kept beside them: the total, the next
-   * offset and the workspace's roster. `useQuery` has no data for an offset it
-   * has not fetched yet, so reading those straight off it would make the
-   * count, the "Mais" button and the member filter vanish for exactly the
-   * length of the request that is meant to extend the list.
+   * `page` is the last answer kept beside them — the total, the next offset
+   * and the workspace's roster. `useQuery` has no data for an offset it has
+   * not fetched yet, so reading those straight off it would make the count,
+   * the "Mais" button and the member filter vanish for exactly the length of
+   * the request that is meant to extend the list.
+   *
+   * Both are read through `visible` and `answered` below rather than directly:
+   * they are the memory of what came *before* the request in flight, and at
+   * offset zero there is nothing before it.
    */
   const [loaded, setLoaded] = useState<ProviderBookingDTO[]>([]);
   const [page, setPage] = useState<ProviderBookingPageDTO | null>(null);
-  // Narrowing the list is a new list: staying on page three of the previous
-  // one is how a provider lands on an empty page that has rows above it, and
-  // what is on screen goes with it, so a tab change cannot leave the previous
-  // tab's rows or its count standing under the new tab's heading.
-  useEffect(() => {
+
+  const providerId = activeProvider?.id ?? "";
+  /**
+   * Narrowing the list is a new list, and it is emptied **during the render
+   * that narrows it** rather than in an effect.
+   *
+   * Passive effects run after the browser paints, so a reset that lived in one
+   * would draw the previous filter's rows under the new filter's heading for a
+   * frame first — and that frame is reachable, not theoretical: the app's
+   * query client holds data fresh for 30s (`src/lib/query-client.ts`), so
+   * returning to a tab visited seconds ago has `isLoading` false and `data`
+   * present on the very render the tab changes in. Adjusting state during
+   * render is React's own answer to this: it re-runs the component
+   * immediately, before anything is committed, so no such frame exists.
+   *
+   * `providerId` is in the key because switching workspace is the same event
+   * as switching tab, and one workspace's bookings under another's name is the
+   * worst version of this bug rather than a lesser one.
+   */
+  const filterKey = `${providerId}|${tab}|${q}|${memberId ?? ""}`;
+  const [appliedKey, setAppliedKey] = useState(filterKey);
+  if (appliedKey !== filterKey) {
+    setAppliedKey(filterKey);
     setOffset(0);
     setLoaded([]);
     setPage(null);
-  }, [tab, q, memberId]);
+  }
 
-  const providerId = activeProvider?.id ?? "";
   const query = useProviderBookings({ providerId, tab, q, memberId, offset });
   // Offset zero is a fresh list and replaces; anything else extends. Ids
   // already on screen are skipped rather than trusted to be disjoint: a
   // booking answered between the two requests shifts every row after it by
   // one, and the same id arriving twice would otherwise render twice.
+  //
+  // It cannot append a previous filter's rows: the query key carries the whole
+  // filter, so `query.data` is either this filter's answer or nothing at all.
   useEffect(() => {
     const answer = query.data;
     if (!answer) return;
@@ -94,6 +118,19 @@ export function BookingsPage() {
       return [...current, ...answer.items.filter((b) => !seen.has(b.id))];
     });
   }, [query.data, offset]);
+  /**
+   * What is on screen, and the answer it is counted against.
+   *
+   * At offset zero the answer *is* the list, and it is read straight through
+   * rather than waited for — the accumulator above only catches up after the
+   * paint, so a cached tab would otherwise draw an empty card for one frame.
+   * From the second page on, `loaded` is the list: it is the only thing that
+   * remembers the rows above the one the server has just sent. `answered`
+   * likewise falls back to the previous page while the next one is in flight,
+   * so the count, the pager and the roster do not blink out mid-request.
+   */
+  const visible = offset === 0 ? (query.data?.items ?? []) : loaded;
+  const answered = query.data ?? page;
   // The countdown is measured from the moment the page was answered, not from
   // whenever React last re-rendered: every row on screen then counts down from
   // one instant, and a re-render for an unrelated reason cannot move the clock
@@ -150,7 +187,7 @@ export function BookingsPage() {
             provider has nobody to narrow to. Native `select`, styled as the
             kit's field — a kit `Select` with one option is not worth its
             keyboard model here. */}
-        {page && page.members.length > 1 && (
+        {answered && answered.members.length > 1 && (
           <select
             aria-label={t("bookings.memberFilterAll")}
             value={memberId ?? ""}
@@ -158,7 +195,7 @@ export function BookingsPage() {
             className="type-body h-10 rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3"
           >
             <option value="">{t("bookings.memberFilterAll")}</option>
-            {page.members.map((m) => (
+            {answered.members.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.firstName}
               </option>
@@ -182,8 +219,8 @@ export function BookingsPage() {
 
       <CollectionCard
         title={t(`bookings.tab.${tab}`)}
-        shown={loaded.length}
-        total={page?.total ?? 0}
+        shown={visible.length}
+        total={answered?.total ?? 0}
         // Only the first page draws skeletons. A second page's request must
         // not replace what the reader is already looking at with placeholders
         // — the whole point of "Mais" is that the list grows underneath them.
@@ -215,7 +252,7 @@ export function BookingsPage() {
         noMatchesTitle={t("bookings.noMatchesTitle")}
         noMatchesText={t("bookings.noMatches")}
         filtered={q.trim() !== "" || memberId !== null}
-        rows={loaded.map((b) => {
+        rows={visible.map((b) => {
           const slot = compactSlotWording(b.startsAt, b.endsAt, locale, b.timezone);
           const left = b.respondBy ? timeLeftWording(b.respondBy, now) : null;
           return {
@@ -260,17 +297,17 @@ export function BookingsPage() {
         })}
       />
 
-      {page && (
+      {answered && (
         <div className="flex items-center justify-between">
           <span className="type-caption text-[var(--color-muted-foreground)]">
-            {t("bookings.shownOf", { shown: loaded.length, total: page.total })}
+            {t("bookings.shownOf", { shown: visible.length, total: answered.total })}
           </span>
-          {page.nextOffset !== null && (
+          {answered.nextOffset !== null && (
             <Button
               type="button"
               variant="outline"
               onClick={() =>
-                setOffset(page.nextOffset ?? offset + PROVIDER_BOOKINGS_PAGE_SIZE)
+                setOffset(answered.nextOffset ?? offset + PROVIDER_BOOKINGS_PAGE_SIZE)
               }
             >
               {t("bookings.loadMore")}

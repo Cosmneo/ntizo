@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useLayoutEffect } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +9,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useSearch,
 } from "@tanstack/react-router";
 import type {
   ProviderBookingDTO,
@@ -149,21 +151,23 @@ const EMPTY_PAGE: ProviderBookingPageDTO = {
 };
 
 /**
- * What the server answers with. A function when the test is about *which*
- * offset was asked for — the pager's whole behaviour is that the second
- * request returns different rows from the first, and a mock that answers
- * identically whatever it is handed cannot fail on anything that turns on
- * the difference.
+ * What the server answers with. A function when the test is about *what was
+ * asked for* — the pager's whole behaviour is that the second request returns
+ * different rows from the first, and the tab's is that two tabs answer
+ * differently; a mock that answers identically whatever it is handed cannot
+ * fail on anything that turns on the difference.
  */
-type Answer = ProviderBookingPageDTO | ((offset: number) => ProviderBookingPageDTO);
+type Answer =
+  | ProviderBookingPageDTO
+  | ((input: { tab: ProviderTab; offset: number }) => ProviderBookingPageDTO);
 
 function renderBookings(at: string, answer: Answer = pageFixture()) {
   fakes.graphql.mockReset();
   fakes.graphql.mockImplementation(
-    (_query: string, variables: { input: { offset: number } }) =>
+    (_query: string, variables: { input: { tab: ProviderTab; offset: number } }) =>
       Promise.resolve({
         bookingForProvider:
-          typeof answer === "function" ? answer(variables.input.offset) : answer,
+          typeof answer === "function" ? answer(variables.input) : answer,
       }),
   );
 
@@ -171,12 +175,45 @@ function renderBookings(at: string, answer: Answer = pageFixture()) {
     defaultOptions: { queries: { retry: false } },
   });
 
+  /**
+   * Every commit's DOM, as the browser would have painted it.
+   *
+   * The defect this exists for is one frame long: passive effects run *after*
+   * the paint, so a filter reset that lived in one draws the previous filter's
+   * rows once before correcting itself. `act()` flushes those effects before
+   * it returns, so nothing an assertion can reach afterwards tells the two
+   * apart — the frame has to be recorded as it happens. A *layout* effect runs
+   * once the commit's DOM mutations are applied and before the browser paints,
+   * which is exactly that moment; subscribing to the router's own state is
+   * what re-renders this recorder in the same commit as the page it watches.
+   */
+  const frames: { tab: string; rows: string[] }[] = [];
   const rootRoute = createRootRoute();
   const listRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/provider/$slug/bookings",
     validateSearch,
-    component: BookingsPage,
+    // The recorder wraps the page rather than sitting at the root, and it
+    // subscribes to `useSearch` — the very thing the page reads its tab from.
+    // The router publishes a new `location` one commit before a match's search
+    // reaches the components under it, so a recorder subscribed to the
+    // location renders one commit too early and never sees the frame that
+    // matters. Being the page's parent on the same subscription puts it in
+    // exactly the commit the page changes tab in.
+    component: function Recorded() {
+      useSearch({ strict: false });
+      useLayoutEffect(() => {
+        frames.push({
+          tab:
+            document.querySelector('[role="tab"][aria-selected="true"]')?.textContent ??
+            "",
+          rows: Array.from(document.querySelectorAll("table a")).map(
+            (a) => a.textContent ?? "",
+          ),
+        });
+      });
+      return <BookingsPage />;
+    },
   });
   // Registered so "opens a row" is asserted against the router's own resolved
   // location rather than a mocked `navigate`, which passes even when the
@@ -198,7 +235,7 @@ function renderBookings(at: string, answer: Answer = pageFixture()) {
     </QueryClientProvider>,
   );
 
-  return { router };
+  return { router, frames };
 }
 
 /**
@@ -277,7 +314,7 @@ describe("BookingsPage", () => {
       nextOffset: null,
       members,
     };
-    renderBookings("/provider/estudio/bookings", (offset) =>
+    renderBookings("/provider/estudio/bookings", ({ offset }) =>
       offset === 0 ? first : second,
     );
     await row("Ana");
@@ -292,6 +329,51 @@ describe("BookingsPage", () => {
     expect(table.getByText("Bruno")).toBeInTheDocument();
     expect(screen.getByText("A mostrar 3 de 3")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+  });
+
+  it("never paints the previous tab's rows under the new tab", async () => {
+    const members = [{ id: "mem-1", firstName: "Célia" }];
+    const byTab = ({ tab }: { tab: ProviderTab }): ProviderBookingPageDTO =>
+      tab === "history"
+        ? {
+            items: [
+              bookingFixture({
+                id: "bk-9",
+                customerFirstName: "Dina",
+                serviceName: "Massagem",
+                status: "COMPLETED",
+                respondBy: null,
+              }),
+            ],
+            total: 1,
+            nextOffset: null,
+            members,
+          }
+        : { items: [bookingFixture()], total: 1, nextOffset: null, members };
+
+    const { frames } = renderBookings("/provider/estudio/bookings", byTab);
+    // Both tabs are visited first, so the second visit to "Histórico" is
+    // answered from cache — which is the whole of the defect. An uncached tab
+    // has no data on the render the tab changes in, so it could not have shown
+    // the previous one's rows even with the reset an effect late.
+    await row("Ana");
+    await userEvent.click(screen.getByRole("tab", { name: "Histórico" }));
+    await row("Dina");
+    await userEvent.click(screen.getByRole("tab", { name: "Pedidos" }));
+    await row("Ana");
+
+    const before = frames.length;
+    await userEvent.click(screen.getByRole("tab", { name: "Histórico" }));
+
+    await row("Dina");
+    const table = within(await screen.findByRole("table"));
+    expect(table.queryByText("Ana")).not.toBeInTheDocument();
+    // …and not in any frame in between either. This is the assertion that
+    // fails when the reset lives in an effect: the commit the tab change makes
+    // still holds "Pedidos" rows, and only the commit after it does not.
+    expect(
+      frames.slice(before).filter((f) => f.tab === "Histórico" && f.rows.includes("Ana")),
+    ).toEqual([]);
   });
 
   it("opens a row on its own page", async () => {
