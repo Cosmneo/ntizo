@@ -32,9 +32,22 @@ const MESSAGES = `
     }
   }`;
 
+/**
+ * A literal `input: {}`, not a `$input` variable of a named type.
+ *
+ * `countOpenSupportRequests`'s input schema is `z.object({})` — no
+ * properties — and the schema builder falls back to the `JSON` scalar for an
+ * empty input object, because a GraphQL input object type must declare at
+ * least one field. So `SupportOpenCountInput` is a name the schema never
+ * emits: the SDL reads `supportOpenCount(input: JSON!)`, and a document that
+ * declares `$input: SupportOpenCountInput!` fails validation before it
+ * executes — "Unknown type" — which the queue rendered as a confident
+ * "0 open requests". The same reasoning and the same shape as
+ * `notificationQueries.mineUnreadCount`; see that file's doc comment.
+ */
 const OPEN_COUNT = `
-  query SupportOpenCount($input: SupportOpenCountInput!) {
-    supportOpenCount(input: $input) { count }
+  query SupportOpenCount {
+    supportOpenCount(input: {}) { count }
   }`;
 
 const REPLY = `
@@ -73,7 +86,7 @@ export const adminSupportQueries = {
   all: (search: AdminSupportSearch) =>
     infiniteQueryOptions({
       queryKey: ["admin", "support", search] as const,
-      queryFn: ({ pageParam }: { pageParam: string | null }) =>
+      queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
         sessionGraphql<{ supportRequests: SupportRequestPageDTO }>(ALL, {
           input: {
             limit: ADMIN_SUPPORT_PAGE_SIZE,
@@ -82,8 +95,16 @@ export const adminSupportQueries = {
             ...(search.audience ? { audience: search.audience } : {}),
           },
         }).then((d) => d.supportRequests),
-      initialPageParam: null as string | null,
-      getNextPageParam: (last: SupportRequestPageDTO) => last.nextCursor,
+      // `undefined`, never `null`. The SDL declares `cursor: String`, so
+      // GraphQL itself would accept a null — but the kit then validates the
+      // input against `z.string().optional()`, which accepts an absent key
+      // and REJECTS an explicit null ("expected string, received null"), so
+      // a first page sent with `cursor: null` came back as a validation
+      // error over an empty table. `undefined` is dropped by
+      // `JSON.stringify` and the key never reaches the wire. Same mapping,
+      // for the same reason, as `messagingQueries.mine`.
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last: SupportRequestPageDTO) => last.nextCursor ?? undefined,
     }),
 
   one: (threadId: string) =>
@@ -100,12 +121,13 @@ export const adminSupportQueries = {
   messages: (threadId: string) =>
     infiniteQueryOptions({
       queryKey: ["admin", "support", "messages", threadId] as const,
-      queryFn: ({ pageParam }: { pageParam: string | null }) =>
+      queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
         sessionGraphql<{ supportRequestMessages: MessagePageDTO }>(MESSAGES, {
           input: { threadId, limit: MESSAGES_PAGE_SIZE, cursor: pageParam },
         }).then((d) => d.supportRequestMessages),
-      initialPageParam: null as string | null,
-      getNextPageParam: (last: MessagePageDTO) => last.nextCursor,
+      // `undefined`, never `null` — see `all` above.
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last: MessagePageDTO) => last.nextCursor ?? undefined,
       enabled: threadId.length > 0,
       refetchInterval: 5_000,
     }),
@@ -114,7 +136,7 @@ export const adminSupportQueries = {
     queryOptions({
       queryKey: ["admin", "support", "openCount"] as const,
       queryFn: () =>
-        sessionGraphql<{ supportOpenCount: { count: number } }>(OPEN_COUNT, { input: {} }).then(
+        sessionGraphql<{ supportOpenCount: { count: number } }>(OPEN_COUNT, {}).then(
           (d) => d.supportOpenCount.count,
         ),
     }),
