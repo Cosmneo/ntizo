@@ -305,6 +305,9 @@
   "supportBooking": "Boeking",
   "supportResolve": "Markeren als opgelost",
   "supportResolvedNotice": "Gemarkeerd als opgelost. Als de aanvrager reageert, wordt het opnieuw geopend.",
+  "supportAlreadyResolved": "Iemand anders heeft deze aanvraag al opgelost.",
+  "supportResolveError": "De aanvraag kon niet als opgelost worden gemarkeerd.",
+  "supportConversationError": "De conversatie kon niet worden geladen.",
   "supportPlatformSender": "Ntizo-ondersteuning",
   "supportNotFound": "Dit verzoek bestaat niet.",
   "supportLoadError": "Het verzoek kon niet worden geladen."

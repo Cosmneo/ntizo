@@ -305,6 +305,9 @@
   "supportBooking": "Booking",
   "supportResolve": "Mark as resolved",
   "supportResolvedNotice": "Marked as resolved. If the requester replies, it reopens.",
+  "supportAlreadyResolved": "Someone else has already resolved this request.",
+  "supportResolveError": "The request could not be marked as resolved.",
+  "supportConversationError": "The conversation could not be loaded.",
   "supportPlatformSender": "Ntizo Support",
   "supportNotFound": "No such request.",
   "supportLoadError": "The request could not be loaded."

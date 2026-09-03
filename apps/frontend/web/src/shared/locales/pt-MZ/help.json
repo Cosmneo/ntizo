@@ -30,6 +30,9 @@
   "submit": "Enviar",
   "submitting": "A enviar…",
   "audienceProvider": "Em nome de {{provider}}",
+  "workspaceLoading": "A verificar a que prestador este pedido diz respeito…",
+  "workspaceError": "Não conseguimos saber a que prestador este pedido diz respeito.",
+  "workspaceRetry": "Tentar novamente",
   "status": {
     "open": "Aberto",
     "resolved": "Resolvido"

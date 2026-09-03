@@ -30,6 +30,9 @@
   "submit": "Invia",
   "submitting": "Invio…",
   "audienceProvider": "Per conto di {{provider}}",
+  "workspaceLoading": "Stiamo verificando a quale fornitore si riferisce questa richiesta…",
+  "workspaceError": "Non siamo riusciti a capire a quale fornitore si riferisce questa richiesta.",
+  "workspaceRetry": "Riprova",
   "status": {
     "open": "Aperta",
     "resolved": "Risolta"

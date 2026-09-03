@@ -137,6 +137,19 @@ export function SheetContent({
       const firstEl = focusable[0]!;
       const lastEl = focusable[focusable.length - 1]!;
       const active = document.activeElement;
+      // Focus is not in the panel at all. That is the common case, not an
+      // exotic one: any in-panel control that unmounts on click — every
+      // screen change the Help Center panel makes — leaves
+      // `document.activeElement` on `document.body`, which is neither the
+      // first control, nor the last, nor the panel. Without this branch the
+      // next Tab matched nothing, went unprevented, and walked into the
+      // site chrome behind the backdrop while `aria-modal="true"` claimed
+      // the opposite.
+      if (!active || !panelRef.current.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? lastEl : firstEl).focus();
+        return;
+      }
       if (event.shiftKey && (active === firstEl || active === panelRef.current)) {
         event.preventDefault();
         lastEl.focus();

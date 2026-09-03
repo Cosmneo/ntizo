@@ -30,6 +30,9 @@
   "submit": "Versturen",
   "submitting": "Bezig met versturen…",
   "audienceProvider": "Namens {{provider}}",
+  "workspaceLoading": "We kijken om welke aanbieder deze aanvraag gaat…",
+  "workspaceError": "We konden niet bepalen om welke aanbieder deze aanvraag gaat.",
+  "workspaceRetry": "Opnieuw proberen",
   "status": {
     "open": "Open",
     "resolved": "Opgelost"

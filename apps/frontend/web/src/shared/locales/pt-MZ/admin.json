@@ -305,6 +305,9 @@
   "supportBooking": "Reserva",
   "supportResolve": "Marcar como resolvido",
   "supportResolvedNotice": "Marcado como resolvido. Se o requerente responder, o pedido reabre.",
+  "supportAlreadyResolved": "Outra pessoa já resolveu este pedido.",
+  "supportResolveError": "Não foi possível marcar o pedido como resolvido.",
+  "supportConversationError": "Não foi possível carregar a conversa.",
   "supportPlatformSender": "Suporte Ntizo",
   "supportNotFound": "Este pedido não existe.",
   "supportLoadError": "Não foi possível carregar o pedido."

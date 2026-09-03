@@ -27,7 +27,7 @@ import type { AttachmentDescriptor } from "@/features/messaging/domain/types";
  * nothing.
  */
 export function HelpCenter() {
-  const { i18n } = useTranslation("help");
+  const { t, i18n } = useTranslation("help");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const help = useHelpCenter();
@@ -39,11 +39,48 @@ export function HelpCenter() {
   // "which workspace" query for every visitor on every page, signed out and
   // on the public landing page included. See `useActiveProvider`'s own doc
   // comment for why `enabled` exists.
-  const { activeProvider } = useActiveProvider(audience === "provider");
+  const {
+    activeProvider,
+    loading: workspaceLoading,
+    refresh: refreshWorkspace,
+  } = useActiveProvider(audience === "provider");
   const providerId = audience === "provider" ? (activeProvider?.id ?? null) : null;
   const signedIn = Boolean(me);
 
-  const { requests, loading, errorCode } = useSupportRequests(audience, providerId);
+  /**
+   * On a provider page with no workspace id yet — `providers.mine` is either
+   * still in flight or has failed. Both used to look identical to the rest
+   * of this component, and both were wrong in their own way: a request sent
+   * without `providerId` reaches the backend as a bare
+   * `{ audience: "provider" }` and comes back `SUPPORT_NOT_A_MEMBER`, which
+   * renders as "You don't belong to this provider" to a member standing on
+   * their own workspace's page; and "my requests" sat on a query that
+   * `enabled: false` keeps `isPending` forever, so it showed a skeleton that
+   * never resolved. Named once here and used by both screens below.
+   *
+   * `!workspaceLoading` is the whole failure test, deliberately: a
+   * `providers.mine` that errors settles with `isLoading` false and no
+   * data, and one that is retrying keeps it true — so a second branch on
+   * the query's `error` could never disagree with this one, and it covers
+   * the reader-with-no-workspace case too.
+   */
+  const workspaceUnknown = audience === "provider" && providerId === null;
+  const workspaceFailed = workspaceUnknown && !workspaceLoading;
+
+  /**
+   * When the request list is worth fetching at all.
+   *
+   * Signed in, obviously — an anonymous visitor's inbox query can only come
+   * back `UNAUTHENTICATED`, and this component is mounted on every page. And
+   * only where the panel is reachable: `showsHelpLauncher` is false on
+   * `/admin`, `/book` and the booking confirmation, where nothing renders
+   * the unread badge, so there the list waits until somebody actually opens
+   * the panel (the footer link and a booking's "need help" can, from pages
+   * with no launcher). Everywhere the launcher does show, the badge needs
+   * the count whether the panel is open or not.
+   */
+  const wantsRequests = signedIn && (help.open || showsHelpLauncher(pathname));
+  const { requests, loading, errorCode } = useSupportRequests(audience, providerId, wantsRequests);
   const { openRequest, opening, errorCode: openErrorCode } = useOpenSupportRequest();
 
   const unreadCount = signedIn
@@ -52,6 +89,10 @@ export function HelpCenter() {
   const selected = requests.find((request) => request.id === help.selectedThreadId) ?? null;
 
   const submit = async (subject: string, body: string, attachments: AttachmentDescriptor[]) => {
+    // The composer is already disabled while this holds (see `blocked`
+    // below); this is the second lock, so a future caller of `onSubmit`
+    // cannot file a provider request against a workspace nobody knows.
+    if (workspaceUnknown) return;
     const threadId = await openRequest({
       audience,
       ...(providerId ? { providerId } : {}),
@@ -76,16 +117,35 @@ export function HelpCenter() {
         onBack={help.back}
       >
         {help.screen === "home" && <HelpHome signedIn={signedIn} unreadCount={unreadCount} />}
-        {help.screen === "faq" && <HelpFaq query={help.query} onAskUs={() => help.composeNew()} />}
-        {help.screen === "requests" && (
-          <HelpRequests
-            requests={requests}
-            loading={loading}
-            errorCode={errorCode}
-            locale={locale}
-            onOpen={help.openThread}
-          />
+        {help.screen === "faq" && (
+          <HelpFaq query={help.query} onAskUs={() => help.composeNew()} showSearch />
         )}
+        {help.screen === "requests" &&
+          (workspaceFailed ? (
+            // Not `HelpRequests` with `loading`: the list query behind it is
+            // `enabled: false` without a workspace id, and a disabled query
+            // stays `isPending` for as long as the panel is open — a
+            // skeleton with no end and no explanation. Say what went wrong,
+            // and offer the one thing that can fix it.
+            <div className="grid justify-items-start gap-2 p-4">
+              <p className="type-body text-[var(--color-destructive)]">{t("workspaceError")}</p>
+              <button
+                type="button"
+                onClick={() => void refreshWorkspace()}
+                className="type-body-medium text-[var(--color-primary)] hover:underline"
+              >
+                {t("workspaceRetry")}
+              </button>
+            </div>
+          ) : (
+            <HelpRequests
+              requests={requests}
+              loading={loading}
+              errorCode={errorCode}
+              locale={locale}
+              onOpen={help.openThread}
+            />
+          ))}
         {help.screen === "new" &&
           // A signed-out reader can reach "new" from more than one button
           // (a popular question, a no-match search, "send a message"), and
@@ -101,7 +161,15 @@ export function HelpCenter() {
               submitting={opening}
               errorCode={openErrorCode}
               {...(audience === "provider" && activeProvider
-                ? { audienceLabel: i18n.t("audienceProvider", { ns: "help", provider: activeProvider.name }) }
+                ? { audienceLabel: t("audienceProvider", { provider: activeProvider.name }) }
+                : {})}
+              {...(workspaceUnknown
+                ? {
+                    blocked: {
+                      message: workspaceFailed ? t("workspaceError") : t("workspaceLoading"),
+                      failed: workspaceFailed,
+                    },
+                  }
                 : {})}
             />
           ) : (

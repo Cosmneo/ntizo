@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { MessageSquarePlus, Inbox, Search } from "lucide-react";
+import { MessageSquarePlus, Inbox } from "lucide-react";
 import { POPULAR_QUESTION_IDS } from "@/features/help-center/domain/faq";
 import { useFaqEntries, HelpFaq } from "@/features/help-center/ui/help-faq";
 import { useHelpCenter } from "@/features/help-center/viewmodel/use-help-center";
+import { HelpSearchField } from "@/features/help-center/ui/help-search-field";
 import { HelpSignInPrompt } from "@/features/help-center/ui/help-sign-in-prompt";
 
 /**
@@ -23,18 +24,7 @@ export function HelpHome({ signedIn, unreadCount }: { signedIn: boolean; unreadC
 
   return (
     <div className="grid gap-4 p-4">
-      <label className="relative block">
-        <span className="sr-only">{t("searchLabel")}</span>
-        <Search aria-hidden="true" className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-        <input
-          type="search"
-          value={help.query}
-          onChange={(event) => help.setQuery(event.target.value)}
-          placeholder={t("searchPlaceholder")}
-          aria-label={t("searchLabel")}
-          className="type-body w-full rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] py-2.5 pr-3.5 pl-9 placeholder:text-[var(--color-muted-foreground)] focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
-        />
-      </label>
+      <HelpSearchField />
 
       {help.query.trim() ? (
         <HelpFaq query={help.query} onAskUs={() => help.composeNew()} />

@@ -30,6 +30,9 @@
   "submit": "Send",
   "submitting": "Sending…",
   "audienceProvider": "On behalf of {{provider}}",
+  "workspaceLoading": "Checking which provider this request is for…",
+  "workspaceError": "We couldn't tell which provider this request is for.",
+  "workspaceRetry": "Try again",
   "status": {
     "open": "Open",
     "resolved": "Resolved"

@@ -30,6 +30,9 @@
   "submit": "Envoyer",
   "submitting": "Envoi en cours…",
   "audienceProvider": "Au nom de {{provider}}",
+  "workspaceLoading": "Vérification du prestataire concerné par cette demande…",
+  "workspaceError": "Nous n'avons pas pu déterminer le prestataire concerné par cette demande.",
+  "workspaceRetry": "Réessayer",
   "status": {
     "open": "Ouverte",
     "resolved": "Résolue"

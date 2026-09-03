@@ -5,9 +5,13 @@ import type { FaqEntry } from "@/features/help-center/domain/faq";
 /**
  * Questions that open one at a time.
  *
- * `<button aria-expanded>` over a `<details>`: the panel and `/help` both
- * need the open one to be controllable from outside (a search result opens
- * its own answer), and `details` state is the browser's, not React's.
+ * `<button aria-expanded>` over a `<details>`: which answer is open is the
+ * caller's state, not the browser's, and both callers need it that way. The
+ * panel seeds it from the search — a search that narrows to one question
+ * opens that question, which is what makes clicking a popular question show
+ * its answer rather than a second copy of the question (see `FaqResults` in
+ * `help-faq.tsx`) — and both callers close the others whenever one opens.
+ * `details` state lives in the DOM, where neither could reach it.
  */
 export function FaqAccordion({
   entries,

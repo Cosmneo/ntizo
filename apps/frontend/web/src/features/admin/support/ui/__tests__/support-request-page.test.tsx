@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 import type { MessageDTO, SupportRequestSummaryDTO } from "@ntizo/shared/read-models";
+import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import { AdminSupportRequestPage } from "../support-request-page";
 
 const fakes = vi.hoisted(() => ({
@@ -18,6 +19,8 @@ const fakes = vi.hoisted(() => ({
   // fetch-and-reject cycle through this override instead of fighting the
   // cache's internal reducer.
   oneQueryFn: null as (() => Promise<unknown>) | null,
+  /** Same escape hatch as `oneQueryFn`, for the conversation query. */
+  messagesQueryFn: null as (() => Promise<unknown>) | null,
 }));
 vi.mock("@/features/admin/support/data/admin-support.repository", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/admin/support/data/admin-support.repository")>();
@@ -32,12 +35,22 @@ vi.mock("@/features/admin/support/data/admin-support.repository", async (importO
         fakes.oneQueryFn
           ? { queryKey: ["admin", "support", "one", threadId] as const, queryFn: fakes.oneQueryFn }
           : actual.adminSupportQueries.one(threadId),
+      messages: (threadId: string) =>
+        fakes.messagesQueryFn
+          ? {
+              queryKey: ["admin", "support", "messages", threadId] as const,
+              queryFn: fakes.messagesQueryFn,
+              initialPageParam: undefined,
+              getNextPageParam: () => undefined,
+            }
+          : actual.adminSupportQueries.messages(threadId),
     },
   };
 });
 
 afterEach(() => {
   fakes.oneQueryFn = null;
+  fakes.messagesQueryFn = null;
 });
 
 const request: SupportRequestSummaryDTO = {
@@ -132,6 +145,52 @@ describe("AdminSupportRequestPage", () => {
     await renderPage();
     await user.click(screen.getByRole("button", { name: /mark as resolved/i }));
     expect(fakes.resolve).toHaveBeenCalledWith("t-1");
+  });
+
+  it("says so when somebody else resolved the request first", async () => {
+    const user = userEvent.setup();
+    await renderPage();
+    fakes.resolve.mockRejectedValueOnce(
+      new GraphqlError(200, [
+        {
+          message: "Already resolved",
+          extensions: { code: "UNPROCESSABLE", originalCode: "SUPPORT_ALREADY_RESOLVED" },
+        },
+      ]),
+    );
+
+    await user.click(screen.getByRole("button", { name: /mark as resolved/i }));
+
+    // The specific sentence, not the generic one: the click did something,
+    // it just was not this administrator who did it.
+    expect(await screen.findByText(/already resolved this request/i)).toBeInTheDocument();
+  });
+
+  it("says so when the resolve simply fails", async () => {
+    const user = userEvent.setup();
+    await renderPage();
+    // Not a `GraphqlError`, so it carries no code at all — the failure the
+    // page must still speak about, and the one an `errorCode`-only channel
+    // would have swallowed.
+    fakes.resolve.mockRejectedValueOnce(new Error("network down"));
+
+    await user.click(screen.getByRole("button", { name: /mark as resolved/i }));
+
+    expect(await screen.findByText(/could not be marked as resolved/i)).toBeInTheDocument();
+  });
+
+  it("says the conversation failed rather than showing an empty one", async () => {
+    fakes.messagesQueryFn = () => Promise.reject(new Error("network down"));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(["admin", "support", "one", "t-1"], request);
+    await renderWithClient(qc);
+
+    // The header loaded, so the page renders — which is exactly the trap:
+    // without this line an administrator saw a request with no messages in
+    // it and a composer waiting, and could answer and resolve something
+    // they had never read.
+    expect(await screen.findByText(/conversation could not be loaded/i)).toBeInTheDocument();
+    expect(screen.queryByText("Paguei duas vezes")).toBeNull();
   });
 
   it("offers no resolve button on an already-resolved request", async () => {

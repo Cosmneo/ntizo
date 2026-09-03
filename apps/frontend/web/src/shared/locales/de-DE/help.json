@@ -30,6 +30,9 @@
   "submit": "Senden",
   "submitting": "Wird gesendet…",
   "audienceProvider": "Im Namen von {{provider}}",
+  "workspaceLoading": "Wir prüfen, welcher Anbieter zu dieser Anfrage gehört …",
+  "workspaceError": "Wir konnten nicht feststellen, welcher Anbieter zu dieser Anfrage gehört.",
+  "workspaceRetry": "Erneut versuchen",
   "status": {
     "open": "Offen",
     "resolved": "Gelöst"

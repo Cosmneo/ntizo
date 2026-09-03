@@ -15,8 +15,21 @@ import type { HelpAudience } from "@/features/help-center/domain/help-audience";
  * A provider audience with no id yet (the workspace is still resolving)
  * asks for nothing: `enabled` is false on that query, and the panel shows
  * its loading state rather than a wrong empty list.
+ *
+ * `enabled` is the caller's own gate on top of that, and it is not optional
+ * in spirit even though it has a default. `HelpCenter` is mounted at the
+ * root of every page, so an ungated call here ran an authenticated inbox
+ * query for every visitor on every page: two `communicationMyThreads` POSTs
+ * per anonymous landing-page view, both answered `UNAUTHENTICATED`, and two
+ * more on `/admin` and inside checkout, where the panel cannot be opened at
+ * all. `messagingQueries.mine` carries no guard of its own — `/messages`,
+ * its other caller, only renders behind a session — so it belongs here.
  */
-export function useSupportRequests(audience: HelpAudience, providerId: string | null) {
+export function useSupportRequests(
+  audience: HelpAudience,
+  providerId: string | null,
+  enabled = true,
+) {
   const asProvider = audience === "provider";
   // `forProvider` and `mine` each return an `infiniteQueryOptions` object
   // whose `queryKey` is a differently-shaped literal tuple (five elements
@@ -30,11 +43,15 @@ export function useSupportRequests(audience: HelpAudience, providerId: string | 
   // `ThreadPageDTO` page shape. The cast below only widens the *options*
   // argument's queryKey type to unblock that overload resolution; it
   // changes nothing about which query key is actually used at runtime.
-  const query = useInfiniteQuery(
-    (asProvider
+  const query = useInfiniteQuery({
+    ...((asProvider
       ? messagingQueries.forProvider(providerId ?? "", "support")
-      : messagingQueries.mine("support")) as ReturnType<typeof messagingQueries.mine>,
-  );
+      : messagingQueries.mine("support")) as ReturnType<typeof messagingQueries.mine>),
+    // Spread as an override only when it has to be false, so `forProvider`'s
+    // own `enabled` (the empty-provider-id guard) keeps deciding the rest of
+    // the time rather than being replaced by this one.
+    ...(enabled ? {} : { enabled: false as const }),
+  });
 
   const requests: Thread[] = query.data?.pages.flatMap((page) => page.items) ?? [];
 

@@ -10,6 +10,8 @@ const fakes = vi.hoisted(() => ({
   currentUser: vi.fn(),
   requests: vi.fn(),
   openRequest: vi.fn(),
+  activeProvider: vi.fn(),
+  refreshWorkspace: vi.fn(),
 }));
 
 vi.mock("@/features/user/viewmodel/use-current-user", () => ({
@@ -22,13 +24,37 @@ vi.mock("@/features/help-center/viewmodel/use-support-requests", () => ({
 vi.mock("@/features/help-center/viewmodel/use-open-support-request", () => ({
   useOpenSupportRequest: () => ({ openRequest: fakes.openRequest, opening: false, errorCode: undefined }),
 }));
+vi.mock("@/features/provider/viewmodel/use-active-provider", () => ({
+  useActiveProvider: fakes.activeProvider,
+}));
 
-async function renderAt(pathname: string) {
+/** The workspace query's three settled shapes, named so the tests read as what they are. */
+const workspace = {
+  none: { activeProvider: null, providers: [], loading: false, error: null },
+  loading: { activeProvider: null, providers: [], loading: true, error: null },
+  failed: { activeProvider: null, providers: [], loading: false, error: "network down" },
+  resolved: {
+    activeProvider: { id: "p-1", name: "Salão X", slug: "salao-x" },
+    providers: [{ id: "p-1", name: "Salão X", slug: "salao-x" }],
+    loading: false,
+    error: null,
+  },
+};
+
+async function renderAt(
+  pathname: string,
+  provider: (typeof workspace)[keyof typeof workspace] = workspace.none,
+) {
   fakes.requests.mockReturnValue({ requests: [], loading: false, hasMore: false, loadMore: vi.fn() });
+  fakes.activeProvider.mockReturnValue({
+    ...provider,
+    setActive: vi.fn(),
+    refresh: fakes.refreshWorkspace,
+  });
   const rootRoute = createRootRoute();
   const router = createRouter({
     routeTree: rootRoute.addChildren(
-      ["/", "/messages", "/sign-in", "/help", "/admin", "/book/$id"].map((path) =>
+      ["/", "/messages", "/sign-in", "/help", "/admin", "/book/$id", "/provider/$slug/overview"].map((path) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path,
@@ -49,6 +75,7 @@ async function renderAt(pathname: string) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 describe("HelpCenter", () => {
@@ -117,6 +144,84 @@ describe("HelpCenter", () => {
     // and the conversation's composer is already there.
     expect(await screen.findByLabelText(/message body/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/subject/i)).toBeNull();
+  });
+
+  it("sends a signed-out reader to sign in, carrying where they were, and gets out of the way", async () => {
+    fakes.currentUser.mockReturnValue({ data: null });
+    const user = userEvent.setup();
+    const router = await renderAt("/help");
+
+    await user.click(screen.getByRole("button", { name: /help/i }));
+    await user.click(screen.getByRole("link", { name: /sign in/i }));
+
+    // Where they asked for help, so signing in returns them to it.
+    expect(router.state.location.pathname).toBe("/sign-in");
+    expect(router.state.location.search).toEqual({ next: "/help" });
+    // And the modal is gone: it used to sit over the sign-in form with a
+    // backdrop that ate every click and a focus trap that ate every Tab.
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens the answer to the popular question that was clicked, and keeps the search field in reach", async () => {
+    fakes.currentUser.mockReturnValue({ data: null });
+    const user = userEvent.setup();
+    await renderAt("/");
+    await user.click(screen.getByRole("button", { name: /help/i }));
+
+    await user.click(screen.getByRole("button", { name: /when do I pay/i }));
+
+    // The answer, not a second copy of the question waiting to be clicked
+    // again — the FAQ screen seeds the open answer from the search.
+    expect(screen.getByText(/never before/i)).toBeInTheDocument();
+    // And a field saying why nineteen questions are missing, with a way to
+    // clear it that is not the Back button.
+    expect(screen.getByLabelText(/search help/i)).toHaveValue(
+      screen.getByRole("button", { name: /when do I pay/i }).textContent,
+    );
+  });
+
+  it("will not let a provider request be sent before it knows the workspace", async () => {
+    fakes.currentUser.mockReturnValue({ data: { id: "u-1", role: "customer" } });
+    const user = userEvent.setup();
+    await renderAt("/provider/salao-x/overview", workspace.loading);
+
+    await user.click(screen.getByRole("button", { name: /help/i }));
+    await user.click(screen.getByRole("button", { name: /send a message/i }));
+    await user.type(screen.getByLabelText(/subject/i), "Pagamento");
+    await user.type(screen.getByLabelText(/message body/i), "Não recebi o pagamento");
+
+    // Subject and body are both valid, so the only thing holding the button
+    // is the workspace — and the reader is told, rather than being sent to a
+    // backend that answers "you don't belong to this provider".
+    expect(screen.getByText(/checking which provider/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^send$/i })).toBeDisabled();
+  });
+
+  it("says the workspace failed instead of a skeleton that never resolves", async () => {
+    fakes.currentUser.mockReturnValue({ data: { id: "u-1", role: "customer" } });
+    const user = userEvent.setup();
+    await renderAt("/provider/salao-x/overview", workspace.failed);
+
+    await user.click(screen.getByRole("button", { name: /help/i }));
+    await user.click(screen.getByRole("button", { name: /my requests/i }));
+
+    expect(screen.getByText(/couldn't tell which provider/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+    expect(fakes.refreshWorkspace).toHaveBeenCalled();
+  });
+
+  it("names the workspace on the form once it is known", async () => {
+    fakes.currentUser.mockReturnValue({ data: { id: "u-1", role: "customer" } });
+    const user = userEvent.setup();
+    await renderAt("/provider/salao-x/overview", workspace.resolved);
+
+    await user.click(screen.getByRole("button", { name: /help/i }));
+    await user.click(screen.getByRole("button", { name: /send a message/i }));
+    await user.type(screen.getByLabelText(/subject/i), "Pagamento");
+    await user.type(screen.getByLabelText(/message body/i), "Não recebi o pagamento");
+
+    expect(screen.getByText(/on behalf of Salão X/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^send$/i })).toBeEnabled();
   });
 
   it("is absent where it must not appear", async () => {

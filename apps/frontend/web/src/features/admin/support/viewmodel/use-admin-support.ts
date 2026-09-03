@@ -28,6 +28,12 @@ export function useAdminSupportRequest(threadId: string) {
   return useQuery(adminSupportQueries.one(threadId));
 }
 
+/**
+ * `errorCode`, like every other hook in this file: without it a conversation
+ * that failed to load was indistinguishable from one with no messages in it,
+ * and the page happily offered "reply" and "resolve" over the silence — an
+ * administrator answering a request whose content they were never shown.
+ */
 export function useAdminSupportMessages(threadId: string) {
   const query = useInfiniteQuery(adminSupportQueries.messages(threadId));
   return {
@@ -35,6 +41,10 @@ export function useAdminSupportMessages(threadId: string) {
     loading: query.isPending,
     hasMore: query.hasNextPage,
     loadMore: () => void query.fetchNextPage(),
+    // `failed` alongside `errorCode` for the same reason `resolve` carries
+    // both: a network failure is not a `GraphqlError` and has no code.
+    failed: query.isError,
+    errorCode: messagingErrorCode(query.error),
   };
 }
 
@@ -60,9 +70,26 @@ export function useReplyToSupportRequest() {
   };
 }
 
+/**
+ * `errorCode`, matching `useReplyToSupportRequest` above. Resolving is the
+ * one write on this page that can lose a race: two administrators working
+ * the same queue, the second one's `supportResolve` answered
+ * `SUPPORT_ALREADY_RESOLVED`. Without an error channel the button simply
+ * stopped spinning and the badge went on saying "open", which reads as the
+ * click having done nothing at all — as does any network failure.
+ */
 export function useResolveSupportRequest() {
   const mutation = useSupportMutation((threadId: string) => resolveSupportRequest(threadId));
-  return { resolve: (threadId: string) => mutation.mutate(threadId), resolving: mutation.isPending };
+  return {
+    resolve: (threadId: string) => mutation.mutate(threadId),
+    resolving: mutation.isPending,
+    // Both, because they answer different questions. `errorCode` is
+    // `undefined` for anything that is not a `GraphqlError` — a dropped
+    // connection, most of all — so a caller that rendered only on a code
+    // would still say nothing about the failure most likely to happen.
+    failed: mutation.isError,
+    errorCode: messagingErrorCode(mutation.error),
+  };
 }
 
 export function useMarkSupportRequestRead() {

@@ -57,9 +57,16 @@ export function AdminSupportRequestPage() {
   const { t: tCommon } = useTranslation("common");
   const { threadId } = useParams({ from: "/admin/support/$threadId" });
   const { data: request, isPending, error } = useAdminSupportRequest(threadId);
-  const { messages, loading, hasMore, loadMore } = useAdminSupportMessages(threadId);
+  const {
+    messages,
+    loading,
+    hasMore,
+    loadMore,
+    failed: messagesFailed,
+  } = useAdminSupportMessages(threadId);
   const { reply, replying, errorCode } = useReplyToSupportRequest();
-  const { resolve, resolving } = useResolveSupportRequest();
+  const { resolve, resolving, failed: resolveFailed, errorCode: resolveErrorCode } =
+    useResolveSupportRequest();
   const { markRead } = useMarkSupportRequestRead();
 
   usePageHeader(request?.subject ?? t("supportTitle"), request?.requesterName);
@@ -129,6 +136,19 @@ export function AdminSupportRequestPage() {
               )}
             </dl>
 
+            {resolveFailed && (
+              // Losing this race is the ordinary case, not the exotic one:
+              // two administrators working the same queue, and the second
+              // click answered `SUPPORT_ALREADY_RESOLVED`. Without a line
+              // here the button simply stopped spinning and the badge went
+              // on saying "open".
+              <p role="alert" className="type-caption mt-4 text-[var(--color-destructive)]">
+                {resolveErrorCode === "SUPPORT_ALREADY_RESOLVED"
+                  ? t("supportAlreadyResolved")
+                  : t("supportResolveError")}
+              </p>
+            )}
+
             {request.status === "resolved" && (
               <p className="type-caption mt-4 text-[var(--color-muted-foreground)]">{t("supportResolvedNotice")}</p>
             )}
@@ -149,13 +169,24 @@ export function AdminSupportRequestPage() {
       {request && (
         <section className="flex min-h-[24rem] flex-col rounded-[var(--radius-card)] border border-[var(--color-border)]">
           <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-            <ThreadView
-              messages={messages}
-              platformLabel={t("supportPlatformSender")}
-              loading={loading}
-              hasMore={hasMore}
-              onLoadMore={loadMore}
-            />
+            {messagesFailed ? (
+              // Said out loud, because the alternative is worse than an
+              // error: an empty `ThreadView` under a header that loaded
+              // fine, with a composer and a resolve button beside it — an
+              // administrator answering a request whose content they were
+              // never shown.
+              <p role="alert" className="type-body text-[var(--color-destructive)]">
+                {t("supportConversationError")}
+              </p>
+            ) : (
+              <ThreadView
+                messages={messages}
+                platformLabel={t("supportPlatformSender")}
+                loading={loading}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+              />
+            )}
           </div>
           <div className="border-t border-[var(--color-border)] p-4 sm:p-5">
             <MessageComposer

@@ -305,6 +305,9 @@
   "supportBooking": "Prenotazione",
   "supportResolve": "Segna come risolta",
   "supportResolvedNotice": "Segnata come risolta. Se il richiedente risponde, si riapre.",
+  "supportAlreadyResolved": "Qualcun altro ha già risolto questa richiesta.",
+  "supportResolveError": "Non è stato possibile contrassegnare la richiesta come risolta.",
+  "supportConversationError": "Non è stato possibile caricare la conversazione.",
   "supportPlatformSender": "Assistenza Ntizo",
   "supportNotFound": "Questa richiesta non esiste.",
   "supportLoadError": "Non è stato possibile caricare la richiesta."

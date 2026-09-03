@@ -48,6 +48,43 @@ function Harness() {
   );
 }
 
+/**
+ * A panel whose control unmounts itself when clicked — what every in-panel
+ * screen change is (the Help Center's "my requests", a popular question, a
+ * request row, Back). The clicked button leaves the DOM, `document
+ * .activeElement` falls back to `document.body`, and the next Tab is the one
+ * that used to escape.
+ */
+function UnmountingHarness() {
+  const [open, setOpen] = useState(false);
+  const [showGo, setShowGo] = useState(true);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        open
+      </button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" labelledBy="sheet-title">
+          <SheetTitle id="sheet-title">Ajuda</SheetTitle>
+          <button type="button">first</button>
+          {showGo && (
+            <button type="button" onClick={() => setShowGo(false)}>
+              go
+            </button>
+          )}
+          <button type="button">last</button>
+        </SheetContent>
+      </Sheet>
+      {/* After the panel in document order, so a Shift+Tab that escapes has
+          somewhere outside to land — the site chrome behind the backdrop.
+          Without it, Shift+Tab from the body wraps to the document's last
+          control, which happens to be inside the panel, and the assertion
+          would pass against the untrapped code too. */}
+      <button type="button">site footer</button>
+    </>
+  );
+}
+
 describe("Sheet", () => {
   it("is a labelled modal dialog when open", async () => {
     const user = userEvent.setup();
@@ -89,6 +126,34 @@ describe("Sheet", () => {
 
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(last);
+  });
+
+  it("pulls Tab back in when the control that had focus unmounted", async () => {
+    const user = userEvent.setup();
+    render(<UnmountingHarness />);
+    const trigger = screen.getByRole("button", { name: "open" });
+    await user.click(trigger);
+
+    // The click lands on a button that removes itself — focus has nowhere
+    // to go and falls to the body, which is neither the first control, nor
+    // the last, nor the panel. Every branch of the trap used to miss it.
+    await user.click(screen.getByRole("button", { name: "go" }));
+    expect(document.activeElement).toBe(document.body);
+
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "first" }));
+    expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it("pulls Shift+Tab back in to the last control when focus was lost", async () => {
+    const user = userEvent.setup();
+    render(<UnmountingHarness />);
+    await user.click(screen.getByRole("button", { name: "open" }));
+    await user.click(screen.getByRole("button", { name: "go" }));
+
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "last" }));
+    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "site footer" }));
   });
 
   it("closes on a backdrop click", async () => {
