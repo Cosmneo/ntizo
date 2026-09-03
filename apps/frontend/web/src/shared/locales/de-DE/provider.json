@@ -106,6 +106,8 @@
       "declined_without_reason": "Abgelehnt", "not_available": "Abgelehnt: nicht verfügbar", "cannot_perform": "Abgelehnt: Leistung nicht angeboten",
       "outside_area": "Abgelehnt: außerhalb des Gebiets", "other": "Abgelehnt", "provider_did_not_respond": "Ohne Antwort abgelaufen",
       "customer_did_not_pay": "Storniert: Zahlung nicht abgeschlossen", "checkout_hold_expired": "Entwurf abgelaufen",
+      "payment_confirmed": "Zahlung bestätigt", "cancelled_by_customer": "Vom Kunden storniert",
+      "superseded_by_new_draft": "Durch eine neue Buchung ersetzt",
       "respond_by": "Antworten bis", "pay_by": "Zahlen bis", "unknown": "Status geändert"
     },
     "technical": "Technische Details", "bookingId": "Buchung", "serviceOptionId": "Option", "memberId": "Fachkraft", "paymentRef": "Zahlungsreferenz", "none": "—"

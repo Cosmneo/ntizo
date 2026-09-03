@@ -143,6 +143,90 @@ describe("locale parity", () => {
   }
 
   /**
+   * The `booking_change.reason` vocabulary, and the one check every other
+   * check in this file structurally cannot make.
+   *
+   * Everything above compares locale to locale, so a token missing from **all
+   * eight** files passes with a green tick — and that is precisely the bug
+   * this branch shipped three times. A command writes a reason; the page
+   * renders it as ``t(`timeline.${reason}`)`` with a `defaultValue` of
+   * "Estado alterado"; nothing anywhere connects the two. `cancelled_by_customer`
+   * — the one write this feature exists to give a customer — reached both
+   * zones as "Status changed", and `superseded_by_new_draft` was never
+   * translated at all.
+   *
+   * The list below is the vocabulary a booking's history can actually
+   * contain, and every member of it is written by a named producer:
+   *
+   * - `created_by_customer` — synthesised by `timelineOf`, not a row.
+   * - `submitted_by_customer` — `SubmitBookingCommand`.
+   * - `accepted_by_provider` — `AcceptBookingCommand`.
+   * - `payment_confirmed` — `MarkBookingPaidCommand`.
+   * - `declined_without_reason`, `not_available`, `cannot_perform`,
+   *   `outside_area`, `other` — `DeclineBookingCommand` (`BOOKING_DECLINE_REASONS`).
+   * - `provider_did_not_respond`, `checkout_hold_expired` — `SweepBookingCommand`.
+   * - `superseded_by_new_draft` — `CreateBookingCommand`.
+   * - `customer_did_not_pay` — `SweepBookingCommand`.
+   * - `cancelled_by_customer` — `CancelBookingCommand`.
+   * - `respond_by`, `pay_by` — synthesised deadlines, again from `timelineOf`.
+   * - `unknown` — the `defaultValue` itself, which must exist for the
+   *   fallback to be a sentence rather than a raw key.
+   *
+   * **A hand-kept list, and deliberately so.** The tokens live in
+   * `packages/backend`'s use cases, which this browser bundle neither imports
+   * nor can: they are a write-side vocabulary, and the only thing crossing to
+   * the client is the string on a row already written. Copying it here, with
+   * its producers named, is what makes adding a fifteenth reason a red test
+   * in the zone that has to name it — rather than a fourth instance of a
+   * customer being told "Estado alterado" about the one hop they caused
+   * themselves.
+   *
+   * Both namespaces, because both audiences read the same list off the same
+   * rows: `bookings.timeline` for the customer, `provider.bookings.timelineReason`
+   * for the provider.
+   */
+  describe("every booking_change reason has a word in both zones", () => {
+    const REASONS = [
+      "created_by_customer",
+      "submitted_by_customer",
+      "accepted_by_provider",
+      "payment_confirmed",
+      "declined_without_reason",
+      "not_available",
+      "cannot_perform",
+      "outside_area",
+      "other",
+      "provider_did_not_respond",
+      "checkout_hold_expired",
+      "superseded_by_new_draft",
+      "customer_did_not_pay",
+      "cancelled_by_customer",
+      "respond_by",
+      "pay_by",
+      "unknown",
+    ] as const;
+
+    const ZONES = [
+      { ns: "bookings", path: "timeline" },
+      { ns: "provider", path: "bookings.timelineReason" },
+    ] as const;
+
+    for (const locale of locales) {
+      for (const { ns, path } of ZONES) {
+        it(`${locale}/${ns}.${path} names every reason`, () => {
+          const keys = new Set(leafKeys(find(locale, ns)));
+          const missing = REASONS.filter((reason) => !keys.has(`${path}.${reason}`));
+          expect(
+            missing,
+            `${locale}/${ns}.json has no word for ${missing.join(", ")} — a booking ` +
+              `carrying one of those reasons renders as the fallback hop instead.`,
+          ).toEqual([]);
+        });
+      }
+    }
+  });
+
+  /**
    * Every check above only ever compares one locale's shape to another's —
    * never a locale's own content against itself. Two failures that
    * agreement can never see:

@@ -106,6 +106,8 @@
       "declined_without_reason": "Declined", "not_available": "Declined: not available", "cannot_perform": "Declined: service not offered",
       "outside_area": "Declined: outside area", "other": "Declined", "provider_did_not_respond": "Expired without a response",
       "customer_did_not_pay": "Cancelled: payment not completed", "checkout_hold_expired": "Draft expired",
+      "payment_confirmed": "Payment confirmed", "cancelled_by_customer": "Cancelled by the customer",
+      "superseded_by_new_draft": "Replaced by a new booking",
       "respond_by": "Respond by", "pay_by": "Pay by", "unknown": "Status changed"
     },
     "technical": "Technical details", "bookingId": "Booking", "serviceOptionId": "Option", "memberId": "Professional", "paymentRef": "Payment reference", "none": "—"

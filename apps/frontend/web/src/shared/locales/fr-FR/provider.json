@@ -106,6 +106,8 @@
       "declined_without_reason": "Refusée", "not_available": "Refusée : indisponible", "cannot_perform": "Refusée : service non proposé",
       "outside_area": "Refusée : hors zone", "other": "Refusée", "provider_did_not_respond": "Expirée sans réponse",
       "customer_did_not_pay": "Annulée : paiement non finalisé", "checkout_hold_expired": "Brouillon expiré",
+      "payment_confirmed": "Paiement confirmé", "cancelled_by_customer": "Annulée par le client",
+      "superseded_by_new_draft": "Remplacée par une nouvelle réservation",
       "respond_by": "Répondre avant", "pay_by": "Payer avant", "unknown": "Statut modifié"
     },
     "technical": "Détails techniques", "bookingId": "Réservation", "serviceOptionId": "Option", "memberId": "Professionnel", "paymentRef": "Référence de paiement", "none": "—"

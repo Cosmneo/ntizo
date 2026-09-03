@@ -106,6 +106,8 @@
       "declined_without_reason": "Rifiutata", "not_available": "Rifiutata: non disponibile", "cannot_perform": "Rifiutata: servizio non offerto",
       "outside_area": "Rifiutata: fuori zona", "other": "Rifiutata", "provider_did_not_respond": "Scaduta senza risposta",
       "customer_did_not_pay": "Annullata: pagamento non completato", "checkout_hold_expired": "Bozza scaduta",
+      "payment_confirmed": "Pagamento confermato", "cancelled_by_customer": "Annullata dal cliente",
+      "superseded_by_new_draft": "Sostituita da una nuova prenotazione",
       "respond_by": "Rispondere entro", "pay_by": "Pagare entro", "unknown": "Stato modificato"
     },
     "technical": "Dettagli tecnici", "bookingId": "Prenotazione", "serviceOptionId": "Opzione", "memberId": "Professionista", "paymentRef": "Riferimento di pagamento", "none": "—"

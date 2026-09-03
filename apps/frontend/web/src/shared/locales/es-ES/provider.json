@@ -106,6 +106,8 @@
       "declined_without_reason": "Rechazada", "not_available": "Rechazada: sin disponibilidad", "cannot_perform": "Rechazada: servicio no prestado",
       "outside_area": "Rechazada: fuera de la zona", "other": "Rechazada", "provider_did_not_respond": "Caducó sin respuesta",
       "customer_did_not_pay": "Cancelada: pago no completado", "checkout_hold_expired": "El borrador caducó",
+      "payment_confirmed": "Pago confirmado", "cancelled_by_customer": "Cancelada por el cliente",
+      "superseded_by_new_draft": "Sustituida por una reserva nueva",
       "respond_by": "Responder antes de", "pay_by": "Pagar antes de", "unknown": "Estado cambiado"
     },
     "technical": "Detalles técnicos", "bookingId": "Reserva", "serviceOptionId": "Opción", "memberId": "Profesional", "paymentRef": "Referencia de pago", "none": "—"
