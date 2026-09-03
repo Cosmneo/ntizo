@@ -53,15 +53,16 @@ export interface ProviderBookingsPageInput {
  * workspace's rows under another's heading; every narrowing is in the key.
  */
 export const providerBookingQueries = {
-  page: (input: ProviderBookingsPageInput) =>
-    queryOptions({
-      queryKey: ["provider", input.providerId, "bookings", input.tab, input.q, input.memberId, input.offset] as const,
+  page: (input: ProviderBookingsPageInput) => {
+    const q = input.q.trim();
+    return queryOptions({
+      queryKey: ["provider", input.providerId, "bookings", input.tab, q, input.memberId, input.offset] as const,
       queryFn: async (): Promise<ProviderBookingPageDTO> => {
         const d = await sessionGraphql<{ bookingForProvider: ProviderBookingPageDTO }>(PAGE, {
           input: {
             providerId: input.providerId,
             tab: input.tab,
-            ...(input.q.trim() ? { q: input.q.trim() } : {}),
+            ...(q ? { q } : {}),
             ...(input.memberId ? { memberId: input.memberId } : {}),
             limit: PROVIDER_BOOKINGS_PAGE_SIZE,
             offset: input.offset,
@@ -70,7 +71,8 @@ export const providerBookingQueries = {
         return d.bookingForProvider;
       },
       enabled: input.providerId !== "",
-    }),
+    });
+  },
   detail: (providerId: string, bookingId: string) =>
     queryOptions({
       queryKey: ["provider", providerId, "booking", bookingId] as const,
