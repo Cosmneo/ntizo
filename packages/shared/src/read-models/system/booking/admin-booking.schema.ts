@@ -9,7 +9,7 @@ export const ADMIN_BOOKING_TABS = ["unclosed", "in_window", "disputed"] as const
 export type AdminBookingTab = (typeof ADMIN_BOOKING_TABS)[number];
 
 /** The statuses that can appear in that queue. Everything else is either not started or already finished. */
-const ADMIN_VISIBLE_STATUSES = ["CONFIRMED", "MARKED_DONE", "DISPUTED"] as const;
+export const ADMIN_VISIBLE_STATUSES = ["CONFIRMED", "MARKED_DONE", "DISPUTED"] as const;
 
 /**
  * One row of the administrator's queue. It carries the workspace's name,
@@ -27,6 +27,8 @@ export const adminBookingReadModel = z.object({
   endsAt: z.string(),
   timezone: z.string().min(1),
   priceMinor: z.number().int().min(0),
+  /** Travels with commissionMinor on purpose: the amount alone cannot be checked, and the rate alone cannot be reconciled against money that already moved. */
+  commissionBps: z.number().int().min(0).max(10_000),
   commissionMinor: z.number().int().min(0),
   currency: z.string(),
   /** When the platform asked the provider to close it; null while it has not asked. */

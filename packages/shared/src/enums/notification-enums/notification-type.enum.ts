@@ -28,12 +28,8 @@ export enum NotificationType {
   BookingCancelledByProvider = "BOOKING_CANCELLED_BY_PROVIDER",
   BookingCompleted = "BOOKING_COMPLETED",
   ReviewRequest = "REVIEW_REQUEST",
-  /** The appointment ended and nobody closed the booking. Asked of the provider, not asserted. */
-  ProviderBookingCloseReminder = "PROVIDER_BOOKING_CLOSE_REMINDER",
   /** The provider says the work is done. Starts the customer's window, so the customer must hear it. */
   BookingMarkedDone = "BOOKING_MARKED_DONE",
-  /** The provider never answered, so the platform closed it for them. */
-  ProviderBookingAutoClosed = "PROVIDER_BOOKING_AUTO_CLOSED",
   /** One for the administrators: a booking the platform had to close alone. */
   AdminBookingAutoClosed = "ADMIN_BOOKING_AUTO_CLOSED",
   /** The customer disputed inside the window. */
@@ -48,6 +44,10 @@ export enum NotificationType {
   ProviderBookingReminder24h = "PROVIDER_BOOKING_REMINDER_24H",
   ProviderBookingCancelledByCustomer = "PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER",
   ProviderReviewReceived = "PROVIDER_REVIEW_RECEIVED",
+  /** The appointment ended and nobody closed the booking. Asked of the provider, not asserted. */
+  ProviderBookingCloseReminder = "PROVIDER_BOOKING_CLOSE_REMINDER",
+  /** The provider never answered, so the platform closed it for them. */
+  ProviderBookingAutoClosed = "PROVIDER_BOOKING_AUTO_CLOSED",
 
   // --- quotes ------------------------------------------------------------
   QuoteReceived = "QUOTE_RECEIVED",

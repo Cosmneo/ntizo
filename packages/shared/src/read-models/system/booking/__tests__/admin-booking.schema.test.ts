@@ -13,6 +13,7 @@ const row = {
   endsAt: "2026-09-01T09:45:00.000Z",
   timezone: "Africa/Maputo",
   priceMinor: 80000,
+  commissionBps: 1000,
   commissionMinor: 8000,
   currency: "MZN",
   remindedAt: null,
@@ -23,7 +24,12 @@ const row = {
 
 describe("adminBookingReadModel", () => {
   it("accepts a booking waiting to be closed", () => {
-    expect(adminBookingReadModel.parse(row)).toEqual(row);
+    const parsed = adminBookingReadModel.parse(row);
+    expect(parsed).toEqual(row);
+    // commissionBps must round-trip beside commissionMinor: the amount alone
+    // cannot be checked, and the rate alone cannot be reconciled against
+    // money that already moved.
+    expect(parsed.commissionBps).toBe(1000);
   });
 
   it("carries the dispute's thread when there is one", () => {
