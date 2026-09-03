@@ -3606,12 +3606,13 @@ context's, which already has one.
 ## #151 — The stats read has no index for its date windows
 
 `booking_provider_status_idx` (`provider_id`, `status`) serves the dashboard's counts, but the
-thirty-day sums filter on `completed_at` and the confirmed series on `confirmed_at`, neither
-of which is indexed. At a workspace's row counts this is a scan of a few hundred rows and
-costs nothing; at a marketplace's it is a scan of the table.
+thirty-day sums filter on `completed_at` and the confirmed series on `paid_at` — ruling R6:
+the column called `confirmed_at` is the provider's acceptance, and the series counts money
+arriving — neither of which is indexed. At a workspace's row counts this is a scan of a few
+hundred rows and costs nothing; at a marketplace's it is a scan of the table.
 
 **Trigger:** the dashboard appearing in a slow-query log, or the first workspace with tens of
-thousands of bookings — then `(provider_id, completed_at)` and `(provider_id, confirmed_at)`,
+thousands of bookings — then `(provider_id, completed_at)` and `(provider_id, paid_at)`,
 or a rollup table if the numbers are wanted platform-wide.
 
 ## #152 — The dashboard's cards cannot tell an empty workspace from a failed read
