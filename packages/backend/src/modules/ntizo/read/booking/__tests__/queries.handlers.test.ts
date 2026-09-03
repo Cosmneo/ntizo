@@ -2,12 +2,13 @@ import { describe, expect, it } from "bun:test";
 import type { z } from "zod";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
 import { assertMayReadWorkspace } from "../graphql/handlers/queries.handlers";
-import { bookingReadSchema, listProviderBookings } from "../graphql/schema/queries";
+import { bookingReadSchema, getProviderStats, listProviderBookings } from "../graphql/schema/queries";
 
 // The kit's `SchemaAdapter` exposes `.validate()`, not `.parse()` — the raw
 // zod schema sits behind `_schema`, same accessor `read/activity`'s,
 // `read/communication`'s and `read/notification`'s equivalent tests use.
 const listProviderBookingsInput = (listProviderBookings.input as unknown as { _schema: z.ZodTypeAny })._schema;
+const getProviderStatsInput = (getProviderStats.input as unknown as { _schema: z.ZodTypeAny })._schema;
 
 function ctx(over: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
   return {
@@ -19,14 +20,24 @@ function ctx(over: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
 const memberOf = (ids: string[]) => ({ isMember: async (providerId: string, userId: string) => ids.includes(`${providerId}:${userId}`) });
 
 describe("bookingReadSchema", () => {
-  it("adds the two provider fields beside the customer's", () => {
-    expect(Object.keys(bookingReadSchema.fields.booking).sort()).toEqual(["byId", "byIdForProvider", "forProvider", "mine"]);
+  it("mounts the dashboard's read beside the list's", () => {
+    expect(Object.keys(bookingReadSchema.fields.booking).sort()).toEqual([
+      "byId",
+      "byIdForProvider",
+      "forProvider",
+      "mine",
+      "statsForProvider",
+    ]);
   });
   it("takes the tab as one of four words", () => {
     expect(() => listProviderBookingsInput.parse({ providerId: "p", tab: "everything" })).toThrow();
     for (const tab of ["requests", "upcoming", "history", "all"]) {
       expect(listProviderBookingsInput.parse({ providerId: "p", tab })).toMatchObject({ tab });
     }
+  });
+  it("the stats read takes a workspace and nothing else", () => {
+    expect(() => getProviderStatsInput.parse({})).toThrow();
+    expect(getProviderStatsInput.parse({ providerId: "p1" })).toEqual({ providerId: "p1" });
   });
 });
 
