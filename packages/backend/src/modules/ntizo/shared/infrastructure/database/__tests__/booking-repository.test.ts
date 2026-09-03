@@ -589,15 +589,20 @@ describe("findDueForSweep", () => {
       );
       track(draftNotYetDue);
 
-      // Not due: expiresAt has passed, but the booking already left every
-      // status with a clock on it. The status filter is what excludes it,
-      // and has to be: `expiresAt` is no longer nulled on the way out of
-      // PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
+      // Due, not excluded: `expiresAt` is no longer nulled on the way out
+      // of PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
       // deadline is a fact a disputed booking needs, not a stale value to
-      // erase), so this row's `expires_at` is still in the past, still
-      // non-null, and only its absence from `DEADLINE_BEARING_STATUSES`
-      // keeps it out of the result below. Expiring it would cancel a sale
-      // that already happened.
+      // erase), so a booking that got paid still carries the deadline
+      // `accept` wrote, long past by the time this runs. `CONFIRMED`
+      // joined `DEADLINE_BEARING_STATUSES` when bookings gained an ending
+      // (the booking-completion plan's schema task) precisely so a row
+      // like this one is *not* invisible to the sweep forever — it is now
+      // the platform's question to the provider ("how did it go?"), not a
+      // leftover payment clock, and the sweep's backfill gives every
+      // already-`CONFIRMED` row exactly this deadline for exactly this
+      // reason. `findDueForSweep` alone cannot tell "just paid" from
+      // "confirmed appointment has ended" apart — that distinction is
+      // `SweepDueBookingsInternalCommand`'s job, not this query's.
       const paidStale = await repo.insert(
         pendingBooking(
           bookingInput({
@@ -633,7 +638,7 @@ describe("findDueForSweep", () => {
       expect(dueIds).toContain(dueAwaiting.id);
       expect(dueIds).not.toContain(notYetDue.id);
       expect(dueIds).not.toContain(draftNotYetDue.id);
-      expect(dueIds).not.toContain(paidStale.id);
+      expect(dueIds).toContain(paidStale.id);
 
       const dueLaterIndex = dueIds.indexOf(dueLater.id);
       const dueEarlierIndex = dueIds.indexOf(dueEarlier.id);
