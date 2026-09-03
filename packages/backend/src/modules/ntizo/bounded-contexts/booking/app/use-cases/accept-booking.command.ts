@@ -1,4 +1,6 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import { NotificationType } from "@ntizo/shared";
+import type { Booking } from "../../domain/aggregates/booking.aggregate";
 import { BookingAccepted } from "../../domain/events";
 import { BookingNotFoundError, NotProviderMemberError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
@@ -7,6 +9,10 @@ import type { BookingRepositoryPort } from "../ports/outbound/booking.repository
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
 import type { ProviderMemberReaderPort } from "../ports/outbound/provider-member-reader.port";
+import {
+  raiseQuietly,
+  type RaiseNotificationInternalPort,
+} from "../ports/outbound/raise-notification.port";
 
 export interface AcceptBookingInput {
   bookingId: string;
@@ -30,6 +36,19 @@ export interface AcceptBookingInput {
  * content of the row is who committed the calendar and when.
  */
 const ACCEPTED_BY_PROVIDER = "accepted_by_provider";
+
+/**
+ * What the transaction below hands back when it really did accept: the
+ * deadline it stamped, and the booking it stamped it on.
+ *
+ * The deadline alone used to be enough, because scheduling a job was all
+ * that happened afterwards. Telling the customer needs the customer, the
+ * service and the price, and re-reading the row outside the transaction to
+ * find them would be a second read that could disagree with the write — so
+ * the aggregate travels out with the date instead. `null` still means the
+ * same thing it always did: the compare-and-swap lost, and nothing happened.
+ */
+type AcceptOutcome = { payBy: Date; moved: Booking };
 
 /**
  * The provider says yes: `AWAITING_PROVIDER` becomes `PENDING_PAYMENT`, and
@@ -96,13 +115,14 @@ export class AcceptBookingCommand {
     private readonly delayedJobs: DelayedJobsPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
+    private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
   async execute(input: AcceptBookingInput): Promise<void> {
     // Computed once, before the transition — the instant this command ran.
     const at = new Date();
 
-    const payBy = await this.unitOfWork.atomicExecute(async (): Promise<Date | null> => {
+    const result = await this.unitOfWork.atomicExecute(async (): Promise<AcceptOutcome | null> => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
         throw new BookingNotFoundError(input.bookingId);
@@ -174,15 +194,45 @@ export class AcceptBookingCommand {
         "booking",
       );
 
-      return payByDeadline;
+      return { payBy: payByDeadline, moved };
     });
 
     // Scheduled after the transaction resolves, not inside it — the same
     // reason `CreateBookingCommand` schedules its own job outside its own
     // `atomicExecute`: a job queued for a write that then rolled back, or
     // that lost the compare-and-swap above, would be a job for nothing.
-    if (payBy) {
-      await this.delayedJobs.scheduleBookingDeadline(input.bookingId, payBy);
+    if (result) {
+      await this.delayedJobs.scheduleBookingDeadline(input.bookingId, result.payBy);
+
+      // BR-P6, in the same place and for the same reasons as
+      // `SubmitBookingCommand`'s: after the transaction resolved, so nothing
+      // is announced that a rollback could take back, and inside the applied
+      // branch, so a losing compare-and-swap announces nothing — the
+      // acceptance it would be reporting is the other member's, not this
+      // call's. `raiseQuietly` because a provider who said yes must not be
+      // told their acceptance failed over a notification adapter.
+      //
+      // `payBy` is the point of this one. The customer now has a window and
+      // a prompt on its way to their handset; a message that did not say how
+      // long they have would be worse than none.
+      await raiseQuietly(
+        this.raiseNotification,
+        {
+          type: NotificationType.BookingAccepted,
+          audience: "user",
+          userId: result.moved.customerId,
+          payload: {
+            bookingId: input.bookingId,
+            serviceName: result.moved.serviceName,
+            providerName: result.moved.providerName,
+            startsAt: result.moved.startsAt.toISOString(),
+            payBy: result.payBy.toISOString(),
+            priceMinor: result.moved.priceMinor,
+            currency: result.moved.currency,
+          },
+        },
+        input.bookingId,
+      );
     }
   }
 }

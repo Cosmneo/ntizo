@@ -1,9 +1,15 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import { NotificationType } from "@ntizo/shared";
+import type { Booking } from "../../domain/aggregates/booking.aggregate";
 import { BookingDeclined } from "../../domain/events";
 import { BookingNotFoundError, NotProviderMemberError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { ProviderMemberReaderPort } from "../ports/outbound/provider-member-reader.port";
+import {
+  raiseQuietly,
+  type RaiseNotificationInternalPort,
+} from "../ports/outbound/raise-notification.port";
 import type { SlotHoldPort } from "../ports/outbound/slot-hold.port";
 
 export interface DeclineBookingInput {
@@ -76,13 +82,18 @@ export class DeclineBookingCommand {
     private readonly slotHold: SlotHoldPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
+    private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
   async execute(input: DeclineBookingInput): Promise<void> {
     // Computed once, before the transition — the instant this command ran.
     const at = new Date();
 
-    await this.unitOfWork.atomicExecute(async () => {
+    // The declined booking, or `null` when this call declined nothing.
+    // Carried out of the transaction rather than re-read afterwards: by
+    // then the row says `DECLINED`, and a second read could only find
+    // whatever happened to it next.
+    const declined = await this.unitOfWork.atomicExecute(async (): Promise<Booking | null> => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
         throw new BookingNotFoundError(input.bookingId);
@@ -106,7 +117,7 @@ export class DeclineBookingCommand {
         // describes a world that no longer exists; saving it, appending a
         // change against it, or releasing its slot would all be acting on
         // a fact that stopped being true.
-        return;
+        return null;
       }
 
       // Never null here: `moved` was loaded through `findById`, which only
@@ -137,6 +148,40 @@ export class DeclineBookingCommand {
         ],
         "booking",
       );
+
+      return moved;
     });
+
+    // BR-P6, after the transaction and only when it applied — the same
+    // discipline `SubmitBookingCommand` and `AcceptBookingCommand` keep, and
+    // the same `raiseQuietly` for the same reason: the decline is already
+    // written, and a notification adapter that hiccups must not report it
+    // back to the provider as a decline that failed.
+    //
+    // The reason travels with it, because a "no" that says nothing about why
+    // is the message customers complain about. `DECLINED_WITHOUT_REASON`
+    // rather than a blank when the provider gave none, so whatever renders
+    // this can switch on a token instead of showing English prose to eight
+    // locales — the same argument that constant already makes for
+    // `booking_change.reason`, and the payload is read by the same kind of
+    // renderer.
+    if (declined) {
+      await raiseQuietly(
+        this.raiseNotification,
+        {
+          type: NotificationType.BookingDeclined,
+          audience: "user",
+          userId: declined.customerId,
+          payload: {
+            bookingId: input.bookingId,
+            serviceName: declined.serviceName,
+            providerName: declined.providerName,
+            startsAt: declined.startsAt.toISOString(),
+            reason: input.reason ?? DECLINED_WITHOUT_REASON,
+          },
+        },
+        input.bookingId,
+      );
+    }
   }
 }

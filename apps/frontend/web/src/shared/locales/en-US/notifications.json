@@ -17,11 +17,17 @@
     "providerVerified": "Your business has been verified",
     "providerDocumentsRequired": "Your documents need attention",
     "teamInvitation": "You have been invited to a team",
-    "unknown": "You have a new notification",
     "newMessage": "You have a new message",
     "supportRequestOpened": "New support request: {{subject}}",
     "supportRequestMessage": "New message on «{{subject}}»",
     "supportReply": "Support replied to «{{subject}}»",
-    "supportRequestResolved": "Your request «{{subject}}» was resolved"
+    "supportRequestResolved": "Your request «{{subject}}» was resolved",
+    "providerBookingReceived": "You have a booking request to respond to",
+    "bookingAccepted": "The provider accepted your request — confirm the payment",
+    "bookingDeclined": "The provider couldn't accept your request",
+    "bookingConfirmed": "Your booking is confirmed",
+    "providerBookingConfirmed": "A booking was paid and is confirmed",
+    "providerBookingCancelledByCustomer": "A booking was cancelled",
+    "unknown": "You have a new notification"
   }
 }

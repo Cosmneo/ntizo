@@ -1,7 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
+  CalendarCheck,
+  CalendarX,
   CheckCircle2,
+  CircleDollarSign,
   FileWarning,
   LifeBuoy,
   Mail,
@@ -33,6 +36,14 @@ const PRESENTATION: Record<string, { icon: LucideIcon; key: string }> = {
   SUPPORT_REQUEST_MESSAGE: { icon: LifeBuoy, key: "supportRequestMessage" },
   SUPPORT_REPLY: { icon: LifeBuoy, key: "supportReply" },
   SUPPORT_REQUEST_RESOLVED: { icon: CheckCircle2, key: "supportRequestResolved" },
+
+  // Bookings.
+  PROVIDER_BOOKING_RECEIVED: { icon: CalendarCheck, key: "providerBookingReceived" },
+  BOOKING_ACCEPTED: { icon: CircleDollarSign, key: "bookingAccepted" },
+  BOOKING_DECLINED: { icon: CalendarX, key: "bookingDeclined" },
+  BOOKING_CONFIRMED: { icon: CalendarCheck, key: "bookingConfirmed" },
+  PROVIDER_BOOKING_CONFIRMED: { icon: CalendarCheck, key: "providerBookingConfirmed" },
+  PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER: { icon: CalendarX, key: "providerBookingCancelledByCustomer" },
 };
 
 const FALLBACK = { icon: Mail, key: "unknown" } as const;

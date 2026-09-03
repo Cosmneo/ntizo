@@ -17,6 +17,7 @@ import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-book
 import { ChargeBookingCommand } from "../app/use-cases/charge-booking.command";
 import { ChargeAcceptedBookingsInternalCommand } from "../app/use-cases/charge-accepted-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
+import type { RaiseNotificationInternalPort } from "../app/ports/outbound/raise-notification.port";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
 import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructure/outbox/drizzle/outbox-event.repository";
@@ -51,7 +52,27 @@ import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructu
  * inline here because `chargeBooking` needs the very same instance — see
  * where it is built below.
  */
-export function bootstrapBooking() {
+export interface BookingBootstrapDeps {
+  /**
+   * The notification context's real `RaiseNotificationInternalCommand`
+   * (ideally already wrapped in `DeferredNotificationDelivery`, so a booking
+   * that changes hands sends both a bell entry and an email) — it satisfies
+   * `RaiseNotificationInternalPort` structurally, with no adapter class
+   * needed. This bootstrap is the one place allowed to know that coupling
+   * exists; see the port's own doc comment for why it is declared inside this
+   * context rather than imported from the notification context's `app/` tree.
+   *
+   * Required rather than optional, and that is deliberate. Five of the
+   * commands below announce something, and an optional dependency would let a
+   * composition root construct a booking context that silently tells nobody
+   * anything — the exact failure `bootstrap.test.ts` exists to catch, made
+   * invisible by a default. Every call site passes the same value
+   * `bootstrapCommunication` already takes.
+   */
+  raiseNotification: RaiseNotificationInternalPort;
+}
+
+export function bootstrapBooking(deps: BookingBootstrapDeps) {
   const bookingRepository = new DrizzleBookingRepository();
   const pricingReader = new DrizzleServicePricingReader();
   const providerReader = new DrizzleProviderSnapshotReader();
@@ -65,14 +86,25 @@ export function bootstrapBooking() {
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
 
-  const sweepBooking = new SweepBookingCommand(bookingRepository, slotHold, unitOfWork, outboxPort);
+  const sweepBooking = new SweepBookingCommand(
+    bookingRepository,
+    slotHold,
+    unitOfWork,
+    outboxPort,
+    deps.raiseNotification,
+  );
   // Hoisted out of the `useCases` literal below, unlike every other command
   // there, because it now has a second caller inside this function:
   // `chargeBooking` drives it on the one path that actually produces a
   // payment. Two instances would be two copies of the same idempotency and
   // compare-and-swap logic wired to the same repository — harmless today and
   // exactly the kind of thing that stops being harmless.
-  const markBookingPaid = new MarkBookingPaidCommand(bookingRepository, unitOfWork, outboxPort);
+  const markBookingPaid = new MarkBookingPaidCommand(
+    bookingRepository,
+    unitOfWork,
+    outboxPort,
+    deps.raiseNotification,
+  );
   const chargeBooking = new ChargeBookingCommand(
     bookingRepository,
     customerPhoneReader,
@@ -118,6 +150,7 @@ export function bootstrapBooking() {
         delayedJobs,
         unitOfWork,
         outboxPort,
+        deps.raiseNotification,
       ),
       acceptBooking: new AcceptBookingCommand(
         bookingRepository,
@@ -126,6 +159,7 @@ export function bootstrapBooking() {
         delayedJobs,
         unitOfWork,
         outboxPort,
+        deps.raiseNotification,
       ),
       declineBooking: new DeclineBookingCommand(
         bookingRepository,
@@ -133,6 +167,7 @@ export function bootstrapBooking() {
         slotHold,
         unitOfWork,
         outboxPort,
+        deps.raiseNotification,
       ),
       sweepBooking,
       chargeBooking,

@@ -117,4 +117,89 @@ export interface BookingReadRepositoryPort {
    * would confirm that a given id names a real booking.
    */
   findForCustomer(bookingId: string, customerId: string): Promise<BookingListRow | null>;
+
+  /** The workspace's bookings for one tab, paged. `DRAFT` never appears. See `PROVIDER_TAB_STATUSES`. */
+  listForProvider(
+    providerId: string,
+    filter: ProviderListFilter,
+    limit: number,
+    offset: number,
+  ): Promise<ProviderBookingRow[]>;
+  /** How many `listForProvider` would return unpaged — the list shows "a mostrar 8 de 23". */
+  countForProvider(providerId: string, filter: ProviderListFilter): Promise<number>;
+  /** One booking, only if it is this workspace's — `providerId` in the WHERE, as `findForCustomer` does. `DRAFT` answers null. */
+  findForProvider(bookingId: string, providerId: string): Promise<ProviderBookingRow | null>;
+  /** Every `booking_change` row, oldest first. */
+  timelineFor(bookingId: string): Promise<ProviderTimelineRow[]>;
+  /** The workspace's members with a first name to show, for the list's filter. */
+  membersOf(providerId: string): Promise<ProviderMemberOption[]>;
+}
+
+export type ProviderListTab = "requests" | "upcoming" | "history";
+
+export interface ProviderListFilter {
+  tab: ProviderListTab;
+  /** Matches the customer's first name and the service name; null means no search. */
+  q: string | null;
+  /** `provider_member.id`; null means every member and "anyone". */
+  memberId: string | null;
+  /** Injected, never `new Date()` inside the query — a test has to be able to say what "upcoming" means. */
+  now: Date;
+}
+
+/** The statuses each tab lists. `upcoming` and `history` also split CONFIRMED/PENDING_PAYMENT by `startsAt` against `now`. */
+export const PROVIDER_TAB_STATUSES: Record<ProviderListTab, readonly string[]> = {
+  requests: ["AWAITING_PROVIDER"],
+  upcoming: ["PENDING_PAYMENT", "CONFIRMED"],
+  history: ["MARKED_DONE", "COMPLETED", "DISPUTED", "DECLINED", "CANCELLED", "EXPIRED"],
+};
+
+/**
+ * One booking as the provider's list and page read it. Every column the
+ * detail needs is here too: the list simply does not pass the last few on.
+ * One row shape for both queries, so a column wired into only one of them
+ * cannot give the same booking two contents.
+ */
+export interface ProviderBookingRow {
+  id: string;
+  status: string;
+  createdAt: Date;
+  customerId: string;
+  serviceId: string;
+  serviceOptionId: string;
+  serviceName: string;
+  optionName: string;
+  durationMinutes: number;
+  locationType: string | null;
+  providerMemberId: string | null;
+  memberFirstName: string | null;
+  customerFirstName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  startsAt: Date;
+  endsAt: Date;
+  timezone: string;
+  addressLabel: string | null;
+  addressLine: string | null;
+  addressCity: string | null;
+  addressDistrict: string | null;
+  addressDirections: string | null;
+  description: string | null;
+  paymentRef: string | null;
+  priceMinor: number;
+  commissionBps: number;
+  commissionMinor: number;
+  currency: string;
+  expiresAt: Date | null;
+}
+
+export interface ProviderTimelineRow {
+  changedAt: Date;
+  changedByUserId: string | null;
+  reason: string;
+}
+
+export interface ProviderMemberOption {
+  id: string;
+  firstName: string;
 }

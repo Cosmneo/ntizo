@@ -1,5 +1,9 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { Booking } from "../../domain/aggregates/booking.aggregate";
+import type {
+  RaiseNotificationInput,
+  RaiseNotificationInternalPort,
+} from "../../app/ports/outbound/raise-notification.port";
 
 /**
  * A transactional fake with real buffer-and-discard semantics, not a
@@ -112,4 +116,33 @@ export function withId(booking: Booking, id: string): Booking {
     addressLng: booking.addressLng,
     description: booking.description,
   });
+}
+
+/**
+ * Records every notification a command raised, in order, so a test can read
+ * back *what* was announced rather than only that something was.
+ *
+ * `failWith` is the other half, and the reason this fake takes a constructor
+ * argument at all: BR-P6 says a raise that throws must not fail the write
+ * that already committed, and the only way to prove that is a port that
+ * really does throw. A fake that could only succeed would leave the
+ * `try`/`catch` in `raiseQuietly` untested — the exact code whose absence
+ * nothing else in this suite would notice.
+ *
+ * Shared by `submit-accept-decline-booking.command.test.ts`,
+ * `booking-lifecycle.command.test.ts`, `bootstrap.test.ts` and the two
+ * dev-database tests that wire commands the way `bootstrapBooking()` does —
+ * one fake rather than five copies, for the same reason
+ * `TrackingUnitOfWork` is here.
+ */
+export class FakeRaiser implements RaiseNotificationInternalPort {
+  public readonly raised: RaiseNotificationInput[] = [];
+
+  constructor(private readonly failWith: Error | null = null) {}
+
+  async execute(input: RaiseNotificationInput): Promise<{ notificationId: string }> {
+    if (this.failWith) throw this.failWith;
+    this.raised.push(input);
+    return { notificationId: `n-${this.raised.length}` };
+  }
 }

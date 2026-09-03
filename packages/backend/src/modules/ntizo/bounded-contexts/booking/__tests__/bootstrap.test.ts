@@ -15,6 +15,7 @@ import { DrizzleProviderMemberReader } from "../infrastructure/repositories/driz
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { BookingRowDelayedJobs } from "../infrastructure/adapters/booking-row-delayed-jobs.adapter";
+import { FakeRaiser } from "./support/fakes";
 
 /**
  * The wiring is the feature — see notification's `bootstrap-wiring.test.ts`
@@ -38,7 +39,7 @@ import { BookingRowDelayedJobs } from "../infrastructure/adapters/booking-row-de
  */
 describe("bootstrapBooking", () => {
   it("constructs every use case, including the two nothing calls yet", () => {
-    const { useCases } = bootstrapBooking();
+    const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
     expect(useCases.submitBooking).toBeInstanceOf(SubmitBookingCommand);
@@ -54,19 +55,19 @@ describe("bootstrapBooking", () => {
   // decline would silently skip the one check that closes off a stranger
   // acting on somebody else's provider.
   it("wires the provider-membership reader acceptBooking and declineBooking share", () => {
-    const { adapters } = bootstrapBooking();
+    const { adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(adapters.providerMemberReader).toBeInstanceOf(DrizzleProviderMemberReader);
   });
 
   it("wires the sweep Task 12's cron calls, over the same sweepBooking instance", () => {
-    const { useCases } = bootstrapBooking();
+    const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(useCases.internal.sweepDue).toBeInstanceOf(SweepDueBookingsInternalCommand);
   });
 
   it("builds the two real readers and the two no-op adapters — the whole point of this task", () => {
-    const { adapters } = bootstrapBooking();
+    const { adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(adapters.bookingRepository).toBeInstanceOf(DrizzleBookingRepository);
     expect(adapters.pricingReader).toBeInstanceOf(DrizzleServicePricingReader);
@@ -82,7 +83,7 @@ describe("bootstrapBooking", () => {
   // above because it postdates "the whole point of this task" (Task 10) —
   // this is the wiring Task 13 added on top of it.
   it("wires the payment-window reader Task 13 added", () => {
-    const { adapters, useCases } = bootstrapBooking();
+    const { adapters, useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(adapters.platformSettingsReader).toBeInstanceOf(DrizzlePlatformSettingsReader);
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
@@ -93,7 +94,7 @@ describe("bootstrapBooking", () => {
   // every booking would silently skip the check that closes the
   // calendar-blocking hole.
   it("wires the slot-validity reader that closes the calendar-blocking hole", () => {
-    const { adapters } = bootstrapBooking();
+    const { adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(adapters.slotValidityReader).toBeInstanceOf(DrizzleSlotValidityReader);
   });

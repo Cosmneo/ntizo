@@ -1,4 +1,5 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import { NotificationType } from "@ntizo/shared";
 import type { Booking } from "../../domain/aggregates/booking.aggregate";
 import {
   BookingCancelled,
@@ -9,6 +10,10 @@ import {
 import { BookingNotFoundError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
+import {
+  raiseQuietly,
+  type RaiseNotificationInternalPort,
+} from "../ports/outbound/raise-notification.port";
 import type { SlotHoldPort } from "../ports/outbound/slot-hold.port";
 
 export interface SweepBookingInput {
@@ -110,6 +115,19 @@ const EXPIRED_REASON_BY_CLOCK: Record<BookingExpiredClock, BookingExpiredReason>
 };
 
 /**
+ * What one sweep of one booking actually did: the booking it moved, and
+ * which of the three endings that was.
+ *
+ * `null` covers every way it did nothing — a status no clock governs, the
+ * aggregate's own no-op, a lost race with a payment — so the announcement
+ * below cannot fire on a transition that never landed. The reason travels
+ * out because it is the only thing separating the ending somebody has to be
+ * told about from the two nobody does, and the status alone cannot say it:
+ * two of the three endings share `EXPIRED`.
+ */
+type SweptOutcome = { moved: Booking; reason: BookingExpiredReason | BookingCancelledReason };
+
+/**
  * A clock ran out on one booking. Which clock decides what that means.
  *
  * **Not `ExpireBookingCommand`, which is what this was called.** That name
@@ -204,6 +222,7 @@ export class SweepBookingCommand {
     private readonly slotHold: SlotHoldPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
+    private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
   async execute(input: SweepBookingInput): Promise<void> {
@@ -214,7 +233,7 @@ export class SweepBookingCommand {
     // `expiresAt` and belongs in the event payload, not here.
     const at = new Date();
 
-    await this.unitOfWork.atomicExecute(async () => {
+    const outcome = await this.unitOfWork.atomicExecute(async (): Promise<SweptOutcome | null> => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
         // A sweep naming a booking that does not exist means the job
@@ -305,7 +324,7 @@ export class SweepBookingCommand {
           // it on a deadline and it moved on before this call reached it.
           // The ordinary race, answered the same way the aggregate answers
           // it — silently, with nothing written.
-          return;
+          return null;
       }
 
       if (moved === booking) {
@@ -313,7 +332,7 @@ export class SweepBookingCommand {
         // it was given. It has the last word even where the switch above
         // expected a transition: releasing this booking's hold would hand
         // away a slot somebody may still be holding.
-        return;
+        return null;
       }
 
       const applied = await this.repo.save(moved, booking.status);
@@ -325,7 +344,7 @@ export class SweepBookingCommand {
         // a slot a customer who just paid is still holding. See this
         // class's own doc comment for why the aggregate's identity check
         // above cannot catch this on its own.
-        return;
+        return null;
       }
 
       // The durable answer to "why did this booking die?", written before
@@ -356,6 +375,44 @@ export class SweepBookingCommand {
       await this.slotHold.release(bookingId);
 
       await this.outboxPort.publish([announcement], "booking");
+
+      return { moved, reason: changeReason };
     });
+
+    // **One of the three endings is announced, and it is the one that costs
+    // somebody something.** The provider accepted, blocked their Saturday,
+    // and the customer never paid — the platform's own ordering is what took
+    // the slot back, and a provider whose calendar empties without a word is
+    // exactly the failure this notification exists for.
+    //
+    // The two expiries raise nothing in this phase, and that is a decision
+    // rather than an omission. A `DRAFT` past its checkout hold has nobody to
+    // tell but the customer who walked away from their own checkout; an
+    // `AWAITING_PROVIDER` past the provider's window does owe the customer a
+    // word, and the type for it is not one this phase adds — see the design's
+    // three-row table in this class's own doc comment.
+    //
+    // After the transaction and only on an applied cancellation, per BR-P6,
+    // and `raiseQuietly` because this runs inside a cron sweep: a throw here
+    // would count the booking as `failed` in the wave's tally and put a
+    // cancellation that really did commit into a log line that says it did
+    // not.
+    if (outcome && outcome.reason === CUSTOMER_DID_NOT_PAY) {
+      await raiseQuietly(
+        this.raiseNotification,
+        {
+          type: NotificationType.ProviderBookingCancelledByCustomer,
+          audience: "provider",
+          providerId: outcome.moved.providerId,
+          payload: {
+            bookingId: input.bookingId,
+            serviceName: outcome.moved.serviceName,
+            startsAt: outcome.moved.startsAt.toISOString(),
+            reason: CUSTOMER_DID_NOT_PAY,
+          },
+        },
+        input.bookingId,
+      );
+    }
   }
 }

@@ -17,11 +17,17 @@
     "providerVerified": "Je bedrijf is geverifieerd",
     "providerDocumentsRequired": "Je documenten hebben aandacht nodig",
     "teamInvitation": "Je bent uitgenodigd voor een team",
-    "unknown": "Je hebt een nieuwe melding",
     "newMessage": "Je hebt een nieuw bericht",
     "supportRequestOpened": "Nieuw supportverzoek: {{subject}}",
     "supportRequestMessage": "Nieuw bericht over „{{subject}}”",
     "supportReply": "Support heeft gereageerd op je verzoek „{{subject}}”",
-    "supportRequestResolved": "Je verzoek „{{subject}}” is opgelost"
+    "supportRequestResolved": "Je verzoek „{{subject}}” is opgelost",
+    "providerBookingReceived": "Je hebt een boekingsaanvraag om te beantwoorden",
+    "bookingAccepted": "De dienstverlener heeft je aanvraag geaccepteerd — bevestig de betaling",
+    "bookingDeclined": "De dienstverlener kon je aanvraag niet accepteren",
+    "bookingConfirmed": "Je boeking is bevestigd",
+    "providerBookingConfirmed": "Een boeking is betaald en bevestigd",
+    "providerBookingCancelledByCustomer": "Een boeking is geannuleerd",
+    "unknown": "Je hebt een nieuwe melding"
   }
 }

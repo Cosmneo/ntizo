@@ -3543,6 +3543,72 @@ look once it actually bites.
 
 ---
 
+## #145 — Bookings the provider cannot act on after acceptance
+
+Phase 1 of `2026-09-02-provider-bookings-and-dashboard-design.md` mounts accept and decline
+and nothing else. `MARKED_DONE` is in the enum with no transition; reschedule and cancel by
+the provider are drawn in the state machine with no command. A `CONFIRMED` booking whose start
+has passed sits in Histórico as "Confirmada" forever.
+
+**Trigger:** the first provider who asks why a finished job still says confirmed, or the wallet
+release work, which needs "done" to exist.
+
+## #146 — Three booking notifications have no email
+
+`BOOKING_CONFIRMED`, `PROVIDER_BOOKING_CONFIRMED` and `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER`
+raise in-app rows only. `deliver-notification.internal.command.ts` renders nothing for a type
+without a template, by design.
+
+**Trigger:** the notification-preferences work, or the first provider who missed a payment
+landing because they were not in the app.
+
+## #147 — A confirmed booking's timeline has no "paid" hop
+
+`mark-booking-paid.command.ts` changes the status and raises the two confirmation notifications
+but writes no `booking_change` row, so the provider's timeline (Task 3's `timelineOf`, which
+draws creation + `booking_change` rows + the pending deadline) ends at "Aceite" for a paid
+booking — the moment the customer paid is invisible, and `paymentRef` sits only in the technical
+details.
+
+**Trigger:** the first provider who asks when a booking was paid, or the wallet-release work,
+which will want the paid instant on the record; the fix is one
+`appendChange({ reason: "paid_by_customer" })` in the command plus the
+`timelineReason.paid_by_customer` key in the eight locales.
+
+## #148 — The kit's Dialog has no role, focus trap or Escape handling, and the decline dialog now depends on it
+
+`packages/frontend/src/components/dialog.tsx` renders its content inline: no `role="dialog"`, no
+`aria-modal`, nothing that traps focus inside it and no Escape-to-close. Sighted mouse users get a
+modal; everybody else gets a panel that appeared in the middle of the page, with the rest of the
+document still reachable behind it by Tab and nothing but the Cancel button to leave by.
+
+The provider's decline confirmation (`apps/frontend/web/src/features/provider/bookings/ui/decline-dialog.tsx`)
+is the first destructive action put behind it — a radio group and a "Recusar pedido" that a customer
+feels. That raises the cost of the gap from awkward to unsafe: a keyboard-only provider who opens it
+by accident has no way out that does not involve guessing where the Cancel button is in the tab
+order of a page that is still fully focusable.
+
+**Trigger:** the accessibility pass, or the first keyboard-only provider who cannot leave the
+dialog — whichever comes first. Every other consumer of the kit's Dialog inherits the fix.
+
+## #149 — The accept and submit notifications sit behind `scheduleBookingDeadline`
+
+In `accept-booking.command.ts` and `submit-booking.command.ts` the notification raise runs *after*
+the call to `scheduleBookingDeadline`, outside the transaction that already committed the status
+change. Today that is safe by accident: `BookingRowDelayedJobs` is a no-op adapter, so there is
+nothing in the scheduling call that can throw.
+
+A real scheduler can. A queue that is down, a network timeout, a malformed payload — any of them
+would abort the rest of the block, and the notification of a write that has already committed would
+simply never be raised. The provider is left with a booking waiting for them that they were never
+told about, and nothing anywhere is red.
+
+**Trigger:** the day a real delayed-jobs adapter replaces the no-op. The fix is to move the raise
+ahead of the scheduling call, or wrap the scheduling the way the raise is already wrapped — the
+ordering is arbitrary today and load-bearing the moment the adapter is real.
+
+---
+
 ## #150 — The FAQ answers exist in two languages, and six locales read English
 
 `help.json`'s `faq.*` values are copies of en-US in `es-ES`, `de-DE`, `fr-FR`, `it-IT` and

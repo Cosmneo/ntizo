@@ -199,7 +199,14 @@ export async function scheduled(
         // sweep exists to prevent, from a context that has nothing to do
         // with bookings.
         try {
-          const booking = bootstrapBooking();
+          // Its own `bootstrapNotification()` rather than the one inside the
+          // block above: reaching across the two `try` blocks for a binding
+          // declared in one of them would tie their failure modes back
+          // together, which is exactly what splitting them undid. Both are
+          // cheap object graphs over the same request-scoped `getDb()`.
+          const booking = bootstrapBooking({
+            raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+          });
           const { swept, failed: bookingFailed } = await booking.useCases.internal.sweepDue.execute({
             limit: BOOKING_SWEEP_LIMIT,
           });
@@ -237,7 +244,9 @@ export async function scheduled(
         // inside one of them would tie their failure modes back together,
         // which is exactly what splitting them undid.
         try {
-          const booking = bootstrapBooking();
+          const booking = bootstrapBooking({
+            raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+          });
           const { attempted, failed: chargeFailed } =
             await booking.useCases.internal.chargeAccepted.execute({
               limit: BOOKING_CHARGE_LIMIT,

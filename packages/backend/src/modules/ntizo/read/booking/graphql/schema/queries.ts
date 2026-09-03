@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { bookingReadModel } from "@ntizo/shared/read-models";
+import {
+  bookingReadModel,
+  providerBookingDetailReadModel,
+  providerBookingPageReadModel,
+} from "@ntizo/shared/read-models";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
@@ -37,6 +41,34 @@ export const getMyBooking = defineQuery({
 });
 
 /**
+ * A workspace's bookings, one tab at a time. `providerId` is explicit, as it
+ * is on the wallet's read: a person may belong to several workspaces and the
+ * shell knows which one is active. Who may ask is decided in the handler —
+ * a member of the workspace, or an administrator.
+ */
+export const listProviderBookings = defineQuery({
+  input: zodSchema(
+    z.object({
+      providerId: z.string().min(1),
+      tab: z.enum(["requests", "upcoming", "history"]),
+      q: z.string().trim().max(80).optional(),
+      memberId: z.string().min(1).optional(),
+      limit: z.number().int().min(1).max(50).optional(),
+      offset: z.number().int().min(0).optional(),
+    }),
+  ),
+  output: zodSchema(providerBookingPageReadModel),
+  docs: { summary: "A workspace's bookings, by tab", tags: ["Booking"] },
+});
+
+/** One of the workspace's bookings. Null covers "no such booking" and "not yours" alike, as `booking.byId` does. */
+export const getProviderBooking = defineQuery({
+  input: zodSchema(z.object({ providerId: z.string().min(1), bookingId: z.string().min(1) })),
+  output: zodSchema(providerBookingDetailReadModel.nullable()),
+  docs: { summary: "One of a workspace's bookings", tags: ["Booking"] },
+});
+
+/**
  * Nested one level, like `activity`'s and `notification`'s: the field kit
  * flattens these to `bookingMine` and `bookingById` on the wire —
  * `{ booking: { mine } }` → `bookingMine`, never `booking.mine`. Sits
@@ -49,6 +81,8 @@ export const bookingReadSchema = defineGraphQLSchema(
     booking: {
       mine: listMyBookings,
       byId: getMyBooking,
+      forProvider: listProviderBookings,
+      byIdForProvider: getProviderBooking,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

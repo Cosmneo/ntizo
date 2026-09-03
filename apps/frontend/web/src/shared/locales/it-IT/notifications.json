@@ -17,11 +17,17 @@
     "providerVerified": "La tua attività è stata verificata",
     "providerDocumentsRequired": "I tuoi documenti richiedono attenzione",
     "teamInvitation": "Sei stato invitato in un team",
-    "unknown": "Hai una nuova notifica",
     "newMessage": "Hai un nuovo messaggio",
     "supportRequestOpened": "Nuova richiesta di assistenza: {{subject}}",
     "supportRequestMessage": "Nuovo messaggio su «{{subject}}»",
     "supportReply": "L'assistenza ha risposto alla tua richiesta «{{subject}}»",
-    "supportRequestResolved": "La tua richiesta «{{subject}}» è stata risolta"
+    "supportRequestResolved": "La tua richiesta «{{subject}}» è stata risolta",
+    "providerBookingReceived": "Hai una richiesta di prenotazione a cui rispondere",
+    "bookingAccepted": "Il professionista ha accettato la tua richiesta: conferma il pagamento",
+    "bookingDeclined": "Il professionista non ha potuto accettare la tua richiesta",
+    "bookingConfirmed": "La tua prenotazione è confermata",
+    "providerBookingConfirmed": "Una prenotazione è stata pagata ed è confermata",
+    "providerBookingCancelledByCustomer": "Una prenotazione è stata annullata",
+    "unknown": "Hai una nuova notifica"
   }
 }

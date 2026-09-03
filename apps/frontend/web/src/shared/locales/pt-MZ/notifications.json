@@ -17,11 +17,17 @@
     "providerVerified": "O seu negócio foi verificado",
     "providerDocumentsRequired": "Os seus documentos precisam de atenção",
     "teamInvitation": "Foi convidado para uma equipa",
-    "unknown": "Tem uma notificação nova",
     "newMessage": "Tem uma mensagem nova",
     "supportRequestOpened": "Novo pedido de suporte: {{subject}}",
     "supportRequestMessage": "Nova mensagem no pedido «{{subject}}»",
     "supportReply": "O suporte respondeu ao seu pedido «{{subject}}»",
-    "supportRequestResolved": "O seu pedido «{{subject}}» foi resolvido"
+    "supportRequestResolved": "O seu pedido «{{subject}}» foi resolvido",
+    "providerBookingReceived": "Tem um pedido de reserva por responder",
+    "bookingAccepted": "O prestador aceitou o seu pedido — confirme o pagamento",
+    "bookingDeclined": "O prestador não pôde aceitar o seu pedido",
+    "bookingConfirmed": "A sua reserva está confirmada",
+    "providerBookingConfirmed": "Uma reserva foi paga e está confirmada",
+    "providerBookingCancelledByCustomer": "Uma reserva foi cancelada",
+    "unknown": "Tem uma notificação nova"
   }
 }

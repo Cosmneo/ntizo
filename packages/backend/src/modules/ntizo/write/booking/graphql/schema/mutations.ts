@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { BOOKING_DECLINE_REASONS } from "@ntizo/shared/read-models";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
@@ -122,7 +123,32 @@ export const submitBooking = defineMutation({
   docs: { summary: "Send a booking request to the provider", tags: ["Booking"] },
 });
 
+/**
+ * The provider's yes. Takes only the booking: which workspace it belongs to
+ * is on the booking, and whether the caller is in that workspace is the
+ * command's check (`ProviderMemberReaderPort.isMember`), not the client's
+ * claim. Returns the id and nothing else — the page refetches the booking,
+ * which by then carries the payment window on `expiresAt`.
+ */
+export const acceptBooking = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Accept a booking request", tags: ["Booking"] },
+});
+
+/** The provider's no, with one of four reasons or none. Tokens, never prose: the customer's inbox translates them. */
+export const declineBooking = defineMutation({
+  input: zodSchema(
+    z.object({
+      bookingId: z.string().min(1),
+      reason: z.enum(BOOKING_DECLINE_REASONS).optional(),
+    }),
+  ),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Decline a booking request", tags: ["Booking"] },
+});
+
 export const bookingWriteSchema = defineGraphQLSchema(
-  { booking: { create: createBooking, submit: submitBooking } },
+  { booking: { create: createBooking, submit: submitBooking, accept: acceptBooking, decline: declineBooking } },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );

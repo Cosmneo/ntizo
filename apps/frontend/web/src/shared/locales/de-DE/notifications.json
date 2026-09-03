@@ -17,11 +17,17 @@
     "providerVerified": "Ihr Unternehmen wurde verifiziert",
     "providerDocumentsRequired": "Ihre Dokumente benötigen Aufmerksamkeit",
     "teamInvitation": "Sie wurden zu einem Team eingeladen",
-    "unknown": "Sie haben eine neue Benachrichtigung",
     "newMessage": "Sie haben eine neue Nachricht",
     "supportRequestOpened": "Neue Supportanfrage: {{subject}}",
     "supportRequestMessage": "Neue Nachricht zu „{{subject}}“",
     "supportReply": "Der Support hat auf Ihre Anfrage „{{subject}}“ geantwortet",
-    "supportRequestResolved": "Ihre Anfrage „{{subject}}“ wurde gelöst"
+    "supportRequestResolved": "Ihre Anfrage „{{subject}}“ wurde gelöst",
+    "providerBookingReceived": "Sie haben eine offene Buchungsanfrage",
+    "bookingAccepted": "Der Anbieter hat Ihre Anfrage angenommen — bestätigen Sie die Zahlung",
+    "bookingDeclined": "Der Anbieter konnte Ihre Anfrage nicht annehmen",
+    "bookingConfirmed": "Ihre Buchung ist bestätigt",
+    "providerBookingConfirmed": "Eine Buchung wurde bezahlt und ist bestätigt",
+    "providerBookingCancelledByCustomer": "Eine Buchung wurde storniert",
+    "unknown": "Sie haben eine neue Benachrichtigung"
   }
 }

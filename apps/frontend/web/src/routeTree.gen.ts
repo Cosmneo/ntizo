@@ -70,6 +70,8 @@ import { Route as ProviderSlugNotificationsRouteImport } from './routes/provider
 import { Route as ProviderSlugOverviewRouteImport } from './routes/provider/$slug/overview'
 import { Route as ProviderSlugSettingsRouteImport } from './routes/provider/$slug/settings'
 import { Route as ProviderSlugWalletRouteImport } from './routes/provider/$slug/wallet'
+import { Route as ProviderSlugBookingsIndexRouteImport } from './routes/provider/$slug/bookings.index'
+import { Route as ProviderSlugBookingsBookingIdRouteImport } from './routes/provider/$slug/bookings.$bookingId'
 import { Route as ProviderSlugServicesIndexRouteImport } from './routes/provider/$slug/services.index'
 import { Route as ProviderSlugServicesServiceIdRouteImport } from './routes/provider/$slug/services.$serviceId'
 
@@ -383,6 +385,18 @@ const ProviderSlugWalletRoute = ProviderSlugWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => ProviderSlugRouteRoute,
 } as any)
+const ProviderSlugBookingsIndexRoute =
+  ProviderSlugBookingsIndexRouteImport.update({
+    id: '/bookings/',
+    path: '/bookings/',
+    getParentRoute: () => ProviderSlugRouteRoute,
+  } as any)
+const ProviderSlugBookingsBookingIdRoute =
+  ProviderSlugBookingsBookingIdRouteImport.update({
+    id: '/bookings/$bookingId',
+    path: '/bookings/$bookingId',
+    getParentRoute: () => ProviderSlugRouteRoute,
+  } as any)
 const ProviderSlugServicesIndexRoute =
   ProviderSlugServicesIndexRouteImport.update({
     id: '/services/',
@@ -456,7 +470,9 @@ export interface FileRoutesByFullPath {
   '/account/': typeof CustomerAccountIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
   '/admin/support/': typeof AdminSupportIndexRoute
+  '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
+  '/provider/$slug/bookings/': typeof ProviderSlugBookingsIndexRoute
   '/provider/$slug/services/': typeof ProviderSlugServicesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -516,7 +532,9 @@ export interface FileRoutesByTo {
   '/account': typeof CustomerAccountIndexRoute
   '/admin/providers': typeof AdminProvidersIndexRoute
   '/admin/support': typeof AdminSupportIndexRoute
+  '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
+  '/provider/$slug/bookings': typeof ProviderSlugBookingsIndexRoute
   '/provider/$slug/services': typeof ProviderSlugServicesIndexRoute
 }
 export interface FileRoutesById {
@@ -582,7 +600,9 @@ export interface FileRoutesById {
   '/_customer/account/': typeof CustomerAccountIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
   '/admin/support/': typeof AdminSupportIndexRoute
+  '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
+  '/provider/$slug/bookings/': typeof ProviderSlugBookingsIndexRoute
   '/provider/$slug/services/': typeof ProviderSlugServicesIndexRoute
 }
 export interface FileRouteTypes {
@@ -647,7 +667,9 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/providers/'
     | '/admin/support/'
+    | '/provider/$slug/bookings/$bookingId'
     | '/provider/$slug/services/$serviceId'
+    | '/provider/$slug/bookings/'
     | '/provider/$slug/services/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -707,7 +729,9 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin/providers'
     | '/admin/support'
+    | '/provider/$slug/bookings/$bookingId'
     | '/provider/$slug/services/$serviceId'
+    | '/provider/$slug/bookings'
     | '/provider/$slug/services'
   id:
     | '__root__'
@@ -772,7 +796,9 @@ export interface FileRouteTypes {
     | '/_customer/account/'
     | '/admin/providers/'
     | '/admin/support/'
+    | '/provider/$slug/bookings/$bookingId'
     | '/provider/$slug/services/$serviceId'
+    | '/provider/$slug/bookings/'
     | '/provider/$slug/services/'
   fileRoutesById: FileRoutesById
 }
@@ -1230,6 +1256,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProviderSlugWalletRouteImport
       parentRoute: typeof ProviderSlugRouteRoute
     }
+    '/provider/$slug/bookings/': {
+      id: '/provider/$slug/bookings/'
+      path: '/bookings'
+      fullPath: '/provider/$slug/bookings/'
+      preLoaderRoute: typeof ProviderSlugBookingsIndexRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
+    '/provider/$slug/bookings/$bookingId': {
+      id: '/provider/$slug/bookings/$bookingId'
+      path: '/bookings/$bookingId'
+      fullPath: '/provider/$slug/bookings/$bookingId'
+      preLoaderRoute: typeof ProviderSlugBookingsBookingIdRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
     '/provider/$slug/services/': {
       id: '/provider/$slug/services/'
       path: '/services'
@@ -1351,7 +1391,9 @@ interface ProviderSlugRouteRouteChildren {
   ProviderSlugOverviewRoute: typeof ProviderSlugOverviewRoute
   ProviderSlugSettingsRoute: typeof ProviderSlugSettingsRoute
   ProviderSlugWalletRoute: typeof ProviderSlugWalletRoute
+  ProviderSlugBookingsBookingIdRoute: typeof ProviderSlugBookingsBookingIdRoute
   ProviderSlugServicesServiceIdRoute: typeof ProviderSlugServicesServiceIdRoute
+  ProviderSlugBookingsIndexRoute: typeof ProviderSlugBookingsIndexRoute
   ProviderSlugServicesIndexRoute: typeof ProviderSlugServicesIndexRoute
 }
 
@@ -1364,7 +1406,9 @@ const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
   ProviderSlugOverviewRoute: ProviderSlugOverviewRoute,
   ProviderSlugSettingsRoute: ProviderSlugSettingsRoute,
   ProviderSlugWalletRoute: ProviderSlugWalletRoute,
+  ProviderSlugBookingsBookingIdRoute: ProviderSlugBookingsBookingIdRoute,
   ProviderSlugServicesServiceIdRoute: ProviderSlugServicesServiceIdRoute,
+  ProviderSlugBookingsIndexRoute: ProviderSlugBookingsIndexRoute,
   ProviderSlugServicesIndexRoute: ProviderSlugServicesIndexRoute,
 }
 
