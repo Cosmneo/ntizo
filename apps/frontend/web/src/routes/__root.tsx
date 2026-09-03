@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
 import { MobileNav } from "@/shared/components/mobile-nav";
+import { HelpCenterProvider } from "@/features/help-center/viewmodel/use-help-center";
+import { HelpCenter } from "@/features/help-center/ui/help-center";
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -50,16 +52,24 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        {/* Bottom padding only where the bar exists, so content on a phone can
-            scroll clear of it instead of ending underneath. Where there is no
-            bar there must be no padding either: the zone shells size
-            themselves to the full viewport, and 56px of padding under that is
-            what made the document taller than the screen. */}
-        <div className={ownChrome ? undefined : "pb-14 md:pb-0"}>
-          <Outlet />
-        </div>
-        {!ownChrome && <MobileNav />}
-        <Toaster position="bottom-right" richColors closeButton />
+        <HelpCenterProvider>
+          {/* Bottom padding only where the bar exists, so content on a phone
+              can scroll clear of it instead of ending underneath. Where
+              there is no bar there must be no padding either: the zone
+              shells size themselves to the full viewport, and 56px of
+              padding under that is what made the document taller than the
+              screen. */}
+          <div className={ownChrome ? undefined : "pb-14 md:pb-0"}>
+            <Outlet />
+          </div>
+          {!ownChrome && <MobileNav />}
+          {/* Mounted for every page; it decides internally where its launcher
+              may appear (`showsHelpLauncher`) and stays mounted even where it
+              may not, so the footer's "talk to support" and a booking's "need
+              help" can still open it. */}
+          <HelpCenter />
+          <Toaster position="bottom-right" richColors closeButton />
+        </HelpCenterProvider>
       </QueryClientProvider>
     </RootDocument>
   );
