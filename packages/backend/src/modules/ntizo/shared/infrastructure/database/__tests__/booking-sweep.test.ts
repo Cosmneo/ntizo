@@ -614,7 +614,7 @@ describe("SweepDueBookingsInternalCommand", () => {
    * widened filter made that filter carry more weight, not less: three
    * statuses now pass it, and `CONFIRMED` still must not.
    */
-  test("a booking already paid survives the sweep untouched, even past its old deadline", async () => {
+  test("a confirmed booking past its stale deadline is counted by the sweep but left otherwise untouched", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-02T12:00:00.000Z");
 
@@ -637,12 +637,21 @@ describe("SweepDueBookingsInternalCommand", () => {
 
       const result = await buildSweep(repo, () => now).execute({ limit: 10 });
 
-      // Nothing in this file's fixtures was due at this `now` except this
-      // booking's old (still on the row, still in the past) deadline, so a
-      // sweep that mistakenly matched on `expiresAt` instead of trusting the
-      // status filter would show up here as `swept: 1`.
-      expect(result).toEqual({ swept: 0, failed: 0 });
+      // Nothing else in this file's fixtures was due at this `now`, so if
+      // this comes back swept it can only be this booking's own stale
+      // `expires_at` — proof the widened predicate, not a query bug, is
+      // what picked it up: CONFIRMED joined DEADLINE_BEARING_STATUSES in
+      // the booking-completion plan's schema task.
+      //
+      // The sweep selects these now and does nothing with them; the arms
+      // that give them an ending are the next task's (Task 5).
+      expect(result).toEqual({ swept: 1, failed: 0 });
 
+      // "Does nothing with them" proven, not assumed: the row, the payment
+      // fields, and the announcement stream are exactly what they were
+      // before the sweep ran — `SweepBookingCommand`'s switch has no arm
+      // for CONFIRMED yet, so it falls to `default` and returns without
+      // saving, appending, releasing, or publishing anything.
       const reread = await repo.findById(inserted.id as string);
       expect(reread?.status).toBe("CONFIRMED");
       expect(reread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
