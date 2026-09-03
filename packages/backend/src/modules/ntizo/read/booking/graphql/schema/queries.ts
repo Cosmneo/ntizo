@@ -50,7 +50,7 @@ export const listProviderBookings = defineQuery({
   input: zodSchema(
     z.object({
       providerId: z.string().min(1),
-      tab: z.enum(["requests", "upcoming", "history"]),
+      tab: z.enum(["requests", "upcoming", "history", "all"]),
       q: z.string().trim().max(80).optional(),
       memberId: z.string().min(1).optional(),
       limit: z.number().int().min(1).max(50).optional(),

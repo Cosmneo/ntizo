@@ -393,14 +393,13 @@ function providerSelect() {
 function providerWhere(providerId: string, filter: ProviderListFilter) {
   const live = inArray(booking.status, [...PROVIDER_TAB_STATUSES.upcoming]);
   const byTab =
-    filter.tab === "requests"
-      ? inArray(booking.status, [...PROVIDER_TAB_STATUSES.requests])
-      : filter.tab === "upcoming"
-        ? and(live, gte(booking.startsAt, filter.now))
-        : or(
-            inArray(booking.status, [...PROVIDER_TAB_STATUSES.history]),
-            and(live, lt(booking.startsAt, filter.now)),
-          );
+    filter.tab === "all"
+      ? undefined
+      : filter.tab === "requests"
+        ? inArray(booking.status, [...PROVIDER_TAB_STATUSES.requests])
+        : filter.tab === "upcoming"
+          ? and(live, gte(booking.startsAt, filter.now))
+          : or(inArray(booking.status, [...PROVIDER_TAB_STATUSES.history]), and(live, lt(booking.startsAt, filter.now)));
   const byMember =
     filter.memberId === null ? undefined : eq(booking.providerMemberId, filter.memberId);
   const needle = filter.q?.trim();
@@ -507,7 +506,8 @@ function unaccentedJs(value: string): string {
 
 /** Requests newest first; upcoming soonest first; history most recent first. Ties broken by id, as `listForCustomer` does. */
 function providerOrder(tab: ProviderListFilter["tab"]) {
-  if (tab === "requests") return [desc(booking.createdAt), desc(booking.id)];
+  // `all` orders like `requests` — both answer "what happened lately".
+  if (tab === "requests" || tab === "all") return [desc(booking.createdAt), desc(booking.id)];
   if (tab === "upcoming") return [asc(booking.startsAt), asc(booking.id)];
   return [desc(booking.startsAt), desc(booking.id)];
 }

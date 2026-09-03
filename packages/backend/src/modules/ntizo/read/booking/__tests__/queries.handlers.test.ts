@@ -22,9 +22,11 @@ describe("bookingReadSchema", () => {
   it("adds the two provider fields beside the customer's", () => {
     expect(Object.keys(bookingReadSchema.fields.booking).sort()).toEqual(["byId", "byIdForProvider", "forProvider", "mine"]);
   });
-  it("takes the tab as one of three words", () => {
+  it("takes the tab as one of four words", () => {
     expect(() => listProviderBookingsInput.parse({ providerId: "p", tab: "everything" })).toThrow();
-    expect(listProviderBookingsInput.parse({ providerId: "p", tab: "requests" })).toMatchObject({ tab: "requests" });
+    for (const tab of ["requests", "upcoming", "history", "all"]) {
+      expect(listProviderBookingsInput.parse({ providerId: "p", tab })).toMatchObject({ tab });
+    }
   });
 });
 

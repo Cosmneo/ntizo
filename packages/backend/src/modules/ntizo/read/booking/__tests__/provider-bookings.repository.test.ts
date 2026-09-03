@@ -440,6 +440,38 @@ describe("DrizzleBookingReadRepository, provider side", () => {
     });
   });
 
+  test("the all tab returns every booking the provider was asked about, newest first", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const rows = await readRepo.listForProvider(
+        providerId,
+        { tab: "all", q: null, memberId: null, now },
+        20,
+        0,
+      );
+      const ids = rows.map((r) => r.id);
+      expect(ids).toContain(awaitingId);
+      expect(ids).toContain(confirmedPastId);
+      expect(ids).toContain(confirmedFutureId);
+      // Never the drafts, submitted or not — the same rule the three tabs keep.
+      expect(ids).not.toContain(draftId);
+      expect(ids).not.toContain(expiredDraftId);
+      // Newest first, by creation.
+      const created = rows.map((r) => r.createdAt.getTime());
+      expect([...created].sort((a, b) => b - a)).toEqual(created);
+    });
+  });
+
+  test("counting the all tab agrees with listing it", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const filter = { tab: "all", q: null, memberId: null, now } as const;
+      const [rows, total] = await Promise.all([
+        readRepo.listForProvider(providerId, filter, 50, 0),
+        readRepo.countForProvider(providerId, filter),
+      ]);
+      expect(total).toBe(rows.length);
+    });
+  });
+
   test("the member filter counts only that member's bookings", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       // Every booking in this fixture is assigned to the workspace's one

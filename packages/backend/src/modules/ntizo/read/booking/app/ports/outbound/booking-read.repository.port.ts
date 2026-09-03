@@ -135,7 +135,13 @@ export interface BookingReadRepositoryPort {
   membersOf(providerId: string): Promise<ProviderMemberOption[]>;
 }
 
-export type ProviderListTab = "requests" | "upcoming" | "history";
+/**
+ * The three the list page draws, plus one the dashboard reads: `all` is every
+ * booking the workspace was asked about, newest first. It is not a tab — no
+ * screen offers it as a choice — but it is the same query with the status
+ * clause dropped, so it lives here rather than in a second method.
+ */
+export type ProviderListTab = "requests" | "upcoming" | "history" | "all";
 
 export interface ProviderListFilter {
   tab: ProviderListTab;
@@ -147,8 +153,8 @@ export interface ProviderListFilter {
   now: Date;
 }
 
-/** The statuses each tab lists. `upcoming` and `history` also split CONFIRMED/PENDING_PAYMENT by `startsAt` against `now`. */
-export const PROVIDER_TAB_STATUSES: Record<ProviderListTab, readonly string[]> = {
+/** The statuses each *tab* lists. `all` is absent on purpose: it filters on no status at all. */
+export const PROVIDER_TAB_STATUSES: Record<Exclude<ProviderListTab, "all">, readonly string[]> = {
   requests: ["AWAITING_PROVIDER"],
   upcoming: ["PENDING_PAYMENT", "CONFIRMED"],
   history: ["MARKED_DONE", "COMPLETED", "DISPUTED", "DECLINED", "CANCELLED", "EXPIRED"],
