@@ -15,9 +15,17 @@ import type { ProviderSummary } from "../domain/types";
  * Storage still earns its place: `/provider` and the account pages carry no
  * slug, and landing on the workspace you used last beats landing on whichever
  * one sorts first.
+ *
+ * `enabled` defaults to `true` — every provider-zone page that calls this
+ * with no argument keeps firing the query exactly as before. `HelpCenter` is
+ * the one caller that passes `false`: it is mounted at the root, so without
+ * this it ran `providers.mine` — an authenticated query — for every visitor
+ * on every page, signed out and on the public landing page included, purely
+ * so a provider-audience request could learn the workspace's id. Everywhere
+ * that never happens, the query should not fire at all.
  */
-export function useActiveProvider() {
-  const query = useMyProviders();
+export function useActiveProvider(enabled = true) {
+  const query = useMyProviders(enabled);
   const navigate = useNavigate();
   // `strict: false` reads params from whichever route is matched, so this hook
   // works both under `/provider/$slug` and on pages that have no slug at all.

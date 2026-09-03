@@ -1,10 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
 import { MessageSquarePlus, Inbox, Search } from "lucide-react";
 import { POPULAR_QUESTION_IDS } from "@/features/help-center/domain/faq";
 import { useFaqEntries, HelpFaq } from "@/features/help-center/ui/help-faq";
 import { useHelpCenter } from "@/features/help-center/viewmodel/use-help-center";
-import { CONTACT } from "@/shared/lib/contact";
+import { HelpSignInPrompt } from "@/features/help-center/ui/help-sign-in-prompt";
 
 /**
  * What the panel opens on.
@@ -62,15 +61,7 @@ export function HelpHome({ signedIn, unreadCount }: { signedIn: boolean; unreadC
               </button>
             </div>
           ) : (
-            <div className="grid gap-2 rounded-[var(--radius-card)] border border-[var(--color-border)] p-4">
-              <p className="type-body-medium">{t("signedOutTitle")}</p>
-              <p className="type-caption text-[var(--color-muted-foreground)]">
-                {t("signedOutBody", { email: CONTACT.support })}
-              </p>
-              <Link to="/sign-in" className="type-body-medium text-[var(--color-primary)] hover:underline">
-                {t("signIn")}
-              </Link>
-            </div>
+            <HelpSignInPrompt />
           )}
 
           <section className="grid gap-2">

@@ -78,6 +78,19 @@ describe("HelpCenter", () => {
     expect(screen.queryByText(/how do I leave a review/i)).toBeNull();
   });
 
+  it("keeps a signed-out searcher on the way in, not the form, when nothing matches", async () => {
+    fakes.currentUser.mockReturnValue({ data: null });
+    const user = userEvent.setup();
+    await renderAt("/");
+    await user.click(screen.getByRole("button", { name: /help/i }));
+
+    await user.type(screen.getByLabelText(/search help/i), "xyzxyz123");
+    await user.click(screen.getByRole("button", { name: /talk to us/i }));
+
+    expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/subject/i)).toBeNull();
+  });
+
   it("lets a signed-in reader open a request, and shows the conversation", async () => {
     fakes.currentUser.mockReturnValue({ data: { id: "u-1", role: "customer" } });
     fakes.openRequest.mockResolvedValue("t-1");
@@ -96,6 +109,14 @@ describe("HelpCenter", () => {
       body: "Paguei duas vezes",
       attachments: [],
     });
+
+    // The new thread is not in `fakes.requests`' (still-invalidating) list
+    // for this test's whole run, so this is exactly the beat right after
+    // creation: the conversation must render its own loading state, not
+    // nothing — the form's own subject field is gone (we have left "new"),
+    // and the conversation's composer is already there.
+    expect(await screen.findByLabelText(/message body/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/subject/i)).toBeNull();
   });
 
   it("is absent where it must not appear", async () => {

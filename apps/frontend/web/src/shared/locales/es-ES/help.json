@@ -36,6 +36,7 @@
   },
   "resolvedNotice": "Esta solicitud se marcó como resuelta. Responde para reabrirla.",
   "platformSender": "Soporte Ntizo",
+  "conversationError": "We couldn't load this conversation.",
   "error": {
     "SUPPORT_SUBJECT_INVALID": "El asunto debe tener entre 1 y 120 caracteres.",
     "SUPPORT_NOT_A_MEMBER": "No perteneces a este proveedor.",

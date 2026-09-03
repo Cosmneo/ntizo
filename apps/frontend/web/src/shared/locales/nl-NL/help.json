@@ -36,6 +36,7 @@
   },
   "resolvedNotice": "Deze aanvraag is als opgelost gemarkeerd. Reageer om hem te heropenen.",
   "platformSender": "Ntizo Support",
+  "conversationError": "We couldn't load this conversation.",
   "error": {
     "SUPPORT_SUBJECT_INVALID": "Het onderwerp moet tussen 1 en 120 tekens lang zijn.",
     "SUPPORT_NOT_A_MEMBER": "Je hoort niet bij deze aanbieder.",

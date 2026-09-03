@@ -36,6 +36,7 @@
   },
   "resolvedNotice": "This request was marked resolved. Reply to reopen it.",
   "platformSender": "Ntizo Support",
+  "conversationError": "We couldn't load this conversation.",
   "error": {
     "SUPPORT_SUBJECT_INVALID": "The subject must be between 1 and 120 characters.",
     "SUPPORT_NOT_A_MEMBER": "You don't belong to this provider.",

@@ -14,6 +14,7 @@ import { HelpFaq } from "@/features/help-center/ui/help-faq";
 import { HelpRequests } from "@/features/help-center/ui/help-requests";
 import { HelpNewRequest } from "@/features/help-center/ui/help-new-request";
 import { HelpConversation } from "@/features/help-center/ui/help-conversation";
+import { HelpSignInPrompt } from "@/features/help-center/ui/help-sign-in-prompt";
 import type { AttachmentDescriptor } from "@/features/messaging/domain/types";
 
 /**
@@ -31,9 +32,14 @@ export function HelpCenter() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const help = useHelpCenter();
   const { data: me } = useCurrentUser();
-  const { activeProvider } = useActiveProvider();
 
   const { audience } = audienceForPath(pathname);
+  // Only fetches on a provider-audience page: this component is mounted at
+  // the root, so an unconditional call here would run an authenticated
+  // "which workspace" query for every visitor on every page, signed out and
+  // on the public landing page included. See `useActiveProvider`'s own doc
+  // comment for why `enabled` exists.
+  const { activeProvider } = useActiveProvider(audience === "provider");
   const providerId = audience === "provider" ? (activeProvider?.id ?? null) : null;
   const signedIn = Boolean(me);
 
@@ -80,18 +86,29 @@ export function HelpCenter() {
             onOpen={help.openThread}
           />
         )}
-        {help.screen === "new" && (
-          <HelpNewRequest
-            prefill={help.prefill}
-            onClearPrefill={() => help.composeNew()}
-            onSubmit={(subject, body, attachments) => void submit(subject, body, attachments)}
-            submitting={opening}
-            errorCode={openErrorCode}
-            {...(audience === "provider" && activeProvider
-              ? { audienceLabel: i18n.t("audienceProvider", { ns: "help", provider: activeProvider.name }) }
-              : {})}
-          />
-        )}
+        {help.screen === "new" &&
+          // A signed-out reader can reach "new" from more than one button
+          // (a popular question, a no-match search, "send a message"), and
+          // none of those is allowed to end in a form: the spec's signed-out
+          // branch is the FAQ and a way in, never a form. Gated here, once,
+          // rather than in every caller of `composeNew`, so no future button
+          // can reopen the gap by forgetting to check.
+          (signedIn ? (
+            <HelpNewRequest
+              prefill={help.prefill}
+              onClearPrefill={() => help.composeNew()}
+              onSubmit={(subject, body, attachments) => void submit(subject, body, attachments)}
+              submitting={opening}
+              errorCode={openErrorCode}
+              {...(audience === "provider" && activeProvider
+                ? { audienceLabel: i18n.t("audienceProvider", { ns: "help", provider: activeProvider.name }) }
+                : {})}
+            />
+          ) : (
+            <div className="p-4">
+              <HelpSignInPrompt />
+            </div>
+          ))}
         {help.screen === "conversation" && <HelpConversation request={selected} />}
       </HelpPanel>
     </>

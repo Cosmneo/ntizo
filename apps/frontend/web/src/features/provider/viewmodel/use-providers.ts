@@ -2,8 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { providerQueries } from "../data/provider.repository";
 import type { ProviderSummary } from "../domain/types";
 
-export function useMyProviders() {
-  return useQuery(providerQueries.mine());
+/**
+ * `enabled` defaults to `true` — every existing caller wants this query to
+ * run unconditionally and keeps working unchanged. The parameter exists for
+ * `useActiveProvider`'s own `enabled`, which the Help Center (mounted at the
+ * root, on every page) passes `false` on any page that is not the provider
+ * zone — see that hook's own doc comment for why an authenticated query
+ * firing for every signed-out visitor on the landing page is a real cost,
+ * not a hypothetical one.
+ */
+export function useMyProviders(enabled = true) {
+  return useQuery({ ...providerQueries.mine(), enabled });
 }
 
 export function useProviderDetail(id: string | undefined) {
