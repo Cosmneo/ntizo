@@ -231,7 +231,7 @@ One sentence joins "O que recolhemos" in all eight locales: *what you write to u
 
 - **Navigation:** "Suporte" (`Inbox` icon) after Utilizadores and before Categorias — it is a queue worked daily, like the provider review queue, not curated content like categories and reviews.
 - **Page**, on the `/admin/reviews` pattern: `usePageHeader`; the open count as the sentence the page is about ("12 pedidos abertos"); filter buttons for kind (Todos · Contacto · Suporte · Feedback) and status (Abertos · Resolvidos · Todos, default Abertos); a search box; a `CollectionCard` list; offset pagination at 25 a page.
-- **A row:** kind badge, topic label, name and email (the name links to `/admin/users` filtered by that user when `requesterUserId` is set), the first ~140 characters of the message, locale, relative date. Clicking expands the row to the full message, `origin_path`, IP and user agent.
+- **A row:** kind badge, topic label, name and email (plain text — the users page has no filter param, and a link that looks like it finds someone and does not is worse than text; the row carries `requesterUserId` for a later admin user page), the first ~140 characters of the message, locale, relative date. Clicking expands the row to the full message, `origin_path`, IP and user agent.
 - **Actions per row:** "Responder por email" (`mailto:` with subject `[Ntizo #7F3A2C] <topic>`), and "Marcar resolvido" / "Reabrir". Not optimistic — like the featured toggle, and for the same reason: the count on the same payload would have to be kept in step by hand. Both the list and its count invalidate on success.
 - **Empty states** in words: no open requests ("Nada por responder."), a search with no match.
 
