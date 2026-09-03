@@ -123,7 +123,9 @@ created_at           timestamptz not null default now()
 ```
 
 - `CHECK ((status = 'open') = (resolved_at IS NULL))`.
-- `index (status, created_at desc, thread_id desc)` — the admin queue.
+- `index (status, created_at desc, thread_id desc)` — serves `countOpen` and
+  the admin queue's `status` / `audience` filters; the queue itself orders by
+  the thread's `last_message_at`, a column this table doesn't have.
 - `audience` is redundant with `provider_id IS NULL` and kept anyway: a query
   filtering the admin queue by audience should not have to know that rule.
 
@@ -451,8 +453,17 @@ replies → the customer sees the reply in the panel and the request in
 
 ## Rollout
 
-- One additive migration with the backfill; four notification types and
-  templates; `wrangler.jsonc` unchanged (the sweep already runs).
+- One migration, but not an additive one for a deployed phase-1 backend: it
+  adds `message.sender_side` as `NOT NULL` with no `DEFAULT` — backfilling and
+  locking the column down in the same migration — so any backend still
+  running phase-1 code can no longer insert a `message` row the moment it
+  applies (nothing in that code sets `sender_side`, and Postgres refuses the
+  `NOT NULL` violation outright). The backend must deploy immediately after
+  the migration runs; a first production `NOT NULL` addition should use
+  expand/contract instead (nullable + backfill, deploy the code that writes
+  it, then `SET NOT NULL` in a later migration) — see follow-up #135. Also:
+  four notification types and templates; `wrangler.jsonc` unchanged (the
+  sweep already runs).
 - Backend before frontend: the new frontend asks for fields the old backend
   does not have.
 - No feature flag. The launcher only exposes what is already wired.

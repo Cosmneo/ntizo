@@ -3427,3 +3427,44 @@ through `adapters` rather than a command" — and the one-line note on `internal
 scheduled.ts." Both reasons still hold; neither is written down anywhere in the file any more.
 
 **Trigger:** the next edit of that bootstrap — restore them.
+
+---
+
+## #135 — Expand/contract for `NOT NULL` columns on tables production code writes
+
+Migration 0035 added `message.sender_side` as `NOT NULL` with no `DEFAULT`, backfilling and
+locking the column down in the same migration. That broke the previously-deployed phase-1 writer
+on the shared dev database the moment the migration applied — see #132. The rule for production:
+add the column nullable, backfill it, deploy the code that writes it going forward, and only then
+`SET NOT NULL` in a later migration. A single additive-looking migration that both adds and locks
+down a `NOT NULL` column is safe only when nothing currently deployed still writes that table
+without it.
+
+**Trigger:** the first migration that adds a `NOT NULL` column to a table production code writes.
+
+---
+
+## #136 — Two `requireAdmin` conventions, only one of them used
+
+`graphql/context.ts` exports `requireAdminUserId` (error code `FORBIDDEN`), documented as the
+single boundary for admin-gated GraphQL fields — but nothing calls it. Every admin slice built so
+far (`review`, `catalog`, `provider`, `read/support`, `write/support`) instead copies its own local
+`requireAdmin` helper, each raising `ADMIN_ONLY`. Two conventions for the same check, with the
+one meant to be canonical currently dead code.
+
+**Trigger:** the next admin-gated slice — converge on one helper and one error code instead of
+adding a third copy.
+
+---
+
+## #137 — `ResolveSupportRequestCommand` has no guard against a concurrent resolve or a racing reply
+
+Two admins resolving the same request at once both read `status = 'open'`, both save `resolved`,
+and both raise a `SupportRequestResolved` notification — the requester gets told twice. Separately,
+a requester's reply racing an admin's resolve can leave a `resolved` request with an unread
+requester message sitting on it forever from the admin side's perspective, though the unread sweep
+still tells the admins about it regardless of the request's status. A `WHERE status = 'open'` on
+`save` (checking the row count it actually updated) closes the first case; the second needs its own
+look once it actually bites.
+
+**Trigger:** the second admin account, or the first duplicate "request resolved" notification.
