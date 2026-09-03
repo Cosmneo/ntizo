@@ -6,10 +6,13 @@ import { BookingsPage } from "@/features/bookings/ui/bookings-page";
  * The customer's own bookings. It was a placeholder from the day the route
  * existed; checkout deliberately refused to link here until it read real rows.
  *
- * `offset` lives in the URL alongside `tab`, unlike the provider list's own
- * pager (which keeps it in component state): a customer's history is short
- * enough that a bookmarked or refreshed "page 2" is worth more than an
- * infinite-scroll accumulator sized for a workspace's hundreds of rows.
+ * **`tab` alone. `offset` was here and is not any more.** The argument for
+ * putting it in the URL was a bookmarkable "page 2", and what it actually
+ * bought was a pager that replaced the page instead of extending it, a count
+ * in the card's header that misreported on every page after the first, and no
+ * control that went back. `BookingsPage` now keeps the offset in component
+ * state and accumulates, exactly as the provider's list does; see its own doc
+ * comment. A stale `?offset=20` in somebody's history is simply ignored.
  *
  * **`bookings.index.tsx`, not `bookings.tsx`.** This segment also owns a
  * `$bookingId` child (`bookings.$bookingId.tsx`) — TanStack Router's flat
@@ -29,15 +32,9 @@ import { BookingsPage } from "@/features/bookings/ui/bookings-page";
  * `page.reload()` at the detail URL directly, but never by clicking the row.
  */
 export const Route = createFileRoute("/_customer/bookings/")({
-  validateSearch: (
-    s: Record<string, unknown>,
-  ): { tab?: CustomerBookingTab; offset?: number } => ({
-    ...(CUSTOMER_BOOKING_TABS.includes(s["tab"] as CustomerBookingTab)
+  validateSearch: (s: Record<string, unknown>): { tab?: CustomerBookingTab } =>
+    CUSTOMER_BOOKING_TABS.includes(s["tab"] as CustomerBookingTab)
       ? { tab: s["tab"] as CustomerBookingTab }
-      : {}),
-    ...(typeof s["offset"] === "number" && s["offset"] > 0
-      ? { offset: s["offset"] }
-      : {}),
-  }),
+      : {},
   component: BookingsPage,
 });

@@ -8,7 +8,7 @@ import { EmptyCard } from "@/shared/components/empty-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { slotWording } from "@/features/checkout/domain/slot-wording";
 import {
-  formatHeadlinePrice,
+  formatAmount,
   formatRating,
 } from "@/features/directory/services/domain/service-card";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
@@ -172,7 +172,20 @@ export function BookingPage() {
     );
   }
 
-  if (!b) {
+  // **A draft is not a booking this page may draw, and the guard belongs
+  // here rather than in the query.** `findForCustomer` deliberately has no
+  // `<> 'DRAFT'` clause — unlike `findForProvider` — because checkout's steps
+  // 2 and 3 read the customer's own draft through that very read, and adding
+  // one would break the flow this page is the destination of. So the refusal
+  // is the caller's: reached by URL, `/bookings/<a draft's id>` used to draw
+  // a pill reading the literal `status.DRAFT` (there is no such key, in any
+  // locale, correctly) over a timeline claiming a request was sent and an
+  // address block that is empty because a draft never reached step 2.
+  //
+  // The same card a stranger's booking gets, and for the same reason the
+  // card exists at all: a draft is a checkout half-finished, and the branch
+  // rule is that `DRAFT` appears in no tab and on no customer page.
+  if (!b || b.status === "DRAFT") {
     return (
       <div className="mx-auto grid max-w-6xl gap-4">
         {back}
@@ -238,8 +251,12 @@ export function BookingPage() {
               {t("cancelBooking")}
             </Button>
             <Button type="button" onClick={() => setPaying(true)}>
+              {/* `formatAmount`, not `formatHeadlinePrice`: the button
+                  names the amount this press will debit, and the headline
+                  formatter rounds to whole units. See the money block below,
+                  and `formatHeadlinePrice`'s own doc comment. */}
               {t("payAmount", {
-                amount: formatHeadlinePrice(b.priceMinor, b.currency, locale),
+                amount: formatAmount(b.priceMinor, b.currency, locale),
               })}
             </Button>
           </div>
@@ -354,8 +371,11 @@ export function BookingPage() {
             <h2 className={CAPTION}>{t("moneyCaption")}</h2>
             <div className="mt-3 flex items-baseline justify-between gap-3">
               <span className="type-body">{b.paidAt ? t("totalPaid") : t("totalDue")}</span>
+              {/* A total, never a headline — "Total a pagar" is what the
+                  customer owes and "Total pago" is a receipt, and neither may
+                  be rounded to whole units. */}
               <span className="type-h3 font-semibold tabular-nums">
-                {formatHeadlinePrice(b.priceMinor, b.currency, locale)}
+                {formatAmount(b.priceMinor, b.currency, locale)}
               </span>
             </div>
             {b.paidAt && (

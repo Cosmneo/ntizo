@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -32,19 +33,17 @@ vi.mock("@/shared/lib/graphql/session-graphql", () => ({
  * The same validator the real route carries, duplicated rather than
  * imported — `src/routes/**` is the routes element and a `ui` test may not
  * import one. See the provider suite's identical note.
+ *
+ * `tab` and nothing else: the offset left the URL when the pager stopped
+ * replacing the page and started extending it. See the route's own comment.
  */
 function validateSearch(search: Record<string, unknown>): {
   tab?: CustomerBookingTab;
-  offset?: number;
 } {
   const tab = search["tab"];
-  const offset = search["offset"];
-  return {
-    ...((CUSTOMER_BOOKING_TABS as readonly string[]).includes(tab as string)
-      ? { tab: tab as CustomerBookingTab }
-      : {}),
-    ...(typeof offset === "number" && offset > 0 ? { offset } : {}),
-  };
+  return (CUSTOMER_BOOKING_TABS as readonly string[]).includes(tab as string)
+    ? { tab: tab as CustomerBookingTab }
+    : {};
 }
 
 function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
@@ -96,6 +95,23 @@ function pageFixture(
 function setPage(page: CustomerBookingPageDTO) {
   fakes.graphql.mockReset();
   fakes.graphql.mockResolvedValue({ bookingMine: page });
+}
+
+/**
+ * One answer per requested offset — what a real pager actually asks for. The
+ * offset travels in the request's own `input`, so this dispatches on it
+ * rather than on call order: "Mais" fires one request, and a render that
+ * happens to re-issue the first would otherwise silently shift every answer.
+ */
+function setPagesByOffset(pages: Record<number, CustomerBookingPageDTO>) {
+  fakes.graphql.mockReset();
+  fakes.graphql.mockImplementation(
+    (_query: string, variables: { input: { offset: number } }) => {
+      const page = pages[variables.input.offset];
+      if (!page) throw new Error(`no fixture for offset ${variables.input.offset}`);
+      return Promise.resolve({ bookingMine: page });
+    },
+  );
 }
 
 /**
@@ -257,19 +273,35 @@ describe("BookingsPage", () => {
   // The rule the whole read model was reshaped for. Worth one assertion at
   // the surface too: this is where a regression would actually be seen.
   //
-  // "1 800 MTn", not "1 800 MZN" — `formatHeadlinePrice` (shared with the
-  // directory's browse cards, so every price on the platform agrees) leaves
-  // `currencyDisplay` at its default, which is `pt-MZ`'s own narrow symbol
-  // for MZN. Printed once with `bun apps/frontend/web/…` against this exact
-  // call and copied here rather than guessed — see the report for the
-  // command.
+  // "1800,00 MTn", not "1 800 MZN" — `formatAmount` (shared with checkout's
+  // own rail total, so the number a customer approved and the number this row
+  // shows agree) leaves `currencyDisplay` at its default, which is `pt-MZ`'s
+  // own narrow symbol for MZN, and leaves grouping at `pt-MZ`'s default,
+  // which does not group four digits. Printed once with `node -e` against
+  // this exact call and copied here rather than guessed — see the report for
+  // the command.
   it("never prints a commission", async () => {
     setPage(pageFixture([bookingFixture({ priceMinor: 180_000 })]));
     await renderBookings();
 
     const r = await row("Canalização");
-    expect(r.getByText("1 800 MTn")).toBeInTheDocument();
+    expect(r.getByText("1800,00 MTn")).toBeInTheDocument();
     expect(screen.queryByText(/comiss/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * I1. The row used to run through `formatHeadlinePrice`, whose own doc
+   * comment forbids it for a total: `maximumFractionDigits: 0` turns a
+   * booking of 1800,50 into "1 801 MTn" — a number nobody is charged, on the
+   * row whose button opens a dialog asking for a PIN.
+   */
+  it("shows the exact price, never a rounded headline", async () => {
+    setPage(pageFixture([bookingFixture({ priceMinor: 180_050 })]));
+    await renderBookings();
+
+    const r = await row("Canalização");
+    expect(r.getByText("1800,50 MTn")).toBeInTheDocument();
+    expect(r.queryByText(/1 801/)).not.toBeInTheDocument();
   });
 
   it("has no search box — a client-side filter would lie about a booking sitting on the next page", async () => {
@@ -343,5 +375,91 @@ describe("BookingsPage", () => {
       const r = await row("Canalização");
       expect(r.getByText(/termina em/)).toBeInTheDocument();
     });
+  });
+
+  /**
+   * I7. "Mais" used to navigate to `?offset=20`, which keyed a different
+   * cache entry and *replaced* the rows on screen — so the reader lost what
+   * they were looking at, `CollectionCard`'s header went on saying "20 de 45"
+   * while showing rows 21 to 40, and nothing went back. The provider's list
+   * settled this shape already: the next page is added under the current one.
+   */
+  describe("paging", () => {
+    const twenty = (offset: number) =>
+      Array.from({ length: 20 }, (_, i) =>
+        bookingFixture({ id: `bk-${offset + i}`, serviceName: `Serviço ${offset + i}` }),
+      );
+
+    it("adds the next page under the rows already there, and keeps the count honest", async () => {
+      setPagesByOffset({
+        0: pageFixture(twenty(0), { total: 25, nextOffset: 20 }),
+        20: pageFixture(twenty(20).slice(0, 5), { total: 25, nextOffset: null }),
+      });
+      await renderBookings();
+
+      const table = within(await screen.findByRole("table"));
+      expect(await table.findByText(/Serviço 0/)).toBeInTheDocument();
+      expect(screen.getByText("20 de 25 mostradas")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Mais" }));
+
+      // The first page is still there — "Mais" extends, it does not replace.
+      await waitFor(() => expect(table.getByText(/Serviço 20/)).toBeInTheDocument());
+      expect(table.getByText(/Serviço 0/)).toBeInTheDocument();
+      // And the count says what is actually on screen.
+      expect(screen.getByText("25 de 25 mostradas")).toBeInTheDocument();
+    });
+
+    it("offers no Mais on the last page", async () => {
+      setPage(pageFixture([bookingFixture()], { total: 1, nextOffset: null }));
+      await renderBookings();
+
+      await screen.findByRole("table");
+      expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+    });
+
+    it("starts the list over when the tab changes", async () => {
+      setPagesByOffset({
+        0: pageFixture(twenty(0), { total: 25, nextOffset: 20 }),
+        20: pageFixture(twenty(20).slice(0, 5), { total: 25, nextOffset: null }),
+      });
+      await renderBookings();
+
+      await screen.findByText("20 de 25 mostradas");
+      await userEvent.click(screen.getByRole("button", { name: "Mais" }));
+      await waitFor(() =>
+        expect(screen.getByText("25 de 25 mostradas")).toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByRole("tab", { name: /Próximas/ }));
+
+      // Offset zero again — a tab is a new list, not a continuation of the
+      // one before it.
+      await waitFor(() =>
+        expect(screen.getByText("20 de 25 mostradas")).toBeInTheDocument(),
+      );
+    });
+  });
+
+  /**
+   * I3's list half. `customerWhere` already excludes drafts from every tab,
+   * so this is belt to its braces — but the branch rule is that `DRAFT`
+   * appears in no tab and on no customer page, and a row here would offer to
+   * cancel a checkout the customer does not believe exists (and would print
+   * the literal `status.DRAFT`, which no locale has a word for).
+   */
+  it("renders no row for a draft, even if the read ever returned one", async () => {
+    setPage(
+      pageFixture([
+        bookingFixture({ id: "bk-draft", status: "DRAFT", serviceName: "Meio a caminho" }),
+        bookingFixture({ id: "bk-real", serviceName: "Canalização" }),
+      ]),
+    );
+    await renderBookings();
+
+    const table = within(await screen.findByRole("table"));
+    expect(await table.findByText(/Canalização/)).toBeInTheDocument();
+    expect(table.queryByText(/Meio a caminho/)).not.toBeInTheDocument();
+    expect(screen.queryByText("status.DRAFT")).not.toBeInTheDocument();
   });
 });

@@ -18,5 +18,17 @@ export function BookingStatusBadge({
   status: CustomerBookingStatus;
 }) {
   const { t } = useTranslation("bookings");
-  return <Badge tone={STATUS_TONE[status]}>{t(`status.${status}`)}</Badge>;
+  // **A `defaultValue`, because i18next's own default is the raw key.**
+  // `CustomerBookingStatus` is every `BookingDTO` status, `DRAFT` included,
+  // and `status.DRAFT` exists in none of the eight locales — correctly, since
+  // a draft is a checkout half-finished and appears on no customer page. But
+  // "correctly absent" and "safe to render" are different claims: before the
+  // pages guarded it, `/bookings/<a draft's id>` printed a pill reading
+  // `status.DRAFT`. `BookingPage` and `BookingsPage` now refuse to draw a
+  // draft at all, so this line should be unreachable; the fallback is what
+  // makes that "should" cost a plain token rather than a leaked key id, for
+  // this status and for any future one whose word lands late.
+  return (
+    <Badge tone={STATUS_TONE[status]}>{t(`status.${status}`, { defaultValue: status })}</Badge>
+  );
 }

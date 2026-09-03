@@ -40,7 +40,7 @@ const CANCEL = `
 
 const PAY = `
   mutation BookingPay($input: BookingPayInput!) {
-    bookingPay(input: $input) { bookingId }
+    bookingPay(input: $input) { bookingId promptAlreadySent }
   }`;
 
 export interface MyBookingsPageInput {
@@ -105,15 +105,31 @@ export async function cancelBooking(bookingId: string): Promise<void> {
  * this learns nothing about whether the customer actually paid. `PayDialog`
  * is what learns that, by re-reading the booking.
  *
- * Five refusals reach this call, all surfacing through `GraphqlError.code`:
+ * Refusals reach this call through `GraphqlError.code`:
  * `NOT_BOOKING_CUSTOMER` (a stranger's id), `BOOKING_INVALID_TRANSITION`
  * (the booking is no longer `PENDING_PAYMENT`), `BOOKING_NO_CUSTOMER_PHONE`
  * (nothing to send the prompt to), `BOOKING_CHARGE_ATTEMPTS_SPENT` (the
- * three tries are gone) and `BOOKING_PAYMENT_WINDOW_CLOSED` (too little of
- * the window left to safely start a gateway call).
+ * three tries are gone), `BOOKING_PAYMENT_WINDOW_CLOSED` (too little of the
+ * window left to safely start a gateway call), `BOOKING_CHARGE_UNAVAILABLE`
+ * (the processor is not configured — nobody's prompt is going anywhere),
+ * plus `UNAUTHENTICATED` and `BOOKING_NOT_FOUND`, which any mutation on this
+ * mount can raise.
+ *
+ * **`promptAlreadySent` is not one of them.** A press inside the charge
+ * cooldown pushes nothing over a prompt that may still be live on the
+ * handset, but the customer did ask and a charge is in flight — so the
+ * command answers with a fact rather than an error, and `PayDialog` words
+ * the waiting state differently for it. See `RequestBookingChargeOutcome`.
  */
-export async function payBooking(bookingId: string): Promise<void> {
-  await sessionGraphql<{ bookingPay: { bookingId: string } }>(PAY, {
+export async function payBooking(bookingId: string): Promise<PayBookingResult> {
+  const d = await sessionGraphql<{ bookingPay: PayBookingResult }>(PAY, {
     input: { bookingId },
   });
+  return d.bookingPay;
+}
+
+export interface PayBookingResult {
+  bookingId: string;
+  /** True when the prompt this press asked for had already gone out moments ago. */
+  promptAlreadySent: boolean;
 }

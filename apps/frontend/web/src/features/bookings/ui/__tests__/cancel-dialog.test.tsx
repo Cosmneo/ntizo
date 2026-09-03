@@ -162,6 +162,38 @@ describe("CancelDialog", () => {
     );
   });
 
+  /**
+   * I4. A dialog can sit open for minutes, which is how long a session takes
+   * to lapse, so `UNAUTHENTICATED` is reachable — and it used to fall into
+   * the generic refusal. Signing in again is the answer, and only this
+   * sentence says so.
+   */
+  it("tells a signed-out customer to sign in again", async () => {
+    fakes.graphql.mockRejectedValue(refusal("UNAUTHENTICATED"));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { onClose } = renderDialog(qc);
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+
+    expect(
+      await screen.findByText(
+        "A sua sessão terminou. Inicie sessão outra vez para cancelar esta reserva.",
+      ),
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("says the booking is gone for BOOKING_NOT_FOUND", async () => {
+    fakes.graphql.mockRejectedValue(refusal("BOOKING_NOT_FOUND"));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { onClose } = renderDialog(qc);
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar reserva" }));
+
+    expect(await screen.findByText("Já não encontramos esta reserva.")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   // Every other refusal — a stranger's id, a dropped connection — gets the
   // generic message, which the dialog must not close over (it never
   // succeeded) and must not dress up as a retry that would work.

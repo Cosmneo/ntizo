@@ -279,6 +279,73 @@ describe("PayDialog", () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * I4. This dialog sits open for minutes waiting on a handset, which is
+   * exactly how long a session takes to lapse — so `UNAUTHENTICATED` is
+   * reachable, and it used to fall through to "try again in a moment": a
+   * retry that can never succeed until the customer signs in, which nothing
+   * told them to do.
+   */
+  it("tells a signed-out customer to sign in again, not to retry", async () => {
+    payImpl = () => Promise.reject(refusal("UNAUTHENTICATED"));
+    renderDialog(pendingPayment(), "+258849994567");
+
+    expect(
+      await screen.findByText(
+        "A sua sessão terminou. Inicie sessão outra vez para pagar esta reserva.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tente novamente/)).not.toBeInTheDocument();
+  });
+
+  it("says the booking is gone for BOOKING_NOT_FOUND, and promises no retry", async () => {
+    payImpl = () => Promise.reject(refusal("BOOKING_NOT_FOUND"));
+    renderDialog(pendingPayment(), "+258849994567");
+
+    expect(await screen.findByText("Já não encontramos esta reserva.")).toBeInTheDocument();
+    expect(screen.queryByText(/Tente novamente/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * I5's other half. A stage whose payment processor is misconfigured used to
+   * tell every customer a prompt was on its way to their handset; the command
+   * now refuses instead, and this is the one refusal where "try again in a
+   * moment" is honest — the fix is somebody else's and the booking is fine.
+   */
+  it("offers the generic retry when the processor is not configured", async () => {
+    payImpl = () => Promise.reject(refusal("BOOKING_CHARGE_UNAVAILABLE"));
+    renderDialog(pendingPayment(), "+258849994567");
+
+    expect(
+      await screen.findByText(
+        "Não foi possível pedir o pagamento agora. Tente novamente dentro de momentos.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Enviámos um pedido M-Pesa/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * C3's customer-facing half. A press inside the charge cooldown pushes
+   * nothing over a prompt that may still be live; the command says so with
+   * `promptAlreadySent`, and this dialog must not repeat "this page updates
+   * itself" as though a fresh prompt had gone out.
+   */
+  it("says the prompt was already on its way when a second press pushed nothing", async () => {
+    payImpl = () =>
+      Promise.resolve({ bookingPay: { bookingId: "b1", promptAlreadySent: true } });
+    renderDialog(pendingPayment(), "+258849994567");
+
+    expect(
+      await screen.findByText(
+        "Já lhe enviámos um pedido há instantes. Confirme-o no telemóvel — não enviámos um segundo.",
+      ),
+    ).toBeInTheDocument();
+    // Still the waiting state — this is not a failure, and the customer is
+    // still being asked to confirm on their handset.
+    expect(screen.getByText(/Confirme no seu telemóvel/)).toBeInTheDocument();
+    expect(screen.queryByText(/actualiza-se sozinha/)).not.toBeInTheDocument();
+  });
+
   it("closes right away when Fechar is pressed, without waiting for the poll", async () => {
     const { onClose } = renderDialog(pendingPayment(), "+258849994567");
 

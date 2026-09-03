@@ -144,17 +144,39 @@ describe("BookingPage", () => {
     ]);
   });
 
-  // "1 800 MTn", not "1 800 MZN" — `formatHeadlinePrice` (shared with the
-  // list's own price cell, so every price on this page agrees with the row
-  // it was opened from) leaves `currencyDisplay` at its default, which is
-  // `pt-MZ`'s own narrow symbol for MZN. Verified against the list's own
-  // identical assertion in `bookings-page.test.tsx` rather than guessed.
+  // "1800,00 MTn", not "1 800 MZN" — `formatAmount` (shared with the list's
+  // own price cell and with checkout's rail, so every price on this page
+  // agrees with the row it was opened from and with what was approved) leaves
+  // `currencyDisplay` at its default, which is `pt-MZ`'s own narrow symbol
+  // for MZN. Verified against the list's own identical assertion in
+  // `bookings-page.test.tsx` rather than guessed.
   it("shows the total and never a split", async () => {
     setDetail(bookingFixture({ priceMinor: 180_000, currency: "MZN" }));
     await renderBooking();
 
-    expect(await screen.findByText("1 800 MTn")).toBeInTheDocument();
+    expect(await screen.findByText("1800,00 MTn")).toBeInTheDocument();
     expect(screen.queryByText(/comiss/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * I1. "Total a pagar" is what the customer owes and the Pagar button names
+   * what this press will debit — neither may be rounded. Through
+   * `formatHeadlinePrice`, both read "1 801 MTn" for a booking of 1800,50.
+   */
+  it("prints the exact total, and names it exactly on the Pagar button", async () => {
+    setDetail(
+      bookingFixture({ status: "PENDING_PAYMENT", priceMinor: 180_050, currency: "MZN" }),
+    );
+    await renderBooking();
+
+    expect(await screen.findByText("1800,50 MTn")).toBeInTheDocument();
+    // `toHaveTextContent`, not `getByRole`'s own `name` — that one compares
+    // the accessible name with no normalizer at all, and `Intl.NumberFormat`
+    // separates the amount from its currency symbol with U+00A0.
+    expect(screen.getByRole("button", { name: /^Pagar/ })).toHaveTextContent(
+      "Pagar 1800,50 MTn",
+    );
+    expect(screen.queryByText(/1 801/)).not.toBeInTheDocument();
   });
 
   it("says when a paid booking was paid", async () => {
@@ -171,6 +193,23 @@ describe("BookingPage", () => {
     await renderBooking();
 
     expect(await screen.findByText("Reserva não encontrada")).toBeInTheDocument();
+  });
+
+  /**
+   * I3. `findForCustomer` deliberately has no draft guard — checkout's steps
+   * 2 and 3 read the customer's own draft through that very query — so the
+   * refusal has to be this page's. Reached by URL, a draft used to render a
+   * pill reading the literal `status.DRAFT` (no locale has that key, and
+   * correctly so) over a timeline claiming a request had been sent and an
+   * empty address block.
+   */
+  it("treats a draft as not found rather than drawing it", async () => {
+    setDetail(bookingFixture({ status: "DRAFT" }));
+    await renderBooking();
+
+    expect(await screen.findByText("Reserva não encontrada")).toBeInTheDocument();
+    expect(screen.queryByText("status.DRAFT")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Pedido enviado/)).not.toBeInTheDocument();
   });
 
   // Regression: `td(\`location.${type}\`)` printed the literal key —

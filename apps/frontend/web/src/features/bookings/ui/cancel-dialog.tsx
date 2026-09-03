@@ -42,12 +42,21 @@ export function CancelDialog({
    * `BOOKING_INVALID_TRANSITION` means the booking already left the state
    * this dialog was drawn for — the provider answered, or the payment
    * landed, while it sat open — so a retry would refuse identically
-   * forever, and "tente novamente" would be a lie. Every other code
-   * (`NOT_BOOKING_CUSTOMER`, a dropped connection) gets the generic
-   * refusal, which likewise promises no retry, because none of them are
-   * ones this dialog can tell apart from "try again and it might work" —
-   * see `provider/bookings/ui/booking-page.tsx`'s own `onError` for the
-   * precedent this follows.
+   * forever, and "tente novamente" would be a lie.
+   *
+   * `UNAUTHENTICATED` and `BOOKING_NOT_FOUND` used to fall through to that
+   * same generic sentence, and it is untrue for both in the same way: no
+   * amount of trying again signs somebody back in, and none finds a booking
+   * that is not there. A dialog can sit open for minutes, which is how long
+   * a session takes to lapse, so the first is reachable rather than
+   * theoretical. Each now gets a sentence that says what actually happened,
+   * and the signed-out one says what to do about it.
+   *
+   * Everything else (`NOT_BOOKING_CUSTOMER`, a dropped connection) still
+   * gets the generic refusal, which likewise promises no retry, because none
+   * of them are ones this dialog can tell apart from "try again and it might
+   * work" — see `provider/bookings/ui/booking-page.tsx`'s own `onError` for
+   * the precedent this follows.
    *
    * Confirmed against `packages/backend/.../booking/domain/exceptions.ts`,
    * not copied from a comment: `BookingTransitionError`'s `code` is
@@ -60,9 +69,15 @@ export function CancelDialog({
    * wrong string, which is exactly how a branch that never fires stays
    * green.
    */
-  const moved =
-    (cancel.error as { code?: string } | null)?.code ===
-    "BOOKING_INVALID_TRANSITION";
+  const code = (cancel.error as { code?: string } | null)?.code;
+  const errorKey =
+    code === "BOOKING_INVALID_TRANSITION"
+      ? "cancelDialogMoved"
+      : code === "UNAUTHENTICATED"
+        ? "cancelDialogSignedOut"
+        : code === "BOOKING_NOT_FOUND"
+          ? "cancelDialogGone"
+          : "cancelDialogError";
 
   return (
     <Dialog
@@ -90,7 +105,7 @@ export function CancelDialog({
             button over a booking that can no longer be cancelled. */}
         {cancel.isError && (
           <p role="alert" className="type-caption -mt-2 mb-2 text-[var(--color-destructive)]">
-            {t(moved ? "cancelDialogMoved" : "cancelDialogError")}
+            {t(errorKey)}
           </p>
         )}
         <DialogFooter>

@@ -14,7 +14,7 @@ import {
   Label,
   PhoneInput,
 } from "@ntizo/frontend-ui";
-import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
+import { formatAmount } from "@/features/directory/services/domain/service-card";
 import { useUpdateMyProfile } from "@/features/account/viewmodel/use-update-profile";
 import { deadlineOf } from "../domain/status";
 import { usePayBooking, usePayBookingPoll } from "../viewmodel/use-my-bookings";
@@ -64,9 +64,18 @@ type Phase = "waiting" | "needsPhone" | "over";
  *   (`AWAITING_PROVIDER`, `DRAFT`, …). Both are refusals with no honest
  *   sentence to name past "this cannot go through right now" — inventing
  *   one would be guessing a cause from its absence.
- * - `generic` — anything else the mutation threw (no code at all, most
- *   likely a dropped connection): the one ending where "try again in a
- *   moment" is actually true.
+ * - `signedOut` — `UNAUTHENTICATED`. This dialog sits open for minutes
+ *   waiting on a handset, which is exactly how long a session takes to
+ *   lapse, so this is reachable rather than theoretical. It used to fall
+ *   through to `generic`, promising a retry that could never succeed until
+ *   the customer signed in again — which nothing told them to do.
+ * - `gone` — `BOOKING_NOT_FOUND`. Same fall-through, same untrue promise:
+ *   no amount of trying again finds a booking that is not there.
+ * - `generic` — `BOOKING_CHARGE_UNAVAILABLE` (the processor is not
+ *   configured — somebody else's fix, and a real "in a moment"), or
+ *   anything else the mutation threw (no code at all, most likely a dropped
+ *   connection): the one ending where "try again in a moment" is actually
+ *   true.
  */
 type OverReason =
   | "windowClosed"
@@ -74,6 +83,8 @@ type OverReason =
   | "attemptsSpent"
   | "moved"
   | "cannotComplete"
+  | "signedOut"
+  | "gone"
   | "generic";
 
 const OVER_REASON_KEY: Record<OverReason, string> = {
@@ -82,6 +93,8 @@ const OVER_REASON_KEY: Record<OverReason, string> = {
   attemptsSpent: "payDialogAttemptsSpent",
   moved: "payDialogMoved",
   cannotComplete: "payDialogCannotComplete",
+  signedOut: "payDialogSignedOut",
+  gone: "payDialogGone",
   generic: "payDialogError",
 };
 
@@ -159,7 +172,14 @@ export function PayDialog({
 }) {
   const { t, i18n } = useTranslation("bookings");
   const locale = i18n.resolvedLanguage ?? i18n.language;
-  const amount = formatHeadlinePrice(booking.priceMinor, booking.currency, locale);
+  // `formatAmount`, never `formatHeadlinePrice`: this is the number the
+  // customer is about to authorise on their handset, and the headline
+  // formatter rounds to whole units — its own doc comment draws exactly this
+  // line ("a checkout total, what the customer actually pays, and cannot be
+  // rounded"). A provider may enter 1800,50; telling somebody to type a PIN
+  // to authorise "1 801 MZN" against a prompt asking for 1 800,50 is the
+  // dialog and the handset disagreeing about money.
+  const amount = formatAmount(booking.priceMinor, booking.currency, locale);
 
   const pay = usePayBooking();
   const saveProfile = useUpdateMyProfile();
@@ -214,6 +234,12 @@ export function PayDialog({
   } else if (payErrorCode === "NOT_BOOKING_CUSTOMER") {
     phase = "over";
     overReason = "cannotComplete";
+  } else if (payErrorCode === "UNAUTHENTICATED") {
+    phase = "over";
+    overReason = "signedOut";
+  } else if (payErrorCode === "BOOKING_NOT_FOUND") {
+    phase = "over";
+    overReason = "gone";
   } else if (payErrorCode === "BOOKING_NO_CUSTOMER_PHONE") {
     phase = "needsPhone";
   } else if (pay.isError) {
@@ -267,8 +293,19 @@ export function PayDialog({
                 })}
               </DialogDescription>
             </DialogHeader>
+            {/* **The one sentence that changes with `promptAlreadySent`.**
+                A press inside the charge cooldown pushes nothing — the
+                prompt from moments ago may still be live, and a second one
+                over it is a customer who can accept both. The customer still
+                asked, and a charge still is in flight, so this is not an
+                error; but repeating "this page updates itself" as though a
+                fresh prompt had gone out would leave them waiting on a
+                second one that is never coming. See
+                `RequestBookingChargeOutcome`. */}
             <p className="type-caption -mt-2 mb-2 text-[var(--color-muted-foreground)]">
-              {t("payDialogWaitingNote")}
+              {pay.data?.promptAlreadySent
+                ? t("payDialogAlreadySent")
+                : t("payDialogWaitingNote")}
             </p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
