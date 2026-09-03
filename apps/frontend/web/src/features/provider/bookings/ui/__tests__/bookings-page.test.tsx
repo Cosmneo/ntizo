@@ -148,9 +148,24 @@ const EMPTY_PAGE: ProviderBookingPageDTO = {
   members: [],
 };
 
-function renderBookings(at: string, page: ProviderBookingPageDTO = pageFixture()) {
+/**
+ * What the server answers with. A function when the test is about *which*
+ * offset was asked for — the pager's whole behaviour is that the second
+ * request returns different rows from the first, and a mock that answers
+ * identically whatever it is handed cannot fail on anything that turns on
+ * the difference.
+ */
+type Answer = ProviderBookingPageDTO | ((offset: number) => ProviderBookingPageDTO);
+
+function renderBookings(at: string, answer: Answer = pageFixture()) {
   fakes.graphql.mockReset();
-  fakes.graphql.mockResolvedValue({ bookingForProvider: page });
+  fakes.graphql.mockImplementation(
+    (_query: string, variables: { input: { offset: number } }) =>
+      Promise.resolve({
+        bookingForProvider:
+          typeof answer === "function" ? answer(variables.input.offset) : answer,
+      }),
+  );
 
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -241,6 +256,42 @@ describe("BookingsPage", () => {
     expect(
       await within(table).findByText("Nenhum pedido por responder"),
     ).toBeInTheDocument();
+  });
+
+  it("adds the next page under the ones already shown", async () => {
+    const members = [{ id: "mem-1", firstName: "Célia" }];
+    const first: ProviderBookingPageDTO = {
+      items: [
+        bookingFixture(),
+        bookingFixture({ id: "bk-2", customerFirstName: "Bruno", serviceName: "Manicure" }),
+      ],
+      total: 3,
+      nextOffset: 20,
+      members,
+    };
+    const second: ProviderBookingPageDTO = {
+      items: [
+        bookingFixture({ id: "bk-3", customerFirstName: "Carla", serviceName: "Tranças" }),
+      ],
+      total: 3,
+      nextOffset: null,
+      members,
+    };
+    renderBookings("/provider/estudio/bookings", (offset) =>
+      offset === 0 ? first : second,
+    );
+    await row("Ana");
+
+    await userEvent.click(screen.getByRole("button", { name: "Mais" }));
+
+    // The third row arrives *and* the first two are still there — a pager
+    // that replaced the page would pass the first half of this on its own.
+    const table = within(await screen.findByRole("table"));
+    expect(await table.findByText("Carla")).toBeInTheDocument();
+    expect(table.getByText("Ana")).toBeInTheDocument();
+    expect(table.getByText("Bruno")).toBeInTheDocument();
+    expect(screen.getByText("A mostrar 3 de 3")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
   });
 
   it("opens a row on its own page", async () => {

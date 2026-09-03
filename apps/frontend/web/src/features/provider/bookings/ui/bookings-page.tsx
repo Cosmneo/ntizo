@@ -3,6 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarCheck } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
+import type {
+  ProviderBookingDTO,
+  ProviderBookingPageDTO,
+} from "@ntizo/shared/read-models";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
@@ -48,12 +52,48 @@ export function BookingsPage() {
     return () => window.clearTimeout(handle);
   }, [typed]);
   const [offset, setOffset] = useState(0);
+  /**
+   * The rows on screen, which are not the rows the last request returned:
+   * "Mais" *adds* the next page under the ones already there, so what the
+   * reader sees accumulates across offsets for as long as the filter holds
+   * still. A pager that replaced the page instead would put two counts on one
+   * screen that disagree — the card's own header saying twenty and the footer
+   * saying forty — and would make "Mais" mean "lose what you were reading".
+   *
+   * `page` is the request's own answer kept beside them: the total, the next
+   * offset and the workspace's roster. `useQuery` has no data for an offset it
+   * has not fetched yet, so reading those straight off it would make the
+   * count, the "Mais" button and the member filter vanish for exactly the
+   * length of the request that is meant to extend the list.
+   */
+  const [loaded, setLoaded] = useState<ProviderBookingDTO[]>([]);
+  const [page, setPage] = useState<ProviderBookingPageDTO | null>(null);
   // Narrowing the list is a new list: staying on page three of the previous
-  // one is how a provider lands on an empty page that has rows above it.
-  useEffect(() => setOffset(0), [tab, q, memberId]);
+  // one is how a provider lands on an empty page that has rows above it, and
+  // what is on screen goes with it, so a tab change cannot leave the previous
+  // tab's rows or its count standing under the new tab's heading.
+  useEffect(() => {
+    setOffset(0);
+    setLoaded([]);
+    setPage(null);
+  }, [tab, q, memberId]);
 
   const providerId = activeProvider?.id ?? "";
   const query = useProviderBookings({ providerId, tab, q, memberId, offset });
+  // Offset zero is a fresh list and replaces; anything else extends. Ids
+  // already on screen are skipped rather than trusted to be disjoint: a
+  // booking answered between the two requests shifts every row after it by
+  // one, and the same id arriving twice would otherwise render twice.
+  useEffect(() => {
+    const answer = query.data;
+    if (!answer) return;
+    setPage(answer);
+    setLoaded((current) => {
+      if (offset === 0) return answer.items;
+      const seen = new Set(current.map((b) => b.id));
+      return [...current, ...answer.items.filter((b) => !seen.has(b.id))];
+    });
+  }, [query.data, offset]);
   // The countdown is measured from the moment the page was answered, not from
   // whenever React last re-rendered: every row on screen then counts down from
   // one instant, and a re-render for an unrelated reason cannot move the clock
@@ -65,8 +105,6 @@ export function BookingsPage() {
 
   if (!activeProvider) return null;
   const slug = activeProvider.slug;
-  const page = query.data;
-  const items = page?.items ?? [];
 
   const setTab = (next: ProviderTab) =>
     void navigate({
@@ -144,9 +182,12 @@ export function BookingsPage() {
 
       <CollectionCard
         title={t(`bookings.tab.${tab}`)}
-        shown={items.length}
+        shown={loaded.length}
         total={page?.total ?? 0}
-        loading={query.isLoading}
+        // Only the first page draws skeletons. A second page's request must
+        // not replace what the reader is already looking at with placeholders
+        // — the whole point of "Mais" is that the list grows underneath them.
+        loading={query.isLoading && offset === 0}
         search={typed}
         onSearchChange={setTyped}
         searchPlaceholder={t("bookings.searchPlaceholder")}
@@ -174,7 +215,7 @@ export function BookingsPage() {
         noMatchesTitle={t("bookings.noMatchesTitle")}
         noMatchesText={t("bookings.noMatches")}
         filtered={q.trim() !== "" || memberId !== null}
-        rows={items.map((b) => {
+        rows={loaded.map((b) => {
           const slot = compactSlotWording(b.startsAt, b.endsAt, locale, b.timezone);
           const left = b.respondBy ? timeLeftWording(b.respondBy, now) : null;
           return {
@@ -222,7 +263,7 @@ export function BookingsPage() {
       {page && (
         <div className="flex items-center justify-between">
           <span className="type-caption text-[var(--color-muted-foreground)]">
-            {t("bookings.shownOf", { shown: offset + items.length, total: page.total })}
+            {t("bookings.shownOf", { shown: loaded.length, total: page.total })}
           </span>
           {page.nextOffset !== null && (
             <Button
