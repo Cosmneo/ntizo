@@ -73,11 +73,20 @@ export function MessageComposer({
   sending = false,
   disabled = false,
   errorCode,
+  checkContact = true,
 }: {
   onSend: (body: string, attachments: AttachmentDescriptor[]) => void;
   sending?: boolean;
   disabled?: boolean;
   errorCode?: string;
+  /**
+   * Whether to refuse a body carrying a phone number or an email.
+   * `true` between a customer and a provider — the anti-disintermediation
+   * rule the server also enforces. `false` on a support thread, where
+   * giving the platform a number to call back is the point (the server
+   * skips it there too — `SendMessageCommand`).
+   */
+  checkContact?: boolean;
 }) {
   const { t } = useTranslation("messaging");
   const [body, setBody] = useState("");
@@ -85,7 +94,7 @@ export function MessageComposer({
 
   const trimmed = body.trim();
   const tooLong = trimmed.length > MESSAGE_BODY_MAX_LENGTH;
-  const bodyHasContact = hasContact(body);
+  const bodyHasContact = checkContact && hasContact(body);
   const hasFileErrors = files.some((f) => f.errorKey !== null);
   const busy = sending || uploading;
 

@@ -7,6 +7,11 @@
   "loadMore": "Meer laden",
   "unknownProvider": "Aanbieder",
   "unknownCustomer": "Klant",
+  "supportSender": "Ntizo-ondersteuning",
+  "supportStatus": {
+    "open": "Open",
+    "resolved": "Opgelost"
+  },
   "noPreview": "Nog geen berichten",
   "attachmentPreview": "Heeft een bijlage verstuurd",
   "unreadBadge": "{{count}} ongelezen bericht",

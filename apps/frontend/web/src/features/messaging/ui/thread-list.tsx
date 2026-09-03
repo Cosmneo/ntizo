@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
-import { Skeleton, cn } from "@ntizo/frontend-ui";
+import { Badge, Skeleton, cn } from "@ntizo/frontend-ui";
 import { EmptyCard } from "@/shared/components/empty-card";
 import type { Thread } from "@/features/messaging/domain/types";
 
@@ -154,14 +154,26 @@ function ThreadRow({
 
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
-            <span
-              className={cn(
-                "type-body-medium truncate",
-                thread.unreadCount > 0 && "font-semibold",
-              )}
-            >
-              {name}
-            </span>
+            {thread.support ? (
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="type-body-medium truncate">{thread.support.subject}</span>
+                <span className="type-caption shrink-0 text-[var(--color-muted-foreground)]">
+                  {t("supportSender")}
+                </span>
+                <Badge tone={thread.support.status === "open" ? "info" : "neutral"}>
+                  {t(`supportStatus.${thread.support.status}`)}
+                </Badge>
+              </span>
+            ) : (
+              <span
+                className={cn(
+                  "type-body-medium truncate",
+                  thread.unreadCount > 0 && "font-semibold",
+                )}
+              >
+                {name}
+              </span>
+            )}
             <time
               dateTime={thread.lastMessageAt}
               className="type-caption shrink-0 text-[var(--color-muted-foreground)]"

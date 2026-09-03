@@ -130,8 +130,33 @@ describe("messagingQueries.mine", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }",
+      "items { id type providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount support { subject status audience bookingId } }",
     );
+  });
+
+  it("asks for the support fields the inbox now renders, and passes the type filter", async () => {
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationMyThreads: { items: [], nextCursor: null } } as never);
+
+    const opts = messagingQueries.mine("support");
+    await queryFnOf<ThreadPageDTO>(opts)({ pageParam: undefined });
+
+    const [doc, vars] = spy.mock.calls[0]!;
+    expect(doc as string).toContain("type");
+    expect(doc as string).toContain("support { subject status audience bookingId }");
+    expect(vars).toEqual({ input: { limit: THREADS_PAGE_SIZE, cursor: undefined, type: "support" } });
+  });
+
+  it("omits the type filter when none is asked for", async () => {
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ communicationMyThreads: { items: [], nextCursor: null } } as never);
+
+    const opts = messagingQueries.mine();
+    await queryFnOf<ThreadPageDTO>(opts)({ pageParam: undefined });
+
+    expect(spy.mock.calls[0]![1]).toEqual({ input: { limit: THREADS_PAGE_SIZE, cursor: undefined } });
   });
 
   it("sends the page size and no cursor on the first page", async () => {
@@ -207,7 +232,7 @@ describe("messagingQueries.forProvider", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }",
+      "items { id type providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount support { subject status audience bookingId } }",
     );
   });
 
@@ -256,7 +281,7 @@ describe("messagingQueries.thread", () => {
 
     const [query] = spy.mock.calls[0]!;
     expect(query as string).toContain(
-      "items { id threadId senderUserId body readAt createdAt attachments { id fileName contentType sizeBytes } }",
+      "items { id threadId senderUserId senderSide body readAt createdAt attachments { id fileName contentType sizeBytes } }",
     );
   });
 

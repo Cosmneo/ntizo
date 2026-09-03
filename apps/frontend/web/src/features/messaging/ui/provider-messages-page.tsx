@@ -163,7 +163,10 @@ export function ProviderMessagesPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <p className="type-body-medium truncate font-semibold">
-                  {/* `customerName`, never `selectedThread?.providerName`
+                  {/* A support thread's header names the request, not a
+                      person — `support.subject`, the same choice
+                      `customer-messages-page.tsx` makes. Otherwise
+                      `customerName`, never `selectedThread?.providerName`
                       the way the customer's own header reads it — on this
                       side `providerName` is this workspace's own name.
                       Same fallback the customer's header uses for the
@@ -172,7 +175,9 @@ export function ProviderMessagesPage() {
                       neutral "Conversation" reads better as a heading than
                       the row-level `unknownCustomer` placeholder does. See
                       this file's doc comment. */}
-                  {selectedThread?.customerName || t("conversationFallbackTitle")}
+                  {selectedThread?.support
+                    ? selectedThread.support.subject
+                    : selectedThread?.customerName || t("conversationFallbackTitle")}
                 </p>
               </div>
 
@@ -180,6 +185,7 @@ export function ProviderMessagesPage() {
                 <ThreadView
                   messages={messages}
                   viewerUserId={me?.id}
+                  platformLabel={t("supportSender")}
                   loading={messagesLoading}
                   hasMore={messagesHaveMore}
                   onLoadMore={loadMoreMessages}
@@ -191,6 +197,7 @@ export function ProviderMessagesPage() {
                   onSend={(body, attachments) => send(selectedThreadId, body, attachments)}
                   sending={sending}
                   errorCode={sendErrorCode}
+                  checkContact={selectedThread?.support === null || selectedThread?.support === undefined}
                 />
               </div>
             </>

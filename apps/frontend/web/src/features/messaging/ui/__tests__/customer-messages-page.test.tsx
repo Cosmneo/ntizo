@@ -25,6 +25,7 @@ import type { Thread, Message } from "@/features/messaging/domain/types";
 const threads: Thread[] = [
   {
     id: "t1",
+    type: "inquiry",
     providerId: "p1",
     providerName: "Barbearia Central",
     customerName: "Ana Silva",
@@ -32,9 +33,11 @@ const threads: Thread[] = [
     lastMessagePreview: "Olá, ainda tem vaga?",
     lastMessageHasAttachment: false,
     unreadCount: 1,
+    support: null,
   },
   {
     id: "t2",
+    type: "inquiry",
     providerId: "p2",
     providerName: "Studio Beleza",
     customerName: "Ana Silva",
@@ -42,6 +45,7 @@ const threads: Thread[] = [
     lastMessagePreview: "Confirmado para sexta.",
     lastMessageHasAttachment: false,
     unreadCount: 0,
+    support: null,
   },
 ];
 
@@ -50,6 +54,7 @@ const messages: Message[] = [
     id: "m1",
     threadId: "t1",
     senderUserId: "provider-1",
+    senderSide: "provider",
     body: "Olá, ainda tem vaga?",
     readAt: null,
     createdAt: "2026-08-20T09:00:00Z",
@@ -59,6 +64,7 @@ const messages: Message[] = [
     id: "m2",
     threadId: "t1",
     senderUserId: "u1",
+    senderSide: "customer",
     body: "Tenho sim!",
     readAt: null,
     createdAt: "2026-08-20T09:05:00Z",
@@ -214,6 +220,7 @@ describe("CustomerMessagesPage: marking a thread read on open", () => {
           id: "m3",
           threadId: "t1",
           senderUserId: "provider-1",
+          senderSide: "provider",
           body: "Ainda tem vaga às 15h?",
           readAt: null,
           createdAt: "2026-08-20T09:10:00Z",

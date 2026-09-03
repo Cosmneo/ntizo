@@ -9,6 +9,7 @@ const base: Message = {
   id: "m1",
   threadId: "t1",
   senderUserId: "customer-1",
+  senderSide: "customer",
   body: "Olá, ainda tem disponibilidade para sexta?",
   readAt: null,
   createdAt: "2026-08-20T09:00:00Z",
@@ -72,6 +73,29 @@ describe("ThreadView", () => {
   it("renders every bubble as 'theirs' when no viewer id is known", () => {
     render(<ThreadView messages={[base]} />);
     expect(screen.getByRole("listitem").className).toContain("justify-start");
+  });
+
+  it("labels a platform reply rather than aligning it as the viewer's own", () => {
+    render(
+      <ThreadView
+        messages={[
+          { ...base, id: "m1", senderUserId: "customer-1", senderSide: "customer", body: "Paguei duas vezes" },
+          { ...base, id: "m2", senderUserId: "admin-9", senderSide: "platform", body: "Já devolvemos o valor." },
+        ]}
+        viewerUserId="customer-1"
+        platformLabel="Suporte Ntizo"
+      />,
+    );
+
+    expect(screen.getByText("Suporte Ntizo")).toBeInTheDocument();
+    // The customer's own message carries no sender label — the label exists
+    // to name the platform, not to caption every bubble.
+    expect(screen.getAllByText("Suporte Ntizo")).toHaveLength(1);
+  });
+
+  it("without a platformLabel, a platform message still renders its body", () => {
+    render(<ThreadView messages={[{ ...base, senderSide: "platform" }]} />);
+    expect(screen.getByText(base.body)).toBeInTheDocument();
   });
 
   it("shows an empty-conversation prompt rather than a blank panel for a just-started thread", () => {

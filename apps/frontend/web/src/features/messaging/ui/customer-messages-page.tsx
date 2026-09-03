@@ -124,7 +124,9 @@ export function CustomerMessagesPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <p className="type-body-medium truncate font-semibold">
-                  {selectedThread?.providerName || t("conversationFallbackTitle")}
+                  {selectedThread?.support
+                    ? selectedThread.support.subject
+                    : selectedThread?.providerName || t("conversationFallbackTitle")}
                 </p>
               </div>
 
@@ -132,6 +134,7 @@ export function CustomerMessagesPage() {
                 <ThreadView
                   messages={messages}
                   viewerUserId={me?.id}
+                  platformLabel={t("supportSender")}
                   loading={messagesLoading}
                   hasMore={messagesHaveMore}
                   onLoadMore={loadMoreMessages}
@@ -143,6 +146,7 @@ export function CustomerMessagesPage() {
                   onSend={(body, attachments) => send(selectedThreadId, body, attachments)}
                   sending={sending}
                   errorCode={sendErrorCode}
+                  checkContact={selectedThread?.support === null || selectedThread?.support === undefined}
                 />
               </div>
             </>
