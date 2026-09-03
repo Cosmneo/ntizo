@@ -3,6 +3,14 @@ import { Mail, Store } from "lucide-react";
 import { presentationFor } from "@/features/notifications/domain/notification-presentation";
 
 describe("presentationFor", () => {
+  it("knows the four support types and the message one", () => {
+    expect(presentationFor("SUPPORT_REQUEST_OPENED").key).toBe("supportRequestOpened");
+    expect(presentationFor("SUPPORT_REQUEST_MESSAGE").key).toBe("supportRequestMessage");
+    expect(presentationFor("SUPPORT_REPLY").key).toBe("supportReply");
+    expect(presentationFor("SUPPORT_REQUEST_RESOLVED").key).toBe("supportRequestResolved");
+    expect(presentationFor("NEW_MESSAGE").key).toBe("newMessage");
+  });
+
   it("falls back to a generic envelope for a type this bundle has never heard of", () => {
     // The whole point of this function: a deploy skew can raise a type added
     // after this bundle shipped, and it must render as something rather than

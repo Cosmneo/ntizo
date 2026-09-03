@@ -17,6 +17,11 @@
     "providerVerified": "Your business has been verified",
     "providerDocumentsRequired": "Your documents need attention",
     "teamInvitation": "You have been invited to a team",
-    "unknown": "You have a new notification"
+    "unknown": "You have a new notification",
+    "newMessage": "You have a new message",
+    "supportRequestOpened": "New support request: {{subject}}",
+    "supportRequestMessage": "New message on «{{subject}}»",
+    "supportReply": "Support replied to «{{subject}}»",
+    "supportRequestResolved": "Your request «{{subject}}» was resolved"
   }
 }

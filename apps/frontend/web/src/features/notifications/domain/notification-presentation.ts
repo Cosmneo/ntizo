@@ -1,5 +1,14 @@
 import type { LucideIcon } from "lucide-react";
-import { BadgeCheck, FileWarning, Mail, Store, UserPlus } from "lucide-react";
+import {
+  BadgeCheck,
+  CheckCircle2,
+  FileWarning,
+  LifeBuoy,
+  Mail,
+  MessageSquare,
+  Store,
+  UserPlus,
+} from "lucide-react";
 
 /**
  * The icon a type draws with, and the i18n key its sentence lives under.
@@ -16,6 +25,14 @@ const PRESENTATION: Record<string, { icon: LucideIcon; key: string }> = {
   PROVIDER_VERIFIED: { icon: BadgeCheck, key: "providerVerified" },
   PROVIDER_DOCUMENTS_REQUIRED: { icon: FileWarning, key: "providerDocumentsRequired" },
   TEAM_INVITATION: { icon: UserPlus, key: "teamInvitation" },
+  // Messaging and support. `NEW_MESSAGE` has been raised since messaging
+  // phase 1 and rendered as the generic envelope all along — it belongs in
+  // this map as much as the four below.
+  NEW_MESSAGE: { icon: MessageSquare, key: "newMessage" },
+  SUPPORT_REQUEST_OPENED: { icon: LifeBuoy, key: "supportRequestOpened" },
+  SUPPORT_REQUEST_MESSAGE: { icon: LifeBuoy, key: "supportRequestMessage" },
+  SUPPORT_REPLY: { icon: LifeBuoy, key: "supportReply" },
+  SUPPORT_REQUEST_RESOLVED: { icon: CheckCircle2, key: "supportRequestResolved" },
 };
 
 const FALLBACK = { icon: Mail, key: "unknown" } as const;

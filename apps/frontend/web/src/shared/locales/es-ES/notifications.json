@@ -17,6 +17,11 @@
     "providerVerified": "Tu negocio ha sido verificado",
     "providerDocumentsRequired": "Tus documentos necesitan atención",
     "teamInvitation": "Has sido invitado a un equipo",
-    "unknown": "Tienes una notificación nueva"
+    "unknown": "Tienes una notificación nueva",
+    "newMessage": "Tienes un mensaje nuevo",
+    "supportRequestOpened": "Nueva solicitud de soporte: {{subject}}",
+    "supportRequestMessage": "Nuevo mensaje en «{{subject}}»",
+    "supportReply": "El soporte respondió a tu solicitud «{{subject}}»",
+    "supportRequestResolved": "Tu solicitud «{{subject}}» fue resuelta"
   }
 }
