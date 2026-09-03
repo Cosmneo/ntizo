@@ -172,4 +172,61 @@ describe("BookingPage", () => {
 
     expect(await screen.findByText("Reserva não encontrada")).toBeInTheDocument();
   });
+
+  // Regression: `td(\`location.${type}\`)` printed the literal key —
+  // `directory.json` has no `location` object, every other consumer of
+  // `locationType` reads `filterWhereOption.${type}`. An assertion that only
+  // checks an element exists would pass on either the phrase or the raw key,
+  // so this checks the actual text, not just its presence.
+  it("prints the location's human phrase, not its translation key", async () => {
+    setDetail(bookingFixture({ locationType: "at_customer" }));
+    await renderBooking();
+
+    expect(await screen.findByText(/Em sua casa/)).toBeInTheDocument();
+    expect(screen.queryByText(/location\.at_customer/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/filterWhereOption\.at_customer/)).not.toBeInTheDocument();
+  });
+
+  it("shows both actions while payment is what is being waited for", async () => {
+    setDetail(bookingFixture({ status: "PENDING_PAYMENT" }));
+    await renderBooking();
+
+    expect(await screen.findByRole("button", { name: "Cancelar reserva" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Pagar/ })).toBeInTheDocument();
+  });
+
+  it("shows neither action on a confirmed booking, and points to support instead", async () => {
+    setDetail(bookingFixture({ status: "CONFIRMED", paidAt: "2026-09-01T14:07:00Z" }));
+    await renderBooking();
+
+    await screen.findByText(/Pago a/);
+    expect(screen.queryByRole("button", { name: "Cancelar reserva" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Pagar/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Precisa de mudar ou desmarcar?")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Falar com o suporte" })).toBeInTheDocument();
+  });
+
+  // A reason no locale has a word for still gets a line, in the fallback
+  // wording — never the raw token, which is what a customer would see if
+  // `defaultValue` were ever dropped from the lookup.
+  it("falls back to the generic wording for a timeline reason with no translation", async () => {
+    setDetail(
+      bookingFixture({
+        timeline: [
+          {
+            at: "2026-09-03T08:12:00Z",
+            reason: "some_future_reason_nobody_translated_yet",
+            actor: "system",
+            pending: false,
+          },
+        ],
+      }),
+    );
+    await renderBooking();
+
+    expect(await screen.findByText("Estado alterado")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/some_future_reason_nobody_translated_yet/),
+    ).not.toBeInTheDocument();
+  });
 });

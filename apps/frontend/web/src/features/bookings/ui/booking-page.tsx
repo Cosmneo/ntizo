@@ -7,7 +7,10 @@ import { Button, Skeleton, cn } from "@ntizo/frontend-ui";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { slotWording } from "@/features/checkout/domain/slot-wording";
-import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
+import {
+  formatHeadlinePrice,
+  formatRating,
+} from "@/features/directory/services/domain/service-card";
 import {
   canCancel,
   canPay,
@@ -23,19 +26,6 @@ const CAPTION =
 /** A red outline, quiet next to a filled primary button — never a filled destructive. */
 const DESTRUCTIVE_OUTLINE =
   "border-[color-mix(in_srgb,var(--color-destructive)_35%,transparent)] text-[var(--color-destructive)] hover:bg-[color-mix(in_srgb,var(--color-destructive)_6%,transparent)]";
-
-/**
- * A review score to one decimal, in the reader's own numerals — "4,8" in
- * `pt-MZ`, "4.8" in `en-US`. The same shape `checkout-rail`'s own (unexported)
- * `formatRating` uses, for the same trust line, on a page that cannot import
- * it back.
- */
-function formatRating(rating: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(rating);
-}
 
 /**
  * "4,8 ★", "Verificado", or both joined by " · " — never a stray separator
@@ -277,7 +267,9 @@ export function BookingPage() {
               <div>
                 <dt className={CAPTION}>{t("where")}</dt>
                 <dd className="type-body mt-1">
-                  {b.locationType ? td(`location.${b.locationType}`) : null}
+                  {b.locationType
+                    ? td(`filterWhereOption.${b.locationType}`, { defaultValue: "" })
+                    : null}
                   {address && (
                     <>
                       <br />
