@@ -1,10 +1,10 @@
 {
   "backHome": "← Voltar ao início",
   "lastUpdated": "Última actualização: {{date}}",
-  "contact": "Dúvidas sobre este documento? Escreva para privacidade@ntizo.co.mz.",
+  "contact": "Dúvidas sobre este documento? Escreva para {{email}}.",
   "privacy": {
     "title": "Política de Privacidade",
-    "updated": "26 de Agosto de 2026",
+    "updated": "3 de Setembro de 2026",
     "intro": "A Ntizo liga clientes a prestadores de serviços. Para isso precisamos de alguns dados seus. Este documento diz quais, porquê, com quem são partilhados e como pode pedir que os apaguemos. Está escrito para ser lido, não para ser difícil.",
     "sections": [
       {
@@ -15,7 +15,8 @@
           "Moradas que registe para receber serviços, incluindo cidade, bairro, indicações de acesso e coordenadas geográficas do ponto que marcar.",
           "Métodos de pagamento: guardamos o identificador da conta móvel (por exemplo, o número M-Pesa ou e-Mola) e o país. Não guardamos números de cartão.",
           "Se for prestador: documentos de identificação que carregue para verificação, e o estado dessa verificação.",
-          "Dados técnicos de cada sessão: endereço IP e identificação do navegador, para sabermos quando uma sessão é sua e quando não é."
+          "Dados técnicos de cada sessão: endereço IP e identificação do navegador, para sabermos quando uma sessão é sua e quando não é.",
+          "O que nos escreve pelos formulários de contacto e feedback, com o endereço IP de onde foi enviado, para lhe respondermos e travarmos abusos."
         ]
       },
       {

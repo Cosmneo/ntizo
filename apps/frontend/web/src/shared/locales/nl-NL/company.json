@@ -1,0 +1,125 @@
+{
+  "shared": {
+    "seeAlso": "Zie ook",
+    "links": {
+      "contact": { "title": "Contact", "body": "Samenwerkingen, pers, of gewoon een hallo." },
+      "feedback": { "title": "Feedback geven", "body": "Een idee, iets dat niet werkte, of iets wat je fijn vond." },
+      "about": { "title": "Over Ntizo", "body": "Wat we doen, hoe het werkt en waar we in geloven." },
+      "careers": { "title": "Werken bij", "body": "Hoe we werken, en hoe je kunt solliciteren." }
+    }
+  },
+  "about": {
+    "headTitle": "Over Ntizo",
+    "eyebrow": "Over Ntizo",
+    "heading": "Lokale diensten die je kunt",
+    "headingAccent": "vertrouwen",
+    "lede": "Ntizo brengt mensen die een dienst nodig hebben in contact met mensen die weten hoe ze die moeten leveren. Geverifieerde aanbieders, de prijs vooraf zichtbaar, en betaling pas nadat de aanbieder het tijdstip heeft bevestigd.",
+    "missionEyebrow": "Onze missie",
+    "missionTitle": "Het inhuren van een dienst net zo eenvoudig en veilig maken als iets kopen in een winkel.",
+    "mission1": "In Mozambique hangt het vinden van een goede loodgieter, een kapster of een bijlesdocent nog steeds af van of je iemand kent die iemand kent. De prijs wordt telefonisch afgesproken, het tijdstip schuift op, en als het misgaat, is er niemand tot wie je je kunt wenden.",
+    "mission2": "Ntizo bestaat om dat te veranderen. Elke aanbieder wordt geverifieerd voordat die in de resultaten verschijnt, elke dienst toont zijn prijs, en elke boeking staat van begin tot eind geregistreerd, van het afgesproken tijdstip tot de betaling.",
+    "howEyebrow": "Hoe het werkt",
+    "howTitle": "Drie stappen, en geen daarvan is betalen voordat je weet dat het doorgaat.",
+    "steps": {
+      "search": { "title": "Zoek en vergelijk", "body": "Blader door diensten per categorie en stad, met de prijs, beoordelingen van mensen die ze gebruikten en het geverifieerd-label." },
+      "book": { "title": "Boek het tijdstip", "body": "Kies de dag en het tijdstip in de agenda van de aanbieder en geef aan waar de dienst plaatsvindt. Het verzoek gaat naar de aanbieder ter bevestiging." },
+      "pay": { "title": "Betaal na bevestiging", "body": "Pas als de aanbieder het tijdstip bevestigt, krijg je het betaalverzoek op je telefoon. Daarvoor wordt niets in rekening gebracht." }
+    },
+    "principlesEyebrow": "Waar we in geloven",
+    "principlesTitle": "Vier regels die nooit veranderen, wat de dienst ook is.",
+    "principles": {
+      "price": { "title": "De prijs is de prijs.", "body": "Het bedrag dat je in de advertentie ziet, is het bedrag dat je betaalt. De commissie van het platform gaat af van het aandeel van de aanbieder, nooit van dat van jou." },
+      "verification": { "title": "Verificatie vóór zichtbaarheid.", "body": "Geen enkele aanbieder verschijnt in de resultaten zonder een identiteitsdocument te hebben ingestuurd en zonder dat iemand van Ntizo het heeft gecontroleerd." },
+      "payAfter": { "title": "Pas betalen na het ja.", "body": "Het betaalverzoek komt pas nadat de aanbieder het tijdstip heeft bevestigd. Bevestigt die niet, of wijst die af, dan is er niets in rekening te brengen." },
+      "local": { "title": "Gemaakt voor hier, klaar om te groeien.", "body": "M-Pesa, Portugees, de steden waarin we leven. En een platform dat is ontworpen om, wanneer de tijd daar is, ook andere landen te bedienen." }
+    },
+    "customersEyebrow": "Voor klanten",
+    "customersTitle": "Vind, boek en betaal op één plek.",
+    "customersBody": "Geen telefoontjes om de prijs te weten te komen, geen wachten op een antwoord dat niet komt. Elke boeking heeft een tijdstip, een bedrag en een geschiedenis.",
+    "customersCta": "Diensten verkennen",
+    "providersEyebrow": "Voor aanbieders",
+    "providersTitle": "Jouw agenda, jouw prijzen, jouw klanten.",
+    "providersBody": "Publiceer je diensten, stel in wanneer je beschikbaar bent en ontvang bevestigde verzoeken. Ntizo regelt de agenda, de betaling en dat je gevonden wordt.",
+    "providersCta": "Word aanbieder"
+  },
+  "contact": {
+    "headTitle": "Contact",
+    "eyebrow": "Contact",
+    "heading": "Praat met ons.",
+    "lede": "Samenwerkingen, pers, een vraag over het platform, of gewoon een hallo. We antwoorden op werkdagen.",
+    "messagePlaceholder": "Vertel ons wat je op je hart hebt.",
+    "cards": {
+      "email": { "title": "Per email", "body": "Voor wie liever direct schrijft." },
+      "social": { "title": "Op social media", "body": "Nieuws, een kijkje achter de schermen en de aanbieders die we uitlichten." },
+      "feedback": { "title": "Een idee, of ging er iets mis?", "body": "Dat is feedback, en we lezen alles.", "cta": "Feedback geven" }
+    }
+  },
+  "feedback": {
+    "headTitle": "Feedback geven",
+    "eyebrow": "Feedback",
+    "heading": "Vertel ons wat je ervan vindt.",
+    "lede": "Een idee, iets dat niet werkte, of iets wat je fijn vond. We lezen alles, en dat bepaalt wat we hierna bouwen.",
+    "messagePlaceholder": "Wat zou je anders willen zien? Als er iets misging, vertel ons dan waar je was en wat je verwachtte.",
+    "cards": {
+      "read": { "title": "We lezen alles", "body": "Elk bericht komt bij iemand van het team terecht. Niet allemaal krijgen ze antwoord, maar ze tellen allemaal mee." },
+      "contact": { "title": "Een samenwerking, de pers, een vraag?", "body": "Dat is voor contact, dat wel antwoordt.", "cta": "Naar contact" },
+      "social": { "title": "Op social media", "body": "Nieuws, een kijkje achter de schermen en de aanbieders die we uitlichten." }
+    }
+  },
+  "form": {
+    "signInHint": "Heb je een account?",
+    "signInLink": "Inloggen",
+    "signInHintRest": "en dan vullen we je naam en email voor je in.",
+    "name": "Naam",
+    "namePlaceholder": "Je naam",
+    "email": "Email",
+    "emailPlaceholder": "Waar we antwoorden",
+    "emailOptional": "Optioneel. Alleen als je antwoord wilt.",
+    "topic": "Onderwerp",
+    "message": "Bericht",
+    "privacyNote": "We bewaren dit bericht om je te kunnen antwoorden. Verder niets.",
+    "privacyLink": "Privacybeleid",
+    "submit": "Bericht versturen",
+    "sending": "Bezig met versturen…",
+    "errors": {
+      "nameRequired": "Vertel ons hoe je heet.",
+      "emailRequired": "We hebben een email nodig om te kunnen antwoorden.",
+      "emailInvalid": "Deze email lijkt niet compleet.",
+      "messageTooShort": "Schrijf minstens 10 tekens.",
+      "rateLimited": "We hebben net al meerdere berichten van dit apparaat ontvangen. Probeer het over een uur opnieuw, of schrijf naar {{email}}.",
+      "generic": "We konden het niet versturen. Probeer het opnieuw, of schrijf ons op {{email}}."
+    },
+    "success": {
+      "title": "We hebben je bericht ontvangen.",
+      "replyTo": "We antwoorden op {{email}} op werkdagen, in de taal waarin je ons schreef.",
+      "noEmail": "Bedankt. We lezen alles wat binnenkomt.",
+      "reference": "Referentie: {{reference}}",
+      "home": "Terug naar home"
+    }
+  },
+  "topics": {
+    "contact": { "general": "Algemene vraag", "partnership": "Samenwerking", "press": "Pers", "provider": "Ik ben aanbieder", "other": "Anders" },
+    "feedback": { "idea": "Een idee", "problem": "Iets werkte niet", "praise": "Iets vond ik fijn" }
+  },
+  "careers": {
+    "headTitle": "Werken bij",
+    "eyebrow": "Werken bij",
+    "heading": "Bouw Ntizo met ons mee.",
+    "lede": "We zijn een klein team dat de infrastructuur bouwt voor lokale diensten in Mozambique. We hebben op dit moment geen openstaande vacatures, maar we lezen elke sollicitatie.",
+    "buildingEyebrow": "Wat we bouwen",
+    "building1": "Een marktplaats waar een klant een dienst vindt, boekt en betaalt met hetzelfde vertrouwen als bij een aankoop in een winkel, en waar een aanbieder een agenda, prijzen en betalingen heeft zonder daar een bedrijf achter nodig te hebben.",
+    "building2": "We begonnen met Mozambique, met M-Pesa en in het Portugees. Het platform is vanaf dag één ontworpen om ook andere landen, andere valuta's en andere talen te bedienen.",
+    "howEyebrow": "Hoe we werken",
+    "how": [
+      { "title": "We schrijven voordat we bouwen.", "body": "Elke beslissing heeft een document met het waarom, zodat wie later komt het niet hoeft te raden." },
+      { "title": "We leveren vroeg op en repareren snel.", "body": "We hebben liever een echte versie in de handen van een klant dan een perfecte versie in een presentatie." },
+      { "title": "Wie het gebruikt, komt eerst.", "body": "We praten met aanbieders en klanten voordat we voor hen beslissen." }
+    ],
+    "openingsEyebrow": "Openstaande vacatures",
+    "openingsTitle": "Op dit moment geen.",
+    "openingsBody": "Denk je dat we toch met je moeten praten, schrijf ons dan. Vertel wat je goed kunt, wat je al hebt gebouwd, en waarom Ntizo. We antwoorden op iedereen.",
+    "openingsCta": "Open sollicitatie",
+    "openingsHint": "Opent je email naar {{email}} met het onderwerp al ingevuld.",
+    "mailSubject": "Open sollicitatie"
+  }
+}

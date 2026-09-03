@@ -3245,3 +3245,63 @@ attribute changing.
 
 **Trigger:** before any locale other than Portuguese has real users, and before anyone
 investigates the hydration warning on its own — it is a symptom of this, not a separate bug.
+
+## #126 — Reply to a contact request from inside the admin queue
+
+`/admin/contact` replies with a `mailto:`; the thread lives in the inbox and the queue cannot show what was said.
+
+**Trigger:** the first week the inbox has more than a handful of open requests a day.
+
+---
+
+## #127 — Tell the requester when their contact request is resolved
+
+Resolving a request writes `resolved_at` and nothing reaches the person who wrote.
+
+**Trigger:** the same as #126.
+
+---
+
+## #128 — Read the contact address from `platform_settings.support_email`
+
+The column exists and nothing reads it; the addresses are constants in `shared/lib/contact.ts` and `CONTACT_INBOX_EMAIL` is a `var` in `wrangler.jsonc`.
+
+**Trigger:** an address has to change without a deploy.
+
+---
+
+## #129 — The payment chips return to the footer
+
+The footer advertises M-Pesa alone because it is the only method that charges (`MpesaPaymentCharge` is the sole `PaymentChargePort` adapter). e-Mola, Visa and Mastercard were removed on 2026-09-02.
+
+**Trigger:** the day e-Mola or card charging ships, its chip returns the same day — and the FAQ's "que métodos aceitam" answer (`2026-09-02-faq-content.md`, and wherever the help center put it) changes with it.
+
+---
+
+## #130 — A careers listing
+
+`/careers` says there are no open roles and takes spontaneous applications by email.
+
+**Trigger:** the first open role.
+
+---
+
+## #131 — A captcha on the contact forms
+
+The forms carry a honeypot and a five-per-hour-per-address count in the table.
+
+**Trigger:** the honeypot and the count stop being enough, measured in the admin queue.
+
+---
+
+## #132 — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
+
+The Empresa column shows five of the reference's seven links. The two missing ones belong to the help center (`2026-09-02-help-center-design.md`): "Perguntas frequentes" → `/help`, "Falar com o suporte" → the panel (or `/help` until it exists). The `CompanyPage` strip's `STRIP` list gets a `help` entry ahead of `about` at the same time, and `shared.links.help` joins the `company` namespace in eight languages.
+
+**Trigger:** the help center's `/help` route lands. Same day, between the links "Contacto" and "Dar feedback", in the reference's order: Sobre, Contacto, Falar com o suporte, Perguntas frequentes, Dar feedback, Torne-se prestador, Carreiras.
+
+---
+
+## #85 — updated 2026-09-02
+
+The approved FAQ text (`2026-09-02-faq-content.md`) answers "can I share my number in messages?" and says why. When the help center puts it on `/help`, the contact-detection refusal copy in messaging should point there.

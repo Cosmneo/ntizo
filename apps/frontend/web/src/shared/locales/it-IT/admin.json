@@ -11,7 +11,8 @@
     "providers": "Operatori",
     "categories": "Categorie",
     "activity": "Attività",
-    "reviews": "Recensioni"
+    "reviews": "Recensioni",
+    "contact": "Contatti"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -237,5 +238,42 @@
     "hidden": "Nascosta"
   },
   "reviewsSearchPlaceholder": "Cerca un'attività, un nome o ciò che è stato scritto",
-  "reviewsAction": "Home page"
+  "reviewsAction": "Home page",
+  "contactTitle": "Contatti",
+  "contactSubtitle": "Quello che le persone ci hanno scritto tramite i moduli di contatto e feedback, e quello che è ancora senza risposta.",
+  "contactOpenCount_one": "{{count}} richiesta aperta",
+  "contactOpenCount_other": "{{count}} richieste aperte",
+  "contactKindAll": "Tutte",
+  "contactKind": {
+    "contact": "Contatto",
+    "feedback": "Feedback"
+  },
+  "contactKindColumn": "Tipo",
+  "contactStatus": {
+    "open": "Aperte",
+    "resolved": "Risolte"
+  },
+  "contactStatusAll": "Tutte",
+  "contactRequest": "Richiesta",
+  "contactTopic": "Argomento",
+  "contactDate": "Ricevuta",
+  "contactAction": "Azioni",
+  "contactSearchPlaceholder": "Cerca per nome, email, testo o riferimento",
+  "contactEmpty": "Niente a cui rispondere.",
+  "contactEmptyTitle": "Coda vuota",
+  "contactNoMatches": "Nessuna richiesta corrisponde a questa ricerca.",
+  "contactNoMatchesTitle": "Nessun risultato",
+  "contactError": "Non è stato possibile caricare le richieste.",
+  "contactStatusFailed": "Non è stato possibile modificare questa richiesta. Riprova.",
+  "contactReply": "Rispondi via email",
+  "contactResolve": "Segna come risolta",
+  "contactReopen": "Riapri",
+  "contactPrevious": "Precedente",
+  "contactNext": "Successiva",
+  "contactNoEmail": "senza email",
+  "contactOrigin": "Pagina",
+  "contactIp": "IP",
+  "contactUserAgent": "Browser",
+  "contactShowDetails": "Mostra dettagli",
+  "contactHideDetails": "Nascondi dettagli"
 }

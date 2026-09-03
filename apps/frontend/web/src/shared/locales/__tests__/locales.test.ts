@@ -15,6 +15,38 @@ import itITCheckout from "../it-IT/checkout.json";
 import nlNLCheckout from "../nl-NL/checkout.json";
 import ptMZCheckout from "../pt-MZ/checkout.json";
 import ptPTCheckout from "../pt-PT/checkout.json";
+import deDECompany from "../de-DE/company.json";
+import enUSCompany from "../en-US/company.json";
+import esESCompany from "../es-ES/company.json";
+import frFRCompany from "../fr-FR/company.json";
+import itITCompany from "../it-IT/company.json";
+import nlNLCompany from "../nl-NL/company.json";
+import ptMZCompany from "../pt-MZ/company.json";
+import ptPTCompany from "../pt-PT/company.json";
+import deDELanding from "../de-DE/landing.json";
+import enUSLanding from "../en-US/landing.json";
+import esESLanding from "../es-ES/landing.json";
+import frFRLanding from "../fr-FR/landing.json";
+import itITLanding from "../it-IT/landing.json";
+import nlNLLanding from "../nl-NL/landing.json";
+import ptMZLanding from "../pt-MZ/landing.json";
+import ptPTLanding from "../pt-PT/landing.json";
+import deDELegal from "../de-DE/legal.json";
+import enUSLegal from "../en-US/legal.json";
+import esESLegal from "../es-ES/legal.json";
+import frFRLegal from "../fr-FR/legal.json";
+import itITLegal from "../it-IT/legal.json";
+import nlNLLegal from "../nl-NL/legal.json";
+import ptMZLegal from "../pt-MZ/legal.json";
+import ptPTLegal from "../pt-PT/legal.json";
+import deDEAdmin from "../de-DE/admin.json";
+import enUSAdmin from "../en-US/admin.json";
+import esESAdmin from "../es-ES/admin.json";
+import frFRAdmin from "../fr-FR/admin.json";
+import itITAdmin from "../it-IT/admin.json";
+import nlNLAdmin from "../nl-NL/admin.json";
+import ptMZAdmin from "../pt-MZ/admin.json";
+import ptPTAdmin from "../pt-PT/admin.json";
 
 /**
  * The namespaces this gate covers, each as its eight bundles keyed by locale.
@@ -33,6 +65,22 @@ const NAMESPACES: Record<string, Record<string, unknown>> = {
   checkout: {
     "de-DE": deDECheckout, "en-US": enUSCheckout, "es-ES": esESCheckout, "fr-FR": frFRCheckout,
     "it-IT": itITCheckout, "nl-NL": nlNLCheckout, "pt-MZ": ptMZCheckout, "pt-PT": ptPTCheckout,
+  },
+  company: {
+    "de-DE": deDECompany, "en-US": enUSCompany, "es-ES": esESCompany, "fr-FR": frFRCompany,
+    "it-IT": itITCompany, "nl-NL": nlNLCompany, "pt-MZ": ptMZCompany, "pt-PT": ptPTCompany,
+  },
+  landing: {
+    "de-DE": deDELanding, "en-US": enUSLanding, "es-ES": esESLanding, "fr-FR": frFRLanding,
+    "it-IT": itITLanding, "nl-NL": nlNLLanding, "pt-MZ": ptMZLanding, "pt-PT": ptPTLanding,
+  },
+  legal: {
+    "de-DE": deDELegal, "en-US": enUSLegal, "es-ES": esESLegal, "fr-FR": frFRLegal,
+    "it-IT": itITLegal, "nl-NL": nlNLLegal, "pt-MZ": ptMZLegal, "pt-PT": ptPTLegal,
+  },
+  admin: {
+    "de-DE": deDEAdmin, "en-US": enUSAdmin, "es-ES": esESAdmin, "fr-FR": frFRAdmin,
+    "it-IT": itITAdmin, "nl-NL": nlNLAdmin, "pt-MZ": ptMZAdmin, "pt-PT": ptPTAdmin,
   },
 };
 

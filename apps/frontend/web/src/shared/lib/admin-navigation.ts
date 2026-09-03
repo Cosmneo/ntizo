@@ -2,6 +2,7 @@ import {
   Activity,
   Briefcase,
   LayoutDashboard,
+  Mail,
   MessageSquareQuote,
   Tags,
   Users,
@@ -19,6 +20,10 @@ export const adminNavGroups: readonly NavGroup[] = [
       // them needs looking at.
       { titleKey: "nav.providers", url: "/admin/providers", icon: Briefcase },
       { titleKey: "nav.users", url: "/admin/users", icon: Users },
+      // After users, before the catalog: a queue of messages arriving, worked
+      // daily like the provider queue — not content the platform curates.
+      // The help center's "Suporte" queue lands beside it (its own spec).
+      { titleKey: "nav.contact", url: "/admin/contact", icon: Mail },
       // The catalog last: it is set up once and revisited, where the two above
       // are looked at daily.
       { titleKey: "nav.categories", url: "/admin/categories", icon: Tags },

@@ -9,3 +9,4 @@ export * from "./activity";
 export * from "./communication";
 export * from "./booking";
 export * from "./review";
+export * from "./contact";

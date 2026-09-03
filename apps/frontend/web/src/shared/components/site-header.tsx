@@ -22,7 +22,12 @@ export function SiteHeader({
   current = "explore",
 }: {
   overlay?: boolean;
-  current?: "explore" | "categories" | "services" | "providers";
+  /**
+   * Which pill is lit. `"none"` for pages outside the three destinations —
+   * the company pages — so the header does not claim they are "Explore".
+   * `endsWith("none")` matches no nav key, which is the whole mechanism.
+   */
+  current?: "explore" | "categories" | "services" | "providers" | "none";
 }) {
   const { t } = useTranslation("landing");
 

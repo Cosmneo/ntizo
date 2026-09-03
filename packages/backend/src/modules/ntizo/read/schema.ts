@@ -9,6 +9,7 @@ import { activityReadSchema } from "./activity/graphql/schema/queries";
 import { communicationReadSchema } from "./communication/graphql/schema/queries";
 import { bookingReadSchema } from "./booking/graphql/schema/queries";
 import { reviewReadSchema } from "./review/graphql/schema/queries";
+import { contactReadSchema } from "./contact/graphql/schema/queries";
 
 /** The READ-side schema barrel — queries only, across all bounded contexts. */
 export const readSchema = mergeGraphQLSchemas(
@@ -22,4 +23,5 @@ export const readSchema = mergeGraphQLSchemas(
   communicationReadSchema,
   bookingReadSchema,
   reviewReadSchema,
+  contactReadSchema,
 );

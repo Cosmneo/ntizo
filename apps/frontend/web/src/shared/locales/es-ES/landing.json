@@ -14,6 +14,12 @@
     "support": "Soporte",
     "company": "Empresa",
     "legal": "Legal",
+    "links": {
+      "about": "Sobre nosotros",
+      "contact": "Contacto",
+      "feedback": "Enviar opinión",
+      "careers": "Empleo"
+    },
     "becomeProvider": "Hazte proveedor",
     "terms": "Términos del servicio",
     "privacy": "Política de privacidad",

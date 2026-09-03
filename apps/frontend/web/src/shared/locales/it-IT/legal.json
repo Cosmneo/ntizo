@@ -1,10 +1,10 @@
 {
   "backHome": "← Torna alla home",
   "lastUpdated": "Ultimo aggiornamento: {{date}}",
-  "contact": "Domande su questo documento? Scrivi a privacidade@ntizo.co.mz.",
+  "contact": "Domande su questo documento? Scrivi a {{email}}.",
   "privacy": {
     "title": "Informativa sulla privacy",
-    "updated": "26 agosto 2026",
+    "updated": "3 settembre 2026",
     "intro": "Ntizo mette in contatto clienti e fornitori di servizi. Per farlo servono alcuni dei tuoi dati. Questo documento dice quali, perché, con chi vengono condivisi e come chiederne la cancellazione. È scritto per essere letto, non per risultare difficile.",
     "sections": [
       {
@@ -15,7 +15,8 @@
           "Gli indirizzi che salvi per ricevere servizi, inclusi città, quartiere, indicazioni di accesso e le coordinate del punto che indichi.",
           "Metodi di pagamento: conserviamo l’identificativo del conto mobile (per esempio il numero M-Pesa o e-Mola) e il paese. Non conserviamo numeri di carta.",
           "Se sei un fornitore: i documenti d’identità caricati per la verifica e lo stato di quella verifica.",
-          "Dati tecnici di ogni sessione: indirizzo IP e identificazione del browser, per sapere quando una sessione è tua e quando no."
+          "Dati tecnici di ogni sessione: indirizzo IP e identificazione del browser, per sapere quando una sessione è tua e quando no.",
+          "Ciò che ci scrivi tramite i moduli di contatto e feedback, con l'indirizzo IP da cui è stato inviato, per risponderti e fermare gli abusi."
         ]
       },
       {

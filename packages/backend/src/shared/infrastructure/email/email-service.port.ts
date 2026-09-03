@@ -3,6 +3,14 @@ export interface EmailMessage {
   subject: string;
   htmlBody: string;
   textBody?: string;
+  /**
+   * Where a reply to this message should go, when that is not `EMAIL_FROM`.
+   *
+   * The contact inbox is the reason this exists: a message forwarded to the
+   * team on somebody's behalf must be answerable by pressing Reply, and
+   * without this the answer goes to `noreply@`.
+   */
+  replyTo?: string;
 }
 
 export interface SendResult {

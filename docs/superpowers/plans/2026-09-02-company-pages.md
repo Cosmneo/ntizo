@@ -1,10 +1,10 @@
-# Company Pages and Support Inbox Implementation Plan
+# Company Pages and Contact Inbox Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Six public company pages (About, Contact, Message support, FAQ, Share feedback, Careers) in one shared editorial frame, a `support` bounded context that stores what the three forms send and emails the team, and an admin queue at `/admin/support` to work it.
+**Goal:** Four public company pages (About, Contact, Share feedback, Careers) in one shared editorial frame, a `contact` bounded context that stores what the two forms send and emails the team, and an admin queue at `/admin/contact` to work it. Support-with-an-account and the FAQ belong to the help center (`2026-09-02-help-center-design.md`); this plan builds around them — see the spec's revision note.
 
-**Architecture:** Backend: a new `support` bounded context modelled line-for-line on `review` (aggregate, Drizzle repository, use cases, write-tier mutations, read-tier admin query, mounted in `apps/backend/api/src/graphql/private.ts`), plus an inbox email adapter on the shared `EmailServicePort`. Frontend: a `features/company` feature with one `CompanyPage` frame, one `SupportForm` parameterised by kind, a new `company` i18n namespace in eight locales, and an admin page on the `/admin/reviews` pattern.
+**Architecture:** Backend: a new `contact` bounded context modelled line-for-line on `review` (aggregate, Drizzle repository, use cases, write-tier mutations, read-tier admin query, mounted in `apps/backend/api/src/graphql/private.ts`), plus an inbox email adapter on the shared `EmailServicePort`. Frontend: a `features/company` feature with one `CompanyPage` frame, one `ContactForm` parameterised by kind (`contact` | `feedback`), a new `company` i18n namespace in eight locales, and an admin page on the `/admin/reviews` pattern.
 
 **Tech Stack:** Bun, Hono, `@cosmneo/onion-lasagna` GraphQL field kit, Drizzle + Postgres (Neon), Resend 4.8, React 19, TanStack Start/Router/Query, react-i18next, Tailwind 4, vitest (web, shared), `bun test` (backend), Playwright (e2e).
 
@@ -14,11 +14,12 @@
 
 - **No accent hairline before eyebrow labels, anywhere.** Owner's rule (spec, "Decisions"). Eyebrows are letter-spaced uppercase text only. Do not add `h-px w-8` or any rule beside a label, in code or in tests' fixtures.
 - **No number that lives in `platform_settings` appears in copy**: not 2 hours, 15 minutes, 30 minutes, 10%, 3 days. Say "o prazo indicado no pedido" / "the time shown on the request".
-- **Contact channels are exactly**: `ola@ntizo.co.mz` (general and careers), `suporte@ntizo.co.mz` (support, and where the forms email), `privacidade@ntizo.co.mz` (data). Instagram `https://www.instagram.com/ntizo.mz/`, LinkedIn `https://www.linkedin.com/company/ntizo/`. No phone, no street address. Every occurrence in code reads `CONTACT` from `apps/frontend/web/src/shared/lib/contact.ts` (Task 8).
+- **Contact channels are exactly**: `ola@ntizo.co.mz` (general, careers, and where the contact and feedback forms are forwarded — `CONTACT_INBOX_EMAIL`), `suporte@ntizo.co.mz` (support; printed in the footer, owned by the help center), `privacidade@ntizo.co.mz` (data). Instagram `https://www.instagram.com/ntizo.mz/`, LinkedIn `https://www.linkedin.com/company/ntizo/`. No phone, no street address. Every occurrence in code reads `CONTACT` from `apps/frontend/web/src/shared/lib/contact.ts` (Task 8).
 - **Eight locales, pt-MZ first**: `pt-MZ` is authored from the mockup and is the parity reference; `pt-PT`, `en-US`, `es-ES`, `fr-FR`, `de-DE`, `it-IT`, `nl-NL` carry exactly the same dotted key set (the gate in `src/shared/locales/__tests__/locales.test.ts` enforces it). Each language must read as its own language, not a word-for-word transfer.
-- **Every FAQ answer states only what the product does today** (spec, "Perguntas frequentes"): M-Pesa is the only charge method; no refund path; no customer-initiated cancellation; hourly and quote-priced services are booked by messaging the provider; verification is one identity document reviewed by a person.
-- **Routes for the six pages are top-level** (`src/routes/about.tsx`, not under `_public`), `ssr: true`, each with its own `<head>` title.
-- **Commit style** as the repo does: `feat(company): …`, `feat(support): …`, `test(web): …`, `docs: …`; body explains why; end every message with
+- **Every sentence about the product states only what it does today** (spec, "Perguntas frequentes"): M-Pesa is the only charge method; no refund path; no customer-initiated cancellation; verification is one identity document reviewed by a person. The FAQ itself is the help center's; its approved text is in `docs/superpowers/specs/2026-09-02-faq-content.md`.
+- **Not in this plan, by the 2026-09-02 split with the help center:** no `/support` page, no `/faq` page, no `support` kind, nothing named `support*` on the API, no `/admin/support`. The footer's "Falar com o suporte" and "Perguntas frequentes" links return when the help center's `/help` lands (follow-ups #132).
+- **Routes for the four pages are top-level** (`src/routes/about.tsx`, not under `_public`), `ssr: true`, each with its own `<head>` title.
+- **Commit style** as the repo does: `feat(company): …`, `feat(contact): …`, `test(web): …`, `docs: …`; body explains why; end every message with
 
   ```
   Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -33,147 +34,144 @@
 ## File structure
 
 **Shared package** (`packages/shared/src`)
-- `enums/support-enums/index.ts` — kinds, topics per kind, statuses, the reference helper. One definition both tiers and the frontend import.
-- `read-models/system/support/support-request-admin.schema.ts` (+ `index.ts`, registered in `system/index.ts`) — the admin projection.
+- `enums/contact-enums/index.ts` — kinds, topics per kind, statuses, the reference helper. One definition both tiers and the frontend import.
+- `read-models/system/contact/contact-request-admin.schema.ts` (+ `index.ts`, registered in `system/index.ts`) — the admin projection.
 
 **Backend** (`packages/backend/src`)
-- `modules/ntizo/shared/infrastructure/database/support/schemas/support-request.schema.ts` (+ `schemas/index.ts`, `support/index.ts`; `database/schemas.ts` re-exports) — the table.
-- `modules/ntizo/drizzle.config.ts` — `ntizo_support` in `schemaFilter`.
-- `modules/ntizo/bounded-contexts/support/domain/aggregates/support-request.aggregate.ts` — rules.
-- `modules/ntizo/bounded-contexts/support/domain/exceptions.ts` — refusals with public codes.
-- `modules/ntizo/bounded-contexts/support/app/ports/outbound/support-request.repository.port.ts` — persistence port.
-- `modules/ntizo/bounded-contexts/support/app/ports/outbound/support-inbox.port.ts` — "tell the team" port.
-- `modules/ntizo/bounded-contexts/support/app/use-cases/submit-support-request.command.ts`, `list-support-requests-for-admin.query.ts`, `set-support-request-status.command.ts`.
-- `modules/ntizo/bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository.ts`.
-- `modules/ntizo/bounded-contexts/support/infrastructure/outbound-adapters/email-support-inbox.adapter.ts`.
-- `modules/ntizo/bounded-contexts/support/bootstrap/index.ts`, `index.ts`.
-- `modules/ntizo/write/support/{graphql/schema/mutations.ts, graphql/handlers/mutations.handlers.ts, index.ts}`; `modules/ntizo/write/schema.ts` merges it.
-- `modules/ntizo/read/support/{graphql/schema/queries.ts, graphql/handlers/queries.handlers.ts, bootstrap/index.ts, index.ts}`; `modules/ntizo/read/schema.ts` merges it.
+- `modules/ntizo/shared/infrastructure/database/contact/schemas/contact-request.schema.ts` (+ `schemas/index.ts`, `contact/index.ts`; `database/schemas.ts` re-exports) — the table.
+- `modules/ntizo/drizzle.config.ts` — `ntizo_contact` in `schemaFilter`.
+- `modules/ntizo/bounded-contexts/contact/domain/aggregates/contact-request.aggregate.ts` — rules.
+- `modules/ntizo/bounded-contexts/contact/domain/exceptions.ts` — refusals with public codes.
+- `modules/ntizo/bounded-contexts/contact/app/ports/outbound/contact-request.repository.port.ts` — persistence port.
+- `modules/ntizo/bounded-contexts/contact/app/ports/outbound/contact-inbox.port.ts` — "tell the team" port.
+- `modules/ntizo/bounded-contexts/contact/app/use-cases/submit-contact-request.command.ts`, `list-contact-requests-for-admin.query.ts`, `set-contact-request-status.command.ts`.
+- `modules/ntizo/bounded-contexts/contact/infrastructure/repositories/drizzle/contact-request.repository.ts`.
+- `modules/ntizo/bounded-contexts/contact/infrastructure/outbound-adapters/email-contact-inbox.adapter.ts`.
+- `modules/ntizo/bounded-contexts/contact/bootstrap/index.ts`, `index.ts`.
+- `modules/ntizo/write/contact/{graphql/schema/mutations.ts, graphql/handlers/mutations.handlers.ts, index.ts}`; `modules/ntizo/write/schema.ts` merges it.
+- `modules/ntizo/read/contact/{graphql/schema/queries.ts, graphql/handlers/queries.handlers.ts, bootstrap/index.ts, index.ts}`; `modules/ntizo/read/schema.ts` merges it.
 - `shared/infrastructure/email/email-service.port.ts` (+ `resend-email-service.adapter.ts`, `console-email-service.adapter.ts`) — `replyTo`.
-- `shared/infrastructure/stores/infra-store.ts` — `SUPPORT_INBOX_EMAIL?`.
+- `shared/infrastructure/stores/infra-store.ts` — `CONTACT_INBOX_EMAIL?`.
 
 **API** (`apps/backend/api`)
 - `src/graphql/private.ts` — mounts the three new fields.
-- `src/middlewares/config.middleware.ts`, `src/scheduled.ts`, `wrangler.jsonc` — carry `SUPPORT_INBOX_EMAIL`.
+- `src/middlewares/config.middleware.ts`, `src/scheduled.ts`, `wrangler.jsonc` — carry `CONTACT_INBOX_EMAIL`.
 
 **Web** (`apps/frontend/web/src`)
 - `shared/lib/contact.ts` — the addresses.
 - `shared/components/site-header.tsx` — `current: "none"`.
-- `features/landing/ui/footer.tsx` — Empresa column, `suporte@`, M-Pesa only.
+- `features/landing/ui/footer.tsx` — Empresa column (five links), `suporte@`, M-Pesa only.
 - `features/become-provider/ui/become-provider-page.tsx` — mailto from `CONTACT`; eyebrow without rule.
 - `features/legal/ui/legal-page.tsx` — address interpolated.
 - `shared/lib/i18n.ts` — `company` namespace.
 - `shared/locales/<8>/company.json` — new; `landing.json`, `legal.json`, `admin.json` — additions.
 - `shared/locales/__tests__/locales.test.ts` — `company`, `landing`, `legal` join the gate.
-- `features/company/domain/support-form-validation.ts` — pure validation, import-free.
+- `features/company/domain/contact-form-validation.ts` — pure validation, import-free.
 - `features/company/ui/company-page.tsx` — the frame (band, strip, footer) and `Eyebrow`.
-- `features/company/ui/about-page.tsx`, `careers-page.tsx`, `faq-page.tsx`, `faq-index.tsx`, `support-form.tsx`, `support-request-page.tsx`.
-- `features/company/data/support-request.repository.ts`, `features/company/viewmodel/use-submit-support-request.ts`.
-- `routes/about.tsx`, `contact.tsx`, `support.tsx`, `faq.tsx`, `feedback.tsx`, `careers.tsx`.
-- `features/admin/support/{data/admin-support.repository.ts, viewmodel/use-admin-support.ts, ui/support-page.tsx}`; `routes/admin/support.tsx`; `shared/lib/admin-navigation.ts`.
+- `features/company/ui/about-page.tsx`, `careers-page.tsx`, `contact-form.tsx`, `contact-request-page.tsx`.
+- `features/company/data/contact-request.repository.ts`, `features/company/viewmodel/use-submit-contact-request.ts`.
+- `routes/about.tsx`, `contact.tsx`, `feedback.tsx`, `careers.tsx`.
+- `features/admin/contact/{data/admin-contact.repository.ts, viewmodel/use-admin-contact.ts, ui/contact-page.tsx}`; `routes/admin/contact.tsx`; `shared/lib/admin-navigation.ts`.
 - Tests beside each, named in the tasks.
 
 **E2E** (`apps/e2e/tests/company.spec.ts`).
 
-**Docs**: `docs/superpowers/follow-ups.md` gains entries #126–#131.
+**Docs**: `docs/superpowers/follow-ups.md` gains entries #126–#132.
 
 ---
 
-### Task 1: The support vocabulary, shared by every tier
+### Task 1: The contact vocabulary, shared by every tier
 
 **Files:**
-- Create: `packages/shared/src/enums/support-enums/index.ts`
+- Create: `packages/shared/src/enums/contact-enums/index.ts`
 - Modify: `packages/shared/src/enums/index.ts`
-- Test: `packages/shared/src/enums/__tests__/support-enums.test.ts`
+- Test: `packages/shared/src/enums/__tests__/contact-enums.test.ts`
 
 **Interfaces:**
-- Produces: `SUPPORT_REQUEST_KINDS`, `SupportRequestKind`, `supportRequestKindSchema`, `SUPPORT_TOPICS`, `SupportTopic`, `isSupportTopicForKind(kind, topic)`, `SUPPORT_REQUEST_STATUSES`, `SupportRequestStatus`, `supportRequestStatusSchema`, `supportEmailRequired(kind)`, `SUPPORT_REFERENCE_LENGTH`, `supportReferenceOf(id)` — all from `@ntizo/shared` (and `@ntizo/shared/enums`).
+- Produces: `CONTACT_REQUEST_KINDS`, `ContactRequestKind`, `contactRequestKindSchema`, `CONTACT_TOPICS`, `ContactTopic`, `isContactTopicForKind(kind, topic)`, `CONTACT_REQUEST_STATUSES`, `ContactRequestStatus`, `contactRequestStatusSchema`, `contactEmailRequired(kind)`, `CONTACT_REFERENCE_LENGTH`, `contactReferenceOf(id)` — all from `@ntizo/shared` (and `@ntizo/shared/enums`).
 
 - [ ] **Step 1: Write the failing test**
 
-`packages/shared/src/enums/__tests__/support-enums.test.ts`:
+`packages/shared/src/enums/__tests__/contact-enums.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
 import {
-  SUPPORT_REQUEST_KINDS,
-  SUPPORT_TOPICS,
-  isSupportTopicForKind,
-  supportEmailRequired,
-  supportReferenceOf,
-} from "../support-enums";
+  CONTACT_REQUEST_KINDS,
+  CONTACT_TOPICS,
+  isContactTopicForKind,
+  contactEmailRequired,
+  contactReferenceOf,
+} from "../contact-enums";
 
-describe("support enums", () => {
-  it("names the three forms", () => {
-    expect(SUPPORT_REQUEST_KINDS).toEqual(["contact", "support", "feedback"]);
+describe("contact enums", () => {
+  it("names the two forms", () => {
+    expect(CONTACT_REQUEST_KINDS).toEqual(["contact", "feedback"]);
   });
 
   it("gives every kind its own topics, ending in a catch-all where the list is a set of reasons", () => {
-    expect(SUPPORT_TOPICS.contact).toEqual(["general", "partnership", "press", "provider", "other"]);
-    expect(SUPPORT_TOPICS.support).toEqual(["account", "booking", "payment", "provider_account", "other"]);
-    expect(SUPPORT_TOPICS.feedback).toEqual(["idea", "problem", "praise"]);
+    expect(CONTACT_TOPICS.contact).toEqual(["general", "partnership", "press", "provider", "other"]);
+    expect(CONTACT_TOPICS.feedback).toEqual(["idea", "problem", "praise"]);
   });
 
   it("refuses a topic that belongs to another kind", () => {
-    expect(isSupportTopicForKind("support", "booking")).toBe(true);
-    expect(isSupportTopicForKind("contact", "booking")).toBe(false);
-    expect(isSupportTopicForKind("feedback", "other")).toBe(false);
+    expect(isContactTopicForKind("contact", "general")).toBe(true);
+    expect(isContactTopicForKind("contact", "idea")).toBe(false);
+    expect(isContactTopicForKind("feedback", "other")).toBe(false);
   });
 
   it("only feedback may arrive without a way to reply", () => {
-    expect(supportEmailRequired("contact")).toBe(true);
-    expect(supportEmailRequired("support")).toBe(true);
-    expect(supportEmailRequired("feedback")).toBe(false);
+    expect(contactEmailRequired("contact")).toBe(true);
+    expect(contactEmailRequired("feedback")).toBe(false);
   });
 
   it("derives the six-character reference from the id's first hex characters, upper-cased", () => {
-    expect(supportReferenceOf("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b")).toBe("7F3A2C");
+    expect(contactReferenceOf("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b")).toBe("7F3A2C");
   });
 });
 ```
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `cd packages/shared && bunx vitest run src/enums/__tests__/support-enums.test.ts`
-Expected: FAIL — cannot resolve `../support-enums`.
+Run: `cd packages/shared && bunx vitest run src/enums/__tests__/contact-enums.test.ts`
+Expected: FAIL — cannot resolve `../contact-enums`.
 
 - [ ] **Step 3: Write the enums**
 
-`packages/shared/src/enums/support-enums/index.ts`:
+`packages/shared/src/enums/contact-enums/index.ts`:
 
 ```ts
 import { z } from "zod";
 
 /**
- * The three things somebody can write to us about, named after the form each
- * arrives from. One vocabulary for the write tier, the read tier and the
+ * The two things somebody can write to us about, named after the form each
+ * arrives from. Support with an account is the help center's (its own spec). One vocabulary for the write tier, the read tier and the
  * frontend, so a topic added to the form cannot be one the aggregate refuses.
  */
-export const SUPPORT_REQUEST_KINDS = ["contact", "support", "feedback"] as const;
-export type SupportRequestKind = (typeof SUPPORT_REQUEST_KINDS)[number];
-export const supportRequestKindSchema = z.enum(SUPPORT_REQUEST_KINDS);
+export const CONTACT_REQUEST_KINDS = ["contact", "feedback"] as const;
+export type ContactRequestKind = (typeof CONTACT_REQUEST_KINDS)[number];
+export const contactRequestKindSchema = z.enum(CONTACT_REQUEST_KINDS);
 
 /**
  * What each form asks the person to file their message under. Stored as text
  * on the row; validated against this list by the aggregate, per kind.
  */
-export const SUPPORT_TOPICS = {
+export const CONTACT_TOPICS = {
   contact: ["general", "partnership", "press", "provider", "other"],
-  support: ["account", "booking", "payment", "provider_account", "other"],
   feedback: ["idea", "problem", "praise"],
-} as const satisfies Record<SupportRequestKind, readonly string[]>;
-export type SupportTopic = (typeof SUPPORT_TOPICS)[SupportRequestKind][number];
+} as const satisfies Record<ContactRequestKind, readonly string[]>;
+export type ContactTopic = (typeof CONTACT_TOPICS)[ContactRequestKind][number];
 
-export function isSupportTopicForKind(kind: SupportRequestKind, topic: string): topic is SupportTopic {
-  return (SUPPORT_TOPICS[kind] as readonly string[]).includes(topic);
+export function isContactTopicForKind(kind: ContactRequestKind, topic: string): topic is ContactTopic {
+  return (CONTACT_TOPICS[kind] as readonly string[]).includes(topic);
 }
 
-export const SUPPORT_REQUEST_STATUSES = ["open", "resolved"] as const;
-export type SupportRequestStatus = (typeof SUPPORT_REQUEST_STATUSES)[number];
-export const supportRequestStatusSchema = z.enum(SUPPORT_REQUEST_STATUSES);
+export const CONTACT_REQUEST_STATUSES = ["open", "resolved"] as const;
+export type ContactRequestStatus = (typeof CONTACT_REQUEST_STATUSES)[number];
+export const contactRequestStatusSchema = z.enum(CONTACT_REQUEST_STATUSES);
 
 /** Feedback may arrive with no way to reply; a question or a problem needs one. */
-export function supportEmailRequired(kind: SupportRequestKind): boolean {
+export function contactEmailRequired(kind: ContactRequestKind): boolean {
   return kind !== "feedback";
 }
 
@@ -183,60 +181,60 @@ export function supportEmailRequired(kind: SupportRequestKind): boolean {
  * so the admin search can match `id::text ILIKE '<ref>%'` without stripping
  * hyphens.
  */
-export const SUPPORT_REFERENCE_LENGTH = 6;
-export function supportReferenceOf(id: string): string {
-  return id.replace(/-/g, "").slice(0, SUPPORT_REFERENCE_LENGTH).toUpperCase();
+export const CONTACT_REFERENCE_LENGTH = 6;
+export function contactReferenceOf(id: string): string {
+  return id.replace(/-/g, "").slice(0, CONTACT_REFERENCE_LENGTH).toUpperCase();
 }
 ```
 
 Append to `packages/shared/src/enums/index.ts`:
 
 ```ts
-export * from "./support-enums";
+export * from "./contact-enums";
 ```
 
 - [ ] **Step 4: Run the test and the typecheck**
 
-Run: `cd packages/shared && bunx vitest run src/enums/__tests__/support-enums.test.ts && bun run typecheck`
+Run: `cd packages/shared && bunx vitest run src/enums/__tests__/contact-enums.test.ts && bun run typecheck`
 Expected: 5 passed; typecheck clean.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/shared/src/enums/support-enums/index.ts packages/shared/src/enums/index.ts packages/shared/src/enums/__tests__/support-enums.test.ts
-git commit -m "feat(shared): the support request vocabulary — kinds, topics, statuses, reference"
+git add packages/shared/src/enums/contact-enums/index.ts packages/shared/src/enums/index.ts packages/shared/src/enums/__tests__/contact-enums.test.ts
+git commit -m "feat(shared): the contact request vocabulary — kinds, topics, statuses, reference"
 ```
 
 ---
 
-### Task 2: The `support_request` table and its migration
+### Task 2: The `contact_request` table and its migration
 
 **Files:**
-- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/support/schemas/support-request.schema.ts`
-- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/support/schemas/index.ts`
-- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/support/index.ts`
+- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/contact/schemas/contact-request.schema.ts`
+- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/contact/schemas/index.ts`
+- Create: `packages/backend/src/modules/ntizo/shared/infrastructure/database/contact/index.ts`
 - Modify: `packages/backend/src/modules/ntizo/shared/infrastructure/database/schemas.ts`
 - Modify: `packages/backend/src/modules/ntizo/drizzle.config.ts` (the `schemaFilter` array)
-- Generated: `packages/backend/src/modules/ntizo/shared/infrastructure/migrations/00NN_support_request.sql` (+ `meta/`)
+- Generated: `packages/backend/src/modules/ntizo/shared/infrastructure/migrations/00NN_contact_request.sql` (+ `meta/`)
 
 **Interfaces:**
-- Produces: `supportSchema` (pgSchema `ntizo_support`), `supportRequest` table, `SupportRequestRecord`, `NewSupportRequestRecord`.
+- Produces: `contactSchema` (pgSchema `ntizo_contact`), `contactRequest` table, `ContactRequestRecord`, `NewContactRequestRecord`.
 
 - [ ] **Step 1: Write the table**
 
-`support-request.schema.ts`:
+`contact-request.schema.ts`:
 
 ```ts
 import { index, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "../../user/schemas/user.schema";
 
-export const supportSchema = pgSchema("ntizo_support");
+export const contactSchema = pgSchema("ntizo_contact");
 
 /**
- * One message sent through the contact, support or feedback form.
+ * One message sent through the contact or feedback form.
  *
  * The row is the source of truth: the email to the team is sent after it is
- * written and may fail without losing anything (see `SubmitSupportRequestCommand`).
+ * written and may fail without losing anything (see `SubmitContactRequestCommand`).
  *
  * `kind`, `topic` and `status` are text rather than enums, like `review.status`:
  * the allowed values are the aggregate's rule (and `@ntizo/shared`'s list), and
@@ -247,15 +245,15 @@ export const supportSchema = pgSchema("ntizo_support");
  * of who resolved it — but neither may keep pointing at a row that is gone.
  *
  * `ip_address` exists for the per-IP rate limit and for abuse; the privacy
- * policy discloses it (Task 14).
+ * policy discloses it (Task 13).
  */
-export const supportRequest = supportSchema.table(
-  "support_request",
+export const contactRequest = contactSchema.table(
+  "contact_request",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** `contact` | `support` | `feedback` — see `SUPPORT_REQUEST_KINDS`. */
+    /** `contact` | `feedback` — see `CONTACT_REQUEST_KINDS`. */
     kind: text("kind").notNull(),
-    /** One of the kind's topics — see `SUPPORT_TOPICS`. */
+    /** One of the kind's topics — see `CONTACT_TOPICS`. */
     topic: text("topic").notNull(),
     name: text("name").notNull(),
     /** Null only on feedback, which may arrive without a way to reply. */
@@ -268,7 +266,7 @@ export const supportRequest = supportSchema.table(
     originPath: text("origin_path"),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
-    /** `open` | `resolved` — see `SUPPORT_REQUEST_STATUSES`. */
+    /** `open` | `resolved` — see `CONTACT_REQUEST_STATUSES`. */
     status: text("status").notNull().default("open"),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     resolvedByUserId: text("resolved_by_user_id").references(() => user.id, { onDelete: "set null" }),
@@ -276,24 +274,24 @@ export const supportRequest = supportSchema.table(
   },
   (t) => [
     // The admin list: open first, newest first.
-    index("support_request_status_created_idx").on(t.status, t.createdAt),
+    index("contact_request_status_created_idx").on(t.status, t.createdAt),
     // The rate limit: "how many from this address in the last hour".
-    index("support_request_ip_created_idx").on(t.ipAddress, t.createdAt),
-    index("support_request_kind_idx").on(t.kind),
+    index("contact_request_ip_created_idx").on(t.ipAddress, t.createdAt),
+    index("contact_request_kind_idx").on(t.kind),
   ],
 );
 
-export type SupportRequestRecord = typeof supportRequest.$inferSelect;
-export type NewSupportRequestRecord = typeof supportRequest.$inferInsert;
+export type ContactRequestRecord = typeof contactRequest.$inferSelect;
+export type NewContactRequestRecord = typeof contactRequest.$inferInsert;
 ```
 
-`support/schemas/index.ts`:
+`contact/schemas/index.ts`:
 
 ```ts
-export * from "./support-request.schema";
+export * from "./contact-request.schema";
 ```
 
-`support/index.ts`:
+`contact/index.ts`:
 
 ```ts
 export * from "./schemas";
@@ -302,10 +300,10 @@ export * from "./schemas";
 In `database/schemas.ts`, after `export * from "./review";`, add:
 
 ```ts
-export * from "./support";
+export * from "./contact";
 ```
 
-In `drizzle.config.ts`, in `schemaFilter`, after `"ntizo_review",` add `"ntizo_support",`.
+In `drizzle.config.ts`, in `schemaFilter`, after `"ntizo_review",` add `"ntizo_contact",`.
 
 - [ ] **Step 2: Typecheck**
 
@@ -314,8 +312,8 @@ Expected: clean.
 
 - [ ] **Step 3: Generate the migration**
 
-Run: `cd packages/backend && bun run db:ntizo:generate --name support_request`
-Expected: a new file `src/modules/ntizo/shared/infrastructure/migrations/00NN_support_request.sql` and an updated `meta/_journal.json` + snapshot. Open the SQL and confirm it contains `CREATE SCHEMA "ntizo_support";`, `CREATE TABLE "ntizo_support"."support_request"`, the two foreign keys to `"ntizo_user"."user"` with `ON DELETE set null`, and the three indexes. If it contains anything touching another schema, stop: the schema filter or an earlier migration is out of step, and that needs a person.
+Run: `cd packages/backend && bun run db:ntizo:generate --name contact_request`
+Expected: a new file `src/modules/ntizo/shared/infrastructure/migrations/00NN_contact_request.sql` and an updated `meta/_journal.json` + snapshot. Open the SQL and confirm it contains `CREATE SCHEMA "ntizo_contact";`, `CREATE TABLE "ntizo_contact"."contact_request"`, the two foreign keys to `"ntizo_user"."user"` with `ON DELETE set null`, and the three indexes. If it contains anything touching another schema, stop: the schema filter or an earlier migration is out of step, and that needs a person.
 
 - [ ] **Step 4: Apply it to the dev database**
 
@@ -325,22 +323,22 @@ Expected: the migration applies; the command exits 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/backend/src/modules/ntizo/shared/infrastructure/database/support packages/backend/src/modules/ntizo/shared/infrastructure/database/schemas.ts packages/backend/src/modules/ntizo/drizzle.config.ts packages/backend/src/modules/ntizo/shared/infrastructure/migrations
-git commit -m "feat(support): the support_request table, in its own schema"
+git add packages/backend/src/modules/ntizo/shared/infrastructure/database/contact packages/backend/src/modules/ntizo/shared/infrastructure/database/schemas.ts packages/backend/src/modules/ntizo/drizzle.config.ts packages/backend/src/modules/ntizo/shared/infrastructure/migrations
+git commit -m "feat(contact): the contact_request table, in its own schema"
 ```
 
 ---
 
-### Task 3: The `SupportRequest` aggregate and its refusals
+### Task 3: The `ContactRequest` aggregate and its refusals
 
 **Files:**
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/domain/exceptions.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/domain/aggregates/support-request.aggregate.ts`
-- Test: `packages/backend/src/modules/ntizo/bounded-contexts/support/__tests__/support-request.aggregate.test.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/domain/exceptions.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/domain/aggregates/contact-request.aggregate.ts`
+- Test: `packages/backend/src/modules/ntizo/bounded-contexts/contact/__tests__/contact-request.aggregate.test.ts`
 
 **Interfaces:**
 - Consumes: Task 1's enums.
-- Produces: `SupportRequest` with `static create(input)`, `static reconstitute(props)`, getters for every prop, `withId(id)`, `resolve(at, byUserId)`, `reopen()`, `get reference()`; the constants `NAME_MIN/MAX`, `MESSAGE_MIN/MAX`, `EMAIL_MAX`, `ORIGIN_PATH_MAX`, `LOCALE_MAX`; errors `SupportNameInvalidError`, `SupportMessageInvalidError`, `SupportEmailRequiredError`, `SupportEmailInvalidError`, `SupportTopicInvalidError`, `SupportRateLimitedError`, `SupportRequestNotFoundError`.
+- Produces: `ContactRequest` with `static create(input)`, `static reconstitute(props)`, getters for every prop, `withId(id)`, `resolve(at, byUserId)`, `reopen()`, `get reference()`; the constants `NAME_MIN/MAX`, `MESSAGE_MIN/MAX`, `EMAIL_MAX`, `ORIGIN_PATH_MAX`, `LOCALE_MAX`; errors `ContactNameInvalidError`, `ContactMessageInvalidError`, `ContactEmailRequiredError`, `ContactEmailInvalidError`, `ContactTopicInvalidError`, `ContactRateLimitedError`, `ContactRequestNotFoundError`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -349,24 +347,24 @@ import { describe, expect, it } from "bun:test";
 import {
   MESSAGE_MAX,
   NAME_MAX,
-  SupportRequest,
-} from "../domain/aggregates/support-request.aggregate";
+  ContactRequest,
+} from "../domain/aggregates/contact-request.aggregate";
 import {
-  SupportEmailInvalidError,
-  SupportEmailRequiredError,
-  SupportMessageInvalidError,
-  SupportNameInvalidError,
-  SupportTopicInvalidError,
+  ContactEmailInvalidError,
+  ContactEmailRequiredError,
+  ContactMessageInvalidError,
+  ContactNameInvalidError,
+  ContactTopicInvalidError,
 } from "../domain/exceptions";
 
-/** A complete, valid support message; each test takes one thing away. */
-function input(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) {
+/** A complete, valid contact message; each test takes one thing away. */
+function input(over: Partial<Parameters<typeof ContactRequest.create>[0]> = {}) {
   return {
-    kind: "support" as const,
-    topic: "booking",
+    kind: "contact" as const,
+    topic: "general",
     name: "  Joana Matola ",
     email: " Joana@Exemplo.com ",
-    message: "A reserva de sábado não aparece na minha conta.",
+    message: "Gostava de propor uma parceria com a minha escola.",
     locale: "pt-MZ",
     originPath: null,
     requesterUserId: "u-1",
@@ -376,56 +374,56 @@ function input(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) 
   };
 }
 
-describe("SupportRequest.create — normalisation", () => {
+describe("ContactRequest.create — normalisation", () => {
   it("trims the name and the message, and lower-cases the email", () => {
-    const r = SupportRequest.create(input());
+    const r = ContactRequest.create(input());
     expect(r.name).toBe("Joana Matola");
     expect(r.email).toBe("joana@exemplo.com");
-    expect(r.message).toBe("A reserva de sábado não aparece na minha conta.");
+    expect(r.message).toBe("Gostava de propor uma parceria com a minha escola.");
     expect(r.status).toBe("open");
     expect(r.id).toBeNull();
   });
 
   it("stores an empty feedback email as none, not as an empty string", () => {
-    const r = SupportRequest.create(input({ kind: "feedback", topic: "idea", email: "   " }));
+    const r = ContactRequest.create(input({ kind: "feedback", topic: "idea", email: "   " }));
     expect(r.email).toBeNull();
   });
 
   it("cuts an over-long origin path rather than refusing the message for it", () => {
-    const r = SupportRequest.create(input({ originPath: `/services/${"x".repeat(300)}` }));
+    const r = ContactRequest.create(input({ originPath: `/services/${"x".repeat(300)}` }));
     expect(r.originPath!.length).toBe(200);
   });
 });
 
-describe("SupportRequest.create — refusals", () => {
+describe("ContactRequest.create — refusals", () => {
   it("refuses a name that is too short or too long", () => {
-    expect(() => SupportRequest.create(input({ name: "J" }))).toThrow(SupportNameInvalidError);
-    expect(() => SupportRequest.create(input({ name: "x".repeat(NAME_MAX + 1) }))).toThrow(SupportNameInvalidError);
+    expect(() => ContactRequest.create(input({ name: "J" }))).toThrow(ContactNameInvalidError);
+    expect(() => ContactRequest.create(input({ name: "x".repeat(NAME_MAX + 1) }))).toThrow(ContactNameInvalidError);
   });
 
   it("refuses a message that is too short or too long", () => {
-    expect(() => SupportRequest.create(input({ message: "olá" }))).toThrow(SupportMessageInvalidError);
-    expect(() => SupportRequest.create(input({ message: "x".repeat(MESSAGE_MAX + 1) }))).toThrow(SupportMessageInvalidError);
+    expect(() => ContactRequest.create(input({ message: "olá" }))).toThrow(ContactMessageInvalidError);
+    expect(() => ContactRequest.create(input({ message: "x".repeat(MESSAGE_MAX + 1) }))).toThrow(ContactMessageInvalidError);
   });
 
-  it("requires an email on contact and support, but not on feedback", () => {
-    expect(() => SupportRequest.create(input({ kind: "contact", topic: "general", email: null }))).toThrow(SupportEmailRequiredError);
-    expect(() => SupportRequest.create(input({ email: "" }))).toThrow(SupportEmailRequiredError);
-    expect(SupportRequest.create(input({ kind: "feedback", topic: "praise", email: null })).email).toBeNull();
+  it("requires an email on contact, but not on feedback", () => {
+    expect(() => ContactRequest.create(input({ kind: "contact", topic: "general", email: null }))).toThrow(ContactEmailRequiredError);
+    expect(() => ContactRequest.create(input({ email: "" }))).toThrow(ContactEmailRequiredError);
+    expect(ContactRequest.create(input({ kind: "feedback", topic: "praise", email: null })).email).toBeNull();
   });
 
   it("refuses an email that is not shaped like one, on feedback too", () => {
-    expect(() => SupportRequest.create(input({ email: "joana" }))).toThrow(SupportEmailInvalidError);
-    expect(() => SupportRequest.create(input({ kind: "feedback", topic: "idea", email: "not an email" }))).toThrow(SupportEmailInvalidError);
+    expect(() => ContactRequest.create(input({ email: "joana" }))).toThrow(ContactEmailInvalidError);
+    expect(() => ContactRequest.create(input({ kind: "feedback", topic: "idea", email: "not an email" }))).toThrow(ContactEmailInvalidError);
   });
 
   it("refuses a topic that belongs to another kind", () => {
-    expect(() => SupportRequest.create(input({ kind: "contact", topic: "booking" }))).toThrow(SupportTopicInvalidError);
+    expect(() => ContactRequest.create(input({ topic: "idea" }))).toThrow(ContactTopicInvalidError);
   });
 });
 
-describe("SupportRequest — resolving", () => {
-  const saved = SupportRequest.create(input()).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
+describe("ContactRequest — resolving", () => {
+  const saved = ContactRequest.create(input()).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
 
   it("resolve records who and when, and reopen clears both", () => {
     const at = new Date("2026-09-02T10:00:00.000Z");
@@ -451,14 +449,14 @@ describe("SupportRequest — resolving", () => {
 
   it("derives the reference from the id", () => {
     expect(saved.reference).toBe("7F3A2C");
-    expect(() => SupportRequest.create(input()).reference).toThrow();
+    expect(() => ContactRequest.create(input()).reference).toThrow();
   });
 });
 ```
 
 - [ ] **Step 2: Run to see them fail**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/support-request.aggregate.test.ts`
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/contact/__tests__/contact-request.aggregate.test.ts`
 Expected: FAIL — modules not found.
 
 - [ ] **Step 3: Write the exceptions**
@@ -469,58 +467,58 @@ Expected: FAIL — modules not found.
 import { NotFoundError, UnprocessableError } from "@cosmneo/onion-lasagna";
 
 /**
- * The support context's refusals.
+ * The contact context's refusals.
  *
  * Each extends a kit error so `getGraphQLErrorCode` recognises it and the
  * GraphQL layer does not mask it to INTERNAL_ERROR — the same trap the review
  * context documents. The `code` strings are a PUBLIC CONTRACT: the form
- * branches on `SUPPORT_RATE_LIMITED` to say something different.
+ * branches on `CONTACT_RATE_LIMITED` to say something different.
  */
 
-export class SupportNameInvalidError extends UnprocessableError {
+export class ContactNameInvalidError extends UnprocessableError {
   constructor(public readonly length: number) {
     super({
       message: `A name must be between 2 and 80 characters — got ${length}`,
-      code: "SUPPORT_NAME_INVALID",
+      code: "CONTACT_NAME_INVALID",
     });
-    this.name = "SupportNameInvalidError";
+    this.name = "ContactNameInvalidError";
   }
 }
 
-export class SupportMessageInvalidError extends UnprocessableError {
+export class ContactMessageInvalidError extends UnprocessableError {
   constructor(public readonly length: number) {
     super({
       message: `A message must be between 10 and 2000 characters — got ${length}`,
-      code: "SUPPORT_MESSAGE_INVALID",
+      code: "CONTACT_MESSAGE_INVALID",
     });
-    this.name = "SupportMessageInvalidError";
+    this.name = "ContactMessageInvalidError";
   }
 }
 
-export class SupportEmailRequiredError extends UnprocessableError {
+export class ContactEmailRequiredError extends UnprocessableError {
   constructor() {
     super({
       message: "An email address is needed so we can reply",
-      code: "SUPPORT_EMAIL_REQUIRED",
+      code: "CONTACT_EMAIL_REQUIRED",
     });
-    this.name = "SupportEmailRequiredError";
+    this.name = "ContactEmailRequiredError";
   }
 }
 
-export class SupportEmailInvalidError extends UnprocessableError {
+export class ContactEmailInvalidError extends UnprocessableError {
   constructor() {
-    super({ message: "That does not look like an email address", code: "SUPPORT_EMAIL_INVALID" });
-    this.name = "SupportEmailInvalidError";
+    super({ message: "That does not look like an email address", code: "CONTACT_EMAIL_INVALID" });
+    this.name = "ContactEmailInvalidError";
   }
 }
 
-export class SupportTopicInvalidError extends UnprocessableError {
+export class ContactTopicInvalidError extends UnprocessableError {
   constructor(public readonly kind: string, public readonly topic: string) {
     super({
       message: `"${topic}" is not a topic of the ${kind} form`,
-      code: "SUPPORT_TOPIC_INVALID",
+      code: "CONTACT_TOPIC_INVALID",
     });
-    this.name = "SupportTopicInvalidError";
+    this.name = "ContactTopicInvalidError";
   }
 }
 
@@ -531,43 +529,43 @@ export class SupportTopicInvalidError extends UnprocessableError {
  * the caller is decides it, only how often they have written. The form shows
  * its own sentence for this code and keeps what was typed.
  */
-export class SupportRateLimitedError extends UnprocessableError {
+export class ContactRateLimitedError extends UnprocessableError {
   constructor(public readonly max: number, public readonly windowMinutes: number) {
     super({
       message: `At most ${max} messages every ${windowMinutes} minutes from one address — try again later, or write to us by email`,
-      code: "SUPPORT_RATE_LIMITED",
+      code: "CONTACT_RATE_LIMITED",
     });
-    this.name = "SupportRateLimitedError";
+    this.name = "ContactRateLimitedError";
   }
 }
 
-export class SupportRequestNotFoundError extends NotFoundError {
+export class ContactRequestNotFoundError extends NotFoundError {
   constructor(public readonly requestId: string) {
-    super({ message: `No support request with id "${requestId}"`, code: "SUPPORT_REQUEST_NOT_FOUND" });
-    this.name = "SupportRequestNotFoundError";
+    super({ message: `No contact request with id "${requestId}"`, code: "CONTACT_REQUEST_NOT_FOUND" });
+    this.name = "ContactRequestNotFoundError";
   }
 }
 ```
 
 - [ ] **Step 4: Write the aggregate**
 
-`domain/aggregates/support-request.aggregate.ts`:
+`domain/aggregates/contact-request.aggregate.ts`:
 
 ```ts
 import {
-  isSupportTopicForKind,
-  supportEmailRequired,
-  supportReferenceOf,
-  type SupportRequestKind,
-  type SupportRequestStatus,
-  type SupportTopic,
+  isContactTopicForKind,
+  contactEmailRequired,
+  contactReferenceOf,
+  type ContactRequestKind,
+  type ContactRequestStatus,
+  type ContactTopic,
 } from "@ntizo/shared";
 import {
-  SupportEmailInvalidError,
-  SupportEmailRequiredError,
-  SupportMessageInvalidError,
-  SupportNameInvalidError,
-  SupportTopicInvalidError,
+  ContactEmailInvalidError,
+  ContactEmailRequiredError,
+  ContactMessageInvalidError,
+  ContactNameInvalidError,
+  ContactTopicInvalidError,
 } from "../exceptions";
 
 export const NAME_MIN = 2;
@@ -581,10 +579,10 @@ export const LOCALE_MAX = 16;
 /** Something, an @, something, a dot, something. Not RFC 5322 — a reply has to reach it, that is all. */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export interface SupportRequestProps {
+export interface ContactRequestProps {
   readonly id: string | null;
-  readonly kind: SupportRequestKind;
-  readonly topic: SupportTopic;
+  readonly kind: ContactRequestKind;
+  readonly topic: ContactTopic;
   readonly name: string;
   readonly email: string | null;
   readonly message: string;
@@ -593,7 +591,7 @@ export interface SupportRequestProps {
   readonly originPath: string | null;
   readonly ipAddress: string | null;
   readonly userAgent: string | null;
-  readonly status: SupportRequestStatus;
+  readonly status: ContactRequestStatus;
   readonly resolvedAt: Date | null;
   readonly resolvedByUserId: string | null;
   readonly createdAt: Date | null;
@@ -617,11 +615,11 @@ export interface SupportRequestProps {
  * `resolve` and `reopen` are idempotent: two administrators pressing the same
  * button at once is an ordinary thing, not an error, and the first press wins.
  */
-export class SupportRequest {
-  private constructor(private readonly props: SupportRequestProps) {}
+export class ContactRequest {
+  private constructor(private readonly props: ContactRequestProps) {}
 
   static create(input: {
-    kind: SupportRequestKind;
+    kind: ContactRequestKind;
     topic: string;
     name: string;
     email: string | null;
@@ -631,26 +629,26 @@ export class SupportRequest {
     requesterUserId: string | null;
     ipAddress: string | null;
     userAgent: string | null;
-  }): SupportRequest {
+  }): ContactRequest {
     const name = input.name.trim();
-    if (name.length < NAME_MIN || name.length > NAME_MAX) throw new SupportNameInvalidError(name.length);
+    if (name.length < NAME_MIN || name.length > NAME_MAX) throw new ContactNameInvalidError(name.length);
 
     const message = input.message.trim();
     if (message.length < MESSAGE_MIN || message.length > MESSAGE_MAX) {
-      throw new SupportMessageInvalidError(message.length);
+      throw new ContactMessageInvalidError(message.length);
     }
 
     const email = (input.email ?? "").trim().toLowerCase() || null;
-    if (email === null && supportEmailRequired(input.kind)) throw new SupportEmailRequiredError();
+    if (email === null && contactEmailRequired(input.kind)) throw new ContactEmailRequiredError();
     if (email !== null && (email.length > EMAIL_MAX || !EMAIL_SHAPE.test(email))) {
-      throw new SupportEmailInvalidError();
+      throw new ContactEmailInvalidError();
     }
 
-    if (!isSupportTopicForKind(input.kind, input.topic)) {
-      throw new SupportTopicInvalidError(input.kind, input.topic);
+    if (!isContactTopicForKind(input.kind, input.topic)) {
+      throw new ContactTopicInvalidError(input.kind, input.topic);
     }
 
-    return new SupportRequest({
+    return new ContactRequest({
       id: null,
       kind: input.kind,
       topic: input.topic,
@@ -670,13 +668,13 @@ export class SupportRequest {
   }
 
   /** A row as the repository read it back. No validation: it was validated when written. */
-  static reconstitute(props: SupportRequestProps): SupportRequest {
-    return new SupportRequest(props);
+  static reconstitute(props: ContactRequestProps): ContactRequest {
+    return new ContactRequest(props);
   }
 
   get id(): string | null { return this.props.id; }
-  get kind(): SupportRequestKind { return this.props.kind; }
-  get topic(): SupportTopic { return this.props.topic; }
+  get kind(): ContactRequestKind { return this.props.kind; }
+  get topic(): ContactTopic { return this.props.topic; }
   get name(): string { return this.props.name; }
   get email(): string | null { return this.props.email; }
   get message(): string { return this.props.message; }
@@ -685,44 +683,44 @@ export class SupportRequest {
   get originPath(): string | null { return this.props.originPath; }
   get ipAddress(): string | null { return this.props.ipAddress; }
   get userAgent(): string | null { return this.props.userAgent; }
-  get status(): SupportRequestStatus { return this.props.status; }
+  get status(): ContactRequestStatus { return this.props.status; }
   get resolvedAt(): Date | null { return this.props.resolvedAt; }
   get resolvedByUserId(): string | null { return this.props.resolvedByUserId; }
   get createdAt(): Date | null { return this.props.createdAt; }
 
   /** The six characters a person quotes back. Only a stored request has one. */
   get reference(): string {
-    if (!this.props.id) throw new Error("A support request has no reference until it is stored");
-    return supportReferenceOf(this.props.id);
+    if (!this.props.id) throw new Error("A contact request has no reference until it is stored");
+    return contactReferenceOf(this.props.id);
   }
 
   /** The same request, now stored. The repository calls this with the id Postgres assigned. */
-  withId(id: string, createdAt: Date = new Date()): SupportRequest {
-    return new SupportRequest({ ...this.props, id, createdAt });
+  withId(id: string, createdAt: Date = new Date()): ContactRequest {
+    return new ContactRequest({ ...this.props, id, createdAt });
   }
 
-  resolve(at: Date, byUserId: string): SupportRequest {
+  resolve(at: Date, byUserId: string): ContactRequest {
     if (this.props.status === "resolved") return this;
-    return new SupportRequest({ ...this.props, status: "resolved", resolvedAt: at, resolvedByUserId: byUserId });
+    return new ContactRequest({ ...this.props, status: "resolved", resolvedAt: at, resolvedByUserId: byUserId });
   }
 
-  reopen(): SupportRequest {
+  reopen(): ContactRequest {
     if (this.props.status === "open") return this;
-    return new SupportRequest({ ...this.props, status: "open", resolvedAt: null, resolvedByUserId: null });
+    return new ContactRequest({ ...this.props, status: "open", resolvedAt: null, resolvedByUserId: null });
   }
 }
 ```
 
 - [ ] **Step 5: Run the tests**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/support-request.aggregate.test.ts`
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/contact/__tests__/contact-request.aggregate.test.ts`
 Expected: 10 pass.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/backend/src/modules/ntizo/bounded-contexts/support
-git commit -m "feat(support): the SupportRequest aggregate and its refusals"
+git add packages/backend/src/modules/ntizo/bounded-contexts/contact
+git commit -m "feat(contact): the ContactRequest aggregate and its refusals"
 ```
 
 ---
@@ -730,28 +728,28 @@ git commit -m "feat(support): the SupportRequest aggregate and its refusals"
 ### Task 4: The repository, against the real table
 
 **Files:**
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/ports/outbound/support-request.repository.port.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository.ts`
-- Test: `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/app/ports/outbound/contact-request.repository.port.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/infrastructure/repositories/drizzle/contact-request.repository.ts`
+- Test: `packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/contact-request-repository.test.ts`
 
 **Interfaces:**
-- Consumes: `SupportRequest` (Task 3), `supportRequest` table (Task 2), `supportReferenceOf` (Task 1).
-- Produces: `SupportRequestRepositoryPort` with `insert(request): Promise<SupportRequest>`, `findById(id): Promise<SupportRequest | null>`, `saveStatus(request): Promise<boolean>`, `countFromIpSince(ipAddress, since): Promise<number>`, `listForAdmin(input): Promise<SupportRequestAdminPage>`; the row shape `SupportRequestAdminRow`; `DrizzleSupportRequestRepository`.
+- Consumes: `ContactRequest` (Task 3), `contactRequest` table (Task 2), `contactReferenceOf` (Task 1).
+- Produces: `ContactRequestRepositoryPort` with `insert(request): Promise<ContactRequest>`, `findById(id): Promise<ContactRequest | null>`, `saveStatus(request): Promise<boolean>`, `countFromIpSince(ipAddress, since): Promise<number>`, `listForAdmin(input): Promise<ContactRequestAdminPage>`; the row shape `ContactRequestAdminRow`; `DrizzleContactRequestRepository`.
 
 - [ ] **Step 1: Write the port**
 
-`support-request.repository.port.ts`:
+`contact-request.repository.port.ts`:
 
 ```ts
-import type { SupportRequestKind, SupportRequestStatus, SupportTopic } from "@ntizo/shared";
-import type { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
+import type { ContactRequestKind, ContactRequestStatus, ContactTopic } from "@ntizo/shared";
+import type { ContactRequest } from "../../../domain/aggregates/contact-request.aggregate";
 
 /** One request as the administration list shows it. Everything on the row: this screen is the investigation. */
-export interface SupportRequestAdminRow {
+export interface ContactRequestAdminRow {
   id: string;
   reference: string;
-  kind: SupportRequestKind;
-  topic: SupportTopic;
+  kind: ContactRequestKind;
+  topic: ContactTopic;
   name: string;
   email: string | null;
   message: string;
@@ -760,48 +758,48 @@ export interface SupportRequestAdminRow {
   originPath: string | null;
   ipAddress: string | null;
   userAgent: string | null;
-  status: SupportRequestStatus;
+  status: ContactRequestStatus;
   /** ISO 8601, or null while open. */
   resolvedAt: string | null;
   createdAt: string;
 }
 
-export interface SupportRequestListInput {
+export interface ContactRequestListInput {
   limit: number;
   offset: number;
-  kind?: SupportRequestKind;
-  status?: SupportRequestStatus;
+  kind?: ContactRequestKind;
+  status?: ContactRequestStatus;
   /** Matches the name, the email, the message, or the id's leading characters (the reference). */
   search?: string;
 }
 
-export interface SupportRequestAdminPage {
-  items: SupportRequestAdminRow[];
+export interface ContactRequestAdminPage {
+  items: ContactRequestAdminRow[];
   /** Rows matching the filters, for pagination. */
   total: number;
   /** Open rows across the whole table, whatever the filters — the queue's badge. */
   openCount: number;
 }
 
-export interface SupportRequestRepositoryPort {
+export interface ContactRequestRepositoryPort {
   /** Writes a new row and returns the same request carrying its id and creation time. */
-  insert(request: SupportRequest): Promise<SupportRequest>;
-  findById(id: string): Promise<SupportRequest | null>;
+  insert(request: ContactRequest): Promise<ContactRequest>;
+  findById(id: string): Promise<ContactRequest | null>;
   /** Writes `status`, `resolvedAt` and `resolvedByUserId`. False when no such row. */
-  saveStatus(request: SupportRequest): Promise<boolean>;
+  saveStatus(request: ContactRequest): Promise<boolean>;
   /** How many rows this address has written since `since`. The rate limit. */
   countFromIpSince(ipAddress: string, since: Date): Promise<number>;
-  listForAdmin(input: SupportRequestListInput): Promise<SupportRequestAdminPage>;
+  listForAdmin(input: ContactRequestListInput): Promise<ContactRequestAdminPage>;
 }
 ```
 
 - [ ] **Step 2: Write the failing repository test**
 
-`support-request-repository.test.ts` (in `shared/infrastructure/database/__tests__/`, beside `booking-repository.test.ts`, whose harness it copies):
+`contact-request-repository.test.ts` (in `shared/infrastructure/database/__tests__/`, beside `booking-repository.test.ts`, whose harness it copies):
 
 ```ts
 /**
- * `DrizzleSupportRequestRepository` against the real dev database, same
+ * `DrizzleContactRequestRepository` against the real dev database, same
  * mechanism as `booking-repository.test.ts`: `getDb()` resolves through the
  * request-scoped context, and `__runWithTransactionContextForTests` binds this
  * file's own `DEV_DB_URL` client into it for one test body.
@@ -816,18 +814,18 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
 import { user } from "../user/schemas/user.schema";
-import { supportRequest } from "../support/schemas/support-request.schema";
-import { SupportRequest } from "../../../../bounded-contexts/support/domain/aggregates/support-request.aggregate";
-import { DrizzleSupportRequestRepository } from "../../../../bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository";
+import { contactRequest } from "../contact/schemas/contact-request.schema";
+import { ContactRequest } from "../../../../bounded-contexts/contact/domain/aggregates/contact-request.aggregate";
+import { DrizzleContactRequestRepository } from "../../../../bounded-contexts/contact/infrastructure/repositories/drizzle/contact-request.repository";
 import { bestEffortCleanup, DEV_DB_COLD_START_TIMEOUT_MS, openDevDbConnection } from "./dev-db-test-connection";
 
 setDefaultTimeout(DEV_DB_COLD_START_TIMEOUT_MS);
 
 const sql = openDevDbConnection();
 const db = drizzle(sql, { schema: authSchema });
-const repo = new DrizzleSupportRequestRepository();
+const repo = new DrizzleContactRequestRepository();
 const suffix = crypto.randomUUID();
-const NAME = `Support Repo Test ${suffix}`;
+const NAME = `Contact Repo Test ${suffix}`;
 const IP = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
 
 let requesterId: string;
@@ -836,7 +834,7 @@ beforeAll(async () => {
   requesterId = crypto.randomUUID();
   await db.insert(user).values({
     id: requesterId,
-    email: `support-repo-${suffix}@ntizo.test`,
+    email: `contact-repo-${suffix}@ntizo.test`,
     role: "customer",
     status: "active",
   });
@@ -844,19 +842,19 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await bestEffortCleanup([
-    () => db.delete(supportRequest).where(like(supportRequest.name, `${NAME}%`)),
+    () => db.delete(contactRequest).where(like(contactRequest.name, `${NAME}%`)),
     () => db.delete(user).where(eq(user.id, requesterId)),
     () => sql.end({ timeout: 5 }),
   ]);
 }, DEV_DB_COLD_START_TIMEOUT_MS);
 
-function fresh(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) {
-  return SupportRequest.create({
-    kind: "support",
-    topic: "booking",
+function fresh(over: Partial<Parameters<typeof ContactRequest.create>[0]> = {}) {
+  return ContactRequest.create({
+    kind: "contact",
+    topic: "general",
     name: NAME,
     email: `joana-${suffix}@exemplo.com`,
-    message: "A reserva de sábado não aparece na minha conta.",
+    message: "Gostava de propor uma parceria com a minha escola.",
     locale: "pt-MZ",
     originPath: null,
     requesterUserId: requesterId,
@@ -866,7 +864,7 @@ function fresh(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) 
   });
 }
 
-describe("DrizzleSupportRequestRepository", () => {
+describe("DrizzleContactRequestRepository", () => {
   test("insert returns the request with an id and a creation time, and findById reads it back whole", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const saved = await repo.insert(fresh());
@@ -878,8 +876,8 @@ describe("DrizzleSupportRequestRepository", () => {
       expect(found).not.toBeNull();
       expect(found!.name).toBe(NAME);
       expect(found!.email).toBe(`joana-${suffix}@exemplo.com`);
-      expect(found!.kind).toBe("support");
-      expect(found!.topic).toBe("booking");
+      expect(found!.kind).toBe("contact");
+      expect(found!.topic).toBe("general");
       expect(found!.requesterUserId).toBe(requesterId);
       expect(found!.status).toBe("open");
       expect(found!.ipAddress).toBe(IP);
@@ -903,7 +901,7 @@ describe("DrizzleSupportRequestRepository", () => {
       expect(found!.resolvedAt).toEqual(at);
       expect(found!.resolvedByUserId).toBe(requesterId);
 
-      const ghost = SupportRequest.reconstitute({ ...fresh(), id: crypto.randomUUID() } as never);
+      const ghost = ContactRequest.reconstitute({ ...fresh(), id: crypto.randomUUID() } as never);
       expect(await repo.saveStatus(ghost)).toBe(false);
     }, { commit: true });
   });
@@ -921,7 +919,7 @@ describe("DrizzleSupportRequestRepository", () => {
 
   test("listForAdmin filters by kind and status, searches four fields, and counts open rows across the table", async () => {
     await __runWithTransactionContextForTests(db, async () => {
-      const a = await repo.insert(fresh({ message: `Mensagem única ${suffix} sobre uma reserva.` }));
+      const a = await repo.insert(fresh({ message: `Mensagem única ${suffix} sobre uma parceria.` }));
       const b = await repo.insert(fresh({ kind: "feedback", topic: "idea", email: null, message: `Uma ideia ${suffix} para a página inicial.` }));
       await repo.saveStatus(b.resolve(new Date(), requesterId));
 
@@ -950,32 +948,32 @@ describe("DrizzleSupportRequestRepository", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts`
+Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/contact-request-repository.test.ts`
 Expected: FAIL — repository module not found.
 
 - [ ] **Step 4: Write the repository**
 
-`infrastructure/repositories/drizzle/support-request.repository.ts`:
+`infrastructure/repositories/drizzle/contact-request.repository.ts`:
 
 ```ts
 import { and, count, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
-import { supportReferenceOf, type SupportRequestKind, type SupportRequestStatus, type SupportTopic } from "@ntizo/shared";
+import { contactReferenceOf, type ContactRequestKind, type ContactRequestStatus, type ContactTopic } from "@ntizo/shared";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
-import { supportRequest } from "../../../../../shared/infrastructure/database/support/schemas";
-import { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
+import { contactRequest } from "../../../../../shared/infrastructure/database/contact/schemas";
+import { ContactRequest } from "../../../domain/aggregates/contact-request.aggregate";
 import type {
-  SupportRequestAdminPage,
-  SupportRequestListInput,
-  SupportRequestRepositoryPort,
-} from "../../../app/ports/outbound/support-request.repository.port";
+  ContactRequestAdminPage,
+  ContactRequestListInput,
+  ContactRequestRepositoryPort,
+} from "../../../app/ports/outbound/contact-request.repository.port";
 
-type Row = typeof supportRequest.$inferSelect;
+type Row = typeof contactRequest.$inferSelect;
 
-function toAggregate(row: Row): SupportRequest {
-  return SupportRequest.reconstitute({
+function toAggregate(row: Row): ContactRequest {
+  return ContactRequest.reconstitute({
     id: row.id,
-    kind: row.kind as SupportRequestKind,
-    topic: row.topic as SupportTopic,
+    kind: row.kind as ContactRequestKind,
+    topic: row.topic as ContactTopic,
     name: row.name,
     email: row.email,
     message: row.message,
@@ -984,17 +982,17 @@ function toAggregate(row: Row): SupportRequest {
     originPath: row.originPath,
     ipAddress: row.ipAddress,
     userAgent: row.userAgent,
-    status: row.status as SupportRequestStatus,
+    status: row.status as ContactRequestStatus,
     resolvedAt: row.resolvedAt,
     resolvedByUserId: row.resolvedByUserId,
     createdAt: row.createdAt,
   });
 }
 
-export class DrizzleSupportRequestRepository implements SupportRequestRepositoryPort {
-  async insert(entity: SupportRequest): Promise<SupportRequest> {
+export class DrizzleContactRequestRepository implements ContactRequestRepositoryPort {
+  async insert(entity: ContactRequest): Promise<ContactRequest> {
     const [row] = await getDb()
-      .insert(supportRequest)
+      .insert(contactRequest)
       .values({
         kind: entity.kind,
         topic: entity.topic,
@@ -1008,34 +1006,34 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
         userAgent: entity.userAgent,
         status: entity.status,
       })
-      .returning({ id: supportRequest.id, createdAt: supportRequest.createdAt });
+      .returning({ id: contactRequest.id, createdAt: contactRequest.createdAt });
     return entity.withId(row!.id, row!.createdAt);
   }
 
-  async findById(id: string): Promise<SupportRequest | null> {
-    const [row] = await getDb().select().from(supportRequest).where(eq(supportRequest.id, id)).limit(1);
+  async findById(id: string): Promise<ContactRequest | null> {
+    const [row] = await getDb().select().from(contactRequest).where(eq(contactRequest.id, id)).limit(1);
     return row ? toAggregate(row) : null;
   }
 
-  async saveStatus(entity: SupportRequest): Promise<boolean> {
+  async saveStatus(entity: ContactRequest): Promise<boolean> {
     if (!entity.id) return false;
     const rows = await getDb()
-      .update(supportRequest)
+      .update(contactRequest)
       .set({
         status: entity.status,
         resolvedAt: entity.resolvedAt,
         resolvedByUserId: entity.resolvedByUserId,
       })
-      .where(eq(supportRequest.id, entity.id))
-      .returning({ id: supportRequest.id });
+      .where(eq(contactRequest.id, entity.id))
+      .returning({ id: contactRequest.id });
     return rows.length > 0;
   }
 
   async countFromIpSince(ipAddress: string, since: Date): Promise<number> {
     const [row] = await getDb()
       .select({ n: count() })
-      .from(supportRequest)
-      .where(and(eq(supportRequest.ipAddress, ipAddress), gte(supportRequest.createdAt, since)));
+      .from(contactRequest)
+      .where(and(eq(contactRequest.ipAddress, ipAddress), gte(contactRequest.createdAt, since)));
     return row?.n ?? 0;
   }
 
@@ -1045,46 +1043,46 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
    * The search covers the four things somebody would type: a name, an email,
    * a phrase from the message, and the reference a person quoted back —
    * which is the id's leading hex characters, so `id::text ILIKE 'ref%'`
-   * finds it without stripping hyphens (see `supportReferenceOf`).
+   * finds it without stripping hyphens (see `contactReferenceOf`).
    *
    * `openCount` is counted over the whole table, unfiltered: it is the number
    * beside the queue's name, and must not change when somebody searches.
    */
-  async listForAdmin(input: SupportRequestListInput): Promise<SupportRequestAdminPage> {
+  async listForAdmin(input: ContactRequestListInput): Promise<ContactRequestAdminPage> {
     const db = getDb();
     const term = input.search?.trim();
     const matches = term
       ? or(
-          ilike(supportRequest.name, `%${term}%`),
-          ilike(supportRequest.email, `%${term}%`),
-          ilike(supportRequest.message, `%${term}%`),
-          ilike(sql`${supportRequest.id}::text`, `${term}%`),
+          ilike(contactRequest.name, `%${term}%`),
+          ilike(contactRequest.email, `%${term}%`),
+          ilike(contactRequest.message, `%${term}%`),
+          ilike(sql`${contactRequest.id}::text`, `${term}%`),
         )
       : undefined;
     const filter = and(
-      input.kind ? eq(supportRequest.kind, input.kind) : undefined,
-      input.status ? eq(supportRequest.status, input.status) : undefined,
+      input.kind ? eq(contactRequest.kind, input.kind) : undefined,
+      input.status ? eq(contactRequest.status, input.status) : undefined,
       matches,
     );
 
     const [rows, [totals], [open]] = await Promise.all([
       db
         .select()
-        .from(supportRequest)
+        .from(contactRequest)
         .where(filter)
-        .orderBy(desc(supportRequest.createdAt))
+        .orderBy(desc(contactRequest.createdAt))
         .limit(input.limit)
         .offset(input.offset),
-      db.select({ n: count() }).from(supportRequest).where(filter),
-      db.select({ n: count() }).from(supportRequest).where(eq(supportRequest.status, "open")),
+      db.select({ n: count() }).from(contactRequest).where(filter),
+      db.select({ n: count() }).from(contactRequest).where(eq(contactRequest.status, "open")),
     ]);
 
     return {
       items: rows.map((r) => ({
         id: r.id,
-        reference: supportReferenceOf(r.id),
-        kind: r.kind as SupportRequestKind,
-        topic: r.topic as SupportTopic,
+        reference: contactReferenceOf(r.id),
+        kind: r.kind as ContactRequestKind,
+        topic: r.topic as ContactTopic,
         name: r.name,
         email: r.email,
         message: r.message,
@@ -1093,7 +1091,7 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
         originPath: r.originPath,
         ipAddress: r.ipAddress,
         userAgent: r.userAgent,
-        status: r.status as SupportRequestStatus,
+        status: r.status as ContactRequestStatus,
         resolvedAt: r.resolvedAt?.toISOString() ?? null,
         createdAt: r.createdAt.toISOString(),
       })),
@@ -1106,14 +1104,14 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
 
 - [ ] **Step 5: Run the test**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts`
+Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/contact-request-repository.test.ts`
 Expected: 5 pass (the first query may take ~25 s while Neon wakes; that is the cold start, not a failure).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/backend/src/modules/ntizo/bounded-contexts/support packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/support-request-repository.test.ts
-git commit -m "feat(support): the repository, with the admin list and the per-address count"
+git add packages/backend/src/modules/ntizo/bounded-contexts/contact packages/backend/src/modules/ntizo/shared/infrastructure/database/__tests__/contact-request-repository.test.ts
+git commit -m "feat(contact): the repository, with the admin list and the per-address count"
 ```
 
 ---
@@ -1121,17 +1119,17 @@ git commit -m "feat(support): the repository, with the admin list and the per-ad
 ### Task 5: Telling the team — the inbox port, `replyTo`, and the address in env
 
 **Files:**
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/ports/outbound/support-inbox.port.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/infrastructure/outbound-adapters/email-support-inbox.adapter.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/app/ports/outbound/contact-inbox.port.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/infrastructure/outbound-adapters/email-contact-inbox.adapter.ts`
 - Modify: `packages/backend/src/shared/infrastructure/email/email-service.port.ts` (add `replyTo?`)
 - Modify: `packages/backend/src/shared/infrastructure/email/resend-email-service.adapter.ts` (pass it)
 - Modify: `packages/backend/src/shared/infrastructure/email/console-email-service.adapter.ts` (print it)
-- Modify: `packages/backend/src/shared/infrastructure/stores/infra-store.ts` (`SUPPORT_INBOX_EMAIL?: string` on `InfraEnvBindings`)
+- Modify: `packages/backend/src/shared/infrastructure/stores/infra-store.ts` (`CONTACT_INBOX_EMAIL?: string` on `InfraEnvBindings`)
 - Modify: `apps/backend/api/src/middlewares/config.middleware.ts`, `apps/backend/api/src/scheduled.ts` (pass it through), `apps/backend/api/wrangler.jsonc` (a `vars` entry on all four stages)
-- Test: `packages/backend/src/modules/ntizo/bounded-contexts/support/__tests__/email-support-inbox.adapter.test.ts`
+- Test: `packages/backend/src/modules/ntizo/bounded-contexts/contact/__tests__/email-contact-inbox.adapter.test.ts`
 
 **Interfaces:**
-- Produces: `SupportInboxPort { notify(request: SupportRequest): Promise<void> }`, `EmailSupportInboxAdapter`, `buildSupportInboxEmail({ request, stage, adminUrl })`.
+- Produces: `ContactInboxPort { notify(request: ContactRequest): Promise<void> }`, `EmailContactInboxAdapter`, `buildContactInboxEmail({ request, stage, adminUrl })`.
 
 - [ ] **Step 1: Widen `EmailMessage`**
 
@@ -1141,7 +1139,7 @@ In `email-service.port.ts`, add to `EmailMessage`:
   /**
    * Where a reply to this message should go, when that is not `EMAIL_FROM`.
    *
-   * The support inbox is the reason this exists: a message forwarded to the
+   * The contact inbox is the reason this exists: a message forwarded to the
    * team on somebody's behalf must be answerable by pressing Reply, and
    * without this the answer goes to `noreply@`.
    */
@@ -1168,23 +1166,23 @@ In `infra-store.ts`, inside `InfraEnvBindings`, after `MPESA_SERVICE_PROVIDER_CO
 
 ```ts
   /**
-   * Where a contact, support or feedback form's message is forwarded.
+   * Where a contact or feedback form's message is forwarded.
    *
    * Optional for the same reason the M-Pesa pair is: a local run, a script
    * and every test that builds this shape genuinely have none, and the
    * adapter that reads it says so (it logs and keeps the row) rather than
    * throwing. Configuration, not a secret, so it lives in `wrangler.jsonc`.
    */
-  SUPPORT_INBOX_EMAIL?: string;
+  CONTACT_INBOX_EMAIL?: string;
 ```
 
 In `config.middleware.ts` and in `scheduled.ts`, in the object passed to `infraStore.runAsync`, after `MPESA_SERVICE_PROVIDER_CODE: env.MPESA_SERVICE_PROVIDER_CODE,` add:
 
 ```ts
-      SUPPORT_INBOX_EMAIL: env.SUPPORT_INBOX_EMAIL,
+      CONTACT_INBOX_EMAIL: env.CONTACT_INBOX_EMAIL,
 ```
 
-In `wrangler.jsonc`, add `"SUPPORT_INBOX_EMAIL": "suporte@ntizo.co.mz"` to the top-level `vars` (local — the console adapter prints it) and to each of the `dev`, `qa` and `prod` `vars` blocks, after `"APP_URL"`. The subject carries the stage on every stage but prod, so a dev submission in the real inbox is recognisable.
+In `wrangler.jsonc`, add `"CONTACT_INBOX_EMAIL": "ola@ntizo.co.mz"` to the top-level `vars` (local — the console adapter prints it) and to each of the `dev`, `qa` and `prod` `vars` blocks, after `"APP_URL"`. The subject carries the stage on every stage but prod, so a dev submission in the real inbox is recognisable.
 
 - [ ] **Step 3: Write the failing adapter test**
 
@@ -1192,8 +1190,8 @@ In `wrangler.jsonc`, add `"SUPPORT_INBOX_EMAIL": "suporte@ntizo.co.mz"` to the t
 import { describe, expect, it } from "bun:test";
 import { infraStore } from "../../../../../shared/infrastructure/stores/infra-store";
 import type { EmailMessage, EmailServicePort, SendResult } from "../../../../../shared/infrastructure/email";
-import { SupportRequest } from "../domain/aggregates/support-request.aggregate";
-import { buildSupportInboxEmail, EmailSupportInboxAdapter } from "../infrastructure/outbound-adapters/email-support-inbox.adapter";
+import { ContactRequest } from "../domain/aggregates/contact-request.aggregate";
+import { buildContactInboxEmail, EmailContactInboxAdapter } from "../infrastructure/outbound-adapters/email-contact-inbox.adapter";
 
 class CapturingEmail implements EmailServicePort {
   sent: EmailMessage[] = [];
@@ -1215,15 +1213,15 @@ const BASE_ENV = {
   GOOGLE_CLIENT_SECRET: "",
 };
 
-function stored(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {}) {
-  return SupportRequest.create({
-    kind: "support",
-    topic: "booking",
+function stored(over: Partial<Parameters<typeof ContactRequest.create>[0]> = {}) {
+  return ContactRequest.create({
+    kind: "contact",
+    topic: "general",
     name: "Joana Matola",
     email: "joana@exemplo.com",
-    message: "A reserva de sábado não aparece na minha conta.\n<b>não é html</b>",
+    message: "Gostava de propor uma parceria com a minha escola.\n<b>não é html</b>",
     locale: "pt-MZ",
-    originPath: "/support",
+    originPath: "/contact",
     requesterUserId: "u-1",
     ipAddress: "197.218.0.1",
     userAgent: "Mozilla/5.0",
@@ -1231,26 +1229,26 @@ function stored(over: Partial<Parameters<typeof SupportRequest.create>[0]> = {})
   }).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
 }
 
-describe("EmailSupportInboxAdapter", () => {
+describe("EmailContactInboxAdapter", () => {
   it("sends to the configured inbox with the requester as reply-to", async () => {
     const email = new CapturingEmail();
-    await infraStore.runAsync({ ...BASE_ENV, SUPPORT_INBOX_EMAIL: "suporte@ntizo.co.mz" }, async () => {
-      await new EmailSupportInboxAdapter(email).notify(stored());
+    await infraStore.runAsync({ ...BASE_ENV, CONTACT_INBOX_EMAIL: "ola@ntizo.co.mz" }, async () => {
+      await new EmailContactInboxAdapter(email).notify(stored());
     });
     expect(email.sent).toHaveLength(1);
     const m = email.sent[0]!;
-    expect(m.to).toEqual(["suporte@ntizo.co.mz"]);
+    expect(m.to).toEqual(["ola@ntizo.co.mz"]);
     expect(m.replyTo).toBe("joana@exemplo.com");
-    expect(m.subject).toBe("[Ntizo dev] Suporte: Uma reserva — Joana Matola");
+    expect(m.subject).toBe("[Ntizo dev] Contacto: Pergunta geral — Joana Matola");
     expect(m.textBody).toContain("Referência: 7F3A2C");
-    expect(m.textBody).toContain("https://dev.ntizo.co.mz/admin/support");
+    expect(m.textBody).toContain("https://dev.ntizo.co.mz/admin/contact");
     expect(m.htmlBody).toContain("&lt;b&gt;não é html&lt;/b&gt;");
   });
 
   it("omits reply-to when the person gave no email, and drops the stage tag on prod", async () => {
     const email = new CapturingEmail();
-    await infraStore.runAsync({ ...BASE_ENV, STAGE: "prod", SUPPORT_INBOX_EMAIL: "suporte@ntizo.co.mz" }, async () => {
-      await new EmailSupportInboxAdapter(email).notify(stored({ kind: "feedback", topic: "idea", email: null }));
+    await infraStore.runAsync({ ...BASE_ENV, STAGE: "prod", CONTACT_INBOX_EMAIL: "ola@ntizo.co.mz" }, async () => {
+      await new EmailContactInboxAdapter(email).notify(stored({ kind: "feedback", topic: "idea", email: null }));
     });
     const m = email.sent[0]!;
     expect(m.replyTo).toBeUndefined();
@@ -1260,13 +1258,13 @@ describe("EmailSupportInboxAdapter", () => {
   it("sends nothing, and does not throw, when no inbox is configured", async () => {
     const email = new CapturingEmail();
     await infraStore.runAsync({ ...BASE_ENV }, async () => {
-      await new EmailSupportInboxAdapter(email).notify(stored());
+      await new EmailContactInboxAdapter(email).notify(stored());
     });
     expect(email.sent).toEqual([]);
   });
 
   it("builds a subject from the kind and topic labels the team reads in", () => {
-    const { subject } = buildSupportInboxEmail({ request: stored({ kind: "contact", topic: "press" }), stage: "qa", adminUrl: "x" });
+    const { subject } = buildContactInboxEmail({ request: stored({ kind: "contact", topic: "press" }), stage: "qa", adminUrl: "x" });
     expect(subject).toBe("[Ntizo qa] Contacto: Imprensa — Joana Matola");
   });
 });
@@ -1274,54 +1272,49 @@ describe("EmailSupportInboxAdapter", () => {
 
 - [ ] **Step 4: Run to see it fail**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/email-support-inbox.adapter.test.ts`
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/contact/__tests__/email-contact-inbox.adapter.test.ts`
 Expected: FAIL — adapter module not found.
 
 - [ ] **Step 5: Write the port and the adapter**
 
-`app/ports/outbound/support-inbox.port.ts`:
+`app/ports/outbound/contact-inbox.port.ts`:
 
 ```ts
-import type { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
+import type { ContactRequest } from "../../../domain/aggregates/contact-request.aggregate";
 
 /**
  * Tells the team a request arrived.
  *
  * Called after the row is stored, never before, and allowed to fail: the row
  * is the source of truth and the admin queue shows it regardless. See
- * `SubmitSupportRequestCommand`.
+ * `SubmitContactRequestCommand`.
  */
-export interface SupportInboxPort {
-  notify(request: SupportRequest): Promise<void>;
+export interface ContactInboxPort {
+  notify(request: ContactRequest): Promise<void>;
 }
 ```
 
-`infrastructure/outbound-adapters/email-support-inbox.adapter.ts`:
+`infrastructure/outbound-adapters/email-contact-inbox.adapter.ts`:
 
 ```ts
-import type { SupportRequestKind, SupportTopic } from "@ntizo/shared";
+import type { ContactRequestKind, ContactTopic } from "@ntizo/shared";
 import { LazyEmailServiceAdapter, type EmailServicePort } from "../../../../../shared/infrastructure/email";
 import { infraStore } from "../../../../../shared/infrastructure/stores/infra-store";
-import type { SupportInboxPort } from "../../app/ports/outbound/support-inbox.port";
-import type { SupportRequest } from "../../domain/aggregates/support-request.aggregate";
+import type { ContactInboxPort } from "../../app/ports/outbound/contact-inbox.port";
+import type { ContactRequest } from "../../domain/aggregates/contact-request.aggregate";
 
 /** The team reads Portuguese; these are for the subject line, not for the person who wrote. */
-const KIND_LABEL: Record<SupportRequestKind, string> = {
+const KIND_LABEL: Record<ContactRequestKind, string> = {
   contact: "Contacto",
-  support: "Suporte",
   feedback: "Feedback",
 };
 
-const TOPIC_LABEL: Record<SupportTopic, string> = {
+const TOPIC_LABEL: Record<ContactTopic, string> = {
   general: "Pergunta geral",
   partnership: "Parceria",
   press: "Imprensa",
   provider: "Sou prestador",
   other: "Outro",
-  account: "A minha conta",
-  booking: "Uma reserva",
-  payment: "Um pagamento",
-  provider_account: "A minha conta de prestador",
   idea: "Uma ideia",
   problem: "Algo não funcionou",
   praise: "Gostei de algo",
@@ -1341,8 +1334,8 @@ function escapeHtml(s: string): string {
  * The stage is in the subject everywhere but prod, so a message sent from the
  * dev app into the real inbox announces itself as one.
  */
-export function buildSupportInboxEmail(params: {
-  request: SupportRequest;
+export function buildContactInboxEmail(params: {
+  request: ContactRequest;
   stage: string;
   adminUrl: string;
 }): { subject: string; html: string; text: string } {
@@ -1389,26 +1382,26 @@ export function buildSupportInboxEmail(params: {
   return { subject, html, text };
 }
 
-export class EmailSupportInboxAdapter implements SupportInboxPort {
+export class EmailContactInboxAdapter implements ContactInboxPort {
   constructor(
     // Lazy, like the provider and notification contexts: Resend where a key
     // exists, the console adapter on a local machine.
     private readonly email: EmailServicePort = new LazyEmailServiceAdapter(),
   ) {}
 
-  async notify(request: SupportRequest): Promise<void> {
+  async notify(request: ContactRequest): Promise<void> {
     const env = infraStore.getEnv();
-    const inbox = env.SUPPORT_INBOX_EMAIL?.trim();
+    const inbox = env.CONTACT_INBOX_EMAIL?.trim();
     if (!inbox) {
-      console.warn("[support] SUPPORT_INBOX_EMAIL is not set on this stage — request stored, nobody emailed", {
+      console.warn("[contact] CONTACT_INBOX_EMAIL is not set on this stage — request stored, nobody emailed", {
         requestId: request.id,
       });
       return;
     }
-    const { subject, html, text } = buildSupportInboxEmail({
+    const { subject, html, text } = buildContactInboxEmail({
       request,
       stage: env.STAGE ?? "local",
-      adminUrl: `${env.APP_URL}/admin/support`,
+      adminUrl: `${env.APP_URL}/admin/contact`,
     });
     await this.email.sendEmail({
       to: [inbox],
@@ -1423,14 +1416,14 @@ export class EmailSupportInboxAdapter implements SupportInboxPort {
 
 - [ ] **Step 6: Run the tests and both typechecks**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/email-support-inbox.adapter.test.ts && bun run typecheck && cd ../../apps/backend/api && bun run typecheck`
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/contact/__tests__/email-contact-inbox.adapter.test.ts && bun run typecheck && cd ../../apps/backend/api && bun run typecheck`
 Expected: 4 pass; both typechecks clean.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/backend/src/shared/infrastructure/email packages/backend/src/shared/infrastructure/stores/infra-store.ts packages/backend/src/modules/ntizo/bounded-contexts/support apps/backend/api/src/middlewares/config.middleware.ts apps/backend/api/src/scheduled.ts apps/backend/api/wrangler.jsonc
-git commit -m "feat(support): email the inbox after the row is written, with the requester as reply-to"
+git add packages/backend/src/shared/infrastructure/email packages/backend/src/shared/infrastructure/stores/infra-store.ts packages/backend/src/modules/ntizo/bounded-contexts/contact apps/backend/api/src/middlewares/config.middleware.ts apps/backend/api/src/scheduled.ts apps/backend/api/wrangler.jsonc
+git commit -m "feat(contact): email the inbox after the row is written, with the requester as reply-to"
 ```
 
 ---
@@ -1438,80 +1431,80 @@ git commit -m "feat(support): email the inbox after the row is written, with the
 ### Task 6: The three use cases and the context's bootstrap
 
 **Files:**
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/use-cases/submit-support-request.command.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/app/use-cases/set-support-request-status.command.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/bootstrap/index.ts`
-- Create: `packages/backend/src/modules/ntizo/bounded-contexts/support/index.ts`
-- Test: `packages/backend/src/modules/ntizo/bounded-contexts/support/__tests__/support-commands.test.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/app/use-cases/submit-contact-request.command.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/app/use-cases/list-contact-requests-for-admin.query.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/app/use-cases/set-contact-request-status.command.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/bootstrap/index.ts`
+- Create: `packages/backend/src/modules/ntizo/bounded-contexts/contact/index.ts`
+- Test: `packages/backend/src/modules/ntizo/bounded-contexts/contact/__tests__/contact-commands.test.ts`
 
 **Interfaces:**
-- Consumes: `SupportRequestRepositoryPort` (Task 4), `SupportInboxPort` (Task 5), the aggregate and errors (Task 3).
-- Produces: `SubmitSupportRequestCommand.execute(input): Promise<{ requestId: string; reference: string }>`, `ListSupportRequestsForAdminQuery.execute(input): Promise<SupportRequestAdminPage>` with `MAX_ADMIN_LIMIT = 100`, `SetSupportRequestStatusCommand.execute({ requestId, status, actorUserId }): Promise<{ status }>`, `bootstrapSupport()` returning `{ adapters, useCases: { submitSupportRequest, listSupportRequestsForAdmin, setSupportRequestStatus } }`, `SupportBootstrap`; constants `RATE_LIMIT_MAX = 5`, `RATE_LIMIT_WINDOW_MS = 3_600_000`.
+- Consumes: `ContactRequestRepositoryPort` (Task 4), `ContactInboxPort` (Task 5), the aggregate and errors (Task 3).
+- Produces: `SubmitContactRequestCommand.execute(input): Promise<{ requestId: string; reference: string }>`, `ListContactRequestsForAdminQuery.execute(input): Promise<ContactRequestAdminPage>` with `MAX_ADMIN_LIMIT = 100`, `SetContactRequestStatusCommand.execute({ requestId, status, actorUserId }): Promise<{ status }>`, `bootstrapContact()` returning `{ adapters, useCases: { submitContactRequest, listContactRequestsForAdmin, setContactRequestStatus } }`, `ContactBootstrap`; constants `RATE_LIMIT_MAX = 5`, `RATE_LIMIT_WINDOW_MS = 3_600_000`.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from "bun:test";
-import { SupportRequest } from "../domain/aggregates/support-request.aggregate";
-import { SupportRateLimitedError, SupportRequestNotFoundError } from "../domain/exceptions";
+import { ContactRequest } from "../domain/aggregates/contact-request.aggregate";
+import { ContactRateLimitedError, ContactRequestNotFoundError } from "../domain/exceptions";
 import {
   RATE_LIMIT_MAX,
-  SubmitSupportRequestCommand,
-} from "../app/use-cases/submit-support-request.command";
-import { ListSupportRequestsForAdminQuery } from "../app/use-cases/list-support-requests-for-admin.query";
-import { SetSupportRequestStatusCommand } from "../app/use-cases/set-support-request-status.command";
+  SubmitContactRequestCommand,
+} from "../app/use-cases/submit-contact-request.command";
+import { ListContactRequestsForAdminQuery } from "../app/use-cases/list-contact-requests-for-admin.query";
+import { SetContactRequestStatusCommand } from "../app/use-cases/set-contact-request-status.command";
 import type {
-  SupportRequestAdminPage,
-  SupportRequestListInput,
-  SupportRequestRepositoryPort,
-} from "../app/ports/outbound/support-request.repository.port";
-import type { SupportInboxPort } from "../app/ports/outbound/support-inbox.port";
+  ContactRequestAdminPage,
+  ContactRequestListInput,
+  ContactRequestRepositoryPort,
+} from "../app/ports/outbound/contact-request.repository.port";
+import type { ContactInboxPort } from "../app/ports/outbound/contact-inbox.port";
 
-class FakeRepo implements SupportRequestRepositoryPort {
-  inserted: SupportRequest[] = [];
-  statusSaved: SupportRequest[] = [];
-  listCalls: SupportRequestListInput[] = [];
+class FakeRepo implements ContactRequestRepositoryPort {
+  inserted: ContactRequest[] = [];
+  statusSaved: ContactRequest[] = [];
+  listCalls: ContactRequestListInput[] = [];
   constructor(
-    private readonly opts: { countFromIp?: number; existing?: SupportRequest | null; saveStatusExists?: boolean } = {},
+    private readonly opts: { countFromIp?: number; existing?: ContactRequest | null; saveStatusExists?: boolean } = {},
   ) {}
-  async insert(request: SupportRequest): Promise<SupportRequest> {
+  async insert(request: ContactRequest): Promise<ContactRequest> {
     const stored = request.withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", new Date("2026-09-02T10:00:00.000Z"));
     this.inserted.push(stored);
     return stored;
   }
-  async findById(): Promise<SupportRequest | null> {
+  async findById(): Promise<ContactRequest | null> {
     return this.opts.existing ?? null;
   }
-  async saveStatus(request: SupportRequest): Promise<boolean> {
+  async saveStatus(request: ContactRequest): Promise<boolean> {
     this.statusSaved.push(request);
     return this.opts.saveStatusExists ?? true;
   }
   async countFromIpSince(): Promise<number> {
     return this.opts.countFromIp ?? 0;
   }
-  async listForAdmin(input: SupportRequestListInput): Promise<SupportRequestAdminPage> {
+  async listForAdmin(input: ContactRequestListInput): Promise<ContactRequestAdminPage> {
     this.listCalls.push(input);
     return { items: [], total: 0, openCount: 3 };
   }
 }
 
-class CapturingInbox implements SupportInboxPort {
-  notified: SupportRequest[] = [];
+class CapturingInbox implements ContactInboxPort {
+  notified: ContactRequest[] = [];
   constructor(private readonly fails = false) {}
-  async notify(request: SupportRequest): Promise<void> {
+  async notify(request: ContactRequest): Promise<void> {
     if (this.fails) throw new Error("Resend is down");
     this.notified.push(request);
   }
 }
 
-function input(over: Partial<Parameters<SubmitSupportRequestCommand["execute"]>[0]> = {}) {
+function input(over: Partial<Parameters<SubmitContactRequestCommand["execute"]>[0]> = {}) {
   return {
-    kind: "support" as const,
-    topic: "booking",
+    kind: "contact" as const,
+    topic: "general",
     name: "Joana Matola",
     email: "joana@exemplo.com",
-    message: "A reserva de sábado não aparece na minha conta.",
+    message: "Gostava de propor uma parceria com a minha escola.",
     locale: "pt-MZ",
     originPath: null,
     requesterUserId: "u-1",
@@ -1521,11 +1514,11 @@ function input(over: Partial<Parameters<SubmitSupportRequestCommand["execute"]>[
   };
 }
 
-describe("SubmitSupportRequestCommand", () => {
+describe("SubmitContactRequestCommand", () => {
   it("stores the request, then tells the inbox, and answers with the id and the reference", async () => {
     const repo = new FakeRepo();
     const inbox = new CapturingInbox();
-    const out = await new SubmitSupportRequestCommand(repo, inbox).execute(input());
+    const out = await new SubmitContactRequestCommand(repo, inbox).execute(input());
 
     expect(out).toEqual({ requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" });
     expect(repo.inserted).toHaveLength(1);
@@ -1537,7 +1530,7 @@ describe("SubmitSupportRequestCommand", () => {
 
   it("a failing inbox does not fail the submission — the row is the source of truth", async () => {
     const repo = new FakeRepo();
-    const out = await new SubmitSupportRequestCommand(repo, new CapturingInbox(true)).execute(input());
+    const out = await new SubmitContactRequestCommand(repo, new CapturingInbox(true)).execute(input());
     expect(out.reference).toBe("7F3A2C");
     expect(repo.inserted).toHaveLength(1);
   });
@@ -1545,28 +1538,28 @@ describe("SubmitSupportRequestCommand", () => {
   it("refuses the sixth message from one address inside the window, and stores nothing", async () => {
     const repo = new FakeRepo({ countFromIp: RATE_LIMIT_MAX });
     const inbox = new CapturingInbox();
-    await expect(new SubmitSupportRequestCommand(repo, inbox).execute(input())).rejects.toThrow(SupportRateLimitedError);
+    await expect(new SubmitContactRequestCommand(repo, inbox).execute(input())).rejects.toThrow(ContactRateLimitedError);
     expect(repo.inserted).toEqual([]);
     expect(inbox.notified).toEqual([]);
   });
 
   it("allows the fifth", async () => {
     const repo = new FakeRepo({ countFromIp: RATE_LIMIT_MAX - 1 });
-    await new SubmitSupportRequestCommand(repo, new CapturingInbox()).execute(input());
+    await new SubmitContactRequestCommand(repo, new CapturingInbox()).execute(input());
     expect(repo.inserted).toHaveLength(1);
   });
 
   it("skips the count when the request carries no address rather than refusing everyone behind a missing header", async () => {
     const repo = new FakeRepo({ countFromIp: 99 });
-    await new SubmitSupportRequestCommand(repo, new CapturingInbox()).execute(input({ ipAddress: null }));
+    await new SubmitContactRequestCommand(repo, new CapturingInbox()).execute(input({ ipAddress: null }));
     expect(repo.inserted).toHaveLength(1);
   });
 });
 
-describe("ListSupportRequestsForAdminQuery", () => {
+describe("ListContactRequestsForAdminQuery", () => {
   it("bounds the page, drops an empty search, and passes the filters through", async () => {
     const repo = new FakeRepo();
-    const q = new ListSupportRequestsForAdminQuery(repo);
+    const q = new ListContactRequestsForAdminQuery(repo);
     await q.execute({ limit: 500, offset: -3, search: "   ", kind: "feedback", status: "open" });
     expect(repo.listCalls[0]).toEqual({ limit: 100, offset: 0, kind: "feedback", status: "open" });
     await q.execute({});
@@ -1574,12 +1567,12 @@ describe("ListSupportRequestsForAdminQuery", () => {
   });
 });
 
-describe("SetSupportRequestStatusCommand", () => {
-  const stored = SupportRequest.create(input()).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
+describe("SetContactRequestStatusCommand", () => {
+  const stored = ContactRequest.create(input()).withId("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b");
 
   it("resolves an open request, recording who did it", async () => {
     const repo = new FakeRepo({ existing: stored });
-    const out = await new SetSupportRequestStatusCommand(repo).execute({
+    const out = await new SetContactRequestStatusCommand(repo).execute({
       requestId: stored.id!,
       status: "resolved",
       actorUserId: "admin-1",
@@ -1591,7 +1584,7 @@ describe("SetSupportRequestStatusCommand", () => {
 
   it("reopens a resolved one", async () => {
     const repo = new FakeRepo({ existing: stored.resolve(new Date(), "admin-1") });
-    await new SetSupportRequestStatusCommand(repo).execute({ requestId: stored.id!, status: "open", actorUserId: "admin-2" });
+    await new SetContactRequestStatusCommand(repo).execute({ requestId: stored.id!, status: "open", actorUserId: "admin-2" });
     expect(repo.statusSaved[0]!.status).toBe("open");
     expect(repo.statusSaved[0]!.resolvedByUserId).toBeNull();
   });
@@ -1599,34 +1592,34 @@ describe("SetSupportRequestStatusCommand", () => {
   it("refuses an id nobody has", async () => {
     const repo = new FakeRepo({ existing: null });
     await expect(
-      new SetSupportRequestStatusCommand(repo).execute({ requestId: "nope", status: "resolved", actorUserId: "admin-1" }),
-    ).rejects.toThrow(SupportRequestNotFoundError);
+      new SetContactRequestStatusCommand(repo).execute({ requestId: "nope", status: "resolved", actorUserId: "admin-1" }),
+    ).rejects.toThrow(ContactRequestNotFoundError);
   });
 });
 ```
 
 - [ ] **Step 2: Run to see them fail**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support/__tests__/support-commands.test.ts`
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/contact/__tests__/contact-commands.test.ts`
 Expected: FAIL — use-case modules not found.
 
 - [ ] **Step 3: Write the submit command**
 
-`app/use-cases/submit-support-request.command.ts`:
+`app/use-cases/submit-contact-request.command.ts`:
 
 ```ts
-import type { SupportRequestKind } from "@ntizo/shared";
-import { SupportRequest } from "../../domain/aggregates/support-request.aggregate";
-import { SupportRateLimitedError } from "../../domain/exceptions";
-import type { SupportInboxPort } from "../ports/outbound/support-inbox.port";
-import type { SupportRequestRepositoryPort } from "../ports/outbound/support-request.repository.port";
+import type { ContactRequestKind } from "@ntizo/shared";
+import { ContactRequest } from "../../domain/aggregates/contact-request.aggregate";
+import { ContactRateLimitedError } from "../../domain/exceptions";
+import type { ContactInboxPort } from "../ports/outbound/contact-inbox.port";
+import type { ContactRequestRepositoryPort } from "../ports/outbound/contact-request.repository.port";
 
 /** Messages one address may send inside the window before being asked to wait. */
 export const RATE_LIMIT_MAX = 5;
 export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-export interface SubmitSupportRequestInput {
-  kind: SupportRequestKind;
+export interface SubmitContactRequestInput {
+  kind: ContactRequestKind;
   topic: string;
   name: string;
   email: string | null;
@@ -1658,27 +1651,27 @@ export interface SubmitSupportRequestInput {
  *    the row regardless. Not an outbox event: nothing consumes one, and
  *    at-most-once to an inbox that has a queue behind it is enough.
  */
-export class SubmitSupportRequestCommand {
+export class SubmitContactRequestCommand {
   constructor(
-    private readonly repo: SupportRequestRepositoryPort,
-    private readonly inbox: SupportInboxPort,
+    private readonly repo: ContactRequestRepositoryPort,
+    private readonly inbox: ContactInboxPort,
   ) {}
 
-  async execute(input: SubmitSupportRequestInput): Promise<{ requestId: string; reference: string }> {
+  async execute(input: SubmitContactRequestInput): Promise<{ requestId: string; reference: string }> {
     if (input.ipAddress) {
       const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
       const recent = await this.repo.countFromIpSince(input.ipAddress, since);
       if (recent >= RATE_LIMIT_MAX) {
-        throw new SupportRateLimitedError(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS / 60_000);
+        throw new ContactRateLimitedError(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS / 60_000);
       }
     }
 
-    const stored = await this.repo.insert(SupportRequest.create(input));
+    const stored = await this.repo.insert(ContactRequest.create(input));
 
     try {
       await this.inbox.notify(stored);
     } catch (error) {
-      console.error("[support] the inbox could not be told about a request — it is stored and in the queue", {
+      console.error("[contact] the inbox could not be told about a request — it is stored and in the queue", {
         requestId: stored.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -1691,14 +1684,14 @@ export class SubmitSupportRequestCommand {
 
 - [ ] **Step 4: Write the admin query and the status command**
 
-`app/use-cases/list-support-requests-for-admin.query.ts`:
+`app/use-cases/list-contact-requests-for-admin.query.ts`:
 
 ```ts
-import type { SupportRequestKind, SupportRequestStatus } from "@ntizo/shared";
+import type { ContactRequestKind, ContactRequestStatus } from "@ntizo/shared";
 import type {
-  SupportRequestAdminPage,
-  SupportRequestRepositoryPort,
-} from "../ports/outbound/support-request.repository.port";
+  ContactRequestAdminPage,
+  ContactRequestRepositoryPort,
+} from "../ports/outbound/contact-request.repository.port";
 
 export const MAX_ADMIN_LIMIT = 100;
 const DEFAULT_LIMIT = 25;
@@ -1707,18 +1700,18 @@ const DEFAULT_LIMIT = 25;
  * The queue, for the screen that works it. Authorisation is the edge's job,
  * as with every other administration read here.
  */
-export class ListSupportRequestsForAdminQuery {
-  constructor(private readonly repo: SupportRequestRepositoryPort) {}
+export class ListContactRequestsForAdminQuery {
+  constructor(private readonly repo: ContactRequestRepositoryPort) {}
 
   async execute(
     input: {
       limit?: number;
       offset?: number;
-      kind?: SupportRequestKind;
-      status?: SupportRequestStatus;
+      kind?: ContactRequestKind;
+      status?: ContactRequestStatus;
       search?: string;
     } = {},
-  ): Promise<SupportRequestAdminPage> {
+  ): Promise<ContactRequestAdminPage> {
     const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), MAX_ADMIN_LIMIT);
     const offset = Math.max(input.offset ?? 0, 0);
     // An empty search is no search — see `ListReviewsForAdminQuery`.
@@ -1734,12 +1727,12 @@ export class ListSupportRequestsForAdminQuery {
 }
 ```
 
-`app/use-cases/set-support-request-status.command.ts`:
+`app/use-cases/set-contact-request-status.command.ts`:
 
 ```ts
-import type { SupportRequestStatus } from "@ntizo/shared";
-import { SupportRequestNotFoundError } from "../../domain/exceptions";
-import type { SupportRequestRepositoryPort } from "../ports/outbound/support-request.repository.port";
+import type { ContactRequestStatus } from "@ntizo/shared";
+import { ContactRequestNotFoundError } from "../../domain/exceptions";
+import type { ContactRequestRepositoryPort } from "../ports/outbound/contact-request.repository.port";
 
 /**
  * An administrator marking a request done, or taking that back.
@@ -1749,21 +1742,21 @@ import type { SupportRequestRepositoryPort } from "../ports/outbound/support-req
  * every caller ask which state it is in first, and get it wrong under a race.
  * The aggregate makes both directions idempotent, so the race is harmless.
  */
-export class SetSupportRequestStatusCommand {
-  constructor(private readonly repo: SupportRequestRepositoryPort) {}
+export class SetContactRequestStatusCommand {
+  constructor(private readonly repo: ContactRequestRepositoryPort) {}
 
   async execute(input: {
     requestId: string;
-    status: SupportRequestStatus;
+    status: ContactRequestStatus;
     actorUserId: string;
-  }): Promise<{ status: SupportRequestStatus }> {
+  }): Promise<{ status: ContactRequestStatus }> {
     const current = await this.repo.findById(input.requestId);
-    if (!current) throw new SupportRequestNotFoundError(input.requestId);
+    if (!current) throw new ContactRequestNotFoundError(input.requestId);
 
     const next =
       input.status === "resolved" ? current.resolve(new Date(), input.actorUserId) : current.reopen();
     const saved = await this.repo.saveStatus(next);
-    if (!saved) throw new SupportRequestNotFoundError(input.requestId);
+    if (!saved) throw new ContactRequestNotFoundError(input.requestId);
 
     return { status: next.status };
   }
@@ -1775,54 +1768,54 @@ export class SetSupportRequestStatusCommand {
 `bootstrap/index.ts`:
 
 ```ts
-import { DrizzleSupportRequestRepository } from "../infrastructure/repositories/drizzle/support-request.repository";
-import { EmailSupportInboxAdapter } from "../infrastructure/outbound-adapters/email-support-inbox.adapter";
-import { SubmitSupportRequestCommand } from "../app/use-cases/submit-support-request.command";
-import { ListSupportRequestsForAdminQuery } from "../app/use-cases/list-support-requests-for-admin.query";
-import { SetSupportRequestStatusCommand } from "../app/use-cases/set-support-request-status.command";
+import { DrizzleContactRequestRepository } from "../infrastructure/repositories/drizzle/contact-request.repository";
+import { EmailContactInboxAdapter } from "../infrastructure/outbound-adapters/email-contact-inbox.adapter";
+import { SubmitContactRequestCommand } from "../app/use-cases/submit-contact-request.command";
+import { ListContactRequestsForAdminQuery } from "../app/use-cases/list-contact-requests-for-admin.query";
+import { SetContactRequestStatusCommand } from "../app/use-cases/set-contact-request-status.command";
 
-export function bootstrapSupport() {
-  const supportRequestRepository = new DrizzleSupportRequestRepository();
-  const inbox = new EmailSupportInboxAdapter();
+export function bootstrapContact() {
+  const contactRequestRepository = new DrizzleContactRequestRepository();
+  const inbox = new EmailContactInboxAdapter();
   return {
-    adapters: { supportRequestRepository, inbox },
+    adapters: { contactRequestRepository, inbox },
     useCases: {
-      submitSupportRequest: new SubmitSupportRequestCommand(supportRequestRepository, inbox),
-      listSupportRequestsForAdmin: new ListSupportRequestsForAdminQuery(supportRequestRepository),
-      setSupportRequestStatus: new SetSupportRequestStatusCommand(supportRequestRepository),
+      submitContactRequest: new SubmitContactRequestCommand(contactRequestRepository, inbox),
+      listContactRequestsForAdmin: new ListContactRequestsForAdminQuery(contactRequestRepository),
+      setContactRequestStatus: new SetContactRequestStatusCommand(contactRequestRepository),
     },
   };
 }
 
-export type SupportBootstrap = ReturnType<typeof bootstrapSupport>;
+export type ContactBootstrap = ReturnType<typeof bootstrapContact>;
 ```
 
 `index.ts`:
 
 ```ts
 export * from "./bootstrap";
-export { SupportRequest } from "./domain/aggregates/support-request.aggregate";
-export { SubmitSupportRequestCommand } from "./app/use-cases/submit-support-request.command";
-export { ListSupportRequestsForAdminQuery } from "./app/use-cases/list-support-requests-for-admin.query";
-export { SetSupportRequestStatusCommand } from "./app/use-cases/set-support-request-status.command";
+export { ContactRequest } from "./domain/aggregates/contact-request.aggregate";
+export { SubmitContactRequestCommand } from "./app/use-cases/submit-contact-request.command";
+export { ListContactRequestsForAdminQuery } from "./app/use-cases/list-contact-requests-for-admin.query";
+export { SetContactRequestStatusCommand } from "./app/use-cases/set-contact-request-status.command";
 export type {
-  SupportRequestAdminPage,
-  SupportRequestAdminRow,
-  SupportRequestRepositoryPort,
-} from "./app/ports/outbound/support-request.repository.port";
-export type { SupportInboxPort } from "./app/ports/outbound/support-inbox.port";
+  ContactRequestAdminPage,
+  ContactRequestAdminRow,
+  ContactRequestRepositoryPort,
+} from "./app/ports/outbound/contact-request.repository.port";
+export type { ContactInboxPort } from "./app/ports/outbound/contact-inbox.port";
 ```
 
 - [ ] **Step 6: Run the tests**
 
-Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/support && bun run typecheck`
-Expected: every support test passes (aggregate 10, adapter 4, commands 9); typecheck clean.
+Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/contact && bun run typecheck`
+Expected: every contact test passes (aggregate 10, adapter 4, commands 9); typecheck clean.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/backend/src/modules/ntizo/bounded-contexts/support
-git commit -m "feat(support): submit, list for admin, set status — and the context's bootstrap"
+git add packages/backend/src/modules/ntizo/bounded-contexts/contact
+git commit -m "feat(contact): submit, list for admin, set status — and the context's bootstrap"
 ```
 
 ---
@@ -1830,31 +1823,31 @@ git commit -m "feat(support): submit, list for admin, set status — and the con
 ### Task 7: GraphQL — the anonymous mutation, the admin query, the admin mutation, and the mount
 
 **Files:**
-- Create: `packages/shared/src/read-models/system/support/support-request-admin.schema.ts`, `packages/shared/src/read-models/system/support/index.ts`
+- Create: `packages/shared/src/read-models/system/contact/contact-request-admin.schema.ts`, `packages/shared/src/read-models/system/contact/index.ts`
 - Modify: `packages/shared/src/read-models/system/index.ts`
-- Create: `packages/backend/src/modules/ntizo/write/support/graphql/schema/mutations.ts`
-- Create: `packages/backend/src/modules/ntizo/write/support/graphql/handlers/mutations.handlers.ts`
-- Create: `packages/backend/src/modules/ntizo/write/support/index.ts`
+- Create: `packages/backend/src/modules/ntizo/write/contact/graphql/schema/mutations.ts`
+- Create: `packages/backend/src/modules/ntizo/write/contact/graphql/handlers/mutations.handlers.ts`
+- Create: `packages/backend/src/modules/ntizo/write/contact/index.ts`
 - Modify: `packages/backend/src/modules/ntizo/write/schema.ts`
-- Create: `packages/backend/src/modules/ntizo/read/support/graphql/schema/queries.ts`
-- Create: `packages/backend/src/modules/ntizo/read/support/graphql/handlers/queries.handlers.ts`
-- Create: `packages/backend/src/modules/ntizo/read/support/bootstrap/index.ts`
-- Create: `packages/backend/src/modules/ntizo/read/support/index.ts`
+- Create: `packages/backend/src/modules/ntizo/read/contact/graphql/schema/queries.ts`
+- Create: `packages/backend/src/modules/ntizo/read/contact/graphql/handlers/queries.handlers.ts`
+- Create: `packages/backend/src/modules/ntizo/read/contact/bootstrap/index.ts`
+- Create: `packages/backend/src/modules/ntizo/read/contact/index.ts`
 - Modify: `packages/backend/src/modules/ntizo/read/schema.ts`
 - Modify: `apps/backend/api/src/graphql/private.ts`
-- Test: `packages/backend/src/modules/ntizo/write/support/__tests__/mutations.test.ts`
+- Test: `packages/backend/src/modules/ntizo/write/contact/__tests__/mutations.test.ts`
 
 **Interfaces:**
-- Produces GraphQL fields (emitted names follow the kit's `<group><Field>` convention, as `reviewAllForAdmin` does): `supportRequestSubmit(input: SupportRequestSubmitInput!): { requestId, reference }`, `supportRequestSetStatus(input: SupportRequestSetStatusInput!): { status }`, `supportRequestAllForAdmin(input: SupportRequestAllForAdminInput!): SupportRequestAdminPage`.
-- Produces `supportRequestAdminReadModel`, `SupportRequestAdminDTO`, `supportRequestAdminPageReadModel`, `SupportRequestAdminPageDTO` from `@ntizo/shared/read-models`.
+- Produces GraphQL fields (emitted names follow the kit's `<group><Field>` convention, as `reviewAllForAdmin` does): `contactRequestSubmit(input: ContactRequestSubmitInput!): { requestId, reference }`, `contactRequestSetStatus(input: ContactRequestSetStatusInput!): { status }`, `contactRequestAllForAdmin(input: ContactRequestAllForAdminInput!): ContactRequestAdminPage`.
+- Produces `contactRequestAdminReadModel`, `ContactRequestAdminDTO`, `contactRequestAdminPageReadModel`, `ContactRequestAdminPageDTO` from `@ntizo/shared/read-models`.
 
 - [ ] **Step 1: The read model**
 
-`packages/shared/src/read-models/system/support/support-request-admin.schema.ts`:
+`packages/shared/src/read-models/system/contact/contact-request-admin.schema.ts`:
 
 ```ts
 import { z } from "zod";
-import { supportRequestKindSchema, supportRequestStatusSchema } from "../../../enums/support-enums";
+import { contactRequestKindSchema, contactRequestStatusSchema } from "../../../enums/contact-enums";
 
 /**
  * One request as the administration queue sees it.
@@ -1863,11 +1856,11 @@ import { supportRequestKindSchema, supportRequestStatusSchema } from "../../../e
  * review projection, this screen IS the investigation — it is where somebody
  * decides whether a message is a customer in trouble or a script.
  */
-export const supportRequestAdminReadModel = z.object({
+export const contactRequestAdminReadModel = z.object({
   id: z.string().min(1),
   /** The six characters the person was shown. */
   reference: z.string().length(6),
-  kind: supportRequestKindSchema,
+  kind: contactRequestKindSchema,
   topic: z.string().min(1),
   name: z.string(),
   email: z.string().nullable(),
@@ -1877,43 +1870,43 @@ export const supportRequestAdminReadModel = z.object({
   originPath: z.string().nullable(),
   ipAddress: z.string().nullable(),
   userAgent: z.string().nullable(),
-  status: supportRequestStatusSchema,
+  status: contactRequestStatusSchema,
   /** ISO 8601, or null while open. */
   resolvedAt: z.string().nullable(),
   createdAt: z.string(),
 });
 
-export type SupportRequestAdminDTO = z.infer<typeof supportRequestAdminReadModel>;
+export type ContactRequestAdminDTO = z.infer<typeof contactRequestAdminReadModel>;
 
-export const supportRequestAdminPageReadModel = z.object({
-  items: z.array(supportRequestAdminReadModel),
+export const contactRequestAdminPageReadModel = z.object({
+  items: z.array(contactRequestAdminReadModel),
   total: z.number().int().min(0),
   /** Open across the whole table, whatever the filters — the queue's badge. */
   openCount: z.number().int().min(0),
 });
 
-export type SupportRequestAdminPageDTO = z.infer<typeof supportRequestAdminPageReadModel>;
+export type ContactRequestAdminPageDTO = z.infer<typeof contactRequestAdminPageReadModel>;
 ```
 
-`support/index.ts`: `export * from "./support-request-admin.schema";`
+`contact/index.ts`: `export * from "./contact-request-admin.schema";`
 
-Append to `read-models/system/index.ts`: `export * from "./support";`
+Append to `read-models/system/index.ts`: `export * from "./contact";`
 
 - [ ] **Step 2: The write schema**
 
-`write/support/graphql/schema/mutations.ts`:
+`write/contact/graphql/schema/mutations.ts`:
 
 ```ts
 import { z } from "zod";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { supportRequestKindSchema, supportRequestStatusSchema } from "@ntizo/shared";
+import { contactRequestKindSchema, contactRequestStatusSchema } from "@ntizo/shared";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
  * Somebody writing to us through a form. **Anonymous callers are allowed** —
- * the first mutation on this tier that is — because the person most likely
- * to need support is the one who cannot sign in.
+ * the first mutation on this tier that is — because a partnership enquiry or
+ * a piece of feedback should not need an account.
  *
  * The bounds here refuse obvious nonsense cheaply; the aggregate is where the
  * rules are defined (2–80, 10–2000, email unless feedback, topic per kind).
@@ -1923,10 +1916,10 @@ import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
  * success it never wrote. It must ACCEPT a value — refusing it would tell the
  * script which field to skip.
  */
-export const submitSupportRequest = defineMutation({
+export const submitContactRequest = defineMutation({
   input: zodSchema(
     z.object({
-      kind: supportRequestKindSchema,
+      kind: contactRequestKindSchema,
       topic: z.string().trim().min(1).max(40),
       name: z.string().trim().min(1).max(120),
       email: z.string().trim().max(254).nullable(),
@@ -1937,56 +1930,56 @@ export const submitSupportRequest = defineMutation({
     }),
   ),
   output: zodSchema(z.object({ requestId: z.string().min(1), reference: z.string().length(6) })),
-  docs: { summary: "Send a message to the team through the contact, support or feedback form", tags: ["Support"] },
+  docs: { summary: "Send a message to the team through the contact or feedback form", tags: ["Contact"] },
 });
 
 /** An administrator marking a request resolved, or reopening it. */
-export const setSupportRequestStatus = defineMutation({
+export const setContactRequestStatus = defineMutation({
   input: zodSchema(
     z.object({
       requestId: z.string().uuid(),
-      status: supportRequestStatusSchema,
+      status: contactRequestStatusSchema,
     }),
   ),
-  output: zodSchema(z.object({ status: supportRequestStatusSchema })),
-  docs: { summary: "Mark a support request resolved, or reopen it", tags: ["Support", "Admin"] },
+  output: zodSchema(z.object({ status: contactRequestStatusSchema })),
+  docs: { summary: "Mark a contact request resolved, or reopen it", tags: ["Contact", "Admin"] },
 });
 
-export const supportWriteSchema = defineGraphQLSchema(
-  { supportRequest: { submit: submitSupportRequest, setStatus: setSupportRequestStatus } },
+export const contactWriteSchema = defineGraphQLSchema(
+  { contactRequest: { submit: submitContactRequest, setStatus: setContactRequestStatus } },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );
 ```
 
 - [ ] **Step 3: The write handlers**
 
-`write/support/graphql/handlers/mutations.handlers.ts`:
+`write/contact/graphql/handlers/mutations.handlers.ts`:
 
 ```ts
 import { graphqlRoutes, type GraphQLHandlerContext } from "@cosmneo/onion-lasagna/graphql/server";
 import { ForbiddenError } from "@cosmneo/onion-lasagna";
 import { asNtizoGraphqlContext } from "../../../../graphql/context";
-import type { SupportBootstrap } from "../../../../bounded-contexts/support/bootstrap";
-import { supportWriteSchema } from "../schema/mutations";
+import type { ContactBootstrap } from "../../../../bounded-contexts/contact/bootstrap";
+import { contactWriteSchema } from "../schema/mutations";
 
-export interface SupportWriteModule {
-  readonly support: SupportBootstrap;
+export interface ContactWriteModule {
+  readonly contact: ContactBootstrap;
 }
 
 /** Copied rather than shared, as the review handlers' own is — tiers do not import each other here. */
 function requireAdmin(ctx: GraphQLHandlerContext): string {
   const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
   if (!requesterUserId || role !== "admin") {
-    throw new ForbiddenError({ message: "Only administrators may work the support queue", code: "ADMIN_ONLY" });
+    throw new ForbiddenError({ message: "Only administrators may work the contact queue", code: "ADMIN_ONLY" });
   }
   return requesterUserId;
 }
 
-export function createSupportWriteHandlers(mod: SupportWriteModule) {
-  const uc = mod.support.useCases;
+export function createContactWriteHandlers(mod: ContactWriteModule) {
+  const uc = mod.contact.useCases;
 
-  return graphqlRoutes(supportWriteSchema)
-    .handle("supportRequest.submit", async (args, ctx) => {
+  return graphqlRoutes(contactWriteSchema)
+    .handle("contactRequest.submit", async (args, ctx) => {
       const { website, ...form } = args.input;
       // The trap sprung. A success the script cannot tell from a real one,
       // and no row, no email, no count against the address.
@@ -1994,122 +1987,122 @@ export function createSupportWriteHandlers(mod: SupportWriteModule) {
         return { requestId: crypto.randomUUID(), reference: crypto.randomUUID().slice(0, 6).toUpperCase() };
       }
       const { requesterUserId, ipAddress, userAgent } = asNtizoGraphqlContext(ctx);
-      return uc.submitSupportRequest.execute({ ...form, requesterUserId, ipAddress, userAgent });
+      return uc.submitContactRequest.execute({ ...form, requesterUserId, ipAddress, userAgent });
     })
-    .handle("supportRequest.setStatus", async (args, ctx) => {
+    .handle("contactRequest.setStatus", async (args, ctx) => {
       const actorUserId = requireAdmin(ctx);
-      return uc.setSupportRequestStatus.execute({ ...args.input, actorUserId });
+      return uc.setContactRequestStatus.execute({ ...args.input, actorUserId });
     })
     .build();
 }
 ```
 
-`write/support/index.ts`:
+`write/contact/index.ts`:
 
 ```ts
-export { supportWriteSchema } from "./graphql/schema/mutations";
-export { createSupportWriteHandlers, type SupportWriteModule } from "./graphql/handlers/mutations.handlers";
+export { contactWriteSchema } from "./graphql/schema/mutations";
+export { createContactWriteHandlers, type ContactWriteModule } from "./graphql/handlers/mutations.handlers";
 ```
 
-In `write/schema.ts`: import `supportWriteSchema` from `"./support/graphql/schema/mutations"` and add it as the last argument of `mergeGraphQLSchemas(...)`.
+In `write/schema.ts`: import `contactWriteSchema` from `"./contact/graphql/schema/mutations"` and add it as the last argument of `mergeGraphQLSchemas(...)`.
 
 - [ ] **Step 4: The read schema, handlers, bootstrap**
 
-`read/support/graphql/schema/queries.ts`:
+`read/contact/graphql/schema/queries.ts`:
 
 ```ts
 import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { supportRequestKindSchema, supportRequestStatusSchema } from "@ntizo/shared";
-import { supportRequestAdminPageReadModel } from "@ntizo/shared/read-models";
-import { MAX_ADMIN_LIMIT } from "../../../../bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query";
+import { contactRequestKindSchema, contactRequestStatusSchema } from "@ntizo/shared";
+import { contactRequestAdminPageReadModel } from "@ntizo/shared/read-models";
+import { MAX_ADMIN_LIMIT } from "../../../../bounded-contexts/contact/app/use-cases/list-contact-requests-for-admin.query";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
-/** The support queue. Guarded by the handler, which refuses anyone who is not an admin. */
-export const listSupportRequestsForAdmin = defineQuery({
+/** The contact queue. Guarded by the handler, which refuses anyone who is not an admin. */
+export const listContactRequestsForAdmin = defineQuery({
   input: zodSchema(
     z.object({
       // Optional, not `.default()` — a zod default does not survive into the emitted schema.
       limit: z.number().int().min(1).max(MAX_ADMIN_LIMIT).optional(),
       offset: z.number().int().min(0).optional(),
-      kind: supportRequestKindSchema.optional(),
-      status: supportRequestStatusSchema.optional(),
+      kind: contactRequestKindSchema.optional(),
+      status: contactRequestStatusSchema.optional(),
       // Bounded: the string ends up in a LIKE pattern.
       search: z.string().trim().max(120).optional(),
     }),
   ),
-  output: zodSchema(supportRequestAdminPageReadModel),
-  docs: { summary: "Every support request, for administration", tags: ["Admin", "Support"] },
+  output: zodSchema(contactRequestAdminPageReadModel),
+  docs: { summary: "Every contact request, for administration", tags: ["Admin", "Contact"] },
 });
 
-export const supportReadSchema = defineGraphQLSchema(
-  { supportRequest: { allForAdmin: listSupportRequestsForAdmin } },
+export const contactReadSchema = defineGraphQLSchema(
+  { contactRequest: { allForAdmin: listContactRequestsForAdmin } },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );
 ```
 
-`read/support/graphql/handlers/queries.handlers.ts`:
+`read/contact/graphql/handlers/queries.handlers.ts`:
 
 ```ts
 import { graphqlRoutes } from "@cosmneo/onion-lasagna/graphql/server";
 import { ForbiddenError } from "@cosmneo/onion-lasagna";
 import { asNtizoGraphqlContext } from "../../../../graphql/context";
-import { supportReadSchema } from "../schema/queries";
-import type { ListSupportRequestsForAdminQuery } from "../../../../bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query";
+import { contactReadSchema } from "../schema/queries";
+import type { ListContactRequestsForAdminQuery } from "../../../../bounded-contexts/contact/app/use-cases/list-contact-requests-for-admin.query";
 
-export interface SupportReadModule {
-  readonly listSupportRequestsForAdmin: ListSupportRequestsForAdminQuery;
+export interface ContactReadModule {
+  readonly listContactRequestsForAdmin: ListContactRequestsForAdminQuery;
 }
 
-export function createSupportReadHandlers(mod: SupportReadModule) {
-  return graphqlRoutes(supportReadSchema)
-    .handleWithUseCase("supportRequest.allForAdmin", {
+export function createContactReadHandlers(mod: ContactReadModule) {
+  return graphqlRoutes(contactReadSchema)
+    .handleWithUseCase("contactRequest.allForAdmin", {
       argsMapper: (args, ctx) => {
         const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
         if (!requesterUserId || role !== "admin") {
-          throw new ForbiddenError({ message: "Only administrators may read the support queue", code: "ADMIN_ONLY" });
+          throw new ForbiddenError({ message: "Only administrators may read the contact queue", code: "ADMIN_ONLY" });
         }
         return args.input;
       },
-      useCase: mod.listSupportRequestsForAdmin,
+      useCase: mod.listContactRequestsForAdmin,
       responseMapper: (output) => output,
     })
     .build();
 }
 ```
 
-`read/support/bootstrap/index.ts`:
+`read/contact/bootstrap/index.ts`:
 
 ```ts
-import { DrizzleSupportRequestRepository } from "../../../bounded-contexts/support/infrastructure/repositories/drizzle/support-request.repository";
-import { ListSupportRequestsForAdminQuery } from "../../../bounded-contexts/support/app/use-cases/list-support-requests-for-admin.query";
-import type { SupportReadModule } from "../graphql/handlers/queries.handlers";
+import { DrizzleContactRequestRepository } from "../../../bounded-contexts/contact/infrastructure/repositories/drizzle/contact-request.repository";
+import { ListContactRequestsForAdminQuery } from "../../../bounded-contexts/contact/app/use-cases/list-contact-requests-for-admin.query";
+import type { ContactReadModule } from "../graphql/handlers/queries.handlers";
 
-/** Its own adapter rather than `bootstrapSupport()`'s — a read mount owns no inbox. */
-export function bootstrapSupportRead(): {
-  adapters: { supportRequestRepository: DrizzleSupportRequestRepository };
-  useCases: SupportReadModule;
+/** Its own adapter rather than `bootstrapContact()`'s — a read mount owns no inbox. */
+export function bootstrapContactRead(): {
+  adapters: { contactRequestRepository: DrizzleContactRequestRepository };
+  useCases: ContactReadModule;
 } {
-  const supportRequestRepository = new DrizzleSupportRequestRepository();
+  const contactRequestRepository = new DrizzleContactRequestRepository();
   return {
-    adapters: { supportRequestRepository },
-    useCases: { listSupportRequestsForAdmin: new ListSupportRequestsForAdminQuery(supportRequestRepository) },
+    adapters: { contactRequestRepository },
+    useCases: { listContactRequestsForAdmin: new ListContactRequestsForAdminQuery(contactRequestRepository) },
   };
 }
 
-export type SupportReadBootstrap = ReturnType<typeof bootstrapSupportRead>;
+export type ContactReadBootstrap = ReturnType<typeof bootstrapContactRead>;
 ```
 
-`read/support/index.ts`:
+`read/contact/index.ts`:
 
 ```ts
 export * from "./bootstrap";
-export { supportReadSchema } from "./graphql/schema/queries";
-export { createSupportReadHandlers, type SupportReadModule } from "./graphql/handlers/queries.handlers";
+export { contactReadSchema } from "./graphql/schema/queries";
+export { createContactReadHandlers, type ContactReadModule } from "./graphql/handlers/queries.handlers";
 ```
 
-In `read/schema.ts`: import `supportReadSchema` from `"./support/graphql/schema/queries"` and add it as the last argument of `mergeGraphQLSchemas(...)`.
+In `read/schema.ts`: import `contactReadSchema` from `"./contact/graphql/schema/queries"` and add it as the last argument of `mergeGraphQLSchemas(...)`.
 
 - [ ] **Step 5: Mount in the composition root**
 
@@ -2118,40 +2111,40 @@ In `apps/backend/api/src/graphql/private.ts`:
 Imports, beside the review ones:
 
 ```ts
-import { createSupportWriteHandlers } from "@ntizo/backend/modules/ntizo/write/support";
-import { bootstrapSupportRead, createSupportReadHandlers } from "@ntizo/backend/modules/ntizo/read/support";
-import { bootstrapSupport } from "@ntizo/backend/modules/ntizo/bounded-contexts/support";
+import { createContactWriteHandlers } from "@ntizo/backend/modules/ntizo/write/contact";
+import { bootstrapContactRead, createContactReadHandlers } from "@ntizo/backend/modules/ntizo/read/contact";
+import { bootstrapContact } from "@ntizo/backend/modules/ntizo/bounded-contexts/contact";
 ```
 
 Inside `buildPrivateGraphQLFields`, after `const reviewRead = bootstrapReviewRead();`:
 
 ```ts
-  const support = bootstrapSupport();
-  const supportRead = bootstrapSupportRead();
+  const contact = bootstrapContact();
+  const contactRead = bootstrapContactRead();
 ```
 
 In the `fields` array, after `...createReviewReadHandlers(reviewRead.useCases),`:
 
 ```ts
-      ...createSupportReadHandlers(supportRead.useCases),
+      ...createContactReadHandlers(contactRead.useCases),
 ```
 
 and after `...createReviewWriteHandlers({ review }),`:
 
 ```ts
-      ...createSupportWriteHandlers({ support }),
+      ...createContactWriteHandlers({ contact }),
 ```
 
 - [ ] **Step 6: Write the handler tests**
 
-`write/support/__tests__/mutations.test.ts`:
+`write/contact/__tests__/mutations.test.ts`:
 
 ```ts
 import { describe, expect, it } from "bun:test";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
-import type { SupportBootstrap } from "../../../bounded-contexts/support/bootstrap";
-import { createSupportWriteHandlers } from "../graphql/handlers/mutations.handlers";
-import { supportWriteSchema } from "../graphql/schema/mutations";
+import type { ContactBootstrap } from "../../../bounded-contexts/contact/bootstrap";
+import { createContactWriteHandlers } from "../graphql/handlers/mutations.handlers";
+import { contactWriteSchema } from "../graphql/schema/mutations";
 
 function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
   return {
@@ -2169,50 +2162,50 @@ function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext 
 
 function makeModule(calls: { submit: unknown[]; setStatus: unknown[] }) {
   return {
-    support: {
+    contact: {
       adapters: {} as never,
       useCases: {
-        submitSupportRequest: {
+        submitContactRequest: {
           execute: async (input: unknown) => {
             calls.submit.push(input);
             return { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" };
           },
         },
-        listSupportRequestsForAdmin: { execute: async () => ({ items: [], total: 0, openCount: 0 }) },
-        setSupportRequestStatus: {
+        listContactRequestsForAdmin: { execute: async () => ({ items: [], total: 0, openCount: 0 }) },
+        setContactRequestStatus: {
           execute: async (input: unknown) => {
             calls.setStatus.push(input);
             return { status: "resolved" as const };
           },
         },
       },
-    } as unknown as SupportBootstrap,
+    } as unknown as ContactBootstrap,
   };
 }
 
 const FORM = {
-  kind: "support" as const,
-  topic: "booking",
+  kind: "contact" as const,
+  topic: "general",
   name: "Joana Matola",
   email: "joana@exemplo.com",
-  message: "A reserva de sábado não aparece na minha conta.",
+  message: "Gostava de propor uma parceria com a minha escola.",
   locale: "pt-MZ",
   originPath: null,
 };
 
-describe("the support write schema", () => {
+describe("the contact write schema", () => {
   it("exposes submit and setStatus", () => {
     const fields = Object.keys(
-      (supportWriteSchema as unknown as { fields: { supportRequest: object } }).fields.supportRequest,
+      (contactWriteSchema as unknown as { fields: { contactRequest: object } }).fields.contactRequest,
     ).sort();
     expect(fields).toEqual(["setStatus", "submit"]);
   });
 });
 
-describe("createSupportWriteHandlers", () => {
+describe("createContactWriteHandlers", () => {
   it("lets an anonymous caller submit, stamping the address and no user from the context", async () => {
     const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
-    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.submit")!;
+    const field = createContactWriteHandlers(makeModule(calls)).find((h) => h.key === "contactRequest.submit")!;
     const out = await field.handler({ ...FORM, requesterUserId: "victim" }, ctx());
     expect(out).toEqual({ requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" });
     expect(calls.submit).toEqual([{ ...FORM, requesterUserId: null, ipAddress: "197.218.0.1", userAgent: "Mozilla/5.0" }]);
@@ -2220,14 +2213,14 @@ describe("createSupportWriteHandlers", () => {
 
   it("stamps the session's user id when there is one", async () => {
     const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
-    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.submit")!;
+    const field = createContactWriteHandlers(makeModule(calls)).find((h) => h.key === "contactRequest.submit")!;
     await field.handler(FORM, ctx({ requesterUserId: "u-session" }));
     expect((calls.submit[0] as { requesterUserId: string }).requesterUserId).toBe("u-session");
   });
 
   it("answers a filled honeypot with a success it never wrote", async () => {
     const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
-    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.submit")!;
+    const field = createContactWriteHandlers(makeModule(calls)).find((h) => h.key === "contactRequest.submit")!;
     const out = (await field.handler({ ...FORM, website: "http://spam.example" }, ctx())) as { requestId: string; reference: string };
     expect(out.requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(out.reference).toHaveLength(6);
@@ -2236,7 +2229,7 @@ describe("createSupportWriteHandlers", () => {
 
   it("refuses setStatus from anyone who is not an administrator, before the use case runs", async () => {
     const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
-    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.setStatus")!;
+    const field = createContactWriteHandlers(makeModule(calls)).find((h) => h.key === "contactRequest.setStatus")!;
     const args = { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", status: "resolved" };
     await expect(field.handler(args, ctx({ requesterUserId: "u-1", role: "customer" }))).rejects.toThrow("administrators");
     await expect(field.handler(args, ctx({ requesterUserId: null, role: "admin" }))).rejects.toThrow("administrators");
@@ -2245,7 +2238,7 @@ describe("createSupportWriteHandlers", () => {
 
   it("stamps the administrator as the actor on setStatus", async () => {
     const calls = { submit: [] as unknown[], setStatus: [] as unknown[] };
-    const field = createSupportWriteHandlers(makeModule(calls)).find((h) => h.key === "supportRequest.setStatus")!;
+    const field = createContactWriteHandlers(makeModule(calls)).find((h) => h.key === "contactRequest.setStatus")!;
     await field.handler(
       { requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", status: "resolved", actorUserId: "victim" },
       ctx({ requesterUserId: "admin-1", role: "admin" }),
@@ -2263,7 +2256,7 @@ Run:
 
 ```bash
 cd packages/shared && bun run typecheck
-cd ../backend && bun test src/modules/ntizo/write/support src/modules/ntizo/__tests__/fitness-tier-segregation.test.ts src/modules/ntizo/public/__tests__/public-imports.guard.test.ts && bun run typecheck
+cd ../backend && bun test src/modules/ntizo/write/contact src/modules/ntizo/__tests__/fitness-tier-segregation.test.ts src/modules/ntizo/public/__tests__/public-imports.guard.test.ts && bun run typecheck
 cd ../../apps/backend/api && bun test src/graphql/__tests__/schema-mount.test.ts && bun run typecheck
 ```
 
@@ -2275,16 +2268,16 @@ Start the API locally (`cd apps/backend/api && bun run dev`, Node 22 on the PATH
 
 ```bash
 curl -s http://localhost:8788/graphql -H 'content-type: application/json' -H 'x-graphql-csrf: 1' \
-  -d '{"query":"mutation($i: SupportRequestSubmitInput!){ supportRequestSubmit(input:$i){ requestId reference } }","variables":{"i":{"kind":"support","topic":"booking","name":"Curl Test","email":"curl@example.test","message":"Uma mensagem de teste com mais de dez caracteres.","locale":"pt-MZ","originPath":null}}}'
+  -d '{"query":"mutation($i: ContactRequestSubmitInput!){ contactRequestSubmit(input:$i){ requestId reference } }","variables":{"i":{"kind":"contact","topic":"general","name":"Curl Test","email":"curl@example.test","message":"Uma mensagem de teste com mais de dez caracteres.","locale":"pt-MZ","originPath":null}}}'
 ```
 
-Expected: `{"data":{"supportRequestSubmit":{"requestId":"…","reference":"…"}}}`, and the console email printed in the API log with `reply-to: curl@example.test`. Delete the row afterwards (`DELETE FROM ntizo_support.support_request WHERE name = 'Curl Test'` against the dev database) so it does not sit in the real queue.
+Expected: `{"data":{"contactRequestSubmit":{"requestId":"…","reference":"…"}}}`, and the console email printed in the API log with `reply-to: curl@example.test`. Delete the row afterwards (`DELETE FROM ntizo_contact.contact_request WHERE name = 'Curl Test'` against the dev database) so it does not sit in the real queue.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/shared/src/read-models packages/backend/src/modules/ntizo/write/support packages/backend/src/modules/ntizo/write/schema.ts packages/backend/src/modules/ntizo/read/support packages/backend/src/modules/ntizo/read/schema.ts apps/backend/api/src/graphql/private.ts
-git commit -m "feat(support): supportRequest.submit (anonymous, honeypotted), allForAdmin and setStatus, mounted"
+git add packages/shared/src/read-models packages/backend/src/modules/ntizo/write/contact packages/backend/src/modules/ntizo/write/schema.ts packages/backend/src/modules/ntizo/read/contact packages/backend/src/modules/ntizo/read/schema.ts apps/backend/api/src/graphql/private.ts
+git commit -m "feat(contact): contactRequest.submit (anonymous, honeypotted), allForAdmin and setStatus, mounted"
 ```
 
 ---
@@ -2302,7 +2295,7 @@ git commit -m "feat(support): supportRequest.submit (anonymous, honeypotted), al
 - Test: `apps/frontend/web/src/features/landing/ui/__tests__/footer.test.tsx`
 
 **Interfaces:**
-- Produces: `CONTACT = { general, support, privacy, instagram, linkedin }` from `@/shared/lib/contact`; `SiteHeader` accepts `current="none"`; landing keys `footer.links.{about,contact,messageSupport,faq,feedback,careers}`; legal key `contact` takes `{{email}}`.
+- Produces: `CONTACT = { general, support, privacy, instagram, linkedin }` from `@/shared/lib/contact`; `SiteHeader` accepts `current="none"`; landing keys `footer.links.{about,contact,feedback,careers}`; legal key `contact` takes `{{email}}`.
 
 - [ ] **Step 1: The constants**
 
@@ -2319,9 +2312,9 @@ git commit -m "feat(support): supportRequest.submit (anonymous, honeypotted), al
  * address reads it from here; nothing types one in.
  */
 export const CONTACT = {
-  /** General correspondence, partnerships, press, and careers. */
+  /** General correspondence, partnerships, press, careers; where the contact and feedback forms are forwarded. */
   general: "ola@ntizo.co.mz",
-  /** Customers and providers with a problem; where the forms are forwarded. */
+  /** Customers and providers with a problem — the help center's address; printed in the footer. */
   support: "suporte@ntizo.co.mz",
   /** Data requests, as the privacy policy says. */
   privacy: "privacidade@ntizo.co.mz",
@@ -2349,8 +2342,8 @@ import { Footer } from "../footer";
 /**
  * The footer's promises, pinned.
  *
- * The Empresa column used to be six `href="#"` links; it is now seven routes
- * that exist. The payment row used to advertise four methods the checkout
+ * The Empresa column used to be six `href="#"` links; it is now five routes
+ * that exist (the help center adds its two when `/help` lands — follow-ups #132). The payment row used to advertise four methods the checkout
  * refuses; it now names the one that charges. Both are the kind of thing a
  * later edit quietly puts back.
  */
@@ -2361,7 +2354,7 @@ function renderFooter() {
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       createRoute({ getParentRoute: () => rootRoute, path: "/", component: Footer }),
-      ...["/about", "/contact", "/support", "/faq", "/feedback", "/become-provider", "/careers", "/terms", "/privacy", "/admin"].map(stub),
+      ...["/about", "/contact", "/feedback", "/become-provider", "/careers", "/terms", "/privacy", "/admin"].map(stub),
     ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -2369,11 +2362,11 @@ function renderFooter() {
 }
 
 describe("Footer", () => {
-  it("links the seven company pages, in the reference's order", () => {
+  it("links the five company pages that exist, in the reference's order", () => {
     renderFooter();
     const company = screen.getByRole("heading", { name: /^company$/i }).parentElement!;
     const hrefs = Array.from(company.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/about", "/contact", "/support", "/faq", "/feedback", "/become-provider", "/careers"]);
+    expect(hrefs).toEqual(["/about", "/contact", "/feedback", "/become-provider", "/careers"]);
   });
 
   it("prints the support address on the ntizo.co.mz domain and nothing on .com", () => {
@@ -2415,14 +2408,12 @@ Replace the Support column's `FooterMeta` with:
             />
 ```
 
-Replace the Company column (keep the existing comment about the links coming back; add one line saying they are back as of 2026-09-02) with:
+Replace the Company column (keep the existing comment about the links coming back; add: *"Five of the seven are back as of 2026-09-02. 'Falar com o suporte' and 'Perguntas frequentes' return with the help center's `/help` — follow-ups #132."*) with:
 
 ```tsx
           <FooterCol title={t("footer.company")}>
             <FooterLink to="/about">{t("footer.links.about")}</FooterLink>
             <FooterLink to="/contact">{t("footer.links.contact")}</FooterLink>
-            <FooterLink to="/support">{t("footer.links.messageSupport")}</FooterLink>
-            <FooterLink to="/faq">{t("footer.links.faq")}</FooterLink>
             <FooterLink to="/feedback">{t("footer.links.feedback")}</FooterLink>
             <FooterLink to="/become-provider">{t("footer.becomeProvider")}</FooterLink>
             <FooterLink to="/careers">{t("footer.links.careers")}</FooterLink>
@@ -2464,14 +2455,14 @@ In every `landing.json`, inside `footer`, add a `links` object. In every `legal.
 
 | Locale | `footer.links` |
 |---|---|
-| pt-MZ | `{"about":"Sobre","contact":"Contacto","messageSupport":"Falar com o suporte","faq":"Perguntas frequentes","feedback":"Dar feedback","careers":"Carreiras"}` |
-| pt-PT | `{"about":"Sobre","contact":"Contacto","messageSupport":"Falar com o suporte","faq":"Perguntas frequentes","feedback":"Dar feedback","careers":"Carreiras"}` |
-| en-US | `{"about":"About","contact":"Contact","messageSupport":"Message support","faq":"FAQ","feedback":"Share feedback","careers":"Careers"}` |
-| es-ES | `{"about":"Sobre nosotros","contact":"Contacto","messageSupport":"Escribir a soporte","faq":"Preguntas frecuentes","feedback":"Enviar opinión","careers":"Empleo"}` |
-| fr-FR | `{"about":"À propos","contact":"Contact","messageSupport":"Écrire au support","faq":"Questions fréquentes","feedback":"Donner votre avis","careers":"Carrières"}` |
-| de-DE | `{"about":"Über uns","contact":"Kontakt","messageSupport":"Support schreiben","faq":"Häufige Fragen","feedback":"Feedback geben","careers":"Karriere"}` |
-| it-IT | `{"about":"Chi siamo","contact":"Contatti","messageSupport":"Scrivi all'assistenza","faq":"Domande frequenti","feedback":"Lascia un feedback","careers":"Lavora con noi"}` |
-| nl-NL | `{"about":"Over ons","contact":"Contact","messageSupport":"Support berichten","faq":"Veelgestelde vragen","feedback":"Feedback geven","careers":"Werken bij"}` |
+| pt-MZ | `{"about":"Sobre","contact":"Contacto","feedback":"Dar feedback","careers":"Carreiras"}` |
+| pt-PT | `{"about":"Sobre","contact":"Contacto","feedback":"Dar feedback","careers":"Carreiras"}` |
+| en-US | `{"about":"About","contact":"Contact","feedback":"Share feedback","careers":"Careers"}` |
+| es-ES | `{"about":"Sobre nosotros","contact":"Contacto","feedback":"Enviar opinión","careers":"Empleo"}` |
+| fr-FR | `{"about":"À propos","contact":"Contact","feedback":"Donner votre avis","careers":"Carrières"}` |
+| de-DE | `{"about":"Über uns","contact":"Kontakt","feedback":"Feedback geben","careers":"Karriere"}` |
+| it-IT | `{"about":"Chi siamo","contact":"Contatti","feedback":"Lascia un feedback","careers":"Lavora con noi"}` |
+| nl-NL | `{"about":"Over ons","contact":"Contact","feedback":"Feedback geven","careers":"Werken bij"}` |
 
 `legal.json` `contact`, per locale (the sentence as it is today with the address replaced by `{{email}}`):
 
@@ -2524,11 +2515,11 @@ git commit -m "feat(web): one place for the addresses; the footer's company colu
 - Test: `apps/frontend/web/src/shared/locales/__tests__/company-content.test.ts`
 
 **Interfaces:**
-- Produces: namespace `company` with the key tree below, identical in all eight files; `t("faq.groups", { returnObjects: true })` returns `FaqGroup[]` where `FaqGroup = { id: "customers" | "providers" | "payments"; title: string; items: { q: string; a: string }[] }`; `t("careers.how", { returnObjects: true })` returns `{ title: string; body: string }[]`.
+- Produces: namespace `company` with the key tree below, identical in all eight files; `t("careers.how", { returnObjects: true })` returns `{ title: string; body: string }[]`; `shared.links.{contact,feedback,about,careers}` feed the "Ver também" strip; `topics.{contact,feedback}.*` label the form's select and the admin list.
 
 - [ ] **Step 1: Write the failing content test**
 
-`company-content.test.ts` — the parity gate compares dotted paths, but an array is one leaf to it, so a locale could drop an FAQ question unnoticed. This pins the shape:
+`company-content.test.ts` — the parity gate compares dotted paths, but an array is one leaf to it, so a locale could drop a principle unnoticed. This pins the shape and the copy rule:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -2543,22 +2534,14 @@ import ptPT from "../pt-PT/company.json";
 
 const LOCALES = { "de-DE": deDE, "en-US": enUS, "es-ES": esES, "fr-FR": frFR, "it-IT": itIT, "nl-NL": nlNL, "pt-MZ": ptMZ, "pt-PT": ptPT };
 
-describe("company namespace — the arrays the parity gate cannot see into", () => {
-  const ref = ptMZ.faq.groups.map((g) => ({ id: g.id, n: g.items.length }));
-
+describe("company namespace", () => {
   for (const [locale, bundle] of Object.entries(LOCALES)) {
-    it(`${locale} has the same FAQ groups, in the same order, with the same number of questions`, () => {
-      expect(bundle.faq.groups.map((g) => ({ id: g.id, n: g.items.length }))).toEqual(ref);
-      for (const g of bundle.faq.groups) {
-        for (const item of g.items) {
-          expect(item.q.trim()).not.toBe("");
-          expect(item.a.trim()).not.toBe("");
-        }
-      }
-    });
-
-    it(`${locale} has three "how we work" principles`, () => {
+    it(`${locale} has three "how we work" principles, none empty`, () => {
       expect(bundle.careers.how).toHaveLength(3);
+      for (const p of bundle.careers.how) {
+        expect(p.title.trim()).not.toBe("");
+        expect(p.body.trim()).not.toBe("");
+      }
     });
 
     it(`${locale} quotes no platform_settings number`, () => {
@@ -2567,15 +2550,15 @@ describe("company namespace — the arrays the parity gate cannot see into", () 
       const text = JSON.stringify(bundle);
       expect(text).not.toMatch(/\b2\s?h\b|\b2 horas\b|\b2 hours\b|\b15 min|\b30 min|\b10\s?%/i);
     });
-  }
 
-  it("pt-MZ has 8 + 7 + 5 questions", () => {
-    expect(ref).toEqual([
-      { id: "customers", n: 8 },
-      { id: "providers", n: 7 },
-      { id: "payments", n: 5 },
-    ]);
-  });
+    it(`${locale} keeps the placeholders the components interpolate`, () => {
+      expect(bundle.form.errors.rateLimited).toContain("{{email}}");
+      expect(bundle.form.errors.generic).toContain("{{email}}");
+      expect(bundle.form.success.replyTo).toContain("{{email}}");
+      expect(bundle.form.success.reference).toContain("{{reference}}");
+      expect(bundle.careers.openingsHint).toContain("{{email}}");
+    });
+  }
 });
 ```
 
@@ -2589,12 +2572,12 @@ Expected: FAIL — the files do not exist.
 ```json
 {
   "shared": {
-    "stillQuestions": "Ainda tem dúvidas?",
+    "seeAlso": "Ver também",
     "links": {
-      "faq": { "title": "Perguntas frequentes", "body": "Reservas, pagamentos, verificação e como os prestadores recebem." },
-      "support": { "title": "Falar com o suporte", "body": "Um problema com uma reserva, um pagamento ou a sua conta." },
       "contact": { "title": "Contacto", "body": "Parcerias, imprensa, ou simplesmente um olá." },
-      "feedback": { "title": "Dar feedback", "body": "Uma ideia, algo que não funcionou, ou o que gostou." }
+      "feedback": { "title": "Dar feedback", "body": "Uma ideia, algo que não funcionou, ou o que gostou." },
+      "about": { "title": "Sobre a Ntizo", "body": "O que fazemos, como funciona e no que acreditamos." },
+      "careers": { "title": "Carreiras", "body": "Como trabalhamos, e como se candidatar." }
     }
   },
   "about": {
@@ -2640,19 +2623,7 @@ Expected: FAIL — the files do not exist.
     "cards": {
       "email": { "title": "Por email", "body": "Para quem prefere escrever directamente." },
       "social": { "title": "Nas redes", "body": "Novidades, bastidores e os prestadores que destacamos." },
-      "support": { "title": "É cliente com um problema?", "body": "Uma reserva, um pagamento, a sua conta.", "cta": "Falar com o suporte" }
-    }
-  },
-  "support": {
-    "headTitle": "Falar com o suporte",
-    "eyebrow": "Suporte",
-    "heading": "Precisa de ajuda com algo?",
-    "lede": "Uma reserva, um pagamento, a sua conta. Conte-nos o que se passa e tratamos disso consigo.",
-    "messagePlaceholder": "Diga-nos o que aconteceu. Se for sobre uma reserva, inclua a data e o nome do prestador.",
-    "cards": {
-      "email": { "title": "Por email", "body": "Para quem prefere escrever directamente." },
-      "expect": { "title": "O que esperar", "body": "Uma pessoa lê, ninguém é robô. Respondemos em dias úteis, para o email que indicar." },
-      "faq": { "title": "Talvez já esteja respondido", "body": "Reservas, pagamentos, verificação.", "cta": "Ver perguntas frequentes" }
+      "feedback": { "title": "Tem uma ideia, ou algo falhou?", "body": "Isso é feedback, e lemos tudo.", "cta": "Dar feedback" }
     }
   },
   "feedback": {
@@ -2663,8 +2634,8 @@ Expected: FAIL — the files do not exist.
     "messagePlaceholder": "O que gostava que fosse diferente? Se algo falhou, diga-nos onde estava e o que esperava.",
     "cards": {
       "read": { "title": "Lemos tudo", "body": "Cada mensagem chega a uma pessoa da equipa. Nem todas têm resposta, mas todas contam." },
-      "support": { "title": "Problemas com uma reserva?", "body": "Isso é para o suporte, que responde.", "cta": "Falar com o suporte" },
-      "faq": { "title": "Talvez já esteja respondido", "body": "Reservas, pagamentos, verificação.", "cta": "Ver perguntas frequentes" }
+      "contact": { "title": "Uma parceria, a imprensa, uma pergunta?", "body": "Isso é para o contacto, que responde.", "cta": "Ir para o contacto" },
+      "social": { "title": "Nas redes", "body": "Novidades, bastidores e os prestadores que destacamos." }
     }
   },
   "form": {
@@ -2695,63 +2666,12 @@ Expected: FAIL — the files do not exist.
       "replyTo": "Respondemos para {{email}} em dias úteis, no idioma em que nos escreveu.",
       "noEmail": "Obrigado. Lemos tudo o que nos chega.",
       "reference": "Referência: {{reference}}",
-      "home": "Voltar ao início",
-      "faq": "Ver perguntas frequentes"
+      "home": "Voltar ao início"
     }
   },
   "topics": {
     "contact": { "general": "Pergunta geral", "partnership": "Parceria", "press": "Imprensa", "provider": "Sou prestador", "other": "Outro" },
-    "support": { "account": "A minha conta", "booking": "Uma reserva", "payment": "Um pagamento", "provider_account": "A minha conta de prestador", "other": "Outro assunto" },
     "feedback": { "idea": "Uma ideia", "problem": "Algo não funcionou", "praise": "Gostei de algo" }
-  },
-  "faq": {
-    "headTitle": "Perguntas frequentes",
-    "eyebrow": "Perguntas frequentes",
-    "heading": "As respostas que procura.",
-    "lede": "Como funciona a reserva, quando paga, o que significa o selo de verificado e como os prestadores recebem.",
-    "notFoundTitle": "Não encontrou?",
-    "notFoundBody": "Fale com o suporte. Uma pessoa responde em dias úteis.",
-    "notFoundCta": "Falar com o suporte",
-    "groups": [
-      {
-        "id": "customers",
-        "title": "Clientes",
-        "items": [
-          { "q": "Como funciona uma reserva?", "a": "Escolhe o serviço, o dia e a hora no calendário do prestador, e diz onde o serviço acontece. O pedido segue para o prestador confirmar. Só depois de ele confirmar a hora recebe o pedido de pagamento no telemóvel." },
-          { "q": "Quando é que pago?", "a": "Depois de o prestador confirmar a hora, e nunca antes. Se ele não responder dentro do prazo indicado no pedido, ou recusar, o pedido é encerrado e não é cobrado nada." },
-          { "q": "Que métodos de pagamento aceitam?", "a": "Neste momento, M-Pesa (Vodacom). O pedido de pagamento chega ao seu telemóvel e confirma-o com o PIN. Outros métodos estão a caminho." },
-          { "q": "O preço que vejo é o que pago?", "a": "Sim. O valor do anúncio é o valor cobrado. A comissão da Ntizo é descontada do lado do prestador, não é somada ao seu." },
-          { "q": "O que significa o selo de verificado?", "a": "Que o prestador enviou um documento de identidade (BI, DIRE ou passaporte) e que uma pessoa da Ntizo o reviu antes de o perfil ficar visível." },
-          { "q": "Alguns serviços dizem \"sob orçamento\" ou \"por hora\". Como reservo?", "a": "Esses ainda não se reservam directamente. Envie uma mensagem ao prestador a partir da página do serviço para combinar o preço e a hora." },
-          { "q": "Posso cancelar uma reserva?", "a": "Antes de o prestador confirmar, o pedido ainda não o compromete a nada. Depois de confirmar e pagar, fale com o suporte o quanto antes com a data e o nome do prestador, e tratamos do caso consigo." },
-          { "q": "Como deixo uma avaliação?", "a": "Só quem teve um serviço concluído com um prestador o pode avaliar. Cada pessoa tem uma avaliação por prestador, e pode mudá-la quando quiser." }
-        ]
-      },
-      {
-        "id": "providers",
-        "title": "Prestadores",
-        "items": [
-          { "q": "Quem pode ser prestador?", "a": "Uma pessoa que oferece o seu próprio trabalho, ou um estabelecimento com equipa. Precisa de um documento de identidade, de um meio para receber (M-Pesa, e-Mola ou conta bancária) e de aceitar os termos." },
-          { "q": "Quanto custa?", "a": "Registar-se e publicar serviços é gratuito. A Ntizo cobra uma comissão sobre cada serviço pago, descontada do valor que lhe é pago. A sua taxa está indicada na sua área de prestador." },
-          { "q": "Quando é que recebo?", "a": "O cliente paga depois de confirmar a hora, e o valor fica retido até o serviço estar concluído. Depois disso passa para a sua carteira, onde fica disponível para levantar após o período de retenção indicado." },
-          { "q": "Como funciona a verificação?", "a": "Envia um documento de identidade durante o registo. Uma pessoa da Ntizo revê o pedido; até lá o perfil fica pendente e fora dos resultados. Avisamos por email quando estiver aprovado." },
-          { "q": "Posso ter uma equipa?", "a": "Sim. Um estabelecimento convida membros por email. Cada um tem a sua disponibilidade, e as horas que os clientes vêem contam com quantas pessoas estão livres." },
-          { "q": "Como defino a minha disponibilidade?", "a": "Define os dias e horas em que trabalha, a duração de cada serviço e o intervalo entre serviços. A Ntizo gera as horas que os clientes podem escolher. Pode bloquear dias específicos." },
-          { "q": "O que acontece se não responder a um pedido?", "a": "Tem um prazo, indicado no pedido, para confirmar ou recusar. Passado esse prazo o pedido expira e o cliente é avisado para escolher outra hora ou outro prestador." }
-        ]
-      },
-      {
-        "id": "payments",
-        "title": "Pagamentos e segurança",
-        "items": [
-          { "q": "Os meus dados de pagamento ficam guardados?", "a": "Guardamos o número de telemóvel associado ao M-Pesa ou e-Mola e o país. Não guardamos números de cartão." },
-          { "q": "Posso partilhar o meu número ou email nas mensagens?", "a": "As mensagens não permitem números de telefone nem emails. É o que mantém a reserva, o pagamento e a avaliação dentro da plataforma, onde há registo e a quem recorrer." },
-          { "q": "O que acontece se o serviço não for feito?", "a": "O pagamento fica retido até o serviço estar concluído. Se algo correr mal, fale com o suporte com a data e o nome do prestador. Analisamos o caso com as duas partes." },
-          { "q": "Como tratam os meus dados?", "a": "Recolhemos só o necessário para ligar clientes e prestadores. Está tudo na Política de Privacidade, escrita para ser lida." },
-          { "q": "Como apago a minha conta?", "a": "Escreva para privacidade@ntizo.co.mz a partir do email da conta. Apagamos os seus dados, excepto o que a lei nos obriga a guardar, e respondemos no prazo de 30 dias." }
-        ]
-      }
-    ]
   },
   "careers": {
     "headTitle": "Carreiras",
@@ -2777,19 +2697,17 @@ Expected: FAIL — the files do not exist.
 }
 ```
 
-**One check before the file is final.** The providers' "Quanto custa?" answer says the rate is shown in the provider area. Run `grep -rln "commission" apps/frontend/web/src/features/provider` — if a provider-facing screen renders the commission (the 2026-08-31 commission-visibility plan), keep the sentence. If nothing does, replace the last sentence in every locale with the fallback: pt *"A taxa é-lhe indicada antes de publicar."*, en *"Your rate is shown to you before you publish."*, and the equivalent in the others.
-
 - [ ] **Step 4: Write `en-US/company.json`, verbatim**
 
 ```json
 {
   "shared": {
-    "stillQuestions": "Still have questions?",
+    "seeAlso": "See also",
     "links": {
-      "faq": { "title": "FAQ", "body": "Bookings, payments, verification, and how providers get paid." },
-      "support": { "title": "Message support", "body": "A problem with a booking, a payment or your account." },
       "contact": { "title": "Contact", "body": "Partnerships, press, or simply a hello." },
-      "feedback": { "title": "Share feedback", "body": "An idea, something that did not work, or something you liked." }
+      "feedback": { "title": "Share feedback", "body": "An idea, something that did not work, or something you liked." },
+      "about": { "title": "About Ntizo", "body": "What we do, how it works, and what we believe." },
+      "careers": { "title": "Careers", "body": "How we work, and how to apply." }
     }
   },
   "about": {
@@ -2835,19 +2753,7 @@ Expected: FAIL — the files do not exist.
     "cards": {
       "email": { "title": "By email", "body": "For anyone who would rather write directly." },
       "social": { "title": "On social", "body": "News, behind the scenes, and the providers we feature." },
-      "support": { "title": "A customer with a problem?", "body": "A booking, a payment, your account.", "cta": "Message support" }
-    }
-  },
-  "support": {
-    "headTitle": "Message support",
-    "eyebrow": "Support",
-    "heading": "Need help with something?",
-    "lede": "A booking, a payment, your account. Tell us what is going on and we will sort it out with you.",
-    "messagePlaceholder": "Tell us what happened. If it is about a booking, include the date and the provider's name.",
-    "cards": {
-      "email": { "title": "By email", "body": "For anyone who would rather write directly." },
-      "expect": { "title": "What to expect", "body": "A person reads it, nobody is a robot. We reply on working days, to the email you give." },
-      "faq": { "title": "It may already be answered", "body": "Bookings, payments, verification.", "cta": "See the FAQ" }
+      "feedback": { "title": "An idea, or something broke?", "body": "That is feedback, and we read all of it.", "cta": "Share feedback" }
     }
   },
   "feedback": {
@@ -2858,8 +2764,8 @@ Expected: FAIL — the files do not exist.
     "messagePlaceholder": "What would you like to be different? If something failed, tell us where you were and what you expected.",
     "cards": {
       "read": { "title": "We read everything", "body": "Every message reaches a person on the team. Not all get a reply, but all of them count." },
-      "support": { "title": "Trouble with a booking?", "body": "That is for support, which replies.", "cta": "Message support" },
-      "faq": { "title": "It may already be answered", "body": "Bookings, payments, verification.", "cta": "See the FAQ" }
+      "contact": { "title": "A partnership, the press, a question?", "body": "That is for contact, which replies.", "cta": "Go to contact" },
+      "social": { "title": "On social", "body": "News, behind the scenes, and the providers we feature." }
     }
   },
   "form": {
@@ -2890,63 +2796,12 @@ Expected: FAIL — the files do not exist.
       "replyTo": "We will reply to {{email}} on working days, in the language you wrote to us in.",
       "noEmail": "Thank you. We read everything that reaches us.",
       "reference": "Reference: {{reference}}",
-      "home": "Back to home",
-      "faq": "See the FAQ"
+      "home": "Back to home"
     }
   },
   "topics": {
     "contact": { "general": "General question", "partnership": "Partnership", "press": "Press", "provider": "I am a provider", "other": "Other" },
-    "support": { "account": "My account", "booking": "A booking", "payment": "A payment", "provider_account": "My provider account", "other": "Something else" },
     "feedback": { "idea": "An idea", "problem": "Something did not work", "praise": "Something I liked" }
-  },
-  "faq": {
-    "headTitle": "FAQ",
-    "eyebrow": "Frequently asked questions",
-    "heading": "The answers you are looking for.",
-    "lede": "How booking works, when you pay, what the verified badge means, and how providers get paid.",
-    "notFoundTitle": "Not here?",
-    "notFoundBody": "Message support. A person replies on working days.",
-    "notFoundCta": "Message support",
-    "groups": [
-      {
-        "id": "customers",
-        "title": "Customers",
-        "items": [
-          { "q": "How does a booking work?", "a": "You pick the service, the day and the time on the provider's calendar, and say where the service happens. The request goes to the provider to confirm. Only once they confirm the time do you get the payment prompt on your phone." },
-          { "q": "When do I pay?", "a": "After the provider confirms the time, and never before. If they do not reply within the time shown on the request, or decline, the request is closed and nothing is charged." },
-          { "q": "Which payment methods do you accept?", "a": "Right now, M-Pesa (Vodacom). The payment prompt arrives on your phone and you confirm it with your PIN. Other methods are on the way." },
-          { "q": "Is the price I see the price I pay?", "a": "Yes. The listed amount is the amount charged. Ntizo's commission is deducted on the provider's side, not added to yours." },
-          { "q": "What does the verified badge mean?", "a": "That the provider sent an identity document (national ID, DIRE or passport) and that a person at Ntizo reviewed it before the profile became visible." },
-          { "q": "Some services say \"on quote\" or \"per hour\". How do I book those?", "a": "Those cannot be booked directly yet. Send the provider a message from the service page to agree the price and the time." },
-          { "q": "Can I cancel a booking?", "a": "Before the provider confirms, the request commits you to nothing. After confirming and paying, message support as soon as you can with the date and the provider's name, and we will handle it with you." },
-          { "q": "How do I leave a review?", "a": "Only someone who has had a completed service with a provider can review them. Each person has one review per provider, and can change it whenever they like." }
-        ]
-      },
-      {
-        "id": "providers",
-        "title": "Providers",
-        "items": [
-          { "q": "Who can be a provider?", "a": "A person offering their own work, or an establishment with a team. You need an identity document, a way to be paid (M-Pesa, e-Mola or a bank account), and to accept the terms." },
-          { "q": "What does it cost?", "a": "Signing up and publishing services is free. Ntizo takes a commission on each paid service, deducted from what is paid to you. Your rate is shown in your provider area." },
-          { "q": "When do I get paid?", "a": "The customer pays after you confirm the time, and the amount is held until the service is completed. After that it moves to your wallet, where it becomes available to withdraw after the holding period shown there." },
-          { "q": "How does verification work?", "a": "You send an identity document during sign-up. A person at Ntizo reviews the request; until then the profile is pending and out of results. We email you when it is approved." },
-          { "q": "Can I have a team?", "a": "Yes. An establishment invites members by email. Each has their own availability, and the times customers see account for how many people are free." },
-          { "q": "How do I set my availability?", "a": "Set the days and hours you work, how long each service takes, and the gap between services. Ntizo generates the times customers can choose. You can block specific days." },
-          { "q": "What happens if I do not answer a request?", "a": "You have a deadline, shown on the request, to confirm or decline. Once it passes the request expires and the customer is told to pick another time or another provider." }
-        ]
-      },
-      {
-        "id": "payments",
-        "title": "Payments and safety",
-        "items": [
-          { "q": "Is my payment data stored?", "a": "We store the phone number linked to M-Pesa or e-Mola and the country. We do not store card numbers." },
-          { "q": "Can I share my number or email in messages?", "a": "Messages do not allow phone numbers or emails. That is what keeps the booking, the payment and the review on the platform, where there is a record and someone to turn to." },
-          { "q": "What happens if the service is not done?", "a": "The payment is held until the service is completed. If something goes wrong, message support with the date and the provider's name. We look at the case with both sides." },
-          { "q": "How do you handle my data?", "a": "We collect only what is needed to connect customers and providers. It is all in the Privacy Policy, written to be read." },
-          { "q": "How do I delete my account?", "a": "Write to privacidade@ntizo.co.mz from the account's email. We delete your data, except what the law requires us to keep, and reply within 30 days." }
-        ]
-      }
-    ]
   },
   "careers": {
     "headTitle": "Careers",
@@ -2974,13 +2829,12 @@ Expected: FAIL — the files do not exist.
 
 - [ ] **Step 5: Write the other six**
 
-`pt-PT/company.json`: start as a copy of pt-MZ and change only what Portugal says differently: `telemóvel` stays (both), "BI" becomes "cartão de cidadão ou BI" in the verified-badge and verification answers, and "Moçambique" stays where it is a fact about the company. Everything else is identical.
+`pt-PT/company.json`: a copy of pt-MZ, unchanged — the two Portugueses agree on every word here ("telemóvel" is both; "Moçambique" is a fact about the company, not a locale).
 
-`es-ES`, `fr-FR`, `de-DE`, `it-IT`, `nl-NL`: translate **every** value of `pt-MZ/company.json` (use `en-US` as the second reference for tone), keeping every key, every `{{email}}` / `{{reference}}` placeholder, the three FAQ group `id`s (`customers`, `providers`, `payments`), 8 + 7 + 5 questions in the same order, and three `careers.how` entries. Rules that apply to every language:
+`es-ES`, `fr-FR`, `de-DE`, `it-IT`, `nl-NL`: translate **every** value of `pt-MZ/company.json` (with `en-US` as the second reference for tone), keeping every key, every `{{email}}` / `{{reference}}` placeholder, and three `careers.how` entries. Rules that apply to every language:
 
 - The `about.heading` + `about.headingAccent` pair renders as `{heading} <accent>{headingAccent}</accent>.` — pick the word order of the target language so the accent word is the LAST word of the sentence (es: `Servicios locales en los que puede` + `confiar`; fr: `Des services locaux en qui vous pouvez avoir` + `confiance`; de: `Lokale Dienstleistungen, denen Sie` + `vertrauen`; it: `Servizi locali di cui potersi` + `fidare`; nl: `Lokale diensten die u kunt` + `vertrouwen`).
-- Product nouns stay as the product uses them: M-Pesa, e-Mola, Ntizo, DIRE, PIN.
-- `privacidade@ntizo.co.mz` stays in the delete-account answer in every language.
+- Product nouns stay as the product uses them: M-Pesa, Ntizo.
 - No duration or percentage anywhere (the content test greps for them).
 - Formal register in de/fr/nl/it (Sie / vous / u / lei), tú in es — matching each locale's existing `landing.json`.
 
@@ -2993,13 +2847,13 @@ In `locales.test.ts`: add the eight `Company` imports and a `company` entry in `
 - [ ] **Step 7: Run the gate, the content test, typecheck**
 
 Run: `cd apps/frontend/web && bunx vitest run src/shared/locales && bun run typecheck`
-Expected: parity passes for `company` (all eight declare the same paths, none empty); `company-content.test.ts` passes (25 tests); typecheck clean.
+Expected: parity passes for `company` (all eight declare the same paths, none empty); `company-content.test.ts` passes (24 tests); typecheck clean.
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add apps/frontend/web/src/shared/locales apps/frontend/web/src/shared/lib/i18n.ts
-git commit -m "feat(company): the company namespace — every word of the six pages, in eight languages"
+git commit -m "feat(company): the company namespace — every word of the four pages, in eight languages"
 ```
 
 ---
@@ -3015,7 +2869,7 @@ git commit -m "feat(company): the company namespace — every word of the six pa
 - Test: `apps/frontend/web/src/features/company/ui/__tests__/company-pages.test.tsx`
 
 **Interfaces:**
-- Produces: `CompanyPage({ page, eyebrow, title, lede, centred?, children })`, `CompanyPageId`, `Eyebrow({ children, onDark? })`, `SectionHeading({ eyebrow, title, blurb? })`, `renderCompanyPage(Page, at?)` from the helper file, `AboutPage`, `CareersPage`.
+- Produces: `CompanyPage({ page, eyebrow, title, lede, centred?, children })`, `CompanyPageId = "about" | "contact" | "feedback" | "careers"`, `Eyebrow({ children, onDark? })`, `SectionHeading({ eyebrow, title, blurb? })`, `renderCompanyPage(Page, at?)` from the helper file, `AboutPage`, `CareersPage`.
 
 - [ ] **Step 1: Write the helper, then the failing tests**
 
@@ -3046,7 +2900,7 @@ export function renderCompanyPage(Page: ComponentType, at = "/") {
     routeTree: rootRoute.addChildren([
       createRoute({ getParentRoute: () => rootRoute, path: at, component: Page }),
       ...[
-        "/about", "/contact", "/support", "/faq", "/feedback", "/careers",
+        "/about", "/contact", "/feedback", "/careers",
         "/", "/services", "/providers", "/become-provider", "/sign-in", "/sign-up",
         "/terms", "/privacy", "/admin",
       ].filter((p) => p !== at).map(stub),
@@ -3074,7 +2928,7 @@ import { renderCompanyPage } from "./render-company-page";
 
 /** The strip's links, as hrefs, in order. */
 function stripHrefs() {
-  const strip = screen.getByRole("heading", { name: /still have questions/i }).parentElement!;
+  const strip = screen.getByRole("heading", { name: /see also/i }).parentElement!;
   return Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"));
 }
 
@@ -3097,9 +2951,9 @@ describe("AboutPage", () => {
     expect(screen.getByRole("link", { name: /become a provider/i })).toHaveAttribute("href", "/become-provider");
   });
 
-  it("offers FAQ, support and contact at the bottom — and not itself", () => {
+  it("offers contact, feedback and careers at the bottom — and not itself", () => {
     renderCompanyPage(AboutPage, "/about");
-    expect(stripHrefs()).toEqual(["/faq", "/support", "/contact"]);
+    expect(stripHrefs()).toEqual(["/contact", "/feedback", "/careers"]);
   });
 
   it("draws no accent rule beside its eyebrows", () => {
@@ -3124,9 +2978,9 @@ describe("CareersPage", () => {
     }
   });
 
-  it("offers FAQ, support and contact at the bottom", () => {
+  it("offers contact, feedback and about at the bottom", () => {
     renderCompanyPage(CareersPage, "/careers");
-    expect(stripHrefs()).toEqual(["/faq", "/support", "/contact"]);
+    expect(stripHrefs()).toEqual(["/contact", "/feedback", "/about"]);
   });
 });
 ```
@@ -3150,32 +3004,32 @@ import { ACCENT, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 import { Footer } from "@/features/landing/ui/footer";
 import { SiteHeader } from "@/shared/components/site-header";
 
-export type CompanyPageId = "about" | "contact" | "support" | "faq" | "feedback" | "careers";
+export type CompanyPageId = "about" | "contact" | "feedback" | "careers";
 
 /**
  * The strip's candidates, in priority order. A page shows the first three
- * that are not itself — so About gets FAQ, support and contact, and the form
- * pages get feedback in the cell their own link would have taken.
+ * that are not itself. The help center's `/help` joins this list when it
+ * lands (follow-ups #132), ahead of `about`.
  */
 const STRIP: ReadonlyArray<{ id: CompanyPageId; to: string }> = [
-  { id: "faq", to: "/faq" },
-  { id: "support", to: "/support" },
   { id: "contact", to: "/contact" },
   { id: "feedback", to: "/feedback" },
+  { id: "about", to: "/about" },
+  { id: "careers", to: "/careers" },
 ];
 
 /**
  * The frame every company page wears.
  *
  * A compact dark band with the site header over it and the title left, not
- * the provider pitch's 660px hero: six secondary pages in a row with that
+ * the provider pitch's 660px hero: four secondary pages in a row with that
  * hero would tire the reader and push the answer under the fold on a phone.
  * Decided in brainstorming, 2026-09-02, against a light top and against the
  * full hero.
  *
- * Below the page's own sections, the "still have questions?" strip and the
- * footer, the same on all six — which is how a reader who landed on the
- * wrong page reaches the right one without scrolling for the footer.
+ * Below the page's own sections, the "see also" strip and the footer, the
+ * same on all four — which is how a reader who landed on the wrong page
+ * reaches the right one without scrolling for the footer.
  */
 export function CompanyPage({
   page,
@@ -3229,7 +3083,7 @@ export function CompanyPage({
 
       <section className="page-shell border-t py-14" style={{ borderColor: "var(--l-border)" }}>
         <h2 className="m-0">
-          <Eyebrow>{t("shared.stillQuestions")}</Eyebrow>
+          <Eyebrow>{t("shared.seeAlso")}</Eyebrow>
         </h2>
         <div
           className="mt-5 grid overflow-hidden rounded-[16px] border md:grid-cols-3"
@@ -3440,7 +3294,7 @@ interface Principle {
 
 /**
  * No open roles, said plainly, and a spontaneous application by email. The
- * three "how we work" sentences are the only copy on the six pages not
+ * three "how we work" sentences are the only copy on the four pages not
  * derived from the code; the owner approved them.
  */
 export function CareersPage() {
@@ -3532,7 +3386,7 @@ Expected: 7 pass; typecheck clean (the route tree regenerates on the first `vite
 
 - [ ] **Step 8: Look at it**
 
-Start the app (`bun run dev` in `apps/frontend/web`, API running per the dev-environment memory) and open `/about` and `/careers` at desktop and at 390px wide. Check: the header sits over the band with the white logo and no lit pill; the band is ~300px, not a full screen; no hairline beside any eyebrow; the strip stacks on the phone; the footer's Empresa column shows seven links.
+Start the app (`bun run dev` in `apps/frontend/web`, API running per the dev-environment memory) and open `/about` and `/careers` at desktop and at 390px wide. Check: the header sits over the band with the white logo and no lit pill; the band is ~300px, not a full screen; no hairline beside any eyebrow; the strip stacks on the phone; the footer's Empresa column shows five links.
 
 - [ ] **Step 9: Commit**
 
@@ -3543,344 +3397,59 @@ git commit -m "feat(company): the shared frame, and the About and Careers pages"
 
 ---
 
-### Task 11: The FAQ — three groups on one page, a sticky index
+### Task 11: The form, and the two pages built on it (Contact, Feedback)
 
 **Files:**
-- Create: `apps/frontend/web/src/features/company/ui/faq-index.tsx`
-- Create: `apps/frontend/web/src/features/company/ui/faq-page.tsx`
-- Create: `apps/frontend/web/src/routes/faq.tsx`
-- Test: `apps/frontend/web/src/features/company/ui/__tests__/faq-page.test.tsx`
+- Create: `apps/frontend/web/src/features/company/domain/contact-form-validation.ts`
+- Create: `apps/frontend/web/src/features/company/data/contact-request.repository.ts`
+- Create: `apps/frontend/web/src/features/company/viewmodel/use-submit-contact-request.ts`
+- Create: `apps/frontend/web/src/features/company/ui/contact-form.tsx`
+- Create: `apps/frontend/web/src/features/company/ui/contact-request-page.tsx`
+- Create: `apps/frontend/web/src/routes/contact.tsx`, `feedback.tsx`
+- Test: `apps/frontend/web/src/features/company/domain/__tests__/contact-form-validation.test.ts`, `apps/frontend/web/src/features/company/ui/__tests__/contact-form.test.tsx`
 
 **Interfaces:**
-- Consumes: `CompanyPage`, `Eyebrow` (Task 10); `faq.groups` (Task 9).
-- Produces: `FaqPage`, `FaqIndex({ groups, activeId, onPick })`, `FaqGroup` type.
-
-- [ ] **Step 1: Write the failing test**
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { FaqPage } from "../faq-page";
-import { renderCompanyPage } from "./render-company-page";
-
-describe("FaqPage", () => {
-  it("renders all twenty questions, grouped, with the first of each group open", () => {
-    renderCompanyPage(FaqPage, "/faq");
-    const details = document.querySelectorAll("details");
-    expect(details).toHaveLength(20);
-    const open = Array.from(details).filter((d) => d.open).map((d) => d.querySelector("summary")!.textContent);
-    expect(open).toEqual(["How does a booking work?", "Who can be a provider?", "Is my payment data stored?"]);
-    for (const group of ["Customers", "Providers", "Payments and safety"]) {
-      expect(screen.getByRole("heading", { level: 2, name: group })).toBeInTheDocument();
-    }
-  });
-
-  it("answers with the truth about payment methods and cancellation", () => {
-    renderCompanyPage(FaqPage, "/faq");
-    expect(screen.getByText(/Right now, M-Pesa \(Vodacom\)/)).toBeInTheDocument();
-    expect(screen.getByText(/the request commits you to nothing/)).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/refund/i);
-  });
-
-  it("opens and closes a question", async () => {
-    renderCompanyPage(FaqPage, "/faq");
-    const summary = screen.getByText("When do I pay?");
-    const details = summary.closest("details")!;
-    expect(details.open).toBe(false);
-    await userEvent.click(summary);
-    expect(details.open).toBe(true);
-  });
-
-  it("indexes the three groups with their counts, and links the way out to support", () => {
-    renderCompanyPage(FaqPage, "/faq");
-    const index = screen.getByRole("navigation", { name: /sections/i });
-    expect(index).toHaveTextContent("Customers");
-    expect(index).toHaveTextContent("8");
-    expect(index).toHaveTextContent("Providers");
-    expect(index).toHaveTextContent("7");
-    expect(index).toHaveTextContent("Payments and safety");
-    expect(index).toHaveTextContent("5");
-    expect(screen.getAllByRole("link", { name: /message support/i })[0]).toHaveAttribute("href", "/support");
-  });
-
-  it("offers support, contact and feedback at the bottom — not itself", () => {
-    renderCompanyPage(FaqPage, "/faq");
-    const strip = screen.getByRole("heading", { name: /still have questions/i }).parentElement!;
-    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/support", "/contact", "/feedback"]);
-  });
-});
-```
-
-- [ ] **Step 2: Run to see it fail**
-
-Run: `cd apps/frontend/web && bunx vitest run src/features/company/ui/__tests__/faq-page.test.tsx`
-Expected: FAIL — module not found.
-
-- [ ] **Step 3: Write the index**
-
-`faq-index.tsx`:
-
-```tsx
-import { Link } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { ACCENT } from "@/features/landing/ui/palette";
-import type { FaqGroup } from "./faq-page";
-
-/**
- * The way through the page: one entry per group with its count, and the way
- * out when the answer is not here.
- *
- * A sticky column on a desktop and a row of chips on a phone — the same
- * list, styled twice, so neither can drift. The `nav` is labelled because
- * an unlabelled one announces "navigation" beside the site's own.
- */
-export function FaqIndex({
-  groups,
-  activeId,
-  onPick,
-}: {
-  groups: readonly FaqGroup[];
-  activeId: string;
-  onPick: (id: string) => void;
-}) {
-  const { t } = useTranslation("company");
-
-  return (
-    <nav aria-label={t("faq.eyebrow")} className="md:sticky md:top-24">
-      <ul className="m-0 flex gap-2 overflow-x-auto p-0 md:flex-col md:gap-0 md:overflow-visible">
-        {groups.map((group) => {
-          const active = group.id === activeId;
-          return (
-            <li key={group.id} className="list-none shrink-0">
-              <button
-                type="button"
-                onClick={() => onPick(group.id)}
-                aria-current={active ? "true" : undefined}
-                className={`rounded-full border px-3.5 py-2 text-sm font-semibold md:w-full md:rounded-none md:border-0 md:border-l-2 md:px-3 md:text-left ${
-                  active ? "md:border-l-[color:var(--l-accent)]" : "md:border-l-transparent"
-                }`}
-                style={
-                  active
-                    ? { color: ACCENT, borderColor: ACCENT }
-                    : { color: "var(--l-muted)", borderColor: "var(--l-border)" }
-                }
-              >
-                {group.title}
-                <span className="ml-1.5 font-normal text-[color:var(--l-muted)]">· {group.items.length}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div
-        className="mt-6 hidden rounded-[16px] border p-5 md:block"
-        style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
-      >
-        <p className="font-rounded m-0 text-[15px] font-extrabold">{t("faq.notFoundTitle")}</p>
-        <p className="mt-1 text-sm leading-relaxed text-[color:var(--l-muted)]">{t("faq.notFoundBody")}</p>
-        <Link
-          to="/support"
-          className="font-rounded mt-4 inline-flex items-center rounded-full px-5 py-2.5 text-[13px] font-extrabold text-white no-underline"
-          style={{ background: ACCENT }}
-        >
-          {t("faq.notFoundCta")}
-        </Link>
-      </div>
-    </nav>
-  );
-}
-```
-
-- [ ] **Step 4: Write the page**
-
-`faq-page.tsx`:
-
-```tsx
-import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
-import { ACCENT } from "@/features/landing/ui/palette";
-import { CompanyPage } from "./company-page";
-import { FaqIndex } from "./faq-index";
-
-export interface FaqGroup {
-  id: "customers" | "providers" | "payments";
-  title: string;
-  items: { q: string; a: string }[];
-}
-
-/**
- * Twenty questions in three groups, all on one page.
- *
- * All on one page rather than tabs, decided 2026-09-02: Ctrl+F works, a
- * shared link lands on the question, and a crawler sees all of it. Native
- * `<details>` — no library — with the first of each group open so the page
- * does not start as a wall of closed rows.
- *
- * The index highlights the group under the reader's eye by watching each
- * group's heading; jsdom has no `IntersectionObserver`, so the page settles
- * on the first group there and the test does not depend on scroll.
- */
-export function FaqPage() {
-  const { t } = useTranslation("company");
-  const raw = t("faq.groups", { returnObjects: true }) as FaqGroup[] | string;
-  const groups = Array.isArray(raw) ? raw : [];
-  const [activeId, setActiveId] = useState<string>(groups[0]?.id ?? "customers");
-  const headings = useRef(new Map<string, HTMLElement>());
-
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActiveId((visible.target as HTMLElement).dataset["group"] ?? "customers");
-      },
-      { rootMargin: "-20% 0px -70% 0px" },
-    );
-    for (const el of headings.current.values()) observer.observe(el);
-    return () => observer.disconnect();
-  }, [groups.length]);
-
-  function jumpTo(id: string) {
-    setActiveId(id);
-    headings.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  return (
-    <CompanyPage page="faq" eyebrow={t("faq.eyebrow")} title={t("faq.heading")} lede={t("faq.lede")}>
-      <section className="page-shell grid gap-8 py-14 md:grid-cols-[220px_1fr] md:gap-14 md:py-20">
-        <FaqIndex groups={groups} activeId={activeId} onPick={jumpTo} />
-
-        <div>
-          {groups.map((group, gi) => (
-            <section key={group.id} id={`faq-${group.id}`} className={gi === 0 ? "" : "mt-14"}>
-              <h2
-                ref={(el) => {
-                  if (el) headings.current.set(group.id, el);
-                }}
-                data-group={group.id}
-                className="font-rounded scroll-mt-28 text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em]"
-              >
-                {group.title}
-              </h2>
-              <div className="mt-5 grid gap-3">
-                {group.items.map((item, i) => (
-                  <details
-                    key={item.q}
-                    open={i === 0}
-                    className="group rounded-[12px] border open:border-[color:var(--l-accent)]"
-                    style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
-                  >
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
-                      {item.q}
-                      <span aria-hidden="true" className="text-lg leading-none group-open:hidden" style={{ color: ACCENT }}>+</span>
-                      <span aria-hidden="true" className="hidden text-lg leading-none group-open:inline" style={{ color: ACCENT }}>−</span>
-                    </summary>
-                    <p className="m-0 px-5 pb-5 text-[15px] leading-relaxed text-[color:var(--l-muted)]">{item.a}</p>
-                  </details>
-                ))}
-              </div>
-            </section>
-          ))}
-
-          <div
-            className="mt-12 flex flex-col gap-4 rounded-[16px] border p-6 md:hidden"
-            style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
-          >
-            <p className="font-rounded m-0 text-[15px] font-extrabold">{t("faq.notFoundTitle")}</p>
-            <p className="m-0 text-sm text-[color:var(--l-muted)]">{t("faq.notFoundBody")}</p>
-            <Link
-              to="/support"
-              className="font-rounded inline-flex w-fit items-center rounded-full px-5 py-2.5 text-[13px] font-extrabold text-white no-underline"
-              style={{ background: ACCENT }}
-            >
-              {t("faq.notFoundCta")}
-            </Link>
-          </div>
-        </div>
-      </section>
-    </CompanyPage>
-  );
-}
-```
-
-- [ ] **Step 5: The route**
-
-`routes/faq.tsx`: as `about.tsx`, with `"/faq"`, `faq.headTitle`, `FaqPage` from `@/features/company/ui/faq-page`.
-
-- [ ] **Step 6: Run the tests, typecheck, lint**
-
-Run: `cd apps/frontend/web && bunx vitest run src/features/company && bun run typecheck && bun run lint`
-Expected: all company tests pass (12); clean.
-
-- [ ] **Step 7: Look at it** — `/faq` at desktop: the index sticks while scrolling and the lit group follows; on a phone the index is a chip row and the "Not here?" card sits under the last group.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add apps/frontend/web/src/features/company apps/frontend/web/src/routes/faq.tsx apps/frontend/web/src/routeTree.gen.ts
-git commit -m "feat(company): the FAQ — three groups on one page, with a sticky index"
-```
-
----
-
-### Task 12: The form, and the three pages built on it (Contact, Support, Feedback)
-
-**Files:**
-- Create: `apps/frontend/web/src/features/company/domain/support-form-validation.ts`
-- Create: `apps/frontend/web/src/features/company/data/support-request.repository.ts`
-- Create: `apps/frontend/web/src/features/company/viewmodel/use-submit-support-request.ts`
-- Create: `apps/frontend/web/src/features/company/ui/support-form.tsx`
-- Create: `apps/frontend/web/src/features/company/ui/support-request-page.tsx`
-- Create: `apps/frontend/web/src/routes/contact.tsx`, `support.tsx`, `feedback.tsx`
-- Test: `apps/frontend/web/src/features/company/domain/__tests__/support-form-validation.test.ts`, `apps/frontend/web/src/features/company/ui/__tests__/support-form.test.tsx`
-
-**Interfaces:**
-- Consumes: `SUPPORT_TOPICS`, `supportEmailRequired` (`@ntizo/shared`); `sessionGraphql`, `GraphqlError` (`@/shared/lib/graphql/session-graphql`); `useCurrentUser`; `CONTACT`; `CompanyPage`.
-- Produces: `validateSupportForm(values, { emailRequired }): SupportFormErrors`; `submitSupportRequest(input): Promise<{ requestId; reference }>` and `SubmitSupportRequestInput`; `useSubmitSupportRequest()` (a `useMutation`); `SupportForm({ kind, messagePlaceholder })`; `SupportRequestPage({ kind })`.
+- Consumes: `CONTACT_TOPICS`, `contactEmailRequired` (`@ntizo/shared`); `sessionGraphql`, `GraphqlError` (`@/shared/lib/graphql/session-graphql`); `useCurrentUser`; `CONTACT`; `CompanyPage`, `renderCompanyPage`.
+- Produces: `validateContactForm(values, { emailRequired }): ContactFormErrors`; `submitContactRequest(input): Promise<{ requestId; reference }>` and `SubmitContactRequestInput`; `useSubmitContactRequest()` (a `useMutation`); `ContactForm({ kind, messagePlaceholder })`; `ContactRequestPage({ kind })`.
 
 - [ ] **Step 1: The validation, and its failing test**
 
-`domain/__tests__/support-form-validation.test.ts`:
+`domain/__tests__/contact-form-validation.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { validateSupportForm } from "../support-form-validation";
+import { validateContactForm } from "../contact-form-validation";
 
-const ok = { name: "Joana Matola", email: "joana@exemplo.com", message: "A reserva de sábado não aparece." };
+const ok = { name: "Joana Matola", email: "joana@exemplo.com", message: "Gostava de propor uma parceria." };
 
-describe("validateSupportForm", () => {
+describe("validateContactForm", () => {
   it("passes a complete form", () => {
-    expect(validateSupportForm(ok, { emailRequired: true })).toEqual({});
+    expect(validateContactForm(ok, { emailRequired: true })).toEqual({});
   });
   it("needs a name of at least two characters", () => {
-    expect(validateSupportForm({ ...ok, name: " J " }, { emailRequired: true })).toEqual({ name: "required" });
+    expect(validateContactForm({ ...ok, name: " J " }, { emailRequired: true })).toEqual({ name: "required" });
   });
   it("needs an email when the kind requires one, and a well-formed one whenever one is given", () => {
-    expect(validateSupportForm({ ...ok, email: "" }, { emailRequired: true })).toEqual({ email: "required" });
-    expect(validateSupportForm({ ...ok, email: "" }, { emailRequired: false })).toEqual({});
-    expect(validateSupportForm({ ...ok, email: "joana" }, { emailRequired: false })).toEqual({ email: "invalid" });
+    expect(validateContactForm({ ...ok, email: "" }, { emailRequired: true })).toEqual({ email: "required" });
+    expect(validateContactForm({ ...ok, email: "" }, { emailRequired: false })).toEqual({});
+    expect(validateContactForm({ ...ok, email: "joana" }, { emailRequired: false })).toEqual({ email: "invalid" });
   });
   it("needs at least ten characters of message", () => {
-    expect(validateSupportForm({ ...ok, message: "olá   " }, { emailRequired: true })).toEqual({ message: "tooShort" });
+    expect(validateContactForm({ ...ok, message: "olá   " }, { emailRequired: true })).toEqual({ message: "tooShort" });
   });
 });
 ```
 
-`domain/support-form-validation.ts` (import-free — the boundaries lint requires it):
+`domain/contact-form-validation.ts` (import-free — the boundaries lint requires it):
 
 ```ts
-export interface SupportFormValues {
+export interface ContactFormValues {
   name: string;
   email: string;
   message: string;
 }
 
-export interface SupportFormErrors {
+export interface ContactFormErrors {
   name?: "required";
   email?: "required" | "invalid";
   message?: "tooShort";
@@ -3893,11 +3462,11 @@ export const MESSAGE_MIN = 10;
 export const MESSAGE_MAX = 2000;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function validateSupportForm(
-  values: SupportFormValues,
+export function validateContactForm(
+  values: ContactFormValues,
   options: { emailRequired: boolean },
-): SupportFormErrors {
-  const errors: SupportFormErrors = {};
+): ContactFormErrors {
+  const errors: ContactFormErrors = {};
   if (values.name.trim().length < NAME_MIN) errors.name = "required";
   const email = values.email.trim();
   if (email === "") {
@@ -3914,19 +3483,19 @@ Run: `cd apps/frontend/web && bunx vitest run src/features/company/domain` — E
 
 - [ ] **Step 2: The repository and the hook**
 
-`data/support-request.repository.ts`:
+`data/contact-request.repository.ts`:
 
 ```ts
-import type { SupportRequestKind } from "@ntizo/shared";
+import type { ContactRequestKind } from "@ntizo/shared";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 
 const SUBMIT = `
-  mutation SupportRequestSubmit($input: SupportRequestSubmitInput!) {
-    supportRequestSubmit(input: $input) { requestId reference }
+  mutation ContactRequestSubmit($input: ContactRequestSubmitInput!) {
+    contactRequestSubmit(input: $input) { requestId reference }
   }`;
 
-export interface SubmitSupportRequestInput {
-  kind: SupportRequestKind;
+export interface SubmitContactRequestInput {
+  kind: ContactRequestKind;
   topic: string;
   name: string;
   email: string | null;
@@ -3944,26 +3513,26 @@ export interface SubmitSupportRequestInput {
  * private mount accepts anonymous callers (`requesterUserId: null`) and this
  * is the first mutation that relies on it — see the spec.
  */
-export async function submitSupportRequest(
-  input: SubmitSupportRequestInput,
+export async function submitContactRequest(
+  input: SubmitContactRequestInput,
 ): Promise<{ requestId: string; reference: string }> {
-  const d = await sessionGraphql<{ supportRequestSubmit: { requestId: string; reference: string } }>(SUBMIT, {
+  const d = await sessionGraphql<{ contactRequestSubmit: { requestId: string; reference: string } }>(SUBMIT, {
     input,
   });
-  return d.supportRequestSubmit;
+  return d.contactRequestSubmit;
 }
 ```
 
-`viewmodel/use-submit-support-request.ts`:
+`viewmodel/use-submit-contact-request.ts`:
 
 ```ts
 import { useMutation } from "@tanstack/react-query";
-import { submitSupportRequest, type SubmitSupportRequestInput } from "../data/support-request.repository";
+import { submitContactRequest, type SubmitContactRequestInput } from "../data/contact-request.repository";
 
 /** Not retried: a retry after a rate-limit refusal is exactly what the limit refuses. */
-export function useSubmitSupportRequest() {
+export function useSubmitContactRequest() {
   return useMutation({
-    mutationFn: (input: SubmitSupportRequestInput) => submitSupportRequest(input),
+    mutationFn: (input: SubmitContactRequestInput) => submitContactRequest(input),
     retry: false,
   });
 }
@@ -3971,7 +3540,7 @@ export function useSubmitSupportRequest() {
 
 - [ ] **Step 3: Write the failing form tests**
 
-`ui/__tests__/support-form.test.tsx`:
+`ui/__tests__/contact-form.test.tsx`:
 
 ```tsx
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -3979,19 +3548,20 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CurrentUserDTO } from "@ntizo/shared";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
-import { SupportRequestPage } from "../support-request-page";
+import { userQueries } from "@/features/user/data/user.repository";
+import { ContactRequestPage } from "../contact-request-page";
 import { renderCompanyPage } from "./render-company-page";
 
 const fakes = vi.hoisted(() => ({ submit: vi.fn() }));
-vi.mock("@/features/company/data/support-request.repository", () => ({
-  submitSupportRequest: fakes.submit,
+vi.mock("@/features/company/data/contact-request.repository", () => ({
+  submitContactRequest: fakes.submit,
 }));
 
-function SupportPage() {
-  return <SupportRequestPage kind="support" />;
+function ContactPage() {
+  return <ContactRequestPage kind="contact" />;
 }
 function FeedbackPage() {
-  return <SupportRequestPage kind="feedback" />;
+  return <ContactRequestPage kind="feedback" />;
 }
 
 function user(): CurrentUserDTO {
@@ -4002,15 +3572,21 @@ function user(): CurrentUserDTO {
   };
 }
 
+async function fillContact() {
+  await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
+  await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
+  await userEvent.type(screen.getByLabelText("Message"), "Gostava de propor uma parceria com a minha escola.");
+}
+
 beforeEach(() => {
   fakes.submit.mockReset();
   fakes.submit.mockResolvedValue({ requestId: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C" });
 });
 afterEach(() => vi.clearAllMocks());
 
-describe("SupportRequestPage — support", () => {
+describe("ContactRequestPage — contact", () => {
   it("validates before sending and lands the refusal beside the field", async () => {
-    renderCompanyPage(SupportPage, "/support");
+    renderCompanyPage(ContactPage, "/contact");
     await userEvent.click(screen.getByRole("button", { name: /send message/i }));
     expect(screen.getByText("Tell us your name.")).toBeInTheDocument();
     expect(screen.getByText("We need an email to reply to.")).toBeInTheDocument();
@@ -4019,19 +3595,17 @@ describe("SupportRequestPage — support", () => {
   });
 
   it("sends what was typed, with the locale, the first topic by default, and an empty honeypot", async () => {
-    renderCompanyPage(SupportPage, "/support");
-    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
-    await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
-    await userEvent.type(screen.getByLabelText("Message"), "A reserva de sábado não aparece na minha conta.");
+    renderCompanyPage(ContactPage, "/contact");
+    await fillContact();
     await userEvent.click(screen.getByRole("button", { name: /send message/i }));
 
     await waitFor(() => expect(fakes.submit).toHaveBeenCalledTimes(1));
     expect(fakes.submit.mock.calls[0]![0]).toEqual({
-      kind: "support",
-      topic: "account",
+      kind: "contact",
+      topic: "general",
       name: "Joana Matola",
       email: "joana@exemplo.com",
-      message: "A reserva de sábado não aparece na minha conta.",
+      message: "Gostava de propor uma parceria com a minha escola.",
       locale: expect.stringMatching(/^en/),
       originPath: null,
       website: "",
@@ -4039,10 +3613,8 @@ describe("SupportRequestPage — support", () => {
   });
 
   it("replaces the form with the reference and the reply address on success", async () => {
-    renderCompanyPage(SupportPage, "/support");
-    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
-    await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
-    await userEvent.type(screen.getByLabelText("Message"), "A reserva de sábado não aparece na minha conta.");
+    renderCompanyPage(ContactPage, "/contact");
+    await fillContact();
     await userEvent.click(screen.getByRole("button", { name: /send message/i }));
 
     expect(await screen.findByRole("heading", { name: "We got your message." })).toBeInTheDocument();
@@ -4051,42 +3623,46 @@ describe("SupportRequestPage — support", () => {
     expect(screen.queryByLabelText("Message")).toBeNull();
   });
 
-  it("says the rate-limit sentence, with the support address, and keeps what was typed", async () => {
+  it("says the rate-limit sentence, with the general address, and keeps what was typed", async () => {
     fakes.submit.mockRejectedValue(
-      new GraphqlError(200, [{ message: "too many", extensions: { code: "UNPROCESSABLE", originalCode: "SUPPORT_RATE_LIMITED" } }]),
+      new GraphqlError(200, [{ message: "too many", extensions: { code: "UNPROCESSABLE", originalCode: "CONTACT_RATE_LIMITED" } }]),
     );
-    renderCompanyPage(SupportPage, "/support");
-    await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
-    await userEvent.type(screen.getByLabelText("Email"), "joana@exemplo.com");
-    await userEvent.type(screen.getByLabelText("Message"), "A reserva de sábado não aparece na minha conta.");
+    renderCompanyPage(ContactPage, "/contact");
+    await fillContact();
     await userEvent.click(screen.getByRole("button", { name: /send message/i }));
 
-    expect(await screen.findByText(/Try again in an hour, or write to suporte@ntizo.co.mz/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Message")).toHaveValue("A reserva de sábado não aparece na minha conta.");
+    expect(await screen.findByText(/Try again in an hour, or write to ola@ntizo.co.mz/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Message")).toHaveValue("Gostava de propor uma parceria com a minha escola.");
   });
 
   it("prefills name and email from the session and hides the sign-in hint", async () => {
-    const { qc } = renderCompanyPage(SupportPage, "/support");
-    qc.setQueryData(["user", "me"], user());
+    const { qc } = renderCompanyPage(ContactPage, "/contact");
+    qc.setQueryData(userQueries.me().queryKey, user());
     await waitFor(() => expect(screen.getByLabelText("Name")).toHaveValue("Joana Matola"));
     expect(screen.getByLabelText("Email")).toHaveValue("joana@exemplo.com");
     expect(screen.queryByText(/have an account/i)).toBeNull();
   });
 
   it("offers sign-in carrying the way back, when signed out", () => {
-    renderCompanyPage(SupportPage, "/support");
-    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/sign-in?next=%2Fsupport");
+    renderCompanyPage(ContactPage, "/contact");
+    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/sign-in?next=%2Fcontact");
   });
 
   it("hides the honeypot from people", () => {
-    renderCompanyPage(SupportPage, "/support");
+    renderCompanyPage(ContactPage, "/contact");
     const trap = document.querySelector('input[name="website"]')!;
     expect(trap).toHaveAttribute("tabindex", "-1");
     expect(trap).toHaveAttribute("aria-hidden", "true");
   });
+
+  it("offers feedback, about and careers at the bottom", () => {
+    renderCompanyPage(ContactPage, "/contact");
+    const strip = screen.getByRole("heading", { name: /see also/i }).parentElement!;
+    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/feedback", "/about", "/careers"]);
+  });
 });
 
-describe("SupportRequestPage — feedback", () => {
+describe("ContactRequestPage — feedback", () => {
   it("lets the email be empty, sends the page it came from, and thanks without a reply line", async () => {
     renderCompanyPage(FeedbackPage, "/feedback");
     await userEvent.type(screen.getByLabelText("Name"), "Joana Matola");
@@ -4101,33 +3677,33 @@ describe("SupportRequestPage — feedback", () => {
 });
 ```
 
-The `["user", "me"]` key is `userQueries.me()`'s — check `features/user/data/user.repository.ts` and use whatever it exports (`userQueries.me().queryKey`) rather than the literal if they differ.
+`userQueries.me().queryKey` is the session's cache key — confirm `features/user/data/user.repository.ts` exports `userQueries` that way; if the export is shaped differently, use whatever it exposes for the `me` key rather than a literal.
 
 - [ ] **Step 4: Run to see them fail**
 
-Run: `cd apps/frontend/web && bunx vitest run src/features/company/ui/__tests__/support-form.test.tsx`
+Run: `cd apps/frontend/web && bunx vitest run src/features/company/ui/__tests__/contact-form.test.tsx`
 Expected: FAIL — modules not found.
 
 - [ ] **Step 5: Write the form**
 
-`ui/support-form.tsx`:
+`ui/contact-form.tsx`:
 
 ```tsx
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Check } from "lucide-react";
-import { SUPPORT_TOPICS, supportEmailRequired, type SupportRequestKind } from "@ntizo/shared";
+import { CONTACT_TOPICS, contactEmailRequired, type ContactRequestKind } from "@ntizo/shared";
 import { Input, Label, Select } from "@ntizo/frontend-ui";
 import { ACCENT } from "@/features/landing/ui/palette";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import { CONTACT } from "@/shared/lib/contact";
-import { MESSAGE_MAX, NAME_MAX, validateSupportForm, type SupportFormErrors } from "../domain/support-form-validation";
-import { useSubmitSupportRequest } from "../viewmodel/use-submit-support-request";
+import { MESSAGE_MAX, NAME_MAX, validateContactForm, type ContactFormErrors } from "../domain/contact-form-validation";
+import { useSubmitContactRequest } from "../viewmodel/use-submit-contact-request";
 
 /**
- * One form, three kinds.
+ * One form, two kinds.
  *
  * What differs by kind is the topic list, whether an email is required, and
  * whether the page it came from is sent (feedback only — "I was on the
@@ -4143,12 +3719,12 @@ import { useSubmitSupportRequest } from "../viewmodel/use-submit-support-request
  * from screen readers. A script that fills every field fills it; the server
  * answers with a success it never wrote.
  */
-export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequestKind; messagePlaceholder: string }) {
+export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequestKind; messagePlaceholder: string }) {
   const { t, i18n } = useTranslation("company");
   const { data: user } = useCurrentUser();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const topics = SUPPORT_TOPICS[kind];
-  const emailRequired = supportEmailRequired(kind);
+  const topics = CONTACT_TOPICS[kind];
+  const emailRequired = contactEmailRequired(kind);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -4165,13 +3741,13 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
     setPrefilled(true);
   }, [user, prefilled]);
 
-  const submit = useSubmitSupportRequest();
-  const errors: SupportFormErrors = attempted ? validateSupportForm({ name, email, message }, { emailRequired }) : {};
+  const submit = useSubmitContactRequest();
+  const errors: ContactFormErrors = attempted ? validateContactForm({ name, email, message }, { emailRequired }) : {};
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setAttempted(true);
-    if (Object.keys(validateSupportForm({ name, email, message }, { emailRequired })).length > 0) return;
+    if (Object.keys(validateContactForm({ name, email, message }, { emailRequired })).length > 0) return;
     submit.mutate({
       kind,
       topic,
@@ -4206,12 +3782,9 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
         <p className="mt-4 inline-block rounded-md px-3 py-1.5 font-mono text-sm" style={{ background: "var(--color-muted)" }}>
           {t("form.success.reference", { reference: submit.data.reference })}
         </p>
-        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+        <div className="mt-6 flex justify-center">
           <Link to="/" className="font-rounded rounded-full border px-6 py-3 text-[14px] font-bold no-underline" style={{ borderColor: "rgba(19,23,27,.25)", color: "inherit" }}>
             {t("form.success.home")}
-          </Link>
-          <Link to="/faq" className="font-rounded rounded-full border px-6 py-3 text-[14px] font-bold no-underline" style={{ borderColor: "rgba(19,23,27,.25)", color: "inherit" }}>
-            {t("form.success.faq")}
           </Link>
         </div>
       </div>
@@ -4219,16 +3792,16 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
   }
 
   const serverError = submit.error
-    ? submit.error instanceof GraphqlError && submit.error.code === "SUPPORT_RATE_LIMITED"
-      ? t("form.errors.rateLimited", { email: CONTACT.support })
-      : t("form.errors.generic", { email: CONTACT.support })
+    ? submit.error instanceof GraphqlError && submit.error.code === "CONTACT_RATE_LIMITED"
+      ? t("form.errors.rateLimited", { email: CONTACT.general })
+      : t("form.errors.generic", { email: CONTACT.general })
     : null;
 
   return (
     <form
       onSubmit={onSubmit}
       noValidate
-      className="rounded-[20px] border p-6 md:p-8"
+      className="relative rounded-[20px] border p-6 md:p-8"
       style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
     >
       {!user && (
@@ -4242,9 +3815,9 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
       )}
 
       <div className="grid gap-5">
-        <Field label={t("form.name")} htmlFor="support-name" error={errors.name && t("form.errors.nameRequired")}>
+        <Field label={t("form.name")} htmlFor="contact-name" error={errors.name && t("form.errors.nameRequired")}>
           <Input
-            id="support-name"
+            id="contact-name"
             name="name"
             autoComplete="name"
             maxLength={NAME_MAX}
@@ -4257,12 +3830,12 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
 
         <Field
           label={t("form.email")}
-          htmlFor="support-email"
+          htmlFor="contact-email"
           hint={emailRequired ? undefined : t("form.emailOptional")}
           error={errors.email && t(errors.email === "required" ? "form.errors.emailRequired" : "form.errors.emailInvalid")}
         >
           <Input
-            id="support-email"
+            id="contact-email"
             name="email"
             type="email"
             autoComplete="email"
@@ -4273,9 +3846,9 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
           />
         </Field>
 
-        <Field label={t("form.topic")} htmlFor="support-topic">
+        <Field label={t("form.topic")} htmlFor="contact-topic">
           <Select
-            id="support-topic"
+            id="contact-topic"
             name="topic"
             value={topic}
             onChange={setTopic}
@@ -4283,9 +3856,9 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
           />
         </Field>
 
-        <Field label={t("form.message")} htmlFor="support-message" error={errors.message && t("form.errors.messageTooShort")}>
+        <Field label={t("form.message")} htmlFor="contact-message" error={errors.message && t("form.errors.messageTooShort")}>
           <textarea
-            id="support-message"
+            id="contact-message"
             name="message"
             rows={6}
             maxLength={MESSAGE_MAX}
@@ -4301,9 +3874,9 @@ export function SupportForm({ kind, messagePlaceholder }: { kind: SupportRequest
             tech; `autoComplete="off"` so a browser does not fill it for a
             person either. */}
         <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">
-          <label htmlFor="support-website">Website</label>
+          <label htmlFor="contact-website">Website</label>
           <input
-            id="support-website"
+            id="contact-website"
             name="website"
             type="text"
             tabIndex={-1}
@@ -4356,63 +3929,49 @@ function Field({
 }
 ```
 
-`form` needs `position: relative` for the trap's absolute offset — add `relative` to the form's className.
+- [ ] **Step 6: Write the page the two routes share**
 
-- [ ] **Step 6: Write the page the three routes share**
-
-`ui/support-request-page.tsx`:
+`ui/contact-request-page.tsx`:
 
 ```tsx
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import type { SupportRequestKind } from "@ntizo/shared";
+import type { ContactRequestKind } from "@ntizo/shared";
 import { ACCENT } from "@/features/landing/ui/palette";
 import { CONTACT } from "@/shared/lib/contact";
-import { CompanyPage, type CompanyPageId } from "./company-page";
-import { SupportForm } from "./support-form";
+import { CompanyPage } from "./company-page";
+import { ContactForm } from "./contact-form";
 
-/** Which three cards sit under each form, and where the third one goes. */
-const CARDS: Record<SupportRequestKind, ReadonlyArray<{ key: string; kind: "email" | "social" | "link"; to?: string }>> = {
+/** Which three cards sit under each form, and where the linking one goes. */
+const CARDS: Record<ContactRequestKind, ReadonlyArray<{ key: string; kind: "email" | "social" | "text" | "link"; to?: string }>> = {
   contact: [
     { key: "email", kind: "email" },
     { key: "social", kind: "social" },
-    { key: "support", kind: "link", to: "/support" },
-  ],
-  support: [
-    { key: "email", kind: "email" },
-    { key: "expect", kind: "link" },
-    { key: "faq", kind: "link", to: "/faq" },
+    { key: "feedback", kind: "link", to: "/feedback" },
   ],
   feedback: [
-    { key: "read", kind: "link" },
-    { key: "support", kind: "link", to: "/support" },
-    { key: "faq", kind: "link", to: "/faq" },
+    { key: "read", kind: "text" },
+    { key: "contact", kind: "link", to: "/contact" },
+    { key: "social", kind: "social" },
   ],
-};
-
-const EMAIL_FOR: Record<SupportRequestKind, string> = {
-  contact: CONTACT.general,
-  support: CONTACT.support,
-  feedback: CONTACT.support,
 };
 
 /**
- * Contact, Support and Feedback: a centred band, the form, three cards.
+ * Contact and Feedback: a centred band, the form, three cards.
  *
  * Single centred column, decided 2026-09-02 against a side rail: the form is
  * what the page is for, and the alternatives sit under it rather than beside
- * it. Each kind's copy lives under its own key in the `company` namespace;
- * `page` doubles as that key.
+ * it. Each kind's copy lives under its own key in the `company` namespace,
+ * and the kind doubles as the frame's page id.
  */
-export function SupportRequestPage({ kind }: { kind: SupportRequestKind }) {
+export function ContactRequestPage({ kind }: { kind: ContactRequestKind }) {
   const { t } = useTranslation("company");
-  const page: CompanyPageId = kind;
 
   return (
-    <CompanyPage page={page} eyebrow={t(`${kind}.eyebrow`)} title={t(`${kind}.heading`)} lede={t(`${kind}.lede`)} centred>
+    <CompanyPage page={kind} eyebrow={t(`${kind}.eyebrow`)} title={t(`${kind}.heading`)} lede={t(`${kind}.lede`)} centred>
       <section className="page-shell py-12 md:py-16">
         <div className="mx-auto max-w-[640px]">
-          <SupportForm kind={kind} messagePlaceholder={t(`${kind}.messagePlaceholder`)} />
+          <ContactForm kind={kind} messagePlaceholder={t(`${kind}.messagePlaceholder`)} />
         </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -4426,8 +3985,8 @@ export function SupportRequestPage({ kind }: { kind: SupportRequestKind }) {
               <p className="mt-1.5 mb-0 text-sm leading-relaxed text-[color:var(--l-muted)]">
                 {card.kind === "email" && (
                   <>
-                    <a href={`mailto:${EMAIL_FOR[kind]}`} className="font-semibold no-underline" style={{ color: "var(--l-navy)" }}>
-                      {EMAIL_FOR[kind]}
+                    <a href={`mailto:${CONTACT.general}`} className="font-semibold no-underline" style={{ color: "var(--l-navy)" }}>
+                      {CONTACT.general}
                     </a>
                     <br />
                   </>
@@ -4456,71 +4015,71 @@ export function SupportRequestPage({ kind }: { kind: SupportRequestKind }) {
 }
 ```
 
-- [ ] **Step 7: The three routes**
+- [ ] **Step 7: The two routes**
 
-`routes/support.tsx`:
+`routes/contact.tsx`:
 
 ```tsx
 import { createFileRoute } from "@tanstack/react-router";
 import i18n from "@/shared/lib/i18n";
-import { SupportRequestPage } from "@/features/company/ui/support-request-page";
+import { ContactRequestPage } from "@/features/company/ui/contact-request-page";
 
-/** Top level, outside `_public`, like `/about` — the signed-in are who need it. */
-export const Route = createFileRoute("/support")({
+/** Top level, outside `_public`, like `/about` — the signed-in write too. */
+export const Route = createFileRoute("/contact")({
   ssr: true,
-  head: () => ({ meta: [{ title: `${i18n.t("support.headTitle", { ns: "company" })} · Ntizo` }] }),
-  component: () => <SupportRequestPage kind="support" />,
+  head: () => ({ meta: [{ title: `${i18n.t("contact.headTitle", { ns: "company" })} · Ntizo` }] }),
+  component: () => <ContactRequestPage kind="contact" />,
 });
 ```
 
-`routes/contact.tsx` and `routes/feedback.tsx`: the same with `"/contact"` / `contact.headTitle` / `kind="contact"`, and `"/feedback"` / `feedback.headTitle` / `kind="feedback"`.
+`routes/feedback.tsx`: the same with `"/feedback"`, `feedback.headTitle`, `kind="feedback"`.
 
 - [ ] **Step 8: Run the tests, typecheck, lint**
 
 Run: `cd apps/frontend/web && bunx vitest run src/features/company && bun run typecheck && bun run lint`
-Expected: all company tests pass (domain 4, pages 7, faq 5, form 8); clean.
+Expected: all company tests pass (domain 4, pages 7, form 9); clean.
 
 - [ ] **Step 9: Prove it end to end by hand, once**
 
-With the API and the app running, signed out, open `/support`, fill the form, send. Expected: the success panel with a reference; the API log shows the console email with `reply-to`; the row is in `ntizo_support.support_request`. Delete the row afterwards.
+With the API and the app running, signed out, open `/contact`, fill the form, send. Expected: the success panel with a reference; the API log shows the console email with `reply-to`; the row is in `ntizo_contact.contact_request`. Delete the row afterwards.
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add apps/frontend/web/src/features/company apps/frontend/web/src/routes/contact.tsx apps/frontend/web/src/routes/support.tsx apps/frontend/web/src/routes/feedback.tsx apps/frontend/web/src/routeTree.gen.ts
-git commit -m "feat(company): one form, three pages — contact, support and feedback"
+git add apps/frontend/web/src/features/company apps/frontend/web/src/routes/contact.tsx apps/frontend/web/src/routes/feedback.tsx apps/frontend/web/src/routeTree.gen.ts
+git commit -m "feat(company): one form, two pages — contact and feedback"
 ```
 
 ---
 
-### Task 13: The queue — `/admin/support`
+### Task 12: The queue — `/admin/contact`
 
 **Files:**
-- Create: `apps/frontend/web/src/features/admin/support/data/admin-support.repository.ts`
-- Create: `apps/frontend/web/src/features/admin/support/viewmodel/use-admin-support.ts`
-- Create: `apps/frontend/web/src/features/admin/support/ui/support-page.tsx`
-- Create: `apps/frontend/web/src/routes/admin/support.tsx`
+- Create: `apps/frontend/web/src/features/admin/contact/data/admin-contact.repository.ts`
+- Create: `apps/frontend/web/src/features/admin/contact/viewmodel/use-admin-contact.ts`
+- Create: `apps/frontend/web/src/features/admin/contact/ui/contact-page.tsx`
+- Create: `apps/frontend/web/src/routes/admin/contact.tsx`
 - Modify: `apps/frontend/web/src/shared/lib/admin-navigation.ts`
 - Modify: `apps/frontend/web/src/shared/locales/<8>/admin.json`
-- Test: `apps/frontend/web/src/features/admin/support/ui/__tests__/support-page.test.tsx`
+- Test: `apps/frontend/web/src/features/admin/contact/ui/__tests__/contact-page.test.tsx`
 
 **Interfaces:**
-- Consumes: `SupportRequestAdminDTO`, `SupportRequestAdminPageDTO` (`@ntizo/shared/read-models`); `sessionGraphql`; `CollectionCard`; `usePageHeader`; `Badge`, `Button` (`@ntizo/frontend-ui`).
-- Produces: `adminSupportQueries.all(search)`, `setSupportRequestStatus(requestId, status)`, `ADMIN_SUPPORT_PAGE_SIZE = 25`, `AdminSupportSearch`; `useAdminSupport(search)`, `useSetSupportRequestStatus()`; `AdminSupportPage`.
+- Consumes: `ContactRequestAdminDTO`, `ContactRequestAdminPageDTO` (`@ntizo/shared/read-models`); `sessionGraphql`; `CollectionCard`; `usePageHeader`; `Badge`, `Button` (`@ntizo/frontend-ui`).
+- Produces: `adminContactQueries.all(search)`, `setContactRequestStatus(requestId, status)`, `ADMIN_CONTACT_PAGE_SIZE = 25`, `AdminContactSearch`; `useAdminContact(search)`, `useSetContactRequestStatus()`; `AdminContactPage`.
 
 - [ ] **Step 1: The repository and the hooks**
 
-`data/admin-support.repository.ts`:
+`data/admin-contact.repository.ts`:
 
 ```ts
 import { queryOptions } from "@tanstack/react-query";
-import type { SupportRequestKind, SupportRequestStatus } from "@ntizo/shared";
-import type { SupportRequestAdminPageDTO } from "@ntizo/shared/read-models";
+import type { ContactRequestKind, ContactRequestStatus } from "@ntizo/shared";
+import type { ContactRequestAdminPageDTO } from "@ntizo/shared/read-models";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 
 const ALL = `
-  query SupportRequestAllForAdmin($input: SupportRequestAllForAdminInput!) {
-    supportRequestAllForAdmin(input: $input) {
+  query ContactRequestAllForAdmin($input: ContactRequestAllForAdminInput!) {
+    contactRequestAllForAdmin(input: $input) {
       items {
         id reference kind topic name email message requesterUserId locale
         originPath ipAddress userAgent status resolvedAt createdAt
@@ -4531,67 +4090,69 @@ const ALL = `
   }`;
 
 const SET_STATUS = `
-  mutation SupportRequestSetStatus($input: SupportRequestSetStatusInput!) {
-    supportRequestSetStatus(input: $input) { status }
+  mutation ContactRequestSetStatus($input: ContactRequestSetStatusInput!) {
+    contactRequestSetStatus(input: $input) { status }
   }`;
 
-export const ADMIN_SUPPORT_PAGE_SIZE = 25;
+export const ADMIN_CONTACT_PAGE_SIZE = 25;
 
-export interface AdminSupportSearch {
+export interface AdminContactSearch {
   offset?: number;
-  kind?: SupportRequestKind;
-  status?: SupportRequestStatus;
+  kind?: ContactRequestKind;
+  status?: ContactRequestStatus;
   search?: string;
 }
 
-export const adminSupportQueries = {
+export const adminContactQueries = {
   /** The whole search is the key: "resolved" is a different result set from "open". */
-  all: (search: AdminSupportSearch) =>
+  all: (search: AdminContactSearch) =>
     queryOptions({
-      queryKey: ["admin", "support", search] as const,
-      queryFn: async (): Promise<SupportRequestAdminPageDTO> => {
-        const d = await sessionGraphql<{ supportRequestAllForAdmin: SupportRequestAdminPageDTO }>(ALL, {
+      queryKey: ["admin", "contact", search] as const,
+      queryFn: async (): Promise<ContactRequestAdminPageDTO> => {
+        const d = await sessionGraphql<{ contactRequestAllForAdmin: ContactRequestAdminPageDTO }>(ALL, {
           input: {
-            limit: ADMIN_SUPPORT_PAGE_SIZE,
+            limit: ADMIN_CONTACT_PAGE_SIZE,
             offset: search.offset ?? 0,
             ...(search.kind ? { kind: search.kind } : {}),
             ...(search.status ? { status: search.status } : {}),
             ...(search.search ? { search: search.search } : {}),
           },
         });
-        return d.supportRequestAllForAdmin;
+        return d.contactRequestAllForAdmin;
       },
     }),
 };
 
-export async function setSupportRequestStatus(requestId: string, status: SupportRequestStatus): Promise<void> {
+export async function setContactRequestStatus(requestId: string, status: ContactRequestStatus): Promise<void> {
   await sessionGraphql(SET_STATUS, { input: { requestId, status } });
 }
 ```
 
-`viewmodel/use-admin-support.ts`:
+`viewmodel/use-admin-contact.ts`:
 
 ```ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SupportRequestStatus } from "@ntizo/shared";
-import { adminSupportQueries, setSupportRequestStatus, type AdminSupportSearch } from "../data/admin-support.repository";
+import type { ContactRequestStatus } from "@ntizo/shared";
+import { adminContactQueries, setContactRequestStatus, type AdminContactSearch } from "../data/admin-contact.repository";
 
-export function useAdminSupport(search: AdminSupportSearch) {
-  return useQuery(adminSupportQueries.all(search));
+export function useAdminContact(search: AdminContactSearch) {
+  return useQuery(adminContactQueries.all(search));
 }
 
 /** Not optimistic: `openCount` rides on the same payload and would have to be kept in step by hand. */
-export function useSetSupportRequestStatus() {
+export function useSetContactRequestStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ requestId, status }: { requestId: string; status: SupportRequestStatus }) =>
-      setSupportRequestStatus(requestId, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "support"] }),
+    mutationFn: ({ requestId, status }: { requestId: string; status: ContactRequestStatus }) =>
+      setContactRequestStatus(requestId, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "contact"] }),
   });
 }
 ```
 
 - [ ] **Step 2: Write the failing page test**
+
+`ui/__tests__/contact-page.test.tsx`:
 
 ```tsx
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -4599,32 +4160,32 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
-import type { SupportRequestAdminDTO } from "@ntizo/shared/read-models";
-import { AdminSupportPage } from "../support-page";
+import type { ContactRequestAdminDTO } from "@ntizo/shared/read-models";
+import { AdminContactPage } from "../contact-page";
 
 const fakes = vi.hoisted(() => ({ setStatus: vi.fn() }));
-vi.mock("@/features/admin/support/data/admin-support.repository", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/admin/support/data/admin-support.repository")>();
-  return { ...actual, setSupportRequestStatus: fakes.setStatus };
+vi.mock("@/features/admin/contact/data/admin-contact.repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/admin/contact/data/admin-contact.repository")>();
+  return { ...actual, setContactRequestStatus: fakes.setStatus };
 });
 
-function row(over: Partial<SupportRequestAdminDTO> = {}): SupportRequestAdminDTO {
+function row(over: Partial<ContactRequestAdminDTO> = {}): ContactRequestAdminDTO {
   return {
-    id: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C", kind: "support", topic: "booking",
-    name: "Joana Matola", email: "joana@exemplo.com", message: "A reserva de sábado não aparece na minha conta.",
+    id: "7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", reference: "7F3A2C", kind: "contact", topic: "partnership",
+    name: "Joana Matola", email: "joana@exemplo.com", message: "Gostava de propor uma parceria com a minha escola.",
     requesterUserId: "u-1", locale: "pt-MZ", originPath: null, ipAddress: "197.218.0.1", userAgent: "Mozilla/5.0",
     status: "open", resolvedAt: null, createdAt: "2026-09-02T10:00:00.000Z", ...over,
   };
 }
 
-function renderPage(items: SupportRequestAdminDTO[]) {
+function renderPage(items: ContactRequestAdminDTO[]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   // The default search: first page, open only. Seeded so no fetch happens.
-  qc.setQueryData(["admin", "support", { offset: 0, status: "open" }], { items, total: items.length, openCount: items.length });
+  qc.setQueryData(["admin", "contact", { offset: 0, status: "open" }], { items, total: items.length, openCount: items.length });
   const rootRoute = createRootRoute();
   const router = createRouter({
     routeTree: rootRoute.addChildren([
-      createRoute({ getParentRoute: () => rootRoute, path: "/", component: AdminSupportPage }),
+      createRoute({ getParentRoute: () => rootRoute, path: "/", component: AdminContactPage }),
       createRoute({ getParentRoute: () => rootRoute, path: "/admin/users", component: () => <p>users</p> }),
     ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
@@ -4639,13 +4200,12 @@ function renderPage(items: SupportRequestAdminDTO[]) {
 
 beforeEach(() => fakes.setStatus.mockReset().mockResolvedValue(undefined));
 
-describe("AdminSupportPage", () => {
+describe("AdminContactPage", () => {
   it("lists a request with its kind, topic, who wrote, and the reference", () => {
     renderPage([row()]);
     expect(screen.getByText("Joana Matola")).toBeInTheDocument();
     expect(screen.getByText("joana@exemplo.com")).toBeInTheDocument();
-    expect(screen.getByText("Support")).toBeInTheDocument();
-    expect(screen.getByText("A booking")).toBeInTheDocument();
+    expect(screen.getByText("Partnership")).toBeInTheDocument();
     expect(screen.getByText("#7F3A2C")).toBeInTheDocument();
     expect(screen.getByText(/1 open request/)).toBeInTheDocument();
   });
@@ -4654,7 +4214,7 @@ describe("AdminSupportPage", () => {
     renderPage([row()]);
     expect(screen.getByRole("link", { name: /reply by email/i })).toHaveAttribute(
       "href",
-      "mailto:joana@exemplo.com?subject=%5BNtizo%20%237F3A2C%5D%20A%20booking",
+      "mailto:joana@exemplo.com?subject=%5BNtizo%20%237F3A2C%5D%20Partnership",
     );
   });
 
@@ -4663,7 +4223,7 @@ describe("AdminSupportPage", () => {
     const spy = vi.spyOn(qc, "invalidateQueries");
     await userEvent.click(screen.getByRole("button", { name: /mark resolved/i }));
     await waitFor(() => expect(fakes.setStatus).toHaveBeenCalledWith("7f3a2c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b", "resolved"));
-    await waitFor(() => expect(spy).toHaveBeenCalledWith({ queryKey: ["admin", "support"] }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith({ queryKey: ["admin", "contact"] }));
   });
 
   it("says the queue is empty in words", () => {
@@ -4672,7 +4232,7 @@ describe("AdminSupportPage", () => {
   });
 
   it("expands a row to the whole message and where it came from", async () => {
-    renderPage([row({ originPath: "/services/abc" })]);
+    renderPage([row({ kind: "feedback", topic: "problem", originPath: "/services/abc" })]);
     await userEvent.click(screen.getByRole("button", { name: /show details/i }));
     expect(screen.getByText("/services/abc")).toBeInTheDocument();
     expect(screen.getByText("197.218.0.1")).toBeInTheDocument();
@@ -4682,30 +4242,30 @@ describe("AdminSupportPage", () => {
 
 - [ ] **Step 3: Run to see it fail**
 
-Run: `cd apps/frontend/web && bunx vitest run src/features/admin/support`
+Run: `cd apps/frontend/web && bunx vitest run src/features/admin/contact`
 Expected: FAIL — module not found.
 
 - [ ] **Step 4: Write the page**
 
-`ui/support-page.tsx`:
+`ui/contact-page.tsx`:
 
 ```tsx
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Inbox, Mail } from "lucide-react";
-import type { SupportRequestKind, SupportRequestStatus } from "@ntizo/shared";
-import type { SupportRequestAdminDTO } from "@ntizo/shared/read-models";
+import { Mail, MailOpen } from "lucide-react";
+import type { ContactRequestKind, ContactRequestStatus } from "@ntizo/shared";
+import type { ContactRequestAdminDTO } from "@ntizo/shared/read-models";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { ADMIN_SUPPORT_PAGE_SIZE } from "../data/admin-support.repository";
-import { useAdminSupport, useSetSupportRequestStatus } from "../viewmodel/use-admin-support";
+import { ADMIN_CONTACT_PAGE_SIZE } from "../data/admin-contact.repository";
+import { useAdminContact, useSetContactRequestStatus } from "../viewmodel/use-admin-contact";
 
-const KINDS: readonly SupportRequestKind[] = ["contact", "support", "feedback"];
+const KINDS: readonly ContactRequestKind[] = ["contact", "feedback"];
 
 /**
- * The support queue: what people wrote through the three forms, and whether
+ * The contact queue: what people wrote through the two forms, and whether
  * anybody has answered yet.
  *
  * On the `/admin/reviews` pattern. Open requests by default — the queue is
@@ -4714,33 +4274,34 @@ const KINDS: readonly SupportRequestKind[] = ["contact", "support", "feedback"];
  * message and where it came from; the two actions are "reply by email" (a
  * mailto with the reference in the subject, because the reply happens in the
  * inbox, not here — spec, "What the context deliberately does not do") and
- * resolve/reopen.
+ * resolve/reopen. Support with an account is the help center's queue, at
+ * `/admin/support`, not this one.
  */
-export function AdminSupportPage() {
+export function AdminContactPage() {
   const { t, i18n } = useTranslation("admin");
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
-  const [kind, setKind] = useState<SupportRequestKind | undefined>(undefined);
-  const [status, setStatus] = useState<SupportRequestStatus | undefined>("open");
+  const [kind, setKind] = useState<ContactRequestKind | undefined>(undefined);
+  const [status, setStatus] = useState<ContactRequestStatus | undefined>("open");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const query = useAdminSupport({
+  const query = useAdminContact({
     offset,
     ...(kind ? { kind } : {}),
     ...(status ? { status } : {}),
     ...(search.trim() ? { search: search.trim() } : {}),
   });
-  const setRequestStatus = useSetSupportRequestStatus();
+  const setRequestStatus = useSetContactRequestStatus();
 
-  usePageHeader(t("supportTitle"), t("supportSubtitle"));
+  usePageHeader(t("contactTitle"), t("contactSubtitle"));
 
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
   const openCount = query.data?.openCount ?? 0;
   const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
-  const topicLabel = (r: SupportRequestAdminDTO) => t(`topics.${r.kind}.${r.topic}`, { ns: "company", defaultValue: r.topic });
+  const topicLabel = (r: ContactRequestAdminDTO) => t(`topics.${r.kind}.${r.topic}`, { ns: "company", defaultValue: r.topic });
 
   function resetPage() {
     setOffset(0);
@@ -4748,53 +4309,53 @@ export function AdminSupportPage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
-      {query.error && <p className="type-body text-[var(--color-destructive)]">{t("supportError")}</p>}
-      {setRequestStatus.error && <p className="type-body text-[var(--color-destructive)]">{t("supportStatusFailed")}</p>}
+      {query.error && <p className="type-body text-[var(--color-destructive)]">{t("contactError")}</p>}
+      {setRequestStatus.error && <p className="type-body text-[var(--color-destructive)]">{t("contactStatusFailed")}</p>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="type-body">{t("supportOpenCount", { count: openCount })}</p>
+        <p className="type-body">{t("contactOpenCount", { count: openCount })}</p>
         <div className="flex flex-wrap gap-2">
           <Button variant={kind === undefined ? "default" : "outline"} size="sm" onClick={() => { setKind(undefined); resetPage(); }}>
-            {t("supportKindAll")}
+            {t("contactKindAll")}
           </Button>
           {KINDS.map((k) => (
             <Button key={k} variant={kind === k ? "default" : "outline"} size="sm" onClick={() => { setKind(k); resetPage(); }}>
-              {t(`supportKind.${k}`)}
+              {t(`contactKind.${k}`)}
             </Button>
           ))}
           <span className="mx-1 hidden w-px bg-[var(--color-border)] sm:block" aria-hidden="true" />
           <Button variant={status === "open" ? "default" : "outline"} size="sm" onClick={() => { setStatus("open"); resetPage(); }}>
-            {t("supportStatus.open")}
+            {t("contactStatus.open")}
           </Button>
           <Button variant={status === "resolved" ? "default" : "outline"} size="sm" onClick={() => { setStatus("resolved"); resetPage(); }}>
-            {t("supportStatus.resolved")}
+            {t("contactStatus.resolved")}
           </Button>
           <Button variant={status === undefined ? "default" : "outline"} size="sm" onClick={() => { setStatus(undefined); resetPage(); }}>
-            {t("supportStatusAll")}
+            {t("contactStatusAll")}
           </Button>
         </div>
       </div>
 
       <CollectionCard
-        title={t("supportTitle")}
+        title={t("contactTitle")}
         shown={rows.length}
         total={total}
         loading={query.isLoading}
         search={search}
         onSearchChange={(value) => { setSearch(value); resetPage(); }}
-        searchPlaceholder={t("supportSearchPlaceholder")}
+        searchPlaceholder={t("contactSearchPlaceholder")}
         columns={[
-          { key: "request", label: t("supportRequest"), className: "pl-5" },
-          { key: "kind", label: t("supportKindColumn"), skeletonWidth: "w-20", skeletonShape: "badge" },
-          { key: "topic", label: t("supportTopic"), skeletonWidth: "w-28" },
-          { key: "date", label: t("supportDate"), align: "right", skeletonWidth: "w-24" },
-          { key: "actions", label: t("supportAction"), align: "right", className: "pr-5", skeletonWidth: "w-40" },
+          { key: "request", label: t("contactRequest"), className: "pl-5" },
+          { key: "kind", label: t("contactKindColumn"), skeletonWidth: "w-20", skeletonShape: "badge" },
+          { key: "topic", label: t("contactTopic"), skeletonWidth: "w-28" },
+          { key: "date", label: t("contactDate"), align: "right", skeletonWidth: "w-24" },
+          { key: "actions", label: t("contactAction"), align: "right", className: "pr-5", skeletonWidth: "w-40" },
         ]}
-        emptyText={t("supportEmpty")}
-        emptyTitle={t("supportEmptyTitle")}
-        emptyBadge={Inbox}
-        noMatchesText={t("supportNoMatches")}
-        noMatchesTitle={t("supportNoMatchesTitle")}
+        emptyText={t("contactEmpty")}
+        emptyTitle={t("contactEmptyTitle")}
+        emptyBadge={MailOpen}
+        noMatchesText={t("contactNoMatches")}
+        noMatchesTitle={t("contactNoMatchesTitle")}
         filtered={kind !== undefined || status !== "open" || search.trim() !== ""}
         rows={rows.map((r) => ({
           key: r.id,
@@ -4806,7 +4367,7 @@ export function AdminSupportPage() {
             />
           ),
           cells: {
-            kind: <Badge tone={r.kind === "support" ? "warning" : r.kind === "feedback" ? "info" : "neutral"}>{t(`supportKind.${r.kind}`)}</Badge>,
+            kind: <Badge tone={r.kind === "feedback" ? "info" : "neutral"}>{t(`contactKind.${r.kind}`)}</Badge>,
             topic: <span className="block max-w-[22ch] truncate">{topicLabel(r)}</span>,
             date: <span className="tabular-nums text-[var(--color-muted-foreground)]">{dateFormat.format(new Date(r.createdAt))}</span>,
           },
@@ -4818,7 +4379,7 @@ export function AdminSupportPage() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] px-3 py-1.5 text-sm font-semibold no-underline"
                 >
                   <Mail className="h-4 w-4" aria-hidden="true" />
-                  {t("supportReply")}
+                  {t("contactReply")}
                 </a>
               )}
               <Button
@@ -4827,20 +4388,20 @@ export function AdminSupportPage() {
                 disabled={setRequestStatus.isPending}
                 onClick={() => setRequestStatus.mutate({ requestId: r.id, status: r.status === "open" ? "resolved" : "open" })}
               >
-                {r.status === "open" ? t("supportResolve") : t("supportReopen")}
+                {r.status === "open" ? t("contactResolve") : t("contactReopen")}
               </Button>
             </span>
           ),
         }))}
       />
 
-      {total > ADMIN_SUPPORT_PAGE_SIZE && (
+      {total > ADMIN_CONTACT_PAGE_SIZE && (
         <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - ADMIN_SUPPORT_PAGE_SIZE))}>
-            {t("supportPrevious")}
+          <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - ADMIN_CONTACT_PAGE_SIZE))}>
+            {t("contactPrevious")}
           </Button>
-          <Button variant="outline" size="sm" disabled={offset + ADMIN_SUPPORT_PAGE_SIZE >= total} onClick={() => setOffset((o) => o + ADMIN_SUPPORT_PAGE_SIZE)}>
-            {t("supportNext")}
+          <Button variant="outline" size="sm" disabled={offset + ADMIN_CONTACT_PAGE_SIZE >= total} onClick={() => setOffset((o) => o + ADMIN_CONTACT_PAGE_SIZE)}>
+            {t("contactNext")}
           </Button>
         </div>
       )}
@@ -4849,13 +4410,13 @@ export function AdminSupportPage() {
 }
 
 /** Who wrote, what they said (two lines, or all of it), and where from. */
-function RequestSummary({ request, expanded, onToggle }: { request: SupportRequestAdminDTO; expanded: boolean; onToggle: () => void }) {
+function RequestSummary({ request, expanded, onToggle }: { request: ContactRequestAdminDTO; expanded: boolean; onToggle: () => void }) {
   const { t } = useTranslation("admin");
   return (
     <div className="min-w-0">
       <p className="type-body-medium m-0 flex flex-wrap items-center gap-x-2 font-semibold">
         {request.requesterUserId ? (
-          <Link to="/admin/users" search={{ q: request.email ?? request.name } as never} className="no-underline" style={{ color: "inherit" }}>
+          <Link to="/admin/users" className="no-underline" style={{ color: "inherit" }}>
             {request.name}
           </Link>
         ) : (
@@ -4864,47 +4425,46 @@ function RequestSummary({ request, expanded, onToggle }: { request: SupportReque
         <span className="type-caption font-mono text-[var(--color-muted-foreground)]">#{request.reference}</span>
       </p>
       <p className="type-caption m-0 text-[var(--color-muted-foreground)]">
-        {request.email ?? t("supportNoEmail")} · {request.locale}
+        {request.email ?? t("contactNoEmail")} · {request.locale}
       </p>
       <p className={`type-caption mt-1 mb-0 whitespace-pre-wrap text-[var(--color-foreground)] ${expanded ? "" : "line-clamp-2"}`}>
         {request.message}
       </p>
       {expanded && (
         <dl className="type-caption mt-2 mb-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[var(--color-muted-foreground)]">
-          <dt>{t("supportOrigin")}</dt><dd className="m-0">{request.originPath ?? "—"}</dd>
-          <dt>{t("supportIp")}</dt><dd className="m-0">{request.ipAddress ?? "—"}</dd>
-          <dt>{t("supportUserAgent")}</dt><dd className="m-0 break-all">{request.userAgent ?? "—"}</dd>
+          <dt>{t("contactOrigin")}</dt><dd className="m-0">{request.originPath ?? "—"}</dd>
+          <dt>{t("contactIp")}</dt><dd className="m-0">{request.ipAddress ?? "—"}</dd>
+          <dt>{t("contactUserAgent")}</dt><dd className="m-0 break-all">{request.userAgent ?? "—"}</dd>
         </dl>
       )}
       <button type="button" onClick={onToggle} className="type-caption mt-1 font-semibold text-[var(--color-primary)]">
-        {expanded ? t("supportHideDetails") : t("supportShowDetails")}
+        {expanded ? t("contactHideDetails") : t("contactShowDetails")}
       </button>
     </div>
   );
 }
 ```
 
-Check `routes/admin/users.tsx` for the name of its search param (the users page has a search box; if it does not read one from the URL, drop the `search` prop on the `Link` and link to `/admin/users` plainly).
-
 - [ ] **Step 5: The route and the navigation entry**
 
-`routes/admin/support.tsx`:
+`routes/admin/contact.tsx`:
 
 ```tsx
 import { createFileRoute } from "@tanstack/react-router";
-import { AdminSupportPage } from "@/features/admin/support/ui/support-page";
+import { AdminContactPage } from "@/features/admin/contact/ui/contact-page";
 
-export const Route = createFileRoute("/admin/support")({
-  component: AdminSupportPage,
+export const Route = createFileRoute("/admin/contact")({
+  component: AdminContactPage,
 });
 ```
 
-In `admin-navigation.ts`: import `Inbox` from `lucide-react`, and after the `nav.users` item add:
+In `admin-navigation.ts`: import `Mail` from `lucide-react`, and after the `nav.users` item add:
 
 ```ts
       // After users, before the catalog: a queue of messages arriving, worked
       // daily like the provider queue — not content the platform curates.
-      { titleKey: "nav.support", url: "/admin/support", icon: Inbox },
+      // The help center's "Suporte" queue lands beside it (its own spec).
+      { titleKey: "nav.contact", url: "/admin/contact", icon: Mail },
 ```
 
 - [ ] **Step 6: The admin strings**
@@ -4914,96 +4474,96 @@ Add to every `admin.json`. pt-MZ and en-US verbatim; pt-PT copies pt-MZ; es/fr/d
 pt-MZ:
 
 ```json
-"nav": { "...existing": "...", "support": "Suporte" },
-"supportTitle": "Suporte",
-"supportSubtitle": "O que as pessoas nos escreveram pelos formulários, e o que ainda está por responder.",
-"supportOpenCount_one": "{{count}} pedido aberto",
-"supportOpenCount_other": "{{count}} pedidos abertos",
-"supportKindAll": "Todos",
-"supportKind": { "contact": "Contacto", "support": "Suporte", "feedback": "Feedback" },
-"supportKindColumn": "Tipo",
-"supportStatus": { "open": "Abertos", "resolved": "Resolvidos" },
-"supportStatusAll": "Todos",
-"supportRequest": "Pedido",
-"supportTopic": "Assunto",
-"supportDate": "Recebido",
-"supportAction": "Acções",
-"supportSearchPlaceholder": "Procurar por nome, email, texto ou referência",
-"supportEmpty": "Nada por responder.",
-"supportEmptyTitle": "Fila vazia",
-"supportNoMatches": "Nenhum pedido corresponde a esta pesquisa.",
-"supportNoMatchesTitle": "Sem resultados",
-"supportError": "Não foi possível carregar os pedidos.",
-"supportStatusFailed": "Não foi possível alterar esse pedido. Tente de novo.",
-"supportReply": "Responder por email",
-"supportResolve": "Marcar resolvido",
-"supportReopen": "Reabrir",
-"supportPrevious": "Anterior",
-"supportNext": "Seguinte",
-"supportNoEmail": "sem email",
-"supportOrigin": "Página",
-"supportIp": "IP",
-"supportUserAgent": "Navegador",
-"supportShowDetails": "Mostrar detalhes",
-"supportHideDetails": "Esconder detalhes"
+"nav": { "...existing": "...", "contact": "Contactos" },
+"contactTitle": "Contactos",
+"contactSubtitle": "O que as pessoas nos escreveram pelos formulários de contacto e feedback, e o que ainda está por responder.",
+"contactOpenCount_one": "{{count}} pedido aberto",
+"contactOpenCount_other": "{{count}} pedidos abertos",
+"contactKindAll": "Todos",
+"contactKind": { "contact": "Contacto", "feedback": "Feedback" },
+"contactKindColumn": "Tipo",
+"contactStatus": { "open": "Abertos", "resolved": "Resolvidos" },
+"contactStatusAll": "Todos",
+"contactRequest": "Pedido",
+"contactTopic": "Assunto",
+"contactDate": "Recebido",
+"contactAction": "Acções",
+"contactSearchPlaceholder": "Procurar por nome, email, texto ou referência",
+"contactEmpty": "Nada por responder.",
+"contactEmptyTitle": "Fila vazia",
+"contactNoMatches": "Nenhum pedido corresponde a esta pesquisa.",
+"contactNoMatchesTitle": "Sem resultados",
+"contactError": "Não foi possível carregar os pedidos.",
+"contactStatusFailed": "Não foi possível alterar esse pedido. Tente de novo.",
+"contactReply": "Responder por email",
+"contactResolve": "Marcar resolvido",
+"contactReopen": "Reabrir",
+"contactPrevious": "Anterior",
+"contactNext": "Seguinte",
+"contactNoEmail": "sem email",
+"contactOrigin": "Página",
+"contactIp": "IP",
+"contactUserAgent": "Navegador",
+"contactShowDetails": "Mostrar detalhes",
+"contactHideDetails": "Esconder detalhes"
 ```
 
 en-US:
 
 ```json
-"nav": { "...existing": "...", "support": "Support" },
-"supportTitle": "Support",
-"supportSubtitle": "What people wrote to us through the forms, and what is still unanswered.",
-"supportOpenCount_one": "{{count}} open request",
-"supportOpenCount_other": "{{count}} open requests",
-"supportKindAll": "All",
-"supportKind": { "contact": "Contact", "support": "Support", "feedback": "Feedback" },
-"supportKindColumn": "Kind",
-"supportStatus": { "open": "Open", "resolved": "Resolved" },
-"supportStatusAll": "All",
-"supportRequest": "Request",
-"supportTopic": "Topic",
-"supportDate": "Received",
-"supportAction": "Actions",
-"supportSearchPlaceholder": "Search a name, an email, the text, or a reference",
-"supportEmpty": "Nothing to answer.",
-"supportEmptyTitle": "Queue empty",
-"supportNoMatches": "No request matches this search.",
-"supportNoMatchesTitle": "No results",
-"supportError": "The requests could not be loaded.",
-"supportStatusFailed": "That request could not be changed. Try again.",
-"supportReply": "Reply by email",
-"supportResolve": "Mark resolved",
-"supportReopen": "Reopen",
-"supportPrevious": "Previous",
-"supportNext": "Next",
-"supportNoEmail": "no email",
-"supportOrigin": "Page",
-"supportIp": "IP",
-"supportUserAgent": "Browser",
-"supportShowDetails": "Show details",
-"supportHideDetails": "Hide details"
+"nav": { "...existing": "...", "contact": "Contact" },
+"contactTitle": "Contact",
+"contactSubtitle": "What people wrote to us through the contact and feedback forms, and what is still unanswered.",
+"contactOpenCount_one": "{{count}} open request",
+"contactOpenCount_other": "{{count}} open requests",
+"contactKindAll": "All",
+"contactKind": { "contact": "Contact", "feedback": "Feedback" },
+"contactKindColumn": "Kind",
+"contactStatus": { "open": "Open", "resolved": "Resolved" },
+"contactStatusAll": "All",
+"contactRequest": "Request",
+"contactTopic": "Topic",
+"contactDate": "Received",
+"contactAction": "Actions",
+"contactSearchPlaceholder": "Search a name, an email, the text, or a reference",
+"contactEmpty": "Nothing to answer.",
+"contactEmptyTitle": "Queue empty",
+"contactNoMatches": "No request matches this search.",
+"contactNoMatchesTitle": "No results",
+"contactError": "The requests could not be loaded.",
+"contactStatusFailed": "That request could not be changed. Try again.",
+"contactReply": "Reply by email",
+"contactResolve": "Mark resolved",
+"contactReopen": "Reopen",
+"contactPrevious": "Previous",
+"contactNext": "Next",
+"contactNoEmail": "no email",
+"contactOrigin": "Page",
+"contactIp": "IP",
+"contactUserAgent": "Browser",
+"contactShowDetails": "Show details",
+"contactHideDetails": "Hide details"
 ```
 
 Then add `admin` to the parity gate in `locales.test.ts` the same way `landing` and `legal` were added in Task 8 (it agrees across the eight files today).
 
 - [ ] **Step 7: Run the tests, typecheck, lint**
 
-Run: `cd apps/frontend/web && bunx vitest run src/features/admin/support src/shared/locales && bun run typecheck && bun run lint`
+Run: `cd apps/frontend/web && bunx vitest run src/features/admin/contact src/shared/locales && bun run typecheck && bun run lint`
 Expected: 5 pass; parity passes for `admin`; clean.
 
-- [ ] **Step 8: Look at it** — sign in as an administrator, open `/admin/support`: the nav shows "Support" after Users; the queue lists the row from Task 12's manual check if it still exists; resolve it; switch to "Resolved" and see it there; "Reply by email" opens the mail client with `[Ntizo #…]` in the subject.
+- [ ] **Step 8: Look at it** — sign in as an administrator, open `/admin/contact`: the nav shows "Contact" after Users; the queue lists the row from Task 11's manual check if it still exists; resolve it; switch to "Resolved" and see it there; "Reply by email" opens the mail client with `[Ntizo #…]` in the subject.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/frontend/web/src/features/admin/support apps/frontend/web/src/routes/admin/support.tsx apps/frontend/web/src/shared/lib/admin-navigation.ts apps/frontend/web/src/shared/locales apps/frontend/web/src/routeTree.gen.ts
-git commit -m "feat(admin): the support queue — filter, search by reference, reply by email, resolve"
+git add apps/frontend/web/src/features/admin/contact apps/frontend/web/src/routes/admin/contact.tsx apps/frontend/web/src/shared/lib/admin-navigation.ts apps/frontend/web/src/shared/locales apps/frontend/web/src/routeTree.gen.ts
+git commit -m "feat(admin): the contact queue — filter, search by reference, reply by email, resolve"
 ```
 
 ---
 
-### Task 14: The privacy sentence, the follow-ups, and the end-to-end proof
+### Task 13: The privacy sentence, the follow-ups, and the end-to-end proof
 
 **Files:**
 - Modify: `apps/frontend/web/src/shared/locales/<8>/legal.json` (one sentence appended to `privacy.sections[0].body`)
@@ -5016,13 +4576,13 @@ Append one string to the `body` array of the first section of `privacy` (the "wh
 
 | Locale | Sentence |
 |---|---|
-| pt-MZ / pt-PT | `O que nos escreve pelos formulários de contacto, suporte e feedback, com o endereço IP de onde foi enviado, para lhe respondermos e travarmos abusos.` |
-| en-US | `What you write to us through the contact, support and feedback forms, with the IP address it was sent from, so we can reply and stop abuse.` |
-| es-ES | `Lo que nos escribes a través de los formularios de contacto, soporte y opinión, con la dirección IP desde la que se envió, para responderte y frenar abusos.` |
-| fr-FR | `Ce que vous nous écrivez via les formulaires de contact, de support et d'avis, avec l'adresse IP d'envoi, pour vous répondre et prévenir les abus.` |
-| de-DE | `Was Sie uns über die Kontakt-, Support- und Feedback-Formulare schreiben, samt der IP-Adresse, von der es gesendet wurde, damit wir antworten und Missbrauch unterbinden können.` |
-| it-IT | `Ciò che ci scrivi tramite i moduli di contatto, assistenza e feedback, con l'indirizzo IP da cui è stato inviato, per risponderti e fermare gli abusi.` |
-| nl-NL | `Wat u ons schrijft via de contact-, support- en feedbackformulieren, met het IP-adres van waaruit het is verzonden, zodat we kunnen antwoorden en misbruik kunnen tegengaan.` |
+| pt-MZ / pt-PT | `O que nos escreve pelos formulários de contacto e feedback, com o endereço IP de onde foi enviado, para lhe respondermos e travarmos abusos.` |
+| en-US | `What you write to us through the contact and feedback forms, with the IP address it was sent from, so we can reply and stop abuse.` |
+| es-ES | `Lo que nos escribes a través de los formularios de contacto y opinión, con la dirección IP desde la que se envió, para responderte y frenar abusos.` |
+| fr-FR | `Ce que vous nous écrivez via les formulaires de contact et d'avis, avec l'adresse IP d'envoi, pour vous répondre et prévenir les abus.` |
+| de-DE | `Was Sie uns über die Kontakt- und Feedback-Formulare schreiben, samt der IP-Adresse, von der es gesendet wurde, damit wir antworten und Missbrauch unterbinden können.` |
+| it-IT | `Ciò che ci scrivi tramite i moduli di contatto e feedback, con l'indirizzo IP da cui è stato inviato, per risponderti e fermare gli abusi.` |
+| nl-NL | `Wat u ons schrijft via de contact- en feedbackformulieren, met het IP-adres van waaruit het is verzonden, zodat we kunnen antwoorden en misbruik kunnen tegengaan.` |
 
 Run: `cd apps/frontend/web && bunx vitest run src/shared/locales` — Expected: the `legal` gate still passes (arrays are one leaf; every locale's array grew by one).
 
@@ -5031,15 +4591,15 @@ Run: `cd apps/frontend/web && bunx vitest run src/shared/locales` — Expected: 
 Append to `docs/superpowers/follow-ups.md`, continuing its numbering (the last entry is #125 as of 2026-09-02; use the next numbers if more were added since):
 
 ```markdown
-## #126 — Reply to a support request from inside the admin queue
+## #126 — Reply to a contact request from inside the admin queue
 
-`/admin/support` replies with a `mailto:`; the thread lives in the inbox and the queue cannot show what was said.
+`/admin/contact` replies with a `mailto:`; the thread lives in the inbox and the queue cannot show what was said.
 
 **Trigger:** the first week the inbox has more than a handful of open requests a day.
 
 ---
 
-## #127 — Tell the requester when their request is resolved
+## #127 — Tell the requester when their contact request is resolved
 
 Resolving a request writes `resolved_at` and nothing reaches the person who wrote.
 
@@ -5047,11 +4607,11 @@ Resolving a request writes `resolved_at` and nothing reaches the person who wrot
 
 ---
 
-## #128 — Read the support address from `platform_settings.support_email`
+## #128 — Read the contact address from `platform_settings.support_email`
 
-The column exists and nothing reads it; the address is a constant in `shared/lib/contact.ts` and a `var` in `wrangler.jsonc`.
+The column exists and nothing reads it; the addresses are constants in `shared/lib/contact.ts` and `CONTACT_INBOX_EMAIL` is a `var` in `wrangler.jsonc`.
 
-**Trigger:** the address has to change without a deploy.
+**Trigger:** an address has to change without a deploy.
 
 ---
 
@@ -5059,7 +4619,7 @@ The column exists and nothing reads it; the address is a constant in `shared/lib
 
 The footer advertises M-Pesa alone because it is the only method that charges (`MpesaPaymentCharge` is the sole `PaymentChargePort` adapter). e-Mola, Visa and Mastercard were removed on 2026-09-02.
 
-**Trigger:** the day e-Mola or card charging ships, its chip returns the same day — and the FAQ's "que métodos aceitam" answer changes with it, in eight languages.
+**Trigger:** the day e-Mola or card charging ships, its chip returns the same day — and the FAQ's "que métodos aceitam" answer (`2026-09-02-faq-content.md`, and wherever the help center put it) changes with it.
 
 ---
 
@@ -5071,7 +4631,7 @@ The footer advertises M-Pesa alone because it is the only method that charges (`
 
 ---
 
-## #131 — A captcha on the support forms
+## #131 — A captcha on the contact forms
 
 The forms carry a honeypot and a five-per-hour-per-address count in the table.
 
@@ -5079,9 +4639,17 @@ The forms carry a honeypot and a five-per-hour-per-address count in the table.
 
 ---
 
+## #132 — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
+
+The Empresa column shows five of the reference's seven links. The two missing ones belong to the help center (`2026-09-02-help-center-design.md`): "Perguntas frequentes" → `/help`, "Falar com o suporte" → the panel (or `/help` until it exists). The `CompanyPage` strip's `STRIP` list gets a `help` entry ahead of `about` at the same time, and `shared.links.help` joins the `company` namespace in eight languages.
+
+**Trigger:** the help center's `/help` route lands. Same day, between the links "Contacto" and "Dar feedback", in the reference's order: Sobre, Contacto, Falar com o suporte, Perguntas frequentes, Dar feedback, Torne-se prestador, Carreiras.
+
+---
+
 ## #85 — updated 2026-09-02
 
-The FAQ now answers "can I share my number in messages?" and says why. The contact-detection refusal copy in messaging should point there.
+The approved FAQ text (`2026-09-02-faq-content.md`) answers "can I share my number in messages?" and says why. When the help center puts it on `/help`, the contact-detection refusal copy in messaging should point there.
 ```
 
 - [ ] **Step 3: Write the e2e spec**
@@ -5100,24 +4668,24 @@ import { sql } from "../fixtures/db";
  * session — the first mutation that relies on it), the row landing in a real
  * table, and a real administrator finding it by the reference the visitor
  * was shown and resolving it. Verified by mutation: commenting out
- * `...createSupportWriteHandlers` in `apps/backend/api/src/graphql/private.ts`
+ * `...createContactWriteHandlers` in `apps/backend/api/src/graphql/private.ts`
  * turns this red.
  *
  * Cleanup is by the name this spec chose, in `finally`, never a global DELETE.
  */
-test("a visitor writes to support, and an administrator resolves it", async ({ page, browser }) => {
+test("a visitor writes to us, and an administrator resolves it", async ({ page, browser }) => {
   const suffix = crypto.randomUUID().slice(0, 8);
-  const name = `E2E Support ${suffix}`;
+  const name = `E2E Contact ${suffix}`;
   let reference = "";
   let admin: Awaited<ReturnType<typeof createVerifiedUser>> | undefined;
 
   try {
-    await page.goto("/support");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Need help with something?");
+    await page.goto("/contact");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Talk to us.");
 
     await page.getByLabel("Name").fill(name);
-    await page.getByLabel("Email").fill(`e2e-support-${suffix}@example.test`);
-    await page.getByLabel("Message").fill("A booking for Saturday does not show in my account.");
+    await page.getByLabel("Email").fill(`e2e-contact-${suffix}@example.test`);
+    await page.getByLabel("Message").fill("We would like to propose a partnership with our school.");
     await page.getByRole("button", { name: /send message/i }).click();
 
     await expect(page.getByRole("heading", { name: "We got your message." })).toBeVisible();
@@ -5127,7 +4695,7 @@ test("a visitor writes to support, and an administrator resolves it", async ({ p
 
     // The row exists, open, with the reference derived from its id.
     const rows = await sql()<{ id: string; status: string }[]>`
-      SELECT id::text, status FROM ntizo_support.support_request WHERE name = ${name}`;
+      SELECT id::text, status FROM ntizo_contact.contact_request WHERE name = ${name}`;
     expect(rows).toHaveLength(1);
     expect(rows[0]!.status).toBe("open");
     expect(rows[0]!.id.replace(/-/g, "").slice(0, 6).toUpperCase()).toBe(reference);
@@ -5139,7 +4707,7 @@ test("a visitor writes to support, and an administrator resolves it", async ({ p
     await fillSignInForm(adminPage, admin);
     await adminPage.waitForURL(/\/admin/);
 
-    await adminPage.goto("/admin/support");
+    await adminPage.goto("/admin/contact");
     await adminPage.getByPlaceholder(/search a name/i).fill(reference);
     const row = adminPage.getByText(`#${reference}`);
     await expect(row).toBeVisible();
@@ -5149,13 +4717,13 @@ test("a visitor writes to support, and an administrator resolves it", async ({ p
     await expect(row).toBeHidden();
 
     const after = await sql()<{ status: string; resolved_by_user_id: string | null }[]>`
-      SELECT status, resolved_by_user_id FROM ntizo_support.support_request WHERE name = ${name}`;
+      SELECT status, resolved_by_user_id FROM ntizo_contact.contact_request WHERE name = ${name}`;
     expect(after[0]!.status).toBe("resolved");
     expect(after[0]!.resolved_by_user_id).toBe(admin.id);
 
     await adminContext.close();
   } finally {
-    await sql()`DELETE FROM ntizo_support.support_request WHERE name = ${name}`;
+    await sql()`DELETE FROM ntizo_contact.contact_request WHERE name = ${name}`;
     if (admin) {
       await sql()`DELETE FROM ntizo_user.user WHERE id = ${admin.id}`;
       await sql()`DELETE FROM better_auth."user" WHERE id = ${admin.id}`;
@@ -5180,7 +4748,7 @@ git commit -m "feat(company): the privacy sentence, the follow-ups, and the end-
 
 ---
 
-### Task 15: Everything green, then hand it over
+### Task 14: Everything green, then hand it over
 
 **Files:** none new.
 
@@ -5194,16 +4762,16 @@ bun run typecheck && bun run lint && bun run test
 
 (or `turbo run typecheck lint test` — whichever `package.json` at the root defines). Expected: every package clean. The backend suite runs against the shared dev database and is known to flake under load (`follow-ups.md` #124) — a red there is re-run once in isolation before it is reported as a failure, per the CI-quota memory: classify before reporting.
 
-- [ ] **Step 2: Walk the six pages and the queue once more** in the browser, signed out and signed in, on a desktop and at 390px: `/about`, `/contact`, `/support`, `/faq`, `/feedback`, `/careers`, `/admin/support`. Check every link in every strip and in the footer's Empresa column lands.
+- [ ] **Step 2: Walk the four pages and the queue once more** in the browser, signed out and signed in, on a desktop and at 390px: `/about`, `/contact`, `/feedback`, `/careers`, `/admin/contact`. Check every link in every strip and in the footer's Empresa column lands.
 
 - [ ] **Step 3: Hand over**
 
-Use superpowers:finishing-a-development-branch. The branch merges to `dev`. The PR description names the spec, lists the six routes, the new GraphQL fields, the migration (`00NN_support_request.sql`, applied to dev already), the new `SUPPORT_INBOX_EMAIL` var, and the follow-ups #126–#131.
+Use superpowers:finishing-a-development-branch. The branch merges to `dev`. The PR description names the spec and its revision, the FAQ handover file, the four routes, the new GraphQL fields, the migration (`00NN_contact_request.sql`, applied to dev already), the new `CONTACT_INBOX_EMAIL` var, and the follow-ups #126–#132.
 
 ---
 
 ## Self-review notes (already applied)
 
-- **Spec coverage:** pages and frame (Tasks 10–12); copy and eight locales (Task 9); contact channels and footer, including M-Pesa only (Task 8); `support` context — table, aggregate, use cases, inbox email with `replyTo`, honeypot, rate limit (Tasks 2–7); admin queue and nav (Task 13); privacy sentence, follow-ups, e2e (Task 14); the owner's eyebrow rule (Global Constraints, Task 8 Step 5, Task 10 test).
-- **Endpoint correction carried from the spec:** the form talks to the private `/graphql` mount through `sessionGraphql` (Task 12 Step 2), not `publicGraphql`.
-- **Type consistency:** `SupportRequest.withId(id, createdAt)`, `reference`, `resolve(at, byUserId)`, `reopen()` (Task 3) are what Tasks 4–7 call; `SupportRequestRepositoryPort.insert/findById/saveStatus/countFromIpSince/listForAdmin` (Task 4) are what Task 6's fake implements; the GraphQL field names `supportRequestSubmit`, `supportRequestSetStatus`, `supportRequestAllForAdmin` (Task 7) are what Tasks 12–13's documents query; the `company` keys used by Tasks 10–13 all exist in Task 9's file.
+- **Spec coverage, revised scope:** pages and frame (Tasks 10–11); copy and eight locales (Task 9); contact channels and footer, including M-Pesa only and the five links (Task 8); `contact` context — table, aggregate, use cases, inbox email with `replyTo`, honeypot, rate limit (Tasks 2–7); admin queue and nav (Task 12); privacy sentence, follow-ups incl. #132, e2e (Task 13); the owner's eyebrow rule (Global Constraints, Task 8 Step 5, Task 10 test). The FAQ is deliberately absent: its text is handed over in `2026-09-02-faq-content.md` for the help center's `/help`.
+- **Endpoint correction carried from the spec:** the form talks to the private `/graphql` mount through `sessionGraphql` (Task 11 Step 2), not `publicGraphql`.
+- **Type consistency:** `ContactRequest.withId(id, createdAt)`, `reference`, `resolve(at, byUserId)`, `reopen()` (Task 3) are what Tasks 4–7 call; `ContactRequestRepositoryPort.insert/findById/saveStatus/countFromIpSince/listForAdmin` (Task 4) are what Task 6's fake implements; the GraphQL field names `contactRequestSubmit`, `contactRequestSetStatus`, `contactRequestAllForAdmin` (Task 7) are what Tasks 11–12's documents query; the `company` keys used by Tasks 10–12 all exist in Task 9's file; `CONTACT_INBOX_EMAIL` (Task 5) is the one `wrangler.jsonc` var; `CompanyPageId` (Task 10) covers exactly the four routes.

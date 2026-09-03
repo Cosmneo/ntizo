@@ -21,6 +21,7 @@ export class ConsoleEmailServiceAdapter implements EmailServicePort {
         "│ EMAIL (console adapter — nothing was actually sent)",
         `│ to      : ${message.to.join(", ")}`,
         `│ subject : ${message.subject}`,
+        ...(message.replyTo ? [`│ reply-to: ${message.replyTo}`] : []),
         ...(links.length
           ? ["│", ...links.map((l) => `│ link    : ${l}`)]
           : ["│ (no links found in body)"]),

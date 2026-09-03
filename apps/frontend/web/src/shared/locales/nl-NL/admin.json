@@ -11,7 +11,8 @@
     "providers": "Aanbieders",
     "categories": "Categorieën",
     "activity": "Activiteit",
-    "reviews": "Beoordelingen"
+    "reviews": "Beoordelingen",
+    "contact": "Contact"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -237,5 +238,42 @@
     "hidden": "Verborgen"
   },
   "reviewsSearchPlaceholder": "Zoek een bedrijf, een naam of wat er is gezegd",
-  "reviewsAction": "Homepage"
+  "reviewsAction": "Homepage",
+  "contactTitle": "Contact",
+  "contactSubtitle": "Wat mensen ons schreven via het contact- en feedbackformulier, en wat nog onbeantwoord is.",
+  "contactOpenCount_one": "{{count}} open aanvraag",
+  "contactOpenCount_other": "{{count}} open aanvragen",
+  "contactKindAll": "Alle",
+  "contactKind": {
+    "contact": "Contact",
+    "feedback": "Feedback"
+  },
+  "contactKindColumn": "Type",
+  "contactStatus": {
+    "open": "Open",
+    "resolved": "Opgelost"
+  },
+  "contactStatusAll": "Alle",
+  "contactRequest": "Aanvraag",
+  "contactTopic": "Onderwerp",
+  "contactDate": "Ontvangen",
+  "contactAction": "Acties",
+  "contactSearchPlaceholder": "Zoeken op naam, e-mail, tekst of referentie",
+  "contactEmpty": "Niets te beantwoorden.",
+  "contactEmptyTitle": "Wachtrij leeg",
+  "contactNoMatches": "Geen aanvraag komt overeen met deze zoekopdracht.",
+  "contactNoMatchesTitle": "Geen resultaten",
+  "contactError": "De aanvragen konden niet worden geladen.",
+  "contactStatusFailed": "Die aanvraag kon niet worden gewijzigd. Probeer het opnieuw.",
+  "contactReply": "Beantwoorden per e-mail",
+  "contactResolve": "Markeer als opgelost",
+  "contactReopen": "Heropenen",
+  "contactPrevious": "Vorige",
+  "contactNext": "Volgende",
+  "contactNoEmail": "geen e-mail",
+  "contactOrigin": "Pagina",
+  "contactIp": "IP",
+  "contactUserAgent": "Browser",
+  "contactShowDetails": "Details tonen",
+  "contactHideDetails": "Details verbergen"
 }

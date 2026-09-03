@@ -48,6 +48,12 @@ import {
   createReviewReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/review";
 import { bootstrapReview } from "@ntizo/backend/modules/ntizo/bounded-contexts/review";
+import { createContactWriteHandlers } from "@ntizo/backend/modules/ntizo/write/contact";
+import {
+  bootstrapContactRead,
+  createContactReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/contact";
+import { bootstrapContact } from "@ntizo/backend/modules/ntizo/bounded-contexts/contact";
 import { createBookingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/booking";
 import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
@@ -95,6 +101,8 @@ export function buildPrivateGraphQLFields(): {
   const scheduling = bootstrapScheduling();
   const review = bootstrapReview();
   const reviewRead = bootstrapReviewRead();
+  const contact = bootstrapContact();
+  const contactRead = bootstrapContactRead();
   const booking = bootstrapBooking();
   const bookingRead = bootstrapBookingRead();
   const walletRead = bootstrapWalletRead();
@@ -139,11 +147,13 @@ export function buildPrivateGraphQLFields(): {
       ...createActivityReadHandlers({ activityRead }),
       ...createCommunicationReadHandlers({ communicationRead }),
       ...createReviewReadHandlers(reviewRead.useCases),
+      ...createContactReadHandlers(contactRead.useCases),
       ...createCommunicationWriteHandlers({ communication }),
       ...createProviderWriteHandlers({ provider, workflows }),
       ...createCatalogWriteHandlers({ catalog }),
       ...createSchedulingWriteHandlers({ scheduling }),
       ...createReviewWriteHandlers({ review }),
+      ...createContactWriteHandlers({ contact }),
       ...createBookingWriteHandlers({ booking }),
       ...createBookingReadHandlers({ bookingRead }),
       ...createNotificationWriteHandlers({ notification }),
