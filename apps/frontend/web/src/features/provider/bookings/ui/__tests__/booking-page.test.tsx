@@ -10,6 +10,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import type { ProviderBookingDetailDTO } from "@ntizo/shared/read-models";
+import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import i18n from "@/shared/lib/i18n";
 import { BookingPage } from "../booking-page";
 
@@ -26,7 +27,13 @@ import { BookingPage } from "../booking-page";
  */
 const fakes = vi.hoisted(() => ({ graphql: vi.fn() }));
 
-vi.mock("@/shared/lib/graphql/session-graphql", () => ({
+// Only the request is replaced. `GraphqlError` stays the real class, because
+// the page branches on the `.code` its *constructor* derives from
+// `extensions.originalCode`; a mock that dropped it would leave this file
+// hand-rolling an error shape the wire never sends, and the branch could rot
+// without a test noticing.
+vi.mock("@/shared/lib/graphql/session-graphql", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/lib/graphql/session-graphql")>()),
   sessionGraphql: fakes.graphql,
 }));
 
@@ -218,6 +225,41 @@ describe("BookingPage", () => {
         { input: { bookingId: "bk-1", reason: "outside_area" } },
       ),
     );
+  });
+
+  it("a refused decline closes its dialog and says the request was already answered", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1");
+    await screen.findByRole("heading", { name: "Ana" });
+
+    // The race this page is written around: the customer cancelled, or the
+    // deadline passed, while the dialog sat open. The error is built the way
+    // `sessionGraphql` builds it — the domain code arrives in
+    // `extensions.originalCode` and the constructor is what turns it into the
+    // `.code` the page reads.
+    fakes.graphql.mockImplementation((query: string) => {
+      if (query.includes("bookingDecline")) {
+        return Promise.reject(
+          new GraphqlError(200, [
+            {
+              message: "Booking is not awaiting a provider decision.",
+              extensions: { code: "CONFLICT", originalCode: "BOOKING_INVALID_TRANSITION" },
+            },
+          ]),
+        );
+      }
+      return Promise.resolve({ bookingByIdForProvider: detailFixture() });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Recusar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Recusar pedido" }));
+
+    expect(await screen.findByText("Este pedido já foi respondido.")).toBeInTheDocument();
+    // The dialog is gone rather than left sitting over the notice explaining
+    // why it failed — with its confirm button still pressable, which would
+    // send the same refused mutation again.
+    expect(
+      screen.queryByRole("button", { name: "Recusar pedido" }),
+    ).not.toBeInTheDocument();
   });
 
   it("draws the timeline with the pending deadline last", async () => {

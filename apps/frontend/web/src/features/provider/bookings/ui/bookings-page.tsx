@@ -90,8 +90,17 @@ export function BookingsPage() {
    * `providerId` is in the key because switching workspace is the same event
    * as switching tab, and one workspace's bookings under another's name is the
    * worst version of this bug rather than a lesser one.
+   *
+   * **`q` is trimmed, because the query key is** (see `booking.repository.ts`).
+   * A key built from the raw string would part company with the request it is
+   * meant to describe on the first stray space: typing one after a search that
+   * had already paged changes this key and empties `loaded`, while the query
+   * key is unchanged so React Query answers instantly from cache with the same
+   * `query.data` — which does not re-run the accumulator effect, because
+   * nothing it depends on changed. The list is left holding page one under a
+   * pager that has moved on, and the next "Mais" brings back page two alone.
    */
-  const filterKey = `${providerId}|${tab}|${q}|${memberId ?? ""}`;
+  const filterKey = `${providerId}|${tab}|${q.trim()}|${memberId ?? ""}`;
   const [appliedKey, setAppliedKey] = useState(filterKey);
   if (appliedKey !== filterKey) {
     setAppliedKey(filterKey);

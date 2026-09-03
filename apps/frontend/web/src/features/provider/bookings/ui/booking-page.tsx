@@ -130,6 +130,13 @@ export function BookingPage() {
    */
   const onError = (error: unknown) => {
     const code = (error as { code?: string } | null)?.code;
+    // Closed on the way out, not only on success. A decline that came back
+    // refused otherwise leaves its dialog sitting over the notice explaining
+    // why it failed, with "Recusar pedido" still pressable — an invitation to
+    // send the same refused mutation again, over a page the refetch below has
+    // already taken the header's own actions off. Closing a dialog that was
+    // never open (the accept path) is a no-op, so the one handler covers both.
+    setDeclining(false);
     setNotice(code === "BOOKING_INVALID_TRANSITION" ? "already" : "error");
     void query.refetch();
   };

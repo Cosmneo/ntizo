@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useLayoutEffect } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -329,6 +329,57 @@ describe("BookingsPage", () => {
     expect(table.getByText("Bruno")).toBeInTheDocument();
     expect(screen.getByText("A mostrar 3 de 3")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+  });
+
+  it("a stray space in the search box does not lose the rows already loaded", async () => {
+    const members = [{ id: "mem-1", firstName: "Célia" }];
+    const first: ProviderBookingPageDTO = {
+      items: [
+        bookingFixture(),
+        bookingFixture({ id: "bk-2", customerFirstName: "Bruno", serviceName: "Manicure" }),
+      ],
+      total: 3,
+      nextOffset: 20,
+      members,
+    };
+    const second: ProviderBookingPageDTO = {
+      items: [
+        bookingFixture({ id: "bk-3", customerFirstName: "Carla", serviceName: "Tranças" }),
+      ],
+      total: 3,
+      nextOffset: null,
+      members,
+    };
+    renderBookings("/provider/estudio/bookings", ({ offset }) =>
+      offset === 0 ? first : second,
+    );
+    await row("Ana");
+
+    // A space is not a search — the query key trims it, so the server is never
+    // asked anything new and React Query answers from the cache it already
+    // has. The page's own reset key has to agree, or it declares a new filter
+    // over an answer that never changed: the accumulator it emptied is not
+    // refilled, because nothing it watches moved.
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Pesquisar cliente ou serviço" }),
+      " ",
+    );
+    // The box debounces 300ms before it moves `q`, and the defect is silent
+    // until the next page arrives, so there is nothing in the DOM to poll for
+    // — the wait is the debounce, then the press that reveals it.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Mais" }));
+
+    const table = within(await screen.findByRole("table"));
+    expect(await table.findByText("Carla")).toBeInTheDocument();
+    // The two that were on screen before the space, which a reset accumulator
+    // would have dropped: the second page would arrive alone, under a heading
+    // still counting three.
+    expect(table.getByText("Ana")).toBeInTheDocument();
+    expect(table.getByText("Bruno")).toBeInTheDocument();
   });
 
   it("never paints the previous tab's rows under the new tab", async () => {
