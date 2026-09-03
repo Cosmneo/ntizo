@@ -39,6 +39,7 @@
   "newAddressTitle": "Nueva dirección",
   "descriptionLabel": "¿Qué hay que hacer?",
   "descriptionHint": "Opcional. Portón azul, tercer piso: lo que ayude al profesional a venir preparado.",
+  "helpWithBooking": "¿Necesitas ayuda con esta reserva?",
   "loadError": "No hemos podido abrir esta reserva. Comprueba la conexión e inténtalo de nuevo.",
   "storageBlockedTitle": "Este navegador no guarda tus datos",
   "storageBlockedBody": "Necesitamos guardar tus datos en esta pestaña hasta enviar la solicitud, y este navegador no lo permite. Abre la página en una ventana normal (no privada) o permite los datos del sitio. Tu hora sigue reservada.",

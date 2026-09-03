@@ -31,11 +31,30 @@ export function Sheet({
 }) {
   const [uncontrolled, setUncontrolled] = React.useState(false);
   const open = controlledOpen ?? uncontrolled;
-  const setOpen = (v: boolean) => {
+
+  // A ref, not a dependency: `onOpenChange` is routinely a fresh closure
+  // every render — an inline arrow at the call site, as
+  // `week-rules.tsx`'s `onOpenChange={(open) => !open && setEditing(null)}`
+  // is — and `setOpen`'s own identity must never follow it. `value` below is
+  // what SheetContent's focus-trap effect keys off, so churning it on any
+  // re-render that merely passed a new closure (a `rules` prop update from a
+  // refetch while the panel is open, say) would tear the trap down and
+  // rebuild it, yanking focus off whatever the caller has it on — the same
+  // failure mode a fresh `value` object caused, through a different door.
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
+
+  // Empty deps: this identity is fixed for the component's whole lifetime.
+  const setOpen = React.useCallback((v: boolean) => {
     setUncontrolled(v);
-    onOpenChange?.(v);
-  };
-  return <Ctx.Provider value={{ open, setOpen }}>{children}</Ctx.Provider>;
+    onOpenChangeRef.current?.(v);
+  }, []);
+
+  // `setOpen` never changes, so `open` is the only real input here.
+  const value = React.useMemo(() => ({ open, setOpen }), [open]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function SheetTrigger({
@@ -57,19 +76,103 @@ export function SheetTrigger({
   });
 }
 
+/** Focusable descendants, in document order — what a focus trap and an initial focus both need. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function SheetContent({
   className,
   side = "left",
   style,
+  labelledBy,
   children,
 }: {
   className?: string;
   side?: "left" | "right" | "top" | "bottom";
   style?: React.CSSProperties;
+  /** The id of the heading that names this panel — `aria-labelledby`. Without it a screen reader announces an unnamed dialog. */
+  labelledBy?: string;
   children: React.ReactNode;
 }) {
   const ctx = React.useContext(Ctx)!;
-  if (!ctx.open) return null;
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const open = ctx.open;
+
+  // Escape closes, and focus goes where it came from. Both live in one
+  // effect because they share the same "who had focus before this opened"
+  // reference: capturing it in a second effect would race this one's
+  // cleanup on a fast open-close.
+  React.useEffect(() => {
+    if (!open) return;
+    const returnTo = document.activeElement as HTMLElement | null;
+
+    const panel = panelRef.current;
+    const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
+    // The panel itself when it holds nothing focusable — a dialog that
+    // leaves focus on the page behind it is not modal in any sense a
+    // keyboard user can tell.
+    (first ?? panel)?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        ctx.setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      // No filtering beyond the `FOCUSABLE` selector itself (its
+      // `:not([disabled])` clauses already do the real work): no sheet in
+      // this codebase hides a focusable descendant behind `display: none`
+      // while leaving it in the DOM, and an `offsetParent` check is dead
+      // weight under jsdom, where nothing has layout — every element's
+      // `offsetParent` reads `null`, so that check silently emptied
+      // `focusable` on every Tab press and the wrap below never ran.
+      const focusable = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const firstEl = focusable[0]!;
+      const lastEl = focusable[focusable.length - 1]!;
+      const active = document.activeElement;
+      // Focus is not in the panel at all. That is the common case, not an
+      // exotic one: any in-panel control that unmounts on click — every
+      // screen change the Help Center panel makes — leaves
+      // `document.activeElement` on `document.body`, which is neither the
+      // first control, nor the last, nor the panel. Without this branch the
+      // next Tab matched nothing, went unprevented, and walked into the
+      // site chrome behind the backdrop while `aria-modal="true"` claimed
+      // the opposite.
+      if (!active || !panelRef.current.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? lastEl : firstEl).focus();
+        return;
+      }
+      if (event.shiftKey && (active === firstEl || active === panelRef.current)) {
+        event.preventDefault();
+        lastEl.focus();
+      } else if (!event.shiftKey && active === lastEl) {
+        event.preventDefault();
+        firstEl.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      // Only if focus is still inside the panel being torn down: a close
+      // that already moved focus somewhere deliberate (a navigation) must
+      // not have it yanked back.
+      if (!returnTo) return;
+      if (document.activeElement === document.body || panelRef.current?.contains(document.activeElement)) {
+        returnTo.focus();
+      }
+    };
+  }, [open, ctx]);
+
+  if (!open) return null;
 
   const sideCls =
     side === "left"
@@ -82,13 +185,23 @@ export function SheetContent({
 
   return (
     <>
+      {/* `z-50`, not `z-40`: `MobileNav` is `fixed … z-40` and sits later in
+          the document, so at equal z-index it painted over this backdrop and
+          stayed tappable behind an open sheet — follow-up #78's second
+          defect. The panel goes one higher again. */}
       <div
-        className="fixed inset-0 z-40 bg-black/50"
+        data-testid="sheet-backdrop"
+        className="fixed inset-0 z-50 bg-black/50"
         onClick={() => ctx.setOpen(false)}
       />
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        {...(labelledBy ? { "aria-labelledby": labelledBy } : {})}
+        tabIndex={-1}
         className={cn(
-          "fixed z-50 bg-[var(--color-background)] shadow-lg",
+          "fixed z-[60] bg-[var(--color-background)] shadow-lg outline-none",
           sideCls,
           className,
         )}

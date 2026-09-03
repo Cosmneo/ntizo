@@ -1,0 +1,152 @@
+{
+  "launcher": "Ajuda",
+  "title": "Central de ajuda",
+  "greeting": "Olá 👋 Como podemos ajudar?",
+  "close": "Fechar",
+  "back": "Voltar",
+  "searchLabel": "Procurar na ajuda",
+  "searchPlaceholder": "Procurar — cancelamento, pagamento, verificação",
+  "searchNoResults": "Não encontrámos nada para «{{query}}».",
+  "searchNoResultsAction": "Fale connosco",
+  "actionMessage": "Enviar mensagem",
+  "actionMessageBody": "Falar com a nossa equipa de suporte",
+  "actionRequests": "Os meus pedidos",
+  "actionRequestsBody": "Conversas anteriores",
+  "popularTitle": "Perguntas frequentes",
+  "browseAll": "Ver todas as perguntas",
+  "signedOutTitle": "Inicie sessão para falar com o suporte",
+  "signedOutBody": "Precisa de uma conta para abrirmos um pedido em seu nome. Se não conseguir entrar, escreva para {{email}}.",
+  "signIn": "Iniciar sessão",
+  "requestsEmptyTitle": "Ainda não escreveu",
+  "requestsEmptyBody": "Quando abrir um pedido de suporte, ele aparece aqui.",
+  "requestsError": "Não foi possível carregar os seus pedidos.",
+  "subjectLabel": "Assunto",
+  "subjectPlaceholder": "Em poucas palavras",
+  "subjectHint": "{{count}}/120",
+  "bookingChip": "Sobre a reserva de {{service}}",
+  "bookingChipRemove": "Não é sobre esta reserva",
+  "audienceProvider": "Em nome de {{provider}}",
+  "workspaceLoading": "A verificar a que prestador este pedido diz respeito…",
+  "workspaceError": "Não conseguimos saber a que prestador este pedido diz respeito.",
+  "workspaceRetry": "Tentar novamente",
+  "status": {
+    "open": "Aberto",
+    "resolved": "Resolvido"
+  },
+  "resolvedNotice": "Este pedido foi marcado como resolvido. Responda para o reabrir.",
+  "platformSender": "Suporte Ntizo",
+  "conversationError": "Não foi possível carregar esta conversa.",
+  "error": {
+    "SUPPORT_SUBJECT_INVALID": "O assunto tem de ter entre 1 e 120 caracteres.",
+    "SUPPORT_NOT_A_MEMBER": "Não pertence a este prestador.",
+    "SUPPORT_BOOKING_NOT_YOURS": "Essa reserva não é sua.",
+    "SUPPORT_TOO_MANY_OPEN": "Já tem 10 pedidos abertos. Responda num deles.",
+    "MESSAGE_EMPTY": "Escreva a sua mensagem.",
+    "UNAUTHENTICATED": "Inicie sessão para falar com o suporte.",
+    "TOO_MANY_ATTACHMENTS": "Uma mensagem pode ter no máximo {{max}} ficheiros.",
+    "ATTACHMENT_NOT_AVAILABLE": "Um destes ficheiros já não está disponível. Remova-o e tente novamente.",
+    "VALIDATION_ERROR": "Verifique o assunto e a mensagem e tente novamente.",
+    "GENERIC": "Não foi possível enviar o pedido. Tente novamente."
+  },
+  "page": {
+    "headTitle": "Central de ajuda",
+    "eyebrow": "Ajuda",
+    "title": "Perguntas frequentes",
+    "lede": "As respostas que damos mais vezes. Se a sua não estiver aqui, fale connosco.",
+    "contactTitle": "Ainda precisa de ajuda?",
+    "contactBody": "Abra um pedido e respondemos por aqui.",
+    "contactAction": "Falar com o suporte",
+    "contactEmailPrefix": "Ou escreva para"
+  },
+  "faq": {
+    "customers": {
+      "title": "Clientes",
+      "howBookingWorks": {
+        "q": "Como funciona uma reserva?",
+        "a": "Escolhe o serviço, o dia e a hora no calendário do prestador, e diz onde o serviço acontece. O pedido segue para o prestador confirmar. Só depois de ele confirmar a hora recebe o pedido de pagamento no telemóvel."
+      },
+      "whenIPay": {
+        "q": "Quando é que pago?",
+        "a": "Depois de o prestador confirmar a hora, e nunca antes. Se ele não responder dentro do prazo indicado no pedido, ou recusar, o pedido é encerrado e não é cobrado nada."
+      },
+      "paymentMethods": {
+        "q": "Que métodos de pagamento aceitam?",
+        "a": "Neste momento, M-Pesa (Vodacom). O pedido de pagamento chega ao seu telemóvel e confirma-o com o PIN. Outros métodos estão a caminho."
+      },
+      "priceIsPrice": {
+        "q": "O preço que vejo é o que pago?",
+        "a": "Sim. O valor do anúncio é o valor cobrado. A comissão da Ntizo é descontada do lado do prestador, não é somada ao seu."
+      },
+      "verifiedBadge": {
+        "q": "O que significa o selo de verificado?",
+        "a": "Que o prestador enviou um documento de identidade (BI, DIRE ou passaporte) e que uma pessoa da Ntizo o reviu antes de o perfil ficar visível."
+      },
+      "quoteAndHourly": {
+        "q": "Alguns serviços dizem \"sob orçamento\" ou \"por hora\". Como reservo?",
+        "a": "Esses ainda não se reservam directamente. Envie uma mensagem ao prestador a partir da página do serviço para combinar o preço e a hora."
+      },
+      "cancelBooking": {
+        "q": "Posso cancelar uma reserva?",
+        "a": "Antes de o prestador confirmar, o pedido ainda não o compromete a nada. Depois de confirmar e pagar, fale com o suporte o quanto antes com a data e o nome do prestador, e tratamos do caso consigo."
+      },
+      "leaveReview": {
+        "q": "Como deixo uma avaliação?",
+        "a": "Só quem teve um serviço concluído com um prestador o pode avaliar. Cada pessoa tem uma avaliação por prestador, e pode mudá-la quando quiser."
+      }
+    },
+    "providers": {
+      "title": "Prestadores",
+      "whoCanBe": {
+        "q": "Quem pode ser prestador?",
+        "a": "Uma pessoa que oferece o seu próprio trabalho, ou um estabelecimento com equipa. Precisa de um documento de identidade, de um meio para receber (M-Pesa, e-Mola ou conta bancária) e de aceitar os termos."
+      },
+      "whatItCosts": {
+        "q": "Quanto custa?",
+        "a": "Registar-se e publicar serviços é gratuito. A Ntizo cobra uma comissão sobre cada serviço pago, descontada do valor que lhe é pago. A sua taxa está indicada na sua área de prestador."
+      },
+      "whenPaid": {
+        "q": "Quando é que recebo?",
+        "a": "O cliente paga depois de confirmar a hora, e o valor fica retido até o serviço estar concluído. Depois disso passa para a sua carteira, onde fica disponível para levantar após o período de retenção indicado."
+      },
+      "verification": {
+        "q": "Como funciona a verificação?",
+        "a": "Envia um documento de identidade durante o registo. Uma pessoa da Ntizo revê o pedido; até lá o perfil fica pendente e fora dos resultados. Avisamos por email quando estiver aprovado."
+      },
+      "team": {
+        "q": "Posso ter uma equipa?",
+        "a": "Sim. Um estabelecimento convida membros por email. Cada um tem a sua disponibilidade, e as horas que os clientes vêem contam com quantas pessoas estão livres."
+      },
+      "availability": {
+        "q": "Como defino a minha disponibilidade?",
+        "a": "Define os dias e horas em que trabalha, a duração de cada serviço e o intervalo entre serviços. A Ntizo gera as horas que os clientes podem escolher. Pode bloquear dias específicos."
+      },
+      "noAnswer": {
+        "q": "O que acontece se não responder a um pedido?",
+        "a": "Tem um prazo, indicado no pedido, para confirmar ou recusar. Passado esse prazo o pedido expira e o cliente é avisado para escolher outra hora ou outro prestador."
+      }
+    },
+    "payments": {
+      "title": "Pagamentos e segurança",
+      "paymentDataStored": {
+        "q": "Os meus dados de pagamento ficam guardados?",
+        "a": "Guardamos o número de telemóvel associado ao M-Pesa ou e-Mola e o país. Não guardamos números de cartão."
+      },
+      "shareContact": {
+        "q": "Posso partilhar o meu número ou email nas mensagens?",
+        "a": "As mensagens não permitem números de telefone nem emails. É o que mantém a reserva, o pagamento e a avaliação dentro da plataforma, onde há registo e a quem recorrer."
+      },
+      "serviceNotDone": {
+        "q": "O que acontece se o serviço não for feito?",
+        "a": "O pagamento fica retido até o serviço estar concluído. Se algo correr mal, fale com o suporte com a data e o nome do prestador. Analisamos o caso com as duas partes."
+      },
+      "dataHandling": {
+        "q": "Como tratam os meus dados?",
+        "a": "Recolhemos só o necessário para ligar clientes e prestadores. Está tudo na Política de Privacidade, escrita para ser lida."
+      },
+      "deleteAccount": {
+        "q": "Como apago a minha conta?",
+        "a": "Escreva para privacidade@ntizo.co.mz a partir do email da conta. Apagamos os seus dados, excepto o que a lei nos obriga a guardar, e respondemos no prazo de 30 dias."
+      }
+    }
+  }
+}

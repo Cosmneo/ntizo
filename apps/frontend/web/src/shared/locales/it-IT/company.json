@@ -4,6 +4,7 @@
     "links": {
       "contact": { "title": "Contatti", "body": "Collaborazioni, stampa, o semplicemente un saluto." },
       "feedback": { "title": "Lascia un feedback", "body": "Un'idea, qualcosa che non ha funzionato, o qualcosa che ti è piaciuto." },
+      "help": { "title": "Centro assistenza", "body": "Domande frequenti, e un modo per parlare con noi." },
       "about": { "title": "Chi è Ntizo", "body": "Cosa facciamo, come funziona e in cosa crediamo." },
       "careers": { "title": "Lavora con noi", "body": "Come lavoriamo, e come candidarti." }
     }

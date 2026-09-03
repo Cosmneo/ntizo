@@ -1,6 +1,7 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import type { ThreadPageDTO, MessagePageDTO } from "@ntizo/shared/read-models";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
+import type { ThreadType } from "@/features/messaging/domain/types";
 
 /**
  * Field names confirmed by introspecting a running server
@@ -25,7 +26,7 @@ import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 const MY_THREADS = `
   query MyThreads($input: CommunicationMyThreadsInput!) {
     communicationMyThreads(input: $input) {
-      items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }
+      items { id type providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount support { subject status audience bookingId } }
       nextCursor
     }
   }`;
@@ -33,7 +34,7 @@ const MY_THREADS = `
 const PROVIDER_THREADS = `
   query ProviderThreads($input: CommunicationProviderThreadsInput!) {
     communicationProviderThreads(input: $input) {
-      items { id providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount }
+      items { id type providerId providerName customerName lastMessageAt lastMessagePreview lastMessageHasAttachment unreadCount support { subject status audience bookingId } }
       nextCursor
     }
   }`;
@@ -51,7 +52,7 @@ const PROVIDER_THREADS = `
 const THREAD_MESSAGES = `
   query ThreadMessages($input: CommunicationThreadMessagesInput!) {
     communicationThreadMessages(input: $input) {
-      items { id threadId senderUserId body readAt createdAt attachments { id fileName contentType sizeBytes } }
+      items { id threadId senderUserId senderSide body readAt createdAt attachments { id fileName contentType sizeBytes } }
       nextCursor
     }
   }`;
@@ -81,13 +82,18 @@ export const MESSAGES_PAGE_SIZE = 30;
 const THREAD_POLL_MS = 5_000;
 
 export const messagingQueries = {
-  /** The caller's own inbox — every provider they have messaged, newest last message first. */
-  mine: () =>
+  /**
+   * The caller's own inbox. `type` narrows it — the Help Center's "my
+   * requests" passes `"support"`, `/messages` passes nothing and gets both.
+   * It rides in the query key too: a filtered list is a different result
+   * set, not the same one rendered differently.
+   */
+  mine: (type?: ThreadType) =>
     infiniteQueryOptions({
-      queryKey: ["messaging", "threads", "mine"] as const,
+      queryKey: ["messaging", "threads", "mine", type ?? "all"] as const,
       queryFn: ({ pageParam }) =>
         sessionGraphql<{ communicationMyThreads: ThreadPageDTO }>(MY_THREADS, {
-          input: { limit: THREADS_PAGE_SIZE, cursor: pageParam },
+          input: { limit: THREADS_PAGE_SIZE, cursor: pageParam, ...(type ? { type } : {}) },
         }).then((d) => d.communicationMyThreads),
       initialPageParam: undefined as string | undefined,
       // `nextCursor` is null when there is no more; `hasNextPage` reads
@@ -96,14 +102,21 @@ export const messagingQueries = {
       getNextPageParam: (last) => last.nextCursor ?? undefined,
     }),
 
-  /** One provider's inbox — the customers who have messaged them, newest last message first. */
-  forProvider: (providerId: string) =>
+  /** One provider's inbox — the customers who have messaged them, newest last message first. Same `type` narrowing as `mine`, for the same reason. */
+  forProvider: (providerId: string, type?: ThreadType) =>
     infiniteQueryOptions({
-      queryKey: ["messaging", "threads", "provider", providerId] as const,
+      queryKey: ["messaging", "threads", "provider", providerId, type ?? "all"] as const,
       queryFn: ({ pageParam }) =>
         sessionGraphql<{ communicationProviderThreads: ThreadPageDTO }>(
           PROVIDER_THREADS,
-          { input: { providerId, limit: THREADS_PAGE_SIZE, cursor: pageParam } },
+          {
+            input: {
+              providerId,
+              limit: THREADS_PAGE_SIZE,
+              cursor: pageParam,
+              ...(type ? { type } : {}),
+            },
+          },
         ).then((d) => d.communicationProviderThreads),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => last.nextCursor ?? undefined,

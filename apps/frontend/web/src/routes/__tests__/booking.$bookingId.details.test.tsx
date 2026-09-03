@@ -11,6 +11,7 @@ import {
 import type { AddressDTO, CurrentUserDTO } from "@ntizo/shared";
 import type { BookingDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
+import { HelpCenterProvider } from "@/features/help-center/viewmodel/use-help-center";
 
 /**
  * The route itself — the session guard, the remount key, and the fact that it
@@ -204,7 +205,12 @@ function renderRoute(
 
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router as never} />
+      {/* The "help with this booking" link calls `useHelpCenter()`, same as
+          the footer's "Falar com o suporte" and `/help`'s own contact
+          button. */}
+      <HelpCenterProvider>
+        <RouterProvider router={router as never} />
+      </HelpCenterProvider>
     </QueryClientProvider>,
   );
 

@@ -137,9 +137,22 @@ export interface BookingReadRepositoryPort {
   timelineFor(bookingId: string): Promise<ProviderTimelineRow[]>;
   /** The workspace's members with a first name to show, for the list's filter. */
   membersOf(providerId: string): Promise<ProviderMemberOption[]>;
+  /**
+   * Every number the dashboard shows, for one workspace, as of `now`. Day
+   * boundaries are the workspace's own (`provider.timezone`), resolved in
+   * Postgres — a "today" computed in the Worker's UTC would be wrong for two
+   * hours a day in Maputo and wrong for half of one in a DST market.
+   */
+  statsForProvider(providerId: string, now: Date): Promise<ProviderStats>;
 }
 
-export type ProviderListTab = "requests" | "upcoming" | "history";
+/**
+ * The three the list page draws, plus one the dashboard reads: `all` is every
+ * booking the workspace was asked about, newest first. It is not a tab — no
+ * screen offers it as a choice — but it is the same query with the status
+ * clause dropped, so it lives here rather than in a second method.
+ */
+export type ProviderListTab = "requests" | "upcoming" | "history" | "all";
 
 export interface ProviderListFilter {
   tab: ProviderListTab;
@@ -151,8 +164,8 @@ export interface ProviderListFilter {
   now: Date;
 }
 
-/** The statuses each tab lists. `upcoming` and `history` also split CONFIRMED/PENDING_PAYMENT by `startsAt` against `now`. */
-export const PROVIDER_TAB_STATUSES: Record<ProviderListTab, readonly string[]> = {
+/** The statuses each *tab* lists. `all` is absent on purpose: it filters on no status at all. */
+export const PROVIDER_TAB_STATUSES: Record<Exclude<ProviderListTab, "all">, readonly string[]> = {
   requests: ["AWAITING_PROVIDER"],
   upcoming: ["PENDING_PAYMENT", "CONFIRMED"],
   history: ["MARKED_DONE", "COMPLETED", "DISPUTED", "DECLINED", "CANCELLED", "EXPIRED"],
@@ -231,4 +244,36 @@ export interface ProviderTimelineRow {
 export interface ProviderMemberOption {
   id: string;
   firstName: string;
+}
+
+/** The dashboard's numbers, before the projection shapes them. `currency` and `today` are null-safe on the projection's side, not here. */
+export interface ProviderStatsRow {
+  awaitingResponse: number;
+  awaitingPayment: number;
+  upcomingToday: number;
+  upcomingWeek: number;
+  completedLast30: number;
+  declinedLast30: number;
+  revenueLast30Minor: number;
+  pipelineMinor: number;
+  /**
+   * The workspace's own currency, taken off its bookings — `max()` over them,
+   * so a workspace that somehow held two would answer with one of the two
+   * rather than a total in neither. Null when it has no bookings at all.
+   */
+  currency: string | null;
+  /** The provider's local day for `now`, `YYYY-MM-DD` — the last bucket of the chart. */
+  today: string;
+}
+
+/** One local day with something in it. Days with nothing are absent — the projection fills them. */
+export interface ProviderStatsDayRow {
+  date: string;
+  requests: number;
+  confirmed: number;
+}
+
+export interface ProviderStats {
+  totals: ProviderStatsRow;
+  perDay: ProviderStatsDayRow[];
 }

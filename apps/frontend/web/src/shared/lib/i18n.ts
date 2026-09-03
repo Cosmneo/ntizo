@@ -16,6 +16,7 @@ import enUSMessaging from "@/shared/locales/en-US/messaging.json";
 import enUSLegal from "@/shared/locales/en-US/legal.json";
 import enUSCheckout from "@/shared/locales/en-US/checkout.json";
 import enUSCompany from "@/shared/locales/en-US/company.json";
+import enUSHelp from "@/shared/locales/en-US/help.json";
 import enUSBookings from "@/shared/locales/en-US/bookings.json";
 import ptPTCommon from "@/shared/locales/pt-PT/common.json";
 import ptPTAuth from "@/shared/locales/pt-PT/auth.json";
@@ -31,6 +32,7 @@ import ptPTMessaging from "@/shared/locales/pt-PT/messaging.json";
 import ptPTLegal from "@/shared/locales/pt-PT/legal.json";
 import ptPTCheckout from "@/shared/locales/pt-PT/checkout.json";
 import ptPTCompany from "@/shared/locales/pt-PT/company.json";
+import ptPTHelp from "@/shared/locales/pt-PT/help.json";
 import ptPTBookings from "@/shared/locales/pt-PT/bookings.json";
 import ptMZCommon from "@/shared/locales/pt-MZ/common.json";
 import ptMZAuth from "@/shared/locales/pt-MZ/auth.json";
@@ -46,6 +48,7 @@ import ptMZMessaging from "@/shared/locales/pt-MZ/messaging.json";
 import ptMZLegal from "@/shared/locales/pt-MZ/legal.json";
 import ptMZCheckout from "@/shared/locales/pt-MZ/checkout.json";
 import ptMZCompany from "@/shared/locales/pt-MZ/company.json";
+import ptMZHelp from "@/shared/locales/pt-MZ/help.json";
 import ptMZBookings from "@/shared/locales/pt-MZ/bookings.json";
 import esESCommon from "@/shared/locales/es-ES/common.json";
 import esESAuth from "@/shared/locales/es-ES/auth.json";
@@ -61,6 +64,7 @@ import esESMessaging from "@/shared/locales/es-ES/messaging.json";
 import esESLegal from "@/shared/locales/es-ES/legal.json";
 import esESCheckout from "@/shared/locales/es-ES/checkout.json";
 import esESCompany from "@/shared/locales/es-ES/company.json";
+import esESHelp from "@/shared/locales/es-ES/help.json";
 import esESBookings from "@/shared/locales/es-ES/bookings.json";
 import deDECommon from "@/shared/locales/de-DE/common.json";
 import deDEAuth from "@/shared/locales/de-DE/auth.json";
@@ -76,6 +80,7 @@ import deDEMessaging from "@/shared/locales/de-DE/messaging.json";
 import deDELegal from "@/shared/locales/de-DE/legal.json";
 import deDECheckout from "@/shared/locales/de-DE/checkout.json";
 import deDECompany from "@/shared/locales/de-DE/company.json";
+import deDEHelp from "@/shared/locales/de-DE/help.json";
 import deDEBookings from "@/shared/locales/de-DE/bookings.json";
 import frFRCommon from "@/shared/locales/fr-FR/common.json";
 import frFRAuth from "@/shared/locales/fr-FR/auth.json";
@@ -91,6 +96,7 @@ import frFRMessaging from "@/shared/locales/fr-FR/messaging.json";
 import frFRLegal from "@/shared/locales/fr-FR/legal.json";
 import frFRCheckout from "@/shared/locales/fr-FR/checkout.json";
 import frFRCompany from "@/shared/locales/fr-FR/company.json";
+import frFRHelp from "@/shared/locales/fr-FR/help.json";
 import frFRBookings from "@/shared/locales/fr-FR/bookings.json";
 import itITCommon from "@/shared/locales/it-IT/common.json";
 import itITAuth from "@/shared/locales/it-IT/auth.json";
@@ -106,6 +112,7 @@ import itITMessaging from "@/shared/locales/it-IT/messaging.json";
 import itITLegal from "@/shared/locales/it-IT/legal.json";
 import itITCheckout from "@/shared/locales/it-IT/checkout.json";
 import itITCompany from "@/shared/locales/it-IT/company.json";
+import itITHelp from "@/shared/locales/it-IT/help.json";
 import itITBookings from "@/shared/locales/it-IT/bookings.json";
 import nlNLCommon from "@/shared/locales/nl-NL/common.json";
 import nlNLAuth from "@/shared/locales/nl-NL/auth.json";
@@ -121,6 +128,7 @@ import nlNLMessaging from "@/shared/locales/nl-NL/messaging.json";
 import nlNLLegal from "@/shared/locales/nl-NL/legal.json";
 import nlNLCheckout from "@/shared/locales/nl-NL/checkout.json";
 import nlNLCompany from "@/shared/locales/nl-NL/company.json";
+import nlNLHelp from "@/shared/locales/nl-NL/help.json";
 import nlNLBookings from "@/shared/locales/nl-NL/bookings.json";
 
 /**
@@ -154,6 +162,7 @@ const resources = {
     checkout: enUSCheckout,
     company: enUSCompany,
     bookings: enUSBookings,
+    help: enUSHelp,
   },
   "pt-PT": {
     common: ptPTCommon,
@@ -171,6 +180,7 @@ const resources = {
     checkout: ptPTCheckout,
     company: ptPTCompany,
     bookings: ptPTBookings,
+    help: ptPTHelp,
   },
   "pt-MZ": {
     common: ptMZCommon,
@@ -188,6 +198,7 @@ const resources = {
     checkout: ptMZCheckout,
     company: ptMZCompany,
     bookings: ptMZBookings,
+    help: ptMZHelp,
   },
   "es-ES": {
     common: esESCommon,
@@ -205,6 +216,7 @@ const resources = {
     checkout: esESCheckout,
     company: esESCompany,
     bookings: esESBookings,
+    help: esESHelp,
   },
   "de-DE": {
     common: deDECommon,
@@ -222,6 +234,7 @@ const resources = {
     checkout: deDECheckout,
     company: deDECompany,
     bookings: deDEBookings,
+    help: deDEHelp,
   },
   "fr-FR": {
     common: frFRCommon,
@@ -239,6 +252,7 @@ const resources = {
     checkout: frFRCheckout,
     company: frFRCompany,
     bookings: frFRBookings,
+    help: frFRHelp,
   },
   "it-IT": {
     common: itITCommon,
@@ -256,6 +270,7 @@ const resources = {
     checkout: itITCheckout,
     company: itITCompany,
     bookings: itITBookings,
+    help: itITHelp,
   },
   "nl-NL": {
     common: nlNLCommon,
@@ -273,6 +288,7 @@ const resources = {
     checkout: nlNLCheckout,
     company: nlNLCompany,
     bookings: nlNLBookings,
+    help: nlNLHelp,
   },
 };
 
@@ -308,6 +324,7 @@ void i18n
       "checkout",
       "company",
       "bookings",
+      "help",
     ],
     defaultNS: "common",
     interpolation: { escapeValue: false },

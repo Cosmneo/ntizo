@@ -1972,38 +1972,33 @@ then if no such screen has appeared, or wire it up if one has.
 
 ---
 
-## 78. `Sheet` is called a dialog but is not modal, and the bottom nav paints over its backdrop
+## 78. `Sheet` is modal now, except its background is never marked `inert`
 
-`packages/frontend/src/components/sheet.tsx` is a deliberately minimal primitive: `SheetContent`
-renders a `z-40` backdrop and a `z-50` fixed panel, and that is all. There is **no focus trap, no
-Escape handler, no focus move on open, no focus restore on close and no `inert`/`aria-hidden` on the
-background.** Tab from the last control in a sheet lands on the page underneath it.
+**Narrowed 2026-09-03 — most of this entry is closed.** The help center's frontend branch made
+`Sheet` real: `SheetContent` (`packages/frontend/src/components/sheet.tsx`) now runs a focus trap
+(Tab wraps inside the panel), an Escape handler, moves focus in on open and restores it on close,
+and carries `role="dialog"` + `aria-modal="true"` unconditionally — no longer a claim the primitive
+couldn't back (`c039bb0c`, with the trap's jsdom false-negative and a context-churn bug fixed in
+`a7bffb43`). The backdrop is `z-50`, above `MobileNav`'s `z-40`, with a comment naming this entry so
+nobody drops it back to `z-40` without reading why. Every consumer that used to nest its own
+`role="dialog"` to compensate — `rule-drawer.tsx`, `service-facets.tsx` (`MobileFilterBar`),
+`provider-facets.tsx` (`MobileDirectoryFilterBar`), `mobile-search-sheet.tsx`
+(`MobileSearchSheet`) — now names the primitive's own dialog via `SheetContent`'s `labelledBy`
+prop instead of drawing a second one.
 
-The three browse sheets (`MobileSearchSheet`, `MobileFilterBar`, `MobileDirectoryFilterBar`) carry
-`role="dialog"` + `aria-labelledby`, which they earn — the primitive draws a bare div, so without
-them a screen reader gets the fields with no boundary and no name. They deliberately do **not** carry
-`aria-modal="true"`, which was dropped in task 21's review: `aria-modal` asserts that everything
-outside the node is inert, and a false claim of modality is strictly worse than no claim, because it
-tells assistive tech to ignore exactly the controls keyboard focus is about to land on.
-`features/provider/availability/ui/rule-drawer.tsx` still carries `aria-modal="true"` over the same
-primitive and has the same problem.
+**What is still open:** the background is never given `inert` or `aria-hidden` while a sheet is
+open — `Sheet`'s fix list named this specifically ("background `inert`, and a backdrop above every
+fixed chrome the app has"), and only the backdrop half landed. `aria-modal="true"` is now an honest
+claim for a keyboard user, because the trap really holds; it is not a mechanical guarantee for a
+screen-reader user navigating by swipe or virtual cursor rather than Tab, where `aria-modal` is a
+signal some assistive tech honors and some does not. Marking every sibling of the open sheet
+`inert` (or `aria-hidden`) would make that unreachable regardless of how the AT gets there, and
+nothing in this branch did that — the app has no single place today that knows "this is everything
+that isn't the sheet" the way a portal-rendered dialog would.
 
-Second, smaller defect in the same primitive: the backdrop is `z-40`, and `MobileNav`
-(`shared/components/mobile-nav.tsx`) is also `z-40` and later in the DOM — `__root.tsx` renders it
-after the page content. Equal z-index resolves on tree order, so below `md` the bottom nav paints
-**over** the sheet's backdrop and stays tappable behind a sheet short enough not to cover it. A
-reader can navigate away from underneath an open dialog.
-
-The fix is one of two, not both: give `Sheet` real modality (focus trap, Escape, focus restore,
-background `inert`, and a backdrop above every fixed chrome the app has), and then put `aria-modal`
-back everywhere; or accept it as a non-modal disclosure panel and stop the `role="dialog"` too. It
-was left alone here because it is a shared primitive with callers outside this branch, and changing
-its focus behaviour is not a thing to do inside a listings redesign.
-
-**Trigger:** the first keyboard or screen-reader accessibility pass on the customer app, or the first
-report of the bottom nav being tappable behind an open sheet — whichever comes first. Also urgent if
-a fourth caller adopts `Sheet` for anything the user must not be able to escape from mid-flow
-(a payment confirmation, a destructive confirm).
+**Trigger:** the first screen-reader pass that reaches a background control while a sheet is open
+via anything other than Tab, or the next component that needs a dialog and can justify building
+the portal/`inert` wiring `Sheet` still lacks.
 
 ---
 
@@ -3325,7 +3320,15 @@ The forms carry a honeypot and a five-per-hour-per-address count in the table.
 
 ---
 
-## #132 — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
+## ~~#132 — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip~~ — RESOLVED 2026-09-03
+
+The help center's frontend landed (`06c89186`, refined in `fa1a02dd`). The Empresa column's footer
+now carries both: `footer.links.support` is a button that opens the help panel
+(`help.composeNew()`), and `footer.links.faq` links `/help`. `CompanyPage`'s `STRIP` list carries a
+`help` entry ahead of `about`, and `shared.links.help` (as `company.json`'s `help` key) is written,
+not copied, in all eight locales.
+
+## #132 (original) — The footer's "Falar com o suporte" and "Perguntas frequentes" links, and the company pages' strip
 
 The Empresa column shows five of the reference's seven links. The two missing ones belong to the help center (`2026-09-02-help-center-design.md`): "Perguntas frequentes" → `/help`, "Falar com o suporte" → the panel (or `/help` until it exists). The `CompanyPage` strip's `STRIP` list gets a `help` entry ahead of `about` at the same time, and `shared.links.help` joins the `company` namespace in eight languages.
 
@@ -3407,7 +3410,16 @@ opposite meanings about who actually answered.
 
 ---
 
-## #137 — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side
+## ~~#137 — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side~~ — RESOLVED 2026-09-03
+
+Plan B closed both halves. `notification-presentation.ts`'s `PRESENTATION` map now carries
+`SUPPORT_REQUEST_OPENED`, `SUPPORT_REQUEST_MESSAGE`, `SUPPORT_REPLY` and `SUPPORT_REQUEST_RESOLVED`
+(`e80a75ad`), each with a sentence in `notifications.json` in all eight locales. On the wire side,
+`Thread.providerId` (`features/messaging/domain/types.ts`) is `string | null`, and the `?? ""`
+lines in `use-threads.ts`/`use-provider-threads.ts` are gone — there is no `providerId ?? ""` left
+anywhere in the app (`b949ed74`).
+
+## #137 (original) — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side
 
 `notifications.json`'s `type` map has no `supportRequestOpened`, `supportRequestMessage`,
 `supportReply` or `supportRequestResolved` key (only `welcome`, `providerWorkspaceWelcome`,
@@ -3528,6 +3540,9 @@ still tells the admins about it regardless of the request's status. A `WHERE sta
 look once it actually bites.
 
 **Trigger:** the second admin account, or the first duplicate "request resolved" notification.
+
+---
+
 ## #145 — Bookings the provider cannot act on after acceptance
 
 Phase 1 of `2026-09-02-provider-bookings-and-dashboard-design.md` mounts accept and decline
@@ -3592,7 +3607,271 @@ told about, and nothing anywhere is red.
 ahead of the scheduling call, or wrap the scheduling the way the raise is already wrapped — the
 ordering is arbitrary today and load-bearing the moment the adapter is real.
 
-## #150 — Watch the first real customer-initiated charge on dev
+---
+
+## #150 — The FAQ answers exist in two languages, and six locales read English
+
+`help.json`'s `faq.*` values are copies of en-US in `es-ES`, `de-DE`, `fr-FR`, `it-IT` and
+`nl-NL` (pt-PT copies pt-MZ), so those readers get translated chrome and English answers. The
+parity test only compares keys, so nothing goes red as they diverge.
+
+**Trigger:** the first user in one of those five languages, or the same moment follow-up #120
+(the app's other untranslated copy) is picked up.
+
+---
+
+## ~~#151 — The panel's request list fetches on every page~~ — RESOLVED 2026-09-03
+
+The entry as written understated it. `HelpCenter` is mounted at the root, and
+`messagingQueries.mine` carries no `enabled` guard of its own (unlike `forProvider` and `thread`
+beside it), so the list was fetched for **every visitor, signed out included** — two
+`communicationMyThreads` POSTs per anonymous view of `/`, `/help` or `/services/*`, each answered
+`UNAUTHENTICATED` and each retried once — and on `/admin` and inside checkout, where the panel
+cannot be opened at all. Not "one stale-ish query nobody asked for": failing requests on the
+public landing page.
+
+`useSupportRequests` now takes an `enabled` argument, and `HelpCenter` passes `signedIn &&
+(help.open || showsHelpLauncher(pathname))`: signed in, and either the panel is open or the
+launcher is on screen and needs its unread badge. The three zones `showsHelpLauncher` excludes
+fetch only once somebody actually opens the panel there — which the footer's "Falar com o
+suporte" and a booking's "need help" can still do.
+
+---
+
+## #152 — The admin queue has no search
+
+`supportRequests` takes `status` and `audience` and nothing else, so a request is found by
+scrolling the open list. `/admin/contact` searches by reference and name.
+
+**Trigger:** the first day the open list needs more than one page.
+
+---
+
+## #153 — `supportOpenCount` is fetched by the queue page, not by the sidebar
+
+The spec wanted a badge on the nav entry; `NavItem` has no badge field and adding one touches
+every zone's sidebar. The count is on the queue page instead.
+
+**Trigger:** the next time somebody asks why they have to open the queue to know it has work.
+
+---
+
+## #154 — A resolved request cannot be reopened from the admin side
+
+`supportResolve` is one-way; the requester's reply reopens it (plan A). An admin who resolves
+the wrong request has no undo.
+
+**Trigger:** the first mis-resolve.
+
+---
+
+## #155 — The help-center e2e spec has never been executed
+
+`apps/e2e/tests/help-center.spec.ts` was written, typechecked, linted and its cases collected
+via `playwright test --list`, but never run: this environment has no Docker, no Postgres binary,
+and nothing on port 55432, which the throwaway e2e database needs. Its selectors were each
+verified against the real components and locale files, and its cleanup order against the real
+Drizzle cascade rules, but no assertion in it has ever fired.
+
+**Trigger:** the next time anyone has the throwaway Postgres up — `bun run e2e -- help-center`,
+then the brief's Step 3 mutation check (comment out `<HelpCenter />` and confirm the spec
+actually fails).
+
+---
+
+## #156 — `/help` has no `FAQPage` structured data
+
+The design spec mentions it; the plan deliberately left it out because the app has no structured
+data anywhere, `CompanyPage` owns the document head, and adding the first `ld+json` inside a page
+task would have been a second unreviewed decision.
+
+**Trigger:** the first time anyone looks at how the FAQ ranks in search, or the first other page
+that wants structured data.
+
+---
+
+## #157 — Three details the design spec asks for that the help center's frontend does not have
+
+Each was dropped without an entry of its own, and each is a line of the spec rather than a
+judgement call taken against it:
+
+- **The requests list has no unread dot.** `help-requests` shows subject, status pill, last
+  message and a date; the spec's line is "subject, status pill, last message, relative time,
+  unread dot" (`2026-09-02-help-center-design.md`, the `help-requests` bullet). The count exists
+  — `Thread.unreadCount` is what the launcher badge sums — so this is a mark to render, not data
+  to fetch. The date is also absolute (`4 Sep`), not the relative time the same line asks for.
+- **The admin queue has no "opened" column.** The spec's columns are "subject, requester, last
+  message, unread, status, opened"; the table stops at status and last message. `createdAt` is
+  already on `supportRequestSummaryReadModel` and already selected by the query — nothing to add
+  behind it.
+- **A provider request does not name the member who opened it.** The spec's requester column is
+  "name, or provider name **with the member who opened**". The queue shows the provider's name
+  alone, so two requests from the same business are indistinguishable in the list;
+  `requesterName` is on the row and unused for that audience.
+
+**Trigger:** the first admin who has to open two requests from the same provider to tell them
+apart, or the first support conversation about "I replied and it still looks unread".
+
+---
+
+## #158 — `useActiveProvider` falls back to the reader's first workspace when the URL names one they do not own
+
+`use-active-provider.ts` resolves the slug against `providers.mine`, and when nothing matches it
+returns the stored id or `providers[0]` — never `null`. `/provider/$slug`'s `beforeLoad` checks
+only that a session exists (`provider-guard.ts`), so `/provider/somebody-elses-slug` renders, and
+every hook on the page reads the reader's *own* first workspace while the URL names another.
+
+Pre-existing, and this branch is the first caller to turn it into a **write** decision: the help
+panel derives `providerId` from `activeProvider` and files the request against it. Not a security
+hole — the backend re-checks membership on `communicationOpenSupportRequest`, and
+`providers.mine` cannot yield a provider the reader does not belong to — but the request lands on
+the wrong (own) workspace with no warning, and "Em nome de X" is the only signal that X is not
+what the address bar says.
+
+The fix is a membership check in the route's `beforeLoad`, which needs the slug resolved before
+render and therefore its own decision about where that resolution lives.
+
+**Trigger:** the first bookmark or shared link to another workspace's URL — or, sooner, the first
+time someone edits a slug in the address bar to see what happens.
+
+---
+
+## #159 — A support notification says which request it is about and still goes nowhere when clicked
+
+`notification-cell.tsx` makes the whole row a button whose only action is `onMarkRead`, with its
+own comment saying a type that needs to navigate belongs in "a `target` map beside
+`presentationFor`". `SUPPORT_REPLY` and the other three support types now name the request in
+their sentence (`e80a75ad`), which makes a row that does nothing when clicked read as broken
+rather than as by-design — a reader who has just been told "Ntizo replied about *Reembolso*" has
+no way from there to the reply but the help panel's "my requests".
+
+Pre-existing design, newly conspicuous. The `target` map the comment describes is the shape:
+support types would open the panel on that thread (`useHelpCenter().openThread`), which is a
+different kind of target from a route and wants that decision made once, for all types.
+
+**Trigger:** the first "I tapped the notification and nothing happened", or the next notification
+type that has somewhere to go.
+
+---
+
+## #160 — The sheet's focus trap will fight a portalled menu, the day one lands inside a sheet
+
+The trap added in `c968597c` recovers focus with `if (!active || !panelRef.current.contains(active))`
+— anything focused outside the panel's DOM subtree is pulled back to the first focusable element
+inside it. That is exactly right for the bug it fixes (Tab escaping to the site header after an
+in-panel button unmounts), and it is correct for every current caller: `createPortal` appears only
+in `dropdown-menu.tsx`, and no `DropdownMenu` or `CitySelect` is rendered inside a `SheetContent`
+today. Verified caller by caller at the time of writing.
+
+But a portalled child renders outside the panel's subtree while being visually and logically inside
+it, so the day somebody puts a dropdown, a combobox or a date picker inside a sheet, its menu items
+become untabbable: focus lands in the portal, `contains` says false, and the trap yanks it back.
+The failure will look like "the dropdown inside the sheet is broken", not like a focus-trap bug,
+which is why it is worth writing down now rather than rediscovering then.
+
+The fix, when it is needed, is to test containment against the panel *and* any element the panel
+owns by `aria-owns`/`aria-controls`, or to have the sheet register portalled subtrees it should
+treat as inside.
+
+**Trigger:** the first `DropdownMenu`, `CitySelect` or any other portalling component placed inside
+a `SheetContent`.
+
+---
+
+## #161 — A reader with no workspace at all gets an error and a "Try again" that can never succeed
+
+`help-center.tsx` decides the provider audience's readiness from `!isLoading` on `providers.mine`,
+which is correct for the two states it was built for — still loading, and failed — and was verified
+against React Query 5.99.0's `isLoading = isPending && isFetching`. The third state falls through
+it: a signed-in reader with zero provider memberships settles successfully with an empty list, so
+`isLoading` is false and `activeProvider` is null, and the panel shows the workspace-failed message
+with a retry button. Retrying re-runs a query that will keep succeeding and keep returning nothing.
+
+Reachable because `routes/provider/provider-guard.ts` checks only for a session, not for membership
+— so anyone signed in can open `/provider/<any-slug>/…` and then the panel. Rare, and it fails
+closed rather than filing a wrong request, which is why it is a follow-up and not a fix: the honest
+screen for that reader says they have no workspace and offers the personal request instead of a
+retry.
+
+**Trigger:** the first support ticket that says "it keeps telling me to try again", or whenever
+`provider-guard.ts` gains a real membership check — at which point this state stops being reachable
+and this entry can be closed unfixed.
+
+---
+
+## #162 — Typing in the FAQ search closes an answer the reader had just opened
+
+`FaqResults` is keyed by the query string, so every keystroke remounts it and resets `openId`. That
+is what makes the good behaviour work — narrowing to exactly one match seeds that answer open, so a
+popular question clicked on the home screen arrives already showing its answer — and the same
+mechanism is what discards the reader's own expansion as they keep typing.
+
+Defensible as-is: a reader who is still typing is still searching, and the list under them is
+changing anyway. But it was a consequence of the seeding rather than a decision anyone made, and it
+is not written down at the call site.
+
+**Trigger:** the first time someone opens an answer, types one more letter to narrow the list
+further, and finds it closed — or a decision to seed `openId` without remounting.
+## #163 — The dashboard's unread count only sees the first page of threads
+
+`OverviewPage` sums `unreadCount` over `useProviderThreads`' first page, which is what the
+design settled for, because the communication read has no aggregate. A workspace with more
+threads than one page holds will show an undercount, and the number will change as the
+inbox is scrolled elsewhere in the session.
+
+**Trigger:** the first provider whose inbox is longer than a page and who notices the two
+screens disagree; the fix is a `communicationProviderUnreadCount` beside the notification
+context's, which already has one.
+
+## #164 — The stats read has no index for its date windows
+
+`booking_provider_status_idx` (`provider_id`, `status`) serves the dashboard's counts, but the
+thirty-day sums filter on `completed_at` and the confirmed series on `paid_at` — ruling R6:
+the column called `confirmed_at` is the provider's acceptance, and the series counts money
+arriving — neither of which is indexed. At a workspace's row counts this is a scan of a few
+hundred rows and costs nothing; at a marketplace's it is a scan of the table.
+
+**Trigger:** the dashboard appearing in a slow-query log, or the first workspace with tens of
+thousands of bookings — then `(provider_id, completed_at)` and `(provider_id, paid_at)`,
+or a rollup table if the numbers are wanted platform-wide.
+
+## #165 — The dashboard's cards cannot tell an empty workspace from a failed read
+
+Only the stats query renders an alert (`features/provider/ui/overview.tsx`): `stats.isError`
+gates a banner, but the recent-bookings, rating and services queries have no equivalent check.
+If any of them fails, `recent.data?.items ?? []` and `services.data ?? []` fall back to empty
+arrays and `rating.data?.average` falls back to `null`, so the cards render "Ainda sem
+reservas", "—" and `0` — exactly what an untouched workspace looks like, not what a broken
+read looks like.
+
+**Trigger:** the first provider who reports a blank dashboard that is not blank, or the next
+page that copies this pattern; the fix is one shared "could not read" state per card.
+
+## #166 — The KPI cards size their money by the viewport, not by their own width
+
+`StatCard`'s value steps from 18px to 28px at `sm:`, and the grid steps from two columns to
+four at `xl:` — both keyed to the viewport, while what actually constrains the figure is the
+card's own track. The two move in opposite directions: past `xl` the track gets *narrower*
+than it was one pixel earlier, and the sidebar takes 16rem out of the measurement without
+any breakpoint knowing. Measured against `formatMoney` in pt-MZ at 28px, from the shipped
+Poppins SemiBold (`99 999,99 MTn` is 7.25em = 203px, `999 999,99 MTn` is 7.88em = 221px):
+
+- **at 1280px**, the first four-up width, the card's content box is 198px. The dashboard's own
+  fixture figure fits with 0.7px to spare, five figures clip by 5px, and a workspace netting
+  six figures a month clips by 19–22px.
+- **at 1440px** the box is 238px and every realistic payout fits; only a seven-figure MZN
+  month (245px) still crosses the border. From 1536px up the grid's `max-w-6xl` caps the box
+  at 242px, so it never gets better than that.
+
+The same mechanism bites once more on the way up: between 768px and ~829px the sidebar has
+appeared but the value is already at its 28px `sm:` size, and the two-up card is 190px.
+
+**Trigger:** the first workspace whose monthly payout reaches six figures, or the next zone
+page that copies this grid — then size the value from the card rather than the window
+(`@container` on `Card`, with the type step as a container query), which removes every band
+above at once instead of moving another breakpoint.
+
+## #167 — Watch the first real customer-initiated charge on dev
 
 Task 10's spike was ruled unnecessary rather than run: the mechanism `RequestBookingChargeCommand`
 schedules its gateway call through (`configMiddleware` → `infraStore.waitUntil` → `connection.ts`)
@@ -3616,7 +3895,7 @@ If it never does across a handful of real presses, the fallback the cancelled sp
 clearing `last_charge_attempt_at` and letting the next cron tick pick the booking up — is still the
 documented way out.
 
-## #151 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` confirmed still email-less, cross-referencing #146
+## #168 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` confirmed still email-less, cross-referencing #146
 
 Not a new gap — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` is already one of the three types #146
 names. This is that entry confirmed from the write side: `CancelBookingCommand`'s own doc comment
@@ -3627,7 +3906,7 @@ rather than filing the same gap twice.
 **Trigger:** see #146 — the notification-preferences work, or the first provider who missed a
 cancellation because they were not in the app. Closes with that entry, not on its own.
 
-## #152 — A stale comment in `config.middleware.ts` still predicts the mutation this branch just shipped
+## #169 — A stale comment in `config.middleware.ts` still predicts the mutation this branch just shipped
 
 `apps/backend/api/src/middlewares/config.middleware.ts` (around lines 29-32) carries the M-Pesa env
 vars forward with a comment explaining why: "the moment a 'Pagar agora' mutation exists, a customer
@@ -3640,7 +3919,7 @@ comment narrates a future that already happened.
 "the moment it exists" to a plain statement of why the customer-initiated path needs these vars too.
 Cosmetic — nothing behaves differently either way.
 
-## #153 — The customer's booking read model carries no `providerId`
+## #170 — The customer's booking read model carries no `providerId`
 
 Task 6's ruling recorded this rather than closing it: `CustomerBookingDetailDTO` has the provider's
 slug, name, verified mark and rating, but not the entity id `MessageProviderButton` needs to open a
@@ -3652,7 +3931,7 @@ instead of by one click from the booking that is actually the reason to write.
 `GetMyBookingProjection`'s select and `CustomerBookingDetailDTO` — the row already joins `provider`
 for the name and slug, so the id is already in scope, just not projected.
 
-## #154 — No per-tab ordering assertion on the customer's own bookings
+## #171 — No per-tab ordering assertion on the customer's own bookings
 
 Task 2's review flagged this and the brief for that fix round matched it, so it was left rather than
 guessed at: `booking-read.repository.test.ts` proves `listForCustomer` puts the right bookings in the
@@ -3665,7 +3944,7 @@ three `ORDER BY` clauses would pass every existing test in the file.
 multi-row fixture per tab asserting the sequence, alongside whatever else that edit is already
 touching.
 
-## #155 — `pay-dialog.tsx` and `cancel-dialog.tsx` share a small amount of shape
+## #172 — `pay-dialog.tsx` and `cancel-dialog.tsx` share a small amount of shape
 
 Both are a `Dialog` opened for exactly one booking, both own their own mutation and error mapping,
 both render a title, a body built from the same slot wording, a "keep/cancel" footer pair. Task 12's
@@ -3678,7 +3957,7 @@ of lines, not the whole component.
 reschedule). Two callers sharing a little shape is a coincidence; three sharing the same little shape
 is a pattern worth a `BookingActionDialog` wrapper.
 
-## #156 — The money column reads "Valor" for the customer and "Preço" for the provider
+## #173 — The money column reads "Valor" for the customer and "Preço" for the provider
 
 `bookings.json`'s `col.price` is "Valor" on the customer's own page; `provider.json`'s `col.price` is
 "Preço" on the provider's list of the exact same bookings. Task 5's implementer flagged this as a
@@ -3690,10 +3969,10 @@ depending on who is looking, and nothing records that the difference was chosen 
 ticket asking why the two don't match. If it turns out to be an oversight rather than a choice after
 all, it is a one-line change in either locale file, repeated across all eight languages.
 
-## #157 — A parity gate that compares files to each other cannot see whether the app loads them
+## #174 — A parity gate that compares files to each other cannot see whether the app loads them
 
 What actually let `bookings` ship unregistered in seven of eight locales (found and fixed in this
-same task, see the commit that introduced `#151`-`#156`) was not a missing test — `i18n-parity.test.ts`
+same task, see the commit that introduced `#168`-`#173`) was not a missing test — `i18n-parity.test.ts`
 already existed and ran on every one of this branch's own CI passes. It compares each locale's JSON
 file to `en-US`'s, key for key, placeholder for placeholder. Every one of those comparisons agreed:
 the seven missing locales' `bookings.json` files were byte-correct, so the gate had nothing to

@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "i18next";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import type { FeaturedReviewDTO } from "@ntizo/shared/read-models";
+import { HelpCenterProvider } from "@/features/help-center/viewmodel/use-help-center";
 import { LandingPage } from "./landing-page";
 
 /**
@@ -138,7 +139,11 @@ function renderInRouter(providers?: ProviderPublicDTO[], stories?: FeaturedRevie
   if (stories) qc.setQueryData(featuredKey(), stories);
   render(
     <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
+      {/* The page's own footer now calls `useHelpCenter()` for its "Falar
+          com o suporte" button, same as every other page that renders it. */}
+      <HelpCenterProvider>
+        <RouterProvider router={router} />
+      </HelpCenterProvider>
     </QueryClientProvider>,
   );
 }

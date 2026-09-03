@@ -260,6 +260,13 @@
       "when": 1788386310426,
       "tag": "0036_fresh_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1788452552715,
+      "tag": "0037_yummy_ultimates",
+      "breakpoints": true
     }
   ]
 }

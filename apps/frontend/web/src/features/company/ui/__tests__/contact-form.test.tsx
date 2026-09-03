@@ -126,10 +126,10 @@ describe("ContactRequestPage — contact", () => {
     expect(trap).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("offers feedback, about and careers at the bottom", async () => {
+  it("offers feedback, help and about at the bottom", async () => {
     await renderCompanyPage(ContactPage, "/contact");
     const strip = screen.getByRole("heading", { name: /see also/i }).parentElement!;
-    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/feedback?from=%2Fcontact", "/about", "/careers"]);
+    expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/feedback?from=%2Fcontact", "/help", "/about"]);
   });
 });
 

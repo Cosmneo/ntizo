@@ -684,4 +684,14 @@ describe("booking_change", () => {
       .where(eq(bookingChange.id, changeRow!.id));
     expect(remaining).toHaveLength(0);
   });
+
+  test("booking_change is indexed by the booking and the reason the provider reads", async () => {
+    const rows = await sql`
+      SELECT indexname
+      FROM pg_indexes
+      WHERE schemaname = 'ntizo_booking'
+        AND tablename = 'booking_change'`;
+    const names = rows.map((r) => String(r["indexname"]));
+    expect(names).toContain("booking_change_booking_reason_idx");
+  });
 });

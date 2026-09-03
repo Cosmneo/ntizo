@@ -51,8 +51,8 @@ function countdownTone(status: CustomerBookingStatus): string {
  * No search box: the mockup draws none, `bookingMine` carries no `q` the way
  * the provider's `bookingForProvider` does, and a client-side filter over a
  * paged list would tell a customer "no matches" about a booking that is
- * merely on the next page. `CollectionCard`'s `hideSearch` opts out of the
- * control entirely rather than shipping one that lies.
+ * merely on the next page. `CollectionCard` draws the control only when it is
+ * handed a change handler and a placeholder, so omitting both is the opt-out.
  */
 export function BookingsPage() {
   const { t, i18n } = useTranslation("bookings");
@@ -198,7 +198,6 @@ export function BookingsPage() {
           shown={items.length}
           total={data?.total ?? 0}
           loading={query.isLoading && offset === 0}
-          hideSearch
           columns={[
             { key: "service", label: t("col.service"), className: "pl-5" },
             { key: "when", label: t("col.when"), skeletonWidth: "w-28" },
@@ -227,10 +226,10 @@ export function BookingsPage() {
               {t("emptyAction")}
             </Link>
           }
-          // Unreachable with `hideSearch` — there is no filter left to hide
-          // anything behind — but the prop is still required, and reusing
-          // the empty state's own body is truer than inventing a sentence
-          // for a state this page cannot enter.
+          // Unreachable: with no search box and no filter button there is
+          // nothing that could hide a row. The prop is still required, and
+          // reusing the empty state's own body is truer than inventing a
+          // sentence for a state this page cannot enter.
           noMatchesText={t("emptyBody")}
           filtered={false}
           rows={items.map((b) => {

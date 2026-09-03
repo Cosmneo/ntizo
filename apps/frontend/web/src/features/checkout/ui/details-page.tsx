@@ -27,6 +27,7 @@ import {
 import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { BookingOutcomePanel } from "@/features/checkout/ui/booking-outcome-panel";
+import { useHelpCenter } from "@/features/help-center/viewmodel/use-help-center";
 
 /**
  * Why the phone field is refusing, or `null` when it is not.
@@ -246,6 +247,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
   const { t, i18n } = useTranslation("checkout");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
+  const help = useHelpCenter();
 
   const {
     data: addresses = [],
@@ -801,6 +803,22 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                 {t("continueAction")}
               </Button>
             </CheckoutRail>
+
+            {/* This step's own way into the panel, prefilled with the
+                booking it is about — the same `useHelpCenter().composeNew`
+                the footer's "Falar com o suporte" and `/help`'s own contact
+                button call, just with the booking already attached. `booking`
+                is never null here: `Details` only renders once `DetailsPage`
+                has read one, so there is nothing left to guard against. */}
+            <button
+              type="button"
+              onClick={() =>
+                help.composeNew({ bookingId: booking.id, serviceName: booking.serviceName })
+              }
+              className="type-body-medium text-left text-[var(--color-primary)] hover:underline"
+            >
+              {t("helpWithBooking")}
+            </button>
           </aside>
         </div>
       </main>

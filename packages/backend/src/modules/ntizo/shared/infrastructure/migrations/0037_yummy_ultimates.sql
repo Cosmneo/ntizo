@@ -1,0 +1,1 @@
+CREATE INDEX "booking_change_booking_reason_idx" ON "ntizo_booking"."booking_change" USING btree ("booking_id","reason");

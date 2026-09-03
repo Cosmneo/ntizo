@@ -35,6 +35,7 @@ import type { Message } from "@/features/messaging/domain/types";
 export function ThreadView({
   messages,
   viewerUserId,
+  platformLabel,
   loading = false,
   hasMore = false,
   onLoadMore,
@@ -42,6 +43,8 @@ export function ThreadView({
   messages: readonly Message[];
   /** The signed-in reader's own user id — decides which bubbles render as "mine". Undefined renders every bubble as "theirs", never as "mine". */
   viewerUserId?: string;
+  /** The name a `platform` message is captioned with — "Suporte Ntizo". Undefined on an inquiry, where no message is ever from the platform. */
+  platformLabel?: string;
   loading?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
@@ -93,7 +96,8 @@ export function ThreadView({
           <MessageBubble
             key={message.id}
             message={message}
-            mine={message.senderUserId === viewerUserId}
+            mine={message.senderSide !== "platform" && message.senderUserId === viewerUserId}
+            platformLabel={platformLabel}
             locale={locale}
           />
         ))}
@@ -105,10 +109,12 @@ export function ThreadView({
 function MessageBubble({
   message,
   mine,
+  platformLabel,
   locale,
 }: {
   message: Message;
   mine: boolean;
+  platformLabel?: string;
   locale: string;
 }) {
   const when = new Intl.DateTimeFormat(locale, {
@@ -126,6 +132,11 @@ function MessageBubble({
             : "bg-[var(--color-muted)] text-[var(--color-foreground)]",
         )}
       >
+        {message.senderSide === "platform" && platformLabel && (
+          <p className="type-caption mb-1 font-semibold text-[var(--color-muted-foreground)]">
+            {platformLabel}
+          </p>
+        )}
         {/* An ordinary text child. React escapes this by construction — see
             this file's own doc comment for why that is load-bearing here. */}
         {message.body && (

@@ -12,7 +12,8 @@
     "categories": "Categorías",
     "activity": "Actividad",
     "reviews": "Reseñas",
-    "contact": "Contacto"
+    "contact": "Contacto",
+    "support": "Soporte"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",
@@ -275,5 +276,39 @@
   "contactIp": "IP",
   "contactUserAgent": "Navegador",
   "contactShowDetails": "Mostrar detalles",
-  "contactHideDetails": "Ocultar detalles"
+  "contactHideDetails": "Ocultar detalles",
+  "supportTitle": "Solicitudes de soporte",
+  "supportSubtitle": "Lo que nos pidieron, y lo que aún está sin responder.",
+  "supportOpenCount_one": "{{count}} solicitud abierta",
+  "supportOpenCount_other": "{{count}} solicitudes abiertas",
+  "supportError": "No se pudieron cargar las solicitudes.",
+  "supportRequest": "Solicitud",
+  "supportWho": "Quién",
+  "supportUnread": "Sin leer",
+  "supportStatusColumn": "Estado",
+  "supportLastMessage": "Último mensaje",
+  "supportEmpty": "Nada por responder.",
+  "supportEmptyTitle": "Cola vacía",
+  "supportLoadMore": "Cargar más",
+  "supportStatus": {
+    "open": "Abierta",
+    "resolved": "Resuelta"
+  },
+  "supportStatusAll": "Todas",
+  "supportAudience": {
+    "customer": "Personal",
+    "provider": "Proveedor"
+  },
+  "supportAudienceAll": "Todas",
+  "supportBackToQueue": "Volver a la cola",
+  "supportProvider": "Proveedor",
+  "supportBooking": "Reserva",
+  "supportResolve": "Marcar como resuelta",
+  "supportResolvedNotice": "Marcada como resuelta. Si el solicitante responde, se reabre.",
+  "supportAlreadyResolved": "Otra persona ya ha resuelto esta solicitud.",
+  "supportResolveError": "No se ha podido marcar la solicitud como resuelta.",
+  "supportConversationError": "No se ha podido cargar la conversación.",
+  "supportPlatformSender": "Soporte Ntizo",
+  "supportNotFound": "Esta solicitud no existe.",
+  "supportLoadError": "No se pudo cargar la solicitud."
 }

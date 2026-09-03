@@ -76,3 +76,25 @@ export function resolvePostLoginDestination(
   if (canAccessProvider(user, providerCount)) return "/provider";
   return "/";
 }
+
+/**
+ * Whether the Help Center's launcher belongs on this page.
+ *
+ * Not in `/admin`: the administrator IS support, and a button offering to
+ * write to themselves is noise. Not in checkout's paying steps (`/book/$serviceId`,
+ * `/booking/$bookingId/confirm`), where a slot is on hold and a floating button is
+ * one more thing between a person and a payment — but yes on
+ * `/booking/$bookingId/details`, which is exactly where somebody stops and asks a
+ * question, and which carries its own "help with this booking" link.
+ *
+ * Segment-wise for the same reason `zoneOwnsChrome` is: `/providers` must
+ * not be read as `/provider`.
+ */
+export function showsHelpLauncher(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean);
+  const [first, , third] = segments;
+  if (first === "admin") return false;
+  if (first === "book") return false;
+  if (first === "booking" && third === "confirm") return false;
+  return true;
+}

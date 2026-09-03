@@ -18,25 +18,7 @@ const columns = [
   { key: "actions", label: "Actions" },
 ];
 
-/**
- * `Partial` over the component's own props loses the search union's
- * guarantee — a discriminated union flattened by `Partial` no longer keeps
- * `hideSearch` correlated with the three fields it gates, and every override
- * in this file only ever touches the non-search half anyway. Search stays a
- * plain optional trio here rather than pulled from the component's type.
- */
-function renderCard(
-  overrides: Partial<
-    Omit<
-      Parameters<typeof CollectionCard>[0],
-      "hideSearch" | "search" | "onSearchChange" | "searchPlaceholder"
-    >
-  > & {
-    search?: string;
-    onSearchChange?: (value: string) => void;
-    searchPlaceholder?: string;
-  } = {},
-) {
+function renderCard(overrides: Partial<Parameters<typeof CollectionCard>[0]> = {}) {
   return render(
     <CollectionCard
       title="People"
@@ -166,6 +148,27 @@ describe("CollectionCard", () => {
   it("offers no filter button when there is nothing to filter by", () => {
     renderCard();
     expect(screen.queryByRole("button", { name: /filter/i })).toBeNull();
+  });
+
+  it("renders no search box when no search is offered, and shows the action instead", () => {
+    render(
+      <CollectionCard
+        title="Reservas recentes"
+        shown={1}
+        total={1}
+        loading={false}
+        columns={[{ key: "who", label: "Cliente" }]}
+        rows={[{ key: "b1", primary: <span>Ana</span>, cells: { who: "Ana" } }]}
+        emptyTitle="Vazio"
+        emptyText="Nada"
+        noMatchesTitle="Sem resultados"
+        noMatchesText="Nada"
+        filtered={false}
+        action={<a href="/provider/estudio/bookings">Ver todas</a>}
+      />,
+    );
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver todas" })).toBeInTheDocument();
   });
 });
 

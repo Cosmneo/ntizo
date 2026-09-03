@@ -159,8 +159,12 @@ export function RuleDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full max-w-md overflow-y-auto p-5">
-        <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="grid gap-5">
+      <SheetContent
+        side="right"
+        labelledBy={titleId}
+        className="w-full max-w-md overflow-y-auto p-5"
+      >
+        <div className="grid gap-5">
           <h2 id={titleId} className="type-h3 font-semibold">
             {initial ? t("availabilityRuleEditTitle") : t("availabilityRuleNewTitle")}
           </h2>

@@ -39,6 +39,7 @@
   "newAddressTitle": "Nieuw adres",
   "descriptionLabel": "Wat moet er gebeuren?",
   "descriptionHint": "Optioneel. Blauwe poort, derde verdieping — alles wat de dienstverlener helpt voorbereid te komen.",
+  "helpWithBooking": "Hulp nodig bij deze boeking?",
   "loadError": "We konden deze boeking niet openen. Controleer je verbinding en probeer opnieuw.",
   "storageBlockedTitle": "Deze browser bewaart je gegevens niet",
   "storageBlockedBody": "We moeten je gegevens in dit tabblad bewaren totdat de aanvraag is verstuurd, en deze browser staat dat niet toe. Open de pagina in een gewoon (niet-incognito) venster of sta sitegegevens toe. Je tijdstip blijft vastgehouden.",

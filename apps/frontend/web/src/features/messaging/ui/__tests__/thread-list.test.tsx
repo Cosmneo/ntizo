@@ -7,6 +7,7 @@ import { ThreadList } from "../thread-list";
 /** Two rows, distinct timestamps — a one-row fixture cannot prove order. */
 const older: Thread = {
   id: "t1",
+  type: "inquiry",
   providerId: "p1",
   providerName: "Barbearia Central",
   customerName: "Ana Silva",
@@ -14,9 +15,11 @@ const older: Thread = {
   lastMessagePreview: "Olá, ainda tem vaga?",
   lastMessageHasAttachment: false,
   unreadCount: 3,
+  support: null,
 };
 const newer: Thread = {
   id: "t2",
+  type: "inquiry",
   providerId: "p2",
   providerName: "Studio Beleza",
   customerName: "Carlos Mendes",
@@ -24,6 +27,19 @@ const newer: Thread = {
   lastMessagePreview: "Confirmado para sexta.",
   lastMessageHasAttachment: false,
   unreadCount: 0,
+  support: null,
+};
+const supportRow: Thread = {
+  id: "t5",
+  type: "support",
+  providerId: null,
+  providerName: "",
+  customerName: "Ana Silva",
+  lastMessageAt: "2026-08-22T11:00:00Z",
+  lastMessagePreview: "Paguei duas vezes pelo mesmo serviço.",
+  lastMessageHasAttachment: false,
+  unreadCount: 0,
+  support: { subject: "Reembolso", status: "open", audience: "customer", bookingId: null },
 };
 
 function noop() {}
@@ -188,6 +204,24 @@ describe("ThreadList", () => {
     // The field `nameOf` was told NOT to read must not leak onto the row.
     expect(screen.queryByText("Barbearia Central")).toBeNull();
     expect(screen.queryByText("Studio Beleza")).toBeNull();
+  });
+
+  it("labels a support row with its subject and status instead of a provider name", () => {
+    render(
+      <ThreadList
+        threads={[supportRow]}
+        loading={false}
+        selectedThreadId={null}
+        onSelect={noop}
+        hasMore={false}
+        onLoadMore={noop}
+        locale="en-US"
+      />,
+    );
+
+    expect(screen.getByText("Reembolso")).toBeInTheDocument();
+    expect(screen.getByText("Ntizo Support")).toBeInTheDocument();
+    expect(screen.getByText("Open")).toBeInTheDocument();
   });
 
   it("falls back to the caller's own fallbackName, not the hardcoded default, when the selected field is empty", () => {

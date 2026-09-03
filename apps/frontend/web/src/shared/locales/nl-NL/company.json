@@ -4,6 +4,7 @@
     "links": {
       "contact": { "title": "Contact", "body": "Samenwerkingen, pers, of gewoon een hallo." },
       "feedback": { "title": "Feedback geven", "body": "Een idee, iets dat niet werkte, of iets wat je fijn vond." },
+      "help": { "title": "Helpcentrum", "body": "Veelgestelde vragen, en een manier om ons te bereiken." },
       "about": { "title": "Over Ntizo", "body": "Wat we doen, hoe het werkt en waar we in geloven." },
       "careers": { "title": "Werken bij", "body": "Hoe we werken, en hoe je kunt solliciteren." }
     }

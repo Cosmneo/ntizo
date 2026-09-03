@@ -7,6 +7,11 @@
   "loadMore": "Load more",
   "unknownProvider": "Provider",
   "unknownCustomer": "Customer",
+  "supportSender": "Ntizo Support",
+  "supportStatus": {
+    "open": "Open",
+    "resolved": "Resolved"
+  },
   "noPreview": "No messages yet",
   "attachmentPreview": "Sent an attachment",
   "unreadBadge": "{{count}} unread message",

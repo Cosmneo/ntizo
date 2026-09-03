@@ -16,6 +16,7 @@ import {
   PAGE_TOP,
 } from "@/features/landing/ui/palette";
 import { CONTACT } from "@/shared/lib/contact";
+import { useHelpCenter } from "@/features/help-center/viewmodel/use-help-center";
 
 /**
  * The two brands' own colours, kept out of the markup so the pair reads as a
@@ -28,6 +29,7 @@ const LINKEDIN = "#0A66C2";
 export function Footer() {
   const { t } = useTranslation("landing"); // t:Footer
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const help = useHelpCenter();
   return (
     <>
       <footer style={footer}>
@@ -59,24 +61,22 @@ export function Footer() {
             />
           </FooterCol>
 
-          {/* About, Contact, FAQ and Careers used to sit around this link,
-              all four on `href="#"`. A footer of eleven links where six go
-              nowhere teaches a reader that none of them work; they come back
-              one at a time, as the pages behind them are written. Five of the
-              seven are back as of 2026-09-02. "Falar com o suporte" and
-              "Perguntas frequentes" return with the help center's `/help` —
-              follow-ups #132. */}
           <FooterCol title={t("footer.company")}>
             <FooterLink to="/about">{t("footer.links.about")}</FooterLink>
             <FooterLink to="/contact">{t("footer.links.contact")}</FooterLink>
+            {/* A button, not a link: support is the panel, which opens over
+                whatever page the reader is on. `#132`'s "or `/help` until it
+                exists" no longer applies — it exists. */}
+            <button type="button" onClick={() => help.composeNew()} style={footerLinkButton}>
+              {t("footer.links.support")}
+            </button>
+            <FooterLink to="/help">{t("footer.links.faq")}</FooterLink>
             <FooterLink to="/feedback" search={{ from: pathname }}>{t("footer.links.feedback")}</FooterLink>
             {/* The public pitch, not registration. A link labelled "become a
                 provider" that opens a sign-up form skips the part where someone
                 finds out what they would be signing up for — and that page's
                 own buttons carry the intent onward from there. */}
-            <FooterLink to="/become-provider">
-              {t("footer.becomeProvider")}
-            </FooterLink>
+            <FooterLink to="/become-provider">{t("footer.becomeProvider")}</FooterLink>
             <FooterLink to="/careers">{t("footer.links.careers")}</FooterLink>
           </FooterCol>
 
@@ -340,6 +340,27 @@ const footerLink: React.CSSProperties = {
   fontSize: 14,
   color: MUTED,
   textDecoration: "none",
+};
+
+/**
+ * The same row, when the row is a button rather than a link.
+ *
+ * `FooterCol` lays its children out as a flex column, so every row stretches
+ * to the column's width. An `<a>` keeps its text at the start of that box;
+ * a `<button>` does not — `text-align: center` comes from the browser's own
+ * stylesheet, and Tailwind's preflight does not reset it (it resets the
+ * button's padding, border, background and font, which is why this one looked
+ * like a link in every respect *except* that its label sat in the middle of
+ * the column while every neighbour sat at the left edge).
+ *
+ * `start` rather than `left` so the rule still means "the reading edge" if a
+ * right-to-left locale is ever added; there is none today and it costs
+ * nothing to be right in advance.
+ */
+const footerLinkButton: React.CSSProperties = {
+  ...footerLink,
+  textAlign: "start",
+  cursor: "pointer",
 };
 
 

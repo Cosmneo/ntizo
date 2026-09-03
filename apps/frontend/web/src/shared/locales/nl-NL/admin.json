@@ -12,7 +12,8 @@
     "categories": "Categorieën",
     "activity": "Activiteit",
     "reviews": "Beoordelingen",
-    "contact": "Contact"
+    "contact": "Contact",
+    "support": "Ondersteuning"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -275,5 +276,39 @@
   "contactIp": "IP",
   "contactUserAgent": "Browser",
   "contactShowDetails": "Details tonen",
-  "contactHideDetails": "Details verbergen"
+  "contactHideDetails": "Details verbergen",
+  "supportTitle": "Ondersteuningsverzoeken",
+  "supportSubtitle": "Wat mensen ons vroegen, en wat nog onbeantwoord is.",
+  "supportOpenCount_one": "{{count}} open verzoek",
+  "supportOpenCount_other": "{{count}} open verzoeken",
+  "supportError": "De verzoeken konden niet worden geladen.",
+  "supportRequest": "Verzoek",
+  "supportWho": "Wie",
+  "supportUnread": "Ongelezen",
+  "supportStatusColumn": "Status",
+  "supportLastMessage": "Laatste bericht",
+  "supportEmpty": "Niets te beantwoorden.",
+  "supportEmptyTitle": "Wachtrij leeg",
+  "supportLoadMore": "Meer laden",
+  "supportStatus": {
+    "open": "Open",
+    "resolved": "Opgelost"
+  },
+  "supportStatusAll": "Alle",
+  "supportAudience": {
+    "customer": "Particulier",
+    "provider": "Aanbieder"
+  },
+  "supportAudienceAll": "Alle",
+  "supportBackToQueue": "Terug naar de wachtrij",
+  "supportProvider": "Aanbieder",
+  "supportBooking": "Boeking",
+  "supportResolve": "Markeren als opgelost",
+  "supportResolvedNotice": "Gemarkeerd als opgelost. Als de aanvrager reageert, wordt het opnieuw geopend.",
+  "supportAlreadyResolved": "Iemand anders heeft deze aanvraag al opgelost.",
+  "supportResolveError": "De aanvraag kon niet als opgelost worden gemarkeerd.",
+  "supportConversationError": "De conversatie kon niet worden geladen.",
+  "supportPlatformSender": "Ntizo-ondersteuning",
+  "supportNotFound": "Dit verzoek bestaat niet.",
+  "supportLoadError": "Het verzoek kon niet worden geladen."
 }

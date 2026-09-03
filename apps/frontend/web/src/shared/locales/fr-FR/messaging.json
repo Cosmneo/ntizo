@@ -7,6 +7,11 @@
   "loadMore": "Charger plus",
   "unknownProvider": "Prestataire",
   "unknownCustomer": "Client",
+  "supportSender": "Support Ntizo",
+  "supportStatus": {
+    "open": "Ouvert",
+    "resolved": "Résolu"
+  },
   "noPreview": "Aucun message pour l'instant",
   "attachmentPreview": "A envoyé une pièce jointe",
   "unreadBadge": "{{count}} message non lu",

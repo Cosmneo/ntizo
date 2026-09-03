@@ -5,6 +5,7 @@ import {
   canAccessProvider,
   isSafeInternalPath,
   resolvePostLoginDestination,
+  showsHelpLauncher,
   zoneOwnsChrome,
 } from "@/shared/lib/zones";
 
@@ -123,5 +124,27 @@ describe("zoneOwnsChrome", () => {
     expect(zoneOwnsChrome("/providers")).toBe(false);
     expect(zoneOwnsChrome("/providers/estudio-teste-7p41a5")).toBe(false);
     expect(zoneOwnsChrome("/administrators")).toBe(false);
+  });
+});
+
+describe("showsHelpLauncher", () => {
+  it("shows on the public site, the customer zone and the provider zone", () => {
+    for (const path of ["/", "/services", "/providers/salao-x", "/messages", "/bookings", "/provider/salao-x/overview", "/help"]) {
+      expect(showsHelpLauncher(path)).toBe(true);
+    }
+  });
+
+  it("hides in the admin zone — the admin is support", () => {
+    expect(showsHelpLauncher("/admin")).toBe(false);
+    expect(showsHelpLauncher("/admin/support")).toBe(false);
+  });
+
+  it("hides in checkout, where the slot is on hold", () => {
+    expect(showsHelpLauncher("/book/svc-1")).toBe(false);
+    expect(showsHelpLauncher("/booking/b-1/confirm")).toBe(false);
+  });
+
+  it("shows on the booking details step, which is where somebody asks for help", () => {
+    expect(showsHelpLauncher("/booking/b-1/details")).toBe(true);
   });
 });

@@ -25,6 +25,7 @@ import type { Thread, Message } from "@/features/messaging/domain/types";
 const threads: Thread[] = [
   {
     id: "t1",
+    type: "inquiry",
     providerId: "p1",
     // Deliberately the SAME on every row — `providerId`/`providerName` are
     // this workspace's own, identical for every thread in its own inbox.
@@ -37,9 +38,11 @@ const threads: Thread[] = [
     lastMessagePreview: "Olá, ainda tem vaga para sexta?",
     lastMessageHasAttachment: false,
     unreadCount: 2,
+    support: null,
   },
   {
     id: "t2",
+    type: "inquiry",
     providerId: "p1",
     providerName: "Studio Beleza",
     customerName: "Carlos Mendes",
@@ -47,6 +50,7 @@ const threads: Thread[] = [
     lastMessagePreview: "Obrigado, confirmado!",
     lastMessageHasAttachment: false,
     unreadCount: 0,
+    support: null,
   },
 ];
 
@@ -55,6 +59,7 @@ const messages: Message[] = [
     id: "m1",
     threadId: "t1",
     senderUserId: "customer-1",
+    senderSide: "customer",
     body: "Olá, ainda tem vaga para sexta?",
     readAt: null,
     createdAt: "2026-08-20T09:00:00Z",
@@ -64,6 +69,7 @@ const messages: Message[] = [
     id: "m2",
     threadId: "t1",
     senderUserId: "staff-1",
+    senderSide: "provider",
     body: "Sim, tenho!",
     readAt: null,
     createdAt: "2026-08-20T09:05:00Z",
@@ -305,6 +311,7 @@ describe("ProviderMessagesPage: marking a thread read on open", () => {
           id: "m3",
           threadId: "t1",
           senderUserId: "customer-1",
+          senderSide: "customer",
           body: "E às 16h, tem?",
           readAt: null,
           createdAt: "2026-08-20T09:10:00Z",

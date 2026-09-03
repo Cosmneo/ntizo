@@ -58,17 +58,10 @@ export function MobileSearchTrigger({
  * What the trigger opens: both fields, full width, and one button that applies
  * them.
  *
- * A `role="dialog"` of its own rather than the `Sheet` primitive's bare panel —
- * that primitive draws a fixed div and nothing else, so without this a screen
- * reader is handed two fields with no boundary and no name saying what they
- * are for.
- *
- * **No `aria-modal`.** The role describes what this is; `aria-modal` asserts
- * that everything outside it is inert, and nothing here makes that true — the
- * primitive has no focus trap, no Escape handler, no focus move on open, no
- * focus restore on close and no `inert` on the background. Tab walks straight
- * out of the sheet onto controls a screen reader has been told to ignore,
- * which is a worse place to be than an unlabelled dialog. See follow-up #78.
+ * The `Sheet` primitive itself is the dialog — `role="dialog"`, `aria-modal`,
+ * a focus trap and Escape all live on `SheetContent` now (see follow-up #78),
+ * named here via its `labelledBy` prop rather than a second `role="dialog"`
+ * nested inside it.
  *
  * **Applying closes it.** A sheet left open over the results it just changed
  * hides the answer to the question the reader asked — the same rule the filter
@@ -103,9 +96,10 @@ export function MobileSearchSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        labelledBy={titleId}
         className="max-h-[85svh] overflow-y-auto rounded-t-[var(--radius-card)] p-5"
       >
-        <div role="dialog" aria-labelledby={titleId}>
+        <div>
           <SheetHeader>
             <SheetTitle id={titleId}>{title}</SheetTitle>
           </SheetHeader>

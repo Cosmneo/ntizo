@@ -198,6 +198,25 @@ describe("MessageComposer", () => {
 
       expect(screen.queryByRole("alert")).toBeNull();
     });
+
+    it("refuses a phone number by default", async () => {
+      const user = userEvent.setup();
+      render(<MessageComposer onSend={vi.fn()} />);
+      await user.type(screen.getByPlaceholderText(/write a message/i), "call me on 84 123 4567");
+      expect(screen.getByRole("button", { name: /send/i })).toBeDisabled();
+    });
+
+    it("allows one when the check is off — a support thread is where a number belongs", async () => {
+      const user = userEvent.setup();
+      const onSend = vi.fn();
+      render(<MessageComposer onSend={onSend} checkContact={false} />);
+      await user.type(screen.getByPlaceholderText(/write a message/i), "call me on 84 123 4567");
+
+      const send = screen.getByRole("button", { name: /send/i });
+      expect(send).toBeEnabled();
+      await user.click(send);
+      expect(onSend).toHaveBeenCalledWith("call me on 84 123 4567", []);
+    });
   });
 
   describe("attachments", () => {

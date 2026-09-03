@@ -39,6 +39,7 @@
   "newAddressTitle": "New address",
   "descriptionLabel": "What needs doing?",
   "descriptionHint": "Optional. Blue gate, third floor — anything that helps the provider come prepared.",
+  "helpWithBooking": "Need help with this booking?",
   "loadError": "We couldn't open this booking. Check your connection and try again.",
   "storageBlockedTitle": "This browser won't keep your details",
   "storageBlockedBody": "We need to hold your details in this tab until the request is sent, and this browser won't let us. Open the page in a normal (not private) window, or allow site data. Your time is still held.",

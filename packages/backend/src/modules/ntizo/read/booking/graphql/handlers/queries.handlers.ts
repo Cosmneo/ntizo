@@ -94,5 +94,9 @@ export function createBookingReadHandlers(mod: BookingReadModule) {
         now: new Date(),
       });
     })
+    .handle("booking.statsForProvider", async (args, ctx) => {
+      await assertMayReadWorkspace(asNtizoGraphqlContext(ctx), args.input.providerId, uc.providerRead);
+      return uc.statsForProvider.execute({ providerId: args.input.providerId, now: new Date() });
+    })
     .build();
 }

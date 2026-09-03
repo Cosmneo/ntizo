@@ -1,3 +1,13 @@
+/** What a support row adds to an inbox line. Null on an inquiry. */
+export interface ThreadSupport {
+  subject: string;
+  status: "open" | "resolved";
+  audience: "customer" | "provider";
+  bookingId: string | null;
+}
+
+export type ThreadType = "inquiry" | "support";
+
 /**
  * One conversation, as an inbox row.
  *
@@ -20,7 +30,9 @@
  */
 export interface Thread {
   id: string;
-  providerId: string;
+  type: ThreadType;
+  /** Null on a personal support request — there is no provider on it. */
+  providerId: string | null;
   /**
    * Filled in by a lookup the backend runs beside the thread page, not a
    * column the thread itself carries. Empty string when that lookup missed
@@ -50,6 +62,7 @@ export interface Thread {
    */
   lastMessageHasAttachment: boolean;
   unreadCount: number;
+  support: ThreadSupport | null;
 }
 
 /**
@@ -82,6 +95,8 @@ export interface Message {
   id: string;
   threadId: string;
   senderUserId: string;
+  /** Which side wrote it. A support thread aligns and labels by this, never by comparing user ids — an admin's id means nothing to the reader. */
+  senderSide: "customer" | "provider" | "platform";
   body: string;
   /** ISO 8601, or null while unread. */
   readAt: string | null;

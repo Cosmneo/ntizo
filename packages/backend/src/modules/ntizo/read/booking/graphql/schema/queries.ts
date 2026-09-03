@@ -7,6 +7,7 @@ import {
   customerBookingPageReadModel,
   providerBookingDetailReadModel,
   providerBookingPageReadModel,
+  providerBookingStatsReadModel,
 } from "@ntizo/shared/read-models";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
@@ -64,7 +65,7 @@ export const listProviderBookings = defineQuery({
   input: zodSchema(
     z.object({
       providerId: z.string().min(1),
-      tab: z.enum(["requests", "upcoming", "history"]),
+      tab: z.enum(["requests", "upcoming", "history", "all"]),
       q: z.string().trim().max(80).optional(),
       memberId: z.string().min(1).optional(),
       limit: z.number().int().min(1).max(50).optional(),
@@ -83,6 +84,17 @@ export const getProviderBooking = defineQuery({
 });
 
 /**
+ * Every number the dashboard draws, for one workspace. No date range on the
+ * input: the window is the spec's thirty days and the screen has no control
+ * to change it, so a parameter would be a promise the UI does not keep.
+ */
+export const getProviderStats = defineQuery({
+  input: zodSchema(z.object({ providerId: z.string().min(1) })),
+  output: zodSchema(providerBookingStatsReadModel),
+  docs: { summary: "A workspace's booking numbers", tags: ["Booking"] },
+});
+
+/**
  * Nested one level, like `activity`'s and `notification`'s: the field kit
  * flattens these to `bookingMine` and `bookingById` on the wire —
  * `{ booking: { mine } }` → `bookingMine`, never `booking.mine`. Sits
@@ -97,6 +109,7 @@ export const bookingReadSchema = defineGraphQLSchema(
       byId: getMyBooking,
       forProvider: listProviderBookings,
       byIdForProvider: getProviderBooking,
+      statsForProvider: getProviderStats,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

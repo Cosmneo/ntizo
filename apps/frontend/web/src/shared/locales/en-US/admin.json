@@ -12,7 +12,8 @@
     "categories": "Categories",
     "activity": "Activity",
     "reviews": "Reviews",
-    "contact": "Contact"
+    "contact": "Contact",
+    "support": "Support"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",
@@ -275,5 +276,39 @@
   "contactIp": "IP",
   "contactUserAgent": "Browser",
   "contactShowDetails": "Show details",
-  "contactHideDetails": "Hide details"
+  "contactHideDetails": "Hide details",
+  "supportTitle": "Support requests",
+  "supportSubtitle": "What people asked us, and what is still unanswered.",
+  "supportOpenCount_one": "{{count}} open request",
+  "supportOpenCount_other": "{{count}} open requests",
+  "supportError": "The requests could not be loaded.",
+  "supportRequest": "Request",
+  "supportWho": "Who",
+  "supportUnread": "Unread",
+  "supportStatusColumn": "Status",
+  "supportLastMessage": "Last message",
+  "supportEmpty": "Nothing to answer.",
+  "supportEmptyTitle": "Queue empty",
+  "supportLoadMore": "Load more",
+  "supportStatus": {
+    "open": "Open",
+    "resolved": "Resolved"
+  },
+  "supportStatusAll": "All",
+  "supportAudience": {
+    "customer": "Personal",
+    "provider": "Provider"
+  },
+  "supportAudienceAll": "All",
+  "supportBackToQueue": "Back to the queue",
+  "supportProvider": "Provider",
+  "supportBooking": "Booking",
+  "supportResolve": "Mark as resolved",
+  "supportResolvedNotice": "Marked as resolved. If the requester replies, it reopens.",
+  "supportAlreadyResolved": "Someone else has already resolved this request.",
+  "supportResolveError": "The request could not be marked as resolved.",
+  "supportConversationError": "The conversation could not be loaded.",
+  "supportPlatformSender": "Ntizo Support",
+  "supportNotFound": "No such request.",
+  "supportLoadError": "The request could not be loaded."
 }

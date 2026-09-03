@@ -2,6 +2,7 @@ import {
   Activity,
   Briefcase,
   LayoutDashboard,
+  LifeBuoy,
   Mail,
   MessageSquareQuote,
   Tags,
@@ -24,6 +25,7 @@ export const adminNavGroups: readonly NavGroup[] = [
       // daily like the provider queue — not content the platform curates.
       // The help center's "Suporte" queue lands beside it (its own spec).
       { titleKey: "nav.contact", url: "/admin/contact", icon: Mail },
+      { titleKey: "nav.support", url: "/admin/support", icon: LifeBuoy },
       // The catalog last: it is set up once and revisited, where the two above
       // are looked at daily.
       { titleKey: "nav.categories", url: "/admin/categories", icon: Tags },

@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { messagingQueries } from "@/features/messaging/data/messaging.repository";
-import type { Thread } from "@/features/messaging/domain/types";
+import type { Thread, ThreadType } from "@/features/messaging/domain/types";
 import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-error";
 
 /**
@@ -17,16 +17,15 @@ import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-err
  *
  * Refetches on window focus only (the query client's own default). The
  * 5-second poll belongs to `useThread` alone — see that hook's doc comment.
+ *
+ * `type` passes straight through to `messagingQueries.mine` — see that
+ * query's own doc comment for who calls it with `"support"` and who calls
+ * it with nothing.
  */
-export function useThreads() {
-  const query = useInfiniteQuery(messagingQueries.mine());
+export function useThreads(type?: ThreadType) {
+  const query = useInfiniteQuery(messagingQueries.mine(type));
 
-  const threads: Thread[] =
-    query.data?.pages.flatMap((page) => page.items).map((row) => ({
-      ...row,
-      // Plan B makes the domain type nullable; until then a support row degrades to "".
-      providerId: row.providerId ?? "",
-    })) ?? [];
+  const threads: Thread[] = query.data?.pages.flatMap((page) => page.items) ?? [];
 
   return {
     threads,
