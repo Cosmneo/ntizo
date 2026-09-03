@@ -34,9 +34,9 @@ describe("AboutPage", () => {
     expect(within(providers).getByRole("link", { name: /become a provider/i })).toHaveAttribute("href", "/become-provider");
   });
 
-  it("offers contact, feedback and careers at the bottom — and not itself", async () => {
+  it("offers contact, feedback and help at the bottom — and not itself", async () => {
     await renderCompanyPage(AboutPage, "/about");
-    expect(stripHrefs()).toEqual(["/contact", "/feedback?from=%2Fabout", "/careers"]);
+    expect(stripHrefs()).toEqual(["/contact", "/feedback?from=%2Fabout", "/help"]);
   });
 
   it("draws no accent rule beside its eyebrows", async () => {
@@ -61,8 +61,8 @@ describe("CareersPage", () => {
     }
   });
 
-  it("offers contact, feedback and about at the bottom", async () => {
+  it("offers contact, feedback and help at the bottom", async () => {
     await renderCompanyPage(CareersPage, "/careers");
-    expect(stripHrefs()).toEqual(["/contact", "/feedback?from=%2Fcareers", "/about"]);
+    expect(stripHrefs()).toEqual(["/contact", "/feedback?from=%2Fcareers", "/help"]);
   });
 });

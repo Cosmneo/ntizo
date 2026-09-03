@@ -35,7 +35,11 @@ export default defineConfig({
       // completely ignoring `crawlLinks` (verified locally — with it left
       // on, /admin, /provider/*, /sign-in and /sign-up all got prerendered
       // too).
-      pages: [{ path: "/" }],
+      // `/help` joins `/` here, and no other public page does: it is the
+      // FAQ, its content is identical for every visitor, and it is the one
+      // page among `/about`, `/contact`, `/feedback` and `/careers` worth a
+      // search engine indexing ahead of a crawl finding it on its own.
+      pages: [{ path: "/" }, { path: "/help" }],
       prerender: { enabled: true, crawlLinks: false, autoStaticPathsDiscovery: false },
     }),
     viteReact(),

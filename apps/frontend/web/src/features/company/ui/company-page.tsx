@@ -7,16 +7,17 @@ import { ACCENT, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 import { Footer } from "@/features/landing/ui/footer";
 import { SiteHeader } from "@/shared/components/site-header";
 
-export type CompanyPageId = "about" | "contact" | "feedback" | "careers";
+export type CompanyPageId = "about" | "contact" | "feedback" | "careers" | "help";
 
 /**
  * The strip's candidates, in priority order. A page shows the first three
- * that are not itself. The help center's `/help` joins this list when it
- * lands (follow-ups #132), ahead of `about`.
+ * that are not itself. `/help` joins this list ahead of `about` — the FAQ is
+ * a more likely next stop from a company page than the about page is.
  */
 const STRIP: ReadonlyArray<{ id: CompanyPageId; to: string }> = [
   { id: "contact", to: "/contact" },
   { id: "feedback", to: "/feedback" },
+  { id: "help", to: "/help" },
   { id: "about", to: "/about" },
   { id: "careers", to: "/careers" },
 ];

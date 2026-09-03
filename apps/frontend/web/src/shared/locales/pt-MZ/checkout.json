@@ -39,6 +39,7 @@
   "newAddressTitle": "Nova morada",
   "descriptionLabel": "O que precisa de ser feito?",
   "descriptionHint": "Opcional. Portão azul, terceiro andar — o que ajudar o prestador a preparar-se.",
+  "helpWithBooking": "Precisa de ajuda com esta reserva?",
   "loadError": "Não foi possível abrir esta reserva. Verifique a ligação e tente de novo.",
   "storageBlockedTitle": "Este navegador não guarda os seus dados",
   "storageBlockedBody": "Precisamos de guardar os seus dados neste separador até enviar o pedido, e este navegador não permite. Abra a página numa janela normal (não anónima) ou permita os dados do site. A hora continua reservada para si.",

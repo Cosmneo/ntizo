@@ -13,6 +13,7 @@ import type { AddressDTO, CurrentUserDTO } from "@ntizo/shared";
 import type { BookingDTO } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
 import { readDraftDetails } from "@/features/checkout/domain/draft-store";
+import { HelpCenterProvider } from "@/features/help-center/viewmodel/use-help-center";
 
 /**
  * Every read is mocked at the **data** layer, so the real viewmodels run.
@@ -281,7 +282,13 @@ function renderDetails({
 
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      {/* The "help with this booking" link calls `useHelpCenter()`, same as
+          the footer's "Falar com o suporte" and `/help`'s own contact
+          button — this suite does not assert on the panel itself, so an
+          unseeded provider is enough to keep the hook from throwing. */}
+      <HelpCenterProvider>
+        <RouterProvider router={router} />
+      </HelpCenterProvider>
     </QueryClientProvider>,
   );
 

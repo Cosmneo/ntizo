@@ -39,6 +39,7 @@
   "newAddressTitle": "Neue Adresse",
   "descriptionLabel": "Was ist zu tun?",
   "descriptionHint": "Optional. Blaues Tor, dritter Stock — alles, was dem Anbieter hilft, vorbereitet zu kommen.",
+  "helpWithBooking": "Brauchen Sie Hilfe bei dieser Buchung?",
   "loadError": "Wir konnten diese Buchung nicht öffnen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "storageBlockedTitle": "Dieser Browser speichert Ihre Angaben nicht",
   "storageBlockedBody": "Wir müssen Ihre Daten in diesem Tab behalten, bis die Anfrage gesendet ist, und dieser Browser lässt das nicht zu. Öffnen Sie die Seite in einem normalen (nicht privaten) Fenster oder erlauben Sie Website-Daten. Ihre Uhrzeit bleibt reserviert.",

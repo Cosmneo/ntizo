@@ -18,6 +18,7 @@ import { Route as BecomeProviderRouteImport } from './routes/become-provider'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProviderRouteRouteImport } from './routes/provider/route'
@@ -111,6 +112,11 @@ const ContactRoute = ContactRouteImport.update({
 const FeedbackRoute = FeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -387,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/feedback': typeof FeedbackRoute
+  '/help': typeof HelpRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -445,6 +452,7 @@ export interface FileRoutesByTo {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/feedback': typeof FeedbackRoute
+  '/help': typeof HelpRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -507,6 +515,7 @@ export interface FileRoutesById {
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/feedback': typeof FeedbackRoute
+  '/help': typeof HelpRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -569,6 +578,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/feedback'
+    | '/help'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -627,6 +637,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/feedback'
+    | '/help'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -688,6 +699,7 @@ export interface FileRouteTypes {
     | '/careers'
     | '/contact'
     | '/feedback'
+    | '/help'
     | '/onboarding'
     | '/privacy'
     | '/terms'
@@ -751,6 +763,7 @@ export interface RootRouteChildren {
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
   FeedbackRoute: typeof FeedbackRoute
+  HelpRoute: typeof HelpRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
@@ -827,6 +840,13 @@ declare module '@tanstack/react-router' {
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof FeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -1336,6 +1356,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
   FeedbackRoute: FeedbackRoute,
+  HelpRoute: HelpRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
