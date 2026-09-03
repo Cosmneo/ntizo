@@ -39,6 +39,7 @@ import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminContactRouteImport } from './routes/admin/contact'
 import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminReviewsRouteImport } from './routes/admin/reviews'
+import { Route as AdminSupportRouteImport } from './routes/admin/support'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as BookServiceIdRouteImport } from './routes/book.$serviceId'
 import { Route as ProviderIndexRouteImport } from './routes/provider/index'
@@ -217,6 +218,11 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
 const AdminReviewsRoute = AdminReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/users': typeof AdminUsersRoute
   '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/users': typeof AdminUsersRoute
   '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/admin/contact': typeof AdminContactRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/reviews': typeof AdminReviewsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/users': typeof AdminUsersRoute
   '/book/$serviceId': typeof BookServiceIdRoute
   '/provider/no-provider': typeof ProviderNoProviderRoute
@@ -598,6 +607,7 @@ export interface FileRouteTypes {
     | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
+    | '/admin/support'
     | '/admin/users'
     | '/book/$serviceId'
     | '/provider/no-provider'
@@ -656,6 +666,7 @@ export interface FileRouteTypes {
     | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
+    | '/admin/support'
     | '/admin/users'
     | '/book/$serviceId'
     | '/provider/no-provider'
@@ -719,6 +730,7 @@ export interface FileRouteTypes {
     | '/admin/contact'
     | '/admin/dashboard'
     | '/admin/reviews'
+    | '/admin/support'
     | '/admin/users'
     | '/book/$serviceId'
     | '/provider/no-provider'
@@ -987,6 +999,13 @@ declare module '@tanstack/react-router' {
       path: '/reviews'
       fullPath: '/admin/reviews'
       preLoaderRoute: typeof AdminReviewsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/users': {
@@ -1278,6 +1297,7 @@ interface AdminRouteRouteChildren {
   AdminContactRoute: typeof AdminContactRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminReviewsRoute: typeof AdminReviewsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminProvidersProviderIdRoute: typeof AdminProvidersProviderIdRoute
@@ -1290,6 +1310,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminContactRoute: AdminContactRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminReviewsRoute: AdminReviewsRoute,
+  AdminSupportRoute: AdminSupportRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminProvidersProviderIdRoute: AdminProvidersProviderIdRoute,

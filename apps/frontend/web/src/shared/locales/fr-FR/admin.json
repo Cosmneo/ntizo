@@ -12,7 +12,8 @@
     "categories": "Catégories",
     "activity": "Activité",
     "reviews": "Avis",
-    "contact": "Contact"
+    "contact": "Contact",
+    "support": "Assistance"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",
@@ -275,5 +276,28 @@
   "contactIp": "IP",
   "contactUserAgent": "Navigateur",
   "contactShowDetails": "Afficher les détails",
-  "contactHideDetails": "Masquer les détails"
+  "contactHideDetails": "Masquer les détails",
+  "supportTitle": "Demandes d'assistance",
+  "supportSubtitle": "Ce qu'on nous a demandé, et ce qui reste sans réponse.",
+  "supportOpenCount_one": "{{count}} demande ouverte",
+  "supportOpenCount_other": "{{count}} demandes ouvertes",
+  "supportError": "Les demandes n'ont pas pu être chargées.",
+  "supportRequest": "Demande",
+  "supportWho": "Qui",
+  "supportUnread": "Non lu",
+  "supportStatusColumn": "Statut",
+  "supportLastMessage": "Dernier message",
+  "supportEmpty": "Rien à répondre.",
+  "supportEmptyTitle": "File vide",
+  "supportLoadMore": "Charger plus",
+  "supportStatus": {
+    "open": "Ouverte",
+    "resolved": "Résolue"
+  },
+  "supportStatusAll": "Toutes",
+  "supportAudience": {
+    "customer": "Particulier",
+    "provider": "Prestataire"
+  },
+  "supportAudienceAll": "Toutes"
 }
