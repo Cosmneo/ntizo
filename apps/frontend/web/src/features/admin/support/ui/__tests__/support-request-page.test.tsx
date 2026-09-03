@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,7 +6,19 @@ import { RouterProvider, createMemoryHistory, createRootRoute, createRoute, crea
 import type { MessageDTO, SupportRequestSummaryDTO } from "@ntizo/shared/read-models";
 import { AdminSupportRequestPage } from "../support-request-page";
 
-const fakes = vi.hoisted(() => ({ reply: vi.fn(), resolve: vi.fn(), markRead: vi.fn() }));
+const fakes = vi.hoisted(() => ({
+  reply: vi.fn(),
+  resolve: vi.fn(),
+  markRead: vi.fn(),
+  // Set only by the "genuine failure" case below. Every other test leaves
+  // this `null` and gets the real `adminSupportQueries.one`, fed instead
+  // through `setQueryData` before mount, exactly as before — seeding a
+  // query's *error* state has no `setQueryData`-shaped equivalent (see that
+  // test's own doc comment), so the one case that needs it drives the real
+  // fetch-and-reject cycle through this override instead of fighting the
+  // cache's internal reducer.
+  oneQueryFn: null as (() => Promise<unknown>) | null,
+}));
 vi.mock("@/features/admin/support/data/admin-support.repository", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/admin/support/data/admin-support.repository")>();
   return {
@@ -14,7 +26,18 @@ vi.mock("@/features/admin/support/data/admin-support.repository", async (importO
     replyToSupportRequest: fakes.reply,
     resolveSupportRequest: fakes.resolve,
     markSupportRequestRead: fakes.markRead,
+    adminSupportQueries: {
+      ...actual.adminSupportQueries,
+      one: (threadId: string) =>
+        fakes.oneQueryFn
+          ? { queryKey: ["admin", "support", "one", threadId] as const, queryFn: fakes.oneQueryFn }
+          : actual.adminSupportQueries.one(threadId),
+    },
   };
+});
+
+afterEach(() => {
+  fakes.oneQueryFn = null;
 });
 
 const request: SupportRequestSummaryDTO = {
@@ -51,6 +74,35 @@ async function renderPage(over: Partial<SupportRequestSummaryDTO> = {}) {
     </QueryClientProvider>,
   );
   return qc;
+}
+
+/**
+ * The same router `renderPage` above builds, but starting from an
+ * already-seeded `QueryClient` rather than building one and seeding it with
+ * a successful `request` — `setQueryData` only knows how to express a
+ * successful read, so it cannot produce the two states the fix under test
+ * exists to tell apart (a genuine failure, and a settled "no such request").
+ * The two cases below build their own `QueryClient` with the query state
+ * they need, then hand it to this.
+ */
+async function renderWithClient(qc: QueryClient) {
+  fakes.reply.mockResolvedValue("m-2");
+  fakes.resolve.mockResolvedValue(undefined);
+  fakes.markRead.mockResolvedValue(1);
+  const rootRoute = createRootRoute();
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      createRoute({ getParentRoute: () => rootRoute, path: "/admin/support/$threadId", component: AdminSupportRequestPage }),
+      createRoute({ getParentRoute: () => rootRoute, path: "/admin/support", component: () => <p>queue</p> }),
+    ]),
+    history: createMemoryHistory({ initialEntries: ["/admin/support/t-1"] }),
+  });
+  await router.load();
+  render(
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
 
 describe("AdminSupportRequestPage", () => {
@@ -99,5 +151,45 @@ describe("AdminSupportRequestPage", () => {
       "href",
       "/admin/providers/p-1",
     );
+  });
+
+  it("shows a load error, not \"no such request\", when the query genuinely fails", async () => {
+    // `setQueryData` only expresses a successful read — there is no
+    // `setQueryData`-shaped way to seed a query's *error* state, because
+    // React Query's own "fetch started" reducer resets `status` back to
+    // "pending" the instant a fetch is dispatched while `data` is
+    // `undefined` (`fetchState` in `query-core`, unconditionally), and
+    // `useQuery`'s default mount behaviour always dispatches exactly that
+    // fetch for a query with no data yet — so a directly-injected error
+    // state gets overwritten by a loading state before this test would ever
+    // get to look at the screen. Driving the real fetch-and-reject cycle
+    // through `oneQueryFn` is what actually produces a stable `error`.
+    fakes.oneQueryFn = () => Promise.reject(new Error("network down"));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await renderWithClient(qc);
+
+    // Both directions: the error line is there, AND the unrelated
+    // "no such request" text is not — the two states used to collapse into
+    // exactly the same screen, and a test that only checked the expected
+    // string would not have noticed. `findByText`, not `getByText`: unlike
+    // every other case in this file, there is nothing seeded synchronously
+    // here — the error only exists once the rejected fetch actually settles.
+    expect(await screen.findByText(/could not be loaded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no such request/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /back to the queue/i })).toBeInTheDocument();
+  });
+
+  it("shows \"no such request\", not a load error, when the query simply finds nothing", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // A settled, error-free query with no data — `supportRequest` resolving
+    // `null` for a thread id that does not exist. Distinct from the case
+    // above only by `error` being absent, which is exactly the distinction
+    // the fix exists to preserve.
+    qc.setQueryData(["admin", "support", "one", "t-1"], null);
+    await renderWithClient(qc);
+
+    expect(screen.getByText(/no such request/i)).toBeInTheDocument();
+    expect(screen.queryByText(/could not be loaded/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /back to the queue/i })).toBeInTheDocument();
   });
 });
