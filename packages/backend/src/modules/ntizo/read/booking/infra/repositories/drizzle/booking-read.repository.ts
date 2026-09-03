@@ -27,9 +27,12 @@ import {
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import { profile, user } from "../../../../../shared/infrastructure/database/user/schemas";
+import type { CustomerBookingTab } from "@ntizo/shared";
 import {
   type BookingListRow,
   type BookingReadRepositoryPort,
+  CUSTOMER_TAB_STATUSES,
+  type CustomerListFilter,
   PROVIDER_TAB_STATUSES,
   type ProviderBookingRow,
   type ProviderListFilter,
@@ -44,7 +47,12 @@ import {
  * reader exists instead of reusing `DrizzleBookingRepository`.
  */
 export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
-  async listForCustomer(customerId: string): Promise<BookingListRow[]> {
+  async listForCustomer(
+    customerId: string,
+    filter: CustomerListFilter,
+    limit: number,
+    offset: number,
+  ): Promise<BookingListRow[]> {
     const db = getDb();
     const reviewAgg = reviewAggregate(db);
     const verifiedAgg = verifiedAggregate(db);
@@ -56,13 +64,43 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       .leftJoin(service, eq(service.id, booking.serviceId))
       .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
-      .where(eq(booking.customerId, customerId))
-      // Newest booking first, ties (two bookings made in the same instant)
-      // broken by id so the order is total and stable across calls — the
-      // same pairing `DrizzleActivityRepository.listForActor` orders by.
-      .orderBy(desc(booking.createdAt), desc(booking.id));
+      .where(customerWhere(customerId, filter))
+      .orderBy(...customerOrder(filter.tab))
+      .limit(limit)
+      .offset(offset);
 
     return rows.map(toRow);
+  }
+
+  async countForCustomer(customerId: string, filter: CustomerListFilter): Promise<number> {
+    // No joins: `customerWhere` reads only `booking`, and a count has nothing
+    // to display.
+    const [row] = await getDb().select({ n: count() }).from(booking).where(customerWhere(customerId, filter));
+    return Number(row?.n ?? 0);
+  }
+
+  async countsForCustomer(customerId: string, now: Date) {
+    const rows = await getDb()
+      .select({ bucket: customerBucket(now), n: count() })
+      .from(booking)
+      .where(and(eq(booking.customerId, customerId), sql`${booking.status} <> 'DRAFT'`))
+      // `1`, not `customerBucket(now)` again: calling the builder a second
+      // time binds a second, distinct parameter for `now`, and Postgres
+      // requires a `GROUP BY` expression to be the *same* parse tree as the
+      // one it is grouping — two placeholders bound to an equal value are
+      // still two different expressions to it. The ordinal sidesteps that by
+      // naming the first SELECT list item instead of re-emitting it.
+      .groupBy(sql`1`);
+
+    const counts = { waiting: 0, upcoming: 0, history: 0 };
+    for (const row of rows) {
+      // A bucket the CASE cannot produce would be a bug in the CASE, not data
+      // to carry: the three names below are the whole domain of that expression.
+      if (row.bucket === "waiting" || row.bucket === "upcoming" || row.bucket === "history") {
+        counts[row.bucket] = Number(row.n);
+      }
+    }
+    return counts;
   }
 
   async findForCustomer(bookingId: string, customerId: string): Promise<BookingListRow | null> {
@@ -381,6 +419,51 @@ function providerSelect() {
     .leftJoin(user, eq(user.id, booking.customerId))
     .leftJoin(providerMember, eq(providerMember.id, booking.providerMemberId))
     .leftJoin(memberProfile, eq(memberProfile.userId, providerMember.userId));
+}
+
+/**
+ * The rows one customer tab holds.
+ *
+ * `DRAFT` is excluded here rather than in each caller, so a tab added later
+ * cannot forget it. The `upcoming` split is by `startsAt`, not `endsAt`: a
+ * booking whose start has passed is no longer something the customer is
+ * waiting for, even while the work is still happening.
+ */
+function customerWhere(customerId: string, filter: CustomerListFilter) {
+  const live = inArray(booking.status, [...CUSTOMER_TAB_STATUSES.upcoming]);
+
+  const bucket =
+    filter.tab === "waiting"
+      ? inArray(booking.status, [...CUSTOMER_TAB_STATUSES.waiting])
+      : filter.tab === "upcoming"
+        ? and(live, gte(booking.startsAt, filter.now))
+        : or(
+            inArray(booking.status, [...CUSTOMER_TAB_STATUSES.history]),
+            and(live, lt(booking.startsAt, filter.now)),
+          );
+
+  return and(eq(booking.customerId, customerId), sql`${booking.status} <> 'DRAFT'`, bucket);
+}
+
+/** Newest request first while waiting; soonest first when looking forward; most recent first when looking back. */
+function customerOrder(tab: CustomerBookingTab) {
+  if (tab === "waiting") return [desc(booking.createdAt), desc(booking.id)];
+  if (tab === "upcoming") return [asc(booking.startsAt), asc(booking.id)];
+  return [desc(booking.startsAt), desc(booking.id)];
+}
+
+/** One CASE, so three counts are one trip and cannot disagree with each other. */
+function customerBucket(now: Date) {
+  // `now` is nested through `gte()` rather than interpolated bare, so the
+  // driver binds it with `startsAt`'s own column type instead of guessing
+  // one for an untyped raw parameter — the same reason `customerWhere`
+  // reaches for `gte(booking.startsAt, filter.now)` instead of writing the
+  // comparison out by hand.
+  return sql<string>`case
+    when ${booking.status} in ('AWAITING_PROVIDER','PENDING_PAYMENT') then 'waiting'
+    when ${booking.status} = 'CONFIRMED' and ${gte(booking.startsAt, now)} then 'upcoming'
+    else 'history'
+  end`;
 }
 
 /**

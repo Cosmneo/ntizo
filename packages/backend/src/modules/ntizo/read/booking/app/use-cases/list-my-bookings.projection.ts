@@ -15,7 +15,19 @@ export class ListMyBookingsProjection {
   constructor(private readonly repo: BookingReadRepositoryPort) {}
 
   async execute(input: { customerId: string }): Promise<BookingDTO[]> {
-    const rows = await this.repo.listForCustomer(input.customerId);
+    // TEMPORARY: Task 2 turned `listForCustomer` into a tabbed, paged query
+    // (`CustomerListFilter` + `limit`/`offset`) and this projection has not
+    // been rebuilt around tabs yet — that is Task 3's deliverable. The
+    // arguments below are a placeholder wide enough to keep the package
+    // compiling, not a considered default: a single tab and a limit standing
+    // in for "everything", which is no longer literally true now that
+    // `listForCustomer` answers one tab at a time.
+    const rows = await this.repo.listForCustomer(
+      input.customerId,
+      { tab: "waiting", now: new Date() },
+      1000,
+      0,
+    );
     return rows.map(toBookingDTO);
   }
 }
