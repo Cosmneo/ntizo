@@ -589,37 +589,40 @@ describe("findDueForSweep", () => {
       );
       track(draftNotYetDue);
 
-      // Due, not excluded: `expiresAt` is no longer nulled on the way out
-      // of PENDING_PAYMENT (Task 5 of the booking-seams repair plan — the
-      // deadline is a fact a disputed booking needs, not a stale value to
-      // erase), so a booking that got paid still carries the deadline
-      // `accept` wrote, long past by the time this runs. `CONFIRMED`
-      // joined `DEADLINE_BEARING_STATUSES` when bookings gained an ending
-      // (the booking-completion plan's schema task) precisely so a row
-      // like this one is *not* invisible to the sweep forever — it is now
-      // the platform's question to the provider ("how did it go?"), not a
-      // leftover payment clock. That is a different clock from the one on
-      // a row that was already `CONFIRMED` when that migration ran: those
-      // got the migration's hand-added backfill, `expires_at` set to
-      // `ends_at` once, as a one-time fix for a stale value already on the
-      // row — this booking is paid fresh, after the migration, through the
-      // ordinary code path, so the backfill never touches it; `markPaid`
-      // simply never clears what was already there. `findDueForSweep`
-      // alone cannot tell "just paid" from "confirmed appointment has
-      // ended" apart — that distinction is `SweepDueBookingsInternalCommand`'s
+      // Due, not excluded: a `CONFIRMED` booking whose appointment is
+      // already behind it. `CONFIRMED` joined `DEADLINE_BEARING_STATUSES`
+      // when bookings gained an ending (the booking-completion plan's
+      // schema task), and the clock it stands on is the appointment's own
+      // end — `markPaid` hands `expires_at` on to `ends_at` when the charge
+      // clears, the same way `submit` and `accept` hand it on at their own
+      // hops. So this row is due for the reason the sweep exists: the work
+      // is over and nobody has said how it went. The `startsAt` below is
+      // chosen for exactly that, an hour that ends before `now` rather than
+      // after it.
+      //
+      // Rows that were already `CONFIRMED` when that migration ran reached
+      // the same value a different way: the migration backfilled
+      // `expires_at` to `ends_at` by hand, once, because they were sitting
+      // on a payment deadline long past. This one is paid fresh, after the
+      // migration, through the ordinary code path. `findDueForSweep` cannot
+      // tell an appointment that has just ended from a reminder nobody
+      // answered — that distinction is `SweepDueBookingsInternalCommand`'s
       // job, not this query's.
-      const paidStale = await repo.insert(
+      const paidConfirmed = await repo.insert(
         pendingBooking(
           bookingInput({
-            startsAt: new Date("2026-10-04T12:30:00.000Z"),
-            expiresAt: new Date("2026-10-04T09:00:00.000Z"),
+            startsAt: new Date("2026-10-04T08:00:00.000Z"),
+            expiresAt: new Date("2026-10-04T07:45:00.000Z"),
           }),
         ),
         1,
       );
-      track(paidStale);
-      const paid = paidStale.markPaid("mpesa-repo-test", new Date("2026-10-04T08:00:00.000Z"));
-      expect(paid.expiresAt).toEqual(paidStale.expiresAt);
+      track(paidConfirmed);
+      const paid = paidConfirmed.markPaid("mpesa-repo-test", new Date("2026-10-04T07:30:00.000Z"));
+      // The payment window it was given is behind it; what it stands on now
+      // is its own appointment's end.
+      expect(paid.expiresAt).toEqual(paidConfirmed.endsAt);
+      expect(paid.expiresAt).not.toEqual(paidConfirmed.expiresAt);
       const paidApplied = await repo.save(paid, "PENDING_PAYMENT");
       expect(paidApplied).toBe(true);
 
@@ -628,13 +631,15 @@ describe("findDueForSweep", () => {
       // that proves `paidAt` and `paymentRef` survive a round trip with a
       // real value — `expectSameSnapshot` never sees a paid booking, since
       // `Booking.create` always starts both null.
-      const paidReread = await repo.findById(paidStale.id as string);
+      const paidReread = await repo.findById(paidConfirmed.id as string);
       expect(paidReread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
       expect(paidReread?.paymentRef).toBe("mpesa-repo-test");
-      // And the other half of the same write: `expiresAt` is preserved, not
-      // cleared, on the way out of `PENDING_PAYMENT` — this confirms that
-      // survival itself persisted, not only that the two new fields did.
-      expect(paidReread?.expiresAt?.toISOString()).toBe(paidStale.expiresAt?.toISOString());
+      // And the other half of the same write: the clock `markPaid` handed on
+      // is the one that reached the row, not the payment deadline it
+      // replaced. Without this the aggregate could be moving the deadline
+      // correctly while the column kept the old value, and the sweep
+      // assertion below would still pass for the wrong reason.
+      expect(paidReread?.expiresAt?.toISOString()).toBe(paidConfirmed.endsAt.toISOString());
 
       const due = await repo.findDueForSweep(now, 10);
       const dueIds = due.map((b) => b.id);
@@ -643,7 +648,7 @@ describe("findDueForSweep", () => {
       expect(dueIds).toContain(dueAwaiting.id);
       expect(dueIds).not.toContain(notYetDue.id);
       expect(dueIds).not.toContain(draftNotYetDue.id);
-      expect(dueIds).toContain(paidStale.id);
+      expect(dueIds).toContain(paidConfirmed.id);
 
       const dueLaterIndex = dueIds.indexOf(dueLater.id);
       const dueEarlierIndex = dueIds.indexOf(dueEarlier.id);

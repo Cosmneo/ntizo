@@ -4,6 +4,7 @@ import {
   BookingDateInvalidError,
   BookingDurationInvalidError,
   BookingFieldBlankError,
+  BookingNotEndedError,
   BookingPriceInvalidError,
   BookingSnapshotInconsistentError,
   BookingTransitionError,
@@ -11,7 +12,7 @@ import {
   PaymentReferenceMismatchError,
 } from "../domain/exceptions";
 import {
-  type BookingStatus,
+  BookingStatus,
   DEADLINE_BEARING_STATUSES,
   SLOT_HOLDING_STATUSES,
 } from "../../../shared/infrastructure/database/booking/enums";
@@ -84,6 +85,7 @@ function validProps(over: Partial<BookingProps> = {}): BookingProps {
     confirmedAt: null,
     declinedAt: null,
     cancelledAt: null,
+    remindedAt: null,
     markedDoneAt: null,
     completedAt: null,
     disputedAt: null,
@@ -106,6 +108,64 @@ function validProps(over: Partial<BookingProps> = {}): BookingProps {
     description: null,
     ...over,
   };
+}
+
+/**
+ * The duration every fixture in this file uses. Named here because the
+ * closing fixtures below run that derivation backwards — see `endedAt`.
+ */
+const FIXTURE_DURATION_MINUTES = 60;
+
+/**
+ * A stored row at the status the caller names, whose appointment ends when
+ * the caller says it does.
+ *
+ * `endsAt` is the input here and `startsAt` is derived from it — the
+ * opposite of `validProps`, and of `Booking.create` itself. That is
+ * deliberate: the rule the closing transitions carry is about when the
+ * appointment *ended*, so that is the fact these tests should be able to
+ * state outright rather than compute in their heads. `restore` still checks
+ * that the two agree with the duration, so running the derivation backwards
+ * is the only way to state one without falsifying the other.
+ */
+function endedAt(status: BookingStatus, over: { endsAt?: Date } = {}): BookingProps {
+  const endsAt = over.endsAt ?? new Date(WHEN.getTime() + FIXTURE_DURATION_MINUTES * 60_000);
+  const startsAt = new Date(endsAt.getTime() - FIXTURE_DURATION_MINUTES * 60_000);
+  return validProps({ status, startsAt, endsAt });
+}
+
+/** A request nobody has answered yet — the wrong side of every closing hop. */
+function awaitingProvider(): Booking {
+  return Booking.restore(endedAt(BookingStatus.AwaitingProvider));
+}
+
+/** Paid, and standing on the clock that runs out at its own appointment's end. */
+function confirmed(over: { endsAt?: Date } = {}): Booking {
+  return Booking.restore(endedAt(BookingStatus.Confirmed, over));
+}
+
+/** The provider says the work is finished; the customer's window is open. */
+function markedDone(over: { endsAt?: Date } = {}): Booking {
+  return Booking.restore(endedAt(BookingStatus.MarkedDone, over));
+}
+
+/** The customer took issue inside that window. Every clock is stopped. */
+function disputed(over: { endsAt?: Date } = {}): Booking {
+  return Booking.restore(endedAt(BookingStatus.Disputed, over));
+}
+
+/** Already at its ordinary ending. */
+function completed(over: { endsAt?: Date } = {}): Booking {
+  return Booking.restore(endedAt(BookingStatus.Completed, over));
+}
+
+/**
+ * Some instant safely ahead of everything else in this file, for the second
+ * argument of a call whose assertion is about the refusal or the status and
+ * never about the deadline.
+ */
+function later(): Date {
+  return new Date("2026-12-31T00:00:00.000Z");
 }
 
 describe("Booking.create", () => {
@@ -391,16 +451,26 @@ describe("Booking.markPaid", () => {
     expect(paid.paymentRef).toBe("mpesa-123");
   });
 
-  it("keeps the payment deadline on the row, rather than erasing the fact a dispute might need", () => {
-    // A stale query cannot act on this: `findDueForSweep` filters on
-    // `status = 'PENDING_PAYMENT'` before it ever looks at `expiresAt` (see
-    // `booking.repository.ts`), so a paid booking is already excluded by
-    // status alone. Nulling the deadline bought no protection — it only
-    // destroyed the one fact a customer disputing "you gave my slot away"
-    // needs: the deadline they were actually given.
+  it("hands the clock on to the appointment's own end, rather than leaving the payment deadline standing", () => {
+    // This assertion used to read `expiresAt` unchanged, and the reasoning
+    // behind it was sound while it lasted: nulling the deadline destroyed
+    // the one fact a customer disputing "you gave my slot away" needs, and
+    // bought no protection, because `findDueForSweep` filtered on status
+    // before it ever looked at `expiresAt` and `CONFIRMED` was not one of
+    // the statuses it selected.
+    //
+    // `CONFIRMED` is one of them now — it joined `DEADLINE_BEARING_STATUSES`
+    // when bookings gained an ending — so *leaving* the payment deadline
+    // standing has the failure nulling it never had: every freshly paid
+    // booking would carry a deadline already in the past and come back due
+    // the instant it was paid. `markPaid` therefore does what `submit` and
+    // `accept` already do at their own hops, and hands the clock on to the
+    // next thing anybody is waiting for.
     const before = Booking.restore(validProps());
     const paid = before.markPaid("mpesa-123", new Date());
-    expect(paid.expiresAt).toEqual(before.expiresAt);
+    expect(paid.expiresAt).toEqual(before.endsAt);
+    // And that is genuinely a move, not the same value under another name.
+    expect(paid.expiresAt).not.toEqual(before.expiresAt);
   });
 
   it("is idempotent: paying an already-paid booking changes nothing", () => {
@@ -980,12 +1050,11 @@ describe("every deadline-bearing status has exactly one ending", () => {
   // for the three original clocks. `CONFIRMED` and `MARKED_DONE` joined the
   // constant when bookings gained an ending (the schema/migration task of
   // this plan), but their endings are not `expire` or `cancel`: they are
-  // `markDone`/`complete`/`dispute`, which do not exist on this aggregate
-  // yet — a later task in this plan adds them. Looping the assertion below
-  // over those two would fail for a true reason that has nothing to do with
-  // a broken sweep (nobody has written their ending yet), so this list is
-  // narrowed to the statuses `expire`/`cancel` actually govern. The test
-  // beneath this one keeps the gap from being silent.
+  // `markDone`, `complete` and `dispute`, which throw where `expire` and
+  // `cancel` shrug, so "exactly one of the two no-op transitions moved it"
+  // is not a question that can be asked of them at all. This list is
+  // therefore narrowed to the statuses `expire`/`cancel` actually govern,
+  // and the test beneath this one covers the other two on their own terms.
   //
   // Driven off the constant itself rather than a copy of it, so adding a
   // sixth clock fails here rather than passing quietly.
@@ -1006,20 +1075,23 @@ describe("every deadline-bearing status has exactly one ending", () => {
   });
 
   // The other half of `DEADLINE_BEARING_STATUSES`, checked for the opposite
-  // fact: today, neither `expire` nor `cancel` governs them, which is
-  // correct until the task that gives them their real ending lands. If this
-  // starts failing because one of them silently became expirable or
-  // cancellable, that is a regression the loop above cannot see, since it
-  // no longer iterates these two.
-  it.each(["CONFIRMED", "MARKED_DONE"] as const)(
-    "%s is deadline-bearing but not yet governed by expire or cancel",
-    (status) => {
-      const booking = Booking.restore(validProps({ status }));
+  // fact: neither `expire` nor `cancel` governs them, and their real
+  // endings — the closing hops — do. Both halves matter. If one of these
+  // silently became expirable or cancellable, that is a regression the loop
+  // above cannot see, since it no longer iterates these two; and a clock
+  // with no way off it at all is the failure the whole closing task exists
+  // to prevent, which is what the second pair of assertions pins.
+  it.each([
+    [BookingStatus.Confirmed, (b: Booking) => b.markDone(b.endsAt, WHEN)],
+    [BookingStatus.MarkedDone, (b: Booking) => b.complete(WHEN)],
+  ] as const)("%s is ended by a closing hop, never by expire or cancel", (status, close) => {
+    const booking = Booking.restore(endedAt(status));
 
-      expect(booking.expire(WHEN)).toBe(booking);
-      expect(booking.cancel(WHEN, "customer_did_not_pay")).toBe(booking);
-    },
-  );
+    expect(booking.expire(WHEN)).toBe(booking);
+    expect(booking.cancel(WHEN, "customer_did_not_pay")).toBe(booking);
+
+    expect(close(booking)).not.toBe(booking);
+  });
 });
 
 describe("every slot-holding status is classified as chargeable or not", () => {
@@ -1072,4 +1144,86 @@ describe("every slot-holding status is classified as chargeable or not", () => {
       );
     },
   );
+});
+
+describe("closing a booking", () => {
+  it("refuses to be marked done before the appointment has ended", () => {
+    const b = confirmed({ endsAt: new Date("2026-09-10T10:00:00.000Z") });
+    expect(() => b.markDone(new Date("2026-09-10T09:59:00.000Z"), later())).toThrow(
+      BookingNotEndedError,
+    );
+  });
+
+  it("marks done once the appointment has ended, and starts the customer's window", () => {
+    const at = new Date("2026-09-10T10:00:00.000Z");
+    const feedbackBy = new Date("2026-09-13T10:00:00.000Z");
+    const moved = confirmed({ endsAt: at }).markDone(at, feedbackBy);
+    expect(moved.status).toBe(BookingStatus.MarkedDone);
+    expect(moved.markedDoneAt).toEqual(at);
+    expect(moved.expiresAt).toEqual(feedbackBy);
+  });
+
+  it("refuses to be marked done from any status but confirmed", () => {
+    expect(() => awaitingProvider().markDone(new Date(), later())).toThrow(BookingTransitionError);
+    expect(() => markedDone().markDone(new Date(), later())).toThrow(BookingTransitionError);
+  });
+
+  it("remembers having been asked, and moves nothing else", () => {
+    const at = new Date("2026-09-10T10:00:00.000Z");
+    const askAgain = new Date("2026-09-17T10:00:00.000Z");
+    const moved = confirmed({ endsAt: at }).reminded(at, askAgain);
+    expect(moved.status).toBe(BookingStatus.Confirmed);
+    expect(moved.remindedAt).toEqual(at);
+    expect(moved.expiresAt).toEqual(askAgain);
+  });
+
+  it("lets the provider say it is still going, as often as they need", () => {
+    const at = new Date("2026-09-10T10:00:00.000Z");
+    const once = confirmed({ endsAt: at }).reminded(at, later());
+    const twice = once.keepOpen(at, new Date("2026-09-17T10:00:00.000Z"));
+    expect(twice.status).toBe(BookingStatus.Confirmed);
+    expect(twice.expiresAt).toEqual(new Date("2026-09-17T10:00:00.000Z"));
+    expect(twice.markedDoneAt).toBeNull();
+  });
+
+  it("refuses to be asked, or kept open, from any status but confirmed", () => {
+    // These are the two hops with no status change to assert, so it is easy
+    // to leave them without a refusal test at all — and they are the two a
+    // provider reaches by tapping a notification that may be hours old, so
+    // of the six they are the likeliest to land on a booking that has
+    // already moved. They throw rather than no-op for the reason `submit`
+    // does: a person is waiting on the answer, and the sweep's own safety
+    // comes from the compare-and-swap, not from silence here.
+    expect(() => markedDone().reminded(new Date(), later())).toThrow(BookingTransitionError);
+    expect(() => disputed().keepOpen(new Date(), later())).toThrow(BookingTransitionError);
+  });
+
+  it("completes only from marked done", () => {
+    const at = new Date("2026-09-13T10:00:00.000Z");
+    expect(markedDone().complete(at).status).toBe(BookingStatus.Completed);
+    expect(markedDone().complete(at).completedAt).toEqual(at);
+    expect(() => confirmed().complete(at)).toThrow(BookingTransitionError);
+  });
+
+  it("disputes only from marked done, and stops the clock", () => {
+    const at = new Date("2026-09-12T10:00:00.000Z");
+    const moved = markedDone().dispute(at);
+    expect(moved.status).toBe(BookingStatus.Disputed);
+    expect(moved.disputedAt).toEqual(at);
+    expect(moved.expiresAt).toBeNull();
+    expect(() => completed().dispute(at)).toThrow(BookingTransitionError);
+  });
+
+  it("resolves a dispute both ways, and only from disputed", () => {
+    const at = new Date("2026-09-20T10:00:00.000Z");
+    const kept = disputed().resolveDispute(at, false);
+    expect(kept.status).toBe(BookingStatus.Completed);
+    expect(kept.completedAt).toEqual(at);
+
+    const upheld = disputed().resolveDispute(at, true);
+    expect(upheld.status).toBe(BookingStatus.Cancelled);
+    expect(upheld.cancelledAt).toEqual(at);
+
+    expect(() => markedDone().resolveDispute(at, true)).toThrow(BookingTransitionError);
+  });
 });

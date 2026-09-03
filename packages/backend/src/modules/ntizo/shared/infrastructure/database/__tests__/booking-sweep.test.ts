@@ -603,20 +603,22 @@ describe("SweepDueBookingsInternalCommand", () => {
   });
 
   /**
-   * A booking already paid, whose old deadline has long since passed, is
-   * selected by the sweep now — five statuses pass the filter, and
-   * `CONFIRMED` is one of them, since bookings gained an ending — but comes
-   * out of it with its row untouched: `SweepBookingCommand`'s switch has no
-   * arm for `CONFIRMED` yet, so it falls to `default` and returns without
-   * writing anything. Selected and counted is not the same as moved.
+   * A booking already paid, whose appointment has since ended, is selected
+   * by the sweep now — five statuses pass the filter, and `CONFIRMED` is one
+   * of them, since bookings gained an ending — but comes out of it with its
+   * row untouched: `SweepBookingCommand`'s switch has no arm for `CONFIRMED`
+   * yet, so it falls to `default` and returns without writing anything.
+   * Selected and counted is not the same as moved.
    *
-   * `markPaid` does not clear `expiresAt` on its way out of
-   * `PENDING_PAYMENT` — the deadline stays on the row, still in the past,
-   * still non-null (see `booking-repository.test.ts`). That stale deadline
-   * used to be inert past `PENDING_PAYMENT`, because nothing past it had a
-   * clock; now it is live, because `CONFIRMED` carries one too.
+   * What makes it due is its own appointment being over, not a leftover
+   * payment clock: `markPaid` hands `expiresAt` on to `endsAt` on the way
+   * out of `PENDING_PAYMENT` (see `booking-repository.test.ts`) rather than
+   * leaving the payment deadline standing or clearing the column. It has to.
+   * Nothing past `PENDING_PAYMENT` carried a clock at all until `CONFIRMED`
+   * gained one, so a payment deadline left behind there was inert; now it
+   * would be live, and every freshly paid booking would arrive here due.
    */
-  test("a confirmed booking past its stale deadline is counted by the sweep but left otherwise untouched", async () => {
+  test("a confirmed booking whose appointment has ended is counted by the sweep but left otherwise untouched", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-02T12:00:00.000Z");
 
@@ -633,7 +635,10 @@ describe("SweepDueBookingsInternalCommand", () => {
       );
       const paid = inserted.markPaid("mpesa-sweep-test", new Date("2026-11-02T08:45:00.000Z"));
       expect(paid.status).toBe("CONFIRMED");
-      expect(paid.expiresAt).toEqual(inserted.expiresAt);
+      // The clock it stands on is its own appointment's end — 10:00, two
+      // hours before `now`, so the sweep will select it — and not the 09:00
+      // payment deadline it was paid against.
+      expect(paid.expiresAt).toEqual(inserted.endsAt);
       const applied = await repo.save(paid, "PENDING_PAYMENT");
       expect(applied).toBe(true);
 

@@ -4,6 +4,7 @@ import {
   BookingDateInvalidError,
   BookingDurationInvalidError,
   BookingFieldBlankError,
+  BookingNotEndedError,
   BookingPriceInvalidError,
   BookingSnapshotInconsistentError,
   BookingTransitionError,
@@ -81,6 +82,7 @@ const EXPIRABLE_STATUSES: readonly BookingStatus[] = [
  */
 const CANCELLABLE_FROM: Record<BookingCancelledReason, readonly BookingStatus[]> = {
   customer_did_not_pay: [BookingStatus.PendingPayment],
+  dispute_upheld: [BookingStatus.Disputed],
 };
 
 /** A commission rate is basis points: 0 is free, 10000 is the whole price. */
@@ -106,30 +108,47 @@ export interface BookingProps {
   readonly status: BookingStatus;
   /**
    * The deadline currently running against this booking — **whichever of
-   * the design's three clocks its status is standing on.** `create` stamps
-   * the checkout hold, `submit` overwrites it with the provider's response
-   * window, `accept` overwrites that with the payment window; each hop
-   * takes the deadline as an argument, because `domain/` reaches for no
-   * configuration and all three lengths are `platform_settings` columns.
-   * One column, three meanings, and the status is what says which — which
-   * is exactly what lets `findDueForSweep` ask one question
-   * (`expires_at <= now AND status IN (…)`) instead of three.
+   * the design's clocks its status is standing on.** `create` stamps the
+   * checkout hold, `submit` overwrites it with the provider's response
+   * window, `accept` overwrites that with the payment window, `markPaid`
+   * with the appointment's own end, and `markDone` with the customer's
+   * feedback window; `reminded` and `keepOpen` push that fourth one — the
+   * platform's question to the provider — further out without moving the
+   * status, which is why `CONFIRMED` can stand on its clock more than once.
+   * Every hop but `markPaid` takes the deadline as an argument, because
+   * `domain/` reaches for no configuration and those lengths are
+   * `platform_settings` columns — `markPaid` is the exception because its
+   * deadline is a fact the booking already holds (`endsAt`) rather than a
+   * window somebody configured. One column, five meanings, and the status
+   * is what says which — which is exactly what lets `findDueForSweep` ask
+   * one question (`expires_at <= now AND status IN (…)`) instead of five.
    *
-   * Left alone by every transition that is not one of those three hops.
-   * `markPaid` and `expire` used to null it out on the way past
-   * `PENDING_PAYMENT`, on the theory that a stale deadline invited some
+   * Left alone by every transition that is not one of those hops, and
+   * nulled by exactly one: `dispute`. That is not the mistake recorded
+   * below — there, a live deadline was being erased while a status check
+   * was already doing the protecting. Here there is genuinely no clock
+   * left to record: `DISPUTED` is not one of `DEADLINE_BEARING_STATUSES`,
+   * so the sweep's filter excludes it anyway, and the null is this column
+   * saying so in its own words rather than leaving a dead deadline behind
+   * for the next reader to mistake for a live one.
+   *
+   * `markPaid` and `expire` also used to null it, on the way past
+   * `PENDING_PAYMENT` and on the theory that a stale deadline invited some
    * later query to act on it. That theory was wrong in practice:
    * `findDueForSweep` (see `booking.repository.ts`) filters on status
    * before it ever looks at this column — `DEADLINE_BEARING_STATUSES`, the
-   * three that still have a clock running — so the null bought no
+   * ones that still have a clock running — so the null bought no
    * protection a status check wasn't already giving for free. What it did
    * cost is real: the one fact a customer disputing "you gave my slot away"
    * needs is the deadline they were actually given, and
-   * `PlatformSettingsReaderPort`'s three windows are deliberately LIVE on
-   * the promise that "a booking already created keeps the `expiresAt` it
-   * was given regardless of what this returns afterward" (see that port's
-   * own comments) — a promise nulling this out quietly broke the moment the
-   * booking moved on.
+   * `PlatformSettingsReaderPort`'s windows are deliberately LIVE on the
+   * promise that "a booking already created keeps the `expiresAt` it was
+   * given regardless of what this returns afterward" (see that port's own
+   * comments) — a promise nulling this out quietly broke the moment the
+   * booking moved on. Note the difference between that and what `markPaid`
+   * does now: handing the column on to the next real deadline keeps it
+   * meaning something at every status, where nulling it made the column
+   * mean nothing at a status that was still standing on a clock.
    */
   readonly expiresAt: Date | null;
   readonly paidAt: Date | null;
@@ -153,6 +172,19 @@ export interface BookingProps {
    * hop, the same as `decline`'s (see `cancel`'s own doc comment).
    */
   readonly cancelledAt: Date | null;
+  /**
+   * When the platform asked the provider to close this booking — set by
+   * `reminded`, which moves no status at all.
+   *
+   * Null until it has asked, and that is the whole job: it is what tells
+   * the sweep's second firing apart from its first. The alternative, an
+   * inference from `endsAt` and the current time, reads correctly and means
+   * something else — a booking whose appointment ended a week ago has
+   * looked "overdue for a second ask" ever since, whether or not anybody
+   * ever sent the first. Stored beside `markedDoneAt` because it is the
+   * question that ordinarily precedes it.
+   */
+  readonly remindedAt: Date | null;
   readonly markedDoneAt: Date | null;
   readonly completedAt: Date | null;
   readonly disputedAt: Date | null;
@@ -206,9 +238,11 @@ export interface BookingProps {
  * consistent for it to be an accident.
  *
  * **The snapshot is immutable after creation.** Nothing here mutates a
- * `Booking` — every transition (`markPaid`, `expire`, `cancel`, `submit`,
- * `accept`, `decline`) returns a new instance, matching how `Review.revise`
- * never touches the `Review` it was called on.
+ * `Booking` — every transition (`submit`, `accept`, `decline`, `markPaid`,
+ * `expire`, `cancel`, and the six that close it: `reminded`, `markDone`,
+ * `keepOpen`, `complete`, `dispute`, `resolveDispute`) returns a new
+ * instance, matching how `Review.revise` never touches the `Review` it was
+ * called on.
  */
 export class Booking {
   private constructor(private readonly props: BookingProps) {}
@@ -363,6 +397,7 @@ export class Booking {
       confirmedAt: null,
       declinedAt: null,
       cancelledAt: null,
+      remindedAt: null,
       markedDoneAt: null,
       completedAt: null,
       disputedAt: null,
@@ -531,6 +566,9 @@ export class Booking {
   get cancelledAt(): Date | null {
     return this.props.cancelledAt;
   }
+  get remindedAt(): Date | null {
+    return this.props.remindedAt;
+  }
   get markedDoneAt(): Date | null {
     return this.props.markedDoneAt;
   }
@@ -613,6 +651,15 @@ export class Booking {
    * before a charge was ever attempted (see `accept`); this is the moment
    * the money that promise depended on actually arrives.
    *
+   * **It hands the clock on, the same way `submit` and `accept` do**, and
+   * it is the only hop that does not take the new deadline as an argument:
+   * the deadline is `endsAt`, a fact this booking already carries, not a
+   * window read from `platform_settings`. Leaving the payment deadline
+   * standing was harmless right up until `CONFIRMED` joined
+   * `DEADLINE_BEARING_STATUSES` — a paid booking was invisible to the sweep
+   * whatever this column said. It is now visible, so a stale value here
+   * would make every freshly paid booking due the instant it was paid.
+   *
    * **The discriminator for everything else is the payment reference, not
    * the status.** The first version of this method asked "does the booking
    * still hold its slot?" before ever looking at the reference — which
@@ -651,6 +698,9 @@ export class Booking {
         status: BookingStatus.Confirmed,
         paidAt: at,
         paymentRef,
+        // The next thing anyone waits on is the appointment's own end, when
+        // the platform will ask the provider to close it.
+        expiresAt: this.props.endsAt,
       });
     }
 
@@ -948,5 +998,162 @@ export class Booking {
       status: BookingStatus.Cancelled,
       cancelledAt: at,
     });
+  }
+
+  /**
+   * The platform asked the provider to close this booking. Not a transition —
+   * the status does not move — but a fact worth keeping: it is what tells the
+   * sweep's second firing from its first, and it is the difference between a
+   * platform that asks and one that assumes.
+   *
+   * Throws rather than shrugging, unlike `expire` and `cancel`, even though
+   * the sweep is one of its callers. The sweep's protection against a
+   * booking that moved between the select and this call is the
+   * compare-and-swap on the save, not silence here: a `reminded` that
+   * quietly no-opped would write `remindedAt` on nothing and leave the next
+   * firing unable to tell it had already asked, which is the one fact this
+   * method exists to record.
+   */
+  reminded(at: Date, askAgainAt: Date): Booking {
+    if (this.props.status !== BookingStatus.Confirmed) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.Confirmed);
+    }
+
+    Booking.requireValidDate(at, "at");
+    Booking.requireValidDate(askAgainAt, "askAgainAt");
+
+    return new Booking({ ...this.props, remindedAt: at, expiresAt: askAgainAt });
+  }
+
+  /**
+   * The provider says the work is done — or, after seven days of silence, the
+   * platform says it on their behalf. Either way this opens the customer's
+   * window, so it also sets the clock that closes it.
+   *
+   * The end-of-appointment guard is checked after the dates are, and after
+   * the status is, on purpose: a caller holding a `Date` built from a bad
+   * string should hear about that rather than about a comparison against
+   * `NaN`, which would pass this guard silently.
+   */
+  markDone(at: Date, feedbackBy: Date): Booking {
+    if (this.props.status !== BookingStatus.Confirmed) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.MarkedDone);
+    }
+
+    Booking.requireValidDate(at, "at");
+    Booking.requireValidDate(feedbackBy, "feedbackBy");
+
+    if (at.getTime() < this.props.endsAt.getTime()) {
+      throw new BookingNotEndedError(this.props.endsAt, at);
+    }
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.MarkedDone,
+      markedDoneAt: at,
+      expiresAt: feedbackBy,
+    });
+  }
+
+  /**
+   * "Still going." The job outran its slot, which is ordinary for the trades
+   * this platform serves, so the provider pushes the question out rather than
+   * being marked done in the middle of it. Repeatable by design: a wall is
+   * finished when it is finished, and the platform cannot know better than
+   * the person building it.
+   *
+   * Deliberately leaves `remindedAt` where it stands. It is not a second
+   * asking — the platform asked once and is being answered — and rewriting
+   * it would erase when the conversation actually started.
+   */
+  keepOpen(at: Date, askAgainAt: Date): Booking {
+    if (this.props.status !== BookingStatus.Confirmed) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.Confirmed);
+    }
+
+    Booking.requireValidDate(at, "at");
+    Booking.requireValidDate(askAgainAt, "askAgainAt");
+
+    return new Booking({ ...this.props, expiresAt: askAgainAt });
+  }
+
+  /** The window closed without a dispute, or the customer's review closed it early. */
+  complete(at: Date): Booking {
+    if (this.props.status !== BookingStatus.MarkedDone) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.Completed);
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return new Booking({ ...this.props, status: BookingStatus.Completed, completedAt: at });
+  }
+
+  /**
+   * The customer says something is wrong. Every clock stops: `expires_at`
+   * becomes null, so the sweep stops selecting this booking and only a person
+   * moves it from here.
+   *
+   * This is the one place in the class that nulls `expiresAt`, and it is
+   * the opposite of the mistake that column's own doc comment records.
+   * `markPaid` and `expire` used to null it and were wrong to: the deadline
+   * they erased was a real one somebody might need, and the sweep's status
+   * filter was already keeping it from being acted on. Here there is no
+   * deadline left to erase — nobody is waiting on a clock while an
+   * administrator reads the case. `DISPUTED` is not one of
+   * `DEADLINE_BEARING_STATUSES`, so the status filter excludes it in any
+   * event; the null is the column saying the same thing itself, so that
+   * nothing reading this row has to know the constant to know no clock is
+   * running.
+   */
+  dispute(at: Date): Booking {
+    if (this.props.status !== BookingStatus.MarkedDone) {
+      throw new BookingTransitionError(this.props.status, BookingStatus.Disputed);
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return new Booking({
+      ...this.props,
+      status: BookingStatus.Disputed,
+      disputedAt: at,
+      expiresAt: null,
+    });
+  }
+
+  /**
+   * An administrator decided. Keeping the completion and siding with the
+   * customer are the only two outcomes, and neither moves money — the wallet
+   * work reads `dispute_upheld` later to know what not to pay out.
+   *
+   * `upheld` reads as "the dispute was upheld", not "the completion was":
+   * true sides with the customer and ends the booking `CANCELLED`, false
+   * lets the completion stand.
+   *
+   * Both outcomes are written out here rather than delegated to `complete`
+   * and `cancel`, because the two would not behave alike if they were.
+   * `complete` guards on `MARKED_DONE`, which this booking is no longer,
+   * so it could not be delegated to at all; `cancel` could — its
+   * `CANCELLABLE_FROM` entry names `DISPUTED` — but `cancel` answers a
+   * status it does not govern by handing the instance back in silence,
+   * which is right for the sweep and wrong for an administrator who
+   * pressed a button. Written out, both halves of one decision refuse the
+   * same way. The `CANCELLABLE_FROM` entry stays regardless: it is what
+   * makes `dispute_upheld` a reason with a rule behind it rather than a
+   * string, and it is the gate `BookingCancelledReason`'s doc comment
+   * promises the next reason will have to pass.
+   */
+  resolveDispute(at: Date, upheld: boolean): Booking {
+    if (this.props.status !== BookingStatus.Disputed) {
+      throw new BookingTransitionError(
+        this.props.status,
+        upheld ? BookingStatus.Cancelled : BookingStatus.Completed,
+      );
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return upheld
+      ? new Booking({ ...this.props, status: BookingStatus.Cancelled, cancelledAt: at })
+      : new Booking({ ...this.props, status: BookingStatus.Completed, completedAt: at });
   }
 }

@@ -307,26 +307,36 @@ export class BookingDeclined extends BaseDomainEvent<{
  * does not face the same requirement because it is never machine-generated
  * in the first place.
  *
- * One member, not three. An earlier version of this union also declared
- * `"customer_cancelled"` and `"provider_cancelled"`, on the theory that a
- * cancellation policy would eventually want them and declaring them now
- * would save that work reopening this union later. That reasoning is
- * reversed here: neither member has a producer anywhere in this plan, and
- * the spec puts the cancellation policy explicitly out of scope — whether
- * either kind of cancellation even exists yet, let alone what a customer or
- * provider should be told about it, is a question nobody has answered.
- * Notification cannot render a locale string for a reason nobody has
- * designed, so carrying the other two members was a contract this codebase
- * could not keep, not a convenience. `"customer_did_not_pay"` is the one
- * member with a real producer: a `PENDING_PAYMENT` booking swept past its
- * payment window, the case the spec's own failure section exists for, and
- * the only reason any task in this plan raises. When a cancellation policy
- * lands, it will name its own reasons against real rules it can actually
- * enforce — extending this union then, rather than guessing its shape now,
- * is what makes an exhaustive `switch` over it go red at exactly the right
+ * Two members, and each has a real producer. An earlier version of this
+ * union also declared `"customer_cancelled"` and `"provider_cancelled"`, on
+ * the theory that a cancellation policy would eventually want them and
+ * declaring them now would save that work reopening this union later. That
+ * reasoning is reversed here: neither member had a producer anywhere in
+ * that plan, and the spec puts the cancellation policy explicitly out of
+ * scope — whether either kind of cancellation even exists yet, let alone
+ * what a customer or provider should be told about it, is a question nobody
+ * has answered. Notification cannot render a locale string for a reason
+ * nobody has designed, so carrying those two was a contract this codebase
+ * could not keep, not a convenience.
+ *
+ * `"customer_did_not_pay"` is the sweep's: a `PENDING_PAYMENT` booking past
+ * its payment window, the case the booking-core spec's failure section
+ * exists for. `"dispute_upheld"` is an administrator's: a `DISPUTED`
+ * booking whose dispute they sided with, which ends the booking as
+ * `CANCELLED` rather than `COMPLETED` precisely so the wallet work can read
+ * this reason later and know what *not* to pay out — see
+ * `Booking.resolveDispute`. Note how differently they read to their
+ * audiences, which is the whole argument for a closed union: one tells a
+ * provider the customer never paid, the other tells them the platform
+ * decided against them, and no single sentence covers both.
+ *
+ * When a cancellation policy lands, it will name its own reasons against
+ * real rules it can actually enforce — extending this union then, rather
+ * than guessing its shape now, is what makes an exhaustive `switch` over it,
+ * and `CANCELLABLE_FROM` in the aggregate, go red at exactly the right
  * moment.
  */
-export type BookingCancelledReason = "customer_did_not_pay";
+export type BookingCancelledReason = "customer_did_not_pay" | "dispute_upheld";
 
 /**
  * A booking was called off after it had already committed a provider's
@@ -335,12 +345,13 @@ export type BookingCancelledReason = "customer_did_not_pay";
  * Raised when a booking transitions to Cancelled status. Unlike
  * `BookingExpired` — which only ever means "nobody showed up to pay before
  * anyone committed anything" — a cancellation can land after either party
- * has already acted. Today's one reason, `customer_did_not_pay`, is always
- * told to the provider, who blocked a slot for money that never arrived;
- * this event still carries both `customerId` and `providerId` rather than
- * only the one today's reason addresses, because a future reason may need
- * the other, and asking a consumer to guess which id matters for a reason
- * that does not exist yet is worse than carrying one unused id today.
+ * has already acted. Its two reasons reach different people.
+ * `customer_did_not_pay` is the provider's news: they blocked a slot for
+ * money that never arrived. `dispute_upheld` is both sides' — see
+ * `NotificationType.BookingDisputeResolved`, whose own comment says "both
+ * sides hear the same thing" — which is what finally earns the `customerId`
+ * this event has carried since before any reason needed it, on the
+ * argument that a future reason would.
  *
  * Carries `providerMemberId` and `startsAt` for the same reason
  * `BookingExpired` and `BookingDeclined` do: `CANCELLED` is not one of

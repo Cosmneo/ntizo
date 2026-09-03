@@ -103,10 +103,15 @@ export class BookingDateInvalidError extends UnprocessableError {
  * marking done a booking that was never confirmed, and so on.
  *
  * Thrown by `Booking.submit`, `Booking.accept`, `Booking.decline` and
- * `Booking.markPaid` today. `expire` deliberately does not: a timer racing
- * the booking's own writes is an ordinary event, not a broken one, and
- * throwing here would turn every ordinary race into an error somebody has
- * to read (see `Booking.expire`'s own doc comment).
+ * `Booking.markPaid`, and by all six of the closing hops — `reminded`,
+ * `markDone`, `keepOpen`, `complete`, `dispute` and `resolveDispute`. Every
+ * one of those has a person or a command behind it that should hear "no".
+ * `expire` and `cancel` deliberately do not throw: a timer racing the
+ * booking's own writes is an ordinary event, not a broken one, and throwing
+ * there would turn every ordinary race into an error somebody has to read
+ * (see `Booking.expire`'s own doc comment). The sweep calls into the closing
+ * hops too, and its safety there is the compare-and-swap on the save rather
+ * than a silent no-op here.
  */
 export class BookingTransitionError extends UnprocessableError {
   constructor(
@@ -118,6 +123,37 @@ export class BookingTransitionError extends UnprocessableError {
       code: "BOOKING_INVALID_TRANSITION",
     });
     this.name = "BookingTransitionError";
+  }
+}
+
+/**
+ * Refused because a booking cannot be finished before it has happened.
+ *
+ * The rule is the same for the provider's own button, an administrator's,
+ * and the platform's own sweep: nobody may say a job is done while its
+ * appointment is still ahead. It is separate from `BookingTransitionError`
+ * because the two refuse different things and the frontend has to tell them
+ * apart — a transition error says the booking is in the wrong *status*, and
+ * the honest answer to it is "reload, this has moved on"; this one says the
+ * status is exactly right and the *clock* is not, and the honest answer is
+ * "come back after the appointment ends". Collapsing them would leave a
+ * provider tapping "Concluído" an hour early with a message telling them
+ * their booking is in the wrong state, which it is not.
+ *
+ * Thrown by `Booking.markDone` alone. `complete` and `resolveDispute` do not
+ * need it: neither is reachable except from a status `markDone` already put
+ * the booking into, so the appointment is behind it by construction.
+ */
+export class BookingNotEndedError extends UnprocessableError {
+  constructor(
+    public readonly endsAt: Date,
+    public readonly at: Date,
+  ) {
+    super({
+      message: `This booking runs until ${endsAt.toISOString()} and cannot be closed at ${at.toISOString()}`,
+      code: "BOOKING_NOT_ENDED",
+    });
+    this.name = "BookingNotEndedError";
   }
 }
 

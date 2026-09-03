@@ -95,6 +95,7 @@ export function withId(booking: Booking, id: string): Booking {
     confirmedAt: booking.confirmedAt,
     declinedAt: booking.declinedAt,
     cancelledAt: booking.cancelledAt,
+    remindedAt: booking.remindedAt,
     markedDoneAt: booking.markedDoneAt,
     completedAt: booking.completedAt,
     disputedAt: booking.disputedAt,
