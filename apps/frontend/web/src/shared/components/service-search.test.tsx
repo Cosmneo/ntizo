@@ -86,3 +86,18 @@ describe("ServiceSearch", () => {
     expect(router.state.location.search).toEqual({ q: "pintura" });
   });
 });
+
+describe("ServiceSearch, on a coloured background", () => {
+  // The home hero paints the whole block `text-white`, and a form control
+  // inherits `color` from its container (Tailwind's preflight says so). On
+  // 3 September 2026 that made the typed text and the caret white on the
+  // field's white background: the owner typed and saw nothing. jsdom does not
+  // run the stylesheet, so this pins the class that carries the field's own
+  // colour rather than the computed colour it produces.
+  it("carries its own text colour rather than inheriting the hero's white", async () => {
+    await renderSearch();
+    expect(screen.getByLabelText("Search services")).toHaveClass(
+      "text-[var(--color-foreground)]",
+    );
+  });
+});

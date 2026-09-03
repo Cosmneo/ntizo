@@ -62,6 +62,12 @@ export function ServiceSearch({
       )}
     >
       <Search className="h-5 w-5 shrink-0 text-[var(--color-muted-foreground)]" />
+      {/*
+        The field names its own text colour. A form control inherits `color`
+        from its container, and the home hero paints its block white; without
+        this the typed text and the caret were white on the field's white
+        background, and typing showed nothing (3 September 2026).
+      */}
       <input
         type="search"
         value={value}
@@ -69,7 +75,7 @@ export function ServiceSearch({
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("searchPlaceholder")}
         aria-label={t("searchLabel")}
-        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--color-muted-foreground)]"
+        className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted-foreground)]"
       />
       <button
         type="submit"
