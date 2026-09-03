@@ -10,7 +10,13 @@ import {
   createCommunicationWriteHandlers,
   type CommunicationWriteModule,
 } from "../graphql/handlers/mutations.handlers";
-import { communicationWriteSchema, startThread, send, markRead } from "../graphql/schema/mutations";
+import {
+  communicationWriteSchema,
+  startThread,
+  send,
+  markRead,
+  openSupportRequest,
+} from "../graphql/schema/mutations";
 
 function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
   return {
@@ -44,6 +50,10 @@ function makeModule(overrides: {
   startThread?: UseCaseSpy;
   sendMessage?: UseCaseSpy;
   markThreadRead?: UseCaseSpy;
+  openSupportRequest?: UseCaseSpy;
+  replyToSupportRequest?: UseCaseSpy;
+  resolveSupportRequest?: UseCaseSpy;
+  markSupportRequestRead?: UseCaseSpy;
 }): CommunicationWriteModule {
   return {
     communication: {
@@ -52,6 +62,11 @@ function makeModule(overrides: {
         startThread: overrides.startThread ?? spyUseCase({ id: "t1", created: false }),
         sendMessage: overrides.sendMessage ?? spyUseCase({ id: "m1" }),
         markThreadRead: overrides.markThreadRead ?? spyUseCase({ marked: 0 }),
+        openSupportRequest: overrides.openSupportRequest ?? spyUseCase({ threadId: "t1" }),
+        replyToSupportRequest: overrides.replyToSupportRequest ?? spyUseCase({ id: "m1" }),
+        resolveSupportRequest:
+          overrides.resolveSupportRequest ?? spyUseCase({ threadId: "t1", status: "resolved" }),
+        markSupportRequestRead: overrides.markSupportRequestRead ?? spyUseCase({ marked: 0 }),
         internal: {
           notifyUnread: {
             execute: async () => {
@@ -65,12 +80,12 @@ function makeModule(overrides: {
 }
 
 describe("the communication write schema", () => {
-  it("exposes exactly three mutations", () => {
+  it("exposes exactly four mutations", () => {
     const fields = Object.keys(
       (communicationWriteSchema as unknown as { fields: { communication: object } }).fields
         .communication,
     ).sort();
-    expect(fields).toEqual(["markRead", "send", "startThread"]);
+    expect(fields).toEqual(["markRead", "openSupportRequest", "send", "startThread"]);
   });
 
   /**
@@ -89,14 +104,23 @@ describe("the communication write schema", () => {
     expect(shapeKeys(startThread)).toEqual(["providerId"]);
     expect(shapeKeys(send)).toEqual(["attachments", "body", "threadId"]);
     expect(shapeKeys(markRead)).toEqual(["threadId"]);
+    expect(shapeKeys(openSupportRequest)).toEqual([
+      "attachments",
+      "audience",
+      "body",
+      "bookingId",
+      "providerId",
+      "subject",
+    ]);
   });
 });
 
 describe("createCommunicationWriteHandlers", () => {
-  it("builds exactly the three fields", () => {
+  it("builds exactly the four fields", () => {
     const handlers = createCommunicationWriteHandlers(makeModule({}));
     expect(handlers.map((h) => h.key).sort()).toEqual([
       "communication.markRead",
+      "communication.openSupportRequest",
       "communication.send",
       "communication.startThread",
     ]);
@@ -417,5 +441,49 @@ describe("createCommunicationWriteHandlers", () => {
     expect(startThreadSpy.calls).toEqual([
       { customerUserId: "u-session", providerId: "p-inactive" },
     ]);
+  });
+});
+
+describe("communication.openSupportRequest", () => {
+  it("stamps the requester from the session and passes the rest through", async () => {
+    const openSupportRequestSpy = spyUseCase({ threadId: "t1" });
+    const handlers = createCommunicationWriteHandlers(
+      makeModule({ openSupportRequest: openSupportRequestSpy }),
+    );
+    const field = handlers.find((h) => h.key === "communication.openSupportRequest")!;
+
+    const out = await field.handler(
+      { audience: "provider", providerId: "p1", subject: "Comissão", body: "x", bookingId: "b1" },
+      ctx({ requesterUserId: "u-session" }),
+    );
+
+    expect(out).toEqual({ threadId: "t1" });
+    expect(openSupportRequestSpy.calls).toEqual([
+      {
+        requesterUserId: "u-session",
+        audience: "provider",
+        providerId: "p1",
+        subject: "Comissão",
+        body: "x",
+        bookingId: "b1",
+        attachments: undefined,
+      },
+    ]);
+  });
+
+  it("refuses an anonymous caller", async () => {
+    const openSupportRequestSpy = spyUseCase({ threadId: "t1" });
+    const handlers = createCommunicationWriteHandlers(
+      makeModule({ openSupportRequest: openSupportRequestSpy }),
+    );
+    const field = handlers.find((h) => h.key === "communication.openSupportRequest")!;
+
+    await expect(
+      field.handler(
+        { audience: "customer", subject: "x", body: "x" },
+        ctx({ requesterUserId: null }),
+      ),
+    ).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    expect(openSupportRequestSpy.calls).toEqual([]);
   });
 });

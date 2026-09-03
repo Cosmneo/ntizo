@@ -5,13 +5,13 @@ export interface ThreadProps {
   readonly id: string | null;
   readonly type: ThreadType;
   readonly customerUserId: string;
-  readonly providerId: string;
+  readonly providerId: string | null;
   readonly lastMessageAt: Date;
   readonly createdAt: Date;
 }
 
 /**
- * One conversation between a customer and a provider.
+ * One conversation — customer with provider, or somebody with the platform.
  *
  * Same two-factory split as `Message`, for the same reason: `open` is the
  * write path and validates; `rehydrate` is the read path and trusts the row
@@ -60,6 +60,28 @@ export class Thread {
   }
 
   /**
+   * A support request's conversation. `providerId` is the provider the
+   * request is opened on behalf of, or `null` for a personal one — the
+   * caller (`OpenSupportRequestCommand`) has already checked membership
+   * when it is not null. No `ThreadTypeInvalidError` path: the type is fixed
+   * here, not passed in.
+   */
+  static openSupport(params: {
+    customerUserId: string;
+    providerId: string | null;
+    now: Date;
+  }): Thread {
+    return new Thread({
+      id: null,
+      type: "support",
+      customerUserId: params.customerUserId,
+      providerId: params.providerId,
+      lastMessageAt: params.now,
+      createdAt: params.now,
+    });
+  }
+
+  /**
    * The read path: trusts the database, checks nothing.
    *
    * See `Message.rehydrate` and `Activity.rehydrate` for why this must not
@@ -80,7 +102,7 @@ export class Thread {
   get customerUserId(): string {
     return this.props.customerUserId;
   }
-  get providerId(): string {
+  get providerId(): string | null {
     return this.props.providerId;
   }
   get lastMessageAt(): Date {

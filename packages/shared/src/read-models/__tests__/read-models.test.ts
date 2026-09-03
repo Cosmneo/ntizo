@@ -13,6 +13,7 @@ import {
   messageReadModel,
   messagePageReadModel,
 } from "../system/communication";
+import { supportRequestSummaryReadModel } from "../system/support";
 import {
   providerPublicDetailReadModel,
   providerPublicReadModel,
@@ -301,12 +302,14 @@ describe("activityPageReadModel", () => {
 describe("threadSummaryReadModel", () => {
   const row = {
     id: "t1",
+    type: "inquiry" as const,
     providerId: "p1",
     providerName: "Salão X",
     customerName: "Ana Silva",
     lastMessageAt: "2026-08-24T09:00:00.000Z",
     lastMessagePreview: "See you tomorrow",
     unreadCount: 2,
+    support: null,
   };
 
   it("accepts a row as the projection returns it", () => {
@@ -341,18 +344,34 @@ describe("threadSummaryReadModel", () => {
     const parsed = threadSummaryReadModel.parse({ ...row, lastMessagePreview: undefined });
     expect(parsed.lastMessagePreview).toBe("");
   });
+
+  // A personal support request has no provider and carries its own subject
+  // and status — `providerId: null` and a populated `support` are the shape
+  // a real support row takes, not an edge case of the inquiry shape above.
+  it("accepts a support row with a null provider and a populated support block", () => {
+    const parsed = threadSummaryReadModel.parse({
+      ...row,
+      type: "support",
+      providerId: null,
+      support: { subject: "Reembolso", status: "open", audience: "customer", bookingId: "b1" },
+    });
+    expect(parsed.providerId).toBeNull();
+    expect(parsed.support).toEqual({ subject: "Reembolso", status: "open", audience: "customer", bookingId: "b1" });
+  });
 });
 
 describe("threadPageReadModel", () => {
   it("does not let one degraded row sink the rest of the page", () => {
     const good = {
       id: "t1",
+      type: "inquiry" as const,
       providerId: "p1",
       providerName: "Salão X",
       customerName: "Ana Silva",
       lastMessageAt: "2026-08-24T09:00:00.000Z",
       lastMessagePreview: "See you tomorrow",
       unreadCount: 0,
+      support: null,
     };
     const degraded = { ...good, id: "t2", providerName: null };
     const parsed = threadPageReadModel.parse({ items: [good, degraded], nextCursor: null });
@@ -373,6 +392,7 @@ describe("messageReadModel", () => {
       id: "m1",
       threadId: "t1",
       senderUserId: "u1",
+      senderSide: "customer",
       body: "Olá!",
       readAt: null,
       createdAt: "2026-08-24T09:00:00.000Z",
@@ -387,6 +407,7 @@ describe("messageReadModel", () => {
         id: "m1",
         threadId: "t1",
         senderUserId: "u1",
+        senderSide: "customer",
         body: undefined,
         readAt: null,
         createdAt: "2026-08-24T09:00:00.000Z",
@@ -400,6 +421,7 @@ describe("messageReadModel", () => {
       id: "m1",
       threadId: "t1",
       senderUserId: "u1",
+      senderSide: "customer",
       body: "Aqui está o orçamento",
       readAt: null,
       createdAt: "2026-08-24T09:00:00.000Z",
@@ -418,9 +440,25 @@ describe("messageReadModel", () => {
         id: "m1",
         threadId: "t1",
         senderUserId: "u1",
+        senderSide: "customer",
         body: "Olá!",
         readAt: null,
         createdAt: "2026-08-24T09:00:00.000Z",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a senderSide outside the three known ones", () => {
+    expect(() =>
+      messageReadModel.parse({
+        id: "m1",
+        threadId: "t1",
+        senderUserId: "u1",
+        senderSide: "someone",
+        body: "Olá!",
+        readAt: null,
+        createdAt: "2026-08-24T09:00:00.000Z",
+        attachments: [],
       }),
     ).toThrow();
   });
@@ -434,6 +472,7 @@ describe("messagePageReadModel", () => {
           id: "m1",
           threadId: "t1",
           senderUserId: "u1",
+          senderSide: "customer",
           body: "Olá!",
           readAt: null,
           createdAt: "2026-08-24T09:00:00.000Z",
@@ -443,6 +482,38 @@ describe("messagePageReadModel", () => {
       nextCursor: "2026-08-24T09:00:00.000Z|m1",
     });
     expect(parsed.nextCursor).toBe("2026-08-24T09:00:00.000Z|m1");
+  });
+});
+
+describe("supportRequestSummaryReadModel", () => {
+  const row = {
+    threadId: "t1",
+    audience: "customer" as const,
+    subject: "Reembolso",
+    status: "open" as const,
+    requesterUserId: "u1",
+    requesterName: "Ana Silva",
+    providerId: null,
+    providerName: "",
+    bookingId: null,
+    lastMessageAt: "2026-08-24T09:00:00.000Z",
+    lastMessagePreview: "Preciso de ajuda",
+    unreadForAdmin: 1,
+    createdAt: "2026-08-24T09:00:00.000Z",
+    resolvedAt: null,
+  };
+
+  it("accepts a row as the projection returns it", () => {
+    const parsed = supportRequestSummaryReadModel.parse(row);
+    expect(parsed.subject).toBe("Reembolso");
+  });
+
+  // Same degrade-not-fail rule the inbox row's names get — a requester
+  // whose profile was never filled in degrades to an empty name rather
+  // than refusing the whole admin queue page.
+  it("degrades a missing requesterName to empty rather than throwing", () => {
+    const parsed = supportRequestSummaryReadModel.parse({ ...row, requesterName: undefined });
+    expect(parsed.requesterName).toBe("");
   });
 });
 

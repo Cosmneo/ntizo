@@ -67,3 +67,39 @@ export type {
   NotifyUnreadInternalInput,
   NotifyUnreadInternalPort,
 } from "./app/ports/inbound/notify-unread.internal.command.port";
+
+export {
+  SupportRequest,
+  SUPPORT_SUBJECT_MAX,
+  MAX_OPEN_SUPPORT_REQUESTS,
+} from "./domain/aggregates/support-request.aggregate";
+export {
+  SupportSubjectInvalidError,
+  SupportNotAMemberError,
+  SupportBookingNotYoursError,
+  SupportRequestNotFoundError,
+  SupportAlreadyResolvedError,
+  SupportRequestNotResolvedError,
+  SupportTooManyOpenError,
+} from "./domain/exceptions";
+export {
+  OpenSupportRequestCommand,
+  type OpenSupportRequestInput,
+} from "./app/use-cases/open-support-request.command";
+export {
+  ReplyToSupportRequestCommand,
+  type ReplyToSupportRequestInput,
+} from "./app/use-cases/reply-to-support-request.command";
+export {
+  ResolveSupportRequestCommand,
+  type ResolveSupportRequestInput,
+} from "./app/use-cases/resolve-support-request.command";
+export { MarkSupportRequestReadCommand } from "./app/use-cases/mark-support-request-read.command";
+export type {
+  SupportRequestFilter,
+  SupportRequestListItem,
+  SupportRequestPage,
+  SupportRequestRepositoryPort,
+} from "./app/ports/outbound/support-request.repository.port";
+export type { BookingReaderPort } from "./app/ports/outbound/booking-reader.port";
+export type { AdminUserReaderPort } from "./app/ports/outbound/admin-user-reader.port";

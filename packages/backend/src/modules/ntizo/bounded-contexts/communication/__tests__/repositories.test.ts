@@ -53,6 +53,10 @@ const suffix = crypto.randomUUID();
 // `providerIds`, captured before the race even starts, has no such gap.
 const userIds: string[] = [];
 const providerIds: string[] = [];
+// Support threads have no provider, so they are not caught by the
+// `providerIds`-scoped cleanup below — tracked by id instead. Cascades to
+// `support_request` and `message`.
+const supportThreadIds: string[] = [];
 
 function newUser(): string {
   const id = crypto.randomUUID();
@@ -139,6 +143,8 @@ afterAll(async () => {
   await db.delete(thread).where(inArray(thread.providerId, providerIds));
   await db.delete(providerMember).where(inArray(providerMember.providerId, providerIds));
   await db.delete(provider).where(inArray(provider.id, providerIds));
+  // Support threads carry no provider — deleted by id, before the users.
+  if (supportThreadIds.length > 0) await db.delete(thread).where(inArray(thread.id, supportThreadIds));
   await db.delete(user).where(inArray(user.id, userIds));
   await sql.end();
 }, 20_000);
@@ -302,6 +308,41 @@ describe("findVisible", () => {
       expect(await threads.findVisible(crypto.randomUUID(), customerId)).toBeNull();
     });
   });
+
+  test("a personal support thread is visible to its opener and to nobody else", async () => {
+    const id = await __runWithTransactionContextForTests(db, () => threads.openSupport(customerId, null, new Date()));
+    // Track for cleanup the way this file tracks threads.
+    supportThreadIds.push(id);
+    expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, customerId))).not.toBeNull();
+    expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, strangerId))).toBeNull();
+    expect(await __runWithTransactionContextForTests(db, () => threads.findVisible(id, staffId))).toBeNull();
+  });
+
+  test("a member of another provider does not see a provider request opened on the first provider's behalf", async () => {
+    // A second provider with its own member, entirely separate from
+    // `providerId`/`staffId`/`staffId2` above — proving the scope really is
+    // per-provider `provider_member` membership, not merely "any member of
+    // any provider".
+    const otherProviderId = await makeProvider(ownerId, "visibility-provider-2");
+    const otherMemberId = newUser();
+    await db.insert(user).values({ id: otherMemberId, email: `${otherMemberId}@ntizo.test`, role: "customer", status: "active" });
+    await db.insert(providerMember).values({ providerId: otherProviderId, userId: otherMemberId, role: "staff" });
+
+    const requestId = await __runWithTransactionContextForTests(db, () =>
+      threads.openSupport(staffId, providerId, new Date("2026-08-18T00:00:00.000Z")),
+    );
+    supportThreadIds.push(requestId);
+
+    await __runWithTransactionContextForTests(db, async () => {
+      // A member of the second provider — no relation to `providerId` at
+      // all — sees nothing.
+      expect(await threads.findVisible(requestId, otherMemberId)).toBeNull();
+      // `staffId2` did not open this request but is a member of the same
+      // provider it was opened on behalf of — resolved through
+      // `provider_member`, not "only the opener".
+      expect(await threads.findVisible(requestId, staffId2)).not.toBeNull();
+    });
+  });
 });
 
 describe("listForCustomer", () => {
@@ -426,7 +467,7 @@ describe("insert and listForThread", () => {
       const now = new Date(Date.parse("2026-08-07T00:00:00.000Z") + (i + 1) * 1000);
       await __runWithTransactionContextForTests(db, async () => {
         const id = await messages.insert(
-          Message.compose({ threadId: opened.id, senderUserId: customerId, body, now }),
+          Message.compose({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body, now }),
         );
         inserted.push(id);
       });
@@ -472,10 +513,10 @@ describe("listForThread — a shared created_at", () => {
     const tiedAt = new Date("2026-08-16T00:05:00.000Z");
     const [tiedA, tiedB] = await __runWithTransactionContextForTests(db, async () => [
       await messages.insert(
-        Message.compose({ threadId: opened.id, senderUserId: customerId, body: "tied a", now: tiedAt }),
+        Message.compose({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "tied a", now: tiedAt }),
       ),
       await messages.insert(
-        Message.compose({ threadId: opened.id, senderUserId: customerId, body: "tied b", now: tiedAt }),
+        Message.compose({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "tied b", now: tiedAt }),
       ),
     ]);
 
@@ -506,11 +547,11 @@ describe("markReadForViewer", () => {
 
     const [customerMessage] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "hello" })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "hello" })
       .returning({ id: message.id });
     const [providerMessage] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: staffId, body: "hi back" })
+      .values({ threadId: opened.id, senderUserId: staffId, senderSide: "provider", body: "hi back" })
       .returning({ id: message.id });
 
     await __runWithTransactionContextForTests(db, async () => {
@@ -535,11 +576,11 @@ describe("markReadForViewer", () => {
 
     const [fromStaff1] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: staffId, body: "from staff 1" })
+      .values({ threadId: opened.id, senderUserId: staffId, senderSide: "provider", body: "from staff 1" })
       .returning({ id: message.id });
     const [fromCustomer] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "from customer" })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "from customer" })
       .returning({ id: message.id });
 
     // staffId2 reads. A wrong implementation comparing `senderUserId !==
@@ -579,11 +620,12 @@ describe("claimDueForNotice / markNotified", () => {
 
     const [dueUnread] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "due, unread", notifyDueAt: past })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "due, unread", notifyDueAt: past })
       .returning({ id: message.id });
     await db.insert(message).values({
       threadId: opened.id,
       senderUserId: customerId,
+      senderSide: "customer",
       body: "due, but already read",
       notifyDueAt: past,
       readAt: now,
@@ -591,6 +633,7 @@ describe("claimDueForNotice / markNotified", () => {
     await db.insert(message).values({
       threadId: opened.id,
       senderUserId: customerId,
+      senderSide: "customer",
       body: "due, but already notified",
       notifyDueAt: past,
       notifiedAt: now,
@@ -598,6 +641,7 @@ describe("claimDueForNotice / markNotified", () => {
     await db.insert(message).values({
       threadId: opened.id,
       senderUserId: customerId,
+      senderSide: "customer",
       body: "not yet due",
       notifyDueAt: future,
     });
@@ -615,7 +659,8 @@ describe("claimDueForNotice / markNotified", () => {
       expect(forThisThread.map((m) => m.id)).toEqual([dueUnread!.id]);
       expect(forThisThread[0]).toMatchObject({
         threadId: opened.id,
-        senderUserId: customerId,
+        threadType: "inquiry",
+        senderSide: "customer",
         customerUserId: customerId,
         providerId,
       });
@@ -636,7 +681,7 @@ describe("claimDueForNotice / markNotified", () => {
     const past = new Date(now.getTime() - 60_000);
     const [inserted] = await db
       .insert(message)
-      .values({ threadId: opened.id, senderUserId: customerId, body: "due, unread", notifyDueAt: past })
+      .values({ threadId: opened.id, senderUserId: customerId, senderSide: "customer", body: "due, unread", notifyDueAt: past })
       .returning({ id: message.id });
 
     await __runWithTransactionContextForTests(db, async () => {
@@ -671,14 +716,14 @@ describe("countUnreadForViewer", () => {
     );
 
     // Thread A: two unread from the provider, one read, one the customer sent.
-    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, body: "unread 1" });
-    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, body: "unread 2" });
+    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, senderSide: "provider", body: "unread 1" });
+    await db.insert(message).values({ threadId: threadA.id, senderUserId: staffId, senderSide: "provider", body: "unread 2" });
     await db
       .insert(message)
-      .values({ threadId: threadA.id, senderUserId: staffId, body: "already read", readAt: new Date() });
+      .values({ threadId: threadA.id, senderUserId: staffId, senderSide: "provider", body: "already read", readAt: new Date() });
     await db
       .insert(message)
-      .values({ threadId: threadA.id, senderUserId: customerId, body: "the customer's own message" });
+      .values({ threadId: threadA.id, senderUserId: customerId, senderSide: "customer", body: "the customer's own message" });
     // Thread B: nothing unread.
 
     await __runWithTransactionContextForTests(db, async () => {
@@ -717,6 +762,7 @@ describe("attachment", () => {
         Message.compose({
           threadId,
           senderUserId: customerId,
+          senderSide: "customer",
           body: "",
           attachmentCount: 2,
           now: new Date("2026-08-17T00:01:00.000Z"),
@@ -726,6 +772,7 @@ describe("attachment", () => {
         Message.compose({
           threadId,
           senderUserId: customerId,
+          senderSide: "customer",
           body: "no files here",
           now: new Date("2026-08-17T00:02:00.000Z"),
         }),
@@ -788,6 +835,47 @@ describe("attachment", () => {
       await __runWithTransactionContextForTests(db, async () => {
         expect(await attachments.findVisible(attachmentId, customer2Id)).toBeNull();
         expect(await attachments.findVisible(crypto.randomUUID(), customerId)).toBeNull();
+      });
+    });
+  });
+
+  describe("findOnSupportThread", () => {
+    test("an attachment on an inquiry thread is not found — the whole scope is thread.type = 'support'", async () => {
+      await __runWithTransactionContextForTests(db, async () => {
+        expect(await attachments.findOnSupportThread(attachmentId)).toBeNull();
+      });
+    });
+
+    test("the same attachment shape on a support thread is found", async () => {
+      const supportThreadId = await __runWithTransactionContextForTests(db, () =>
+        threads.openSupport(customerId, null, new Date("2026-08-17T02:00:00.000Z")),
+      );
+      supportThreadIds.push(supportThreadId);
+
+      const [supportMessage] = await db
+        .insert(message)
+        .values({ threadId: supportThreadId, senderUserId: customerId, senderSide: "customer", body: "" })
+        .returning({ id: message.id });
+
+      await __runWithTransactionContextForTests(db, async () => {
+        await attachments.insertMany(supportMessage!.id, [
+          {
+            storageKey: "communication/attachment-test/support.png",
+            fileName: "support.png",
+            contentType: "image/png",
+            sizeBytes: 333,
+          },
+        ]);
+      });
+
+      const [row] = await db
+        .select({ id: attachment.id })
+        .from(attachment)
+        .where(eq(attachment.messageId, supportMessage!.id));
+
+      await __runWithTransactionContextForTests(db, async () => {
+        const found = await attachments.findOnSupportThread(row!.id);
+        expect(found?.id).toBe(row!.id);
       });
     });
   });

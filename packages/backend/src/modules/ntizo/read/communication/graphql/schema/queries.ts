@@ -21,11 +21,17 @@ const paging = {
 };
 
 /**
+ * `type` narrows an inbox to one kind — the Help Center's "my requests" is
+ * `type: "support"`; absent means both.
+ */
+const threadType = z.enum(["inquiry", "support"]).optional();
+
+/**
  * The caller's own inbox. Takes no user id — it resolves from the session,
  * so there is nothing to tamper with.
  */
 export const listMyThreads = defineQuery({
-  input: zodSchema(z.object(paging)),
+  input: zodSchema(z.object({ type: threadType, ...paging })),
   output: zodSchema(threadPageReadModel),
   docs: { summary: "Your own conversations", tags: ["Communication"] },
 });
@@ -35,7 +41,7 @@ export const listMyThreads = defineQuery({
  * — membership is checked in the projection, not assumed from the session.
  */
 export const listProviderThreads = defineQuery({
-  input: zodSchema(z.object({ providerId: z.string().min(1), ...paging })),
+  input: zodSchema(z.object({ providerId: z.string().min(1), type: threadType, ...paging })),
   output: zodSchema(threadPageReadModel),
   docs: { summary: "A workspace's conversations", tags: ["Communication"] },
 });

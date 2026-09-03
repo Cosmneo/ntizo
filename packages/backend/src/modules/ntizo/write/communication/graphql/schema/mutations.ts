@@ -74,13 +74,38 @@ export const markRead = defineMutation({
 });
 
 /**
+ * Opening a support request. `subject` is bounded here as the edge's cheap
+ * refusal; `SupportRequest.normaliseSubject` (`SUPPORT_SUBJECT_MAX = 120`) is
+ * where the rule is defined — the same split `send` makes for `body`.
+ * `providerId` is required by the command when `audience` is `provider`,
+ * not by this schema: a union input is awkward on the wire, and the
+ * command's `SUPPORT_NOT_A_MEMBER` is the right answer for both "no
+ * provider" and "not yours".
+ */
+export const openSupportRequest = defineMutation({
+  input: zodSchema(
+    z.object({
+      audience: z.enum(["customer", "provider"]),
+      providerId: z.string().min(1).optional(),
+      subject: z.string().trim().min(1).max(120),
+      body: z.string().trim().max(4000),
+      bookingId: z.string().min(1).optional(),
+      attachments: z.array(z.object({ storageKey: z.string().min(1) })).max(5).optional(),
+    }),
+  ),
+  output: zodSchema(z.object({ threadId: z.string().min(1) })),
+  docs: { summary: "Open a support request with the platform", tags: ["Communication", "Support"] },
+});
+
+/**
  * Nested one level, like `review`'s and `notification`'s: the field kit
  * flattens this to `communicationStartThread` / `communicationSend` /
- * `communicationMarkRead` on the wire — `{ communication: { send } }` →
- * `communicationSend`, never `communication.send`. Task 9's frontend calls
- * them by those flattened names.
+ * `communicationMarkRead` / `communicationOpenSupportRequest` on the wire —
+ * `{ communication: { send } }` → `communicationSend`, never
+ * `communication.send`. Task 9's frontend calls them by those flattened
+ * names.
  */
 export const communicationWriteSchema = defineGraphQLSchema(
-  { communication: { startThread, send, markRead } },
+  { communication: { startThread, send, markRead, openSupportRequest } },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );

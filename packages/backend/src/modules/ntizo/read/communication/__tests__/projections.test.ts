@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Thread } from "../../../bounded-contexts/communication/domain/aggregates/thread.aggregate";
 import { Message } from "../../../bounded-contexts/communication/domain/aggregates/message.aggregate";
+import { SupportRequest } from "../../../bounded-contexts/communication/domain/aggregates/support-request.aggregate";
 import { ThreadNotVisibleError } from "../../../bounded-contexts/communication/domain/exceptions";
 import type {
   ThreadPage,
@@ -13,6 +14,8 @@ import type {
 import type { ProviderReaderPort } from "../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
 import type { AttachmentRepositoryPort } from "../../../bounded-contexts/communication";
 import type { AttachmentRow } from "../../../shared/infrastructure/database/communication/schemas";
+import type { ThreadType } from "../../../shared/infrastructure/database/communication/enums";
+import { FakeSupportRequestRepository } from "../../../bounded-contexts/communication/__tests__/fakes";
 import type { ProviderNameReaderPort } from "../app/ports/outbound/provider-name-reader.port";
 import type { CustomerNameReaderPort } from "../app/ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../app/ports/outbound/thread-preview-reader.port";
@@ -21,6 +24,8 @@ import {
   ListProviderThreadsProjection,
   ListThreadMessagesProjection,
 } from "../app/use-cases/conversations.projection";
+
+const NOW = new Date("2026-08-20T09:00:00.000Z");
 
 function thread(props: Partial<Parameters<typeof Thread.rehydrate>[0]> & { id: string; providerId: string }): Thread {
   return Thread.rehydrate({
@@ -35,6 +40,7 @@ function thread(props: Partial<Parameters<typeof Thread.rehydrate>[0]> & { id: s
 function message(props: Partial<Parameters<typeof Message.rehydrate>[0]> & { id: string; threadId: string }): Message {
   return Message.rehydrate({
     senderUserId: "u-customer",
+    senderSide: "customer",
     body: "hi",
     readAt: null,
     notifyDueAt: null,
@@ -67,13 +73,19 @@ class FakeThreadRepository implements ThreadRepositoryPort {
       ? ({ id: threadId } as never)
       : null;
   }
-  async listForCustomer(customerUserId: string, limit: number, cursor: string | null): Promise<ThreadPage> {
-    this.calls.push(`listForCustomer:${customerUserId}:${limit}:${cursor ?? "none"}`);
+  async listForCustomer(customerUserId: string, limit: number, cursor: string | null, type?: ThreadType): Promise<ThreadPage> {
+    this.calls.push(`listForCustomer:${customerUserId}:${limit}:${cursor ?? "none"}:${type ?? "any"}`);
     return this.page;
   }
-  async listForProvider(providerId: string, limit: number, cursor: string | null): Promise<ThreadPage> {
-    this.calls.push(`listForProvider:${providerId}:${limit}:${cursor ?? "none"}`);
+  async listForProvider(providerId: string, limit: number, cursor: string | null, type?: ThreadType): Promise<ThreadPage> {
+    this.calls.push(`listForProvider:${providerId}:${limit}:${cursor ?? "none"}:${type ?? "any"}`);
     return this.page;
+  }
+  async openSupport(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
+  async findSupportThread(): Promise<never> {
+    throw new Error("not used by the read side");
   }
 }
 
@@ -104,6 +116,12 @@ class FakeMessageRepository implements MessageRepositoryPort {
     this.calls.push(`countUnreadForViewer:[${threadIds.join(",")}]:${viewerUserId}`);
     return this.unread;
   }
+  async markReadForPlatform(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
+  async countUnreadForPlatform(): Promise<never> {
+    throw new Error("not used by the read side");
+  }
 }
 
 /** Records every call and counts them, so a test can prove a page is enriched with exactly ONE batched call, not one per message. */
@@ -123,6 +141,9 @@ class FakeAttachmentRepository implements AttachmentRepositoryPort {
     return this.byMessage;
   }
   async findVisible(): Promise<AttachmentRow | null> {
+    throw new Error("not used by the read side");
+  }
+  async findOnSupportThread(): Promise<never> {
     throw new Error("not used by the read side");
   }
 }
@@ -149,9 +170,12 @@ class FakeProviderReader implements ProviderReaderPort {
 
 class FakeProviderNameReader implements ProviderNameReaderPort {
   public readonly calls: string[][] = [];
+  /** Every id asked for, across every call, flattened — a support row with a null provider must never add one here. */
+  public readonly askedFor: string[] = [];
   constructor(private readonly names: Map<string, string> = new Map()) {}
   async findNamesByIds(providerIds: string[]): Promise<Map<string, string>> {
     this.calls.push([...providerIds]);
+    this.askedFor.push(...providerIds);
     return this.names;
   }
 }
@@ -185,10 +209,10 @@ describe("ListMyThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u1",
     });
-    expect(threads.calls).toEqual(["listForCustomer:u1:20:none"]);
+    expect(threads.calls).toEqual(["listForCustomer:u1:20:none:any"]);
   });
 
   it("clamps a limit nobody should ask for", async () => {
@@ -197,11 +221,11 @@ describe("ListMyThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u1",
       limit: 5000,
     });
-    expect(threads.calls).toEqual(["listForCustomer:u1:50:none"]);
+    expect(threads.calls).toEqual(["listForCustomer:u1:50:none:any"]);
   });
 
   it("floors a limit of zero or below to 1", async () => {
@@ -210,11 +234,11 @@ describe("ListMyThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u1",
       limit: 0,
     });
-    expect(threads.calls).toEqual(["listForCustomer:u1:1:none"]);
+    expect(threads.calls).toEqual(["listForCustomer:u1:1:none:any"]);
   });
 
   it("reads only the caller's own inbox — the actor is the session's user, never an argument", async () => {
@@ -223,10 +247,10 @@ describe("ListMyThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u9",
     });
-    expect(threads.calls).toEqual(["listForCustomer:u9:20:none"]);
+    expect(threads.calls).toEqual(["listForCustomer:u9:20:none:any"]);
   });
 
   it("passes the caller's cursor straight through, and a null cursor when none was given", async () => {
@@ -235,11 +259,11 @@ describe("ListMyThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u1",
       cursor: "2026-08-20T09:00:00.000Z|t1",
     });
-    expect(threads.calls).toEqual(["listForCustomer:u1:20:2026-08-20T09:00:00.000Z|t1"]);
+    expect(threads.calls).toEqual(["listForCustomer:u1:20:2026-08-20T09:00:00.000Z|t1:any"]);
   });
 
   it(
@@ -282,7 +306,7 @@ describe("ListMyThreadsProjection", () => {
         new Map([["t1", { body: "See you tomorrow", hasAttachment: false }]]),
       );
 
-      const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+      const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
         requesterUserId: "u1",
       });
 
@@ -296,6 +320,7 @@ describe("ListMyThreadsProjection", () => {
         items: [
           {
             id: "t1",
+            type: "inquiry",
             providerId: "p1",
             providerName: "Salão X",
             customerName: "Ana Silva",
@@ -303,9 +328,11 @@ describe("ListMyThreadsProjection", () => {
             lastMessagePreview: "See you tomorrow",
             lastMessageHasAttachment: false,
             unreadCount: 3,
+            support: null,
           },
           {
             id: "t2",
+            type: "inquiry",
             providerId: "p2",
             // Missed by every lookup — degrades to empty/zero/false, not an error.
             providerName: "",
@@ -314,6 +341,7 @@ describe("ListMyThreadsProjection", () => {
             lastMessagePreview: "",
             lastMessageHasAttachment: false,
             unreadCount: 0,
+            support: null,
           },
         ],
         nextCursor: "2026-08-20T09:00:00.000Z|t2",
@@ -349,7 +377,7 @@ describe("ListMyThreadsProjection", () => {
       new Map([["t-photo", { body: "", hasAttachment: true }]]),
     );
 
-    const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u1",
     });
 
@@ -367,7 +395,7 @@ describe("ListMyThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews).execute({
+    const result = await new ListMyThreadsProjection(threads, messages, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u1",
     });
     expect(result).toEqual({ items: [], nextCursor: null });
@@ -388,7 +416,7 @@ describe("ListProviderThreadsProjection", () => {
     const previews = new FakeThreadPreviewReader();
 
     await expect(
-      new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
+      new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
         requesterUserId: "u-stranger",
         providerId: "p1",
       }),
@@ -417,13 +445,13 @@ describe("ListProviderThreadsProjection", () => {
     const customerNames = new FakeCustomerNameReader(new Map([["u-customer-1", "Ana Silva"]]));
     const previews = new FakeThreadPreviewReader(new Map([["t1", { body: "hi", hasAttachment: false }]]));
 
-    const result = await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
+    const result = await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u-owner",
       providerId: "p1",
     });
 
     expect(providers.calls).toEqual(["isMember:p1:u-owner"]);
-    expect(threads.calls).toEqual(["listForProvider:p1:20:none"]);
+    expect(threads.calls).toEqual(["listForProvider:p1:20:none:any"]);
     expect(customerNames.calls).toEqual([["u-customer-1"]]);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
@@ -447,7 +475,7 @@ describe("ListProviderThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    const projection = new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews);
+    const projection = new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews, new FakeSupportRequestRepository());
 
     await expect(
       projection.execute({ requesterUserId: "u-owner", providerId: "p1" }),
@@ -465,13 +493,13 @@ describe("ListProviderThreadsProjection", () => {
     const names = new FakeProviderNameReader();
     const customerNames = new FakeCustomerNameReader();
     const previews = new FakeThreadPreviewReader();
-    await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews).execute({
+    await new ListProviderThreadsProjection(threads, messages, providers, names, customerNames, previews, new FakeSupportRequestRepository()).execute({
       requesterUserId: "u-owner",
       providerId: "p1",
       limit: 5000,
       cursor: "2026-08-20T09:00:00.000Z|t1",
     });
-    expect(threads.calls).toEqual(["listForProvider:p1:50:2026-08-20T09:00:00.000Z|t1"]);
+    expect(threads.calls).toEqual(["listForProvider:p1:50:2026-08-20T09:00:00.000Z|t1:any"]);
   });
 });
 
@@ -536,6 +564,7 @@ describe("ListThreadMessagesProjection", () => {
           id: "m2",
           threadId: "t1",
           senderUserId: "u-provider-staff",
+          senderSide: "customer",
           body: "See you tomorrow",
           readAt: null,
           createdAt: "2026-08-21T09:05:00.000Z",
@@ -545,6 +574,7 @@ describe("ListThreadMessagesProjection", () => {
           id: "m1",
           threadId: "t1",
           senderUserId: "u-customer",
+          senderSide: "customer",
           body: "Hi, are you free?",
           readAt: "2026-08-21T09:01:00.000Z",
           createdAt: "2026-08-21T09:00:00.000Z",
@@ -671,5 +701,57 @@ describe("ListThreadMessagesProjection", () => {
       cursor: "2026-08-20T09:00:00.000Z|m9",
     });
     expect(messages.calls).toEqual(["listForThread:t1:1:2026-08-20T09:00:00.000Z|m9"]);
+  });
+});
+
+describe("support rows in an inbox", () => {
+  it("carries type, a null provider, and the request's subject and status", async () => {
+    const t = Thread.rehydrate({ id: "s1", type: "support", customerUserId: "u-customer", providerId: null, lastMessageAt: NOW, createdAt: NOW });
+    const request = SupportRequest.open({ threadId: "s1", audience: "customer", subject: "Reembolso", bookingId: "b1", now: NOW });
+    const threads = new FakeThreadRepository({ items: [t], nextCursor: null });
+    const requests = new FakeSupportRequestRepository(new Map([["s1", request]]));
+    const projection = new ListMyThreadsProjection(threads, new FakeMessageRepository(), new FakeProviderNameReader(), new FakeCustomerNameReader(), new FakeThreadPreviewReader(), requests);
+
+    const page = await projection.execute({ requesterUserId: "u-customer" });
+
+    expect(page.items[0]).toMatchObject({
+      id: "s1",
+      type: "support",
+      providerId: null,
+      providerName: "",
+      support: { subject: "Reembolso", status: "open", audience: "customer", bookingId: "b1" },
+    });
+  });
+
+  it("an inquiry row has support: null and the same fields as before", async () => {
+    const threads = new FakeThreadRepository({ items: [thread({ id: "i1", providerId: "p1" })], nextCursor: null });
+    const projection = new ListMyThreadsProjection(threads, new FakeMessageRepository(), new FakeProviderNameReader(), new FakeCustomerNameReader(), new FakeThreadPreviewReader(), new FakeSupportRequestRepository());
+    const page = await projection.execute({ requesterUserId: "u-customer" });
+    expect(page.items[0]).toMatchObject({ id: "i1", type: "inquiry", providerId: "p1", support: null });
+  });
+
+  it("passes the type filter through to the repository", async () => {
+    const threads = new FakeThreadRepository();
+    const projection = new ListMyThreadsProjection(threads, new FakeMessageRepository(), new FakeProviderNameReader(), new FakeCustomerNameReader(), new FakeThreadPreviewReader(), new FakeSupportRequestRepository());
+    await projection.execute({ requesterUserId: "u-customer", type: "support" });
+    expect(threads.calls).toContain("listForCustomer:u-customer:20:none:support");
+  });
+
+  it("resolves provider names only for rows that have a provider", async () => {
+    const t = Thread.rehydrate({ id: "s1", type: "support", customerUserId: "u-customer", providerId: null, lastMessageAt: NOW, createdAt: NOW });
+    const threads = new FakeThreadRepository({ items: [t, thread({ id: "i1", providerId: "p1" })], nextCursor: null });
+    const names = new FakeProviderNameReader(new Map([["p1", "Salão X"]]));
+    const projection = new ListMyThreadsProjection(threads, new FakeMessageRepository(), names, new FakeCustomerNameReader(), new FakeThreadPreviewReader(), new FakeSupportRequestRepository());
+    await projection.execute({ requesterUserId: "u-customer" });
+    expect(names.askedFor).toEqual(["p1"]);
+  });
+});
+
+describe("messages carry their side", () => {
+  it("maps senderSide onto the wire", async () => {
+    const messages = new FakeMessageRepository({ items: [message({ id: "m1", threadId: "t1", senderSide: "platform" })], nextCursor: null });
+    const projection = new ListThreadMessagesProjection(new FakeThreadRepository(emptyThreadPage, { "t1:u-customer": true }), messages, new FakeAttachmentRepository());
+    const page = await projection.execute({ requesterUserId: "u-customer", threadId: "t1" });
+    expect(page.items[0]?.senderSide).toBe("platform");
   });
 });

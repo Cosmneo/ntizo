@@ -1,4 +1,5 @@
 import { MAX_ATTACHMENTS } from "@ntizo/shared/attachments";
+import type { SenderSide } from "../../../../shared/infrastructure/database/communication/enums";
 import { MessageEmptyError, MessageBodyTooLongError, TooManyAttachmentsError } from "../exceptions";
 
 /** A message body's hard ceiling, trimmed length. Matches the DB CHECK — see Task 1's schema. */
@@ -25,6 +26,7 @@ export interface MessageProps {
   readonly id: string | null;
   readonly threadId: string;
   readonly senderUserId: string;
+  readonly senderSide: SenderSide;
   readonly body: string;
   readonly readAt: Date | null;
   readonly notifyDueAt: Date | null;
@@ -67,6 +69,7 @@ export class Message {
   static compose(params: {
     threadId: string;
     senderUserId: string;
+    senderSide: SenderSide;
     body: string;
     attachmentCount?: number;
     now: Date;
@@ -83,6 +86,7 @@ export class Message {
       id: null,
       threadId: params.threadId,
       senderUserId: params.senderUserId,
+      senderSide: params.senderSide,
       body,
       readAt: null,
       notifyDueAt: new Date(params.now.getTime() + NOTIFY_AFTER_MS),
@@ -107,6 +111,9 @@ export class Message {
   }
   get senderUserId(): string {
     return this.props.senderUserId;
+  }
+  get senderSide(): SenderSide {
+    return this.props.senderSide;
   }
   get body(): string {
     return this.props.body;

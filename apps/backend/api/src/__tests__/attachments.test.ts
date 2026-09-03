@@ -24,6 +24,30 @@ function withSession(sessionUser: unknown) {
   }));
 }
 
+/**
+ * Swaps what `isPlatformAdmin` answers, without going near the database call
+ * it makes through `bootstrapUserRead()`.
+ *
+ * Mocks `../admin-access`, not `@ntizo/backend/modules/ntizo/read/user`:
+ * that package's `bootstrapUserRead` returns a much bigger object
+ * (`useCases.getCurrentUser`, `listMyAddresses`, `listUsersForAdmin`,
+ * `adapters.addressReadRepository`...) that `schema-mount.test.ts` builds
+ * for real via `buildPrivateGraphQLFields()`. `mock.module` replaces a
+ * module for the rest of the test PROCESS (see
+ * `better-auth-mock-isolation.test.ts`), so a factory shaped only for
+ * `findPlatformRole` would leak into that unrelated file — whichever runs
+ * second, by filesystem order — and crash it reading `.getCurrentUser` off
+ * an object that was never given one. `admin-access.ts` has exactly one
+ * export and nothing else in this app's test suite reaches
+ * `isPlatformAdmin`-gated code, so overwriting the whole module here is
+ * safe to leak.
+ */
+function withPlatformRole(role: "admin" | "customer" | null) {
+  mock.module("../admin-access", () => ({
+    isPlatformAdmin: async () => role === "admin",
+  }));
+}
+
 interface PutCall {
   key: string;
   body: Uint8Array;
@@ -52,6 +76,7 @@ function noRowRepository(): AttachmentRepositoryPort {
     insertMany: async () => {},
     listForMessages: async () => new Map(),
     findVisible: async () => null,
+    findOnSupportThread: async () => null,
   };
 }
 
@@ -65,6 +90,33 @@ function repoWithRow(
     listForMessages: async () => new Map(),
     findVisible: async (id, viewerUserId) =>
       row !== null && id === row.id && viewerUserId === ownerUserId ? row : null,
+    findOnSupportThread: async () => null,
+  };
+}
+
+/**
+ * `findVisible` always refuses — the shape every admin-branch test starts
+ * from, since the admin branch is only ever reached AFTER that refusal. A
+ * spy counts calls to `findOnSupportThread`, which is the assertion that
+ * proves a non-admin's refusal never reaches it — the one thing that keeps
+ * this branch admin-only rather than an admin bypass on `findVisible`.
+ */
+function repoRefusingVisible(supportRow: Awaited<ReturnType<AttachmentRepositoryPort["findOnSupportThread"]>>): {
+  repository: AttachmentRepositoryPort;
+  findOnSupportThreadCalls: string[];
+} {
+  const findOnSupportThreadCalls: string[] = [];
+  return {
+    findOnSupportThreadCalls,
+    repository: {
+      insertMany: async () => {},
+      listForMessages: async () => new Map(),
+      findVisible: async () => null,
+      findOnSupportThread: async (id) => {
+        findOnSupportThreadCalls.push(id);
+        return supportRow;
+      },
+    },
   };
 }
 
@@ -306,6 +358,10 @@ describe("GET /api/communication/attachments/:id", () => {
     const repo = repoWithRow(row, owner.id);
     const { bucket } = fakeBucket({ [row.storageKey]: { body: "pdf-bytes" } });
 
+    // Neither caller here is an admin — `findVisible` refusing now falls
+    // through to `isPlatformAdmin`, which without this would reach the real
+    // database.
+    withPlatformRole("customer");
     withSession(stranger);
     const strangerRequest = await subject(
       { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
@@ -411,6 +467,7 @@ describe("GET /api/communication/attachments/:id", () => {
       findVisible: async (id) => {
         throw new Error(`invalid input syntax for type uuid: "${id}"`);
       },
+      findOnSupportThread: async () => null,
     };
     const { bucket } = fakeBucket();
     const request = await subject(
@@ -421,5 +478,62 @@ describe("GET /api/communication/attachments/:id", () => {
     const res = await request("/api/communication/attachments/not-a-uuid");
 
     expect(res.status).toBe(403);
+  });
+
+  it("serves an administrator a support-thread attachment `findVisible` refused", async () => {
+    // Not a participant — `findVisible` on this repo always refuses — but
+    // the file was sent *to* the platform, so `findOnSupportThread` admits
+    // it once `isPlatformAdmin` is true.
+    const { repository, findOnSupportThreadCalls } = repoRefusingVisible(row);
+    const { bucket } = fakeBucket({ [row.storageKey]: { body: "pdf-bytes" } });
+    withPlatformRole("admin");
+    withSession({ id: "admin-1" });
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      repository,
+    );
+
+    const res = await request(`/api/communication/attachments/${row.id}`);
+
+    expect(res.status).toBe(200);
+    expect(findOnSupportThreadCalls).toEqual([row.id]);
+  });
+
+  it("refuses an administrator 403 when the attachment is on no support thread either", async () => {
+    const { repository } = repoRefusingVisible(null);
+    const { bucket } = fakeBucket();
+    withPlatformRole("admin");
+    withSession({ id: "admin-1" });
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      repository,
+    );
+
+    const res = await request(`/api/communication/attachments/${row.id}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  /**
+   * The assertion that keeps the admin branch admin-only: `findOnSupportThread`
+   * is never even called for a non-admin whose `findVisible` refused. Without
+   * this, the branch in `attachments.ts` could silently degrade into an admin
+   * bypass on `findVisible` itself — exactly what its own doc comment says it
+   * must never become.
+   */
+  it("never calls findOnSupportThread for a non-admin findVisible refused", async () => {
+    const { repository, findOnSupportThreadCalls } = repoRefusingVisible(row);
+    const { bucket } = fakeBucket({ [row.storageKey]: { body: "pdf-bytes" } });
+    withPlatformRole("customer");
+    withSession(stranger);
+    const request = await subject(
+      { ATTACHMENTS_BUCKET: bucket } as unknown as Partial<AppBindings>,
+      repository,
+    );
+
+    const res = await request(`/api/communication/attachments/${row.id}`);
+
+    expect(res.status).toBe(403);
+    expect(findOnSupportThreadCalls).toEqual([]);
   });
 });

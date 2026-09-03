@@ -1816,7 +1816,38 @@ malformed cursor would have caught.
 
 ---
 
-## 71. Support threads, admin oversight and moderation are phases 2 and 3
+## ~~71. Support threads, admin oversight and moderation are phases 2 and 3~~ — RESOLVED 2026-09-03 (phase 2 half)
+
+Phase 2 shipped. `thread.schema.ts`'s `type` column is no longer scoped to one `inquiry`
+shape — a `support` type exists beside it, backed by its own `support_request` row
+(`audience`, `subject`, `status`, `bookingId`) and a full command set on both sides:
+`OpenSupportRequestCommand`, `ReplyToSupportRequestCommand`, `ResolveSupportRequestCommand`
+and `MarkSupportRequestReadCommand`. Migration 0035 and the aggregates (`94357bb0`,
+`28539d68`); the repositories (`671148cd`, `ca67686c`, `261faa32`, `ce2feb35`); the
+cross-context readers (`ca1649a1`, `04cfc9bc`); the commands (`c8078299`); the notifications
+and sweep (`3f34bde2`); the bootstrap wiring (`8b28f6ed`); the read models and inboxes
+(`3dbf3447`); the admin read side (`2ff7e17c`); the write side (`6c53134b`); the mount and
+attachments (`5b7bfea7`).
+
+The admin read path exists, and it is scoped to support threads **by construction**, not by
+a viewer check bolted on after the fact: `DrizzleSupportRequestRepository`'s list and lookup
+queries `innerJoin` `support_request` onto `thread`, so no query shape in that repository can
+return anything but a support thread, and `ThreadRepositoryPort`'s `findSupportThread`
+(`thread.repository.ts`) is `WHERE id = $1 AND type = 'support'` — "the whole scope," per its
+own comment — with no viewer argument at all. An admin can reach a support request by id and
+cannot reach an ordinary `inquiry` thread through either path — the moderation surface this
+entry asked for.
+
+**The phase-3 sentence this entry also raised is not answered by any of that**, and stays
+open below as its own entry (#133): whether an admin reading a private customer ↔ provider
+conversation is logged, and whether the participants are told. Phase 2 deliberately did not
+build that path at all — see `attachments.ts`'s own comment on why its download route never
+puts an admin bypass on `findVisible` itself. The original entry is kept below for the record,
+unedited, since half of what it asked for is still open.
+
+---
+
+## 71. (original) Support threads, admin oversight and moderation are phases 2 and 3
 
 Messaging today knows exactly one thread shape: a customer-to-provider `inquiry`
 (`thread.schema.ts`'s partial unique index is scoped `where type = 'inquiry'`, anticipating others).
@@ -3305,3 +3336,195 @@ The Empresa column shows five of the reference's seven links. The two missing on
 ## #85 — updated 2026-09-02
 
 The approved FAQ text (`2026-09-02-faq-content.md`) answers "can I share my number in messages?" and says why. When the help center puts it on `/help`, the contact-detection refusal copy in messaging should point there.
+
+---
+
+## #133 — Admin oversight of a customer ↔ provider conversation still has no logging-or-consent decision
+
+Split out of #71 when phase 2 closed. `ThreadRepositoryPort.findVisible` still admits only the
+customer on a thread or a member of its provider — no admin bypass, and phase 2 did not add one.
+`attachments.ts`'s download route says so explicitly, refusing to put an admin bypass on
+`findVisible` itself because "that would let an admin download any file in any private
+conversation by id, which is phase 3's question, not this one's." Phase 2 built an admin path
+into `support` threads only, scoped by `findSupportThread`'s own `type = 'support'` filter; it has
+no bearing on an ordinary `inquiry` thread between a customer and a provider.
+
+So the original question is untouched: when phase 3 does give an admin a way to read a private
+customer ↔ provider conversation — for moderation, a dispute, or a complaint — is that read
+logged, and are the participants told. Nothing in this codebase answers either half yet.
+
+**Trigger:** the start of phase 3 (admin oversight and moderation) design work.
+
+---
+
+## #134 — `fromTheOtherSide` stayed a single copy; the cursor pagination helper did not
+
+`message.repository.ts`'s `fromTheOtherSide` — the private filter that picks out messages sent by
+the other side of a thread — did not spread this phase: `thread-visibility.ts`'s own comment
+records the choice explicitly ("It is deliberately NOT `message.repository.ts`'s
+`fromTheOtherSide`"), so the one place that could have duplicated it into a second file didn't.
+
+The cursor helper made the opposite trip. `thread.repository.ts` and `message.repository.ts` each
+already defined a private `encodeCursor`/`decodeCursor` pair before this phase (both from the
+earlier messaging work, `00a9bc76`) — an existing duplication nobody had flagged. This phase's new
+`support-request.repository.ts` (`671148cd`) adds a third, and says so in its own comment:
+`encodeCursor` there is explicitly "the same shape and the same tie-break argument as
+`thread.repository.ts`." Three files now hand-roll the identical `<ISO timestamp>|<id>` cursor and
+its null-safe decode, instead of one shared helper three repositories import.
+
+**Trigger:** the fourth copy.
+
+---
+
+## #135 — `SUPPORT_REQUEST_OPENED` is raised per admin, synchronously inside the request
+
+`OpenSupportRequestCommand.tellAdmins` loops every admin id and `await`s
+`raiseNotification.execute` one at a time, each in its own `try`/`catch` so one admin's failure
+doesn't cost the others their notice — but the loop itself is awaited by `execute()` before it
+returns `{ threadId }` to the caller. Three admins means three sequential raises inside the
+mutation's response time; thirty means thirty. The doc comment already names the tradeoff
+("telling the admins cannot undo the request") but not the latency: nothing runs the fan-out
+concurrently, or moves it past the response the way the sweep already moves `NEW_MESSAGE`.
+
+**Trigger:** the admin count passing ten, or the open mutation's p95 crossing what the checkout
+tolerates.
+
+---
+
+## #136 — An admin who is also a provider member answers their own request under two different `senderSide`s
+
+`SendMessageCommand` decides a support message's side from the thread, not the sender's identity:
+on a `support` thread with `providerId` set, anyone visible on it — any member of that provider,
+admin or not — writes `senderSide: "provider"`. `ReplyToSupportRequestCommand`, reached only
+through the admin-gated `supportReply` mutation, hardcodes `senderSide: "platform"` regardless of
+who the admin is. Both are correct for the path taken — `communicationSend` is a provider member
+answering as their provider, `supportReply` is the platform answering — but nothing stops the same
+person, holding both a `provider_member` row on the requesting provider and an admin role, from
+using either mutation on the same request, leaving indistinguishable-looking messages with
+opposite meanings about who actually answered.
+
+**Trigger:** the first admin account that also holds a `provider_member` row.
+
+---
+
+## #137 — Frontend copy for the four notification types, and two inbox fields, are unfinished on the frontend side
+
+`notifications.json`'s `type` map has no `supportRequestOpened`, `supportRequestMessage`,
+`supportReply` or `supportRequestResolved` key (only `welcome`, `providerWorkspaceWelcome`,
+`providerVerified`, `providerDocumentsRequired`, `teamInvitation`), and
+`notification-presentation.ts`'s `PRESENTATION` lookup has no `SUPPORT_REQUEST_OPENED` /
+`SUPPORT_REQUEST_MESSAGE` / `SUPPORT_REPLY` / `SUPPORT_REQUEST_RESOLVED` entries either — so any of
+the four falls through to `FALLBACK` and renders the generic envelope with
+`notifications.type.unknown`, "Tem uma notificação nova," until plan B adds both.
+
+Two more frontend gaps sit next to it, on the wire side rather than the copy side.
+`use-threads.ts` and `use-provider-threads.ts` both map an inbox row's `providerId` with
+`row.providerId ?? ""` — degrading a personal support request's genuinely-absent provider to the
+same empty string the domain type already uses for "the name lookup missed" — because `Thread`
+(`domain/types.ts`) still declares `providerId: string`, not `string | null`. A personal support
+row and a provider whose name lookup failed are indistinguishable to any code reading this field
+today. Plan B owns both: the copy and the type.
+
+**Trigger:** plan B — this is on its list.
+
+---
+
+## #138 — The attachment download route's admin check is a second database read on every non-participant lookup
+
+`GET /api/communication/attachments/:id` calls `deps.attachmentRepository.findVisible` first; when
+that misses, it calls `isPlatformAdmin(session.user.id)` before trying `findOnSupportThread` — and
+`isPlatformAdmin` is its own `findPlatformRole` query through `bootstrapUserRead()`, a second round
+trip to the database. It runs for every caller `findVisible` refuses, not only for administrators:
+a stranger requesting someone else's attachment id pays the same second read a genuine admin does,
+on the way to the identical 403 either gets.
+
+**Trigger:** attachment download latency being noticed.
+
+---
+
+## #139 — Migration 0035 is live on the shared dev database; the previously-deployed backend there cannot insert a message until this branch deploys
+
+Migration 0035 added `message.sender_side` as `NOT NULL` with no `DEFAULT` — the backfill runs in
+the same migration and then the column is locked down. It was applied to the shared dev database
+on 2026-09-02, ahead of this branch's own deploy. Any backend still running the previously-deployed
+code — the dev Worker, or a local server started against that database from an older checkout —
+can no longer insert a `message` row: nothing in that code sets `sender_side`, and Postgres refuses
+the `NOT NULL` violation outright. The same phase-1 sweep (`NotifyUnreadInternalCommand`) also
+consumed a due support message during Task 11's own round-trip testing against that database and
+raised a `NEW_MESSAGE` notification for it, ahead of this branch shipping the `SUPPORT_REQUEST_*`
+types that message should have raised instead.
+
+**Trigger:** immediately — deploy this branch's backend to dev before anyone tests messaging
+there, or before the next branch's tests hit the `message` table.
+
+---
+
+## #140 — `attachments.test.ts`'s `withPlatformRole` mocks `../admin-access` for the whole test process
+
+`withPlatformRole` calls `mock.module("../admin-access", ...)`, which — per `bun:test`'s own
+semantics, and this file's own doc comment on the equivalent `withSession` helper — replaces that
+module for the rest of the test **process**, not just this file. It is deliberately the whole
+module rather than a narrower shape, because `admin-access.ts` has exactly one export
+(`isPlatformAdmin`) and, today, no other file in this app's suite reaches `isPlatformAdmin`-gated
+code — so there is nothing left to leak into. That safety is a fact about the current test
+population, not a property of the mock: a future test file exercising another
+`isPlatformAdmin`-gated route in the same process would inherit whatever role the last
+`withPlatformRole` call in `attachments.test.ts` set, however far test-runner ordering placed it.
+
+**Trigger:** the next test file touching `isPlatformAdmin`-gated routes.
+
+---
+
+## #141 — Communication's `bootstrap/index.ts` lost two inline comments when Task 7 wired the support commands
+
+Two doc comments were dropped rather than moved when `8b28f6ed` restructured the return object:
+the one on `adapters` explaining why `attachmentRepository` is exposed there rather than kept
+private — "`attachmentRepository` is exposed here, not only wired into `sendMessage`, because Task
+5's download route needs `findVisible` directly — it is a permission check plus a row fetch, not a
+use case — the same reason `admin-access.ts` and `api.ts` reach other contexts' read repositories
+through `adapters` rather than a command" — and the one-line note on `internal.notifyUnread` —
+"The delayed notice a cron sweeps — nobody asks for this, something schedules it. See
+scheduled.ts." Both reasons still hold; neither is written down anywhere in the file any more.
+
+**Trigger:** the next edit of that bootstrap — restore them.
+
+---
+
+## #142 — Expand/contract for `NOT NULL` columns on tables production code writes
+
+Migration 0035 added `message.sender_side` as `NOT NULL` with no `DEFAULT`, backfilling and
+locking the column down in the same migration. That broke the previously-deployed phase-1 writer
+on the shared dev database the moment the migration applied — see #139. The rule for production:
+add the column nullable, backfill it, deploy the code that writes it going forward, and only then
+`SET NOT NULL` in a later migration. A single additive-looking migration that both adds and locks
+down a `NOT NULL` column is safe only when nothing currently deployed still writes that table
+without it.
+
+**Trigger:** the first migration that adds a `NOT NULL` column to a table production code writes.
+
+---
+
+## #143 — Two `requireAdmin` conventions, only one of them used
+
+`graphql/context.ts` exports `requireAdminUserId` (error code `FORBIDDEN`), documented as the
+single boundary for admin-gated GraphQL fields — but nothing calls it. Every admin slice built so
+far (`review`, `catalog`, `provider`, `read/support`, `write/support`) instead copies its own local
+`requireAdmin` helper, each raising `ADMIN_ONLY`. Two conventions for the same check, with the
+one meant to be canonical currently dead code.
+
+**Trigger:** the next admin-gated slice — converge on one helper and one error code instead of
+adding a third copy.
+
+---
+
+## #144 — `ResolveSupportRequestCommand` has no guard against a concurrent resolve or a racing reply
+
+Two admins resolving the same request at once both read `status = 'open'`, both save `resolved`,
+and both raise a `SupportRequestResolved` notification — the requester gets told twice. Separately,
+a requester's reply racing an admin's resolve can leave a `resolved` request with an unread
+requester message sitting on it forever from the admin side's perspective, though the unread sweep
+still tells the admins about it regardless of the request's status. A `WHERE status = 'open'` on
+`save` (checking the row count it actually updated) closes the first case; the second needs its own
+look once it actually bites.
+
+**Trigger:** the second admin account, or the first duplicate "request resolved" notification.

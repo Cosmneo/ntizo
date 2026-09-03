@@ -1,3 +1,4 @@
+import type { ThreadType } from "../../../../../shared/infrastructure/database/communication/enums";
 import type { ThreadRow } from "../../../../../shared/infrastructure/database/communication/schemas";
 import type { Thread } from "../../../domain/aggregates/thread.aggregate";
 
@@ -28,6 +29,21 @@ export interface ThreadRepositoryPort {
    */
   openOrFind(customerUserId: string, providerId: string, now: Date): Promise<ThreadOpenResult>;
 
+  /**
+   * Opens a support thread. No upsert and no uniqueness: a person may have
+   * several open requests, so this is a plain insert. Returns the new id.
+   * Called inside `OpenSupportRequestCommand`'s transaction.
+   */
+  openSupport(customerUserId: string, providerId: string | null, now: Date): Promise<string>;
+
+  /**
+   * The thread, only if it is a support thread — no viewer check, because
+   * the callers are the admin commands, whose handler has already proven
+   * the role. Null for an inquiry id as much as for a missing one: an admin
+   * must not learn from the difference that a private conversation exists.
+   */
+  findSupportThread(threadId: string): Promise<ThreadRow | null>;
+
   /** Moves `last_message_at` forward. Called in the same transaction as the message that caused it. */
   touch(threadId: string, at: Date): Promise<void>;
 
@@ -42,9 +58,14 @@ export interface ThreadRepositoryPort {
    */
   findVisible(threadId: string, viewerUserId: string): Promise<ThreadRow | null>;
 
-  /** The customer's inbox: threads where they are the customer, newest last-message first. */
-  listForCustomer(customerUserId: string, limit: number, cursor: string | null): Promise<ThreadPage>;
+  /**
+   * The customer's inbox. Personal only: inquiries, and support requests
+   * with no provider. A provider request the same person opened on the
+   * provider's behalf is the provider's, and lists in `listForProvider`.
+   * `type` narrows to one kind when given.
+   */
+  listForCustomer(customerUserId: string, limit: number, cursor: string | null, type?: ThreadType): Promise<ThreadPage>;
 
-  /** One provider's inbox: threads on that provider, newest last-message first. */
-  listForProvider(providerId: string, limit: number, cursor: string | null): Promise<ThreadPage>;
+  /** One provider's inbox: inquiries to it and support requests opened on its behalf. `type` narrows to one kind. */
+  listForProvider(providerId: string, limit: number, cursor: string | null, type?: ThreadType): Promise<ThreadPage>;
 }

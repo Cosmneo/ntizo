@@ -39,6 +39,8 @@ export const messageReadModel = z.object({
   id: z.string(),
   threadId: z.string(),
   senderUserId: z.string(),
+  /** Which side wrote it. The frontend aligns by this, and labels `platform` "Suporte Ntizo". */
+  senderSide: z.enum(["customer", "provider", "platform"]),
   body: z.string(),
   readAt: z.string().nullable(),
   createdAt: z.string(),

@@ -34,6 +34,7 @@ export function createCommunicationReadHandlers(mod: CommunicationReadModule) {
         requesterUserId: requireUser(ctx),
         limit: args.input.limit,
         cursor: args.input.cursor,
+        type: args.input.type,
       }),
     )
     .handle("communication.providerThreads", async (args, ctx) =>
@@ -42,6 +43,7 @@ export function createCommunicationReadHandlers(mod: CommunicationReadModule) {
         providerId: args.input.providerId,
         limit: args.input.limit,
         cursor: args.input.cursor,
+        type: args.input.type,
       }),
     )
     .handle("communication.threadMessages", async (args, ctx) =>

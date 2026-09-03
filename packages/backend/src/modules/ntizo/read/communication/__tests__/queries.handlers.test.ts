@@ -52,8 +52,8 @@ describe("the communication read schema", () => {
       return Object.keys(adapter._schema?.shape ?? {}).sort();
     };
 
-    expect(shapeKeys(listMyThreads)).toEqual(["cursor", "limit"]);
-    expect(shapeKeys(listProviderThreads)).toEqual(["cursor", "limit", "providerId"]);
+    expect(shapeKeys(listMyThreads)).toEqual(["cursor", "limit", "type"]);
+    expect(shapeKeys(listProviderThreads)).toEqual(["cursor", "limit", "providerId", "type"]);
     expect(shapeKeys(listThreadMessages)).toEqual(["cursor", "limit", "threadId"]);
   });
 });
@@ -154,6 +154,19 @@ describe("createCommunicationReadHandlers", () => {
     await field.handler(hostileArgs, ctx({ requesterUserId: "u-session" }));
 
     expect(myThreads.calls).toEqual([{ requesterUserId: "u-session", limit: 5, cursor: undefined }]);
+  });
+
+  /** The Help Center's "my requests" list is `communication.myThreads` narrowed by `type` — this is the wire proof the argument actually reaches the use case. */
+  it("passes type through on communication.myThreads", async () => {
+    const myThreads = spyUseCase(emptyThreadPage);
+    const handlers = createCommunicationReadHandlers(makeModule({ listMyThreads: myThreads }));
+    const field = handlers.find((h) => h.key === "communication.myThreads")!;
+
+    await field.handler({ type: "support" }, ctx({ requesterUserId: "u-session" }));
+
+    expect(myThreads.calls).toEqual([
+      { requesterUserId: "u-session", limit: undefined, cursor: undefined, type: "support" },
+    ]);
   });
 
   it("takes providerId from validated args but requesterUserId only from the session, on communication.providerThreads", async () => {

@@ -3,8 +3,10 @@ import type { Thread } from "../../../../bounded-contexts/communication/domain/a
 import type { ThreadRepositoryPort } from "../../../../bounded-contexts/communication/app/ports/outbound/thread.repository.port";
 import type { MessageRepositoryPort } from "../../../../bounded-contexts/communication/app/ports/outbound/message.repository.port";
 import type { ProviderReaderPort } from "../../../../bounded-contexts/communication/app/ports/outbound/provider-reader.port";
+import type { SupportRequestRepositoryPort } from "../../../../bounded-contexts/communication/app/ports/outbound/support-request.repository.port";
 import { ThreadNotVisibleError } from "../../../../bounded-contexts/communication/domain/exceptions";
 import type { AttachmentRepositoryPort } from "../../../../bounded-contexts/communication";
+import type { ThreadType } from "../../../../shared/infrastructure/database/communication/enums";
 import type { ProviderNameReaderPort } from "../ports/outbound/provider-name-reader.port";
 import type { CustomerNameReaderPort } from "../ports/outbound/customer-name-reader.port";
 import type { ThreadPreviewReaderPort } from "../ports/outbound/thread-preview-reader.port";
@@ -51,36 +53,46 @@ async function toThreadSummaries(
     providerNames: ProviderNameReaderPort;
     customerNames: CustomerNameReaderPort;
     previews: ThreadPreviewReaderPort;
+    supportRequests: SupportRequestRepositoryPort;
   },
 ): Promise<ThreadPageDTO["items"]> {
   if (threads.length === 0) return [];
 
   const threadIds = threads.map((t) => t.id!);
-  const providerIds = [...new Set(threads.map((t) => t.providerId))];
+  // A personal support request has no provider — asking the name reader for `null` is a wasted round trip and a type error.
+  const providerIds = [...new Set(threads.flatMap((t) => (t.providerId ? [t.providerId] : [])))];
   const customerUserIds = [...new Set(threads.map((t) => t.customerUserId))];
 
-  const [unread, providerNamesById, customerNamesById, previewByThread] = await Promise.all([
+  const [unread, providerNamesById, customerNamesById, previewByThread, requestsByThread] = await Promise.all([
     deps.messages.countUnreadForViewer(threadIds, viewerUserId),
     deps.providerNames.findNamesByIds(providerIds),
     deps.customerNames.findNamesByIds(customerUserIds),
     deps.previews.findLastMessageBodies(threadIds),
+    deps.supportRequests.findByThreadIds(threadIds),
   ]);
 
-  return threads.map((t) => ({
-    id: t.id!,
-    providerId: t.providerId,
-    providerName: providerNamesById.get(t.providerId) ?? "",
-    customerName: customerNamesById.get(t.customerUserId) ?? "",
-    lastMessageAt: t.lastMessageAt.toISOString(),
-    lastMessagePreview: previewByThread.get(t.id!)?.body ?? "",
-    // Absent (no messages yet) degrades to `false`, the same convention
-    // every other lookup on this row uses for "nothing to say" — see
-    // `threadSummaryReadModel`'s own doc comment on why this field exists.
-    lastMessageHasAttachment: previewByThread.get(t.id!)?.hasAttachment ?? false,
-    // A thread absent from the map has nothing unread for this viewer —
-    // `countUnreadForViewer`'s own doc comment: absent, not present with 0.
-    unreadCount: unread.get(t.id!) ?? 0,
-  }));
+  return threads.map((t) => {
+    const request = requestsByThread.get(t.id!) ?? null;
+    return {
+      id: t.id!,
+      type: t.type,
+      providerId: t.providerId,
+      providerName: t.providerId ? (providerNamesById.get(t.providerId) ?? "") : "",
+      customerName: customerNamesById.get(t.customerUserId) ?? "",
+      lastMessageAt: t.lastMessageAt.toISOString(),
+      lastMessagePreview: previewByThread.get(t.id!)?.body ?? "",
+      // Absent (no messages yet) degrades to `false`, the same convention
+      // every other lookup on this row uses for "nothing to say" — see
+      // `threadSummaryReadModel`'s own doc comment on why this field exists.
+      lastMessageHasAttachment: previewByThread.get(t.id!)?.hasAttachment ?? false,
+      // A thread absent from the map has nothing unread for this viewer —
+      // `countUnreadForViewer`'s own doc comment: absent, not present with 0.
+      unreadCount: unread.get(t.id!) ?? 0,
+      support: request
+        ? { subject: request.subject, status: request.status, audience: request.audience, bookingId: request.bookingId }
+        : null,
+    };
+  });
 }
 
 /**
@@ -98,20 +110,23 @@ export class ListMyThreadsProjection {
     private readonly providerNames: ProviderNameReaderPort,
     private readonly customerNames: CustomerNameReaderPort,
     private readonly previews: ThreadPreviewReaderPort,
+    private readonly supportRequests: SupportRequestRepositoryPort,
   ) {}
 
   async execute(input: {
     requesterUserId: string;
     limit?: number | undefined;
     cursor?: string | null | undefined;
+    type?: ThreadType | undefined;
   }): Promise<ThreadPageDTO> {
     const limit = clampLimit(input.limit);
-    const page = await this.threads.listForCustomer(input.requesterUserId, limit, input.cursor ?? null);
+    const page = await this.threads.listForCustomer(input.requesterUserId, limit, input.cursor ?? null, input.type);
     const items = await toThreadSummaries(page.items, input.requesterUserId, {
       messages: this.messages,
       providerNames: this.providerNames,
       customerNames: this.customerNames,
       previews: this.previews,
+      supportRequests: this.supportRequests,
     });
     return { items, nextCursor: page.nextCursor };
   }
@@ -133,6 +148,7 @@ export class ListProviderThreadsProjection {
     private readonly providerNames: ProviderNameReaderPort,
     private readonly customerNames: CustomerNameReaderPort,
     private readonly previews: ThreadPreviewReaderPort,
+    private readonly supportRequests: SupportRequestRepositoryPort,
   ) {}
 
   async execute(input: {
@@ -140,6 +156,7 @@ export class ListProviderThreadsProjection {
     providerId: string;
     limit?: number | undefined;
     cursor?: string | null | undefined;
+    type?: ThreadType | undefined;
   }): Promise<ThreadPageDTO> {
     if (!(await this.providers.isMember(input.providerId, input.requesterUserId))) {
       // Same refusal `findVisible` gives for "not yours" — telling this
@@ -149,12 +166,13 @@ export class ListProviderThreadsProjection {
     }
 
     const limit = clampLimit(input.limit);
-    const page = await this.threads.listForProvider(input.providerId, limit, input.cursor ?? null);
+    const page = await this.threads.listForProvider(input.providerId, limit, input.cursor ?? null, input.type);
     const items = await toThreadSummaries(page.items, input.requesterUserId, {
       messages: this.messages,
       providerNames: this.providerNames,
       customerNames: this.customerNames,
       previews: this.previews,
+      supportRequests: this.supportRequests,
     });
     return { items, nextCursor: page.nextCursor };
   }
@@ -201,6 +219,7 @@ export class ListThreadMessagesProjection {
         id: m.id!,
         threadId: m.threadId,
         senderUserId: m.senderUserId,
+        senderSide: m.senderSide,
         body: m.body,
         readAt: m.readAt ? m.readAt.toISOString() : null,
         createdAt: m.createdAt.toISOString(),

@@ -17,7 +17,13 @@ import {
 } from "../domain/exceptions";
 
 const now = new Date("2026-08-27T10:00:00.000Z");
-const base = { threadId: "11111111-1111-1111-1111-111111111111", senderUserId: "u1", now };
+const NOW = new Date("2026-09-02T10:00:00.000Z");
+const base = {
+  threadId: "11111111-1111-1111-1111-111111111111",
+  senderUserId: "u1",
+  senderSide: "customer" as const,
+  now,
+};
 
 describe("Message.compose", () => {
   it("refuses a body that is only whitespace", () => {
@@ -80,6 +86,7 @@ describe("Message.rehydrate", () => {
       id: "22222222-2222-2222-2222-222222222222",
       threadId: base.threadId,
       senderUserId: "u1",
+      senderSide: "customer",
       body: "",
       readAt: null,
       notifyDueAt: null,
@@ -104,7 +111,10 @@ describe("Thread.open", () => {
   });
 
   it("rejects a type that is not in THREAD_TYPES", () => {
-    expect(() => Thread.open({ ...threadBase, type: "support" as never })).toThrow(ThreadTypeInvalidError);
+    // "support" used to be the example of an invalid type here, back when
+    // THREAD_TYPES listed only "inquiry" — phase 2 added "support" to that
+    // list, so a genuinely unlisted string is what this test needs now.
+    expect(() => Thread.open({ ...threadBase, type: "retired-type" as never })).toThrow(ThreadTypeInvalidError);
   });
 
   it("always opens with a null id — Thread has no revise, so there is never a known id to build around; the repository assigns one on insert", () => {
@@ -172,5 +182,29 @@ describe("communication domain exceptions, at the boundary that makes them clien
       ProviderNotContactableError: "PROVIDER_NOT_CONTACTABLE",
       ThreadTypeInvalidError: "THREAD_TYPE_INVALID",
     });
+  });
+});
+
+describe("Thread.openSupport", () => {
+  it("opens a personal request with no provider", () => {
+    const t = Thread.openSupport({ customerUserId: "u1", providerId: null, now: NOW });
+    expect(t.type).toBe("support");
+    expect(t.providerId).toBeNull();
+    expect(t.customerUserId).toBe("u1");
+    expect(t.lastMessageAt).toEqual(NOW);
+    expect(t.createdAt).toEqual(NOW);
+  });
+
+  it("opens a provider request carrying the provider", () => {
+    const t = Thread.openSupport({ customerUserId: "member-1", providerId: "p1", now: NOW });
+    expect(t.type).toBe("support");
+    expect(t.providerId).toBe("p1");
+  });
+});
+
+describe("Message.compose carries a side", () => {
+  it("stores the side it was given", () => {
+    const m = Message.compose({ threadId: "t", senderUserId: "u", senderSide: "platform", body: "hi", now: NOW });
+    expect(m.senderSide).toBe("platform");
   });
 });
