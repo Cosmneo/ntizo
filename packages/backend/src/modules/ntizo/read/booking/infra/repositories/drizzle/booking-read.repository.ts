@@ -9,11 +9,14 @@ import {
   gte,
   ilike,
   inArray,
+  isNotNull,
   lt,
   or,
+  type SQL,
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { STATS_WINDOW_DAYS } from "@ntizo/shared/read-models";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   booking,
@@ -34,6 +37,8 @@ import {
   type ProviderBookingRow,
   type ProviderListFilter,
   type ProviderMemberOption,
+  type ProviderStats,
+  type ProviderStatsDayRow,
   type ProviderTimelineRow,
 } from "../../../app/ports/outbound/booking-read.repository.port";
 
@@ -166,7 +171,175 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
         r.firstName && r.firstName.trim() !== "" ? r.firstName : (r.email ?? "").split("@")[0] || "—",
     }));
   }
+
+  async statsForProvider(providerId: string, now: Date): Promise<ProviderStats> {
+    const db = getDb();
+
+    // The workspace's own clock, read first and then bound as a parameter:
+    // every window below is expressed in it, and a workspace with no bookings
+    // still has to know what "today" means.
+    const [row] = await db
+      .select({ timezone: provider.timezone })
+      .from(provider)
+      .where(eq(provider.id, providerId))
+      .limit(1);
+    const timezone = row?.timezone ?? DEFAULT_TIMEZONE;
+
+    // `now` as ISO text, cast back to an instant by Postgres — **never the
+    // `Date` itself**. A value interpolated into a bare `sql` template has no
+    // column behind it for drizzle to take an encoder from, so postgres-js
+    // meets a `Date` where its wire encoder wants a string and the query dies
+    // at Bind time with `ERR_INVALID_ARG_TYPE`, before Postgres sees it. The
+    // cast is what keeps the comparison a timestamp comparison rather than a
+    // text one.
+    const at = sql`${now.toISOString()}::timestamptz`;
+
+    // Postgres does the calendar. `at time zone` twice is not a typo: the
+    // first turns the instant into the workspace's wall clock, the second
+    // turns the truncated wall clock back into an instant to compare against
+    // `timestamptz` columns.
+    const localMidnight = sql`date_trunc('day', ${at} at time zone ${timezone})`;
+    const dayStart = sql`(${localMidnight}) at time zone ${timezone}`;
+    const dayEnd = sql`(${localMidnight} + interval '1 day') at time zone ${timezone}`;
+    const weekEnd = sql`(${localMidnight} + interval '7 days') at time zone ${timezone}`;
+    // `sql.raw` for the day count, and only for it: Postgres will not take a
+    // bind parameter inside an interval literal. What it interpolates is
+    // `STATS_WINDOW_DAYS`, a number this repository imports from the read
+    // model — never anything that came in with a request.
+    const windowStart = sql`(${localMidnight} - interval '${sql.raw(String(STATS_WINDOW_DAYS - 1))} days') at time zone ${timezone}`;
+    const localDate = (column: SQL<unknown> | AnyColumn) =>
+      sql<string>`to_char((${column} at time zone ${timezone})::date, 'YYYY-MM-DD')`;
+
+    const totalsQuery = db
+      .select({
+        awaitingResponse: sql<number>`count(*) filter (where ${booking.status} = 'AWAITING_PROVIDER')::int`,
+        awaitingPayment: sql<number>`count(*) filter (where ${booking.status} = 'PENDING_PAYMENT')::int`,
+        upcomingToday: sql<number>`count(*) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${dayStart} and ${booking.startsAt} < ${dayEnd})::int`,
+        upcomingWeek: sql<number>`count(*) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${dayStart} and ${booking.startsAt} < ${weekEnd})::int`,
+        completedLast30: sql<number>`count(*) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart})::int`,
+        declinedLast30: sql<number>`count(*) filter (where ${booking.status} = 'DECLINED' and ${booking.declinedAt} >= ${windowStart})::int`,
+        // The provider's share, twice. `coalesce` because a workspace with no
+        // completed work sums to null, and a dashboard does not show null.
+        revenueLast30Minor: sql<number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)::int`,
+        pipelineMinor: sql<number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${at}), 0)::int`,
+        currency: sql<string | null>`max(${booking.currency})`,
+      })
+      .from(booking)
+      // No `askedOfProvider()` guard, unlike `providerWhere` below: every
+      // status *counted* above is one a booking can only reach through
+      // `submit`, so an abandoned checkout — a `DRAFT` or the `EXPIRED` it
+      // becomes — is already outside all eight filters. The guard would cost a
+      // correlated subquery per row to change nothing.
+      //
+      // `max(currency)` is the one unfiltered aggregate, and deliberately so:
+      // it names the workspace's own currency, which an abandoned draft
+      // carries as truthfully as a finished job.
+      .where(eq(booking.providerId, providerId));
+
+    const requestsQuery = db
+      .select({ date: localDate(bookingChange.changedAt), n: sql<number>`count(*)::int` })
+      .from(bookingChange)
+      .innerJoin(booking, eq(booking.id, bookingChange.bookingId))
+      .where(
+        and(
+          eq(booking.providerId, providerId),
+          eq(bookingChange.reason, SUBMITTED_BY_CUSTOMER),
+          gte(bookingChange.changedAt, windowStart),
+        ),
+      )
+      // `GROUP BY 1`, the output column's ordinal, rather than a second copy
+      // of the expression: `localDate` carries the timezone as a bind
+      // parameter, so calling it twice writes `$3` here where the selection
+      // wrote `$1`, and Postgres matches grouping expressions structurally —
+      // two different placeholders are two different expressions, and it
+      // answers `column "changed_at" must appear in the GROUP BY clause`.
+      .groupBy(sql`1`);
+
+    // Bucketed on `confirmedAt`, which `accept` stamps — **the provider's
+    // yes, not the customer's payment**. Money moving stamps `paidAt` and is
+    // what takes the booking to the `CONFIRMED` *status*; the column named
+    // `confirmed_at` has meant "the provider said yes" since before the
+    // pay-after-accept reversal (see `BookingProps.confirmedAt`). For a
+    // booking that goes through, the two are minutes apart and the series is
+    // the same; they differ only for one accepted and then never paid, which
+    // this counts and a `paidAt` series would not.
+    const confirmedQuery = db
+      .select({ date: localDate(booking.confirmedAt), n: sql<number>`count(*)::int` })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.providerId, providerId),
+          isNotNull(booking.confirmedAt),
+          gte(booking.confirmedAt, windowStart),
+        ),
+      )
+      // The ordinal again, for the reason the requests series above gives.
+      .groupBy(sql`1`);
+
+    const todayQuery = db.select({ today: localDate(at) }).from(sql`(select 1) as one`);
+
+    const [totalsRows, requestRows, confirmedRows, todayRows] = await Promise.all([
+      totalsQuery,
+      requestsQuery,
+      confirmedQuery,
+      todayQuery,
+    ]);
+
+    const totals = totalsRows[0];
+    const byDate = new Map<string, ProviderStatsDayRow>();
+    for (const r of requestRows) {
+      byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
+    }
+    for (const r of confirmedRows) {
+      const hit = byDate.get(r.date);
+      if (hit) hit.confirmed = Number(r.n);
+      else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
+    }
+
+    return {
+      totals: {
+        awaitingResponse: Number(totals?.awaitingResponse ?? 0),
+        awaitingPayment: Number(totals?.awaitingPayment ?? 0),
+        upcomingToday: Number(totals?.upcomingToday ?? 0),
+        upcomingWeek: Number(totals?.upcomingWeek ?? 0),
+        completedLast30: Number(totals?.completedLast30 ?? 0),
+        declinedLast30: Number(totals?.declinedLast30 ?? 0),
+        revenueLast30Minor: Number(totals?.revenueLast30Minor ?? 0),
+        pipelineMinor: Number(totals?.pipelineMinor ?? 0),
+        currency: totals?.currency ?? null,
+        // The fallback is unreachable — a `select` from a constant always
+        // returns exactly one row — and is UTC, which is the wrong calendar.
+        // It is here so the type is honest, not because it is a second answer.
+        today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
+      },
+      perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  }
 }
+
+/**
+ * The zone a workspace's days are counted in when it has none of its own —
+ * the same default `provider.timezone` carries on the column itself.
+ *
+ * Reached only when there is no `provider` row at all, which is what an
+ * unknown id looks like: the column is `NOT NULL`, so a real workspace always
+ * answers with its own. A dashboard for an id nothing has written still has
+ * to be able to say what today is.
+ */
+const DEFAULT_TIMEZONE = "Africa/Maputo";
+
+/**
+ * The `booking_change.reason` a submitted booking carries, and the token the
+ * two readers in this file key on — `askedOfProvider()` below and the
+ * dashboard's per-day requests series above.
+ *
+ * **Deliberately not imported** from `SubmitBookingCommand`, which declares
+ * its own copy: a `read/` module reaching into a bounded context's `app/`
+ * tree is the boundary this codebase keeps, and the string is a stored
+ * database value rather than a shared type. Declared once here so the two
+ * readers in this file cannot disagree about it.
+ */
+const SUBMITTED_BY_CUSTOMER = "submitted_by_customer";
 
 /**
  * The provider's review score, grouped to one row per provider.
@@ -448,7 +621,7 @@ function askedOfProvider() {
       .where(
         and(
           eq(bookingChange.bookingId, booking.id),
-          eq(bookingChange.reason, "submitted_by_customer"),
+          eq(bookingChange.reason, SUBMITTED_BY_CUSTOMER),
         ),
       ),
   );

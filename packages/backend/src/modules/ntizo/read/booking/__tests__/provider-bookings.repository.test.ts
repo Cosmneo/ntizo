@@ -1,11 +1,12 @@
 /**
  * `DrizzleBookingReadRepository`'s provider-side queries — `listForProvider`,
- * `countForProvider`, `findForProvider`, `timelineFor` and `membersOf` —
- * against the real dev database, for the same reason and by the same
- * mechanism as `list-my-bookings.projection.test.ts` beside it: these queries
- * are joins, a `translate()` the accent search leans on, and a WHERE clause
- * that decides which tab a booking belongs to. None of that is a mapping a
- * fake repository could prove.
+ * `countForProvider`, `findForProvider`, `timelineFor`, `membersOf` and
+ * `statsForProvider` — against the real dev database, for the same reason and
+ * by the same mechanism as `list-my-bookings.projection.test.ts` beside it:
+ * these queries are joins, a `translate()` the accent search leans on, a
+ * WHERE clause that decides which tab a booking belongs to, and a set of
+ * windows Postgres cuts in the workspace's own timezone. None of that is a
+ * mapping a fake repository could prove.
  *
  * `getDb()` resolves through the app's request-scoped AsyncLocalStorage
  * context and a test has no request, so every body runs inside
@@ -28,6 +29,10 @@
  * writes that row exactly as `SubmitBookingCommand` does; a fixture that
  * skipped it would be indistinguishable from an abandoned draft, which is the
  * point.
+ *
+ * A **second workspace** holds one more booking, the only `COMPLETED` one —
+ * see `otherProviderId` for why it is kept apart from the five rather than
+ * added to them, and for what having a real neighbour buys the stats tests.
  *
  * Fixtures follow the neighbouring file's pattern: a fresh provider and
  * provider member under a random `suffix`, so this run's `providerMemberId`
@@ -89,6 +94,29 @@ let expiredDraftId: string;
 let awaitingId: string;
 let confirmedPastId: string;
 let confirmedFutureId: string;
+
+/**
+ * A **second workspace**, holding the one booking this file needs in
+ * `COMPLETED` — and holding it apart from the workspace above on purpose.
+ *
+ * `COMPLETED` is one of `PROVIDER_TAB_STATUSES.history`, so a completed
+ * booking added beside the five above would legitimately appear in the
+ * history tab and change what three of the list tests are asserting. Those
+ * assertions are the phase's proof that an expired draft stays hidden and
+ * that `startsAt` splits `upcoming` from `history`; weakening them to make
+ * room for a stats fixture would trade a guarantee for a number.
+ *
+ * Keeping the completed booking in its own workspace buys a second thing for
+ * free: every stats assertion below can be made against a *real* neighbouring
+ * workspace with bookings of its own, rather than only against an id nothing
+ * has ever written. The revenue of one must not appear in the other, and here
+ * that claim has something on both sides of it.
+ */
+let otherProviderId: string;
+let otherMemberId: string;
+let otherServiceId: string;
+let otherServiceOptionId: string;
+let completedId: string;
 
 beforeAll(async () => {
   customerId = crypto.randomUUID();
@@ -154,6 +182,52 @@ beforeAll(async () => {
     .values({ serviceId, pricingMode: "fixed", amountMinor: 100_000, durationMinutes: 60 })
     .returning({ id: serviceOption.id });
   serviceOptionId = optionRow!.id;
+
+  // The second workspace — see `otherProviderId` for why the completed
+  // booking lives here rather than beside the five above. Its own member,
+  // service and option, so that nothing it holds is a row belonging to the
+  // first workspace wearing a second workspace's provider id.
+  const [otherProviderRow] = await db
+    .insert(provider)
+    .values({
+      ownerUserId,
+      type: "individual",
+      name: "Provider Bookings Test Neighbour",
+      slug: `provider-bookings-neighbour-${suffix}`,
+      status: "active",
+      timezone: "Africa/Maputo",
+    })
+    .returning({ id: provider.id });
+  otherProviderId = otherProviderRow!.id;
+
+  const [otherMemberRow] = await db
+    .insert(providerMember)
+    .values({ providerId: otherProviderId, userId: ownerUserId, role: "owner" })
+    .returning({ id: providerMember.id });
+  otherMemberId = otherMemberRow!.id;
+
+  const [otherServiceRow] = await db
+    .insert(service)
+    .values({
+      providerId: otherProviderId,
+      categoryId,
+      sourceLocale: "pt-MZ",
+      locationType: "at_customer",
+      status: "published",
+    })
+    .returning({ id: service.id });
+  otherServiceId = otherServiceRow!.id;
+
+  const [otherOptionRow] = await db
+    .insert(serviceOption)
+    .values({
+      serviceId: otherServiceId,
+      pricingMode: "fixed",
+      amountMinor: 80_000,
+      durationMinutes: 60,
+    })
+    .returning({ id: serviceOption.id });
+  otherServiceOptionId = otherOptionRow!.id;
 
   await __runWithTransactionContextForTests(db, async () => {
     // Left where `Booking.create` puts it. Nothing on the provider's side may
@@ -255,6 +329,47 @@ beforeAll(async () => {
     const paidFuture = acceptedFuture.markPaid(`mpesa-future-${suffix}`, now);
     await commit(paidFuture, BookingStatus.PendingPayment);
     confirmedFutureId = paidFuture.id as string;
+
+    // A job in the second workspace that actually happened: booked four days
+    // ago, worked three days ago, completed two — priced 80 000 at the same
+    // 1 000 bps, so its commission is 8 000 and the provider's share of it is
+    // exactly 72 000. Three distinct numbers, because a query that returned
+    // the listed price instead of the share would pass against a fixture
+    // where the two are equal.
+    const submittedDone = (
+      await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            providerId: otherProviderId,
+            serviceId: otherServiceId,
+            serviceOptionId: otherServiceOptionId,
+            providerMemberId: otherMemberId,
+            priceMinor: 80_000,
+            startsAt: daysAgo(3),
+            expiresAt: daysAgo(4),
+          }),
+        ),
+        1,
+      )
+    ).submit(daysAgo(4), daysAgo(3.9), address(), null);
+    await commit(submittedDone, BookingStatus.Draft);
+    await recordSubmission(submittedDone.id as string);
+    const acceptedDone = submittedDone.accept(daysAgo(4), daysAgo(3.8));
+    await commit(acceptedDone, BookingStatus.AwaitingProvider);
+    const paidDone = acceptedDone.markPaid(`mpesa-done-${suffix}`, daysAgo(4));
+    await commit(paidDone, BookingStatus.PendingPayment);
+    completedId = paidDone.id as string;
+
+    // **Written, not transitioned.** `Booking` has no `complete()` in phase 1
+    // — it is one of the transitions the phase recorded as a follow-up — so
+    // the only way to have a `COMPLETED` row to count is to move it here, the
+    // way this file already writes states the commands cannot reach. The
+    // booking above is a real one up to `CONFIRMED`; this is the single hop
+    // the aggregate cannot yet make.
+    await db
+      .update(booking)
+      .set({ status: BookingStatus.Completed, completedAt: daysAgo(2) })
+      .where(eq(booking.id, completedId));
   });
 });
 
@@ -262,11 +377,16 @@ afterAll(async () => {
   await bestEffortCleanup([
     // `booking_change` cascades on the booking it logs — see its schema.
     () => db.delete(booking).where(eq(booking.providerId, providerId)),
+    () => db.delete(booking).where(eq(booking.providerId, otherProviderId)),
     () => db.delete(serviceOption).where(eq(serviceOption.id, serviceOptionId)),
+    () => db.delete(serviceOption).where(eq(serviceOption.id, otherServiceOptionId)),
     () => db.delete(service).where(eq(service.id, serviceId)),
+    () => db.delete(service).where(eq(service.id, otherServiceId)),
     () => db.delete(category).where(eq(category.id, categoryId)),
     () => db.delete(providerMember).where(eq(providerMember.id, memberId)),
+    () => db.delete(providerMember).where(eq(providerMember.id, otherMemberId)),
     () => db.delete(provider).where(eq(provider.id, providerId)),
+    () => db.delete(provider).where(eq(provider.id, otherProviderId)),
     () => db.delete(profile).where(eq(profile.userId, customerId)),
     () => db.delete(profile).where(eq(profile.userId, ownerUserId)),
     () => db.delete(user).where(eq(user.id, customerId)),
@@ -298,6 +418,16 @@ function bookingInput(
     expiresAt: new Date("2027-02-28T09:30:00.000Z"),
     ...overrides,
   };
+}
+
+/**
+ * An instant that many days before this run's `now`, for the fixtures whose
+ * point is *where they fall in a window* rather than which calendar day they
+ * name. A literal date would drift out of the dashboard's thirty days the
+ * moment this file stopped being new.
+ */
+function daysAgo(days: number): Date {
+  return new Date(now.getTime() - days * 86_400_000);
 }
 
 /** The address `submit` requires before a booking may leave `DRAFT`. */
@@ -568,6 +698,109 @@ describe("DrizzleBookingReadRepository, provider side", () => {
       const members = await readRepo.membersOf(providerId);
       expect(members.map((m) => m.id)).toContain(memberId);
       expect(members.find((m) => m.id === memberId)?.firstName).toBe("Beatriz");
+    });
+  });
+});
+
+describe("statsForProvider", () => {
+  test("counts what is waiting, what is coming, and what has been done", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const { totals } = await readRepo.statsForProvider(providerId, now);
+      expect(totals.awaitingResponse).toBe(1); // awaitingId
+      expect(totals.awaitingPayment).toBe(0); // every accepted fixture went on to be paid
+      // Both confirmed slots are outside this week: one is in 2020 and one in
+      // 2027, so the seven-day bound is exercised in both directions.
+      expect(totals.upcomingWeek).toBe(0);
+      expect(totals.upcomingToday).toBe(0);
+      expect(totals.declinedLast30).toBe(0);
+      // The completed booking belongs to the neighbouring workspace — see
+      // `otherProviderId` — so it is that workspace's one, and not this one's.
+      expect(totals.completedLast30).toBe(0);
+      expect(totals.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(totals.currency).toBe("MZN");
+
+      const neighbour = await readRepo.statsForProvider(otherProviderId, now);
+      expect(neighbour.totals.completedLast30).toBe(1); // completedId
+      expect(neighbour.totals.awaitingResponse).toBe(0);
+    });
+  });
+
+  test("revenue and pipeline are the provider's share, not the listed price", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const neighbour = (await readRepo.statsForProvider(otherProviderId, now)).totals;
+      // 80 000 listed, 8 000 of commission, 72 000 received. Three different
+      // numbers on purpose: a query returning the price would read 80 000.
+      expect(neighbour.revenueLast30Minor).toBe(72_000);
+      // Nothing confirmed and still ahead in that workspace — its one booking
+      // is already finished.
+      expect(neighbour.pipelineMinor).toBe(0);
+
+      const mine = (await readRepo.statsForProvider(providerId, now)).totals;
+      // The 2027 booking, 100 000 less 10 000 of commission. The 2020 one is
+      // `CONFIRMED` too and is not pipeline: its slot is behind us.
+      expect(mine.pipelineMinor).toBe(90_000);
+      // And this workspace has completed nothing, so the neighbour's 72 000
+      // is not somehow in its revenue.
+      expect(mine.revenueLast30Minor).toBe(0);
+    });
+  });
+
+  test("a booking completed before the window is not in the thirty days", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      // `now` shifted a year forward puts `completedId` outside the window.
+      const later = new Date(now.getTime() + 365 * 24 * 3_600_000);
+      const { totals } = await readRepo.statsForProvider(otherProviderId, later);
+      expect(totals.completedLast30).toBe(0);
+      expect(totals.revenueLast30Minor).toBe(0);
+    });
+  });
+
+  test("today and the week are the workspace's own days, not UTC's", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      // 23:00 UTC on the 28th is already 01:00 on the 1st in Maputo (UTC+2),
+      // and `confirmedFutureId` starts at 15:00 UTC that same local day. A
+      // window truncated to UTC midnight would name the day "2027-02-28" and
+      // put the booking in tomorrow instead of today; the workspace's own
+      // calendar puts both on the 1st.
+      const justAfterLocalMidnight = new Date("2027-02-28T23:00:00.000Z");
+      const { totals } = await readRepo.statsForProvider(providerId, justAfterLocalMidnight);
+      expect(totals.today).toBe("2027-03-01");
+      expect(totals.upcomingToday).toBe(1); // confirmedFutureId
+      expect(totals.upcomingWeek).toBe(1); // today is a subset of the week, never disjoint from it
+      expect(totals.pipelineMinor).toBe(90_000);
+    });
+  });
+
+  test("the day series buckets a request on the day it was submitted, in the workspace's timezone", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const { totals, perDay } = await readRepo.statsForProvider(providerId, now);
+      const today = perDay.find((d) => d.date === totals.today);
+      // Three fixtures were submitted in this test run; the two drafts were
+      // never submitted and are in no bucket.
+      expect(today?.requests).toBe(3);
+      // Only `confirmedFutureId` was accepted in this run — the 2020 walk was
+      // accepted in 2020, which is outside the window the series covers.
+      expect(today?.confirmed).toBe(1);
+      expect(perDay.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d.date))).toBe(true);
+      // Days with nothing in them are absent rather than zero: everything this
+      // fixture did happened today, so today is the only bucket there is. The
+      // projection is what fills the chart back out to thirty.
+      expect(perDay.map((d) => d.date)).toEqual([totals.today]);
+      expect(perDay.length).toBeLessThanOrEqual(30);
+    });
+  });
+
+  test("another workspace's numbers are not this one's", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const { totals, perDay } = await readRepo.statsForProvider(crypto.randomUUID(), now);
+      expect(totals.awaitingResponse).toBe(0);
+      expect(totals.revenueLast30Minor).toBe(0);
+      expect(totals.pipelineMinor).toBe(0);
+      expect(totals.currency).toBeNull();
+      expect(perDay).toEqual([]);
+      // A workspace with no bookings — and no `provider` row at all — still
+      // has to know what today is, or the dashboard has no chart to draw.
+      expect(totals.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
 });

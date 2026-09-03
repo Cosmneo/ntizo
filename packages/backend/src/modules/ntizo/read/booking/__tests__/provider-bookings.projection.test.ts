@@ -5,6 +5,7 @@ import type {
   ProviderBookingRow,
   ProviderListFilter,
   ProviderMemberOption,
+  ProviderStats,
   ProviderTimelineRow,
 } from "../app/ports/outbound/booking-read.repository.port";
 import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
@@ -72,6 +73,15 @@ class FakeRepo implements BookingReadRepositoryPort {
     return this.changes;
   }
   async membersOf() { return this.members; }
+  /**
+   * Nothing in this file reads the dashboard's numbers — the port requires
+   * the method, so it is here. It throws rather than answering zeros so that a
+   * projection which starts calling it says so, instead of quietly passing
+   * against a fake that has nothing to give it.
+   */
+  async statsForProvider(): Promise<ProviderStats> {
+    throw new Error("statsForProvider is not part of these projections");
+  }
 }
 
 describe("toProviderBookingDetailDTO — the reveal rule", () => {
