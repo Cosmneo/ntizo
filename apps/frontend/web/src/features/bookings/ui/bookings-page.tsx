@@ -7,6 +7,7 @@ import type { BookingDTO } from "@ntizo/shared/read-models";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import {
   CUSTOMER_BOOKING_TABS,
   canCancel,
@@ -19,6 +20,7 @@ import {
 import { useMyBookings } from "../viewmodel/use-my-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
 import { CancelDialog } from "./cancel-dialog";
+import { PayDialog } from "./pay-dialog";
 
 /** The countdown's colour: amber while the provider is deciding, blue while the customer is. */
 function countdownTone(status: CustomerBookingStatus): string {
@@ -72,6 +74,13 @@ export function BookingsPage() {
   // the provider's name, and `items` is already the answer this render has
   // — a second lookup by id would only reintroduce the chance of it missing.
   const [cancelling, setCancelling] = useState<BookingDTO | null>(null);
+  const [paying, setPaying] = useState<BookingDTO | null>(null);
+  // The phone `PayDialog` shows masked in its waiting state, and the reason
+  // it comes from here rather than from the row: `bookingMine` deliberately
+  // carries no phone field (a booking's own snapshot has no reason to hold
+  // one), so the one place this page has it is the signed-in user's own
+  // profile.
+  const { data: currentUser } = useCurrentUser();
 
   return (
     <div>
@@ -235,7 +244,7 @@ export function BookingsPage() {
               // both buttons together belong to the detail page, not this
               // row (see the comment on `showPay`/`showCancel` above).
               actions: showPay ? (
-                <Button type="button" size="sm" disabled>
+                <Button type="button" size="sm" onClick={() => setPaying(b)}>
                   {t("pay")}
                 </Button>
               ) : showCancel ? (
@@ -274,6 +283,13 @@ export function BookingsPage() {
 
       {cancelling && (
         <CancelDialog booking={cancelling} onClose={() => setCancelling(null)} />
+      )}
+      {paying && (
+        <PayDialog
+          booking={paying}
+          phone={currentUser?.phoneNumber ?? null}
+          onClose={() => setPaying(null)}
+        />
       )}
     </div>
   );

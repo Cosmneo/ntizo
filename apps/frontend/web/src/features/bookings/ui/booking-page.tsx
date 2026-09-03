@@ -11,6 +11,7 @@ import {
   formatHeadlinePrice,
   formatRating,
 } from "@/features/directory/services/domain/service-card";
+import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import {
   canCancel,
   canPay,
@@ -20,6 +21,7 @@ import {
 import { useMyBooking } from "../viewmodel/use-my-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
 import { CancelDialog } from "./cancel-dialog";
+import { PayDialog } from "./pay-dialog";
 
 const CAPTION =
   "type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase";
@@ -97,8 +99,11 @@ function DetailSection({
  * loading/error/not-found ladder, the `timeLeftWording` countdown, the
  * timeline's dot and `defaultValue` fallback — but answers a different
  * question. The provider's header is a decision (Aceitar/Recusar, live only
- * while undecided); this one is a status report. Cancelar is wired (Task 9);
- * Pagar stays visible and disabled until Task 12 wires it.
+ * while undecided); this one is a status report. Both Cancelar and Pagar
+ * open their own dialog (`CancelDialog`, `PayDialog`) rather than acting
+ * directly off this header — neither button is safe to fire from a stale
+ * row, and both dialogs re-check the booking themselves before doing
+ * anything irreversible.
  *
  * **No reveal-gating.** The provider's page hides the customer's contact and
  * exact address until payment lands, because it is being shown someone
@@ -119,6 +124,9 @@ export function BookingPage() {
   const { bookingId } = useParams({ strict: false }) as { bookingId: string };
   const query = useMyBooking(bookingId);
   const b = query.data;
+  // Same reason `bookings-page.tsx` reads it: `bookingById` carries no
+  // phone field, and the profile is the one place this page has it.
+  const { data: currentUser } = useCurrentUser();
   // Measured from the moment the page was answered, not from whenever React
   // last re-rendered — the same bargain the list and the provider's own
   // detail page make, for the same reason: a re-render for an unrelated
@@ -131,6 +139,7 @@ export function BookingPage() {
   // other hook — a booking that later turns out not to exist must not have
   // skipped a hook the render after it does.
   const [cancelling, setCancelling] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const back = (
     <Link
@@ -228,7 +237,7 @@ export function BookingPage() {
             >
               {t("cancelBooking")}
             </Button>
-            <Button type="button" disabled>
+            <Button type="button" onClick={() => setPaying(true)}>
               {t("payAmount", {
                 amount: formatHeadlinePrice(b.priceMinor, b.currency, locale),
               })}
@@ -430,6 +439,13 @@ export function BookingPage() {
 
       {cancelling && (
         <CancelDialog booking={b} onClose={() => setCancelling(false)} />
+      )}
+      {paying && (
+        <PayDialog
+          booking={b}
+          phone={currentUser?.phoneNumber ?? null}
+          onClose={() => setPaying(false)}
+        />
       )}
     </div>
   );

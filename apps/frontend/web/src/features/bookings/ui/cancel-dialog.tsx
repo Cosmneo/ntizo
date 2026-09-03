@@ -39,17 +39,30 @@ export function CancelDialog({
   const cancel = useCancelBooking();
   const when = momentWording(booking.startsAt, locale, booking.timezone);
   /**
-   * `BOOKING_TRANSITION` means the booking already left the state this
-   * dialog was drawn for — the provider answered, or the payment landed,
-   * while it sat open — so a retry would refuse identically forever, and
-   * "tente novamente" would be a lie. Every other code (`NOT_BOOKING_CUSTOMER`,
-   * a dropped connection) gets the generic refusal, which likewise promises
-   * no retry, because none of them are ones this dialog can tell apart from
-   * "try again and it might work" — see `provider/bookings/ui/booking-page.tsx`'s
-   * own `onError` for the precedent this follows.
+   * `BOOKING_INVALID_TRANSITION` means the booking already left the state
+   * this dialog was drawn for — the provider answered, or the payment
+   * landed, while it sat open — so a retry would refuse identically
+   * forever, and "tente novamente" would be a lie. Every other code
+   * (`NOT_BOOKING_CUSTOMER`, a dropped connection) gets the generic
+   * refusal, which likewise promises no retry, because none of them are
+   * ones this dialog can tell apart from "try again and it might work" —
+   * see `provider/bookings/ui/booking-page.tsx`'s own `onError` for the
+   * precedent this follows.
+   *
+   * Confirmed against `packages/backend/.../booking/domain/exceptions.ts`,
+   * not copied from a comment: `BookingTransitionError`'s `code` is
+   * `BOOKING_INVALID_TRANSITION`. An earlier version of this file matched on
+   * `BOOKING_TRANSITION` — a string no code anywhere on the backend
+   * produces — so this branch could never fire against the real backend,
+   * and a customer whose booking had just been accepted saw the generic
+   * "Não foi possível cancelar esta reserva." instead of being told it had
+   * already moved on. The test below fell for the same typo, faking the
+   * wrong string, which is exactly how a branch that never fires stays
+   * green.
    */
   const moved =
-    (cancel.error as { code?: string } | null)?.code === "BOOKING_TRANSITION";
+    (cancel.error as { code?: string } | null)?.code ===
+    "BOOKING_INVALID_TRANSITION";
 
   return (
     <Dialog
@@ -71,7 +84,7 @@ export function CancelDialog({
         </DialogHeader>
         {/* Stays open on a refusal — never closes as if it had succeeded —
             and the cache still drops (`useCancelBooking` invalidates on
-            every settlement, not only success): a `BOOKING_TRANSITION`
+            every settlement, not only success): a `BOOKING_INVALID_TRANSITION`
             means the row behind this dialog is already wrong, and leaving
             it cached would survive the dialog closing as a dead Cancelar
             button over a booking that can no longer be cancelled. */}

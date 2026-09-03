@@ -133,13 +133,21 @@ describe("CancelDialog", () => {
     expect(fakes.graphql).not.toHaveBeenCalled();
   });
 
-  // `BOOKING_TRANSITION`: the provider answered or the payment landed while
-  // this dialog sat open. A retry would refuse identically forever, so the
-  // message says the booking moved on rather than inviting one — and the
-  // cache still drops, so the row behind this dialog stops offering Cancelar
-  // the moment it closes.
+  // `BOOKING_INVALID_TRANSITION`: the provider answered or the payment
+  // landed while this dialog sat open. A retry would refuse identically
+  // forever, so the message says the booking moved on rather than inviting
+  // one — and the cache still drops, so the row behind this dialog stops
+  // offering Cancelar the moment it closes.
+  //
+  // The code faked here must be the one the domain actually throws
+  // (`BookingTransitionError`'s `code`, in
+  // `packages/backend/.../booking/domain/exceptions.ts`) — not a string
+  // that merely looks plausible. The dialog used to match on
+  // `BOOKING_TRANSITION`, which nothing on the backend ever produces, and
+  // this test faked that same wrong string: both green, and the real branch
+  // dead. See `cancel-dialog.tsx`'s own comment on `moved` for the history.
   it("says the booking has already moved on, and still drops the cache, on a transition refusal", async () => {
-    fakes.graphql.mockRejectedValue(refusal("BOOKING_TRANSITION"));
+    fakes.graphql.mockRejectedValue(refusal("BOOKING_INVALID_TRANSITION"));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
     const { onClose } = renderDialog(qc);

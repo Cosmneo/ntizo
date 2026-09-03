@@ -38,6 +38,11 @@ const CANCEL = `
     bookingCancel(input: $input) { bookingId }
   }`;
 
+const PAY = `
+  mutation BookingPay($input: BookingPayInput!) {
+    bookingPay(input: $input) { bookingId }
+  }`;
+
 export interface MyBookingsPageInput {
   tab: CustomerBookingTab;
   offset: number;
@@ -79,11 +84,36 @@ export const myBookingQueries = {
  * The customer calls it off. Takes only the booking: whose it is is on the
  * booking, and the command checks the caller against it — never the
  * client's claim. Refuses a stranger with `NOT_BOOKING_CUSTOMER` and a
- * status past payment with `BOOKING_TRANSITION`; both surface through
- * `GraphqlError.code` for whoever calls this to branch on.
+ * status past payment with `BOOKING_INVALID_TRANSITION`; both surface
+ * through `GraphqlError.code` for whoever calls this to branch on.
  */
 export async function cancelBooking(bookingId: string): Promise<void> {
   await sessionGraphql<{ bookingCancel: { bookingId: string } }>(CANCEL, {
+    input: { bookingId },
+  });
+}
+
+/**
+ * The customer presses "Pagar" and asks to be charged right now, rather
+ * than waiting for the sweep's next tick to reach this booking on its own.
+ *
+ * Takes only the booking, for the same reason `cancelBooking` does: whose it
+ * is is on the row, and `RequestBookingChargeCommand` checks the caller
+ * against it, never the client's claim. Resolves once the M-Pesa prompt is
+ * scheduled, not once it is answered — the command itself never waits for
+ * the gateway call behind it (up to 110 seconds), so a caller that awaits
+ * this learns nothing about whether the customer actually paid. `PayDialog`
+ * is what learns that, by re-reading the booking.
+ *
+ * Five refusals reach this call, all surfacing through `GraphqlError.code`:
+ * `NOT_BOOKING_CUSTOMER` (a stranger's id), `BOOKING_INVALID_TRANSITION`
+ * (the booking is no longer `PENDING_PAYMENT`), `BOOKING_NO_CUSTOMER_PHONE`
+ * (nothing to send the prompt to), `BOOKING_CHARGE_ATTEMPTS_SPENT` (the
+ * three tries are gone) and `BOOKING_PAYMENT_WINDOW_CLOSED` (too little of
+ * the window left to safely start a gateway call).
+ */
+export async function payBooking(bookingId: string): Promise<void> {
+  await sessionGraphql<{ bookingPay: { bookingId: string } }>(PAY, {
     input: { bookingId },
   });
 }
