@@ -3,9 +3,10 @@ import type {
   BookingDeclineReason,
   ProviderBookingDetailDTO,
   ProviderBookingPageDTO,
+  ProviderBookingStatsDTO,
 } from "@ntizo/shared/read-models";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
-import { PROVIDER_BOOKINGS_PAGE_SIZE, type ProviderTab } from "../domain/status";
+import { PROVIDER_BOOKINGS_PAGE_SIZE, type ProviderQueryTab } from "../domain/status";
 
 const ROW_FIELDS = `
   id status createdAt serviceId serviceOptionId serviceName optionName durationMinutes locationType
@@ -19,6 +20,15 @@ const PAGE = `
       }
       total nextOffset
       members { id firstName }
+    }
+  }`;
+
+const STATS = `
+  query BookingStatsForProvider($input: BookingStatsForProviderInput!) {
+    bookingStatsForProvider(input: $input) {
+      awaitingResponse awaitingPayment upcomingToday upcomingWeek
+      completedLast30 declinedLast30 revenueLast30Minor pipelineMinor currency
+      perDay { date requests confirmed }
     }
   }`;
 
@@ -42,10 +52,12 @@ const DECLINE = `
 
 export interface ProviderBookingsPageInput {
   providerId: string;
-  tab: ProviderTab;
+  tab: ProviderQueryTab;
   q: string;
   memberId: string | null;
   offset: number;
+  /** The list's page size unless a caller wants fewer — the dashboard asks for eight. */
+  limit?: number;
 }
 
 /**
@@ -55,8 +67,18 @@ export interface ProviderBookingsPageInput {
 export const providerBookingQueries = {
   page: (input: ProviderBookingsPageInput) => {
     const q = input.q.trim();
+    const limit = input.limit ?? PROVIDER_BOOKINGS_PAGE_SIZE;
     return queryOptions({
-      queryKey: ["provider", input.providerId, "bookings", input.tab, q, input.memberId, input.offset] as const,
+      queryKey: [
+        "provider",
+        input.providerId,
+        "bookings",
+        input.tab,
+        q,
+        input.memberId,
+        input.offset,
+        limit,
+      ] as const,
       queryFn: async (): Promise<ProviderBookingPageDTO> => {
         const d = await sessionGraphql<{ bookingForProvider: ProviderBookingPageDTO }>(PAGE, {
           input: {
@@ -64,7 +86,7 @@ export const providerBookingQueries = {
             tab: input.tab,
             ...(q ? { q } : {}),
             ...(input.memberId ? { memberId: input.memberId } : {}),
-            limit: PROVIDER_BOOKINGS_PAGE_SIZE,
+            limit,
             offset: input.offset,
           },
         });
@@ -83,6 +105,23 @@ export const providerBookingQueries = {
         return d.bookingByIdForProvider;
       },
       enabled: providerId !== "" && bookingId !== "",
+    }),
+  /**
+   * The workspace's numbers. One key for the whole dashboard *and* the
+   * sidebar's badge: they show the same figure, so they must not be able to
+   * show two. Thirty seconds of staleness is the badge's old bargain kept.
+   */
+  stats: (providerId: string) =>
+    queryOptions({
+      queryKey: ["provider", providerId, "booking-stats"] as const,
+      queryFn: async (): Promise<ProviderBookingStatsDTO> => {
+        const d = await sessionGraphql<{ bookingStatsForProvider: ProviderBookingStatsDTO }>(STATS, {
+          input: { providerId },
+        });
+        return d.bookingStatsForProvider;
+      },
+      enabled: providerId !== "",
+      staleTime: 30_000,
     }),
 };
 

@@ -3,6 +3,7 @@ import { GetMyBookingProjection } from "../app/use-cases/get-my-booking.projecti
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
 import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
 import { GetProviderBookingProjection } from "../app/use-cases/get-provider-booking.projection";
+import { GetProviderStatsProjection } from "../app/use-cases/get-provider-stats.projection";
 import { DrizzleProviderReadRepository } from "../../provider/infra/repositories/drizzle/provider-read.repository";
 
 /**
@@ -40,6 +41,7 @@ export function bootstrapBookingRead() {
       getMine: new GetMyBookingProjection(repo),
       listForProvider: new ListProviderBookingsProjection(repo),
       getForProvider: new GetProviderBookingProjection(repo),
+      statsForProvider: new GetProviderStatsProjection(repo),
       /** Only `isMember` is used, and only to answer "may this person look" — the wallet's arrangement. */
       providerRead: new DrizzleProviderReadRepository(),
     },

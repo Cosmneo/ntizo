@@ -3812,3 +3812,61 @@ is not written down at the call site.
 
 **Trigger:** the first time someone opens an answer, types one more letter to narrow the list
 further, and finds it closed — or a decision to seed `openId` without remounting.
+## #163 — The dashboard's unread count only sees the first page of threads
+
+`OverviewPage` sums `unreadCount` over `useProviderThreads`' first page, which is what the
+design settled for, because the communication read has no aggregate. A workspace with more
+threads than one page holds will show an undercount, and the number will change as the
+inbox is scrolled elsewhere in the session.
+
+**Trigger:** the first provider whose inbox is longer than a page and who notices the two
+screens disagree; the fix is a `communicationProviderUnreadCount` beside the notification
+context's, which already has one.
+
+## #164 — The stats read has no index for its date windows
+
+`booking_provider_status_idx` (`provider_id`, `status`) serves the dashboard's counts, but the
+thirty-day sums filter on `completed_at` and the confirmed series on `paid_at` — ruling R6:
+the column called `confirmed_at` is the provider's acceptance, and the series counts money
+arriving — neither of which is indexed. At a workspace's row counts this is a scan of a few
+hundred rows and costs nothing; at a marketplace's it is a scan of the table.
+
+**Trigger:** the dashboard appearing in a slow-query log, or the first workspace with tens of
+thousands of bookings — then `(provider_id, completed_at)` and `(provider_id, paid_at)`,
+or a rollup table if the numbers are wanted platform-wide.
+
+## #165 — The dashboard's cards cannot tell an empty workspace from a failed read
+
+Only the stats query renders an alert (`features/provider/ui/overview.tsx`): `stats.isError`
+gates a banner, but the recent-bookings, rating and services queries have no equivalent check.
+If any of them fails, `recent.data?.items ?? []` and `services.data ?? []` fall back to empty
+arrays and `rating.data?.average` falls back to `null`, so the cards render "Ainda sem
+reservas", "—" and `0` — exactly what an untouched workspace looks like, not what a broken
+read looks like.
+
+**Trigger:** the first provider who reports a blank dashboard that is not blank, or the next
+page that copies this pattern; the fix is one shared "could not read" state per card.
+
+## #166 — The KPI cards size their money by the viewport, not by their own width
+
+`StatCard`'s value steps from 18px to 28px at `sm:`, and the grid steps from two columns to
+four at `xl:` — both keyed to the viewport, while what actually constrains the figure is the
+card's own track. The two move in opposite directions: past `xl` the track gets *narrower*
+than it was one pixel earlier, and the sidebar takes 16rem out of the measurement without
+any breakpoint knowing. Measured against `formatMoney` in pt-MZ at 28px, from the shipped
+Poppins SemiBold (`99 999,99 MTn` is 7.25em = 203px, `999 999,99 MTn` is 7.88em = 221px):
+
+- **at 1280px**, the first four-up width, the card's content box is 198px. The dashboard's own
+  fixture figure fits with 0.7px to spare, five figures clip by 5px, and a workspace netting
+  six figures a month clips by 19–22px.
+- **at 1440px** the box is 238px and every realistic payout fits; only a seven-figure MZN
+  month (245px) still crosses the border. From 1536px up the grid's `max-w-6xl` caps the box
+  at 242px, so it never gets better than that.
+
+The same mechanism bites once more on the way up: between 768px and ~829px the sidebar has
+appeared but the value is already at its 28px `sm:` size, and the two-up card is 190px.
+
+**Trigger:** the first workspace whose monthly payout reaches six figures, or the next zone
+page that copies this grid — then size the value from the card rather than the window
+(`@container` on `Card`, with the type step as a container query), which removes every band
+above at once instead of moving another breakpoint.

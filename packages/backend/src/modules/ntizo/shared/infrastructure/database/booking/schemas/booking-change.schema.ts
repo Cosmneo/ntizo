@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, integer, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "../../user/schemas/user.schema";
 import { bookingSchema, booking } from "./booking.schema";
 
@@ -76,6 +76,15 @@ export const bookingChange = bookingSchema.table(
       "booking_change_previous_price_minor_non_negative",
       sql`${t.previousPriceMinor} IS NULL OR ${t.previousPriceMinor} >= 0`,
     ),
+
+    // Two readers scan this table by booking: the provider list's
+    // `askedOfProvider()` EXISTS (one correlated lookup per candidate row) and
+    // the dashboard's per-day requests series (`reason = 'submitted_by_customer'`
+    // over thirty days). Postgres does not index a foreign key on its own, so
+    // both were sequential scans of an append-only log that only grows.
+    // `reason` is the second column because both readers filter on it after
+    // the id, and it lets the EXISTS answer from the index alone.
+    index("booking_change_booking_reason_idx").on(t.bookingId, t.reason),
   ],
 );
 

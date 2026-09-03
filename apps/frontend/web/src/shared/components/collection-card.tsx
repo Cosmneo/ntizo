@@ -76,6 +76,7 @@ export function CollectionCard({
   search,
   onSearchChange,
   searchPlaceholder,
+  action,
   onOpenFilters,
   activeFilterCount = 0,
   columns,
@@ -100,9 +101,12 @@ export function CollectionCard({
    */
   total: number;
   loading: boolean;
-  search: string;
-  onSearchChange: (value: string) => void;
-  searchPlaceholder: string;
+  /** Omit all three to render no search box — a card that shows a fixed few rows has nothing to search. */
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
+  /** Rendered where the search box would be: the dashboard's "Ver todas →". */
+  action?: ReactNode;
   /** Omit to render no filter button — some lists have nothing to filter by. */
   onOpenFilters?: () => void;
   activeFilterCount?: number;
@@ -227,16 +231,19 @@ export function CollectionCard({
         </div>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5">
-          <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-            <Input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-              className="pl-9"
-            />
-          </div>
+          {onSearchChange && searchPlaceholder !== undefined && (
+            <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+              <Input
+                value={search ?? ""}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                className="pl-9"
+              />
+            </div>
+          )}
+          {action}
           {onOpenFilters && (
             <Button type="button" variant="outline" onClick={onOpenFilters}>
               <SlidersHorizontal className="h-4 w-4" />

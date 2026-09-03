@@ -108,3 +108,45 @@ export type ProviderBookingDetailDTO = z.infer<typeof providerBookingDetailReadM
 export type ProviderBookingPageDTO = z.infer<typeof providerBookingPageReadModel>;
 export type BookingTimelineEntryDTO = z.infer<typeof bookingTimelineEntryReadModel>;
 export type ProviderMemberOptionDTO = z.infer<typeof providerMemberOptionReadModel>;
+
+/**
+ * How many days the dashboard looks back, and how many buckets its chart has.
+ * One constant because the window is one window: the revenue card and the
+ * chart must be able to disagree about nothing.
+ */
+export const STATS_WINDOW_DAYS = 30;
+
+/** One bucket of the chart. `date` is the provider's local day — `2026-09-03`, not an instant. */
+export const providerBookingStatsDayReadModel = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** Requests that reached the workspace that day, counted on the `submitted_by_customer` hop. */
+  requests: z.number().int().min(0),
+  /** Bookings confirmed that day — paid, not merely accepted. */
+  confirmed: z.number().int().min(0),
+});
+
+/**
+ * Everything the dashboard shows, in one read. The money fields are the
+ * provider's share (`priceMinor − commissionMinor`), never the listed price:
+ * the commission comes out of the payout, so a gross figure here would be a
+ * number the provider never receives.
+ */
+export const providerBookingStatsReadModel = z.object({
+  awaitingResponse: z.number().int().min(0),
+  awaitingPayment: z.number().int().min(0),
+  /** CONFIRMED starting today, in the workspace's own timezone. */
+  upcomingToday: z.number().int().min(0),
+  /** CONFIRMED starting between today's first instant and seven days later; `upcomingToday` is a subset. */
+  upcomingWeek: z.number().int().min(0),
+  completedLast30: z.number().int().min(0),
+  declinedLast30: z.number().int().min(0),
+  revenueLast30Minor: z.number().int().min(0),
+  /** Confirmed and still ahead: money that is coming if nothing goes wrong. */
+  pipelineMinor: z.number().int().min(0),
+  currency: z.string().min(1),
+  /** Oldest first, zero-filled, always `STATS_WINDOW_DAYS` long. */
+  perDay: z.array(providerBookingStatsDayReadModel).length(STATS_WINDOW_DAYS),
+});
+
+export type ProviderBookingStatsDayDTO = z.infer<typeof providerBookingStatsDayReadModel>;
+export type ProviderBookingStatsDTO = z.infer<typeof providerBookingStatsReadModel>;

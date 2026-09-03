@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarCheck } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
 import type {
@@ -10,16 +10,13 @@ import type {
 import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
-import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
-import { formatMoney } from "@/features/wallet/domain/money";
 import {
   PROVIDER_BOOKINGS_PAGE_SIZE,
   PROVIDER_TABS,
-  timeLeftWording,
   type ProviderTab,
 } from "../domain/status";
 import { useProviderBookings } from "../viewmodel/use-provider-bookings";
-import { BookingStatusBadge } from "./booking-status-badge";
+import { bookingColumns, bookingRow } from "./booking-row";
 
 /**
  * The workspace's bookings, one tab at a time. Three tabs by what the
@@ -27,9 +24,12 @@ import { BookingStatusBadge } from "./booking-status-badge";
  * over ten statuses that are the system's vocabulary, not theirs.
  *
  * The rows are `CollectionCard`'s: a table from `md`, stacked cards below,
- * the same shape the services and members pages draw. Search goes to the
- * server (`q`), debounced, because the list is paged and a client-side
- * filter over one page would say "no matches" about rows on the next.
+ * the same shape the services and members pages draw. Each one is built by
+ * `bookingRow`, which the dashboard's "Reservas recentes" shares — the two
+ * screens differ in which columns they ask for, never in what a row says.
+ * Search goes to the server (`q`), debounced, because the list is paged and
+ * a client-side filter over one page would say "no matches" about rows on
+ * the next.
  */
 export function BookingsPage() {
   const { t, i18n } = useTranslation("provider");
@@ -237,73 +237,14 @@ export function BookingsPage() {
         search={typed}
         onSearchChange={setTyped}
         searchPlaceholder={t("bookings.searchPlaceholder")}
-        columns={[
-          { key: "customer", label: t("bookings.col.customer"), className: "pl-5" },
-          { key: "service", label: t("bookings.col.service"), skeletonWidth: "w-40" },
-          { key: "when", label: t("bookings.col.when"), skeletonWidth: "w-28" },
-          {
-            key: "price",
-            label: t("bookings.col.price"),
-            align: "right",
-            skeletonWidth: "w-20",
-          },
-          {
-            key: "status",
-            label: t("bookings.col.status"),
-            skeletonWidth: "w-24",
-            skeletonShape: "badge",
-            className: "pr-5",
-          },
-        ]}
+        columns={bookingColumns(t)}
         emptyTitle={t(`bookings.empty.${tab}.title`)}
         emptyText={t(`bookings.empty.${tab}.body`)}
         emptyBadge={CalendarCheck}
         noMatchesTitle={t("bookings.noMatchesTitle")}
         noMatchesText={t("bookings.noMatches")}
         filtered={q.trim() !== "" || memberId !== null}
-        rows={visible.map((b) => {
-          const slot = compactSlotWording(b.startsAt, b.endsAt, locale, b.timezone);
-          const left = b.respondBy ? timeLeftWording(b.respondBy, now) : null;
-          return {
-            key: b.id,
-            // The customer's name *is* the way into the booking: the row has
-            // no other link, and a whole-row click handler is not one — it
-            // cannot be tabbed to, opened in a new tab, or read out as a
-            // destination.
-            primary: (
-              <Link
-                to="/provider/$slug/bookings/$bookingId"
-                params={{ slug, bookingId: b.id }}
-                className="type-body-medium block font-semibold hover:underline"
-              >
-                {b.customerFirstName}
-              </Link>
-            ),
-            cells: {
-              service: `${b.serviceName} · ${b.memberFirstName ?? t("bookings.memberAnyone")}`,
-              when: (
-                <span className="tabular-nums">
-                  {slot.date} · {slot.start}
-                </span>
-              ),
-              price: (
-                <span className="tabular-nums">
-                  {formatMoney(b.priceMinor, b.currency, locale)}
-                </span>
-              ),
-              status: (
-                <span className="inline-flex items-center gap-2">
-                  <BookingStatusBadge status={b.status} />
-                  {left && (
-                    <span className="type-caption text-[var(--color-muted-foreground)]">
-                      {left}
-                    </span>
-                  )}
-                </span>
-              ),
-            },
-          };
-        })}
+        rows={visible.map((b) => bookingRow(b, { slug, locale, now, t }))}
       />
 
       {answered && (

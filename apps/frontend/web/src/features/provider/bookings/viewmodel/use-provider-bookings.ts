@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BookingDeclineReason } from "@ntizo/shared/read-models";
+import { RECENT_BOOKINGS_LIMIT } from "../domain/status";
 import {
   acceptBooking,
   declineBooking,
@@ -11,29 +12,35 @@ export function useProviderBookings(input: ProviderBookingsPageInput) {
   return useQuery(providerBookingQueries.page(input));
 }
 
+/** Every number the dashboard draws. */
+export function useProviderStats(providerId: string) {
+  return useQuery(providerBookingQueries.stats(providerId));
+}
+
 /**
- * How many requests are waiting — the sidebar's badge.
- *
- * The *same* query the list's "Pedidos" tab runs, deliberately: an identical
- * key means a provider who opens that tab pays for one request rather than
- * two, and answering a booking drops the badge and the row together on the
- * one invalidation `useAnswerBooking` already fires. `select` narrows it to
- * the single number the badge draws, so a refetch that comes back with the
- * same total re-renders nothing.
+ * How many requests are waiting — the sidebar's badge and the dashboard's
+ * first card, from one cache entry. It used to read `total` off a page of the
+ * list, which fetched twenty rows, a count and the member roster to show one
+ * number on every screen in the zone.
  */
 export function useAwaitingCount(providerId: string | undefined) {
   const query = useQuery({
-    ...providerBookingQueries.page({
-      providerId: providerId ?? "",
-      tab: "requests",
-      q: "",
-      memberId: null,
-      offset: 0,
-    }),
-    select: (page) => page.total,
-    staleTime: 30_000,
+    ...providerBookingQueries.stats(providerId ?? ""),
+    select: (stats) => stats.awaitingResponse,
   });
   return query.data ?? 0;
+}
+
+/** The dashboard's "Reservas recentes": the newest eight, whatever state they are in. */
+export function useRecentBookings(providerId: string) {
+  return useProviderBookings({
+    providerId,
+    tab: "all",
+    q: "",
+    memberId: null,
+    offset: 0,
+    limit: RECENT_BOOKINGS_LIMIT,
+  });
 }
 
 export function useProviderBooking(providerId: string, bookingId: string) {
