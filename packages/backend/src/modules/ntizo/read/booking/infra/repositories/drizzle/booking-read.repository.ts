@@ -1,15 +1,39 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  type AnyColumn,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
-import { booking } from "../../../../../shared/infrastructure/database/booking/schemas";
+import {
+  booking,
+  bookingChange,
+} from "../../../../../shared/infrastructure/database/booking/schemas";
 import { service } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import {
   provider,
   providerDocument,
+  providerMember,
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
-import type {
-  BookingListRow,
-  BookingReadRepositoryPort,
+import { profile, user } from "../../../../../shared/infrastructure/database/user/schemas";
+import {
+  type BookingListRow,
+  type BookingReadRepositoryPort,
+  PROVIDER_TAB_STATUSES,
+  type ProviderBookingRow,
+  type ProviderListFilter,
+  type ProviderMemberOption,
+  type ProviderTimelineRow,
 } from "../../../app/ports/outbound/booking-read.repository.port";
 
 /**
@@ -61,6 +85,84 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
 
     const row = rows[0];
     return row ? toRow(row) : null;
+  }
+
+  async listForProvider(
+    providerId: string,
+    filter: ProviderListFilter,
+    limit: number,
+    offset: number,
+  ): Promise<ProviderBookingRow[]> {
+    const rows = await providerSelect()
+      .where(providerWhere(providerId, filter))
+      .orderBy(...providerOrder(filter.tab))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map(toProviderRow);
+  }
+
+  async countForProvider(providerId: string, filter: ProviderListFilter): Promise<number> {
+    // The one join `providerWhere` can reach for — the customer's profile,
+    // which the search matches on. Everything else the list selects is
+    // display, and a count has nothing to display.
+    const [row] = await getDb()
+      .select({ n: count() })
+      .from(booking)
+      .leftJoin(profile, eq(profile.userId, booking.customerId))
+      .where(providerWhere(providerId, filter));
+
+    return Number(row?.n ?? 0);
+  }
+
+  async findForProvider(bookingId: string, providerId: string): Promise<ProviderBookingRow | null> {
+    const rows = await providerSelect()
+      // Ownership in the WHERE, as `findForCustomer` — and a draft is not
+      // the provider's to see, so it is excluded here rather than after.
+      .where(
+        and(
+          eq(booking.id, bookingId),
+          eq(booking.providerId, providerId),
+          sql`${booking.status} <> 'DRAFT'`,
+        ),
+      )
+      .limit(1);
+
+    const row = rows[0];
+    return row ? toProviderRow(row) : null;
+  }
+
+  async timelineFor(bookingId: string): Promise<ProviderTimelineRow[]> {
+    return getDb()
+      .select({
+        changedAt: bookingChange.changedAt,
+        changedByUserId: bookingChange.changedByUserId,
+        reason: bookingChange.reason,
+      })
+      .from(bookingChange)
+      .where(eq(bookingChange.bookingId, bookingId))
+      // Ties broken by id for the same reason the lists break theirs: two
+      // hops in one transaction share `changedAt`'s `defaultNow()`, and an
+      // order that changes between reads is not a history.
+      .orderBy(asc(bookingChange.changedAt), asc(bookingChange.id));
+  }
+
+  async membersOf(providerId: string): Promise<ProviderMemberOption[]> {
+    const rows = await getDb()
+      .select({ id: providerMember.id, firstName: profile.firstName, email: user.email })
+      .from(providerMember)
+      .leftJoin(profile, eq(profile.userId, providerMember.userId))
+      .leftJoin(user, eq(user.id, providerMember.userId))
+      .where(eq(providerMember.providerId, providerId))
+      .orderBy(asc(providerMember.joinedAt));
+
+    // A member with no first name is named by the local part of their
+    // email, which is what the members page falls back to as well.
+    return rows.map((r) => ({
+      id: r.id,
+      firstName:
+        r.firstName && r.firstName.trim() !== "" ? r.firstName : (r.email ?? "").split("@")[0] || "—",
+    }));
   }
 }
 
@@ -236,5 +338,180 @@ function toRow(
     status: row.status as BookingListRow["status"],
     providerRatingAverage: coerceRating(row.providerRatingAverage),
     providerVerified: providerVerifiedId !== null,
+  };
+}
+
+/**
+ * `profile`, joined a second time under its own name — the customer's row and
+ * the assigned member's row are both `user.profile`, and a query that joined
+ * that table twice without renaming one of them would be ambiguous SQL.
+ *
+ * Module-level, matching `service-pricing.reader.ts`'s own pair of aliases:
+ * `alias` builds immutable table metadata and reaches for no connection, so
+ * there is nothing to rebuild per call — and one shared constant is what
+ * makes it impossible for the join and the selected column to name two
+ * different aliases.
+ */
+const memberProfile = alias(profile, "member_profile");
+
+/**
+ * The provider's joined select, whole — built once and used by both
+ * `listForProvider` and `findForProvider`, which add only the `WHERE` (and
+ * the list's order and page) that differ.
+ *
+ * Two copies of this chain is exactly the defect `selectedColumns` above was
+ * written to prevent, one level up: a join added to the list and not to the
+ * detail would give the same booking two contents depending on which page the
+ * provider reached it through.
+ *
+ * `provider` is an `innerJoin` for the reason `selectedColumns` gives —
+ * `booking.provider_id` is `NOT NULL` and references it, so it cannot drop a
+ * row — and the rest are left joins so that a booking whose customer has no
+ * profile row, or whose member has been removed, still reaches the provider
+ * who has to answer it rather than silently vanishing from their list.
+ */
+function providerSelect() {
+  return getDb()
+    .select(providerColumns())
+    .from(booking)
+    .innerJoin(provider, eq(provider.id, booking.providerId))
+    .leftJoin(service, eq(service.id, booking.serviceId))
+    .leftJoin(profile, eq(profile.userId, booking.customerId))
+    .leftJoin(user, eq(user.id, booking.customerId))
+    .leftJoin(providerMember, eq(providerMember.id, booking.providerMemberId))
+    .leftJoin(memberProfile, eq(memberProfile.userId, providerMember.userId));
+}
+
+/**
+ * The provider's WHERE: this workspace, never a draft, the tab's statuses,
+ * the tab's side of `now` for the two live statuses, an optional member and
+ * an optional search. `unaccent` is not installed, so the search lowers both
+ * sides and strips the accents the launch market's names actually carry.
+ */
+function providerWhere(providerId: string, filter: ProviderListFilter) {
+  const live = inArray(booking.status, [...PROVIDER_TAB_STATUSES.upcoming]);
+  const byTab =
+    filter.tab === "requests"
+      ? inArray(booking.status, [...PROVIDER_TAB_STATUSES.requests])
+      : filter.tab === "upcoming"
+        ? and(live, gte(booking.startsAt, filter.now))
+        : or(
+            inArray(booking.status, [...PROVIDER_TAB_STATUSES.history]),
+            and(live, lt(booking.startsAt, filter.now)),
+          );
+  const byMember =
+    filter.memberId === null ? undefined : eq(booking.providerMemberId, filter.memberId);
+  const needle = filter.q?.trim();
+  const bySearch =
+    needle === undefined || needle === ""
+      ? undefined
+      : or(
+          ilike(unaccented(profile.firstName), `%${unaccentedJs(needle)}%`),
+          ilike(unaccented(booking.serviceName), `%${unaccentedJs(needle)}%`),
+        );
+  return and(
+    eq(booking.providerId, providerId),
+    sql`${booking.status} <> 'DRAFT'`,
+    byTab,
+    byMember,
+    bySearch,
+  );
+}
+
+/**
+ * The accents Portuguese, Spanish and French names actually carry, folded
+ * away. `unaccent` is a contrib extension this database does not have, and
+ * `translate` needs none — a customer typing "goncalves" has to find
+ * "Gonçalves", because that is how the name gets typed on a phone.
+ */
+function unaccented(column: AnyColumn) {
+  return sql<string>`translate(lower(${column}), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')`;
+}
+
+/** The same fold on the needle, so both sides of the `ilike` are in one alphabet. */
+function unaccentedJs(value: string): string {
+  return value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+/** Requests newest first; upcoming soonest first; history most recent first. Ties broken by id, as `listForCustomer` does. */
+function providerOrder(tab: ProviderListFilter["tab"]) {
+  if (tab === "requests") return [desc(booking.createdAt), desc(booking.id)];
+  if (tab === "upcoming") return [asc(booking.startsAt), asc(booking.id)];
+  return [desc(booking.startsAt), desc(booking.id)];
+}
+
+/**
+ * Exactly the columns `ProviderBookingRow` carries — never `select()` with no
+ * argument, for the reason `selectedColumns` above gives, and one selection
+ * for the list and the detail alike for the same reason again.
+ *
+ * Six are not `booking`'s. `service.location_type` and `provider.timezone`
+ * are joined for the reasons `selectedColumns` records. The other four are
+ * the two people a provider has to be able to reach: the customer's first
+ * name, phone and email — needed to turn up at the right door and call ahead
+ * if they cannot — and the assigned member's first name, off the aliased
+ * second copy of `profile` described above.
+ */
+function providerColumns() {
+  return {
+    id: booking.id,
+    status: booking.status,
+    createdAt: booking.createdAt,
+    customerId: booking.customerId,
+    serviceId: booking.serviceId,
+    serviceOptionId: booking.serviceOptionId,
+    serviceName: booking.serviceName,
+    optionName: booking.optionName,
+    durationMinutes: booking.durationMinutes,
+    locationType: service.locationType,
+    providerMemberId: booking.providerMemberId,
+    memberFirstName: memberProfile.firstName,
+    customerFirstName: profile.firstName,
+    customerPhone: profile.phoneNumber,
+    customerEmail: user.email,
+    startsAt: booking.startsAt,
+    endsAt: booking.endsAt,
+    timezone: provider.timezone,
+    addressLabel: booking.addressLabel,
+    addressLine: booking.addressLine,
+    addressCity: booking.addressCity,
+    addressDistrict: booking.addressDistrict,
+    addressDirections: booking.addressDirections,
+    description: booking.description,
+    paymentRef: booking.paymentRef,
+    priceMinor: booking.priceMinor,
+    commissionBps: booking.commissionBps,
+    commissionMinor: booking.commissionMinor,
+    currency: booking.currency,
+    expiresAt: booking.expiresAt,
+  };
+}
+
+/**
+ * One selected row as `ProviderBookingRow` describes it.
+ *
+ * No `status` cast, unlike `toRow` above: this row's `status` stays the plain
+ * `string` the column is, because the provider's tabs are the thing that
+ * narrows it and they do so in the `WHERE`, not in a type. The `DTO` mapper
+ * Task 3 builds is where it becomes a union again.
+ *
+ * The one thing this does normalise is a blank first name. `profile`'s own
+ * `.default("")` means "this person has not filled their name in", and an
+ * empty string reaching a page renders as a nameless gap; null is what the
+ * read model already means by "no name to show", so it is what a blank
+ * becomes here rather than at every reader that prints one.
+ */
+function toProviderRow(
+  row: Omit<ProviderBookingRow, "memberFirstName" | "customerFirstName"> & {
+    memberFirstName: string | null;
+    customerFirstName: string | null;
+  },
+): ProviderBookingRow {
+  return {
+    ...row,
+    memberFirstName:
+      row.memberFirstName && row.memberFirstName.trim() !== "" ? row.memberFirstName : null,
+    customerFirstName:
+      row.customerFirstName && row.customerFirstName.trim() !== "" ? row.customerFirstName : null,
   };
 }
