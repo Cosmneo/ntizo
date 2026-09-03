@@ -10,9 +10,46 @@ import type {
 } from "../app/ports/outbound/booking-read.repository.port";
 import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
 import { GetProviderBookingProjection } from "../app/use-cases/get-provider-booking.projection";
+import { GetProviderStatsProjection, fillDays } from "../app/use-cases/get-provider-stats.projection";
 import { toProviderBookingDetailDTO } from "../app/use-cases/to-provider-booking-dto";
 
 const NOW = new Date("2026-09-04T10:00:00.000Z");
+
+/** A workspace with no bookings at all — `FakeRepo`'s default `stats`. */
+const ZERO_STATS: ProviderStats = {
+  totals: {
+    awaitingResponse: 0,
+    awaitingPayment: 0,
+    upcomingToday: 0,
+    upcomingWeek: 0,
+    completedLast30: 0,
+    declinedLast30: 0,
+    revenueLast30Minor: 0,
+    pipelineMinor: 0,
+    currency: null,
+    today: "2026-09-04",
+  },
+  perDay: [],
+};
+
+const STATS: ProviderStats = {
+  totals: {
+    awaitingResponse: 3,
+    awaitingPayment: 1,
+    upcomingToday: 2,
+    upcomingWeek: 5,
+    completedLast30: 9,
+    declinedLast30: 1,
+    revenueLast30Minor: 1_240_000,
+    pipelineMinor: 630_000,
+    currency: "MZN",
+    today: "2026-09-03",
+  },
+  perDay: [
+    { date: "2026-09-01", requests: 2, confirmed: 1 },
+    { date: "2026-09-03", requests: 4, confirmed: 3 },
+  ],
+};
 
 function row(over: Partial<ProviderBookingRow> = {}): ProviderBookingRow {
   return {
@@ -52,6 +89,7 @@ function row(over: Partial<ProviderBookingRow> = {}): ProviderBookingRow {
 
 class FakeRepo implements BookingReadRepositoryPort {
   public calls: string[] = [];
+  public stats: ProviderStats = ZERO_STATS;
   constructor(
     private rows: ProviderBookingRow[] = [row()],
     private changes: ProviderTimelineRow[] = [],
@@ -73,14 +111,9 @@ class FakeRepo implements BookingReadRepositoryPort {
     return this.changes;
   }
   async membersOf() { return this.members; }
-  /**
-   * Nothing in this file reads the dashboard's numbers — the port requires
-   * the method, so it is here. It throws rather than answering zeros so that a
-   * projection which starts calling it says so, instead of quietly passing
-   * against a fake that has nothing to give it.
-   */
-  async statsForProvider(): Promise<ProviderStats> {
-    throw new Error("statsForProvider is not part of these projections");
+  async statsForProvider(providerId: string): Promise<ProviderStats> {
+    this.calls.push(`stats:${providerId}`);
+    return this.stats;
   }
 }
 
@@ -198,5 +231,53 @@ describe("GetProviderBookingProjection", () => {
     const dto = await new GetProviderBookingProjection(repo).execute({ providerId: "prov-1", bookingId: "bk-1", now: NOW });
     expect(dto?.timeline).toHaveLength(3);
     expect(repo.calls).toEqual(["find:bk-1:prov-1", "timeline:bk-1"]);
+  });
+});
+
+describe("fillDays", () => {
+  it("returns thirty days ending on the provider's today, oldest first", () => {
+    const days = fillDays("2026-09-03", []);
+    expect(days).toHaveLength(30);
+    expect(days[0]!.date).toBe("2026-08-05");
+    expect(days.at(-1)!.date).toBe("2026-09-03");
+  });
+
+  it("keeps the days that have something and zeroes the ones that do not", () => {
+    const days = fillDays("2026-09-03", STATS.perDay);
+    expect(days.at(-1)).toEqual({ date: "2026-09-03", requests: 4, confirmed: 3 });
+    expect(days.find((d) => d.date === "2026-09-01")).toEqual({ date: "2026-09-01", requests: 2, confirmed: 1 });
+    expect(days.find((d) => d.date === "2026-09-02")).toEqual({ date: "2026-09-02", requests: 0, confirmed: 0 });
+  });
+
+  it("drops a day the repository returned from outside the window rather than making thirty-one", () => {
+    const days = fillDays("2026-09-03", [{ date: "2026-01-01", requests: 9, confirmed: 9 }]);
+    expect(days).toHaveLength(30);
+    expect(days.some((d) => d.date === "2026-01-01")).toBe(false);
+  });
+});
+
+describe("GetProviderStatsProjection", () => {
+  it("hands the numbers through and fills the chart", async () => {
+    const repo = new FakeRepo();
+    repo.stats = STATS;
+    const dto = await new GetProviderStatsProjection(repo).execute({
+      providerId: "prov-1",
+      now: new Date("2026-09-03T10:00:00.000Z"),
+    });
+    expect(repo.calls).toEqual(["stats:prov-1"]);
+    expect(dto.revenueLast30Minor).toBe(1_240_000);
+    expect(dto.perDay).toHaveLength(30);
+    expect(dto.perDay.at(-1)).toEqual({ date: "2026-09-03", requests: 4, confirmed: 3 });
+  });
+
+  it("names a currency for a workspace that has never been booked", async () => {
+    const repo = new FakeRepo();
+    repo.stats = { totals: { ...STATS.totals, currency: null }, perDay: [] };
+    const dto = await new GetProviderStatsProjection(repo).execute({
+      providerId: "prov-1",
+      now: new Date("2026-09-03T10:00:00.000Z"),
+    });
+    expect(dto.currency).toBe("MZN");
+    expect(dto.perDay.every((d) => d.requests === 0 && d.confirmed === 0)).toBe(true);
   });
 });
