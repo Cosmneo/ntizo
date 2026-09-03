@@ -7,6 +7,7 @@ import {
   chartGeometry,
   chartTicks,
   seriesTotals,
+  tooltipPlacement,
 } from "../domain/activity-chart";
 
 /**
@@ -135,11 +136,11 @@ export function ActivityChart({
 
           {hovered !== null && (
             <p
-              className="type-caption pointer-events-none absolute -top-1 rounded-[var(--radius-field)] bg-[var(--color-foreground)] px-2 py-1 text-[var(--color-background)]"
-              style={{
-                left: `${((groups[hovered]!.x + groups[hovered]!.width / 2) / CHART.width) * 100}%`,
-                transform: "translateX(-50%)",
-              }}
+              // `max-w-full` and the placement together are what keep the
+              // label on the card: the shift is only guaranteed to contain a
+              // tooltip no wider than the plot it sits over.
+              className="type-caption pointer-events-none absolute -top-1 max-w-full rounded-[var(--radius-field)] bg-[var(--color-foreground)] px-2 py-1 text-[var(--color-background)]"
+              style={tooltipPlacement(groups[hovered]!.x, groups[hovered]!.width)}
             >
               {dayLabel(groups[hovered]!.day)}
             </p>

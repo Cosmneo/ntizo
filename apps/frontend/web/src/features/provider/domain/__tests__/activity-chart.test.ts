@@ -5,6 +5,7 @@ import {
   chartGeometry,
   chartTicks,
   seriesTotals,
+  tooltipPlacement,
 } from "../activity-chart";
 
 /**
@@ -94,5 +95,32 @@ describe("seriesTotals and chartTicks", () => {
     expect(ticks[0]!.index).toBe(0);
     expect(ticks.at(-1)!.index).toBe(29);
     expect(ticks[0]!.label.length).toBeGreaterThan(0);
+  });
+});
+
+describe("tooltipPlacement", () => {
+  /**
+   * The anchor and the shift are the same number, which is what contains the
+   * label: its left edge lands at `centre × (card − tooltip)` and its right
+   * at `card − (1 − centre) × (card − tooltip)`, both inside the card for any
+   * label no wider than it. A flat `translateX(-50%)` — what this replaced —
+   * put half of day one's label outside the card entirely.
+   */
+  it("shifts each day by its own position, so the label never crosses an edge", () => {
+    const { groups } = chartGeometry(days);
+    for (const group of groups) {
+      const { left, transform } = tooltipPlacement(group.x, group.width);
+      expect(transform).toBe(`translateX(-${left})`);
+      const centre = Number.parseFloat(left);
+      expect(centre).toBeGreaterThanOrEqual(0);
+      expect(centre).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("keeps the middle of the window centred and pins the two ends", () => {
+    const { groups } = chartGeometry(days);
+    expect(tooltipPlacement(groups[0]!.x, groups[0]!.width).left).toBe("1.67%");
+    expect(tooltipPlacement(groups[15]!.x, groups[15]!.width).left).toBe("51.67%");
+    expect(tooltipPlacement(groups[29]!.x, groups[29]!.width).left).toBe("98.33%");
   });
 });

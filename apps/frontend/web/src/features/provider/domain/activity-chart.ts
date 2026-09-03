@@ -89,6 +89,32 @@ export function barPath(x: number, y: number, w: number, h: number, r: number): 
   return `M${x},${bottom} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${bottom} Z`;
 }
 
+/**
+ * Where the tooltip for one day sits over the plot, as CSS.
+ *
+ * `left` is the day's own centre, as a percentage of the plot's width. The
+ * shift is the same number — as a percentage of the *tooltip's* width, which
+ * is what `translateX` measures — and that substitution is the whole fix: a
+ * flat `translateX(-50%)` centres every label, so the first day's and the
+ * last day's hang half a label past the card with nothing to clip them.
+ *
+ * With both equal to `c`, the label's left edge lands at `c × (card −
+ * tooltip)` and its right edge at `card − (1 − c) × (card − tooltip)`. Both
+ * stay inside the card for any label no wider than the card, at any
+ * viewport, without measuring one: the first day anchors its left edge to
+ * the day and grows rightwards, the last anchors its right edge and grows
+ * left, and the middle of the window is still the −50% that centres.
+ */
+export function tooltipPlacement(
+  x: number,
+  width: number,
+): { left: string; transform: string } {
+  // Two decimals: enough that thirty days are visibly distinct, few enough
+  // that the value is a number a person can read in the DOM.
+  const centre = Math.round(((x + width / 2) / CHART.width) * 10_000) / 100;
+  return { left: `${centre}%`, transform: `translateX(-${centre}%)` };
+}
+
 export function seriesTotals(days: readonly ProviderBookingStatsDayDTO[]): {
   requests: number;
   confirmed: number;
