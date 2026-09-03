@@ -299,5 +299,12 @@
     "customer": "Pessoal",
     "provider": "Prestador"
   },
-  "supportAudienceAll": "Todos"
+  "supportAudienceAll": "Todos",
+  "supportBackToQueue": "Voltar à fila",
+  "supportProvider": "Prestador",
+  "supportBooking": "Reserva",
+  "supportResolve": "Marcar como resolvido",
+  "supportResolvedNotice": "Marcado como resolvido. Se o requerente responder, o pedido reabre.",
+  "supportPlatformSender": "Suporte Ntizo",
+  "supportNotFound": "Este pedido não existe."
 }

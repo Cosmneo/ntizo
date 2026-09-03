@@ -299,5 +299,12 @@
     "customer": "Privato",
     "provider": "Fornitore"
   },
-  "supportAudienceAll": "Tutte"
+  "supportAudienceAll": "Tutte",
+  "supportBackToQueue": "Torna alla coda",
+  "supportProvider": "Fornitore",
+  "supportBooking": "Prenotazione",
+  "supportResolve": "Segna come risolta",
+  "supportResolvedNotice": "Segnata come risolta. Se il richiedente risponde, si riapre.",
+  "supportPlatformSender": "Assistenza Ntizo",
+  "supportNotFound": "Questa richiesta non esiste."
 }

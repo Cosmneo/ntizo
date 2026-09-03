@@ -299,5 +299,12 @@
     "customer": "Personal",
     "provider": "Provider"
   },
-  "supportAudienceAll": "All"
+  "supportAudienceAll": "All",
+  "supportBackToQueue": "Back to the queue",
+  "supportProvider": "Provider",
+  "supportBooking": "Booking",
+  "supportResolve": "Mark as resolved",
+  "supportResolvedNotice": "Marked as resolved. If the requester replies, it reopens.",
+  "supportPlatformSender": "Ntizo Support",
+  "supportNotFound": "No such request."
 }

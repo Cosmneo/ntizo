@@ -299,5 +299,12 @@
     "customer": "Particulier",
     "provider": "Aanbieder"
   },
-  "supportAudienceAll": "Alle"
+  "supportAudienceAll": "Alle",
+  "supportBackToQueue": "Terug naar de wachtrij",
+  "supportProvider": "Aanbieder",
+  "supportBooking": "Boeking",
+  "supportResolve": "Markeren als opgelost",
+  "supportResolvedNotice": "Gemarkeerd als opgelost. Als de aanvrager reageert, wordt het opnieuw geopend.",
+  "supportPlatformSender": "Ntizo-ondersteuning",
+  "supportNotFound": "Dit verzoek bestaat niet."
 }

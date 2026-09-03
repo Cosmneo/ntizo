@@ -97,9 +97,6 @@ export function AdminSupportPage() {
         rows={requests.map((request) => ({
           key: request.threadId,
           primary: (
-            // @ts-expect-error — Task 9 adds the `/admin/support/$threadId` route; this
-            // link is correct today, the route just does not exist in the tree yet.
-            // Delete this suppression once `routes/admin/support.$threadId.tsx` lands.
             <Link to="/admin/support/$threadId" params={{ threadId: request.threadId }} className="grid gap-0.5 no-underline">
               <span className="type-body-medium truncate">{request.subject}</span>
               <span className="type-caption truncate text-[var(--color-muted-foreground)]">

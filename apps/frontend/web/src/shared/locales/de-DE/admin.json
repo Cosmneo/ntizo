@@ -299,5 +299,12 @@
     "customer": "Privat",
     "provider": "Anbieter"
   },
-  "supportAudienceAll": "Alle"
+  "supportAudienceAll": "Alle",
+  "supportBackToQueue": "Zurück zur Warteschlange",
+  "supportProvider": "Anbieter",
+  "supportBooking": "Buchung",
+  "supportResolve": "Als erledigt markieren",
+  "supportResolvedNotice": "Als erledigt markiert. Antwortet der Anfragende, wird die Anfrage wieder geöffnet.",
+  "supportPlatformSender": "Ntizo-Support",
+  "supportNotFound": "Diese Anfrage gibt es nicht."
 }
