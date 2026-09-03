@@ -42,7 +42,9 @@ export function buildContactInboxEmail(params: {
 }): { subject: string; html: string; text: string } {
   const { request, stage, adminUrl } = params;
   const tag = stage === "prod" ? "[Ntizo]" : `[Ntizo ${stage}]`;
-  const subject = `${tag} ${KIND_LABEL[request.kind]}: ${TOPIC_LABEL[request.topic]} — ${request.name}`;
+  // `request.name` is a stranger's word: one line of defence against header
+  // injection in a mail client that reads the subject too literally.
+  const subject = `${tag} ${KIND_LABEL[request.kind]}: ${TOPIC_LABEL[request.topic]} — ${request.name}`.replace(/[\r\n]+/g, " ");
 
   const lines: Array<[string, string]> = [
     ["Referência", request.reference],

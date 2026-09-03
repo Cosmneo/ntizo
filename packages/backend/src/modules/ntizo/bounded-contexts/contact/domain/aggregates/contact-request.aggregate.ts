@@ -21,6 +21,7 @@ export const MESSAGE_MAX = 2000;
 export const EMAIL_MAX = 254;
 export const ORIGIN_PATH_MAX = 200;
 export const LOCALE_MAX = 16;
+export const USER_AGENT_MAX = 512;
 
 /** Something, an @, something, a dot, something. Not RFC 5322 — a reply has to reach it, that is all. */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,8 +105,11 @@ export class ContactRequest {
       requesterUserId: input.requesterUserId,
       locale: input.locale.trim().slice(0, LOCALE_MAX) || "en-US",
       originPath: input.originPath?.trim().slice(0, ORIGIN_PATH_MAX) || null,
-      ipAddress: input.ipAddress,
-      userAgent: input.userAgent?.slice(0, 512) ?? null,
+      // Behind Cloudflare, `cf-connecting-ip` wins and is always a single
+      // address; this cap is for the `x-forwarded-for` fallback, which a
+      // client can pad with a long chain of hops.
+      ipAddress: input.ipAddress?.slice(0, 64) ?? null,
+      userAgent: input.userAgent?.slice(0, USER_AGENT_MAX) ?? null,
       status: "open",
       resolvedAt: null,
       resolvedByUserId: null,

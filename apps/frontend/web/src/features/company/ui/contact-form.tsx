@@ -12,6 +12,8 @@ import { isSafeInternalPath } from "@/shared/lib/zones";
 import { MESSAGE_MAX, NAME_MAX, validateContactForm, type ContactFormErrors } from "../domain/contact-form-validation";
 import { useSubmitContactRequest } from "../viewmodel/use-submit-contact-request";
 
+type ContactField = "name" | "email" | "message";
+
 /**
  * One form, two kinds.
  *
@@ -46,7 +48,13 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
   const [message, setMessage] = useState("");
   const [website, setWebsite] = useState("");
   const [attempted, setAttempted] = useState(false);
+  const [touched, setTouched] = useState<ReadonlySet<ContactField>>(new Set());
   const [prefilled, setPrefilled] = useState(false);
+
+  /** A field's refusal shows once it has been left, not only once the whole form has been tried. */
+  function markTouched(field: ContactField) {
+    setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
+  }
 
   useEffect(() => {
     if (!user || prefilled) return;
@@ -56,7 +64,13 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
   }, [user, prefilled]);
 
   const submit = useSubmitContactRequest();
-  const errors: ContactFormErrors = attempted ? validateContactForm({ name, email, message }, { emailRequired }) : {};
+  const allErrors = validateContactForm({ name, email, message }, { emailRequired });
+  const shown = (field: ContactField) => attempted || touched.has(field);
+  const errors: ContactFormErrors = {
+    name: shown("name") ? allErrors.name : undefined,
+    email: shown("email") ? allErrors.email : undefined,
+    message: shown("message") ? allErrors.message : undefined,
+  };
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -138,7 +152,9 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
             placeholder={t("form.namePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => markTouched("name")}
             aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? "contact-name-error" : undefined}
           />
         </Field>
 
@@ -156,7 +172,9 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
             placeholder={t("form.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => markTouched("email")}
             aria-invalid={errors.email ? true : undefined}
+            aria-describedby={errors.email ? "contact-email-error" : undefined}
           />
         </Field>
 
@@ -179,7 +197,9 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
             placeholder={messagePlaceholder}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onBlur={() => markTouched("message")}
             aria-invalid={errors.message ? true : undefined}
+            aria-describedby={errors.message ? "contact-message-error" : undefined}
             className="type-body w-full rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3.5 py-2.5 focus-visible:border-[var(--color-primary)] focus-visible:outline-none"
           />
         </Field>
@@ -187,7 +207,7 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
         {/* The trap. Off-screen, out of the tab order, invisible to assistive
             tech; `autoComplete="off"` so a browser does not fill it for a
             person either. */}
-        <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">
+        <div className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">
           <label htmlFor="contact-website">Website</label>
           <input
             id="contact-website"
@@ -232,12 +252,15 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
 function Field({
   label, htmlFor, hint, error, children,
 }: { label: string; htmlFor: string; hint?: string; error?: string | false; children: React.ReactNode }) {
+  // Not injected onto `children` — there is no cloning here. Each field's own
+  // input computes the same id and sets `aria-describedby` itself.
+  const errorId = `${htmlFor}-error`;
   return (
     <div>
       <Label htmlFor={htmlFor}>{label}</Label>
       {hint && <p className="mt-1 mb-0 text-xs text-[color:var(--l-muted)]">{hint}</p>}
       <div className="mt-2">{children}</div>
-      {error && <p className="mt-1.5 mb-0 text-xs text-[var(--color-destructive)]">{error}</p>}
+      {error && <p id={errorId} className="mt-1.5 mb-0 text-xs text-[var(--color-destructive)]">{error}</p>}
     </div>
   );
 }

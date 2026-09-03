@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type BrowserContext } from "@playwright/test";
 import { createVerifiedUser } from "../fixtures/auth";
 import { fillSignInForm } from "../fixtures/ui";
 import { sql } from "../fixtures/db";
@@ -32,6 +32,7 @@ test("a visitor writes to us, and an administrator resolves it", async ({ page, 
   const name = `E2E Contact ${suffix}`;
   let reference = "";
   let admin: Awaited<ReturnType<typeof createVerifiedUser>> | undefined;
+  let adminContext: BrowserContext | undefined;
 
   try {
     await page.goto("/contact");
@@ -68,7 +69,7 @@ test("a visitor writes to us, and an administrator resolves it", async ({ page, 
     expect(rows[0]!.id.replace(/-/g, "").slice(0, 6).toUpperCase()).toBe(reference);
 
     admin = await createVerifiedUser("admin", { firstName: "Ada", lastName: "Admin" });
-    const adminContext = await browser.newContext();
+    adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
     await adminPage.goto("/sign-in");
     // Same first-compile hydration race as `/contact` above — this is a
@@ -98,9 +99,8 @@ test("a visitor writes to us, and an administrator resolves it", async ({ page, 
       SELECT status, resolved_by_user_id FROM ntizo_contact.contact_request WHERE name = ${name}`;
     expect(after[0]!.status).toBe("resolved");
     expect(after[0]!.resolved_by_user_id).toBe(admin.id);
-
-    await adminContext.close();
   } finally {
+    if (adminContext) await adminContext.close();
     await sql()`DELETE FROM ntizo_contact.contact_request WHERE name = ${name}`.catch((err) =>
       console.error("[e2e] company cleanup: contact_request delete failed", err),
     );

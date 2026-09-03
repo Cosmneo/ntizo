@@ -48,6 +48,14 @@ describe("ContactRequestPage — contact", () => {
     expect(fakes.submit).not.toHaveBeenCalled();
   });
 
+  it("shows a field's refusal on blur, before any submit is attempted", async () => {
+    await renderCompanyPage(ContactPage, "/contact");
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.tab();
+    expect(screen.getByText("Tell us your name.")).toBeInTheDocument();
+    expect(fakes.submit).not.toHaveBeenCalled();
+  });
+
   it("sends what was typed, with the locale, the first topic by default, and an empty honeypot", async () => {
     await renderCompanyPage(ContactPage, "/contact");
     await fillContact();

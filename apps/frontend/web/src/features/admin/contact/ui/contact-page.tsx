@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
 import { Mail, MailOpen } from "lucide-react";
 import type { ContactRequestKind, ContactRequestStatus } from "@ntizo/shared";
 import type { ContactRequestAdminDTO } from "@ntizo/shared/read-models";
@@ -163,13 +162,7 @@ function RequestSummary({ request, expanded, onToggle }: { request: ContactReque
   return (
     <div className="min-w-0">
       <p className="type-body-medium m-0 flex flex-wrap items-center gap-x-2 font-semibold">
-        {request.requesterUserId ? (
-          <Link to="/admin/users" className="no-underline" style={{ color: "inherit" }}>
-            {request.name}
-          </Link>
-        ) : (
-          request.name
-        )}
+        {request.name}
         <span className="type-caption font-mono text-[var(--color-muted-foreground)]">#{request.reference}</span>
       </p>
       <p className="type-caption m-0 text-[var(--color-muted-foreground)]">

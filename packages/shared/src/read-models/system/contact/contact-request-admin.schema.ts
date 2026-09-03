@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { contactRequestKindSchema, contactRequestStatusSchema } from "../../../enums/contact-enums";
+import { CONTACT_REFERENCE_LENGTH, contactRequestKindSchema, contactRequestStatusSchema } from "../../../enums/contact-enums";
 
 /**
  * One request as the administration queue sees it.
@@ -12,7 +12,7 @@ import { contactRequestKindSchema, contactRequestStatusSchema } from "../../../e
 export const contactRequestAdminReadModel = z.object({
   id: z.string().min(1),
   /** The six characters the person was shown. */
-  reference: z.string().length(6),
+  reference: z.string().length(CONTACT_REFERENCE_LENGTH),
   kind: contactRequestKindSchema,
   topic: z.string().min(1),
   name: z.string(),

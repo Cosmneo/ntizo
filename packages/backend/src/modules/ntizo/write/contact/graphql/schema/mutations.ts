@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineMutation, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { contactRequestKindSchema, contactRequestStatusSchema } from "@ntizo/shared";
+import { CONTACT_REFERENCE_LENGTH, contactRequestKindSchema, contactRequestStatusSchema } from "@ntizo/shared";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
@@ -30,7 +30,7 @@ export const submitContactRequest = defineMutation({
       website: z.string().max(400).optional(),
     }),
   ),
-  output: zodSchema(z.object({ requestId: z.string().min(1), reference: z.string().length(6) })),
+  output: zodSchema(z.object({ requestId: z.string().min(1), reference: z.string().length(CONTACT_REFERENCE_LENGTH) })),
   docs: { summary: "Send a message to the team through the contact or feedback form", tags: ["Contact"] },
 });
 
