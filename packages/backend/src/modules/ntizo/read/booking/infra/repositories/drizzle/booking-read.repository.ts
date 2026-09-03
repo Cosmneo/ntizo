@@ -220,8 +220,17 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
         declinedLast30: sql<number>`count(*) filter (where ${booking.status} = 'DECLINED' and ${booking.declinedAt} >= ${windowStart})::int`,
         // The provider's share, twice. `coalesce` because a workspace with no
         // completed work sums to null, and a dashboard does not show null.
-        revenueLast30Minor: sql<number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)::int`,
-        pipelineMinor: sql<number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${at}), 0)::int`,
+        //
+        // **No `::int`**, unlike the counts above. `sum()` over an `int4`
+        // column already answers `bigint`, and casting it back down is a
+        // ceiling, not a convenience: a workspace whose month passed
+        // 2 147 483 647 minor units — about 21.5 M MZN — would stop getting a
+        // dashboard at all, with `integer out of range`, rather than a large
+        // number. postgres-js hands a `bigint` back as a string, which is why
+        // the two are typed as either and why the mapper below runs every
+        // field through `Number`.
+        revenueLast30Minor: sql<string | number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)`,
+        pipelineMinor: sql<string | number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${at}), 0)`,
         currency: sql<string | null>`max(${booking.currency})`,
       })
       .from(booking)
@@ -255,22 +264,24 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       // answers `column "changed_at" must appear in the GROUP BY clause`.
       .groupBy(sql`1`);
 
-    // Bucketed on `confirmedAt`, which `accept` stamps — **the provider's
-    // yes, not the customer's payment**. Money moving stamps `paidAt` and is
-    // what takes the booking to the `CONFIRMED` *status*; the column named
-    // `confirmed_at` has meant "the provider said yes" since before the
-    // pay-after-accept reversal (see `BookingProps.confirmedAt`). For a
-    // booking that goes through, the two are minutes apart and the series is
-    // the same; they differ only for one accepted and then never paid, which
-    // this counts and a `paidAt` series would not.
+    // **`paidAt`, not the column called `confirmed_at`** — and the name is
+    // the whole trap. `accept` stamps `confirmed_at` and moves the booking to
+    // `PENDING_PAYMENT`: that column has meant "the provider said yes" since
+    // before the pay-after-accept reversal (see `BookingProps.confirmedAt`)
+    // and is an *acceptance*, not a confirmation. What reaches the `CONFIRMED`
+    // status is `markPaid`, which stamps `paidAt`. This series is the one the
+    // chart draws under "confirmadas", so it counts money arriving — see
+    // `providerBookingStatsDayReadModel`, which says it in words: "paid, not
+    // merely accepted". A booking accepted and then never paid belongs in no
+    // bucket here, and `awaitingPayment` above is where it is counted instead.
     const confirmedQuery = db
-      .select({ date: localDate(booking.confirmedAt), n: sql<number>`count(*)::int` })
+      .select({ date: localDate(booking.paidAt), n: sql<number>`count(*)::int` })
       .from(booking)
       .where(
         and(
           eq(booking.providerId, providerId),
-          isNotNull(booking.confirmedAt),
-          gte(booking.confirmedAt, windowStart),
+          isNotNull(booking.paidAt),
+          gte(booking.paidAt, windowStart),
         ),
       )
       // The ordinal again, for the reason the requests series above gives.

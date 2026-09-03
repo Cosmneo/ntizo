@@ -30,9 +30,10 @@
  * skipped it would be indistinguishable from an abandoned draft, which is the
  * point.
  *
- * A **second workspace** holds one more booking, the only `COMPLETED` one —
- * see `otherProviderId` for why it is kept apart from the five rather than
- * added to them, and for what having a real neighbour buys the stats tests.
+ * A **second workspace** holds two more: the only `COMPLETED` booking, and one
+ * accepted and never paid. See `otherProviderId` for why they are kept apart
+ * from the five rather than added to them, and for what having a real
+ * neighbour buys the stats tests.
  *
  * Fixtures follow the neighbouring file's pattern: a fresh provider and
  * provider member under a random `suffix`, so this run's `providerMemberId`
@@ -96,12 +97,16 @@ let confirmedPastId: string;
 let confirmedFutureId: string;
 
 /**
- * A **second workspace**, holding the one booking this file needs in
- * `COMPLETED` — and holding it apart from the workspace above on purpose.
+ * A **second workspace**, holding the two bookings the dashboard's numbers
+ * need — one `COMPLETED`, one accepted and never paid — apart from the
+ * workspace above on purpose.
  *
- * `COMPLETED` is one of `PROVIDER_TAB_STATUSES.history`, so a completed
- * booking added beside the five above would legitimately appear in the
- * history tab and change what three of the list tests are asserting. Those
+ * Neither could join the five. `COMPLETED` is one of
+ * `PROVIDER_TAB_STATUSES.history`, so a completed booking added beside them
+ * would legitimately appear in the history tab; `PENDING_PAYMENT` is one of
+ * `PROVIDER_TAB_STATUSES.upcoming`, so an unpaid one would appear in the
+ * upcoming tab with a future slot and in history with a past one. Either way
+ * three of the list tests above would be asserting something else. Those
  * assertions are the phase's proof that an expired draft stays hidden and
  * that `startsAt` splits `upcoming` from `history`; weakening them to make
  * room for a stats fixture would trade a guarantee for a number.
@@ -117,6 +122,7 @@ let otherMemberId: string;
 let otherServiceId: string;
 let otherServiceOptionId: string;
 let completedId: string;
+let acceptedUnpaidId: string;
 
 beforeAll(async () => {
   customerId = crypto.randomUUID();
@@ -370,6 +376,39 @@ beforeAll(async () => {
       .update(booking)
       .set({ status: BookingStatus.Completed, completedAt: daysAgo(2) })
       .where(eq(booking.id, completedId));
+
+    // **Accepted today and never paid**, and the fixture the chart's second
+    // series turns on. `accept` stamps `confirmed_at` and stops at
+    // `PENDING_PAYMENT`; only `markPaid` stamps `paid_at` and reaches
+    // `CONFIRMED`. So this booking carries a `confirmed_at` of today with no
+    // payment behind it, and a per-day series bucketed on that column would
+    // draw it as a confirmation the provider never got. It belongs in
+    // `awaitingPayment` and nowhere else.
+    //
+    // Priced differently from everything around it (55 000, so a share of
+    // 49 500) for the same reason the completed one is: a number that leaked
+    // into revenue or pipeline would be recognisable rather than plausible.
+    const submittedUnpaid = (
+      await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            providerId: otherProviderId,
+            serviceId: otherServiceId,
+            serviceOptionId: otherServiceOptionId,
+            providerMemberId: otherMemberId,
+            priceMinor: 55_000,
+            startsAt: new Date("2027-04-01T09:00:00.000Z"),
+            expiresAt: new Date("2027-03-31T09:30:00.000Z"),
+          }),
+        ),
+        1,
+      )
+    ).submit(now, new Date("2027-03-31T13:00:00.000Z"), address(), null);
+    await commit(submittedUnpaid, BookingStatus.Draft);
+    await recordSubmission(submittedUnpaid.id as string);
+    const acceptedUnpaid = submittedUnpaid.accept(now, new Date("2027-03-31T15:00:00.000Z"));
+    await commit(acceptedUnpaid, BookingStatus.AwaitingProvider);
+    acceptedUnpaidId = acceptedUnpaid.id as string;
   });
 });
 
@@ -745,6 +784,34 @@ describe("statsForProvider", () => {
     });
   });
 
+  test("a confirmation in the chart is a payment, not an acceptance", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const { totals, perDay } = await readRepo.statsForProvider(otherProviderId, now);
+      // `acceptedUnpaidId` — the provider said yes in this test run, so the
+      // row carries a `confirmed_at` of today, and the customer has not paid.
+      expect(totals.awaitingPayment).toBe(1);
+
+      const today = perDay.find((d) => d.date === totals.today);
+      expect(today?.requests).toBe(2); // both of this workspace's bookings were submitted today
+      // The claim this fixture exists for: a series bucketed on `confirmed_at`
+      // would draw `acceptedUnpaidId` here as a confirmation the provider
+      // never actually got. The chart counts money arriving, so today is zero.
+      expect(today?.confirmed).toBe(0);
+
+      // The one confirmed bucket is the day `completedId` was paid, four days
+      // back — so the series is not empty for the wrong reason.
+      const paidDay = perDay.find((d) => d.confirmed > 0);
+      expect(paidDay?.confirmed).toBe(1);
+      expect(paidDay?.date).not.toBe(totals.today);
+
+      // And the unpaid booking is in neither money column: revenue is
+      // `COMPLETED` and pipeline is `CONFIRMED`, and it is neither. Its 49 500
+      // share would be visible in either if it were.
+      expect(totals.revenueLast30Minor).toBe(72_000);
+      expect(totals.pipelineMinor).toBe(0);
+    });
+  });
+
   test("a booking completed before the window is not in the thirty days", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       // `now` shifted a year forward puts `completedId` outside the window.
@@ -778,8 +845,8 @@ describe("statsForProvider", () => {
       // Three fixtures were submitted in this test run; the two drafts were
       // never submitted and are in no bucket.
       expect(today?.requests).toBe(3);
-      // Only `confirmedFutureId` was accepted in this run — the 2020 walk was
-      // accepted in 2020, which is outside the window the series covers.
+      // Only `confirmedFutureId` was *paid* in this run — the 2020 walk was
+      // paid in 2020, which is outside the window the series covers.
       expect(today?.confirmed).toBe(1);
       expect(perDay.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d.date))).toBe(true);
       // Days with nothing in them are absent rather than zero: everything this
