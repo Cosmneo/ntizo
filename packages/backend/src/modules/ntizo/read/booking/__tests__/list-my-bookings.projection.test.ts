@@ -175,6 +175,22 @@ afterAll(async () => {
   ]);
 }, DEV_DB_COLD_START_TIMEOUT_MS);
 
+/**
+ * The one address this file's fixtures use — `create`'s own snapshot fields
+ * and `submit`'s separately-shaped, separately-required address both read
+ * off this, so the two cannot quietly drift into two different addresses for
+ * what is supposed to be the same booking.
+ */
+const ADDRESS = {
+  label: "Salão",
+  line: "Av. Julius Nyerere 123",
+  city: "Maputo",
+  district: "Sommerschield",
+  directions: "Portão azul, tocar a campainha",
+  lat: -25.9655,
+  lng: 32.5832,
+};
+
 /** Every `Booking.create` input this file needs, with a distinct slot per call. */
 function bookingInput(
   overrides: Partial<Parameters<typeof Booking.create>[0]> = {},
@@ -194,29 +210,16 @@ function bookingInput(
     providerName: "List My Bookings Test Provider",
     providerSlug: `list-my-bookings-test-${suffix}`,
     optionName: "Standard",
-    addressLabel: "Salão",
-    addressLine: "Av. Julius Nyerere 123",
-    addressCity: "Maputo",
-    addressDistrict: "Sommerschield",
-    addressDirections: "Portão azul, tocar a campainha",
-    addressLat: -25.9655,
-    addressLng: 32.5832,
+    addressLabel: ADDRESS.label,
+    addressLine: ADDRESS.line,
+    addressCity: ADDRESS.city,
+    addressDistrict: ADDRESS.district,
+    addressDirections: ADDRESS.directions,
+    addressLat: ADDRESS.lat,
+    addressLng: ADDRESS.lng,
     description: "Corte simples, sem barba",
     expiresAt: new Date("2026-12-01T09:30:00.000Z"),
     ...overrides,
-  };
-}
-
-/** The address `submit` requires before a booking may leave `DRAFT` — the same shape `bookingInput` already gives `create`. */
-function submitAddress() {
-  return {
-    label: "Salão",
-    line: "Av. Julius Nyerere 123",
-    city: "Maputo",
-    district: "Sommerschield",
-    directions: "Portão azul, tocar a campainha",
-    lat: -25.9655,
-    lng: 32.5832,
   };
 }
 
@@ -231,7 +234,7 @@ function submitAddress() {
  */
 async function submitBooking(draft: Booking, startsAt: Date): Promise<Booking> {
   const respondBy = new Date(startsAt.getTime() - 15 * 60 * 1000);
-  const submitted = draft.submit(NOW, respondBy, submitAddress(), null);
+  const submitted = draft.submit(NOW, respondBy, ADDRESS, null);
   const written = await writeRepo.save(submitted, BookingStatus.Draft);
   if (!written) {
     throw new Error(`fixture: submit of ${draft.id} matched no row`);
@@ -379,6 +382,121 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
       await db.delete(booking).where(eq(booking.id, created.id as string));
     });
   });
+
+  test("counts all three tabs in one read, not just the tab requested", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const waiting = await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            customerId: customerAId,
+            startsAt: new Date("2026-12-05T09:00:00.000Z"),
+            expiresAt: new Date("2026-12-05T08:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      const toDecline = await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            customerId: customerAId,
+            startsAt: new Date("2026-12-05T11:00:00.000Z"),
+            expiresAt: new Date("2026-12-05T10:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+
+      await submitBooking(waiting, new Date("2026-12-05T09:00:00.000Z"));
+      const submittedToDecline = await submitBooking(toDecline, new Date("2026-12-05T11:00:00.000Z"));
+      const declined = submittedToDecline.decline(NOW);
+      const written = await writeRepo.save(declined, BookingStatus.AwaitingProvider);
+      if (!written) {
+        throw new Error(`fixture: decline of ${toDecline.id} matched no row`);
+      }
+
+      const page = await projection.execute({
+        customerId: customerAId,
+        tab: "waiting",
+        limit: 20,
+        offset: 0,
+        now: NOW,
+      });
+
+      // The chips render off this object whichever tab is open — a booking
+      // sorted into the wrong bucket has to fail here, on the read the chips
+      // actually share, rather than on a page nobody navigated to.
+      expect(page.counts).toEqual({ waiting: 1, upcoming: 0, history: 1 });
+
+      await db.delete(booking).where(eq(booking.id, waiting.id as string));
+      await db.delete(booking).where(eq(booking.id, toDecline.id as string));
+    });
+  });
+
+  test("nextOffset names the next page, and the last page offers none", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const first = await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            customerId: customerAId,
+            startsAt: new Date("2026-12-06T09:00:00.000Z"),
+            expiresAt: new Date("2026-12-06T08:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      const second = await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            customerId: customerAId,
+            startsAt: new Date("2026-12-06T10:00:00.000Z"),
+            expiresAt: new Date("2026-12-06T09:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      const third = await writeRepo.insert(
+        Booking.create(
+          bookingInput({
+            customerId: customerAId,
+            startsAt: new Date("2026-12-06T11:00:00.000Z"),
+            expiresAt: new Date("2026-12-06T10:30:00.000Z"),
+          }),
+        ),
+        1,
+      );
+
+      await submitBooking(first, new Date("2026-12-06T09:00:00.000Z"));
+      await submitBooking(second, new Date("2026-12-06T10:00:00.000Z"));
+      await submitBooking(third, new Date("2026-12-06T11:00:00.000Z"));
+
+      // Three rows, a limit of two: the shape that actually exercises the
+      // non-null branch, rather than every other test's single page that
+      // never fills its own limit.
+      const firstPage = await projection.execute({
+        customerId: customerAId,
+        tab: "waiting",
+        limit: 2,
+        offset: 0,
+        now: NOW,
+      });
+      expect(firstPage.items).toHaveLength(2);
+      expect(firstPage.nextOffset).toBe(2);
+
+      const secondPage = await projection.execute({
+        customerId: customerAId,
+        tab: "waiting",
+        limit: 2,
+        offset: 2,
+        now: NOW,
+      });
+      expect(secondPage.items).toHaveLength(1);
+      expect(secondPage.nextOffset).toBeNull();
+
+      await db.delete(booking).where(eq(booking.id, first.id as string));
+      await db.delete(booking).where(eq(booking.id, second.id as string));
+      await db.delete(booking).where(eq(booking.id, third.id as string));
+    });
+  });
 });
 
 describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () => {
@@ -493,5 +611,68 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
       });
       expect(result).toBeNull();
     });
+  });
+
+  test("tells the booking's own story, through the same assembly the provider's page reads", async () => {
+    const created: string[] = [];
+    try {
+      await __runWithTransactionContextForTests(db, async () => {
+        const startsAt = new Date("2026-12-07T09:00:00.000Z");
+        const draft = await writeRepo.insert(
+          Booking.create(
+            bookingInput({
+              customerId: customerAId,
+              startsAt,
+              expiresAt: new Date("2026-12-07T08:30:00.000Z"),
+            }),
+          ),
+          1,
+        );
+        created.push(draft.id as string);
+
+        const submitted = await submitBooking(draft, startsAt);
+        // `SubmitBookingCommand` appends this row in the same transaction as
+        // the DRAFT → AWAITING_PROVIDER hop; this fixture calls `submit` and
+        // `save` directly, bypassing the command, so it records the row by
+        // hand — the same thing `provider-bookings.repository.test.ts`'s own
+        // `recordSubmission` does for the provider side.
+        await writeRepo.appendChange({
+          bookingId: draft.id as string,
+          changedByUserId: customerAId,
+          reason: "submitted_by_customer",
+          previousStartsAt: null,
+          previousEndsAt: null,
+          previousProviderMemberId: null,
+          previousPriceMinor: null,
+        });
+
+        const detail = await byId.execute({
+          bookingId: draft.id as string,
+          customerId: customerAId,
+          now: NOW,
+        });
+
+        expect(detail?.timeline).toHaveLength(3);
+        expect(detail?.timeline[0]?.reason).toBe("created_by_customer");
+        // The assertion this test exists for: the row above was written with
+        // `changedByUserId: customerAId`, and `timelineOf` only resolves
+        // that to "customer" when the `customerId` it was handed matches —
+        // proving `GetMyBookingProjection` threaded its caller's own id
+        // through rather than some other value, which would have silently
+        // mapped this hop to "provider" instead.
+        expect(detail?.timeline[1]).toMatchObject({ reason: "submitted_by_customer", actor: "customer" });
+        // Still AWAITING_PROVIDER, with its deadline still ahead of `now` —
+        // so the clock is the last entry, drawn pending.
+        expect(detail?.timeline.at(-1)).toEqual({
+          // Non-null: `submit` always replaces `expiresAt` with `respondBy`.
+          at: submitted.expiresAt!.toISOString(),
+          reason: "respond_by",
+          actor: "system",
+          pending: true,
+        });
+      });
+    } finally {
+      await bestEffortCleanup(created.map((id) => () => db.delete(booking).where(eq(booking.id, id))));
+    }
   });
 });
