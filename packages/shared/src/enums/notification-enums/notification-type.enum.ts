@@ -20,6 +20,8 @@ export enum NotificationType {
 
   // --- booking, customer side -------------------------------------------
   BookingRequested = "BOOKING_REQUESTED",
+  /** The provider said yes; the payment prompt is on its way to the customer's handset. Not yet confirmed. */
+  BookingAccepted = "BOOKING_ACCEPTED",
   BookingConfirmed = "BOOKING_CONFIRMED",
   BookingDeclined = "BOOKING_DECLINED",
   BookingReminder24h = "BOOKING_REMINDER_24H",
@@ -29,6 +31,8 @@ export enum NotificationType {
 
   // --- booking, provider side -------------------------------------------
   ProviderBookingReceived = "PROVIDER_BOOKING_RECEIVED",
+  /** The customer paid — the booking the provider accepted is now a commitment on both sides. */
+  ProviderBookingConfirmed = "PROVIDER_BOOKING_CONFIRMED",
   ProviderBookingReminder24h = "PROVIDER_BOOKING_REMINDER_24H",
   ProviderBookingCancelledByCustomer = "PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER",
   ProviderReviewReceived = "PROVIDER_REVIEW_RECEIVED",
@@ -123,11 +127,13 @@ export function bucketForNotificationType(
     case NotificationType.PasswordChanged:
     case NotificationType.NewSignIn:
     case NotificationType.BookingRequested:
+    case NotificationType.BookingAccepted:
     case NotificationType.BookingConfirmed:
     case NotificationType.BookingDeclined:
     case NotificationType.BookingCancelledByProvider:
     case NotificationType.BookingCompleted:
     case NotificationType.ProviderBookingReceived:
+    case NotificationType.ProviderBookingConfirmed:
     case NotificationType.ProviderBookingCancelledByCustomer:
     case NotificationType.ProviderReviewReceived:
     case NotificationType.QuoteReceived:
