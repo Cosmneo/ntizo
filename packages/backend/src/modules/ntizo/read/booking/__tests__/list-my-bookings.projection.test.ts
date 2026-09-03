@@ -40,6 +40,7 @@ import { service, serviceOption } from "../../../shared/infrastructure/database/
 import { provider, providerMember } from "../../../shared/infrastructure/database/provider/schemas";
 import { user } from "../../../shared/infrastructure/database/user/schemas";
 import { booking } from "../../../shared/infrastructure/database/booking/schemas";
+import { BookingStatus } from "../../../shared/infrastructure/database/booking/enums";
 import { Booking } from "../../../bounded-contexts/booking/domain/aggregates/booking.aggregate";
 import { DrizzleBookingRepository } from "../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
@@ -61,6 +62,9 @@ const readRepo = new DrizzleBookingReadRepository();
 const projection = new ListMyBookingsProjection(readRepo);
 const byId = new GetMyBookingProjection(readRepo);
 const suffix = crypto.randomUUID();
+
+/** The instant every test injects as `now` — never `new Date()` inside the projection under test. */
+const NOW = new Date("2026-11-25T00:00:00.000Z");
 
 let customerAId: string;
 let customerBId: string;
@@ -203,6 +207,38 @@ function bookingInput(
   };
 }
 
+/** The address `submit` requires before a booking may leave `DRAFT` — the same shape `bookingInput` already gives `create`. */
+function submitAddress() {
+  return {
+    label: "Salão",
+    line: "Av. Julius Nyerere 123",
+    city: "Maputo",
+    district: "Sommerschield",
+    directions: "Portão azul, tocar a campainha",
+    lat: -25.9655,
+    lng: 32.5832,
+  };
+}
+
+/**
+ * Moves a freshly inserted `DRAFT` to `AWAITING_PROVIDER` — the "waiting"
+ * tab's own status, and the status this file's fixtures need now that
+ * `ListMyBookingsProjection` reads one tab at a time rather than everything a
+ * customer has. `DRAFT` is excluded from every tab by design — see
+ * `customerWhere`'s own doc comment on `DrizzleBookingReadRepository` — so a
+ * booking left exactly as `Booking.create` made it could never appear in a
+ * page this projection returns.
+ */
+async function submitBooking(draft: Booking, startsAt: Date): Promise<Booking> {
+  const respondBy = new Date(startsAt.getTime() - 15 * 60 * 1000);
+  const submitted = draft.submit(NOW, respondBy, submitAddress(), null);
+  const written = await writeRepo.save(submitted, BookingStatus.Draft);
+  if (!written) {
+    throw new Error(`fixture: submit of ${draft.id} matched no row`);
+  }
+  return submitted;
+}
+
 /**
  * Pins `createdAt` to an exact value so "newest first" can be asserted
  * without racing the wall clock: `DrizzleBookingRepository.insert` always
@@ -239,9 +275,10 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
         ),
         1,
       );
-      // A booking belonging to a DIFFERENT customer. Without this row, the
-      // fixture could not fail even if `listForCustomer`'s WHERE clause were
-      // deleted outright — see this file's own doc comment.
+      // A booking belonging to a DIFFERENT customer, moved to the same
+      // status as the other two. Without this row, the fixture could not
+      // fail even if `listForCustomer`'s WHERE clause were deleted outright
+      // — see this file's own doc comment.
       const somebodyElses = await writeRepo.insert(
         Booking.create(
           bookingInput({
@@ -253,13 +290,23 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
         1,
       );
 
+      await submitBooking(older, new Date("2026-12-02T09:00:00.000Z"));
+      await submitBooking(newer, new Date("2026-12-02T10:00:00.000Z"));
+      await submitBooking(somebodyElses, new Date("2026-12-02T11:00:00.000Z"));
+
       await pinCreatedAt(older.id as string, new Date("2026-12-01T08:00:00.000Z"));
       await pinCreatedAt(newer.id as string, new Date("2026-12-01T09:00:00.000Z"));
 
-      const result = await projection.execute({ customerId: customerAId });
+      const page = await projection.execute({
+        customerId: customerAId,
+        tab: "waiting",
+        limit: 20,
+        offset: 0,
+        now: NOW,
+      });
 
-      expect(result.map((b) => b.id)).toEqual([newer.id as string, older.id as string]);
-      expect(result.map((b) => b.id)).not.toContain(somebodyElses.id as string);
+      expect(page.items.map((b) => b.id)).toEqual([newer.id as string, older.id as string]);
+      expect(page.items.map((b) => b.id)).not.toContain(somebodyElses.id as string);
 
       await db.delete(booking).where(eq(booking.id, older.id as string));
       await db.delete(booking).where(eq(booking.id, newer.id as string));
@@ -270,8 +317,16 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
   test("a customer with none gets an empty list, not an error", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const strangerId = crypto.randomUUID();
-      const result = await projection.execute({ customerId: strangerId });
-      expect(result).toEqual([]);
+      const page = await projection.execute({
+        customerId: strangerId,
+        tab: "waiting",
+        limit: 20,
+        offset: 0,
+        now: NOW,
+      });
+      expect(page.items).toEqual([]);
+      expect(page.total).toBe(0);
+      expect(page.nextOffset).toBeNull();
     });
   });
 
@@ -287,9 +342,16 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
         ),
         1,
       );
+      await submitBooking(created, new Date("2026-12-03T09:00:00.000Z"));
 
-      const result = await projection.execute({ customerId: customerAId });
-      const item = result.find((b) => b.id === created.id);
+      const page = await projection.execute({
+        customerId: customerAId,
+        tab: "waiting",
+        limit: 20,
+        offset: 0,
+        now: NOW,
+      });
+      const item = page.items.find((b) => b.id === created.id);
       expect(item).toBeDefined();
 
       const parsed = bookingReadModel.safeParse(item);
@@ -298,10 +360,11 @@ describe("ListMyBookingsProjection, backed by DrizzleBookingReadRepository", () 
       expect(typeof item?.startsAt).toBe("string");
       expect(typeof item?.endsAt).toBe("string");
       expect(typeof item?.createdAt).toBe("string");
-      // DRAFT — this fixture's status, since the reversal made that what
-      // `Booking.create` produces — always carries a real expiresAt: the
-      // checkout hold. So this also proves the non-null branch is a string,
-      // not merely that a null one passes trivially.
+      // AWAITING_PROVIDER — this fixture's status now that a customer's own
+      // list only ever reads a real tab — always carries a real expiresAt:
+      // `submit` replaced the checkout hold with the provider's response
+      // window. So this also proves the non-null branch is a string, not
+      // merely that a null one passes trivially.
       expect(item?.expiresAt).not.toBeNull();
       expect(typeof item?.expiresAt).toBe("string");
       expect(item?.startsAt).toBe("2026-12-03T09:00:00.000Z");
@@ -353,6 +416,7 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         const own = await byId.execute({
           bookingId: mine.id as string,
           customerId: customerAId,
+          now: NOW,
         });
         expect(own?.id).toBe(mine.id as string);
         // The mapping is the list's mapping — `toBookingDTO`, shared — so
@@ -396,6 +460,7 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         const stolen = await byId.execute({
           bookingId: theirs.id as string,
           customerId: customerAId,
+          now: NOW,
         });
         expect(stolen).toBeNull();
 
@@ -405,6 +470,7 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
         const hers = await byId.execute({
           bookingId: theirs.id as string,
           customerId: customerBId,
+          now: NOW,
         });
         expect(hers?.id).toBe(theirs.id as string);
       });
@@ -423,6 +489,7 @@ describe("GetMyBookingProjection, backed by DrizzleBookingReadRepository", () =>
       const result = await byId.execute({
         bookingId: crypto.randomUUID(),
         customerId: customerAId,
+        now: NOW,
       });
       expect(result).toBeNull();
     });

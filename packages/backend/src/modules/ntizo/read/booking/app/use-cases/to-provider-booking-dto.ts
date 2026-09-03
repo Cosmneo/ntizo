@@ -1,12 +1,9 @@
-import type {
-  BookingTimelineEntryDTO,
-  ProviderBookingDTO,
-  ProviderBookingDetailDTO,
-} from "@ntizo/shared/read-models";
+import type { ProviderBookingDTO, ProviderBookingDetailDTO } from "@ntizo/shared/read-models";
 import type {
   ProviderBookingRow,
   ProviderTimelineRow,
 } from "../ports/outbound/booking-read.repository.port";
+import { timelineOf } from "./booking-timeline";
 
 /**
  * The statuses at which the provider may see who the customer is and exactly
@@ -73,32 +70,4 @@ export function toProviderBookingDetailDTO(
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     timeline: timelineOf(row, changes, now),
   };
-}
-
-/**
- * Creation first, then every recorded hop, then — while a clock is running —
- * the deadline still ahead, drawn hollow. The actor is derived, not stored:
- * a null `changedByUserId` is a machine hop, the customer's own id is the
- * customer, and anyone else is somebody in the workspace.
- */
-function timelineOf(
-  row: ProviderBookingRow,
-  changes: readonly ProviderTimelineRow[],
-  now: Date,
-): BookingTimelineEntryDTO[] {
-  const entries: BookingTimelineEntryDTO[] = [
-    { at: row.createdAt.toISOString(), reason: "created_by_customer", actor: "customer", pending: false },
-    ...changes.map((c) => ({
-      at: c.changedAt.toISOString(),
-      reason: c.reason,
-      actor: c.changedByUserId === null ? ("system" as const) : c.changedByUserId === row.customerId ? ("customer" as const) : ("provider" as const),
-      pending: false,
-    })),
-  ];
-  const clock =
-    row.status === "AWAITING_PROVIDER" ? "respond_by" : row.status === "PENDING_PAYMENT" ? "pay_by" : null;
-  if (clock && row.expiresAt && row.expiresAt.getTime() > now.getTime()) {
-    entries.push({ at: row.expiresAt.toISOString(), reason: clock, actor: "system", pending: true });
-  }
-  return entries;
 }
