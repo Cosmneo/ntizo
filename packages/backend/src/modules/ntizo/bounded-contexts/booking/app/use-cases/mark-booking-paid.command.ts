@@ -1,8 +1,14 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import { NotificationType } from "@ntizo/shared";
+import type { Booking } from "../../domain/aggregates/booking.aggregate";
 import { BookingPaid } from "../../domain/events";
 import { BookingNotFoundError } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
+import {
+  raiseQuietly,
+  type RaiseNotificationInternalPort,
+} from "../ports/outbound/raise-notification.port";
 
 export interface MarkBookingPaidInput {
   bookingId: string;
@@ -59,6 +65,7 @@ export class MarkBookingPaidCommand {
     private readonly repo: BookingRepositoryPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
+    private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
   async execute(input: MarkBookingPaidInput): Promise<void> {
@@ -69,7 +76,12 @@ export class MarkBookingPaidCommand {
     // carries, not here.
     const at = new Date();
 
-    await this.unitOfWork.atomicExecute(async () => {
+    // The confirmed booking, or `null` for either of the two ways this
+    // command does nothing — the aggregate's already-paid no-op, or a
+    // lost race with the sweep. Both raises below hang off it, so neither
+    // can announce a confirmation that never happened, and a webhook
+    // delivered twice still confirms once.
+    const confirmed = await this.unitOfWork.atomicExecute(async (): Promise<Booking | null> => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
         // A payment naming a booking that does not exist means the money
@@ -83,7 +95,7 @@ export class MarkBookingPaidCommand {
         // The aggregate says nothing happened by handing back the instance
         // it was given: this reference already paid this booking. Nothing
         // to save, nothing to announce.
-        return;
+        return null;
       }
 
       const applied = await this.repo.save(moved, booking.status);
@@ -95,7 +107,7 @@ export class MarkBookingPaidCommand {
         // tell the customer they hold a slot the sweep just gave away. See
         // this class's own doc comment for why the aggregate's identity
         // check above cannot catch this on its own.
-        return;
+        return null;
       }
 
       await this.outboxPort.publish(
@@ -123,6 +135,64 @@ export class MarkBookingPaidCommand {
         ],
         "booking",
       );
+
+      return moved;
     });
+
+    if (!confirmed) {
+      return;
+    }
+
+    // **Two raises, because a confirmation says two different things.** The
+    // customer is being told their money went through and the slot is theirs;
+    // the provider is being told the acceptance they already gave is now a
+    // commitment on both sides. One type with a branch in its template would
+    // be exactly the shape `NotificationType`'s own doc comment argues
+    // against.
+    //
+    // Both after the transaction, both `raiseQuietly`, per BR-P6 — and this
+    // is the command where that matters most: the money has already cleared
+    // and the row already says `CONFIRMED`, so a throw travelling out of here
+    // would reach a payment webhook as a failure, be retried, and the retry
+    // would find an already-paid booking and correctly do nothing. The
+    // notification would be lost either way, and a payment marked failed
+    // would be lost on top of it.
+    const shared = {
+      bookingId: input.bookingId,
+      serviceName: confirmed.serviceName,
+      startsAt: confirmed.startsAt.toISOString(),
+      priceMinor: confirmed.priceMinor,
+      currency: confirmed.currency,
+    };
+
+    await raiseQuietly(
+      this.raiseNotification,
+      {
+        type: NotificationType.BookingConfirmed,
+        audience: "user",
+        userId: confirmed.customerId,
+        payload: { ...shared, providerName: confirmed.providerName },
+      },
+      input.bookingId,
+    );
+
+    await raiseQuietly(
+      this.raiseNotification,
+      {
+        type: NotificationType.ProviderBookingConfirmed,
+        audience: "provider",
+        providerId: confirmed.providerId,
+        payload: {
+          ...shared,
+          // The booking row snapshots the provider's name, never the
+          // customer's, and this command has no session to read one off — it
+          // is driven by a payment webhook. The template says "um cliente";
+          // the key is present and null rather than absent, the same shape
+          // `SubmitBookingCommand` sends when its own session has no name.
+          customerFirstName: null,
+        },
+      },
+      input.bookingId,
+    );
   }
 }

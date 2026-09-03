@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
+import { NotificationType } from "@ntizo/shared";
 import { Booking } from "../domain/aggregates/booking.aggregate";
 import { BookingNotFoundError, BookingTransitionError } from "../domain/exceptions";
 import {
@@ -13,7 +14,7 @@ import type {
 } from "../app/ports/outbound/booking.repository.port";
 import type { SlotHoldPort, SlotWindow } from "../app/ports/outbound/slot-hold.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
-import { TrackingUnitOfWork, withId } from "./support/fakes";
+import { FakeRaiser, TrackingUnitOfWork, withId } from "./support/fakes";
 
 const WHEN = new Date("2026-09-04T12:30:00.000Z");
 
@@ -324,21 +325,23 @@ class CapturingOutbox implements OutboxPort {
   }
 }
 
-function setupMarkPaid(initial: Booking | null) {
+function setupMarkPaid(initial: Booking | null, opts: { raiser?: FakeRaiser } = {}) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(initial, unitOfWork);
-  const command = new MarkBookingPaidCommand(repo, unitOfWork, outbox);
-  return { command, repo, unitOfWork, outbox };
+  const raiser = opts.raiser ?? new FakeRaiser();
+  const command = new MarkBookingPaidCommand(repo, unitOfWork, outbox, raiser);
+  return { command, repo, unitOfWork, outbox, raiser };
 }
 
-function setupSweep(initial: Booking | null) {
+function setupSweep(initial: Booking | null, opts: { raiser?: FakeRaiser } = {}) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(initial, unitOfWork);
   const slotHold = new FakeSlotHold(unitOfWork);
-  const command = new SweepBookingCommand(repo, slotHold, unitOfWork, outbox);
-  return { command, repo, slotHold, unitOfWork, outbox };
+  const raiser = opts.raiser ?? new FakeRaiser();
+  const command = new SweepBookingCommand(repo, slotHold, unitOfWork, outbox, raiser);
+  return { command, repo, slotHold, unitOfWork, outbox, raiser };
 }
 
 describe("MarkBookingPaidCommand", () => {
@@ -607,12 +610,18 @@ describe("MarkBookingPaidCommand and SweepBookingCommand racing the same stale r
     const outboxSweep = new CapturingOutbox(uowSweep);
     const repoSweep = new RacingFakeRepo(staleRead, row, uowSweep);
     const slotHold = new FakeSlotHold(uowSweep);
-    const sweepCmd = new SweepBookingCommand(repoSweep, slotHold, uowSweep, outboxSweep);
+    const sweepCmd = new SweepBookingCommand(
+      repoSweep,
+      slotHold,
+      uowSweep,
+      outboxSweep,
+      new FakeRaiser(),
+    );
 
     const uowPay = new TrackingUnitOfWork();
     const outboxPay = new CapturingOutbox(uowPay);
     const repoPay = new RacingFakeRepo(staleRead, row, uowPay);
-    const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
+    const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay, new FakeRaiser());
 
     // The sweep reaches the row first and commits its cancellation.
     await sweepCmd.execute({ bookingId: "bk-1" });
@@ -646,13 +655,19 @@ describe("MarkBookingPaidCommand and SweepBookingCommand racing the same stale r
     const uowPay = new TrackingUnitOfWork();
     const outboxPay = new CapturingOutbox(uowPay);
     const repoPay = new RacingFakeRepo(staleRead, row, uowPay);
-    const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay);
+    const markPaid = new MarkBookingPaidCommand(repoPay, uowPay, outboxPay, new FakeRaiser());
 
     const uowSweep = new TrackingUnitOfWork();
     const outboxSweep = new CapturingOutbox(uowSweep);
     const repoSweep = new RacingFakeRepo(staleRead, row, uowSweep);
     const slotHold = new FakeSlotHold(uowSweep);
-    const sweepCmd = new SweepBookingCommand(repoSweep, slotHold, uowSweep, outboxSweep);
+    const sweepCmd = new SweepBookingCommand(
+      repoSweep,
+      slotHold,
+      uowSweep,
+      outboxSweep,
+      new FakeRaiser(),
+    );
 
     await markPaid.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
     await sweepCmd.execute({ bookingId: "bk-1" });
@@ -671,5 +686,115 @@ describe("MarkBookingPaidCommand and SweepBookingCommand racing the same stale r
     expect(outboxSweep.published).toEqual([]);
 
     expect(row.current?.status).toBe("CONFIRMED");
+  });
+});
+
+/**
+ * BR-P6 for the two commands nobody asks for — a payment webhook and a cron
+ * sweep. Both run with no caller waiting on an answer, which is exactly why
+ * what they announce has to be asserted somewhere: a raise that silently
+ * stopped happening here would surface as a customer who was never told they
+ * paid, and nothing else in this suite would go red.
+ */
+describe("notifications", () => {
+  it("a confirmed payment tells the customer and the provider, as two different notifications", async () => {
+    const { command, raiser } = setupMarkPaid(pendingBooking());
+
+    await command.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
+
+    // Two, not one with a branch in its template — see
+    // `NotificationType`'s own doc comment for the rule this follows.
+    expect(raiser.raised).toHaveLength(2);
+    expect(raiser.raised[0]).toMatchObject({
+      type: "BOOKING_CONFIRMED",
+      audience: "user",
+      userId: "cust-1",
+      payload: expect.objectContaining({
+        bookingId: "bk-1",
+        serviceName: "Avaria eléctrica urgente",
+        providerName: "Hélder Cossa",
+      }),
+    });
+    expect(raiser.raised[1]).toMatchObject({
+      type: "PROVIDER_BOOKING_CONFIRMED",
+      audience: "provider",
+      providerId: "prov-1",
+      // No customer name on the booking row and no session here — this
+      // command is driven by a webhook. The key is present and null.
+      payload: expect.objectContaining({ customerFirstName: null }),
+    });
+  });
+
+  // Two notifications for one confirmation, not four for two deliveries: the
+  // second copy of the same webhook finds the booking already paid, and the
+  // aggregate's own no-op is what stops it announcing again.
+  it("paying twice confirms once — neither party is told twice", async () => {
+    const { command, raiser } = setupMarkPaid(pendingBooking());
+
+    await command.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
+    await command.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" });
+
+    expect(raiser.raised.map((r) => r.type)).toEqual([
+      NotificationType.BookingConfirmed,
+      NotificationType.ProviderBookingConfirmed,
+    ]);
+  });
+
+  it("a raiser that throws does not fail the payment", async () => {
+    const broken = new FakeRaiser(new Error("smtp down"));
+    const { command, repo } = setupMarkPaid(pendingBooking(), { raiser: broken });
+
+    await expect(
+      command.execute({ bookingId: "bk-1", paymentRef: "mpesa-123" }),
+    ).resolves.toBeUndefined();
+
+    // The money cleared and the row moved; only the announcement was lost.
+    expect(repo.savedArg?.status).toBe("CONFIRMED");
+  });
+
+  it("the cancellation tells the provider whose calendar just emptied, with the reason", async () => {
+    const { command, raiser } = setupSweep(pendingBooking());
+
+    await command.execute({ bookingId: "bk-1" });
+
+    expect(raiser.raised).toEqual([
+      expect.objectContaining({
+        type: "PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER",
+        audience: "provider",
+        providerId: "prov-1",
+        payload: expect.objectContaining({
+          bookingId: "bk-1",
+          serviceName: "Avaria eléctrica urgente",
+          reason: "customer_did_not_pay",
+        }),
+      }),
+    ]);
+  });
+
+  // The design's three-row table: the two expiries are not cancellations and
+  // are not announced in this phase. A `DRAFT` past its checkout hold has
+  // nobody to tell but the customer who walked away from their own checkout;
+  // the provider's own window running out gets no type until a later phase
+  // adds one. Asserted, so adding one is a deliberate change here rather
+  // than a silent side effect somewhere else.
+  it("neither expiry announces anything", async () => {
+    const draft = setupSweep(draftBooking());
+    await draft.command.execute({ bookingId: "bk-1" });
+    expect(draft.repo.savedArg?.status).toBe("EXPIRED");
+    expect(draft.raiser.raised).toEqual([]);
+
+    const awaiting = setupSweep(awaitingBooking());
+    await awaiting.command.execute({ bookingId: "bk-1" });
+    expect(awaiting.repo.savedArg?.status).toBe("EXPIRED");
+    expect(awaiting.raiser.raised).toEqual([]);
+  });
+
+  it("a sweep that finds the booking already moved announces nothing", async () => {
+    const paid = pendingBooking().markPaid("mpesa-123", WHEN);
+    const { command, raiser } = setupSweep(withId(paid, "bk-1"));
+
+    await command.execute({ bookingId: "bk-1" });
+
+    expect(raiser.raised).toEqual([]);
   });
 });

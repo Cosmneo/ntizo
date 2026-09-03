@@ -37,6 +37,7 @@
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { asc, eq, inArray } from "drizzle-orm";
+import { NotificationType } from "@ntizo/shared";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
@@ -56,6 +57,7 @@ import { DrizzleBookingRepository } from "../../../../bounded-contexts/booking/i
 import { BookingRowSlotHold } from "../../../../bounded-contexts/booking/infrastructure/adapters/booking-row-slot-hold.adapter";
 import { SweepBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/sweep-booking.command";
 import { SweepDueBookingsInternalCommand } from "../../../../bounded-contexts/booking/app/use-cases/sweep-due-bookings.internal.command";
+import { FakeRaiser } from "../../../../bounded-contexts/booking/__tests__/support/fakes";
 import type { BookingChangeRecord } from "../../../../bounded-contexts/booking/app/ports/outbound/booking.repository.port";
 import type { BookingRepositoryPort } from "../../../../bounded-contexts/booking/app/ports/outbound/booking.repository.port";
 import {
@@ -269,11 +271,23 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
 function buildSweep(
   bookingRepo: BookingRepositoryPort,
   now: () => Date = () => new Date(),
+  // A fake rather than the real `RaiseNotificationInternalCommand`: what this
+  // file proves about notifications is *which* ending announces and which
+  // stays quiet, and routing that through the notification context's own
+  // tables would put a second bounded context's writes inside every
+  // assertion here. The one test that reads it back passes its own.
+  raiser: FakeRaiser = new FakeRaiser(),
 ) {
   const slotHold = new BookingRowSlotHold();
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
-  const sweepBooking = new SweepBookingCommand(bookingRepo, slotHold, unitOfWork, outboxPort);
+  const sweepBooking = new SweepBookingCommand(
+    bookingRepo,
+    slotHold,
+    unitOfWork,
+    outboxPort,
+    raiser,
+  );
   return new SweepDueBookingsInternalCommand(bookingRepo, sweepBooking, now);
 }
 
@@ -526,7 +540,8 @@ describe("SweepDueBookingsInternalCommand", () => {
       );
       expect(due.status).toBe("PENDING_PAYMENT");
 
-      const result = await buildSweep(repo, () => now).execute({ limit: 10 });
+      const raiser = new FakeRaiser();
+      const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
       expect(result).toEqual({ swept: 1, failed: 0 });
 
       const dueReread = await repo.findById(due.id as string);
@@ -564,6 +579,25 @@ describe("SweepDueBookingsInternalCommand", () => {
       // because nobody did it — a deadline passed.
       expect(await historyFor(due.id as string)).toEqual([
         { reason: "customer_did_not_pay", changedByUserId: null },
+      ]);
+
+      // BR-P6, over the real sweep: this is the one of the three endings that
+      // costs somebody something, and the provider whose Saturday just
+      // emptied is told directly rather than only through an event a consumer
+      // may or may not exist to receive. The two expiries in this file raise
+      // nothing — asserted where they run.
+      expect(raiser.raised).toEqual([
+        {
+          type: NotificationType.ProviderBookingCancelledByCustomer,
+          audience: "provider",
+          providerId,
+          payload: {
+            bookingId: due.id,
+            serviceName: dueReread?.serviceName,
+            startsAt: dueReread?.startsAt.toISOString(),
+            reason: "customer_did_not_pay",
+          },
+        },
       ]);
     });
   });

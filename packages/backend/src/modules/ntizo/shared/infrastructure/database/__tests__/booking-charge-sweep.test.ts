@@ -34,6 +34,7 @@
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
+import { NotificationType } from "@ntizo/shared";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as authSchema from "../../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../../shared/infrastructure/database/tx-context";
@@ -51,6 +52,7 @@ import { outboxEvent } from "../outbox/schemas/outbox-event.schema";
 import { Booking } from "../../../../bounded-contexts/booking/domain/aggregates/booking.aggregate";
 import { DrizzleBookingRepository } from "../../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleCustomerPhoneReader } from "../../../../bounded-contexts/booking/infrastructure/repositories/drizzle/customer-phone.reader";
+import { FakeRaiser } from "../../../../bounded-contexts/booking/__tests__/support/fakes";
 import { MarkBookingPaidCommand } from "../../../../bounded-contexts/booking/app/use-cases/mark-booking-paid.command";
 import { ChargeBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/charge-booking.command";
 import {
@@ -284,22 +286,35 @@ class FixedCharge implements PaymentChargePort {
  * past — and every cooldown assertion in this file would pass for the wrong
  * reason. That is exactly how the stale-wave test below first failed.
  */
-function buildChargeBooking(paymentCharge: PaymentChargePort, now: () => Date) {
+function buildChargeBooking(
+  paymentCharge: PaymentChargePort,
+  now: () => Date,
+  // A fake rather than the real `RaiseNotificationInternalCommand`, for the
+  // same reason `booking-sweep.test.ts` uses one: what is under test here is
+  // the sweep's selection and bookkeeping, and routing the two confirmations
+  // through the notification context's own tables would put a second bounded
+  // context's writes inside every assertion in this file.
+  raiser: FakeRaiser = new FakeRaiser(),
+) {
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
   return new ChargeBookingCommand(
     repo,
     new DrizzleCustomerPhoneReader(),
     paymentCharge,
-    new MarkBookingPaidCommand(repo, unitOfWork, outboxPort),
+    new MarkBookingPaidCommand(repo, unitOfWork, outboxPort, raiser),
     now,
   );
 }
 
-function buildSweep(paymentCharge: PaymentChargePort, now: () => Date) {
+function buildSweep(
+  paymentCharge: PaymentChargePort,
+  now: () => Date,
+  raiser: FakeRaiser = new FakeRaiser(),
+) {
   return new ChargeAcceptedBookingsInternalCommand(
     repo,
-    buildChargeBooking(paymentCharge, now),
+    buildChargeBooking(paymentCharge, now, raiser),
     now,
   );
 }
@@ -459,9 +474,11 @@ describe("findAwaitingCharge, through the sweep", () => {
       );
       const id = due.id as string;
 
+      const raiser = new FakeRaiser();
       await buildSweep(
         new FixedCharge({ outcome: "paid", paymentRef: "7SHV1234567" }),
         () => now,
+        raiser,
       ).execute({ limit: 10 });
 
       const after = await chargeStateOf(id);
@@ -473,6 +490,18 @@ describe("findAwaitingCharge, through the sweep", () => {
       // selected again — the count is a record of what happened, not a
       // budget that has to be handed back.
       expect(after?.chargeAttempts).toBe(1);
+
+      // BR-P6, over the real charge path: money clearing says two different
+      // things to the two parties, so it is two notifications rather than one
+      // with a branch in its template. Order matters only in that both
+      // happen — asserted as a pair so a command that dropped either goes
+      // red.
+      expect(raiser.raised.map((r) => r.type)).toEqual([
+        NotificationType.BookingConfirmed,
+        NotificationType.ProviderBookingConfirmed,
+      ]);
+      expect(raiser.raised[0]).toMatchObject({ audience: "user", userId: customerId });
+      expect(raiser.raised[1]).toMatchObject({ audience: "provider", providerId });
     });
   });
 

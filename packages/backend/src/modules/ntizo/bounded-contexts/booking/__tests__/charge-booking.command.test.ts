@@ -37,7 +37,7 @@ import type {
   PaymentChargeResult,
 } from "../app/ports/outbound/payment-charge.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
-import { TrackingUnitOfWork, withId } from "./support/fakes";
+import { FakeRaiser, TrackingUnitOfWork, withId } from "./support/fakes";
 
 const WHEN = new Date("2026-09-04T12:30:00.000Z");
 /** The cooldown boundary a wave would have computed; only its identity matters here. */
@@ -252,7 +252,7 @@ function chargeInput(bookingId: string) {
 
 /** The real `MarkBookingPaidCommand`, over the same fake repository. */
 function markPaid(repo: BookingRepositoryPort, uow: TrackingUnitOfWork, outbox: OutboxPort) {
-  return new MarkBookingPaidCommand(repo, uow, outbox);
+  return new MarkBookingPaidCommand(repo, uow, outbox, new FakeRaiser());
 }
 
 describe("chargeReference", () => {

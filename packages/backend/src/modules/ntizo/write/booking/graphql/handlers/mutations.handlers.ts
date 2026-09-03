@@ -54,6 +54,12 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
         // not — see the schema's own doc comment. The command checks it
         // against the booking's own `customerId` and refuses a stranger.
         customerId: requireUser(ctx),
+        // Not from the client either, and for a second reason on top of that
+        // one: the provider's "novo pedido" notification names the customer,
+        // and a name the client could set is a name the client could forge.
+        // `firstName` is `string | null` on the session — a profile without
+        // one is ordinary, and the command passes the null straight through.
+        customerFirstName: asNtizoGraphqlContext(ctx).firstName,
         address: args.input.address,
         // The wire has two ways to say "no description" — an explicit null
         // and an omitted key — and the domain has one. Collapsing them is

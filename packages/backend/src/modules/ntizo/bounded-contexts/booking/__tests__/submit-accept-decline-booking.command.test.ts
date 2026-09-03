@@ -31,7 +31,7 @@ import type { ProviderMemberReaderPort } from "../app/ports/outbound/provider-me
 import type { SlotHoldPort, SlotWindow } from "../app/ports/outbound/slot-hold.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
 import type { BookingStatus } from "../../../shared/infrastructure/database/booking/enums";
-import { TrackingUnitOfWork, withId } from "./support/fakes";
+import { FakeRaiser, TrackingUnitOfWork, withId } from "./support/fakes";
 
 /**
  * The slot every fixture in this file books, far enough out that
@@ -369,7 +369,11 @@ class FakePhoneReader implements CustomerPhoneReaderPort {
 
 function setupSubmit(
   initial: Booking | null,
-  opts: { providerResponseMinutes?: number; phones?: Record<string, string | null> } = {},
+  opts: {
+    providerResponseMinutes?: number;
+    phones?: Record<string, string | null>;
+    raiser?: FakeRaiser;
+  } = {},
 ) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
@@ -384,6 +388,7 @@ function setupSubmit(
     opts.phones ?? { "cust-1": "258841234567", "cust-2": "258851234567" },
   );
   const delayedJobs = new FakeDelayedJobs();
+  const raiser = opts.raiser ?? new FakeRaiser();
   const command = new SubmitBookingCommand(
     repo,
     phones,
@@ -391,11 +396,15 @@ function setupSubmit(
     delayedJobs,
     unitOfWork,
     outbox,
+    raiser,
   );
-  return { command, repo, phones, platformSettingsReader, delayedJobs, unitOfWork, outbox };
+  return { command, repo, phones, platformSettingsReader, delayedJobs, unitOfWork, outbox, raiser };
 }
 
-function setupAccept(initial: Booking | null, opts: { paymentWindowMinutes?: number } = {}) {
+function setupAccept(
+  initial: Booking | null,
+  opts: { paymentWindowMinutes?: number; raiser?: FakeRaiser } = {},
+) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(initial, unitOfWork);
@@ -404,6 +413,7 @@ function setupAccept(initial: Booking | null, opts: { paymentWindowMinutes?: num
     paymentWindow: opts.paymentWindowMinutes,
   });
   const delayedJobs = new FakeDelayedJobs();
+  const raiser = opts.raiser ?? new FakeRaiser();
   const command = new AcceptBookingCommand(
     repo,
     providerMemberReader,
@@ -411,18 +421,36 @@ function setupAccept(initial: Booking | null, opts: { paymentWindowMinutes?: num
     delayedJobs,
     unitOfWork,
     outbox,
+    raiser,
   );
-  return { command, repo, providerMemberReader, platformSettingsReader, delayedJobs, unitOfWork, outbox };
+  return {
+    command,
+    repo,
+    providerMemberReader,
+    platformSettingsReader,
+    delayedJobs,
+    unitOfWork,
+    outbox,
+    raiser,
+  };
 }
 
-function setupDecline(initial: Booking | null) {
+function setupDecline(initial: Booking | null, opts: { raiser?: FakeRaiser } = {}) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(initial, unitOfWork);
   const providerMemberReader = new FakeProviderMemberReader();
   const slotHold = new FakeSlotHold(unitOfWork);
-  const command = new DeclineBookingCommand(repo, providerMemberReader, slotHold, unitOfWork, outbox);
-  return { command, repo, providerMemberReader, slotHold, unitOfWork, outbox };
+  const raiser = opts.raiser ?? new FakeRaiser();
+  const command = new DeclineBookingCommand(
+    repo,
+    providerMemberReader,
+    slotHold,
+    unitOfWork,
+    outbox,
+    raiser,
+  );
+  return { command, repo, providerMemberReader, slotHold, unitOfWork, outbox, raiser };
 }
 
 describe("SubmitBookingCommand", () => {
@@ -1041,5 +1069,135 @@ describe("DeclineBookingCommand", () => {
     expect(repo.saveCalls).toBe(0);
     expect(slotHold.released).toEqual([]);
     expect(outbox.published).toEqual([]);
+  });
+});
+
+/**
+ * BR-P6, from the provider-bookings spec: a booking that changes hands has to
+ * *tell* somebody, and telling them must never be able to fail the write that
+ * already committed.
+ *
+ * Asserted here rather than folded into the happy paths above, for the same
+ * reason `booking_change` got its own assertions: what each hop announces, to
+ * whom, is a separate obligation from what it saves, and a test that read
+ * both out of one arrangement would go red on either for the same reason.
+ */
+describe("notifications", () => {
+  const ADDRESS = { label: "Casa", line: "Av. Julius Nyerere 812", city: "Maputo" };
+
+  it("submit tells the provider's workspace a request arrived, naming the customer", async () => {
+    const { command, raiser } = setupSubmit(draftBooking());
+
+    await command.execute({
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      customerFirstName: "Ana",
+      address: ADDRESS,
+      description: null,
+    });
+
+    expect(raiser.raised).toEqual([
+      expect.objectContaining({
+        type: "PROVIDER_BOOKING_RECEIVED",
+        audience: "provider",
+        providerId: "prov-1",
+        payload: expect.objectContaining({
+          bookingId: "bk-1",
+          serviceName: "Avaria eléctrica urgente",
+          customerFirstName: "Ana",
+        }),
+      }),
+    ]);
+  });
+
+  // The GraphQL session is where the name comes from, and a profile that has
+  // none is ordinary — `NtizoGraphqlContext.firstName` is `string | null`.
+  // The template renders "um cliente" for that; what matters here is that the
+  // key is present and explicitly null rather than quietly absent.
+  it("submit raises with a null first name when the session has none", async () => {
+    const { command, raiser } = setupSubmit(draftBooking());
+
+    await command.execute({
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      address: ADDRESS,
+      description: null,
+    });
+
+    expect(raiser.raised[0]?.payload.customerFirstName).toBeNull();
+  });
+
+  it("a losing submit announces nothing — the request this call sent never landed", async () => {
+    const { command, repo, raiser } = setupSubmit(draftBooking());
+    // Somebody else moved the row between this call's read and its write.
+    repo.raceWinner = awaitingBooking();
+
+    await command.execute({
+      bookingId: "bk-1",
+      customerId: "cust-1",
+      address: ADDRESS,
+      description: null,
+    });
+
+    expect(repo.lastApplied).toBe(false);
+    expect(raiser.raised).toEqual([]);
+  });
+
+  it("accept tells the customer the provider said yes, with the deadline they now have to pay by", async () => {
+    const { command, repo, raiser } = setupAccept(awaitingBooking());
+
+    await command.execute({ bookingId: "bk-1", requesterUserId: "user-right-1" });
+
+    expect(raiser.raised).toHaveLength(1);
+    expect(raiser.raised[0]).toMatchObject({
+      type: "BOOKING_ACCEPTED",
+      audience: "user",
+      userId: "cust-1",
+    });
+    // The very deadline the write stamped, not a second reading of the clock.
+    expect(raiser.raised[0]?.payload.payBy).toBe((repo.savedArg?.expiresAt as Date).toISOString());
+  });
+
+  it("decline tells the customer no, and carries the reason token", async () => {
+    const { command, raiser } = setupDecline(awaitingBooking());
+
+    await command.execute({
+      bookingId: "bk-1",
+      requesterUserId: "user-right-2",
+      reason: "outside_area",
+    });
+
+    expect(raiser.raised).toHaveLength(1);
+    expect(raiser.raised[0]).toMatchObject({
+      type: "BOOKING_DECLINED",
+      audience: "user",
+      userId: "cust-1",
+      payload: expect.objectContaining({ reason: "outside_area" }),
+    });
+  });
+
+  it("a losing decline announces nothing", async () => {
+    const { command, repo, raiser } = setupDecline(awaitingBooking());
+    repo.currentStatusOverride = "PENDING_PAYMENT";
+
+    await command.execute({ bookingId: "bk-1", requesterUserId: "user-right-2" });
+
+    expect(repo.lastApplied).toBe(false);
+    expect(raiser.raised).toEqual([]);
+  });
+
+  // The whole of BR-P6. The accept already committed by the time the raise
+  // runs; a throw from the notification side must not travel back out of
+  // `execute` and tell the provider their acceptance failed.
+  it("a raiser that throws does not fail the accept", async () => {
+    const broken = new FakeRaiser(new Error("smtp down"));
+    const { command, repo } = setupAccept(awaitingBooking(), { raiser: broken });
+
+    await expect(
+      command.execute({ bookingId: "bk-1", requesterUserId: "user-right-1" }),
+    ).resolves.toBeUndefined();
+
+    // And the write it could not announce is still there.
+    expect(repo.savedArg?.status).toBe("PENDING_PAYMENT");
   });
 });

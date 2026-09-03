@@ -95,16 +95,22 @@ export function buildPrivateGraphQLFields(): {
   const scheduling = bootstrapScheduling();
   const review = bootstrapReview();
   const reviewRead = bootstrapReviewRead();
-  const booking = bootstrapBooking();
-  const bookingRead = bootstrapBookingRead();
-  const walletRead = bootstrapWalletRead();
   // The eight notification fields are already in `privateGraphqlSchema` —
   // read/schema.ts and write/schema.ts merge them in. A field declared in
   // the schema with no handler behind it resolves to nothing, so leaving
   // these unmounted would put an inbox in the type the frontend generates
   // against and give it nothing to call.
   const notificationRead = bootstrapNotificationRead();
+  // Hoisted above `bootstrapBooking` and `bootstrapCommunication`, which
+  // both take its `raiseNotification` — a booking that changes hands has
+  // to tell somebody, and this is the one place that coupling is written
+  // down.
   const notification = bootstrapNotification();
+  const booking = bootstrapBooking({
+    raiseNotification: notification.useCases.internal.raiseNotification,
+  });
+  const bookingRead = bootstrapBookingRead();
+  const walletRead = bootstrapWalletRead();
   const activityRead = bootstrapActivityRead();
   const communicationRead = bootstrapCommunicationRead();
   const communication = bootstrapCommunication({
