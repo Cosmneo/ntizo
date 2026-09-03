@@ -17,6 +17,12 @@
     "providerVerified": "Votre entreprise a été vérifiée",
     "providerDocumentsRequired": "Vos documents nécessitent votre attention",
     "teamInvitation": "Vous avez été invité à une équipe",
+    "providerBookingReceived": "Vous avez une demande de réservation à laquelle répondre",
+    "bookingAccepted": "Le prestataire a accepté votre demande — confirmez le paiement",
+    "bookingDeclined": "Le prestataire n'a pas pu accepter votre demande",
+    "bookingConfirmed": "Votre réservation est confirmée",
+    "providerBookingConfirmed": "Une réservation a été payée et est confirmée",
+    "providerBookingCancelledByCustomer": "Une réservation a été annulée",
     "unknown": "Vous avez une nouvelle notification"
   }
 }

@@ -17,6 +17,12 @@
     "providerVerified": "Je bedrijf is geverifieerd",
     "providerDocumentsRequired": "Je documenten hebben aandacht nodig",
     "teamInvitation": "Je bent uitgenodigd voor een team",
+    "providerBookingReceived": "Je hebt een boekingsaanvraag om te beantwoorden",
+    "bookingAccepted": "De dienstverlener heeft je aanvraag geaccepteerd — bevestig de betaling",
+    "bookingDeclined": "De dienstverlener kon je aanvraag niet accepteren",
+    "bookingConfirmed": "Je boeking is bevestigd",
+    "providerBookingConfirmed": "Een boeking is betaald en bevestigd",
+    "providerBookingCancelledByCustomer": "Een boeking is geannuleerd",
     "unknown": "Je hebt een nieuwe melding"
   }
 }

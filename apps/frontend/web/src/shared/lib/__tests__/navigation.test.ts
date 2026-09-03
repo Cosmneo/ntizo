@@ -25,3 +25,10 @@ describe("providerNavGroups: the messages entry", () => {
     expect(matches).toHaveLength(1);
   });
 });
+
+describe("providerNavGroups: bookings", () => {
+  it("is the first entry of the work group", () => {
+    const work = providerNavGroups.find((g) => g.labelKey === "nav.work")!;
+    expect(work.items[0]).toMatchObject({ titleKey: "nav.bookings", url: "/provider/$slug/bookings" });
+  });
+});

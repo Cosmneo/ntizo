@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { createBooking, submitBooking } from "../graphql/schema/mutations";
+import type { z } from "zod";
+import { acceptBooking, bookingWriteSchema, createBooking, declineBooking, submitBooking } from "../graphql/schema/mutations";
+
+// The kit's `SchemaAdapter` exposes `.validate()`, not `.parse()` — the raw
+// zod schema sits behind `_schema`, same accessor `read/booking`'s,
+// `read/activity`'s, `read/communication`'s and `read/notification`'s
+// equivalent tests use.
+const declineBookingInput = (declineBooking.input as unknown as { _schema: z.ZodTypeAny })._schema;
 
 const VALID_CREATE_INPUT = {
   serviceOptionId: "opt-1",
@@ -190,5 +197,39 @@ describe("booking.submit input", () => {
     if (result.success) {
       expect((result.data as Record<string, unknown>).customerId).toBeUndefined();
     }
+  });
+});
+
+/**
+ * The provider's yes and no. Both take only the booking id the person comes
+ * from `requireUser(ctx)`, never from this input, for the same reason
+ * `booking.create` and `booking.submit` have no `customerId` field — see
+ * those schemas' own doc comments.
+ */
+describe("accept and decline", () => {
+  it("are mounted beside create and submit", () => {
+    expect(Object.keys(bookingWriteSchema.fields.booking).sort()).toEqual([
+      "accept",
+      "create",
+      "decline",
+      "submit",
+    ]);
+  });
+
+  it("take only the booking id — the person comes from the session", () => {
+    const shapeKeys = (field: { input: unknown }): string[] => {
+      const adapter = field.input as { _schema?: { shape?: Record<string, unknown> } };
+      return Object.keys(adapter._schema?.shape ?? {}).sort();
+    };
+
+    expect(shapeKeys(acceptBooking)).toEqual(["bookingId"]);
+    expect(shapeKeys(declineBooking)).toEqual(["bookingId", "reason"]);
+  });
+
+  it("refuses a free-text reason", () => {
+    expect(() => declineBookingInput.parse({ bookingId: "b", reason: "I am busy" })).toThrow();
+    expect(declineBookingInput.parse({ bookingId: "b", reason: "outside_area" })).toMatchObject({
+      reason: "outside_area",
+    });
   });
 });

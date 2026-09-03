@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { BadgeCheck, FileWarning, Mail, Store, UserPlus } from "lucide-react";
+import { BadgeCheck, CalendarCheck, CalendarX, CircleDollarSign, FileWarning, Mail, Store, UserPlus } from "lucide-react";
 
 /**
  * The icon a type draws with, and the i18n key its sentence lives under.
@@ -16,6 +16,12 @@ const PRESENTATION: Record<string, { icon: LucideIcon; key: string }> = {
   PROVIDER_VERIFIED: { icon: BadgeCheck, key: "providerVerified" },
   PROVIDER_DOCUMENTS_REQUIRED: { icon: FileWarning, key: "providerDocumentsRequired" },
   TEAM_INVITATION: { icon: UserPlus, key: "teamInvitation" },
+  PROVIDER_BOOKING_RECEIVED: { icon: CalendarCheck, key: "providerBookingReceived" },
+  BOOKING_ACCEPTED: { icon: CircleDollarSign, key: "bookingAccepted" },
+  BOOKING_DECLINED: { icon: CalendarX, key: "bookingDeclined" },
+  BOOKING_CONFIRMED: { icon: CalendarCheck, key: "bookingConfirmed" },
+  PROVIDER_BOOKING_CONFIRMED: { icon: CalendarCheck, key: "providerBookingConfirmed" },
+  PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER: { icon: CalendarX, key: "providerBookingCancelledByCustomer" },
 };
 
 const FALLBACK = { icon: Mail, key: "unknown" } as const;

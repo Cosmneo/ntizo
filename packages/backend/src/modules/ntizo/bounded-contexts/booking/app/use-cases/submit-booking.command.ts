@@ -1,4 +1,6 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
+import { NotificationType } from "@ntizo/shared";
+import type { Booking } from "../../domain/aggregates/booking.aggregate";
 import { BookingSubmitted } from "../../domain/events";
 import {
   BookingNotFoundError,
@@ -12,6 +14,10 @@ import type { BookingRepositoryPort } from "../ports/outbound/booking.repository
 import type { CustomerPhoneReaderPort } from "../ports/outbound/customer-phone.reader.port";
 import type { DelayedJobsPort } from "../ports/outbound/delayed-jobs.port";
 import type { PlatformSettingsReaderPort } from "../ports/outbound/platform-settings.reader.port";
+import {
+  raiseQuietly,
+  type RaiseNotificationInternalPort,
+} from "../ports/outbound/raise-notification.port";
 
 export interface SubmitBookingInput {
   bookingId: string;
@@ -48,7 +54,34 @@ export interface SubmitBookingInput {
    * `Booking.submit` for why the parameter it hands this to is required.
    */
   description: string | null;
+  /**
+   * The signed-in customer's own first name, off the GraphQL session — the
+   * one thing `PROVIDER_BOOKING_RECEIVED` needs that the booking row does
+   * not carry. `booking` snapshots the *provider's* name, because that is
+   * what was sold; it has never had a column for the customer's, so the
+   * template that says who is asking has nowhere else to read one from.
+   *
+   * Optional, and null-tolerant, because `NtizoGraphqlContext.firstName` is
+   * `string | null` and a profile with no name on it is ordinary. The
+   * template renders "um cliente" for that case; nothing here refuses a
+   * booking over a missing name.
+   */
+  customerFirstName?: string | null;
 }
+
+/**
+ * What the transaction below hands back when it really did submit: the
+ * deadline it stamped, and the booking it stamped it on.
+ *
+ * The deadline alone used to be enough, because scheduling a job was all
+ * that happened afterwards. Announcing the request needs the provider it
+ * went to and the service it names, and re-reading the row outside the
+ * transaction to find them would be a second read that could disagree with
+ * the write — so the aggregate travels out with the date instead. `null`
+ * still means the same thing it always did: the compare-and-swap lost and
+ * nothing happened.
+ */
+type SubmitOutcome = { respondBy: Date; moved: Booking };
 
 /**
  * What `booking_change.reason` records for this hop.
@@ -151,6 +184,7 @@ export class SubmitBookingCommand {
     private readonly delayedJobs: DelayedJobsPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
+    private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
   async execute(input: SubmitBookingInput): Promise<{ bookingId: string; respondBy: string }> {
@@ -166,7 +200,7 @@ export class SubmitBookingCommand {
       throw new CustomerPhoneMissingError(input.customerId);
     }
 
-    const respondBy = await this.unitOfWork.atomicExecute(async (): Promise<Date | null> => {
+    const result = await this.unitOfWork.atomicExecute(async (): Promise<SubmitOutcome | null> => {
       const booking = await this.repo.findById(input.bookingId);
       if (!booking) {
         throw new BookingNotFoundError(input.bookingId);
@@ -239,16 +273,50 @@ export class SubmitBookingCommand {
         "booking",
       );
 
-      return respondByDeadline;
+      return { respondBy: respondByDeadline, moved };
     });
 
     // Scheduled after the transaction resolves, not inside it — the same
     // reason `CreateBookingCommand` schedules its own job outside its own
     // `atomicExecute`: a job queued for a write that then rolled back, or
     // that lost the compare-and-swap above, would be a job for nothing.
-    if (respondBy) {
-      await this.delayedJobs.scheduleBookingDeadline(input.bookingId, respondBy);
-      return { bookingId: input.bookingId, respondBy: respondBy.toISOString() };
+    if (result) {
+      await this.delayedJobs.scheduleBookingDeadline(input.bookingId, result.respondBy);
+
+      // BR-P6, and it sits here — inside the applied branch, after the
+      // transaction resolved — for both halves of that rule. *After*,
+      // because announcing a request from inside the transaction that
+      // carries it would tell the provider about a submission a rollback
+      // could still take back. *Inside this branch*, because the other one
+      // is a losing compare-and-swap: this call's submission never landed,
+      // and there is nothing to announce.
+      //
+      // `raiseQuietly` rather than a bare `execute`: the booking is already
+      // submitted by the time this line runs, and a notification adapter
+      // that hiccups must not turn a request the customer really did send
+      // into a failed mutation. See that function's own doc comment.
+      await raiseQuietly(
+        this.raiseNotification,
+        {
+          type: NotificationType.ProviderBookingReceived,
+          audience: "provider",
+          providerId: result.moved.providerId,
+          payload: {
+            bookingId: input.bookingId,
+            serviceName: result.moved.serviceName,
+            startsAt: result.moved.startsAt.toISOString(),
+            // `booking` carries no timezone, and none is invented here.
+            // Whatever renders this decides how to show an instant, the same
+            // way every other consumer of `startsAt` already does.
+            timezone: null,
+            customerFirstName: input.customerFirstName ?? null,
+            respondBy: result.respondBy.toISOString(),
+          },
+        },
+        input.bookingId,
+      );
+
+      return { bookingId: input.bookingId, respondBy: result.respondBy.toISOString() };
     }
 
     // The compare-and-swap found something other than the `DRAFT` this
