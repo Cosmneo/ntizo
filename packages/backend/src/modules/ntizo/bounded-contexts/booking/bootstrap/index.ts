@@ -12,6 +12,7 @@ import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
 import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
+import { CancelBookingCommand } from "../app/use-cases/cancel-booking.command";
 import { SweepBookingCommand } from "../app/use-cases/sweep-booking.command";
 import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-bookings.internal.command";
 import { ChargeBookingCommand } from "../app/use-cases/charge-booking.command";
@@ -164,6 +165,18 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
       declineBooking: new DeclineBookingCommand(
         bookingRepository,
         providerMemberReader,
+        slotHold,
+        unitOfWork,
+        outboxPort,
+        deps.raiseNotification,
+      ),
+      // Needs no `ProviderMemberReaderPort`, unlike `declineBooking` beside
+      // it: the fact this command authorises against — whose booking this
+      // is — is already on the row it reads, not a membership read
+      // elsewhere. Shares everything else declineBooking shares: the same
+      // repository, slot hold, unit of work, outbox and notification port.
+      cancelBooking: new CancelBookingCommand(
+        bookingRepository,
         slotHold,
         unitOfWork,
         outboxPort,

@@ -148,7 +148,27 @@ export const declineBooking = defineMutation({
   docs: { summary: "Decline a booking request", tags: ["Booking"] },
 });
 
+/**
+ * The customer calls it off. Takes only the booking: whose it is, is on the
+ * booking, and whether the caller is that customer is the command's check,
+ * not the client's claim. Allowed only before payment — the aggregate refuses
+ * anything past it.
+ */
+export const cancelBooking = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Cancel your own booking", tags: ["Booking"] },
+});
+
 export const bookingWriteSchema = defineGraphQLSchema(
-  { booking: { create: createBooking, submit: submitBooking, accept: acceptBooking, decline: declineBooking } },
+  {
+    booking: {
+      create: createBooking,
+      submit: submitBooking,
+      accept: acceptBooking,
+      decline: declineBooking,
+      cancel: cancelBooking,
+    },
+  },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );
