@@ -83,7 +83,12 @@ export function Footer() {
           <FooterCol title={t("footer.legal")}>
             <FooterLink to="/terms">{t("footer.terms")}</FooterLink>
             <FooterLink to="/privacy">{t("footer.privacy")}</FooterLink>
-            <FooterLink to="/admin">{t("admin")}</FooterLink>
+            {/* No third row. `/admin` stood here, labelled `t("admin")` — a
+                key no locale file defines, so the fallback rendered the literal
+                lower-case word "admin" under two properly translated legal
+                links, on every public page, for every visitor. It pointed at a
+                console almost none of them can open. Staff reach `/admin` by
+                typing it; the footer is not a staff door. */}
           </FooterCol>
 
           {/* A "Get the App" column stood here with an App Store and a Google

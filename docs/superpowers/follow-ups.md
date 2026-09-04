@@ -3995,3 +3995,33 @@ failure mode recurring — the fix is the same one-line-per-locale addition to `
 object this task made, not a change to the test. If the registration test itself is ever the thing
 that gets deleted or weakened (rather than a namespace forgetting to register), this entry is the
 record of why it exists.
+
+---
+
+## #175 — The dev database's `booking_sweep_idx` is wider than any migration ever asked for
+
+`booking-constraints.test.ts`'s "the sweep index is partial on exactly the deadline-bearing
+statuses" fails against the dev database, and has been failing since before this branch touched
+anything (the whole change was frontend; `packages/backend` is untouched). It reads `pg_indexes`
+back from the real database and finds:
+
+```
+WHERE (status = ANY (ARRAY['DRAFT','AWAITING_PROVIDER','PENDING_PAYMENT','CONFIRMED','MARKED_DONE']))
+```
+
+`DEADLINE_BEARING_STATUSES` is the first three, and so is every migration that ever created this
+index: 0027 made `booking_expiry_sweep_idx` on `PENDING_PAYMENT` alone, 0030 widened it to the
+three, 0031 dropped it and created `booking_sweep_idx` on the same three. The five-status form
+appears in no migration at all, which means it reached dev out of band — a `drizzle-kit push` at a
+moment when the constant was wider is the obvious candidate.
+
+Not a performance break: the sweep's `status IN (three)` implies the index's `status IN (five)`, so
+Postgres can still use it. The cost is that dev's schema and the repository's schema disagree, and
+the test that exists precisely to catch that disagreement is red — which is worse than the drift,
+because a red gate nobody can fix is a gate people learn to ignore. QA and prod have never been
+migrated at all, so they will get the correct index whenever they first are.
+
+**Trigger:** the next time anyone runs the backend suite and has to decide whether a red test means
+their change broke something — or whenever dev's schema is next reconciled. Fixing it is one
+statement (`DROP INDEX` + the 0031 definition) against dev, which is somebody's decision to make,
+not a side effect of unrelated work.
