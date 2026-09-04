@@ -539,14 +539,43 @@ describe("AdminBookingsPage", () => {
     expect(cards.closest("div[class*='border-t']")).toHaveClass("lg:hidden");
   });
 
-  it("names the empty tab in its own words", async () => {
-    renderQueue("/admin/bookings?tab=disputed", { answer: page([]) });
+  /**
+   * Three tabs, three reasons nothing is there — and the body is the half that
+   * does the explaining.
+   *
+   * Asserted per tab rather than once, because a single tab's assertion is
+   * satisfied by copy hardcoded to that tab: pinning only the heading left
+   * `emptyText` free to say "bookings whose appointment has passed" on the
+   * disputes tab, which is not a smaller mistake than an empty screen.
+   */
+  it.each([
+    {
+      tab: "unclosed",
+      label: "Por fechar",
+      title: "Nada por fechar",
+      body: "As reservas cujo horário já passou e ainda não foram fechadas aparecem aqui.",
+    },
+    {
+      tab: "in_window",
+      label: "Em janela",
+      title: "Nada em janela",
+      body: "As reservas marcadas como concluídas, à espera de resposta do cliente, aparecem aqui.",
+    },
+    {
+      tab: "disputed",
+      label: "Reclamações",
+      title: "Sem reclamações",
+      body: "As reclamações abertas pelos clientes aparecem aqui, à espera de uma decisão.",
+    },
+  ])("says why the $tab tab is empty, in that tab's own words", async ({ tab, label, title, body }) => {
+    renderQueue(`/admin/bookings?tab=${tab}`, { answer: page([]) });
 
-    const table = await screen.findByRole("table");
-    expect(await within(table).findByText("Sem reclamações")).toBeInTheDocument();
+    const inTable = within(await screen.findByRole("table"));
+    expect(await inTable.findByText(title)).toBeInTheDocument();
+    expect(inTable.getByText(body)).toBeInTheDocument();
     // And the card over it is headed by the tab, not by the page: `selector`
     // picks the heading out from the tab button that carries the same word.
-    expect(screen.getByText("Reclamações", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText(label, { selector: "p" })).toBeInTheDocument();
   });
 
   it("counts what is waiting, and pages when there is more than a page", async () => {
