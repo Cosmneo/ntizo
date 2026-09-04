@@ -8,7 +8,7 @@
  * already prove the pass-through (a verdict's `bookingId` lands on the
  * review); what only a real query can prove is the verdict itself.
  *
- * Eight customers, not one, each proving a different way this could go wrong
+ * Nine customers, not one, each proving a different way this could go wrong
  * silently. The query has three predicates — `status`, `providerId`,
  * `customerId` — and each is pinned by exactly one test below, not merely
  * exercised in passing by whichever fixture happens to be there:
@@ -31,7 +31,7 @@
  *    this does not depend on which other tests ran first, unlike the
  *    file-order coincidence it replaces (see that test's own comment).
  *
- * Four more tests cover behaviour once eligibility is established, rather
+ * Five more tests cover behaviour once eligibility is established, rather
  * than a single predicate:
  *  - a single `COMPLETED` booking against the provider under test — allowed,
  *    with that booking's own id.
@@ -49,6 +49,11 @@
  *    and Postgres sorts nulls FIRST under DESC, so ordering by that column
  *    alone would deterministically return the older marked-done booking
  *    instead.
+ *  - two bookings whose dispute windows overlap — allowed, and pointed at
+ *    the job done last rather than the window that closed last. That is the
+ *    assertion the coalesce's *argument order* exists for, and the one the
+ *    test above cannot make: its two rows do not overlap, so both orderings
+ *    agree on it.
  *
  * Fixtures follow `booking-repository.test.ts`'s pattern: a random `suffix`
  * per run so this file's rows cannot collide with another worktree's or
@@ -93,6 +98,7 @@ let customerEarnedId: string;
 let customerMultipleCompletedId: string;
 let customerMarkedDoneId: string;
 let customerMixedEndingsId: string;
+let customerOverlappingWindowsId: string;
 let customerSelfId: string;
 let customerOtherId: string;
 let ownerAId: string;
@@ -114,6 +120,7 @@ beforeAll(async () => {
   customerMultipleCompletedId = crypto.randomUUID();
   customerMarkedDoneId = crypto.randomUUID();
   customerMixedEndingsId = crypto.randomUUID();
+  customerOverlappingWindowsId = crypto.randomUUID();
   customerSelfId = crypto.randomUUID();
   customerOtherId = crypto.randomUUID();
   ownerAId = crypto.randomUUID();
@@ -153,6 +160,12 @@ beforeAll(async () => {
     {
       id: customerMixedEndingsId,
       email: `review-elig-mixed-endings-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: customerOverlappingWindowsId,
+      email: `review-elig-overlapping-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -280,6 +293,7 @@ afterAll(async () => {
     () => db.delete(user).where(eq(user.id, customerMultipleCompletedId)),
     () => db.delete(user).where(eq(user.id, customerMarkedDoneId)),
     () => db.delete(user).where(eq(user.id, customerMixedEndingsId)),
+    () => db.delete(user).where(eq(user.id, customerOverlappingWindowsId)),
     () => db.delete(user).where(eq(user.id, customerSelfId)),
     () => db.delete(user).where(eq(user.id, customerOtherId)),
     () => db.delete(user).where(eq(user.id, ownerAId)),
@@ -418,6 +432,59 @@ describe("BookingReviewEligibilityAdapter — real status filter, real providerI
     expect(verdict.allowed).toBe(true);
     expect(verdict.bookingId).toBe(completedLater!.id);
     expect(verdict.bookingId).not.toBe(markedDoneEarlier!.id);
+  });
+
+  test("with two overlapping windows, points at the job done last — not the window that closed last", async () => {
+    // The two orderings only disagree when a customer's windows overlap, and
+    // for anyone who books the same provider twice inside three days — a
+    // weekly cleaner, a barber, a trainer — that is the normal case.
+    //
+    // `closedLast` was done on the 1st and swept closed on the 4th.
+    // `doneLast` was done on the 3rd and its window is still open. The job
+    // this customer is thinking about when they sit down to write is
+    // `doneLast`; the booking whose window *closed* most recently is
+    // `closedLast`.
+    //
+    // `coalesce(completed_at, marked_done_at) DESC` ranks `closedLast` (the
+    // 4th) above `doneLast` (the 3rd) and returns the wrong one — and since
+    // `closedLast` is already COMPLETED, the completion hop would throw,
+    // be swallowed, and leave `doneLast`'s window to the sweep. This is the
+    // test that tells the two expressions apart; the one above cannot,
+    // because its two rows do not overlap.
+    const [closedLast] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerOverlappingWindowsId,
+          status: BookingStatus.Completed,
+          markedDoneAt: new Date("2026-05-01T10:00:00Z"),
+          completedAt: new Date("2026-05-04T10:00:00Z"),
+          startsAt: new Date("2026-05-01T09:00:00Z"),
+          endsAt: new Date("2026-05-01T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const [doneLast] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerOverlappingWindowsId,
+          status: BookingStatus.MarkedDone,
+          markedDoneAt: new Date("2026-05-03T10:00:00Z"),
+          startsAt: new Date("2026-05-03T09:00:00Z"),
+          endsAt: new Date("2026-05-03T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const verdict = await __runWithTransactionContextForTests(db, () =>
+      adapter.check(providerAId, customerOverlappingWindowsId),
+    );
+
+    expect(verdict.allowed).toBe(true);
+    expect(verdict.bookingId).toBe(doneLast!.id);
+    expect(verdict.bookingId).not.toBe(closedLast!.id);
   });
 
   test("refuses a customer whose COMPLETED booking is with the other provider", async () => {

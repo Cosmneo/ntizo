@@ -579,6 +579,48 @@ describe("the booking a review closes", () => {
     expect(completeBooking.calls).toEqual([]);
   });
 
+  it("closes the booking the vanished review pointed at, when a revision turns out to have inserted", async () => {
+    // `let bookingId = existing?.bookingId ?? null` was dead weight before
+    // this task — the revision path builds its aggregate with
+    // `existing.revise()`, which carries `this.props.bookingId`, so the local
+    // never reached the write. It is load-bearing now, on exactly one path:
+    // `findByAuthor` found a review, the author deleted it (`removeOwn`)
+    // before this transaction's upsert ran, so Postgres inserted rather than
+    // updated and `inserted` comes back true on what this call treated as a
+    // revision. The booking closed is then the one the vanished review
+    // pointed at.
+    //
+    // Safe, and this test is where that is written down: `findByAuthor` is
+    // keyed on `(providerId, authorUserId)`, so the row was this caller's
+    // own, and its `booking_id` was written from a verdict keyed on this same
+    // customer. The eligibility port is never consulted on this path —
+    // `asked` is 0 below — so the id can only have come from that review.
+    const existing = Review.create({
+      providerId: "prov-1",
+      authorUserId: CUSTOMER_ID,
+      bookingId: "bk-9",
+      rating: 1,
+      comment: "mau",
+    });
+    const repo = new FakeRepo({ existing, inserted: true });
+    const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
+    const completeBooking = new FakeCompleteBooking();
+
+    await command(repo, eligibility, completeBooking).execute({
+      providerId: "prov-1",
+      requesterUserId: CUSTOMER_ID,
+      rating: 4,
+      comment: null,
+    });
+
+    expect(eligibility.asked).toBe(0);
+    expect(completeBooking.calls).toEqual([{ bookingId: "bk-9", requesterUserId: CUSTOMER_ID }]);
+    // The provenance link survives the rewrite too — `revise()` carries the
+    // original booking onto the row this call writes, so the review that
+    // replaces the vanished one still points at the job that earned it.
+    expect(repo.upserted?.bookingId).toBe("bk-9");
+  });
+
   it("completes nothing when the write says another submission got there first", async () => {
     // The double-submit race `review.repository.ts` names: `findByAuthor` saw
     // nothing, but by the time this call's `upsert` ran a racing submission

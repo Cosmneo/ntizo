@@ -55,15 +55,30 @@ export class BookingReviewEligibilityAdapter implements ReviewEligibilityPort {
           inArray(booking.status, [BookingStatus.MarkedDone, BookingStatus.Completed]),
         ),
       )
-      // A marked-done booking has no `completed_at` yet, and in Postgres
-      // `ORDER BY … DESC` is NULLS FIRST by default — so ordering by that
-      // column alone would sort every marked-done booking *ahead* of every
-      // completed one no matter how old it is, and would leave several
-      // marked-done ones tied on NULL in whatever order the plan happened to
-      // produce. Either way the review lands on the wrong job. Both columns
-      // are stamped by the hop that set the status, so the coalesce reads
-      // "when was this job done", whichever door it came through.
-      .orderBy(desc(sql`coalesce(${booking.completedAt}, ${booking.markedDoneAt})`))
+      // Ordered by when the JOB WAS DONE, which is `marked_done_at` on both
+      // admitted statuses — not by `completed_at`, which is when the dispute
+      // window expired, up to three days later.
+      //
+      // The distinction is not academic, and it is the whole reason
+      // `marked_done_at` is the first argument rather than the second. Take a
+      // customer with two bookings at the same provider whose windows
+      // overlap — a weekly cleaner, a barber, a trainer, so the normal case
+      // for anyone who books twice. Job A was done on the 1st and closed by
+      // the sweep on the 4th; job B was done on the 3rd and its window is
+      // still open. Ordering by `coalesce(completed_at, marked_done_at)`
+      // ranks A (the 4th) above B (the 3rd), so the review is filed against
+      // the older job — and because A is already `COMPLETED`,
+      // `Booking.complete` refuses, the refusal is swallowed, and B's window
+      // is never closed by the review at all. That is this feature failing at
+      // precisely the thing it exists to do.
+      //
+      // `completed_at` stays as the fallback because it is load-bearing for
+      // legacy rows: `COMPLETED` bookings written before `marked_done_at`
+      // existed carry a null there, and dropping the coalesce would sort
+      // every one of them ahead of everything else — in Postgres
+      // `ORDER BY … DESC` is NULLS FIRST by default, so a null does not sort
+      // to the end, it sorts to the front.
+      .orderBy(desc(sql`coalesce(${booking.markedDoneAt}, ${booking.completedAt})`))
       .limit(1);
 
     if (!row) return { allowed: false, bookingId: null };
