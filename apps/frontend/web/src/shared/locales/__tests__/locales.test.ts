@@ -15,6 +15,14 @@ import itITCheckout from "../it-IT/checkout.json";
 import nlNLCheckout from "../nl-NL/checkout.json";
 import ptMZCheckout from "../pt-MZ/checkout.json";
 import ptPTCheckout from "../pt-PT/checkout.json";
+import deDEBookings from "../de-DE/bookings.json";
+import enUSBookings from "../en-US/bookings.json";
+import esESBookings from "../es-ES/bookings.json";
+import frFRBookings from "../fr-FR/bookings.json";
+import itITBookings from "../it-IT/bookings.json";
+import nlNLBookings from "../nl-NL/bookings.json";
+import ptMZBookings from "../pt-MZ/bookings.json";
+import ptPTBookings from "../pt-PT/bookings.json";
 import deDECompany from "../de-DE/company.json";
 import enUSCompany from "../en-US/company.json";
 import esESCompany from "../es-ES/company.json";
@@ -65,6 +73,10 @@ const NAMESPACES: Record<string, Record<string, unknown>> = {
   checkout: {
     "de-DE": deDECheckout, "en-US": enUSCheckout, "es-ES": esESCheckout, "fr-FR": frFRCheckout,
     "it-IT": itITCheckout, "nl-NL": nlNLCheckout, "pt-MZ": ptMZCheckout, "pt-PT": ptPTCheckout,
+  },
+  bookings: {
+    "de-DE": deDEBookings, "en-US": enUSBookings, "es-ES": esESBookings, "fr-FR": frFRBookings,
+    "it-IT": itITBookings, "nl-NL": nlNLBookings, "pt-MZ": ptMZBookings, "pt-PT": ptPTBookings,
   },
   company: {
     "de-DE": deDECompany, "en-US": enUSCompany, "es-ES": esESCompany, "fr-FR": frFRCompany,

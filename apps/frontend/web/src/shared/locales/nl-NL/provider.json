@@ -152,6 +152,8 @@
       "declined_without_reason": "Geweigerd", "not_available": "Geweigerd: niet beschikbaar", "cannot_perform": "Geweigerd: dienst niet aangeboden",
       "outside_area": "Geweigerd: buiten werkgebied", "other": "Geweigerd", "provider_did_not_respond": "Verlopen zonder reactie",
       "customer_did_not_pay": "Geannuleerd: betaling niet voltooid", "checkout_hold_expired": "Concept verlopen",
+      "payment_confirmed": "Betaling bevestigd", "cancelled_by_customer": "Geannuleerd door de klant",
+      "superseded_by_new_draft": "Vervangen door een nieuwe boeking",
       "respond_by": "Reageren voor", "pay_by": "Betalen voor", "unknown": "Status gewijzigd"
     },
     "technical": "Technische details", "bookingId": "Boeking", "serviceOptionId": "Optie", "memberId": "Professional", "paymentRef": "Betalingsreferentie", "none": "—"

@@ -18,7 +18,11 @@ import {
   providerPublicDetailReadModel,
   providerPublicReadModel,
 } from "../public";
-import { bookingReadModel } from "../system";
+import {
+  bookingReadModel,
+  customerBookingDetailReadModel,
+  customerBookingPageReadModel,
+} from "../system";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -517,8 +521,14 @@ describe("supportRequestSummaryReadModel", () => {
   });
 });
 
-describe("bookingReadModel", () => {
-  const base = {
+/**
+ * A booking row with every field `bookingReadModel` requires, taken from the
+ * model's own field list — the shared starting point for a test that wants
+ * only one field wrong rather than a second, independent copy of the whole
+ * shape.
+ */
+function validBookingRow() {
+  return {
     id: "b1",
     status: "PENDING_PAYMENT" as const,
     serviceId: "svc-1",
@@ -540,8 +550,6 @@ describe("bookingReadModel", () => {
     // because nobody the platform could charge for is travelling.
     locationType: "at_customer",
     priceMinor: 120000,
-    commissionBps: 1000,
-    commissionMinor: 12000,
     currency: "MZN",
     startsAt: "2026-09-04T12:30:00.000Z",
     endsAt: "2026-09-04T13:30:00.000Z",
@@ -553,8 +561,13 @@ describe("bookingReadModel", () => {
     addressDirections: null,
     description: null,
     expiresAt: "2026-09-01T10:15:00.000Z",
+    paidAt: null,
     createdAt: "2026-09-01T10:00:00.000Z",
   };
+}
+
+describe("bookingReadModel", () => {
+  const base = validBookingRow();
 
   it("accepts a booking awaiting payment", () => {
     expect(() => bookingReadModel.parse(base)).not.toThrow();
@@ -602,10 +615,6 @@ describe("bookingReadModel", () => {
     expect(() => bookingReadModel.parse({ ...base, priceMinor: -1 })).toThrow();
   });
 
-  it("rejects a commission outside 0..10000 basis points", () => {
-    expect(() => bookingReadModel.parse({ ...base, commissionBps: 10001 })).toThrow();
-  });
-
   it("allows a null expiresAt, because the column is nullable — not because any status clears it", () => {
     // Nothing writes null today: every deadline-bearing hop stamps this, and
     // no transition clears it afterwards. The DTO stays nullable because
@@ -631,6 +640,43 @@ describe("bookingReadModel", () => {
       expiresAt: "2026-09-01T10:15:00.000Z",
     });
     expect(parsed.expiresAt).toBe("2026-09-01T10:15:00.000Z");
+  });
+});
+
+describe("the customer's booking read model", () => {
+  // The commission is deducted from the provider's payout and is never shown
+  // to the customer. That rule used to be kept by each caller's selection set
+  // — checkout omitted the fields by hand and a test read the query document
+  // to prove it. A second customer-facing caller is the moment follow-up #114
+  // anticipated: the fields leave the model, so no selection set can ask.
+  it("carries no commission fields at all", () => {
+    const keys = Object.keys(bookingReadModel.shape);
+    expect(keys).not.toContain("commissionBps");
+    expect(keys).not.toContain("commissionMinor");
+  });
+
+  // The money block says "Pago a …" once the payment lands, and the timeline
+  // draws the hop. Both need the instant, and it is the customer's own fact.
+  it("carries paidAt, nullable until the payment lands", () => {
+    expect(bookingReadModel.shape).toHaveProperty("paidAt");
+    expect(bookingReadModel.parse({ ...validBookingRow(), paidAt: null }).paidAt).toBeNull();
+  });
+
+  it("the detail model adds the timeline and nothing else", () => {
+    const extra = Object.keys(customerBookingDetailReadModel.shape).filter(
+      (k) => !(k in bookingReadModel.shape),
+    );
+    expect(extra).toEqual(["timeline"]);
+  });
+
+  it("the page model carries the three tab counts", () => {
+    const page = customerBookingPageReadModel.parse({
+      items: [],
+      total: 0,
+      nextOffset: null,
+      counts: { waiting: 0, upcoming: 0, history: 0 },
+    });
+    expect(page.counts.upcoming).toBe(0);
   });
 });
 

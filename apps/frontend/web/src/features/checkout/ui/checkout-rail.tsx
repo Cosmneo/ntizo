@@ -1,25 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { BrandImage } from "@/shared/components/brand-image";
 import { BadgeCheck, Check, ImageIcon, Star } from "lucide-react";
-import { formatAmount } from "@/features/directory/services/domain/service-card";
+import { formatAmount, formatRating } from "@/features/directory/services/domain/service-card";
 import type { CompactSlot } from "@/features/checkout/domain/slot-wording";
-
-/**
- * A review score to one decimal, in the reader's own numerals and separator —
- * "4,8" in `pt-MZ`, "4.8" in `en-US`.
- *
- * Pinned to exactly one decimal rather than left to `Intl`'s default, so a
- * business on a round 5 reads "5,0" beside one on "4,8" instead of a bare "5"
- * that looks like a different kind of number. The value is already rounded to
- * one decimal server-side — see `coerceReviewAggregate` — so this is
- * presentation only and cannot disagree with the provider's own page.
- */
-function formatRating(rating: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(rating);
-}
 
 /**
  * Whether the *provider* travels to the job, which is the only reading under

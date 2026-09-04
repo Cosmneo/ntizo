@@ -175,3 +175,26 @@ export function serviceCardImage(
 ): string | null {
   return service.imageUrls[0] ?? providerImageUrl ?? null;
 }
+
+/**
+ * A review score to one decimal, in the reader's own numerals and separator —
+ * "4,8" in `pt-MZ`, "4.8" in `en-US`.
+ *
+ * Pinned to exactly one decimal rather than left to `Intl`'s default, so a
+ * business on a round 5 reads "5,0" beside one on "4,8" instead of a bare "5"
+ * that looks like a different kind of number. The value is already rounded to
+ * one decimal server-side — see `coerceReviewAggregate` — so this is
+ * presentation only and cannot disagree with the provider's own page.
+ *
+ * Lives beside `formatHeadlinePrice` rather than with either caller: checkout's
+ * rail and the customer's booking detail page both print the same "4,8 ★"
+ * fragment in their own trust line, and each kept a private, identical copy
+ * before this — the usual failure mode for a formatter with two call sites
+ * and no shared home.
+ */
+export function formatRating(rating: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(rating);
+}

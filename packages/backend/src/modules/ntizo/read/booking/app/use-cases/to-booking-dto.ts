@@ -13,8 +13,8 @@ import type { BookingListRow } from "../ports/outbound/booking-read.repository.p
  *
  * The `Date`-to-ISO-string conversion belongs at this seam, not in the
  * repository and not on the wire: `bookingReadModel` declares
- * `startsAt`/`endsAt`/`expiresAt`/`createdAt` as `z.string()`, and a row is
- * whatever `SELECT` returned.
+ * `startsAt`/`endsAt`/`expiresAt`/`paidAt`/`createdAt` as `z.string()`, and a
+ * row is whatever `SELECT` returned.
  */
 export function toBookingDTO(row: BookingListRow): BookingDTO {
   return {
@@ -31,8 +31,6 @@ export function toBookingDTO(row: BookingListRow): BookingDTO {
     durationMinutes: row.durationMinutes,
     locationType: row.locationType,
     priceMinor: row.priceMinor,
-    commissionBps: row.commissionBps,
-    commissionMinor: row.commissionMinor,
     currency: row.currency,
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
@@ -44,6 +42,7 @@ export function toBookingDTO(row: BookingListRow): BookingDTO {
     addressDirections: row.addressDirections,
     description: row.description,
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+    paidAt: row.paidAt ? row.paidAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }

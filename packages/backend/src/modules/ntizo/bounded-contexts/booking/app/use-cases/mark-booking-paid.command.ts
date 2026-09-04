@@ -16,6 +16,32 @@ export interface MarkBookingPaidInput {
 }
 
 /**
+ * The `booking_change` reason this command writes — the hop that carries a
+ * booking to the end the design names.
+ *
+ * A token, never a sentence, for the reason `ACCEPTED_BY_PROVIDER` and
+ * `SUBMITTED_BY_CUSTOMER` are tokens: whatever renders a booking's history
+ * renders it into eight locales, and a locale key can be switched on where
+ * prose cannot. Both zones carry it — `bookings.timeline.payment_confirmed`
+ * for the customer and `provider.bookings.timelineReason.payment_confirmed`
+ * for the provider — because both read the same list.
+ *
+ * **Nothing wrote this hop until now, and the timeline stopped one entry
+ * short because of it.** `timelineOf` is built from `booking_change` rows
+ * plus the booking's own clocks; this command wrote none, so a `CONFIRMED`
+ * booking's story ended at "Prestador aceitou" while the money card directly
+ * above it said "Pago a …". The spec is explicit that the timeline ends at
+ * "pagamento confirmado", and this is the row that lets it.
+ *
+ * Written here rather than synthesised in the read from `paid_at` — the other
+ * way it could have been closed — because the hop is a fact of the write, and
+ * `paid_at` is not the only column a synthesised entry would have to keep
+ * agreeing with. This is also where `CancelBookingCommand` puts its own
+ * customer-caused hop, and one rule for both is easier to keep than two.
+ */
+const PAYMENT_CONFIRMED = "payment_confirmed";
+
+/**
  * A payment cleared; the slot this booking is holding is now backed by
  * money.
  *
@@ -109,6 +135,27 @@ export class MarkBookingPaidCommand {
         // check above cannot catch this on its own.
         return null;
       }
+
+      // After the compare-and-swap, never before it: a change row appended
+      // against a `save` that did not apply would be a history claiming a
+      // hop the row never made — the same discipline `CancelBookingCommand`
+      // keeps, and the reason both of them return above rather than write.
+      //
+      // `changedByUserId` is null because nobody made this change: it is a
+      // payment webhook being recorded, not a person acting. See the
+      // column's own doc comment in `booking-change.schema.ts` for why null
+      // rather than a sentinel "system user".
+      await this.repo.appendChange({
+        // Never null here: `moved` was loaded through `findById`, which only
+        // ever returns a booking the database already assigned an id to.
+        bookingId: moved.id as string,
+        changedByUserId: null,
+        reason: PAYMENT_CONFIRMED,
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      });
 
       await this.outboxPort.publish(
         [

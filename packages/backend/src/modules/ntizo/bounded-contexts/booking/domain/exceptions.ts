@@ -410,6 +410,129 @@ export class CustomerPhoneMissingError extends UnprocessableError {
 }
 
 /**
+ * Refused because a customer asking to be charged right now has no phone
+ * number on file — checked by `RequestBookingChargeCommand` before it lets
+ * anything claim an attempt against this booking.
+ *
+ * Not `CustomerPhoneMissingError` reused, though the two say almost the same
+ * thing. That class closes the gap at `submit`, for the honest path: a
+ * booking created after that guard shipped cannot reach `PENDING_PAYMENT`
+ * without a number on file. This one exists for the command that still has
+ * to ask anyway — a booking that predates the guard, or reached this status
+ * some other way — and it exists for a sharper reason than completeness:
+ * `ChargeBookingCommand` treats a missing number as an ordinary charge
+ * failure and spends an attempt on it, which is the right call for a sweep
+ * that has nobody to ask, but the wrong one for a customer who just pressed
+ * "Pagar" and could simply be told. Refusing here, before this booking's
+ * attempt count is touched, is what stops that customer's three attempts
+ * being burned in silence while their provider is told, falsely, that they
+ * never paid — see `ChargeBookingCommand`'s own doc comment for the fix this
+ * was always waiting on.
+ *
+ * `UnprocessableError`, matching `CustomerPhoneMissingError`: the caller is
+ * exactly who they claim to be, and what is missing is a fact about their
+ * profile, not a permission.
+ */
+export class BookingNoCustomerPhoneError extends UnprocessableError {
+  constructor(public readonly bookingId: string) {
+    super({
+      message: "Add a phone number to your profile before requesting a charge",
+      code: "BOOKING_NO_CUSTOMER_PHONE",
+    });
+    this.name = "BookingNoCustomerPhoneError";
+  }
+}
+
+/**
+ * Refused because this booking has already spent every charge attempt the
+ * platform allows it — `BOOKING_CHARGE_ATTEMPT_LIMIT` of them, whichever
+ * claimed the last one, the per-minute sweep or a customer's own press of
+ * "Pagar".
+ *
+ * A request past this point is not a new fact for the platform to act on:
+ * the row's fate is already settled the ordinary way, by its payment window
+ * running out. `RequestBookingChargeCommand` refuses here rather than
+ * starting an attempt the bound was never meant to allow — the bound is the
+ * real protection (`ChargeBookingCommand`'s cooldown only spaces unattended
+ * retries out; it is not what caps them), and a request the customer typed
+ * in themselves does not get to bypass it.
+ *
+ * `UnprocessableError`, not `ForbiddenError`, for the same reason
+ * `BookingTransitionError` already is one: the caller is entitled to ask,
+ * and what refuses them is the booking's own state, not who they are.
+ */
+export class BookingChargeAttemptsSpentError extends UnprocessableError {
+  constructor(public readonly bookingId: string) {
+    super({
+      message: "This booking has already used every payment attempt it is allowed",
+      code: "BOOKING_CHARGE_ATTEMPTS_SPENT",
+    });
+    this.name = "BookingChargeAttemptsSpentError";
+  }
+}
+
+/**
+ * Refused because too little of the payment window is left for a gateway
+ * call to safely land inside it.
+ *
+ * The same guard `ChargeBookingCommand`'s own claim re-asserts at the write —
+ * see `BOOKING_CHARGE_MIN_WINDOW_MS`'s own comment for the failure this
+ * closes: a call still blocking when the deadline sweep passes gets the
+ * booking cancelled and its provider told the customer did not pay, and then
+ * returns with the customer's money already moved. `RequestBookingChargeCommand`
+ * checks it too, ahead of the phone read and the schedule, so a request this
+ * close to the deadline is refused with a reason instead of being let in to
+ * race the sweep to the same ending.
+ *
+ * `UnprocessableError`, matching `BookingChargeAttemptsSpentError` beside
+ * it: the caller is entitled to ask, and this booking simply is not in a
+ * state that can be acted on right now.
+ */
+export class BookingPaymentWindowClosedError extends UnprocessableError {
+  constructor(public readonly bookingId: string) {
+    super({
+      message: "This booking's payment window is too close to closing to start a new charge",
+      code: "BOOKING_PAYMENT_WINDOW_CLOSED",
+    });
+    this.name = "BookingPaymentWindowClosedError";
+  }
+}
+
+/**
+ * Refused because the payment processor cannot charge anybody right now.
+ *
+ * `PaymentChargePort.readiness()` said no: no credentials on this stage, or a
+ * live gateway still carrying a sandbox shortcode. That is categorically not
+ * this customer's doing, and `ChargeBookingCommand` already refuses to spend
+ * an attempt on it — its own comment records what happened when the discovery
+ * was made *inside* the charge instead: "twelve minutes of misconfiguration
+ * permanently killed every booking accepted in that window, and then told
+ * their providers the customer did not pay".
+ *
+ * `RequestBookingChargeCommand` asks the same question in its synchronous
+ * half, because that is the half a customer is watching. Without it, a stage
+ * with no credentials answers every press of "Pagar" with "a prompt is on its
+ * way to your handset" and nothing is ever sent. This error is what the page
+ * turns into "try again in a moment" — the one ending where that sentence is
+ * true, since the fix is somebody else's and the booking is otherwise fine.
+ *
+ * `UnprocessableError`, matching the two beside it: the caller is entitled to
+ * ask, and what refuses them is the platform's own state rather than who they
+ * are. The processor's own code and description are logged, never returned —
+ * a customer has no use for a gateway's error code, and it is not theirs to
+ * read.
+ */
+export class BookingChargeUnavailableError extends UnprocessableError {
+  constructor(public readonly bookingId: string) {
+    super({
+      message: "Payments cannot be taken right now",
+      code: "BOOKING_CHARGE_UNAVAILABLE",
+    });
+    this.name = "BookingChargeUnavailableError";
+  }
+}
+
+/**
  * Refused because the provider a service option belongs to does not exist.
  *
  * Checked last among Task 8's refusals, once every fact the option itself

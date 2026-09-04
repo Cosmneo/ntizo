@@ -33,3 +33,24 @@ export const SERVICE_LOCATION_TYPES = [
 
 export const serviceLocationTypeSchema = z.enum(SERVICE_LOCATION_TYPES);
 export type ServiceLocationType = (typeof SERVICE_LOCATION_TYPES)[number];
+
+/** The customer's three tabs, in the order the page shows them. */
+export const CUSTOMER_BOOKING_TABS = ["waiting", "upcoming", "history"] as const;
+export type CustomerBookingTab = (typeof CUSTOMER_BOOKING_TABS)[number];
+
+/**
+ * Every status a customer may see. `DRAFT` is absent: a draft is a checkout
+ * half-finished, not a request the customer made, and offering to cancel one
+ * would offer to cancel something they do not believe exists.
+ */
+export const CUSTOMER_VISIBLE_STATUSES = [
+  "AWAITING_PROVIDER",
+  "PENDING_PAYMENT",
+  "CONFIRMED",
+  "MARKED_DONE",
+  "COMPLETED",
+  "DISPUTED",
+  "DECLINED",
+  "CANCELLED",
+  "EXPIRED",
+] as const;

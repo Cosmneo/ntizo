@@ -24,7 +24,7 @@
  * checkout, and no query here may ever show it to the provider. The **expired**
  * draft is the same claim one step on, and the one a status filter alone gets
  * wrong: `EXPIRED` is one of the history tab's statuses, so an abandoned
- * step-1 checkout is hidden only by `askedOfProvider()` — the `EXISTS` on the
+ * step-1 checkout is hidden only by `submittedByCustomer()` — the `EXISTS` on the
  * `submitted_by_customer` change row. That is why every submitted fixture below
  * writes that row exactly as `SubmitBookingCommand` does; a fixture that
  * skipped it would be indistinguishable from an abandoned draft, which is the
@@ -122,7 +122,10 @@ let otherMemberId: string;
 let otherServiceId: string;
 let otherServiceOptionId: string;
 let completedId: string;
-let acceptedUnpaidId: string;
+// Prefixed `_`: recorded for readability at the seed site and named in the
+// two comments below, but never read back — the assertions it backs are
+// about its *absence* from a total, not its own value.
+let _acceptedUnpaidId: string;
 
 beforeAll(async () => {
   customerId = crypto.randomUUID();
@@ -408,7 +411,7 @@ beforeAll(async () => {
     await recordSubmission(submittedUnpaid.id as string);
     const acceptedUnpaid = submittedUnpaid.accept(now, new Date("2027-03-31T15:00:00.000Z"));
     await commit(acceptedUnpaid, BookingStatus.AwaitingProvider);
-    acceptedUnpaidId = acceptedUnpaid.id as string;
+    _acceptedUnpaidId = acceptedUnpaid.id as string;
   });
 });
 
@@ -493,7 +496,7 @@ function address() {
  * The `submitted_by_customer` change row `SubmitBookingCommand` appends in the
  * same transaction as the `DRAFT` → `AWAITING_PROVIDER` hop.
  *
- * Not a detail of the timeline test: the reader's `askedOfProvider()` treats
+ * Not a detail of the timeline test: the reader's `submittedByCustomer()` treats
  * this row as the definition of "the provider was asked about this booking",
  * so a fixture that walked `submit` without writing it would be invisible to
  * every provider-side query here — and would look exactly like the abandoned
@@ -787,14 +790,14 @@ describe("statsForProvider", () => {
   test("a confirmation in the chart is a payment, not an acceptance", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const { totals, perDay } = await readRepo.statsForProvider(otherProviderId, now);
-      // `acceptedUnpaidId` — the provider said yes in this test run, so the
+      // `_acceptedUnpaidId` — the provider said yes in this test run, so the
       // row carries a `confirmed_at` of today, and the customer has not paid.
       expect(totals.awaitingPayment).toBe(1);
 
       const today = perDay.find((d) => d.date === totals.today);
       expect(today?.requests).toBe(2); // both of this workspace's bookings were submitted today
       // The claim this fixture exists for: a series bucketed on `confirmed_at`
-      // would draw `acceptedUnpaidId` here as a confirmation the provider
+      // would draw `_acceptedUnpaidId` here as a confirmation the provider
       // never actually got. The chart counts money arriving, so today is zero.
       expect(today?.confirmed).toBe(0);
 

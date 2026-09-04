@@ -30,9 +30,12 @@ import {
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import { profile, user } from "../../../../../shared/infrastructure/database/user/schemas";
+import type { CustomerBookingTab } from "@ntizo/shared";
 import {
   type BookingListRow,
   type BookingReadRepositoryPort,
+  CUSTOMER_TAB_STATUSES,
+  type CustomerListFilter,
   PROVIDER_TAB_STATUSES,
   type ProviderBookingRow,
   type ProviderListFilter,
@@ -49,7 +52,12 @@ import {
  * reader exists instead of reusing `DrizzleBookingRepository`.
  */
 export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
-  async listForCustomer(customerId: string): Promise<BookingListRow[]> {
+  async listForCustomer(
+    customerId: string,
+    filter: CustomerListFilter,
+    limit: number,
+    offset: number,
+  ): Promise<BookingListRow[]> {
     const db = getDb();
     const reviewAgg = reviewAggregate(db);
     const verifiedAgg = verifiedAggregate(db);
@@ -61,13 +69,51 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       .leftJoin(service, eq(service.id, booking.serviceId))
       .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
-      .where(eq(booking.customerId, customerId))
-      // Newest booking first, ties (two bookings made in the same instant)
-      // broken by id so the order is total and stable across calls — the
-      // same pairing `DrizzleActivityRepository.listForActor` orders by.
-      .orderBy(desc(booking.createdAt), desc(booking.id));
+      .where(customerWhere(customerId, filter))
+      .orderBy(...customerOrder(filter.tab))
+      .limit(limit)
+      .offset(offset);
 
     return rows.map(toRow);
+  }
+
+  async countForCustomer(customerId: string, filter: CustomerListFilter): Promise<number> {
+    // No joins: `customerWhere` reads only `booking`, and a count has nothing
+    // to display.
+    const [row] = await getDb().select({ n: count() }).from(booking).where(customerWhere(customerId, filter));
+    return Number(row?.n ?? 0);
+  }
+
+  async countsForCustomer(customerId: string, now: Date) {
+    const rows = await getDb()
+      .select({ bucket: customerBucket(now), n: count() })
+      .from(booking)
+      // The same two guards `customerWhere` carries, and for the same
+      // reasons — a chip counting rows the list does not show is a chip that
+      // disagrees with what is under it. See `submittedByCustomer()`.
+      .where(
+        and(
+          eq(booking.customerId, customerId),
+          sql`${booking.status} <> 'DRAFT'`,
+          submittedByCustomer(),
+        ),
+      )
+      // `bucket`, the alias `customerBucket` gives its CASE — not
+      // `customerBucket(now)` again and not an ordinal. See that function's
+      // own comment for why the CASE cannot be repeated here, and why the
+      // alias is what a column added ahead of `bucket` in this SELECT list
+      // cannot silently mis-group.
+      .groupBy(sql`bucket`);
+
+    const counts = { waiting: 0, upcoming: 0, history: 0 };
+    for (const row of rows) {
+      // A bucket the CASE cannot produce would be a bug in the CASE, not data
+      // to carry: the three names below are the whole domain of that expression.
+      if (row.bucket === "waiting" || row.bucket === "upcoming" || row.bucket === "history") {
+        counts[row.bucket] = Number(row.n);
+      }
+    }
+    return counts;
   }
 
   async findForCustomer(bookingId: string, customerId: string): Promise<BookingListRow | null> {
@@ -130,7 +176,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
           eq(booking.id, bookingId),
           eq(booking.providerId, providerId),
           sql`${booking.status} <> 'DRAFT'`,
-          askedOfProvider(),
+          submittedByCustomer(),
         ),
       )
       .limit(1);
@@ -479,8 +525,6 @@ function selectedColumns(
      */
     locationType: service.locationType,
     priceMinor: booking.priceMinor,
-    commissionBps: booking.commissionBps,
-    commissionMinor: booking.commissionMinor,
     currency: booking.currency,
     startsAt: booking.startsAt,
     endsAt: booking.endsAt,
@@ -492,6 +536,7 @@ function selectedColumns(
     addressDirections: booking.addressDirections,
     description: booking.description,
     expiresAt: booking.expiresAt,
+    paidAt: booking.paidAt,
     createdAt: booking.createdAt,
   };
 }
@@ -569,6 +614,76 @@ function providerSelect() {
 }
 
 /**
+ * The rows one customer tab holds.
+ *
+ * `DRAFT` is excluded here rather than in each caller, so a tab added later
+ * cannot forget it. The `upcoming` split is by `startsAt`, not `endsAt`: a
+ * booking whose start has passed is no longer something the customer is
+ * waiting for, even while the work is still happening.
+ *
+ * **`submittedByCustomer()` sits beside the `<> 'DRAFT'` guard for the reason
+ * that function gives, and it is the customer's reason as much as the
+ * provider's.** A draft does not stay a draft: the checkout hold running out,
+ * or the customer starting a second checkout, moves it to `EXPIRED` — which
+ * is one of `CUSTOMER_TAB_STATUSES.history`. Without this clause every
+ * abandoned step-1 checkout would surface in **Histórico** as an "Expirada"
+ * row carrying the service, the option and the price, inflate that tab's
+ * count chip, and open a detail page whose timeline says "Pedido enviado"
+ * about a request the customer never sent.
+ */
+function customerWhere(customerId: string, filter: CustomerListFilter) {
+  const live = inArray(booking.status, [...CUSTOMER_TAB_STATUSES.upcoming]);
+
+  const bucket =
+    filter.tab === "waiting"
+      ? inArray(booking.status, [...CUSTOMER_TAB_STATUSES.waiting])
+      : filter.tab === "upcoming"
+        ? and(live, gte(booking.startsAt, filter.now))
+        : or(
+            inArray(booking.status, [...CUSTOMER_TAB_STATUSES.history]),
+            and(live, lt(booking.startsAt, filter.now)),
+          );
+
+  return and(
+    eq(booking.customerId, customerId),
+    sql`${booking.status} <> 'DRAFT'`,
+    submittedByCustomer(),
+    bucket,
+  );
+}
+
+/** Newest request first while waiting; soonest first when looking forward; most recent first when looking back. */
+function customerOrder(tab: CustomerBookingTab) {
+  if (tab === "waiting") return [desc(booking.createdAt), desc(booking.id)];
+  if (tab === "upcoming") return [asc(booking.startsAt), asc(booking.id)];
+  return [desc(booking.startsAt), desc(booking.id)];
+}
+
+/** One CASE, so three counts are one trip and cannot disagree with each other. */
+function customerBucket(now: Date) {
+  // `now` is nested through `gte()` rather than interpolated bare, so the
+  // driver binds it with `startsAt`'s own column type instead of guessing
+  // one for an untyped raw parameter — the same reason `customerWhere`
+  // reaches for `gte(booking.startsAt, filter.now)` instead of writing the
+  // comparison out by hand.
+  //
+  // `.as("bucket")` names the SELECT list item so `countsForCustomer` can
+  // `GROUP BY bucket` — Postgres resolves an unqualified `GROUP BY` name
+  // against an output alias when nothing in the FROM list matches it. The
+  // alias is not cosmetic: the CASE cannot simply be *repeated* in the
+  // `GROUP BY` instead, because building it a second time would bind a
+  // second, distinct parameter for `now`, and Postgres treats the two
+  // resulting expressions as different parse trees even though both are
+  // bound to the same value — the query is then rejected with "column
+  // booking.status must appear in the GROUP BY clause".
+  return sql<string>`case
+    when ${booking.status} in ('AWAITING_PROVIDER','PENDING_PAYMENT') then 'waiting'
+    when ${booking.status} = 'CONFIRMED' and ${gte(booking.startsAt, now)} then 'upcoming'
+    else 'history'
+  end`.as("bucket");
+}
+
+/**
  * The provider's WHERE: this workspace, never a draft, the tab's statuses,
  * the tab's side of `now` for the two live statuses, an optional member and
  * an optional search. `unaccent` is not installed, so the search lowers both
@@ -597,7 +712,7 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
   return and(
     eq(booking.providerId, providerId),
     sql`${booking.status} <> 'DRAFT'`,
-    askedOfProvider(),
+    submittedByCustomer(),
     byTab,
     byMember,
     bySearch,
@@ -605,26 +720,34 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
 }
 
 /**
- * A booking the provider was actually asked about: one that left `DRAFT`
- * through `submit`, which writes this change row in the same transaction as
- * the hop (see `SubmitBookingCommand`).
+ * A booking that was actually *sent*: one that left `DRAFT` through `submit`,
+ * which writes this change row in the same transaction as the hop (see
+ * `SubmitBookingCommand`).
  *
  * **The `<> 'DRAFT'` guard beside this one is not enough on its own.** A draft
  * whose checkout hold ran out, or one superseded by the customer starting a
  * second checkout (`CreateBookingCommand`), is moved to `EXPIRED` by
- * `Booking.expire` — and `EXPIRED` is one of `PROVIDER_TAB_STATUSES.history`.
- * Without this clause every abandoned step-1 checkout would surface in the
- * provider's history as an "Expirada" row carrying the customer's first name
- * and the service, inflate the tab's total, and answer `findForProvider`. Such
- * a row has the *status* of a finished booking and none of its history: nobody
- * ever asked the provider anything, which is the same reason a live `DRAFT` is
- * hidden from them.
+ * `Booking.expire` — and `EXPIRED` is in *both* audiences' history bucket
+ * (`PROVIDER_TAB_STATUSES.history`, `CUSTOMER_TAB_STATUSES.history`).
+ * Without this clause every abandoned step-1 checkout would surface as an
+ * "Expirada" row carrying the service and the price, inflate the tab's total,
+ * and answer the detail read. Such a row has the *status* of a finished
+ * booking and none of its history: nobody ever asked the provider anything,
+ * and the customer never sent a request — which is the same reason a live
+ * `DRAFT` is hidden from both.
+ *
+ * **One function, read by both `providerWhere` and `customerWhere`**, for the
+ * reason `selectedColumns` gives one level up: the customer's query was
+ * written after the provider's and inherited none of its guards, which is
+ * exactly how the two sides of one booking start disagreeing about whether it
+ * exists. Named after the fact it tests — the change row's own reason — rather
+ * than after either audience, so neither can read as the other's business.
  *
  * A correlated `EXISTS` rather than a join, because this is a test on the
  * booking and not a column to select: a join to an append-only log would
  * multiply a booking by its number of change rows.
  */
-function askedOfProvider() {
+function submittedByCustomer() {
   return exists(
     getDb()
       .select({ one: sql`1` })
