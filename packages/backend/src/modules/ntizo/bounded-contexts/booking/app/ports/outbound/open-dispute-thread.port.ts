@@ -10,7 +10,9 @@
  * what the client claimed and are not what any row is written from. Carried
  * anyway rather than stripped here, because stripping them would make this
  * port's shape disagree with the mutation that feeds it, and the next reader
- * would have to find that out by following the data.
+ * would have to find that out by following the data. If that mutation's input
+ * is ever narrowed to `storageKey` alone, this interface should follow it
+ * down rather than keep three fields for a shape nothing sends any more.
  */
 export interface DisputeAttachment {
   storageKey: string;
@@ -33,6 +35,14 @@ export interface DisputeAttachment {
  * that column — and one is named differently: `message` here, `body` there.
  * The mapping between the two lives at the composition root, which is the one
  * place allowed to know both contexts exist.
+ *
+ * **This call is allowed to refuse for reasons this context cannot see**, and
+ * `DisputeBookingCommand` lets those refusals out rather than swallowing
+ * them: the implementation behind it caps how many conversations one person
+ * may have open at once, and rejects a subject longer than the column it
+ * writes to. Both are the other context's rules to keep. See
+ * `dispute-thread.adapter.ts`, which is where a dispute-specific allowance
+ * would go if one is ever wanted.
  */
 export interface OpenDisputeThreadInput {
   bookingId: string;

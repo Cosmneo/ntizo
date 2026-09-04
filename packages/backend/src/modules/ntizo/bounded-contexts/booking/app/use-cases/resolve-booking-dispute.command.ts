@@ -98,6 +98,17 @@ export interface ResolveBookingDisputeInput {
  * resolve the thread would be this context writing another's row, which is
  * the coupling `OpenDisputeThreadPort` exists to avoid on the way in.
  *
+ * **That same screen is also where `note` gets its durable home, and this
+ * command is not it.** The administrator resolves the dispute's thread with a
+ * message on it, and that message is the lasting record of their reasoning —
+ * stored, readable by both parties afterwards, and part of the conversation
+ * the complaint already lives in. What `note` does here is carry the same
+ * words into the two notifications below so neither side has to open the
+ * thread to learn which way it went. So the absence of a `booking_change`
+ * column for it is not a gap: the reasoning is kept where the case is kept,
+ * and duplicating it onto the booking's timeline would be a second copy able
+ * to disagree with the first.
+ *
  * **Both raises happen after the transaction resolves, and only on the
  * applied path** (BR-P6). **`execute` answers with the booking it moved, or
  * `null` when it moved nothing**, the same way `MarkBookingDoneCommand` and
@@ -137,9 +148,11 @@ export class ResolveBookingDisputeCommand {
 
       // Which way it went, and who decided. Every `previous*` field is null
       // because this hop moved none of them: it changed the status, and the
-      // status is on the booking. The note is not here — this table has no
-      // column for one, and inventing a place for it in `reason` would break
-      // the machine-token contract every other row in it keeps.
+      // status is on the booking. The note is not here, and not because there
+      // is nowhere to put it: it belongs on the dispute's thread, which is
+      // where the administrator writes it (see the class comment). Squeezing
+      // it into `reason` would break the machine-token contract every other
+      // row in this table keeps.
       await this.repo.appendChange({
         bookingId: input.bookingId,
         changedByUserId: input.adminUserId,
@@ -203,9 +216,13 @@ export class ResolveBookingDisputeCommand {
           // Explicitly null rather than absent when there is none, the shape
           // `SubmitBookingCommand` and `CompleteBookingCommand` already use:
           // a key that is present and null is a decision, where a missing one
-          // is a bug nobody can tell apart from a typo. This is also the only
-          // place the administrator's note can go — `booking_change` has no
-          // column for one — so dropping it would lose it entirely.
+          // is a bug nobody can tell apart from a typo.
+          //
+          // A copy, not the record. The administrator's reasoning is kept on
+          // the dispute's own thread, where they resolve it; this is the same
+          // words delivered so neither side has to open the thread to learn
+          // the outcome. See the class comment for why `booking_change`
+          // deliberately has no column for it.
           note: input.note,
         },
       },

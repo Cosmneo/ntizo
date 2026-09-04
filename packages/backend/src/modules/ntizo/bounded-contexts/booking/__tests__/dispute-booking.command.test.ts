@@ -36,6 +36,8 @@ const NOW = new Date("2026-05-04T09:00:00.000Z");
 const ENDED_YESTERDAY = new Date(NOW.getTime() - 25 * 3_600_000);
 
 const BOOKING_ID = "bk-1";
+/** The same booking, on a service whose name is far past the subject's limit. */
+const LONG_NAME_ID = "bk-long";
 const CUSTOMER_ID = "cust-1";
 const PROVIDER_ID = "prov-1";
 const MEMBER_ID = "member-1";
@@ -51,12 +53,33 @@ const ADMIN_ID = "admin-1";
 const SERVICE_NAME = "Avaria eléctrica urgente";
 
 /**
+ * What `support_request.subject` will hold: `varchar(120)`, which
+ * `SupportRequest.normaliseSubject` enforces by *throwing* above it rather
+ * than truncating.
+ *
+ * Written out here rather than imported from the command under test — an
+ * assertion that reads its expectation from the same constant the code slices
+ * with proves only that `slice` was called with something. This is the number
+ * the other bounded context actually refuses at, which is the fact the trim
+ * exists to respect. Its counterpart there is `SUPPORT_SUBJECT_MAX`.
+ */
+const SUBJECT_MAX = 120;
+
+/**
+ * A service name of 200 characters — comfortably past `SUBJECT_MAX`, and not
+ * an unreasonable one: `service.name` is an unbounded `text` column with no
+ * length rule in the catalog aggregate either, so nothing between a provider's
+ * keyboard and this booking's snapshot shortens it.
+ */
+const LONG_SERVICE_NAME = "Reparação".padEnd(200, " e manutenção de instalações eléctricas");
+
+/**
  * A `CONFIRMED` booking, built the way a real one gets there rather than
  * restored with the status typed in — the same argument
  * `close-booking.command.test.ts` makes for its own copy: `markDone`'s guard
  * reads `endsAt`, which only `create` derives.
  */
-function confirmedBooking(): Booking {
+function confirmedBooking(serviceName: string = SERVICE_NAME): Booking {
   const startsAt = ENDED_YESTERDAY;
   const draft = Booking.create({
     customerId: CUSTOMER_ID,
@@ -69,7 +92,7 @@ function confirmedBooking(): Booking {
     priceMinor: 150000,
     commissionBps: 1000,
     currency: "MZN",
-    serviceName: SERVICE_NAME,
+    serviceName,
     providerName: "Hélder Cossa",
     providerSlug: "helder-cossa-electricidade",
     optionName: "Diagnóstico e reparação",
@@ -101,17 +124,17 @@ function confirmedBooking(): Booking {
  * build should hear so rather than be handed the wrong booking and a green
  * assertion about it.
  */
-function bookingAt(status: BookingStatus): Booking {
-  const confirmed = confirmedBooking();
+function bookingAt(status: BookingStatus, id = BOOKING_ID): Booking {
+  const confirmed = confirmedBooking(id === LONG_NAME_ID ? LONG_SERVICE_NAME : SERVICE_NAME);
   if (status === BookingStatus.Confirmed) {
-    return withId(confirmed, BOOKING_ID);
+    return withId(confirmed, id);
   }
   const markedDone = confirmed.markDone(NOW, new Date(NOW.getTime() + 2 * DAY_MS));
   if (status === BookingStatus.MarkedDone) {
-    return withId(markedDone, BOOKING_ID);
+    return withId(markedDone, id);
   }
   if (status === BookingStatus.Disputed) {
-    return withId(markedDone.dispute(NOW), BOOKING_ID);
+    return withId(markedDone.dispute(NOW), id);
   }
   throw new Error(`dispute-booking.command.test.ts has no fixture for ${status}`);
 }
@@ -141,6 +164,11 @@ class FakeRepo implements BookingRepositoryPort {
   }
 
   async findById(id: string): Promise<Booking | null> {
+    if (id === LONG_NAME_ID) {
+      // Always at the status a dispute reads from: the only thing this
+      // fixture varies is the length of the name the subject is cut from.
+      return bookingAt(BookingStatus.MarkedDone, LONG_NAME_ID);
+    }
     return id === BOOKING_ID ? bookingAt(this.status) : null;
   }
 
@@ -196,6 +224,17 @@ class FakeRepo implements BookingRepositoryPort {
  * transaction from one opened before it — the same argument `FakeRaiser`
  * makes for its own copy of this field — so it has to be recorded here, at
  * the moment of the call.
+ *
+ * **It refuses an over-long subject, and that refusal is not decoration.**
+ * The real implementation of this port is the communication context's
+ * `OpenSupportRequestCommand`, whose very first act is
+ * `SupportRequest.normaliseSubject` — which *throws* above 120 characters
+ * rather than truncating. A fake that quietly accepted any string would let
+ * this file's assertions pass against a command that hands the other context
+ * a subject it will not take, which is a dispute that fails outright while
+ * the customer's three-day clock keeps running. Modelling the refusal here is
+ * what makes the trim in `DisputeBookingCommand` load-bearing in this suite
+ * rather than only in production.
  */
 class FakeDisputeThreads implements OpenDisputeThreadPort {
   public readonly opened: OpenDisputeThreadInput[] = [];
@@ -209,6 +248,9 @@ class FakeDisputeThreads implements OpenDisputeThreadPort {
   async execute(input: OpenDisputeThreadInput): Promise<{ threadId: string }> {
     this.insideTransactionAtCall.push(this.unitOfWork.insideTransaction);
     if (this.failWith) throw this.failWith;
+    if (input.subject.trim().length === 0 || input.subject.length > SUBJECT_MAX) {
+      throw new Error(`subject must be 1..${SUBJECT_MAX} characters — got ${input.subject.length}`);
+    }
     this.opened.push(input);
     return { threadId: `th-${this.opened.length}` };
   }
@@ -394,6 +436,65 @@ describe("DisputeBookingCommand", () => {
       reason: "disputed_by_customer",
       changedByUserId: CUSTOMER_ID,
     });
+  });
+
+  /**
+   * The trim, which is the difference between a dispute and no dispute at all
+   * for any service whose name runs long.
+   *
+   * `service.name` is an unbounded `text` column and the catalog aggregate
+   * puts no length rule on it either, so a 200-character name is a thing a
+   * provider can simply have. `support_request.subject` is `varchar(120)` and
+   * `SupportRequest.normaliseSubject` *throws* above it rather than
+   * truncating — so an untrimmed subject does not produce a long row, it
+   * produces a dispute that fails at the port call, with an error from a
+   * bounded context the customer never asked about, while the three-day
+   * window keeps running and the sweep completes the very booking they were
+   * trying to contest.
+   *
+   * Asserted on the resulting length and content, not merely on "it did not
+   * throw": a command that trimmed to the wrong number, or trimmed the wrong
+   * end, would satisfy "no throw" and still file the dispute under a subject
+   * that names the wrong job.
+   */
+  it("cuts a long service name down to what the thread's subject will hold", async () => {
+    const { cmd, repo, threads } = setupDispute();
+
+    // The fixture has to be past the limit for any of this to mean anything.
+    expect(LONG_SERVICE_NAME.length).toBeGreaterThan(SUBJECT_MAX);
+
+    const out = await cmd.execute({
+      bookingId: LONG_NAME_ID,
+      requesterUserId: CUSTOMER_ID,
+      message: "não ficou bem",
+      attachments: [],
+    });
+
+    expect(out.threadId).toBe("th-1");
+    expect(threads.opened.at(-1)?.subject).toHaveLength(SUBJECT_MAX);
+    // The first 120 characters, not the last — the start of a service's name
+    // is what identifies it.
+    expect(threads.opened.at(-1)?.subject).toBe(LONG_SERVICE_NAME.slice(0, SUBJECT_MAX));
+    // And the dispute itself landed: the trim is not buying a passing port
+    // call at the cost of the hop it exists to enable.
+    expect(repo.saved?.status).toBe("DISPUTED");
+  });
+
+  // A name that already fits is filed unchanged — the other half of the trim,
+  // and what stops `slice` being "cut everything to some length that happens
+  // to pass".
+  it("leaves a service name that already fits exactly as it is", async () => {
+    const { cmd, threads } = setupDispute();
+
+    await cmd.execute({
+      bookingId: BOOKING_ID,
+      requesterUserId: CUSTOMER_ID,
+      message: "m",
+      attachments: [],
+    });
+
+    expect(threads.opened.at(-1)?.subject).toBe(SERVICE_NAME);
+    expect(SERVICE_NAME.length).toBeLessThan(SUBJECT_MAX);
   });
 
   // The thread is another bounded context's write. Inside this context's

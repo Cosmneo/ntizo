@@ -30,6 +30,22 @@ import type { OpenDisputeThreadPort } from "@ntizo/backend/modules/ntizo/bounded
  * storage rather than believing any caller about them, so the other three
  * fields the wire carries were never going to be written anywhere. See
  * `DisputeAttachment`'s own doc comment for why they are carried this far.
+ *
+ * **Filling the port with the public command also inherits its refusals, and
+ * that is worth knowing on both sides of this seam.**
+ * `OpenSupportRequestCommand` refuses at `MAX_OPEN_SUPPORT_REQUESTS` (ten
+ * open requests per requester) and refuses an empty body with no attachments.
+ * Either one propagates out of `DisputeBookingCommand` unhandled: the booking
+ * stays `MARKED_DONE` and its three-day clock keeps running toward
+ * auto-completion. A customer sitting on ten open support requests therefore
+ * cannot dispute at all until they close some.
+ *
+ * That is the right trade for now — refusing loudly beats opening a thread
+ * the support cap does not count, and the alternative (a private entry point
+ * that skips the cap) is a hole somebody would eventually walk a bot through.
+ * But it is a cap in *another* context deciding whether a booking can be
+ * contested, so if the dispute path ever needs its own allowance, this
+ * function is where that exemption goes, not the booking context.
  */
 export function disputeThreadOver(
   openSupportRequest: CommunicationBootstrap["useCases"]["openSupportRequest"],

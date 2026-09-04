@@ -81,6 +81,16 @@ export const BOOKING_CHARGE_LIMIT = 5;
  * eagerly would also mean reaching for a binding declared in another `try`
  * block, tying the two sweeps' failure modes back together; see the comments
  * at each call site for why that was undone.
+ *
+ * **Do not read this as a working example.** "Never called" is not the same
+ * claim as "would work if it were", and this one would not: the
+ * `AttachmentStorageAdapter` above is constructed outside
+ * `runWithAttachmentsBucket`, which is what binds the request's
+ * `ATTACHMENTS_BUCKET` for it to find (see `graphql/private.ts`, where the
+ * same adapter is wrapped per request). A dispute carrying attachments would
+ * fail here. Nothing in the cron opens one, so nothing exercises that today —
+ * but a future scheduled arm that genuinely needs to open a thread has to
+ * establish the bucket scope first, not copy this function.
  */
 function disputeThreadForCron(): OpenDisputeThreadPort {
   return {

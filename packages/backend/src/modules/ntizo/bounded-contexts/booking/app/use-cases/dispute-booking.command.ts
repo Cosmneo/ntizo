@@ -91,6 +91,21 @@ export interface DisputeBookingInput {
  * and the write safe, which is the job it does for every other command here
  * too.
  *
+ * That window is genuinely wider than any other in this directory — the port
+ * call behind it runs its own queries, one storage read per attachment, its
+ * own transaction, and a notification write per administrator — so it is
+ * worth saying exactly *why* a status predicate is enough, since `save`
+ * writes the whole row (`.set({ ...toRow(entity) })`) and would therefore
+ * overwrite any column a concurrent writer changed in between. **It is enough
+ * because no hop that can touch a `MARKED_DONE` booking writes to it without
+ * moving the status off `MARKED_DONE`**: `keepOpen` and `reminded` both guard
+ * on `CONFIRMED`, `recordChargeAttempt` filters on `PENDING_PAYMENT`, and
+ * `markPaid` from here either returns the instance untouched on a repeated
+ * reference or throws. So a concurrent write that this one could silently
+ * clobber does not exist — and anybody adding a hop that writes to a
+ * `MARKED_DONE` booking while leaving its status alone is adding one, and
+ * should start here.
+ *
  * **It takes no outbox, and that absence is the design rather than an
  * omission.** There is no `booking.disputed` event in `domain/events`, and
  * inventing one here would be inventing a contract with no consumer to keep
