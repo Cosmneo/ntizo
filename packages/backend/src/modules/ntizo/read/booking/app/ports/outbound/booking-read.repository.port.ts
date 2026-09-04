@@ -1,4 +1,4 @@
-import type { BookingDTO } from "@ntizo/shared/read-models";
+import type { AdminBookingTab, ADMIN_VISIBLE_STATUSES, BookingDTO } from "@ntizo/shared/read-models";
 
 /**
  * Exactly the columns `bookingReadModel` carries, in the shapes Postgres
@@ -147,6 +147,72 @@ export interface BookingReadRepositoryPort {
    * hours a day in Maputo and wrong for half of one in a DST market.
    */
   statsForProvider(providerId: string, now: Date): Promise<ProviderStats>;
+
+  /**
+   * The administrator's queue for one tab, paged — **across every workspace
+   * on the platform.**
+   *
+   * The one query in this port with no owner in its signature, and that is
+   * the point rather than an omission: an administrator's queue exists to be
+   * emptied, and a booking nobody has closed is the platform's problem
+   * whichever workspace it belongs to. Every other method here takes a
+   * `customerId` or a `providerId` *as a parameter of the query* precisely so
+   * that a caller cannot reach somebody else's row; this one has no such
+   * parameter to offer, so the whole of its authorisation is the
+   * `requireAdmin` at the GraphQL edge. There is no second check further in.
+   */
+  listForAdmin(
+    filter: AdminBookingFilter,
+    limit: number,
+    offset: number,
+  ): Promise<AdminBookingRow[]>;
+  /** How many `listForAdmin` would return unpaged. Shares the same WHERE, or a total names a page nobody can reach. */
+  countForAdmin(filter: AdminBookingFilter): Promise<number>;
+}
+
+export interface AdminBookingFilter {
+  tab: AdminBookingTab;
+  /** Injected, never `new Date()` in the query — a test has to be able to say what "overdue" means. */
+  now: Date;
+}
+
+/**
+ * The one status each tab lists.
+ *
+ * Typed against `ADMIN_VISIBLE_STATUSES` — the enum
+ * `adminBookingReadModel.status` is parsed with — so the queue cannot select
+ * a status the read model would then refuse at the wire. The three happen to
+ * be one-to-one with the three tabs, which is why this is a status per tab
+ * rather than `PROVIDER_TAB_STATUSES`'s list per tab: the tabs are not three
+ * views of a shared pool, they are three different problems.
+ */
+export const ADMIN_TAB_STATUS: Record<AdminBookingTab, (typeof ADMIN_VISIBLE_STATUSES)[number]> = {
+  /** Paid, the appointment is over, and nobody has said whether the work happened. */
+  unclosed: "CONFIRMED",
+  /** Said to be done, and inside the customer's window to disagree. */
+  in_window: "MARKED_DONE",
+  /** The customer disagreed, and an administrator has to decide. */
+  disputed: "DISPUTED",
+};
+
+/**
+ * One row of the administrator's queue: a provider booking, plus the five
+ * things a queue needs that a single workspace's own list does not.
+ *
+ * `providerId` and `providerName` because this is the one list that spans
+ * workspaces — "Ana, Corte de cabelo" names no one workspace, and the id is
+ * what a row links through. `remindedAt` and `markedDoneAt` because the
+ * question a queue answers is *how long has this been sitting here*, which
+ * the status alone cannot say. `threadId` so a disputed row links straight
+ * into the conversation instead of making somebody search for it.
+ */
+export interface AdminBookingRow extends ProviderBookingRow {
+  providerId: string;
+  providerName: string;
+  remindedAt: Date | null;
+  markedDoneAt: Date | null;
+  /** The dispute's conversation. Null on every row that is not a dispute — and on a dispute whose thread is gone. */
+  threadId: string | null;
 }
 
 /**

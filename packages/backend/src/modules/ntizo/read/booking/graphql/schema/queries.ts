@@ -2,6 +2,8 @@ import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
 import {
+  ADMIN_BOOKING_TABS,
+  adminBookingPageReadModel,
   bookingReadModel,
   providerBookingDetailReadModel,
   providerBookingPageReadModel,
@@ -81,6 +83,33 @@ export const getProviderStats = defineQuery({
 });
 
 /**
+ * The bookings an administrator has to look at, one tab at a time.
+ *
+ * **Takes no workspace, and that absence is the field.** Every other
+ * provider-side read here names a `providerId` so that the handler can decide
+ * whether the caller may have that workspace's rows; this one spans all of
+ * them by design, so there is nothing to decide about and nothing to send.
+ * Who may ask is decided entirely in the handler, by the platform role the
+ * session resolved to — never by anything on this input. See the handler's
+ * own `requireAdmin`, which is this field's whole security surface.
+ *
+ * `limit` is capped here as well as clamped in the projection: the edge is
+ * the cheaper of the two places to refuse a page of ten thousand, and the
+ * projection's clamp is what protects a caller that is not this field.
+ */
+export const listAdminBookings = defineQuery({
+  input: zodSchema(
+    z.object({
+      tab: z.enum(ADMIN_BOOKING_TABS),
+      limit: z.number().int().min(1).max(50).optional(),
+      offset: z.number().int().min(0).optional(),
+    }),
+  ),
+  output: zodSchema(adminBookingPageReadModel),
+  docs: { summary: "The bookings an administrator has to look at", tags: ["Booking"] },
+});
+
+/**
  * Nested one level, like `activity`'s and `notification`'s: the field kit
  * flattens these to `bookingMine` and `bookingById` on the wire —
  * `{ booking: { mine } }` → `bookingMine`, never `booking.mine`. Sits
@@ -96,6 +125,7 @@ export const bookingReadSchema = defineGraphQLSchema(
       forProvider: listProviderBookings,
       byIdForProvider: getProviderBooking,
       statsForProvider: getProviderStats,
+      needsAttentionForAdmin: listAdminBookings,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

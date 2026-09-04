@@ -23,6 +23,12 @@ import {
   bookingChange,
 } from "../../../../../shared/infrastructure/database/booking/schemas";
 import { service } from "../../../../../shared/infrastructure/database/catalog/schemas";
+// The dispute's conversation lives in Communication. Reaching it from a read
+// model is what a read model is for — this repository already joins five
+// other contexts' tables (`provider`, `service`, `review`, `profile`, `user`)
+// for the same reason. See `disputeThreadAggregate` for the shape that reach
+// takes, and why it is not a plain join.
+import { supportRequest } from "../../../../../shared/infrastructure/database/communication/schemas";
 import {
   provider,
   providerDocument,
@@ -31,6 +37,9 @@ import {
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import { profile, user } from "../../../../../shared/infrastructure/database/user/schemas";
 import {
+  ADMIN_TAB_STATUS,
+  type AdminBookingFilter,
+  type AdminBookingRow,
   type BookingListRow,
   type BookingReadRepositoryPort,
   PROVIDER_TAB_STATUSES,
@@ -326,6 +335,32 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
     };
   }
+
+  async listForAdmin(
+    filter: AdminBookingFilter,
+    limit: number,
+    offset: number,
+  ): Promise<AdminBookingRow[]> {
+    const rows = await adminSelect()
+      .where(adminWhere(filter))
+      .orderBy(...adminOrder(filter.tab))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map(toAdminRow);
+  }
+
+  async countForAdmin(filter: AdminBookingFilter): Promise<number> {
+    // No joins at all, unlike `countForProvider`: `adminWhere` reads two
+    // columns of `booking` and nothing else, so a count has nothing to join
+    // to. Every join the list adds is at most one row per booking — the six
+    // are one-to-one on a key and the seventh is deduplicated before it is
+    // joined — so neither query can see a row the other cannot, which is what
+    // makes this total the list's own total.
+    const [row] = await getDb().select({ n: count() }).from(booking).where(adminWhere(filter));
+
+    return Number(row?.n ?? 0);
+  }
 }
 
 /**
@@ -555,6 +590,10 @@ const memberProfile = alias(profile, "member_profile");
  * row — and the rest are left joins so that a booking whose customer has no
  * profile row, or whose member has been removed, still reaches the provider
  * who has to answer it rather than silently vanishing from their list.
+ *
+ * **Every join here is one-to-one on a key**, which is what lets
+ * `countForProvider` count `booking` rows without repeating them. See
+ * `adminSelect` for what a join that could match twice has to become.
  */
 function providerSelect() {
   return getDb()
@@ -769,5 +808,163 @@ function toProviderRow(
       row.memberFirstName && row.memberFirstName.trim() !== "" ? row.memberFirstName : null,
     customerFirstName:
       row.customerFirstName && row.customerFirstName.trim() !== "" ? row.customerFirstName : null,
+  };
+}
+
+/**
+ * The administrator's WHERE, one tab at a time.
+ *
+ * Each tab is one status — `ADMIN_TAB_STATUS`, which is typed against the
+ * enum the read model parses — and `unclosed` adds the half that makes it a
+ * queue rather than a list: the appointment is already over. A `CONFIRMED`
+ * booking whose slot is still ahead is not stuck, it is simply booked, and
+ * without `endsAt < now` every paid booking on the platform would sit here.
+ *
+ * **`now` is the filter's, never `new Date()`**, so a test can say what
+ * "already ended" means — the same rule `providerWhere` keeps.
+ *
+ * There is deliberately **no `askedOfProvider()`** here, unlike every
+ * provider-side query. That guard exists to hide an abandoned step-1 checkout
+ * that reached `EXPIRED` without anybody ever being asked anything; none of
+ * these three statuses is reachable that way — `CONFIRMED` is on the far side
+ * of `submit`, `accept` and `markPaid`, and the other two are on the far side
+ * of `CONFIRMED`. Adding it would be a second `EXISTS` per row buying nothing.
+ *
+ * And no `provider_id`: see `BookingReadRepositoryPort.listForAdmin` for why
+ * this query has no owner, and where its authorisation lives instead.
+ */
+function adminWhere(filter: AdminBookingFilter) {
+  if (filter.tab === "unclosed") {
+    return and(eq(booking.status, ADMIN_TAB_STATUS.unclosed), lt(booking.endsAt, filter.now));
+  }
+  if (filter.tab === "in_window") {
+    return eq(booking.status, ADMIN_TAB_STATUS.in_window);
+  }
+  return eq(booking.status, ADMIN_TAB_STATUS.disputed);
+}
+
+/**
+ * Longest-stuck first, on whichever clock the tab's status actually stands
+ * on: how long the appointment has been over for `unclosed`, how close the
+ * customer's window is to closing for `in_window`, and how long an
+ * administrator has been sitting on a complaint for `disputed` — which has no
+ * `expiresAt` at all, because `Booking.dispute` stops every clock.
+ *
+ * Ties broken by id, as every other list here breaks theirs. That is what
+ * makes the order *total*, and a total order is the whole of what keeps
+ * `LIMIT`/`OFFSET` from showing one booking on two pages and another on none.
+ */
+function adminOrder(tab: AdminBookingFilter["tab"]) {
+  if (tab === "unclosed") return [asc(booking.endsAt), asc(booking.id)];
+  if (tab === "in_window") return [asc(booking.expiresAt), asc(booking.id)];
+  return [asc(booking.disputedAt), asc(booking.id)];
+}
+
+/**
+ * The one dispute conversation per booking, at most.
+ *
+ * **`selectDistinctOn` is load-bearing, for the same reason
+ * `verifiedAggregate`'s `selectDistinct` above is: a booking must not be
+ * multiplied by its number of rows here.** And a booking genuinely can carry
+ * more than one `kind = 'dispute'` support request —
+ * `DisputeBookingCommand` opens the thread *before* its compare-and-swap and
+ * says so in its own doc comment, so a swap that loses leaves the thread
+ * standing as an orphan and the customer's retry opens a second one. Joined
+ * naively, that booking would come back twice on a page whose `total` comes
+ * from a count that joins nothing: one booking shown twice, another pushed
+ * off the end of the page, and a queue that cannot be emptied by paging
+ * through it.
+ *
+ * The most recent one wins, so a booking that collected an orphan links to
+ * the dispute that actually moved it rather than to the one that failed.
+ * Ties broken by thread id, as every list here breaks its own — `created_at`
+ * defaults to `now()` and two rows written in one transaction share it.
+ *
+ * A subquery scanned once rather than a correlated subselect run per row:
+ * `support_request` carries no index on `booking_id`, so per-row would be a
+ * scan of the whole table for every booking on the page.
+ */
+function disputeThreadAggregate(db: ReturnType<typeof getDb>) {
+  return db
+    .selectDistinctOn([supportRequest.bookingId], {
+      bookingId: supportRequest.bookingId,
+      threadId: supportRequest.threadId,
+    })
+    .from(supportRequest)
+    .where(eq(supportRequest.kind, "dispute"))
+    .orderBy(supportRequest.bookingId, desc(supportRequest.createdAt), desc(supportRequest.threadId))
+    .as("dispute_thread");
+}
+
+/**
+ * The administrator's joined select.
+ *
+ * A second chain rather than a widening of `providerSelect` above, and the
+ * pair is not the duplication that function's own comment warns against.
+ * That warning is about the *list and the detail of one booking for one
+ * audience* disagreeing — a defect a reader would meet as the same booking
+ * showing two things. These two are different audiences: the six joins they
+ * share are shared because a booking has one customer and one member whoever
+ * is reading, and the seventh is the administrator's alone. **A join added
+ * here because a booking gained a fact belongs in both; one added because a
+ * screen wanted a column belongs in one.**
+ *
+ * The first six are identical to `providerSelect`'s, for the reasons given
+ * there. The seventh is the dispute's conversation, deduplicated to one row
+ * per booking before it is joined — see `disputeThreadAggregate` for what
+ * goes wrong without that.
+ */
+function adminSelect() {
+  const db = getDb();
+  const disputes = disputeThreadAggregate(db);
+
+  return db
+    .select(adminColumns(disputes))
+    .from(booking)
+    .innerJoin(provider, eq(provider.id, booking.providerId))
+    .leftJoin(service, eq(service.id, booking.serviceId))
+    .leftJoin(profile, eq(profile.userId, booking.customerId))
+    .leftJoin(user, eq(user.id, booking.customerId))
+    .leftJoin(providerMember, eq(providerMember.id, booking.providerMemberId))
+    .leftJoin(memberProfile, eq(memberProfile.userId, providerMember.userId))
+    .leftJoin(disputes, eq(disputes.bookingId, booking.id));
+}
+
+/**
+ * Exactly the columns `AdminBookingRow` carries: the provider's own selection
+ * plus the five a queue across workspaces needs.
+ *
+ * `providerName` is the snapshot on the booking, not `provider.name` — the
+ * same column `selectedColumns` above hands the customer, and for the same
+ * reason. Every other name on this row is what was agreed at the sale, and an
+ * administrator resolving a dispute is reading that sale; `providerId` beside
+ * it is what links to the workspace as it stands today.
+ */
+function adminColumns(disputes: ReturnType<typeof disputeThreadAggregate>) {
+  return {
+    ...providerColumns(),
+    providerId: booking.providerId,
+    providerName: booking.providerName,
+    remindedAt: booking.remindedAt,
+    markedDoneAt: booking.markedDoneAt,
+    /** Null when the left join found nothing, which is every booking nobody has disputed. */
+    threadId: disputes.threadId,
+  };
+}
+
+/** One selected row as `AdminBookingRow` describes it — the provider row's normalisation, plus the five columns it does not have. */
+function toAdminRow(
+  row: Omit<AdminBookingRow, "memberFirstName" | "customerFirstName"> & {
+    memberFirstName: string | null;
+    customerFirstName: string | null;
+  },
+): AdminBookingRow {
+  return {
+    ...toProviderRow(row),
+    providerId: row.providerId,
+    providerName: row.providerName,
+    remindedAt: row.remindedAt,
+    markedDoneAt: row.markedDoneAt,
+    threadId: row.threadId,
   };
 }

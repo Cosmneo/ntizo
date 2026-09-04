@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type {
+  AdminBookingFilter,
+  AdminBookingRow,
   BookingListRow,
   BookingReadRepositoryPort,
   ProviderBookingRow,
@@ -8,6 +10,10 @@ import type {
   ProviderStats,
   ProviderTimelineRow,
 } from "../app/ports/outbound/booking-read.repository.port";
+import {
+  ListAdminBookingsProjection,
+  toAdminBookingDTO,
+} from "../app/use-cases/list-admin-bookings.projection";
 import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
 import { GetProviderBookingProjection } from "../app/use-cases/get-provider-booking.projection";
 import { GetProviderStatsProjection, fillDays } from "../app/use-cases/get-provider-stats.projection";
@@ -87,14 +93,41 @@ function row(over: Partial<ProviderBookingRow> = {}): ProviderBookingRow {
   };
 }
 
+/**
+ * One row of the administrator's queue, `CONFIRMED` and stuck by default —
+ * the answer the `unclosed` tab gives, which is the one the queue is named
+ * for. Every field the shared read model carries has a value here so that a
+ * mapper dropping one is a changed assertion rather than a passing test.
+ */
+function adminRow(over: Partial<AdminBookingRow> = {}): AdminBookingRow {
+  return {
+    ...row({ status: "CONFIRMED" }),
+    providerId: "prov-1",
+    providerName: "Salão Beatriz",
+    remindedAt: new Date("2026-09-05T10:00:00.000Z"),
+    markedDoneAt: null,
+    threadId: null,
+    ...over,
+  };
+}
+
 class FakeRepo implements BookingReadRepositoryPort {
   public calls: string[] = [];
   public stats: ProviderStats = ZERO_STATS;
+  public adminRows: AdminBookingRow[] = [adminRow()];
   constructor(
     private rows: ProviderBookingRow[] = [row()],
     private changes: ProviderTimelineRow[] = [],
     private members: ProviderMemberOption[] = [{ id: "mem-1", firstName: "Célia" }],
   ) {}
+  async listForAdmin(filter: AdminBookingFilter, limit: number, offset: number) {
+    this.calls.push(`admin:${filter.tab}:${filter.now.toISOString()}:${limit}:${offset}`);
+    return this.adminRows.slice(offset, offset + limit);
+  }
+  async countForAdmin(filter: AdminBookingFilter) {
+    this.calls.push(`adminCount:${filter.tab}`);
+    return this.adminRows.length;
+  }
   async listForCustomer(): Promise<BookingListRow[]> { return []; }
   async findForCustomer(): Promise<BookingListRow | null> { return null; }
   async listForProvider(providerId: string, filter: ProviderListFilter, limit: number, offset: number) {
@@ -279,5 +312,118 @@ describe("GetProviderStatsProjection", () => {
     });
     expect(dto.currency).toBe("MZN");
     expect(dto.perDay.every((d) => d.requests === 0 && d.confirmed === 0)).toBe(true);
+  });
+});
+
+describe("toAdminBookingDTO", () => {
+  it("carries the workspace, the money and the rate that produced it", () => {
+    const dto = toAdminBookingDTO(adminRow());
+    expect(dto.providerId).toBe("prov-1");
+    expect(dto.providerName).toBe("Salão Beatriz");
+    expect(dto.priceMinor).toBe(80000);
+    expect(dto.commissionMinor).toBe(8000);
+    // The rate travels beside the amount on purpose: the amount alone cannot
+    // be checked and the rate alone cannot be reconciled against money that
+    // already moved.
+    expect(dto.commissionBps).toBe(1000);
+    expect(dto.currency).toBe("MZN");
+    expect(dto.serviceName).toBe("Corte de cabelo");
+    expect(dto.timezone).toBe("Africa/Maputo");
+  });
+
+  it("stringifies every instant, and keeps a missing one null", () => {
+    const dto = toAdminBookingDTO(
+      adminRow({
+        startsAt: new Date("2026-09-05T09:00:00.000Z"),
+        endsAt: new Date("2026-09-05T09:45:00.000Z"),
+        remindedAt: new Date("2026-09-05T10:00:00.000Z"),
+        markedDoneAt: new Date("2026-09-05T11:00:00.000Z"),
+        expiresAt: new Date("2026-09-08T11:00:00.000Z"),
+      }),
+    );
+    expect(dto.startsAt).toBe("2026-09-05T09:00:00.000Z");
+    expect(dto.endsAt).toBe("2026-09-05T09:45:00.000Z");
+    expect(dto.remindedAt).toBe("2026-09-05T10:00:00.000Z");
+    expect(dto.markedDoneAt).toBe("2026-09-05T11:00:00.000Z");
+    expect(dto.expiresAt).toBe("2026-09-08T11:00:00.000Z");
+
+    const bare = toAdminBookingDTO(
+      adminRow({ remindedAt: null, markedDoneAt: null, expiresAt: null }),
+    );
+    expect(bare.remindedAt).toBeNull();
+    expect(bare.markedDoneAt).toBeNull();
+    expect(bare.expiresAt).toBeNull();
+  });
+
+  it("hands a disputed row its conversation, and every other row a null", () => {
+    expect(toAdminBookingDTO(adminRow({ status: "DISPUTED", threadId: "th-7" })).threadId).toBe("th-7");
+    expect(toAdminBookingDTO(adminRow()).threadId).toBeNull();
+  });
+
+  it("names a customer with no first name 'Cliente'", () => {
+    expect(toAdminBookingDTO(adminRow({ customerFirstName: null })).customerFirstName).toBe("Cliente");
+  });
+});
+
+describe("ListAdminBookingsProjection", () => {
+  it("asks the tab it was given, at the instant it was given, and counts beside it", async () => {
+    const repo = new FakeRepo();
+    repo.adminRows = [adminRow({ id: "a" }), adminRow({ id: "b" })];
+    const page = await new ListAdminBookingsProjection(repo).execute({
+      tab: "disputed",
+      limit: 20,
+      offset: 0,
+      now: NOW,
+    });
+    expect(repo.calls).toEqual([
+      "admin:disputed:2026-09-04T10:00:00.000Z:21:0",
+      "adminCount:disputed",
+    ]);
+    expect(page.items.map((i) => i.id)).toEqual(["a", "b"]);
+    expect(page.total).toBe(2);
+    expect(page.nextOffset).toBeNull();
+  });
+
+  it("clamps the limit to fifty, and a nonsense one to one", async () => {
+    const repo = new FakeRepo();
+    await new ListAdminBookingsProjection(repo).execute({
+      tab: "unclosed",
+      limit: 500,
+      offset: 0,
+      now: NOW,
+    });
+    // 51, not 501: the ceiling is applied before the `limit + 1` that answers
+    // "is there another page".
+    expect(repo.calls[0]).toBe("admin:unclosed:2026-09-04T10:00:00.000Z:51:0");
+
+    const second = new FakeRepo();
+    await new ListAdminBookingsProjection(second).execute({
+      tab: "unclosed",
+      limit: 0,
+      offset: -5,
+      now: NOW,
+    });
+    expect(second.calls[0]).toBe("admin:unclosed:2026-09-04T10:00:00.000Z:2:0");
+  });
+
+  it("reports the next offset when a page is full, and pages without repeating a row", async () => {
+    const repo = new FakeRepo();
+    repo.adminRows = [adminRow({ id: "a" }), adminRow({ id: "b" }), adminRow({ id: "c" })];
+    const projection = new ListAdminBookingsProjection(repo);
+
+    const first = await projection.execute({ tab: "in_window", limit: 2, offset: 0, now: NOW });
+    expect(first.items.map((i) => i.id)).toEqual(["a", "b"]);
+    expect(first.nextOffset).toBe(2);
+
+    const second = await projection.execute({
+      tab: "in_window",
+      limit: 2,
+      offset: first.nextOffset!,
+      now: NOW,
+    });
+    // The third row, once — the `limit + 1` row the first page fetched is
+    // dropped rather than shown twice.
+    expect(second.items.map((i) => i.id)).toEqual(["c"]);
+    expect(second.nextOffset).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { DrizzleBookingReadRepository } from "../infra/repositories/drizzle/booking-read.repository";
 import { GetMyBookingProjection } from "../app/use-cases/get-my-booking.projection";
 import { ListMyBookingsProjection } from "../app/use-cases/list-my-bookings.projection";
+import { ListAdminBookingsProjection } from "../app/use-cases/list-admin-bookings.projection";
 import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
 import { GetProviderBookingProjection } from "../app/use-cases/get-provider-booking.projection";
 import { GetProviderStatsProjection } from "../app/use-cases/get-provider-stats.projection";
@@ -42,6 +43,14 @@ export function bootstrapBookingRead() {
       listForProvider: new ListProviderBookingsProjection(repo),
       getForProvider: new GetProviderBookingProjection(repo),
       statsForProvider: new GetProviderStatsProjection(repo),
+      /**
+       * The administrator's queue. The same repository again, because it
+       * reads the same `booking` rows through the same joins — what differs
+       * is the `WHERE`, the absence of an owner in it, and one extra join for
+       * the dispute's conversation. That absence is guarded at the GraphQL
+       * edge, not here: see `BookingReadRepositoryPort.listForAdmin`.
+       */
+      listForAdmin: new ListAdminBookingsProjection(repo),
       /** Only `isMember` is used, and only to answer "may this person look" — the wallet's arrangement. */
       providerRead: new DrizzleProviderReadRepository(),
     },
