@@ -148,7 +148,197 @@ export const declineBooking = defineMutation({
   docs: { summary: "Decline a booking request", tags: ["Booking"] },
 });
 
+/**
+ * The provider says the work is done, and the customer's three-day window
+ * opens.
+ *
+ * **There is no `reason` field, and its absence is the security of the whole
+ * closing surface.** `MarkBookingDoneCommand` takes an optional
+ * `MarkDoneReason` and *skips its membership check* for two of the three
+ * tokens — `marked_done_by_admin` and `marked_done_by_platform` are reachable
+ * only from inside the process, which is exactly what makes the exemption
+ * safe. A field here would hand any signed-in stranger the token that turns
+ * the check off, and with it the ability to close any provider's booking on
+ * the platform. The handler passes `marked_done_by_provider` as a literal it
+ * writes itself, never something it read off the wire; `booking.adminMarkDone`
+ * below is the other door, and it hardcodes its own token the same way.
+ *
+ * There is no `requesterUserId` field either, for the reason `booking.accept`
+ * has none: the member comes from `requireUser(ctx)`. That absence matters
+ * more here than anywhere else on this schema, because `requesterUserId: null`
+ * is not a value that fails closed in the command — it is the *sweep's* value,
+ * and it skips the membership check and records the platform as the actor.
+ */
+export const markBookingDone = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Say the work is done", tags: ["Booking"] },
+});
+
+/**
+ * "Still going." The provider pushes the platform's question out another
+ * seven days rather than being closed for them on a claim nobody made.
+ *
+ * `KeepBookingOpenCommand` has no exempt arm at all — its `requesterUserId`
+ * is not nullable and membership is always checked — so this field is the
+ * least dangerous of the six. It still takes only the booking id, because a
+ * caller who could name the member would be answering the platform's question
+ * on somebody else's behalf.
+ */
+export const keepBookingOpen = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Say the work is still going", tags: ["Booking"] },
+});
+
+/**
+ * The contract the customer's zone implements against. Built and tested here;
+ * no screen calls it yet.
+ *
+ * The customer says something is wrong inside the three days they were given:
+ * a support thread opens with their account of it and the booking's clocks
+ * stop until an administrator decides. `DisputeBookingCommand` refuses anybody
+ * but the booking's own customer, so there is no `requesterUserId` field here
+ * for the same reason `booking.submit` has no `customerId`.
+ *
+ * **The attachment shape is the upload route's answer, unchanged.**
+ * `POST /api/communication/attachments` stores the bytes and replies with
+ * exactly `{ storageKey, fileName, contentType, sizeBytes }`; the client holds
+ * that object and sends it back here verbatim, the same round trip
+ * `communication.sendMessage` already uses. Only `storageKey` is trusted on
+ * the far side — the communication context reads the file's real name, type
+ * and size back from storage rather than believing any of the other three (see
+ * `resolveAttachments`) — so this schema is a shape check, not a source of
+ * truth. Five is the cap the design gives a dispute.
+ *
+ * **`communication.sendMessage` takes `storageKey` alone, and this field does
+ * not — the difference is deliberate and it is safe here for a reason worth
+ * stating.** That mutation was narrowed by a whole-branch review, because the
+ * name it accepted was *written to the attachment row*: a client could upload
+ * a file whose name passed the upload route's `hasContact` check and then send
+ * back a different, unchecked one. Nothing of the sort can happen through this
+ * field. `disputeThreadOver` — the composition root's adapter, and the only
+ * implementation of `OpenDisputeThreadPort` — maps every attachment down to
+ * `{ storageKey }` before `OpenSupportRequestCommand` ever sees it, so the
+ * other three values are discarded one hop after they arrive and reach no row,
+ * no header and no reader. They are carried this far only so the client can
+ * hand the upload route's answer back unchanged. If that ergonomic is ever
+ * judged not worth the asymmetry, narrowing this to `{ storageKey }` means
+ * following `DisputeAttachment` down with it — its own doc comment says so.
+ *
+ * **`attachments` is required over the wire — send `[]`, not nothing.**
+ * `.default([])` makes the key optional to *zod*, which is what guarantees
+ * `args.input.attachments` is a list by the time the handler reads it, but the
+ * SDL this schema generates renders the field as
+ * `[BookingDisputeInput_Attachments_Item]!` with no GraphQL default, and a
+ * document that omits it is refused at validation with `Field "attachments" of
+ * required type ... was not provided` before any resolver runs (verified
+ * against the running API). `note` on `resolveBookingDispute` below is the
+ * other case and behaves the other way: `.nullable()` is what makes a field
+ * omittable in the SDL, and it has one. Written down because the customer's
+ * zone hardcodes this document.
+ */
+export const disputeBooking = defineMutation({
+  input: zodSchema(
+    z.object({
+      bookingId: z.string().min(1),
+      message: z.string().trim().min(1).max(2000),
+      attachments: z
+        .array(
+          z.object({
+            storageKey: z.string().min(1),
+            fileName: z.string().min(1),
+            contentType: z.string().min(1),
+            sizeBytes: z.number().int().positive(),
+          }),
+        )
+        .max(5)
+        .default([]),
+    }),
+  ),
+  output: zodSchema(z.object({ bookingId: z.string().min(1), threadId: z.string().min(1) })),
+  docs: { summary: "Dispute a booking inside its window", tags: ["Booking"] },
+});
+
+/**
+ * An administrator closing a booking the provider left open. The same hop, a
+ * different door.
+ *
+ * It reaches the very same `MarkBookingDoneCommand` as `booking.markDone`
+ * above — the difference is one hardcoded token, and that token is the one the
+ * command's membership check exempts. Which is precisely why this door has to
+ * be guarded here: the command's own check will not run for it. See the
+ * handler's `requireAdmin`, which is this field's entire security surface.
+ */
+export const adminMarkBookingDone = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Close a booking on the provider's behalf", tags: ["Booking", "Admin"] },
+});
+
+/**
+ * An administrator ending a window early, for a booking nobody is going to
+ * answer.
+ *
+ * `CompleteBookingCommand` carries no authorisation of its own, deliberately
+ * and by its own doc comment's instruction — its three callers (the sweep, the
+ * review context, an administrator) are each authorised at their own edge.
+ * This field *is* that edge for the third of them, and it is the only thing
+ * between a signed-in stranger and every booking's payout.
+ */
+export const adminCompleteBooking = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Complete a booking without waiting out its window", tags: ["Booking", "Admin"] },
+});
+
+/**
+ * An administrator decides a dispute: `upheld` sides with the customer and
+ * cancels under `dispute_upheld`, `false` lets the completion stand.
+ *
+ * A single mutation carrying a boolean rather than an uphold/reject pair — the
+ * shape `review.setFeatured` already uses, and for the reason its own doc
+ * comment gives: a decision whose two outcomes are two endpoints makes every
+ * caller ask which state it is in before acting, and get it wrong under a race.
+ *
+ * `note` is what the administrator wants both sides told; it is a *copy*
+ * carried into the notifications, not the record — the record is the message
+ * they leave on the dispute's own thread. `.nullable().default(null)` so an
+ * omitted key and an explicit null are the one thing
+ * `ResolveBookingDisputeInput.note` has, rather than a third state the command
+ * would have to reconcile. No `.min(1)`: an empty note is the same fact as no
+ * note, and the default is what turns it into one.
+ *
+ * Tagged `Admin` alongside its two siblings above even though it does not
+ * carry `admin` in its name — the command it drives takes an `adminUserId` and
+ * holds no check of its own.
+ */
+export const resolveBookingDispute = defineMutation({
+  input: zodSchema(
+    z.object({
+      bookingId: z.string().min(1),
+      upheld: z.boolean(),
+      note: z.string().trim().max(2000).nullable().default(null),
+    }),
+  ),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Decide a dispute", tags: ["Booking", "Admin"] },
+});
+
 export const bookingWriteSchema = defineGraphQLSchema(
-  { booking: { create: createBooking, submit: submitBooking, accept: acceptBooking, decline: declineBooking } },
+  {
+    booking: {
+      create: createBooking,
+      submit: submitBooking,
+      accept: acceptBooking,
+      decline: declineBooking,
+      markDone: markBookingDone,
+      stillOngoing: keepBookingOpen,
+      dispute: disputeBooking,
+      adminMarkDone: adminMarkBookingDone,
+      adminComplete: adminCompleteBooking,
+      resolveDispute: resolveBookingDispute,
+    },
+  },
   { defaults: { context: ntizoGraphqlContextSchema } },
 );
