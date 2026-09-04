@@ -218,7 +218,7 @@ export function BookingPage() {
           {/* The picture of what was booked, at the top of the record it
               belongs to — same component and same reasons as the list's own
               thumbnail, one size up. */}
-          <span className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--radius-card-sm)] sm:h-20 sm:w-20">
+          <span className="h-14 w-14 shrink-0 overflow-hidden rounded-[var(--radius-card-sm)] sm:h-20 sm:w-20">
             <BrandImage
               src={b.serviceImageUrl}
               alt=""
@@ -226,7 +226,15 @@ export function BookingPage() {
             />
           </span>
           <div className="min-w-0">
-            <h1 className="type-h1">
+            {/* 22px on a phone, the token's own 28px from `sm` up. A service
+                name and its package together run long — "Fotografia de
+                casamento · Pacote completo" took three lines at 28px in the
+                ~270px this column has beside the thumbnail, and a heading
+                that tall pushed the status and the actions below the fold.
+                The overriding utility wins because `type-h1` lives in the
+                components layer; `overview-cards.tsx` does the same thing
+                for the same reason. */}
+            <h1 className="type-h1 text-[22px] sm:text-[28px]">
               {b.serviceName}
               {b.optionName ? ` · ${b.optionName}` : ""}
             </h1>

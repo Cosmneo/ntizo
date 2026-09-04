@@ -274,6 +274,34 @@ export function BookingsPage() {
             // yet, so it gets the only action that applies: cancel.
             const showPay = canPay(b.status);
             const showCancel = canCancel(b.status) && !showPay;
+            // Declared once and used by both renderings — the table's last
+            // cell and the foot of the phone's card — rather than written
+            // out twice with two sets of classes. `w-full md:w-auto` is what
+            // lets one element be a full-width target on the card and a
+            // compact control in the cell: below `md` only the card is on
+            // screen, above it only the table.
+            const payButton = (
+              <Button
+                type="button"
+                size="sm"
+                className="w-full md:w-auto"
+                onClick={() => setPaying(b)}
+              >
+                {t("pay")}
+              </Button>
+            );
+            // A `<button>`, not a link: it opens a dialog rather than
+            // navigating. Styled quietly, as the mockup draws it — this is
+            // not the page's primary action, on either screen.
+            const cancelButton = (
+              <button
+                type="button"
+                onClick={() => setCancelling(b)}
+                className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
+              >
+                {t("cancel")}
+              </button>
+            );
             return {
               key: b.id,
               primary: (
@@ -299,10 +327,15 @@ export function BookingsPage() {
                       {b.serviceName}
                       {b.optionName ? ` · ${b.optionName}` : ""}
                     </Link>
+                    {/* `truncate` on the name and `shrink-0` on the badge, so
+                        a long business name loses its own tail rather than
+                        pushing "✓ Verificado" onto a second line — which is
+                        what a card 266px wide did to every provider whose
+                        name ran past about twenty characters. */}
                     <p className="type-caption mt-0.5 flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
-                      {b.providerName}
+                      <span className="truncate">{b.providerName}</span>
                       {b.providerVerified && (
-                        <span className="font-semibold text-[var(--color-primary)]">
+                        <span className="shrink-0 font-semibold whitespace-nowrap text-[var(--color-primary)]">
                           ✓ {t("verified")}
                         </span>
                       )}
@@ -389,48 +422,55 @@ export function BookingsPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    {/* The provider is one press away from every row, whatever
-                        the booking's status: a customer with a question about
-                        a job that is over has the same right to ask it as one
-                        waiting to be paid for. */}
-                    <MessageProviderButton
-                      providerId={b.providerId}
-                      compact
-                      label={t("message")}
-                    />
+                    <span className="flex items-center gap-4">
+                      {/* The provider is one press away from every row,
+                          whatever the booking's status: a customer with a
+                          question about a job that is over has the same right
+                          to ask it as one waiting to be paid for. */}
+                      <MessageProviderButton
+                        providerId={b.providerId}
+                        compact
+                        label={t("message")}
+                      />
+                      {showCancel && cancelButton}
+                    </span>
                     {/* The row's title is a link too, but a line of text is a
                         poor target for a thumb. This is the one the card is
                         actually tapped by. */}
                     <Link
                       to="/bookings/$bookingId"
                       params={{ bookingId: b.id }}
-                      className="type-caption inline-flex items-center gap-1 font-semibold text-[var(--color-primary)] hover:underline"
+                      className="type-caption inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--color-primary)] hover:underline"
                     >
                       {t("viewDetail")}
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
                   </div>
+                  {/* The one action that is being waited on, given the width
+                      a thumb wants. Cancelar sits quietly in the row above
+                      instead: a booking nobody has answered yet has nothing
+                      pressing about calling it off. */}
+                  {showPay && payButton}
                 </div>
               ),
               // One action, never two: a confirmed booking has nothing to do
               // here at all, and a `PENDING_PAYMENT` row shows only Pagar —
               // both buttons together belong to the detail page, not this
               // row (see the comment on `showPay`/`showCancel` above).
+              //
+              // **Table only, and the card draws its own copy full width.**
+              // `CollectionCard` puts this in the card's top-right corner,
+              // which on a 390px screen took about a third of the room the
+              // title had and wrapped "Fotografia de casamento · Pacote
+              // completo" onto three lines under a cramped button. The same
+              // control lives at the foot of `cardBody` above instead, where
+              // it is a full-width target rather than a corner one. Hidden
+              // rather than conditional, because a row description is one
+              // object for both renderings — see `CollectionRow.cardBody`.
               actions: showPay ? (
-                <Button type="button" size="sm" onClick={() => setPaying(b)}>
-                  {t("pay")}
-                </Button>
+                <span className="hidden md:inline-flex">{payButton}</span>
               ) : showCancel ? (
-                // A `<button>`, not a link: it opens a dialog rather than
-                // navigating. Styled quietly, as the mockup draws it — this
-                // is not the page's primary action.
-                <button
-                  type="button"
-                  onClick={() => setCancelling(b)}
-                  className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
-                >
-                  {t("cancel")}
-                </button>
+                <span className="hidden md:inline-flex">{cancelButton}</span>
               ) : undefined,
             };
           })}

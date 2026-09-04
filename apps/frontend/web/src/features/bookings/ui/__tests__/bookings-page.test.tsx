@@ -313,6 +313,24 @@ describe("BookingsPage", () => {
       ).toBeInTheDocument();
     });
 
+    it("puts the row's action at the foot of the card rather than in its corner", async () => {
+      // `CollectionCard` draws `actions` in the card's top-right, which on a
+      // 390px screen took about a third of the width the title had and
+      // wrapped a service name and its package onto three lines under a
+      // cramped button. The corner copy is kept for the table and hidden
+      // below `md`; the card's own sits at the foot, full width.
+      setPage(pageFixture([bookingFixture({ status: "PENDING_PAYMENT" })]));
+      await renderBookings();
+
+      const li = (await screen.findByRole("list")).querySelector("li")!;
+      const buttons = within(li).getAllByRole("button", { name: "Pagar" });
+      expect(buttons).toHaveLength(2);
+      // Exactly one of the two is inside the wrapper that hides it below
+      // `md` — so a phone sees one Pagar, and it is the full-width one.
+      expect(buttons.filter((b) => b.closest(".hidden"))).toHaveLength(1);
+      expect(buttons.find((b) => !b.closest(".hidden"))!.className).toContain("w-full");
+    });
+
     it("draws the service photo when the booking has one", async () => {
       setPage(
         pageFixture([bookingFixture({ serviceImageUrl: "https://media.test/svc-1.jpg" })]),
