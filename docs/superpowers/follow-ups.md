@@ -3871,7 +3871,162 @@ page that copies this grid — then size the value from the card rather than the
 (`@container` on `Card`, with the type step as a container query), which removes every band
 above at once instead of moving another breakpoint.
 
-## #167 — An ordinary lost race on either of the sweep's hand-overs is reported as a failure
+## #167 — Watch the first real customer-initiated charge on dev
+
+Task 10's spike was ruled unnecessary rather than run: the mechanism `RequestBookingChargeCommand`
+schedules its gateway call through (`configMiddleware` → `infraStore.waitUntil` → `connection.ts`)
+already ships in production for email delivery and is covered by `wait-until.test.ts` and
+`deferred-booking-charge.test.ts`. What neither test proves is that a Worker actually keeps running
+this specific deferred promise — a C2B call, not an email — long enough to reach the processor, on
+the real dev stage, under a real eviction schedule. Nothing about the mechanism suggests it would
+behave differently, but nothing has watched it do so for this call either.
+
+The cost of being wrong is bounded and already tolerated by design: a Worker cut short mid-call
+leaves the attempt `recordChargeAttempt` claimed but the prompt never reaching a handset, silently,
+the same outcome an ordinary charge failure produces. The customer presses "Pagar" again or waits
+for the per-minute sweep; three such losses exhaust `BOOKING_CHARGE_ATTEMPT_LIMIT` and the booking
+falls to its payment window, cancelled, the same ending a customer who never answers reaches.
+
+**Trigger:** the first customer-initiated charge that reaches the dev (or a later) stage after this
+branch ships — a free observation at a moment that is coming anyway. Tail the Worker's logs
+(`bunx wrangler tail`) across one such request and confirm `[booking] a charge landed` or one of
+`ChargeBookingCommand`'s other outcome lines actually appears after the response was already sent.
+If it never does across a handful of real presses, the fallback the cancelled spike described —
+clearing `last_charge_attempt_at` and letting the next cron tick pick the booking up — is still the
+documented way out.
+
+## #168 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` confirmed still email-less, cross-referencing #146
+
+Not a new gap — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` is already one of the three types #146
+names. This is that entry confirmed from the write side: `CancelBookingCommand`'s own doc comment
+says so directly — "It has no email template yet — in-app only, a known gap this command does not
+close." Recorded here only so a future reader who reaches this command first is pointed at #146
+rather than filing the same gap twice.
+
+**Trigger:** see #146 — the notification-preferences work, or the first provider who missed a
+cancellation because they were not in the app. Closes with that entry, not on its own.
+
+## #169 — A stale comment in `config.middleware.ts` still predicts the mutation this branch just shipped
+
+`apps/backend/api/src/middlewares/config.middleware.ts` (around lines 29-32) carries the M-Pesa env
+vars forward with a comment explaining why: "the moment a 'Pagar agora' mutation exists, a customer
+retrying from their own booking would otherwise reach an adapter that reports the stage as
+unconfigured." Task 11 of this plan is that mutation (`booking.pay`, `RequestBookingChargeCommand`).
+The reasoning is still correct — it is exactly why the env stays wired the way it is — but the
+comment narrates a future that already happened.
+
+**Trigger:** the next time this file is touched for an unrelated reason; reword the comment from
+"the moment it exists" to a plain statement of why the customer-initiated path needs these vars too.
+Cosmetic — nothing behaves differently either way.
+
+## #170 — The customer's booking read model carries no `providerId`
+
+Task 6's ruling recorded this rather than closing it: `CustomerBookingDetailDTO` has the provider's
+slug, name, verified mark and rating, but not the entity id `MessageProviderButton` needs to open a
+conversation from the booking detail page — the "Falar com o prestador" button the approved mockup
+draws. Reaching the provider today means going through the messages page and finding them by name
+instead of by one click from the booking that is actually the reason to write.
+
+**Trigger:** the day the mockup's button gets built. The fix is a one-column addition to
+`GetMyBookingProjection`'s select and `CustomerBookingDetailDTO` — the row already joins `provider`
+for the name and slug, so the id is already in scope, just not projected.
+
+## #171 — No per-tab ordering assertion on the customer's own bookings
+
+Task 2's review flagged this and the brief for that fix round matched it, so it was left rather than
+guessed at: `booking-read.repository.test.ts` proves `listForCustomer` puts the right bookings in the
+right tab and pages them correctly, but nothing asserts the *order* within a tab — newest request
+first while waiting, soonest slot first looking forward, most recent first looking back
+(`customerOrder` in `booking-read.repository.ts`). A regression that quietly reversed one of those
+three `ORDER BY` clauses would pass every existing test in the file.
+
+**Trigger:** the next edit to `customerOrder` or to `booking-read.repository.test.ts` — add one
+multi-row fixture per tab asserting the sequence, alongside whatever else that edit is already
+touching.
+
+## #172 — `pay-dialog.tsx` and `cancel-dialog.tsx` share a small amount of shape
+
+Both are a `Dialog` opened for exactly one booking, both own their own mutation and error mapping,
+both render a title, a body built from the same slot wording, a "keep/cancel" footer pair. Task 12's
+review called the duplication small enough to leave rather than force a shared abstraction ahead of
+a third caller — `PayDialog` is nearly three times `CancelDialog`'s size (342 lines against 117) once
+the phone-number step and the polling state are counted, so the honest shared surface is a handful
+of lines, not the whole component.
+
+**Trigger:** a third booking-action dialog (a decline-style confirmation for the customer, say, or a
+reschedule). Two callers sharing a little shape is a coincidence; three sharing the same little shape
+is a pattern worth a `BookingActionDialog` wrapper.
+
+## #173 — The money column reads "Valor" for the customer and "Preço" for the provider
+
+`bookings.json`'s `col.price` is "Valor" on the customer's own page; `provider.json`'s `col.price` is
+"Preço" on the provider's list of the exact same bookings. Task 5's implementer flagged this as a
+deliberate divergence — the customer mockup was signed off with "Valor" specifically — but it is the
+one place in the product where the same column, over the same rows, is named two different things
+depending on who is looking, and nothing records that the difference was chosen rather than missed.
+
+**Trigger:** the next visual audit that puts both zones' tables side by side, or a customer support
+ticket asking why the two don't match. If it turns out to be an oversight rather than a choice after
+all, it is a one-line change in either locale file, repeated across all eight languages.
+
+## #174 — A parity gate that compares files to each other cannot see whether the app loads them
+
+What actually let `bookings` ship unregistered in seven of eight locales (found and fixed in this
+same task, see the commit that introduced `#168`-`#173`) was not a missing test — `i18n-parity.test.ts`
+already existed and ran on every one of this branch's own CI passes. It compares each locale's JSON
+file to `en-US`'s, key for key, placeholder for placeholder. Every one of those comparisons agreed:
+the seven missing locales' `bookings.json` files were byte-correct, so the gate had nothing to
+disagree about. What it never asked is whether `i18n.ts`'s hand-maintained `resources` object —
+the thing i18next actually reads — carries the file it just finished comparing. A namespace whose
+JSON is perfect in all eight languages and registered in one still ships seven languages of raw key
+ids, and a gate built entirely out of file-to-file comparisons has no way to notice, by
+construction.
+
+This is now closed for `i18n.ts` specifically: a new assertion beside the existing parity checks
+(`i18n-parity.test.ts`, `describe("every namespace on disk is registered in i18n.ts for every
+locale")`) walks the same glob of files on disk and asks `i18n.hasResourceBundle(locale, ns)` of the
+real, initialized i18next instance — the same object a `useTranslation` call resolves against —
+rather than comparing JSON to JSON a second way. It would have caught this the day `bookings.json`
+landed for `en-US` and nowhere else.
+
+**Trigger:** the next namespace added to this app. If it ships with its JSON files in all eight
+locales but the new registration test above still goes red for seven of them, that is this exact
+failure mode recurring — the fix is the same one-line-per-locale addition to `i18n.ts`'s `resources`
+object this task made, not a change to the test. If the registration test itself is ever the thing
+that gets deleted or weakened (rather than a namespace forgetting to register), this entry is the
+record of why it exists.
+
+---
+
+## #175 — The dev database's `booking_sweep_idx` is wider than any migration ever asked for
+
+`booking-constraints.test.ts`'s "the sweep index is partial on exactly the deadline-bearing
+statuses" fails against the dev database, and has been failing since before this branch touched
+anything (the whole change was frontend; `packages/backend` is untouched). It reads `pg_indexes`
+back from the real database and finds:
+
+```
+WHERE (status = ANY (ARRAY['DRAFT','AWAITING_PROVIDER','PENDING_PAYMENT','CONFIRMED','MARKED_DONE']))
+```
+
+`DEADLINE_BEARING_STATUSES` is the first three, and so is every migration that ever created this
+index: 0027 made `booking_expiry_sweep_idx` on `PENDING_PAYMENT` alone, 0030 widened it to the
+three, 0031 dropped it and created `booking_sweep_idx` on the same three. The five-status form
+appears in no migration at all, which means it reached dev out of band — a `drizzle-kit push` at a
+moment when the constant was wider is the obvious candidate.
+
+Not a performance break: the sweep's `status IN (three)` implies the index's `status IN (five)`, so
+Postgres can still use it. The cost is that dev's schema and the repository's schema disagree, and
+the test that exists precisely to catch that disagreement is red — which is worse than the drift,
+because a red gate nobody can fix is a gate people learn to ignore. QA and prod have never been
+migrated at all, so they will get the correct index whenever they first are.
+
+**Trigger:** the next time anyone runs the backend suite and has to decide whether a red test means
+their change broke something — or whenever dev's schema is next reconciled. Fixing it is one
+statement (`DROP INDEX` + the 0031 definition) against dev, which is somebody's decision to make,
+not a side effect of unrelated work.
+
+## #176 — An ordinary lost race on either of the sweep's hand-overs is reported as a failure
 
 `SweepBookingCommand.handOver` drives `MarkBookingDoneCommand` and `CompleteBookingCommand`
 after its own transaction has returned. Between the sweep's read and the sub-command's, a
@@ -3893,7 +4048,7 @@ in a sweep log, or an alert wired to the wave's `failed` count. The fix is eithe
 re-check in `handOver` or a no-op-on-wrong-status variant of the two transitions; deciding
 which is the point of the follow-up.
 
-## #168 — The dev-database suites share one `DEV_DB_URL` across worktrees, and now write to each other's rows
+## #177 — The dev-database suites share one `DEV_DB_URL` across worktrees, and now write to each other's rows
 
 `booking-sweep.test.ts` creates a real `role = 'admin', status = 'active'` user for the length
 of its run, so a concurrently-running sibling worktree's Communication admin fan-out addresses
@@ -3913,7 +4068,7 @@ person running the suites at the same time. The real fix is a per-worktree datab
 per-run schema) rather than another scoping wrapper, which is why this is a follow-up rather
 than a patch.
 
-## #169 — A dispute whose compare-and-swap loses leaves the customer's complaint where nobody will read it
+## #178 — A dispute whose compare-and-swap loses leaves the customer's complaint where nobody will read it
 
 `DisputeBookingCommand` opens the conversation through `OpenDisputeThreadPort` *before* its
 own transaction, and says so deliberately: the thread is another bounded context's write, and
@@ -3946,7 +4101,7 @@ opening a second thread), or an outbox hop that retries the transition, or an ad
 tab that lists dispute-kind requests whose booking never moved. Deciding which is the point of
 the follow-up; leaving the thread outside the transaction is not the part to change.
 
-## #170 — Eight locales spell out "three days" and "in a week" as words, coupled to nothing
+## #179 — Eight locales spell out "three days" and "in a week" as words, coupled to nothing
 
 `FEEDBACK_WINDOW_DAYS = 3` and `ASK_AGAIN_AFTER_DAYS = 7` (`mark-booking-done.command.ts`) are
 the two clocks the booking-completion phase's copy promises the customer and the provider by
@@ -3970,7 +4125,7 @@ wires up the first screen that renders `markDoneConfirm`, `markedDone`, `stillOn
 call site supplies and interpolate the real constant, or add a one-line test asserting each
 constant still equals the number the copy spells out by hand.
 
-## #171 — `admin.json` carries three sibling `*OpenCount` keys in two different plural shapes
+## #180 — `admin.json` carries three sibling `*OpenCount` keys in two different plural shapes
 
 `contactOpenCount`/`supportOpenCount` (pre-existing, not part of this phase) use `_one`/`_other`
 only, with no `_many` form. `Intl.PluralRules('pt').select(1_000_000)` resolves to `"many"`, so
@@ -3989,7 +4144,7 @@ all of them rather than copying whichever neighbour happens to be closest.
 
 ---
 
-## #172 — Nothing stops a provider from pushing "ainda a decorrer" forever
+## #181 — Nothing stops a provider from pushing "ainda a decorrer" forever
 
 `KeepBookingOpenCommand` has no cap, and the absence is deliberate: a job is finished when it is
 finished, and the platform is not standing in the room. Each press of `booking.stillOngoing`
@@ -4016,7 +4171,7 @@ records only the last of those and only in a doc comment.
 
 ---
 
-## #173 — The customer cannot review or dispute anything yet
+## #182 — The customer cannot review or dispute anything yet
 
 Both halves of the customer's side of this phase are built, tested and mounted, and neither has a
 caller. `booking.dispute` is a mutation on the private schema and `grep` finds no reference to
@@ -4042,11 +4197,11 @@ form can rely on when it does, both already settled here rather than left to be 
   (An earlier version of this entry said the opposite — that the field was required and the fix
   still owed — which was already false when it was written.)
 - It can refuse with `SUPPORT_TOO_MANY_OPEN`, and that refusal costs the customer their window.
-  See #181, which is the decision, not the wiring.
+  See #190, which is the decision, not the wiring.
 
 ---
 
-## #174 — Every domain event this phase publishes is written and read by nobody, and one of them is the payout seam
+## #183 — Every domain event this phase publishes is written and read by nobody, and one of them is the payout seam
 
 Follow-up #8 records that the outbox has no relay in general. This entry is the specific cost that
 phase now carries, because the events it added are not notifications — they are the hand-offs the
@@ -4075,7 +4230,7 @@ before a single booking event can be drained.
 
 ---
 
-## #175 — `adminOrder` cannot be pinned, because it is not exported
+## #184 — `adminOrder` cannot be pinned, because it is not exported
 
 `adminOrder(tab)` (`booking-read.repository.ts:857`) is a module-private function returning the
 `order by` for each of the administrator queue's three tabs, each with `asc(booking.id)` as the
@@ -4102,7 +4257,7 @@ the expensive order to do it in.
 
 ---
 
-## #176 — Mutation testing on UI code kills behaviour and spares display, and no review rubric says so
+## #185 — Mutation testing on UI code kills behaviour and spares display, and no review rubric says so
 
 Not a defect and not a code change — a pattern strong enough across this phase's web tasks to be
 worth starting the next UI review from.
@@ -4129,7 +4284,7 @@ already runs from.
 
 ---
 
-## #177 — A review of any rating irreversibly ends the customer's right to dispute
+## #186 — A review of any rating irreversibly ends the customer's right to dispute
 
 Handed down by this phase's design ("leaving a review is how they accept") and implemented
 faithfully; recorded because the consequence is sharper than the sentence sounds.
@@ -4141,17 +4296,17 @@ gone for good — **including for a one-star review whose text says the provider
 which is the case where a customer is most likely to be doing both things at once. They then
 receive a "your booking is completed" notification seconds after writing it.
 
-No money moves today (#174), so the damage is currently confined to the customer losing an option
+No money moves today (#183), so the damage is currently confined to the customer losing an option
 they did not know they were spending. That stops being true the day a payout consumer exists.
 
-**Trigger:** `feat/customer-bookings` building the review form (#173) — that is the moment to
+**Trigger:** `feat/customer-bookings` building the review form (#182) — that is the moment to
 decide between a rating threshold, a confirmation step that says what leaving a review costs, or
 an explicit recorded decision that any review means acceptance. Sooner if a payout relay lands
 first, which turns this from a lost option into money.
 
 ---
 
-## #178 — Neither of the administrator queue's two scans has an index behind it
+## #187 — Neither of the administrator queue's two scans has an index behind it
 
 `adminWhere` filters `booking` on `status` plus one date column, platform-wide with no provider to
 narrow on, and `countForAdmin` runs the same predicate as a bare `count()`. The table's existing
@@ -4162,7 +4317,7 @@ scans of the whole booking table per page view.
 
 The second scan is the dispute join. `disputeThreadAggregate` deduplicates `support_request` with a
 `selectDistinctOn` subquery — load-bearing, because `DisputeBookingCommand` can leave more than one
-dispute row on a booking (#169) and a naive join would show that booking twice on a page whose
+dispute row on a booking (#178) and a naive join would show that booking twice on a page whose
 `total` joins nothing. `support_request` has no index on `booking_id`; its only index is
 `idx_support_request_status_created`. The subquery therefore scans that table once per queue query.
 
@@ -4176,7 +4331,7 @@ migration-numbering hazard this phase already carries is worth checking before a
 
 ---
 
-## #179 — A disputed row's wait is an upper bound, because the read model does not carry `disputedAt`
+## #188 — A disputed row's wait is an upper bound, because the read model does not carry `disputedAt`
 
 `adminBookingReadModel` publishes `remindedAt`, `markedDoneAt` and `expiresAt`, and no
 `disputedAt` — even though the server sorts the `disputed` tab by exactly that column. The admin
@@ -4213,11 +4368,11 @@ start has passed, through `booking.markDone` and `booking.stillOngoing`, and the
 before closing it on their behalf. A finished job no longer says "Confirmada" forever. What remains
 is the other half of the original entry — reschedule and cancel by the provider are still drawn in
 the state machine with no command — and the wallet-release work this entry names as its other
-trigger, which needs #174's relay before "done" turns into money.
+trigger, which needs #183's relay before "done" turns into money.
 
 ---
 
-## #180 — `support_request.kind` is written and published nowhere, so a dispute is invisible on the screen where it is answered
+## #189 — `support_request.kind` is written and published nowhere, so a dispute is invisible on the screen where it is answered
 
 Task 2 added the column, Task 6 writes `'dispute'` to it, Task 9 reads it in the administrator
 booking queue's join. Nobody owned the support side, and the seam only shows from outside a single
@@ -4252,7 +4407,7 @@ it was not taken at the last step of `feat/booking-completion`.
 
 ---
 
-## #181 — A customer at the open-support-request cap cannot dispute, and their window runs out anyway
+## #190 — A customer at the open-support-request cap cannot dispute, and their window runs out anyway
 
 `DisputeBookingCommand` computes the transition and then calls `OpenDisputeThreadPort` *before* its
 own write (`dispute-booking.command.ts:156`). That port is `OpenSupportRequestCommand`, which
@@ -4279,7 +4434,7 @@ the last step of a 36-commit branch is not a reviewable change.
 
 ---
 
-## #182 — An administrator's reason for a dispute decision is recorded nowhere
+## #191 — An administrator's reason for a dispute decision is recorded nowhere
 
 `bookingResolveDispute` takes a `note`, documented as a *copy* of words that live on the dispute's
 own thread, carried into the two notifications so neither side has to open the thread. Task 6's
@@ -4295,7 +4450,7 @@ both true at HEAD:
   there — which nothing prompts and nothing checks.
 - **Nothing makes the record it defers to exist.** No schema, handler or page requires a thread
   message before the decision lands. A caller can supply a note that exists only in a notification
-  payload, and no consumer of those payloads exists yet (#174), so those words reach nobody.
+  payload, and no consumer of those payloads exists yet (#183), so those words reach nobody.
 
 **Trigger:** the first dispute decision somebody has to justify afterwards — a customer asking why,
 or the wallet work paying out on `dispute_upheld`. Two ways to fix it, and they are alternatives
@@ -4305,7 +4460,7 @@ booking a durable column and accept the second copy. Deciding that is what this 
 
 ---
 
-## #183 — `MARKED_DONE` and `DISPUTED` sit in the provider's "history" tab
+## #192 — `MARKED_DONE` and `DISPUTED` sit in the provider's "history" tab
 
 `PROVIDER_TAB_STATUSES.history` (`read/booking/app/ports/outbound/booking-read.repository.port.ts`)
 lists `MARKED_DONE`, `COMPLETED`, `DISPUTED`, `DECLINED`, `CANCELLED` and `EXPIRED`. The list

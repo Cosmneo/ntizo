@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { bookingTimelineEntryReadModel } from "./booking.schema";
+
+export { bookingTimelineEntryReadModel };
 
 /**
  * The statuses a provider can be shown. `DRAFT` is a customer's private
@@ -62,15 +65,6 @@ export const providerBookingReadModel = z.object({
 
   /** `expiresAt` while AWAITING_PROVIDER; null in every other status. */
   respondBy: z.string().nullable(),
-});
-
-export const bookingTimelineEntryReadModel = z.object({
-  at: z.string(),
-  /** A machine token — `booking_change.reason`, or one of the two this read adds: `created_by_customer`, `respond_by`, `pay_by`. */
-  reason: z.string().min(1),
-  actor: z.enum(["customer", "provider", "system"]),
-  /** A deadline still ahead, drawn hollow. */
-  pending: z.boolean(),
 });
 
 /**

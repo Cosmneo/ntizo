@@ -312,12 +312,15 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
         description: details?.description.trim() || null,
       })
       .then(
-        // **Stays on this page.** The obvious destination, `/bookings`, is a
-        // placeholder rendering "no bookings yet" — so navigating there would
-        // answer a successful commitment by denying it happened, and the
-        // obvious reaction to that is to book it again. This screen is also
-        // the only one holding `respondBy`, which is the one fact the
-        // customer now wants.
+        // **Stays on this page.** `/bookings` was a placeholder for as long
+        // as this screen existed — see `booking-outcome-panel.tsx` — so
+        // navigating there used to answer a successful commitment by denying
+        // it happened. It reads real rows now, and `SentPanel`'s own action
+        // offers the booking's page as a choice rather than a redirect: this
+        // screen is still the only one holding `respondBy`, the one fact the
+        // customer actually came here for, and handing it to a page that
+        // never asked the instant the mutation resolves would be the same
+        // mistake in the opposite direction.
         ({ respondBy: deadline }) => {
           setRespondBy(deadline);
           setSent(true);

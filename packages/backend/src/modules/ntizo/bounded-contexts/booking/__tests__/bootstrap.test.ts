@@ -4,6 +4,7 @@ import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
 import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
+import { CancelBookingCommand } from "../app/use-cases/cancel-booking.command";
 import { SweepBookingCommand } from "../app/use-cases/sweep-booking.command";
 import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
@@ -86,6 +87,7 @@ describe("bootstrapBooking", () => {
     expect(useCases.submitBooking).toBeInstanceOf(SubmitBookingCommand);
     expect(useCases.acceptBooking).toBeInstanceOf(AcceptBookingCommand);
     expect(useCases.declineBooking).toBeInstanceOf(DeclineBookingCommand);
+    expect(useCases.cancelBooking).toBeInstanceOf(CancelBookingCommand);
     expect(useCases.sweepBooking).toBeInstanceOf(SweepBookingCommand);
     expect(useCases.markBookingPaid).toBeInstanceOf(MarkBookingPaidCommand);
   });

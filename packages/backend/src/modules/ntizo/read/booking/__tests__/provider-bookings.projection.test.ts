@@ -129,6 +129,8 @@ class FakeRepo implements BookingReadRepositoryPort {
     return this.adminRows.length;
   }
   async listForCustomer(): Promise<BookingListRow[]> { return []; }
+  async countForCustomer(): Promise<number> { return 0; }
+  async countsForCustomer() { return { waiting: 0, upcoming: 0, history: 0 }; }
   async findForCustomer(): Promise<BookingListRow | null> { return null; }
   async listForProvider(providerId: string, filter: ProviderListFilter, limit: number, offset: number) {
     this.calls.push(`list:${providerId}:${filter.tab}:${filter.q}:${filter.memberId}:${limit}:${offset}`);

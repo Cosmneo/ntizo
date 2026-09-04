@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 
 /**
@@ -9,7 +9,8 @@ import { EmptyCard } from "@/shared/components/empty-card";
  * Used to be three — bookings, messages, favourites — kept in one file
  * because they were the same page three times over. Messages moved out to
  * `features/messaging/ui/customer-messages-page.tsx` once the Communication
- * context shipped; the other two stay here until they get the same
+ * context shipped; bookings moved out to `features/bookings/ui/bookings-page.tsx`
+ * once it read real rows. Favourites stays here until it gets the same
  * treatment.
  */
 
@@ -42,21 +43,6 @@ function BrowseLink({ label }: { label: string }) {
     >
       {label}
     </Link>
-  );
-}
-
-export function BookingsPage() {
-  const { t } = useTranslation("account");
-  return (
-    <Shell title={t("bookingsTitle")}>
-      <EmptyCard
-        framed
-        badge={CalendarDays}
-        title={t("bookingsEmptyTitle")}
-        body={t("bookingsEmptyBody")}
-        action={<BrowseLink label={t("browseProviders")} />}
-      />
-    </Shell>
   );
 }
 

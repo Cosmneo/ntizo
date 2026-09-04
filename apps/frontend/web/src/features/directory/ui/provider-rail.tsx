@@ -154,10 +154,26 @@ export function ProviderRail({ provider }: { provider: ProviderPublicDetailDTO }
 export function MessageProviderButton({
   providerId,
   variant = "default",
+  compact = false,
+  label,
 }: {
   providerId: string;
   /** `outline` where another control is already the page's primary action. */
   variant?: "default" | "outline";
+  /**
+   * A text link instead of a block button, for a row in a list.
+   *
+   * The bookings list puts this in a card's footer beside "Ver detalhe →",
+   * where a full-width filled button would read as the row's primary action —
+   * and on a booking waiting to be paid, it is not: paying is. What must not
+   * change with the presentation is everything above this line: the upsert,
+   * the sign-in redirect with `next`, and the `role="alert"` that reports a
+   * provider who cannot be contacted. A second, quieter copy of this control
+   * would be a second place for those to be got wrong.
+   */
+  compact?: boolean;
+  /** Overrides the directory's own wording, for a caller whose namespace says it differently. */
+  label?: string;
 }) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
@@ -194,18 +210,34 @@ export function MessageProviderButton({
 
   const knownError = errorCode === "PROVIDER_NOT_CONTACTABLE" ? errorCode : "GENERIC";
 
+  const word = starting
+    ? t("messageProviderStarting")
+    : (label ?? t("messageProviderCta"));
+
   return (
     <div>
-      <Button
-        type="button"
-        variant={variant}
-        onClick={handleClick}
-        disabled={starting}
-        className="w-full gap-2"
-      >
-        <MessageSquare className="h-4 w-4" aria-hidden="true" />
-        {starting ? t("messageProviderStarting") : t("messageProviderCta")}
-      </Button>
+      {compact ? (
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={starting}
+          className="type-caption inline-flex items-center gap-1.5 font-semibold text-[var(--color-primary)] hover:underline disabled:pointer-events-none disabled:opacity-50"
+        >
+          <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+          {word}
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant={variant}
+          onClick={handleClick}
+          disabled={starting}
+          className="w-full gap-2"
+        >
+          <MessageSquare className="h-4 w-4" aria-hidden="true" />
+          {word}
+        </Button>
+      )}
 
       {/* No `max-w-[22ch]` any more: the hero wrapped this under a wide title
           and needed the measure held down; the rail is already 22rem, so the

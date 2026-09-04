@@ -174,6 +174,8 @@
       "dispute_rejected": "Litige rejeté",
       "close_by": "Clôturer avant",
       "feedback_by": "Réponse avant",
+      "payment_confirmed": "Paiement confirmé", "cancelled_by_customer": "Annulée par le client",
+      "superseded_by_new_draft": "Remplacée par une nouvelle réservation",
       "respond_by": "Répondre avant", "pay_by": "Payer avant", "unknown": "Statut modifié"
     },
     "technical": "Détails techniques", "bookingId": "Réservation", "serviceOptionId": "Option", "memberId": "Professionnel", "paymentRef": "Référence de paiement", "none": "—"

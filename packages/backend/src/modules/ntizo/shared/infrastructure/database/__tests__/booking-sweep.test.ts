@@ -350,6 +350,7 @@ function scopedToFixtures(inner: BookingRepositoryPort): BookingRepositoryPort {
     findAwaitingCharge: (criteria) => inner.findAwaitingCharge(criteria),
     recordChargeAttempt: (claim) => inner.recordChargeAttempt(claim),
     abandonCharge: (abandonment) => inner.abandonCharge(abandonment),
+    chargeStateOf: (bookingId) => inner.chargeStateOf(bookingId),
     async findDueForSweep(now, limit) {
       const due = await inner.findDueForSweep(now, FIXTURE_BATCH);
       return due.filter((b) => createdBookingIds.includes(b.id as string)).slice(0, limit);
@@ -1182,6 +1183,7 @@ describe("SweepDueBookingsInternalCommand", () => {
         findAwaitingCharge: (criteria) => repo.findAwaitingCharge(criteria),
         recordChargeAttempt: (claim) => repo.recordChargeAttempt(claim),
         abandonCharge: (abandonment) => repo.abandonCharge(abandonment),
+        chargeStateOf: (bookingId) => repo.chargeStateOf(bookingId),
         findById: (id) => {
           if (id === vanishedId) {
             throw new Error("simulated: row vanished between select and expire");

@@ -225,7 +225,7 @@ export const keepBookingOpen = defineMutation({
  *
  * Whether disputes should be exempt from that cap at all is a policy question
  * this branch deliberately did not answer; `dispute-thread.adapter.ts` is
- * where an allowance would go, and follow-up #181 carries the decision.
+ * where an allowance would go, and follow-up #190 carries the decision.
  *
  * **The attachment shape is the upload route's answer, unchanged.**
  * `POST /api/communication/attachments` stores the bytes and replies with
@@ -362,7 +362,7 @@ export const adminCompleteBooking = defineMutation({
  * no schema, handler or page requires the thread message this field calls the
  * real record to exist at all. A caller may therefore supply words that live
  * nowhere but a notification payload, which nothing consumes yet. Follow-up
- * #182 carries both halves.
+ * #191 carries both halves.
  *
  * Tagged `Admin` alongside its two siblings above even though it does not
  * carry `admin` in its name — the command it drives takes an `adminUserId` and
@@ -380,6 +380,48 @@ export const resolveBookingDispute = defineMutation({
   docs: { summary: "Decide a dispute", tags: ["Booking", "Admin"] },
 });
 
+/**
+ * The customer calls it off. Takes only the booking: whose it is, is on the
+ * booking, and whether the caller is that customer is the command's check,
+ * not the client's claim. Allowed only before payment — the aggregate refuses
+ * anything past it.
+ */
+export const cancelBooking = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  docs: { summary: "Cancel your own booking", tags: ["Booking"] },
+});
+
+/**
+ * The customer presses "Pagar" and asks to be charged now, rather than
+ * waiting for the sweep's next tick to reach this booking on its own.
+ *
+ * Takes only the booking, for the same reason `cancelBooking` does: whose it
+ * is, is on the row, and whether the caller is that customer is
+ * `RequestBookingChargeCommand`'s own check, not the client's claim to
+ * verify. Returns as soon as the prompt is *scheduled*, not once it has
+ * reached a handset — the gateway call behind it blocks for up to 110
+ * seconds and nobody may hold a request open to watch that; the page learns
+ * the outcome by re-reading the booking, the same way it already does after
+ * accept and decline.
+ *
+ * **`promptAlreadySent` is the one field on the way back, and it is not a
+ * failure.** A press inside `BOOKING_CHARGE_RETRY_MINUTES` of the last
+ * attempt pushes nothing — the prompt from a moment ago may still be live on
+ * the handset, and a second one over it is a customer who can accept both.
+ * The customer still asked to be charged and a charge still is in flight, so
+ * this is not an error to raise; but the dialog must not repeat "we have sent
+ * you an M-Pesa request" as though it had sent a second. `true` is what it
+ * words differently. See `RequestBookingChargeOutcome`.
+ */
+export const payBooking = defineMutation({
+  input: zodSchema(z.object({ bookingId: z.string().min(1) })),
+  output: zodSchema(
+    z.object({ bookingId: z.string().min(1), promptAlreadySent: z.boolean() }),
+  ),
+  docs: { summary: "Pay your own booking now", tags: ["Booking"] },
+});
+
 export const bookingWriteSchema = defineGraphQLSchema(
   {
     booking: {
@@ -387,6 +429,8 @@ export const bookingWriteSchema = defineGraphQLSchema(
       submit: submitBooking,
       accept: acceptBooking,
       decline: declineBooking,
+      cancel: cancelBooking,
+      pay: payBooking,
       markDone: markBookingDone,
       stillOngoing: keepBookingOpen,
       dispute: disputeBooking,

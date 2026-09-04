@@ -73,12 +73,71 @@ describe("CollectionCard", () => {
 
   it("omits a column marked hideOnCard", () => {
     renderCard({
-      columns: [...columns.slice(0, 2), { key: "date", label: "Date", hideOnCard: true }],
+      columns: [
+        ...columns.slice(0, 2),
+        { key: "date", label: "Date", hideOnCard: true },
+      ],
     });
     const card = screen.getByRole("list").querySelector("li")!;
     expect(within(card).queryByText("Date")).toBeNull();
     // Still in the table, where there is room for it.
     expect(screen.getByText("24 Jun 2026")).toBeTruthy();
+  });
+
+  it("lets a row arrange the card itself, and still fills the table from the columns", () => {
+    // The whole point of the slot: a caller composes the narrow screen — here
+    // a role and a date sharing one line — without taking the table with it.
+    // The table is still built from `columns` and `cells`, which is what
+    // stops the two renderings from becoming two designs.
+    renderCard({
+      columns: [
+        { key: "person", label: "Person" },
+        { key: "role", label: "Role", hideOnCard: true },
+        { key: "date", label: "Date", hideOnCard: true },
+        { key: "actions", label: "Actions" },
+      ],
+      rows: [
+        {
+          key: "r1",
+          primary: <span>Salif Faustino</span>,
+          cells: { role: "Admin", date: "24 Jun 2026" },
+          cardBody: <p>Admin · 24 Jun 2026</p>,
+        },
+      ],
+    });
+    const card = screen.getByRole("list").querySelector("li")!;
+    expect(within(card).getByText("Admin · 24 Jun 2026")).toBeTruthy();
+    // No labels left over from the list it replaced.
+    expect(within(card).queryByText("Role")).toBeNull();
+    expect(within(card).queryByText("Date")).toBeNull();
+    // And the desktop table still carries both values, off `cells`.
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Admin")).toBeTruthy();
+    expect(within(table).getByText("24 Jun 2026")).toBeTruthy();
+  });
+
+  it("draws the labelled pairs for every row that gives no arrangement of its own", () => {
+    // The slot is opt-in per row, not per card: a list where one row composes
+    // itself and the next does not must not lose the second row's values.
+    renderCard({
+      rows: [
+        {
+          key: "r1",
+          primary: <span>Salif Faustino</span>,
+          cells: { role: "Admin", date: "24 Jun 2026" },
+          cardBody: <p>Composed</p>,
+        },
+        {
+          key: "r2",
+          primary: <span>Ana Sitoe</span>,
+          cells: { role: "Staff", date: "25 Jun 2026" },
+        },
+      ],
+    });
+    const cards = screen.getByRole("list").querySelectorAll("li");
+    expect(within(cards[0]!).getByText("Composed")).toBeTruthy();
+    expect(within(cards[1]!).getByText("Role")).toBeTruthy();
+    expect(within(cards[1]!).getByText("Staff")).toBeTruthy();
   });
 
   it("says nothing matches when filters are on, and empty when they are not", () => {
@@ -177,7 +236,13 @@ describe("CollectionCard while loading", () => {
    * just jumps when the data lands.
    */
   function renderLoading(overrides = {}) {
-    return renderCard({ loading: true, rows: [], shown: 0, total: 0, ...overrides });
+    return renderCard({
+      loading: true,
+      rows: [],
+      shown: 0,
+      total: 0,
+      ...overrides,
+    });
   }
 
   it("draws a placeholder row per requested placeholder, with a cell per column", () => {
@@ -207,7 +272,10 @@ describe("CollectionCard while loading", () => {
   it("follows hideOnCard, so the placeholder is not taller than the card it stands in for", () => {
     const { container } = renderLoading({
       skeletonPlaceholders: 1,
-      columns: [...columns.slice(0, 2), { key: "date", label: "Date", hideOnCard: true }],
+      columns: [
+        ...columns.slice(0, 2),
+        { key: "date", label: "Date", hideOnCard: true },
+      ],
     });
     expect(container.querySelectorAll("dl > div")).toHaveLength(1);
   });
@@ -257,5 +325,30 @@ describe("CollectionCard while loading", () => {
       expect(cards).toContain("lg:hidden");
       expect(cards).not.toContain("md:hidden");
     });
+  });
+
+  /**
+   * The header's own count line (`{loading ? <Skeleton /> : t("peopleShown",
+   * …)}`) used to sit inside a `<p>`, and `Skeleton` is unconditionally a
+   * `<div>` — invalid HTML. React's own reconciler builds the DOM by calling
+   * `appendChild` directly rather than parsing a markup string, so this
+   * exact defect was always inspectable in a plain client render; nothing
+   * about it needs real SSR or hydration to reproduce (proved by reverting
+   * the fix and rerunning this one test: it fails on jsdom alone, well
+   * before a browser ever gets involved). What made it invisible here was
+   * narrower — `renderCard`'s own `loading={false}` default meant no case in
+   * this file, before now, ever rendered the branch that held it. Found by a
+   * real browser session hitting this card mid-fetch, where an SSR pass
+   * turns the same defect into a visible hydration-mismatch warning
+   * (`apps/e2e/tests/customer-bookings.spec.ts`). This assertion is the
+   * general form of the check that would have caught it here first: no
+   * block element inside a paragraph, anywhere this component renders while
+   * loading, not only the one spot it happened.
+   */
+  it("nests no block element inside a paragraph while loading", () => {
+    const { container } = renderLoading();
+    for (const p of container.querySelectorAll("p")) {
+      expect(p.querySelector("div"), `<p> contains a <div>: ${p.outerHTML}`).toBeNull();
+    }
   });
 });

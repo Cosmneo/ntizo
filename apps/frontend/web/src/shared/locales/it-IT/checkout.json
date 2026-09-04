@@ -43,6 +43,7 @@
   "loadError": "Non siamo riusciti ad aprire questa prenotazione. Controlla la connessione e riprova.",
   "storageBlockedTitle": "Questo browser non conserva i tuoi dati",
   "storageBlockedBody": "Dobbiamo conservare i tuoi dati in questa scheda finché la richiesta non viene inviata, e questo browser non lo consente. Apri la pagina in una finestra normale (non in incognito) o consenti i dati del sito. Il tuo orario resta riservato.",
+  "viewBookingAction": "Vedi la mia prenotazione",
   "browseMoreAction": "Vedi altri servizi",
   "sentTitle": "Richiesta inviata",
   "sentBody": "Abbiamo inviato la tua richiesta a {{provider}}. Ha tempo fino alle {{time}} di {{date}} per confermare, e paghi solo dopo.",

@@ -18,24 +18,20 @@ vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
     },
     isPending: false,
     isError: false,
+    hasMore: false,
+    isLoadingMore: false,
+    loadMore: vi.fn(),
   }),
 }));
 vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
 }));
-// Task 10's column beside the inbox: `NotificationsPage` now calls
-// `useMyActivity()` too, which reaches `useInfiniteQuery` and throws without
-// a `QueryClientProvider` in the tree. Mocked empty here because these tests
-// are about the inbox, not the activity column — that column gets its own
-// coverage in `notifications-page-activity.test.tsx`.
-vi.mock("@/features/activity/viewmodel/use-activity", () => ({
-  useMyActivity: () => ({
-    entries: [],
-    loading: false,
-    hasMore: false,
-    loadMore: vi.fn(),
-  }),
-}));
+// No `use-activity` mock. There was one, because the page called
+// `useMyActivity()` for a column beside the inbox and that hook reaches
+// `useInfiniteQuery`, which throws without a `QueryClientProvider`. The column
+// is gone, so the mock would be scaffolding for a call that no longer happens
+// — and its absence is load-bearing: putting the column back without a
+// provider in the tree turns this whole file red rather than passing quietly.
 
 describe("NotificationsPage", () => {
   it("draws the sentence for a known type", () => {
@@ -53,5 +49,15 @@ describe("NotificationsPage", () => {
     // be a sentence with nothing to say.
     render(<NotificationsPage scope={{ kind: "mine" }} />);
     expect(screen.queryByText(/showing/i)).not.toBeInTheDocument();
+  });
+
+  it("shows notifications and nothing else — no activity feed beside them", () => {
+    // A 320px "Recent activity" column sat here in both zones, duplicating
+    // `/activity`, `/provider/$slug/activity` and `/admin/activity`. Asserting
+    // on the copy the column rendered (`account:activityListTitle`, "Recent
+    // activity") rather than on a class name or a child count, so this stays
+    // red for any re-introduction, however it is laid out.
+    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    expect(screen.queryByText(/recent activity/i)).not.toBeInTheDocument();
   });
 });

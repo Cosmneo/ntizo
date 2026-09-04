@@ -1045,6 +1045,77 @@ describe("Booking.cancel", () => {
   });
 });
 
+describe("Booking.cancelByCustomer", () => {
+  it("cancels a booking still waiting for the provider", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    const cancelled = awaiting.cancelByCustomer(WHEN);
+    expect(cancelled.status).toBe("CANCELLED");
+    expect(cancelled.cancelledAt).toEqual(WHEN);
+  });
+
+  it("cancels a booking waiting to be paid", () => {
+    const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
+    expect(pending.cancelByCustomer(WHEN).status).toBe("CANCELLED");
+  });
+
+  // The asymmetry `cancel` documents: the sweep's cancel is a no-op from a
+  // status its reason does not govern, because a clock that fired late is
+  // nobody's mistake. This one is a person pressing a button, so a wrong
+  // status is a bug upstream and says so — the same way submit, accept and
+  // decline do.
+  it("throws rather than no-oping on a paid booking", () => {
+    const confirmed = Booking.restore(validProps({ status: "CONFIRMED" }));
+    expect(() => confirmed.cancelByCustomer(WHEN)).toThrow(BookingTransitionError);
+  });
+
+  it("throws on a booking already cancelled", () => {
+    const cancelled = Booking.restore(validProps({ status: "CANCELLED" }));
+    expect(() => cancelled.cancelByCustomer(WHEN)).toThrow(BookingTransitionError);
+  });
+
+  it("leaves the sweep's own cancel a no-op", () => {
+    const confirmed = Booking.restore(validProps({ status: "CONFIRMED" }));
+    expect(confirmed.cancel(WHEN, "customer_did_not_pay")).toBe(confirmed);
+  });
+
+  it("refuses an at that does not name a real instant", () => {
+    const awaiting = Booking.restore(validProps({ status: "AWAITING_PROVIDER" }));
+    expect(() => awaiting.cancelByCustomer(new Date("garbage"))).toThrow(BookingDateInvalidError);
+  });
+});
+
+describe("Booking.cancelByCustomer — every status", () => {
+  // Same shape as submit's, accept's and decline's own per-status tables:
+  // this is a customer's single deliberate action with no idempotency
+  // story, so every status outside the two waits throws rather than
+  // no-ops — a future status added to BookingStatus fails this test, not
+  // silently falls through.
+  const cases: Array<[BookingStatus, "transitions" | "throws"]> = [
+    ["DRAFT", "throws"],
+    ["PENDING_PAYMENT", "transitions"],
+    ["AWAITING_PROVIDER", "transitions"],
+    ["CONFIRMED", "throws"],
+    ["MARKED_DONE", "throws"],
+    ["COMPLETED", "throws"],
+    ["DISPUTED", "throws"],
+    ["DECLINED", "throws"],
+    ["CANCELLED", "throws"],
+    ["EXPIRED", "throws"],
+  ];
+
+  it.each(cases)("from %s it %s", (status, outcome) => {
+    const booking = Booking.restore(validProps({ status, expiresAt: null }));
+
+    if (outcome === "transitions") {
+      const result = booking.cancelByCustomer(WHEN);
+      expect(result.status).toBe("CANCELLED");
+      expect(result.cancelledAt).toEqual(WHEN);
+    } else {
+      expect(() => booking.cancelByCustomer(WHEN)).toThrow(BookingTransitionError);
+    }
+  });
+});
+
 describe("every deadline-bearing status has exactly one ending", () => {
   // `DEADLINE_BEARING_STATUSES` is what `findDueForSweep` selects on, and
   // `expire`/`cancel` are the only two things that can end what it selects —

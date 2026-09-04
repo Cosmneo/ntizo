@@ -94,17 +94,22 @@ export function createBookingReadHandlers(mod: BookingReadModule) {
   const uc = mod.bookingRead.useCases;
 
   return graphqlRoutes(bookingReadSchema)
-    .handle("booking.mine", async (_args, ctx) =>
+    .handle("booking.mine", async (args, ctx) =>
       uc.listMine.execute({
         // Never from the client — see the schema's own doc comment for why
         // there is no `customerId` field to read instead.
         customerId: requireUser(ctx),
+        tab: args.input.tab,
+        limit: args.input.limit ?? 20,
+        offset: args.input.offset ?? 0,
+        now: new Date(),
       }),
     )
     .handle("booking.byId", async (args, ctx) =>
       uc.getMine.execute({
         bookingId: args.input.bookingId,
         customerId: requireUser(ctx),
+        now: new Date(),
       }),
     )
     .handle("booking.forProvider", async (args, ctx) => {

@@ -43,6 +43,7 @@
   "loadError": "We couldn't open this booking. Check your connection and try again.",
   "storageBlockedTitle": "This browser won't keep your details",
   "storageBlockedBody": "We need to hold your details in this tab until the request is sent, and this browser won't let us. Open the page in a normal (not private) window, or allow site data. Your time is still held.",
+  "viewBookingAction": "View my booking",
   "browseMoreAction": "See other services",
   "sentTitle": "Request sent",
   "sentBody": "We've sent your request to {{provider}}. They have until {{time}} on {{date}} to confirm, and you only pay after that.",

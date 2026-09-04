@@ -41,7 +41,7 @@ export const supportRequest = communicationSchema.table(
      * an administrator who resolves a dispute thread here has closed the
      * conversation and left the booking where it was. Nothing on the support
      * screens says so today, because no read model publishes this column:
-     * follow-up #180.
+     * follow-up #189.
      */
     kind: varchar("kind", { length: 16 }).notNull().default("support"),
     status: varchar("status", { length: 16 }).notNull(),

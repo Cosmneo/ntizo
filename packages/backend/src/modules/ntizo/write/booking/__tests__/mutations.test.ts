@@ -7,11 +7,13 @@ import {
   adminCompleteBooking,
   adminMarkBookingDone,
   bookingWriteSchema,
+  cancelBooking,
   createBooking,
   declineBooking,
   disputeBooking,
   keepBookingOpen,
   markBookingDone,
+  payBooking,
   resolveBookingDispute,
   submitBooking,
 } from "../graphql/schema/mutations";
@@ -278,15 +280,35 @@ describe("booking.submit input", () => {
 });
 
 /**
- * The provider's yes and no. Both take only the booking id the person comes
- * from `requireUser(ctx)`, never from this input, for the same reason
+ * The provider's yes and no, the customer's own cancel, and the customer's
+ * own pay-now. All four take only the booking id — the person comes from
+ * `requireUser(ctx)`, never from this input, for the same reason
  * `booking.create` and `booking.submit` have no `customerId` field — see
  * those schemas' own doc comments.
  */
-describe("accept and decline", () => {
+describe("accept, decline, cancel and pay", () => {
+  it("are mounted beside create and submit", () => {
+    expect(Object.keys(bookingWriteSchema.fields.booking).sort()).toEqual([
+      "accept",
+      "adminComplete",
+      "adminMarkDone",
+      "cancel",
+      "create",
+      "decline",
+      "dispute",
+      "markDone",
+      "pay",
+      "resolveDispute",
+      "stillOngoing",
+      "submit",
+    ]);
+  });
+
   it("take only the booking id — the person comes from the session", () => {
     expect(shapeKeys(acceptBooking)).toEqual(["bookingId"]);
     expect(shapeKeys(declineBooking)).toEqual(["bookingId", "reason"]);
+    expect(shapeKeys(cancelBooking)).toEqual(["bookingId"]);
+    expect(shapeKeys(payBooking)).toEqual(["bookingId"]);
   });
 
   it("refuses a free-text reason", () => {
@@ -321,10 +343,12 @@ describe("the six ways a booking can end", () => {
       "accept",
       "adminComplete",
       "adminMarkDone",
+      "cancel",
       "create",
       "decline",
       "dispute",
       "markDone",
+      "pay",
       "resolveDispute",
       "stillOngoing",
       "submit",
@@ -686,10 +710,12 @@ describe("createBookingWriteHandlers", () => {
       "booking.accept",
       "booking.adminComplete",
       "booking.adminMarkDone",
+      "booking.cancel",
       "booking.create",
       "booking.decline",
       "booking.dispute",
       "booking.markDone",
+      "booking.pay",
       "booking.resolveDispute",
       "booking.stillOngoing",
       "booking.submit",

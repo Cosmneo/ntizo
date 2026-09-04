@@ -69,15 +69,13 @@ const READ_BY_THE_PAGES = [
 ];
 
 describe("the checkout query documents", () => {
-  it.each(DOCUMENTS)("%s never asks for the commission", (_name, document) => {
-    // **The global constraint, checked where it is actually enforced.** The
-    // commission comes out of the provider's payout; a customer shown a split
-    // would be shown a fee they are not charged. `CheckoutBooking` omitting
-    // the fields stops a *page* printing one, and stops nothing at all from
-    // putting the numbers on the wire — where a browser's network tab, a
-    // service worker or a future consumer of the same cache entry can read
-    // them.
-    expect(document).not.toMatch(/commission/i);
+  // The fence moved into the model itself, so the question this file used to
+  // ask — "does the document request the commission?" — cannot be answered
+  // wrong any more. What is worth asserting here is that checkout still asks
+  // for every field it renders.
+  it("asks for the price and the currency it renders", () => {
+    expect(BOOKING_FIELDS).toContain("priceMinor");
+    expect(BOOKING_FIELDS).toContain("currency");
   });
 
   it.each(DOCUMENTS)("%s never asks for a seat", (_name, document) => {
@@ -91,9 +89,9 @@ describe("the checkout query documents", () => {
   });
 
   it.each(READ_BY_THE_PAGES)("asks the server for %s", (field) => {
-    // The other direction, and the reason the commission assertions above are
-    // not satisfiable by an empty selection: a document that asked for
-    // nothing would pass every `not.toMatch` in this file.
+    // The other direction, and the reason the seat assertions above are not
+    // satisfiable by an empty selection: a document that asked for nothing
+    // would pass every `not.toMatch` in this file.
     expect(REQUESTED.has(field)).toBe(true);
   });
 

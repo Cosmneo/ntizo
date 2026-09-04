@@ -307,17 +307,20 @@ export class BookingDeclined extends BaseDomainEvent<{
  * does not face the same requirement because it is never machine-generated
  * in the first place.
  *
- * Two members, and each has a real producer. An earlier version of this
+ * Three members, and each has a real producer. An earlier version of this
  * union also declared `"customer_cancelled"` and `"provider_cancelled"`, on
  * the theory that a cancellation policy would eventually want them and
  * declaring them now would save that work reopening this union later. That
- * reasoning is reversed here: neither member had a producer anywhere in
- * that plan, and the spec puts the cancellation policy explicitly out of
- * scope — whether either kind of cancellation even exists yet, let alone
- * what a customer or provider should be told about it, is a question nobody
- * has answered. Notification cannot render a locale string for a reason
- * nobody has designed, so carrying those two was a contract this codebase
- * could not keep, not a convenience.
+ * reasoning still holds for `"provider_cancelled"`: it has no producer
+ * anywhere in either plan, and the spec puts a provider-initiated
+ * cancellation policy explicitly out of scope — whether it even exists yet,
+ * let alone what a provider should be told about it, is a question nobody has
+ * answered, and Notification cannot render a locale string for a reason nobody
+ * has designed. `"customer_cancelled"` is not what reappears below —
+ * `"cancelled_by_customer"` is, under the name the customer-bookings plan
+ * actually gives it, now that it has a real producer:
+ * `Booking.cancelByCustomer`, a customer calling off a booking of their own
+ * accord, before any money has moved.
  *
  * `"customer_did_not_pay"` is the sweep's: a `PENDING_PAYMENT` booking past
  * its payment window, the case the booking-core spec's failure section
@@ -327,16 +330,20 @@ export class BookingDeclined extends BaseDomainEvent<{
  * this reason later and know what *not* to pay out — see
  * `Booking.resolveDispute`. Note how differently they read to their
  * audiences, which is the whole argument for a closed union: one tells a
- * provider the customer never paid, the other tells them the platform
- * decided against them, and no single sentence covers both.
+ * provider the customer never paid, another tells them the platform decided
+ * against them, a third is the customer's own doing, and no single sentence
+ * covers all three.
  *
- * When a cancellation policy lands, it will name its own reasons against
- * real rules it can actually enforce — extending this union then, rather
- * than guessing its shape now, is what makes an exhaustive `switch` over it,
- * and `CANCELLABLE_FROM` in the aggregate, go red at exactly the right
- * moment.
+ * When a provider-side cancellation policy lands, it will name its own
+ * reasons against real rules it can actually enforce — extending this union
+ * then, rather than guessing its shape now, is what makes an exhaustive
+ * `switch` over it, and `CANCELLABLE_FROM` in the aggregate, go red at
+ * exactly the right moment.
  */
-export type BookingCancelledReason = "customer_did_not_pay" | "dispute_upheld";
+export type BookingCancelledReason =
+  | "customer_did_not_pay"
+  | "cancelled_by_customer"
+  | "dispute_upheld";
 
 /**
  * A booking was called off after it had already committed a provider's
@@ -345,9 +352,11 @@ export type BookingCancelledReason = "customer_did_not_pay" | "dispute_upheld";
  * Raised when a booking transitions to Cancelled status. Unlike
  * `BookingExpired` — which only ever means "nobody showed up to pay before
  * anyone committed anything" — a cancellation can land after either party
- * has already acted. Its two reasons reach different people.
+ * has already acted. Its reasons reach different people.
  * `customer_did_not_pay` is the provider's news: they blocked a slot for
- * money that never arrived. `dispute_upheld` is both sides' — see
+ * money that never arrived, and `cancelled_by_customer` is theirs too — the
+ * customer called it off of their own accord. `dispute_upheld` is both
+ * sides' — see
  * `NotificationType.BookingDisputeResolved`, whose own comment says "both
  * sides hear the same thing" — which is what finally earns the `customerId`
  * this event has carried since before any reason needed it, on the

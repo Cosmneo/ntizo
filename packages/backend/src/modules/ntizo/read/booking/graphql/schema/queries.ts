@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
+import { CUSTOMER_BOOKING_TABS } from "@ntizo/shared";
 import {
   ADMIN_BOOKING_TABS,
   adminBookingPageReadModel,
-  bookingReadModel,
+  customerBookingDetailReadModel,
+  customerBookingPageReadModel,
   providerBookingDetailReadModel,
   providerBookingPageReadModel,
   providerBookingStatsReadModel,
@@ -12,21 +14,30 @@ import {
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
- * The caller's own bookings, newest first. Takes no customer id — it
- * resolves from the session, so there is nothing to tamper with. BR7 limits
- * reading a booking to its own customer, its provider, or an administrator;
- * this field answers only the first of those.
+ * One tab of the caller's own bookings, paged, with the three tab counts.
+ *
+ * Takes no customer id — it resolves from the session, so there is nothing to
+ * tamper with. BR7 limits reading a booking to its own customer, its
+ * provider, or an administrator; this field answers only the first of those.
+ *
+ * The shape changed on 2026-09-03, from an unpaged array to this page. It had
+ * no callers: the page it was written for was a placeholder until then.
  */
 export const listMyBookings = defineQuery({
-  input: zodSchema(z.object({})),
-  output: zodSchema(z.array(bookingReadModel)),
-  docs: { summary: "Your own bookings", tags: ["Booking"] },
+  input: zodSchema(
+    z.object({
+      tab: z.enum(CUSTOMER_BOOKING_TABS),
+      limit: z.number().int().min(1).max(50).optional(),
+      offset: z.number().int().min(0).optional(),
+    }),
+  ),
+  output: zodSchema(customerBookingPageReadModel),
+  docs: { summary: "Your own bookings, one tab at a time", tags: ["Booking"] },
 });
 
 /**
  * One of the caller's own bookings, by id — what checkout's steps 2 and 3
- * load. `booking.mine` answers with a list, and a page about one booking has
- * no use for one.
+ * load, and what the booking's own page reads.
  *
  * Takes no customer id here either, for the same reason `mine` does not: it
  * resolves from the session, and the repository filters on it *inside the
@@ -36,10 +47,13 @@ export const listMyBookings = defineQuery({
  * The output is nullable, and covers two cases without distinguishing them:
  * no such booking, and one that is not the caller's. Telling an unrelated
  * caller which it was would confirm that a given id names a real booking.
+ *
+ * It gained `timeline` on 2026-09-03. Checkout does not select it and pays
+ * nothing for it.
  */
 export const getMyBooking = defineQuery({
   input: zodSchema(z.object({ bookingId: z.string().min(1) })),
-  output: zodSchema(bookingReadModel.nullable()),
+  output: zodSchema(customerBookingDetailReadModel.nullable()),
   docs: { summary: "One of your own bookings", tags: ["Booking"] },
 });
 

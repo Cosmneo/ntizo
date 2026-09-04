@@ -1,3 +1,4 @@
+import type { CustomerBookingTab } from "@ntizo/shared";
 import type { AdminBookingTab, ADMIN_VISIBLE_STATUSES, BookingDTO } from "@ntizo/shared/read-models";
 
 /**
@@ -21,6 +22,8 @@ export interface BookingListRow {
    */
   serviceId: string;
   serviceOptionId: string;
+  /** Identity too, and `NOT NULL` on the table — see `bookingReadModel.providerId`. */
+  providerId: string;
 
   serviceName: string;
   providerName: string;
@@ -37,6 +40,24 @@ export interface BookingListRow {
    */
   providerVerified: boolean;
   providerRatingAverage: number | null;
+
+  /**
+   * **Storage keys, not URLs** — the row reports what the columns hold and
+   * `toBookingDTO` resolves them, the same seam
+   * `ListMyServicesProjection` puts between `image_keys` and `imageUrls`.
+   * A repository that returned URLs would have to know which bucket serves
+   * them, which is a decision `mediaUrl` owns and the database has no part
+   * in.
+   *
+   * The whole array rather than the first key: "which one is the thumbnail"
+   * is the reader's question, not the table's, and the array is what
+   * `service.image_keys` is. Null for a service that has never had one, and
+   * — for `serviceImageKeys` — for a `leftJoin` that found nothing, which
+   * the `NOT NULL` FK makes unreachable.
+   */
+  serviceImageKeys: string[] | null;
+  providerLogoKey: string | null;
+
   optionName: string;
   durationMinutes: number;
 
@@ -50,8 +71,6 @@ export interface BookingListRow {
   locationType: string | null;
 
   priceMinor: number;
-  commissionBps: number;
-  commissionMinor: number;
   currency: string;
 
   startsAt: Date;
@@ -91,21 +110,26 @@ export interface BookingListRow {
    */
   expiresAt: Date | null;
 
+  paidAt: Date | null;
+
   createdAt: Date;
 }
 
 export interface BookingReadRepositoryPort {
-  /**
-   * One customer's own bookings, newest first (by `createdAt`, the order in
-   * which they were made — not `startsAt`, which is when the work happens
-   * and can run either direction from today).
-   *
-   * Takes a `customerId` and nothing else: there is no paged variant and no
-   * filter, because nothing in this task's scope needs one yet — see
-   * `read/catalog`'s `listForProvider` for the same shape of "everything this
-   * owner has" query with no pagination of its own.
-   */
-  listForCustomer(customerId: string): Promise<BookingListRow[]>;
+  /** One tab of the customer's own bookings, paged. `DRAFT` never appears. See `CUSTOMER_TAB_STATUSES`. */
+  listForCustomer(
+    customerId: string,
+    filter: CustomerListFilter,
+    limit: number,
+    offset: number,
+  ): Promise<BookingListRow[]>;
+  /** How many `listForCustomer` would return unpaged — the pager's denominator. */
+  countForCustomer(customerId: string, filter: CustomerListFilter): Promise<number>;
+  /** All three tab counts in one grouped read — the chips are on screen whichever tab is open. */
+  countsForCustomer(
+    customerId: string,
+    now: Date,
+  ): Promise<{ waiting: number; upcoming: number; history: number }>;
 
   /**
    * One booking, but only if it is this customer's own.
@@ -246,6 +270,31 @@ export interface ProviderListFilter {
 export const PROVIDER_TAB_STATUSES: Record<Exclude<ProviderListTab, "all">, readonly string[]> = {
   requests: ["AWAITING_PROVIDER"],
   upcoming: ["PENDING_PAYMENT", "CONFIRMED"],
+  history: ["MARKED_DONE", "COMPLETED", "DISPUTED", "DECLINED", "CANCELLED", "EXPIRED"],
+};
+
+export interface CustomerListFilter {
+  tab: CustomerBookingTab;
+  /** Injected, never `new Date()` inside the query — a test has to be able to say when "upcoming" ends. */
+  now: Date;
+}
+
+/**
+ * The statuses each of the customer's tabs lists.
+ *
+ * `PENDING_PAYMENT` is a *wait*, so it sits with the other wait rather than
+ * with the provider's `upcoming`, which groups it with `CONFIRMED` because a
+ * provider is preparing for both. The two zones are looking at the same rows
+ * and asking different questions of them.
+ *
+ * `upcoming` is further split by `startsAt` against `now`; `history` takes
+ * the confirmed bookings that split leaves behind. The three future statuses
+ * are listed under `history` so that whoever builds the transitions into them
+ * does not have to revisit this map.
+ */
+export const CUSTOMER_TAB_STATUSES: Record<CustomerBookingTab, readonly string[]> = {
+  waiting: ["AWAITING_PROVIDER", "PENDING_PAYMENT"],
+  upcoming: ["CONFIRMED"],
   history: ["MARKED_DONE", "COMPLETED", "DISPUTED", "DECLINED", "CANCELLED", "EXPIRED"],
 };
 

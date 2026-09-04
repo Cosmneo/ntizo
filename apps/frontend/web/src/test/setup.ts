@@ -29,6 +29,34 @@ if (!Element.prototype.scrollIntoView) {
 }
 
 /**
+ * jsdom ships no `IntersectionObserver` either — for the same reason, since
+ * whether an element is on screen is a layout question and jsdom does no
+ * layout. Constructing one throws, which takes down any component that
+ * watches for something scrolling into view (`NotificationsPage`'s bottom of
+ * list, `settings-nav`'s current section).
+ *
+ * Stubbed inert on purpose: it never reports anything as visible, so the
+ * default for a suite with no viewport is "the reader has not scrolled
+ * there". A test that means to assert what happens when they do replaces
+ * this global with one that calls its own callback — `notifications-page-
+ * paging.test.tsx` does exactly that — rather than inheriting a scroll
+ * position it never chose. Same reasoning as the `matchMedia` stub below.
+ */
+if (typeof globalThis.IntersectionObserver === "undefined") {
+  globalThis.IntersectionObserver = class {
+    readonly root = null;
+    readonly rootMargin = "";
+    readonly thresholds: readonly number[] = [];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  } as unknown as typeof IntersectionObserver;
+}
+
+/**
  * jsdom implements no media queries either, so `window.matchMedia` is undefined
  * and any component that asks whether it is on a phone throws on mount.
  *

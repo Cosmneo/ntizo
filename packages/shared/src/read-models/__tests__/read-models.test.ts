@@ -18,7 +18,11 @@ import {
   providerPublicDetailReadModel,
   providerPublicReadModel,
 } from "../public";
-import { bookingReadModel } from "../system";
+import {
+  bookingReadModel,
+  customerBookingDetailReadModel,
+  customerBookingPageReadModel,
+} from "../system";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -517,12 +521,19 @@ describe("supportRequestSummaryReadModel", () => {
   });
 });
 
-describe("bookingReadModel", () => {
-  const base = {
+/**
+ * A booking row with every field `bookingReadModel` requires, taken from the
+ * model's own field list — the shared starting point for a test that wants
+ * only one field wrong rather than a second, independent copy of the whole
+ * shape.
+ */
+function validBookingRow() {
+  return {
     id: "b1",
     status: "PENDING_PAYMENT" as const,
     serviceId: "svc-1",
     serviceOptionId: "opt-1",
+    providerId: "prv-1",
     serviceName: "Avaria eléctrica urgente",
     providerName: "Hélder Cossa",
     providerSlug: "helder-cossa-electricidade",
@@ -532,6 +543,10 @@ describe("bookingReadModel", () => {
     // produce, so a fixture carrying them could not tell that apart.
     providerVerified: true,
     providerRatingAverage: 4.8,
+    // Both pictures present, and neither the null a mapper that dropped them
+    // would produce — the same argument the pair above is set for.
+    serviceImageUrl: "https://media.ntizo.test/service/svc-1/1",
+    providerLogoUrl: "https://media.ntizo.test/provider/prv-1/logo",
     optionName: "Diagnóstico e reparação",
     durationMinutes: 60,
     // A callout, which is the one class of location type checkout draws a
@@ -540,8 +555,6 @@ describe("bookingReadModel", () => {
     // because nobody the platform could charge for is travelling.
     locationType: "at_customer",
     priceMinor: 120000,
-    commissionBps: 1000,
-    commissionMinor: 12000,
     currency: "MZN",
     startsAt: "2026-09-04T12:30:00.000Z",
     endsAt: "2026-09-04T13:30:00.000Z",
@@ -553,8 +566,13 @@ describe("bookingReadModel", () => {
     addressDirections: null,
     description: null,
     expiresAt: "2026-09-01T10:15:00.000Z",
+    paidAt: null,
     createdAt: "2026-09-01T10:00:00.000Z",
   };
+}
+
+describe("bookingReadModel", () => {
+  const base = validBookingRow();
 
   it("accepts a booking awaiting payment", () => {
     expect(() => bookingReadModel.parse(base)).not.toThrow();
@@ -596,14 +614,38 @@ describe("bookingReadModel", () => {
     expect(() => bookingReadModel.parse(withoutIt)).toThrow();
   });
 
+  it("requires a provider id, because a slug cannot start a conversation", () => {
+    // `providerSlug` addresses a page; `CommunicationStartThreadInput` takes
+    // an id. Blank is refused as well as missing — an empty string would
+    // reach `startThread` and fail there, one round trip after the page had
+    // already drawn a button promising it would work.
+    expect(() => bookingReadModel.parse({ ...base, providerId: "" })).toThrow();
+    const withoutIt: Record<string, unknown> = { ...base };
+    delete withoutIt.providerId;
+    expect(() => bookingReadModel.parse(withoutIt)).toThrow();
+  });
+
+  it("requires both picture fields, and accepts null for either", () => {
+    // Null is what a service with no image, a key nothing serves, and a
+    // provider with no logo all reduce to — one answer, because a card draws
+    // the same placeholder for all three. Missing stays refused for the
+    // reason the location type's own case gives: a mapper that dropped the
+    // field would otherwise pass as though it had answered "no picture", and
+    // every thumbnail on every row would quietly become a grey tile.
+    expect(() =>
+      bookingReadModel.parse({ ...base, serviceImageUrl: null, providerLogoUrl: null }),
+    ).not.toThrow();
+    for (const key of ["serviceImageUrl", "providerLogoUrl"]) {
+      const withoutIt: Record<string, unknown> = { ...base };
+      delete withoutIt[key];
+      expect(() => bookingReadModel.parse(withoutIt)).toThrow();
+    }
+  });
+
   it("rejects a negative price", () => {
     // Money is minor units and never negative. A refund is a payment's fact,
     // not a booking with a negative price.
     expect(() => bookingReadModel.parse({ ...base, priceMinor: -1 })).toThrow();
-  });
-
-  it("rejects a commission outside 0..10000 basis points", () => {
-    expect(() => bookingReadModel.parse({ ...base, commissionBps: 10001 })).toThrow();
   });
 
   it("allows a null expiresAt, because the column is nullable — not because any status clears it", () => {
@@ -631,6 +673,43 @@ describe("bookingReadModel", () => {
       expiresAt: "2026-09-01T10:15:00.000Z",
     });
     expect(parsed.expiresAt).toBe("2026-09-01T10:15:00.000Z");
+  });
+});
+
+describe("the customer's booking read model", () => {
+  // The commission is deducted from the provider's payout and is never shown
+  // to the customer. That rule used to be kept by each caller's selection set
+  // — checkout omitted the fields by hand and a test read the query document
+  // to prove it. A second customer-facing caller is the moment follow-up #114
+  // anticipated: the fields leave the model, so no selection set can ask.
+  it("carries no commission fields at all", () => {
+    const keys = Object.keys(bookingReadModel.shape);
+    expect(keys).not.toContain("commissionBps");
+    expect(keys).not.toContain("commissionMinor");
+  });
+
+  // The money block says "Pago a …" once the payment lands, and the timeline
+  // draws the hop. Both need the instant, and it is the customer's own fact.
+  it("carries paidAt, nullable until the payment lands", () => {
+    expect(bookingReadModel.shape).toHaveProperty("paidAt");
+    expect(bookingReadModel.parse({ ...validBookingRow(), paidAt: null }).paidAt).toBeNull();
+  });
+
+  it("the detail model adds the timeline and nothing else", () => {
+    const extra = Object.keys(customerBookingDetailReadModel.shape).filter(
+      (k) => !(k in bookingReadModel.shape),
+    );
+    expect(extra).toEqual(["timeline"]);
+  });
+
+  it("the page model carries the three tab counts", () => {
+    const page = customerBookingPageReadModel.parse({
+      items: [],
+      total: 0,
+      nextOffset: null,
+      counts: { waiting: 0, upcoming: 0, history: 0 },
+    });
+    expect(page.counts.upcoming).toBe(0);
   });
 });
 

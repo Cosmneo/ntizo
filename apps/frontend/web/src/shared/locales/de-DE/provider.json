@@ -174,6 +174,8 @@
       "dispute_rejected": "Reklamation abgelehnt",
       "close_by": "Schließen bis",
       "feedback_by": "Antwort bis",
+      "payment_confirmed": "Zahlung bestätigt", "cancelled_by_customer": "Vom Kunden storniert",
+      "superseded_by_new_draft": "Durch eine neue Buchung ersetzt",
       "respond_by": "Antworten bis", "pay_by": "Zahlen bis", "unknown": "Status geändert"
     },
     "technical": "Technische Details", "bookingId": "Buchung", "serviceOptionId": "Option", "memberId": "Fachkraft", "paymentRef": "Zahlungsreferenz", "none": "—"

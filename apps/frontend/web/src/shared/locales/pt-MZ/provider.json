@@ -174,6 +174,8 @@
       "dispute_rejected": "Reclamação recusada",
       "close_by": "Fechar até",
       "feedback_by": "Resposta até",
+      "payment_confirmed": "Pagamento confirmado", "cancelled_by_customer": "Cancelada pelo cliente",
+      "superseded_by_new_draft": "Substituída por uma reserva nova",
       "respond_by": "Responder até", "pay_by": "Pagamento até", "unknown": "Estado alterado"
     },
     "technical": "Detalhes técnicos", "bookingId": "Reserva", "serviceOptionId": "Opção", "memberId": "Profissional", "paymentRef": "Referência de pagamento", "none": "—"
