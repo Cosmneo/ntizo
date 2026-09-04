@@ -81,6 +81,11 @@ const EXPIRABLE_STATUSES: readonly BookingStatus[] = [
  */
 const CANCELLABLE_FROM: Record<BookingCancelledReason, readonly BookingStatus[]> = {
   customer_did_not_pay: [BookingStatus.PendingPayment],
+  // Both waits, and nothing past them. Once money has moved there is nothing
+  // in this platform that can move it back — no refund port, no disbursement,
+  // and a wallet ledger with no writer — so a cancellation after payment would
+  // be a promise the system cannot keep. See the design's own section.
+  cancelled_by_customer: [BookingStatus.AwaitingProvider, BookingStatus.PendingPayment],
 };
 
 /** A commission rate is basis points: 0 is free, 10000 is the whole price. */
@@ -948,5 +953,29 @@ export class Booking {
       status: BookingStatus.Cancelled,
       cancelledAt: at,
     });
+  }
+
+  /**
+   * The customer calls it off, before any money has moved.
+   *
+   * **This one throws**, unlike `cancel` next door, and the difference is the
+   * caller rather than the transition. `cancel` answers a sweep that selected
+   * on a deadline it read before the call, so a booking that moved underneath
+   * it is an ordinary race and the honest answer is the instance back
+   * unchanged. This is one person's single deliberate action on a booking
+   * they are looking at, so a wrong status is a bug upstream — the same
+   * argument `submit`, `accept` and `decline` already make.
+   */
+  cancelByCustomer(at: Date): Booking {
+    if (!CANCELLABLE_FROM.cancelled_by_customer.includes(this.props.status)) {
+      // The same error, with the same arguments, that `submit` throws for a
+      // wrong status. Match it exactly rather than introducing a second way
+      // to say the same thing.
+      throw new BookingTransitionError(this.props.status, BookingStatus.Cancelled);
+    }
+
+    Booking.requireValidDate(at, "at");
+
+    return new Booking({ ...this.props, status: BookingStatus.Cancelled, cancelledAt: at });
   }
 }

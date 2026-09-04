@@ -3812,3 +3812,186 @@ is not written down at the call site.
 
 **Trigger:** the first time someone opens an answer, types one more letter to narrow the list
 further, and finds it closed — or a decision to seed `openId` without remounting.
+## #163 — The dashboard's unread count only sees the first page of threads
+
+`OverviewPage` sums `unreadCount` over `useProviderThreads`' first page, which is what the
+design settled for, because the communication read has no aggregate. A workspace with more
+threads than one page holds will show an undercount, and the number will change as the
+inbox is scrolled elsewhere in the session.
+
+**Trigger:** the first provider whose inbox is longer than a page and who notices the two
+screens disagree; the fix is a `communicationProviderUnreadCount` beside the notification
+context's, which already has one.
+
+## #164 — The stats read has no index for its date windows
+
+`booking_provider_status_idx` (`provider_id`, `status`) serves the dashboard's counts, but the
+thirty-day sums filter on `completed_at` and the confirmed series on `paid_at` — ruling R6:
+the column called `confirmed_at` is the provider's acceptance, and the series counts money
+arriving — neither of which is indexed. At a workspace's row counts this is a scan of a few
+hundred rows and costs nothing; at a marketplace's it is a scan of the table.
+
+**Trigger:** the dashboard appearing in a slow-query log, or the first workspace with tens of
+thousands of bookings — then `(provider_id, completed_at)` and `(provider_id, paid_at)`,
+or a rollup table if the numbers are wanted platform-wide.
+
+## #165 — The dashboard's cards cannot tell an empty workspace from a failed read
+
+Only the stats query renders an alert (`features/provider/ui/overview.tsx`): `stats.isError`
+gates a banner, but the recent-bookings, rating and services queries have no equivalent check.
+If any of them fails, `recent.data?.items ?? []` and `services.data ?? []` fall back to empty
+arrays and `rating.data?.average` falls back to `null`, so the cards render "Ainda sem
+reservas", "—" and `0` — exactly what an untouched workspace looks like, not what a broken
+read looks like.
+
+**Trigger:** the first provider who reports a blank dashboard that is not blank, or the next
+page that copies this pattern; the fix is one shared "could not read" state per card.
+
+## #166 — The KPI cards size their money by the viewport, not by their own width
+
+`StatCard`'s value steps from 18px to 28px at `sm:`, and the grid steps from two columns to
+four at `xl:` — both keyed to the viewport, while what actually constrains the figure is the
+card's own track. The two move in opposite directions: past `xl` the track gets *narrower*
+than it was one pixel earlier, and the sidebar takes 16rem out of the measurement without
+any breakpoint knowing. Measured against `formatMoney` in pt-MZ at 28px, from the shipped
+Poppins SemiBold (`99 999,99 MTn` is 7.25em = 203px, `999 999,99 MTn` is 7.88em = 221px):
+
+- **at 1280px**, the first four-up width, the card's content box is 198px. The dashboard's own
+  fixture figure fits with 0.7px to spare, five figures clip by 5px, and a workspace netting
+  six figures a month clips by 19–22px.
+- **at 1440px** the box is 238px and every realistic payout fits; only a seven-figure MZN
+  month (245px) still crosses the border. From 1536px up the grid's `max-w-6xl` caps the box
+  at 242px, so it never gets better than that.
+
+The same mechanism bites once more on the way up: between 768px and ~829px the sidebar has
+appeared but the value is already at its 28px `sm:` size, and the two-up card is 190px.
+
+**Trigger:** the first workspace whose monthly payout reaches six figures, or the next zone
+page that copies this grid — then size the value from the card rather than the window
+(`@container` on `Card`, with the type step as a container query), which removes every band
+above at once instead of moving another breakpoint.
+
+## #167 — Watch the first real customer-initiated charge on dev
+
+Task 10's spike was ruled unnecessary rather than run: the mechanism `RequestBookingChargeCommand`
+schedules its gateway call through (`configMiddleware` → `infraStore.waitUntil` → `connection.ts`)
+already ships in production for email delivery and is covered by `wait-until.test.ts` and
+`deferred-booking-charge.test.ts`. What neither test proves is that a Worker actually keeps running
+this specific deferred promise — a C2B call, not an email — long enough to reach the processor, on
+the real dev stage, under a real eviction schedule. Nothing about the mechanism suggests it would
+behave differently, but nothing has watched it do so for this call either.
+
+The cost of being wrong is bounded and already tolerated by design: a Worker cut short mid-call
+leaves the attempt `recordChargeAttempt` claimed but the prompt never reaching a handset, silently,
+the same outcome an ordinary charge failure produces. The customer presses "Pagar" again or waits
+for the per-minute sweep; three such losses exhaust `BOOKING_CHARGE_ATTEMPT_LIMIT` and the booking
+falls to its payment window, cancelled, the same ending a customer who never answers reaches.
+
+**Trigger:** the first customer-initiated charge that reaches the dev (or a later) stage after this
+branch ships — a free observation at a moment that is coming anyway. Tail the Worker's logs
+(`bunx wrangler tail`) across one such request and confirm `[booking] a charge landed` or one of
+`ChargeBookingCommand`'s other outcome lines actually appears after the response was already sent.
+If it never does across a handful of real presses, the fallback the cancelled spike described —
+clearing `last_charge_attempt_at` and letting the next cron tick pick the booking up — is still the
+documented way out.
+
+## #168 — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` confirmed still email-less, cross-referencing #146
+
+Not a new gap — `PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER` is already one of the three types #146
+names. This is that entry confirmed from the write side: `CancelBookingCommand`'s own doc comment
+says so directly — "It has no email template yet — in-app only, a known gap this command does not
+close." Recorded here only so a future reader who reaches this command first is pointed at #146
+rather than filing the same gap twice.
+
+**Trigger:** see #146 — the notification-preferences work, or the first provider who missed a
+cancellation because they were not in the app. Closes with that entry, not on its own.
+
+## #169 — A stale comment in `config.middleware.ts` still predicts the mutation this branch just shipped
+
+`apps/backend/api/src/middlewares/config.middleware.ts` (around lines 29-32) carries the M-Pesa env
+vars forward with a comment explaining why: "the moment a 'Pagar agora' mutation exists, a customer
+retrying from their own booking would otherwise reach an adapter that reports the stage as
+unconfigured." Task 11 of this plan is that mutation (`booking.pay`, `RequestBookingChargeCommand`).
+The reasoning is still correct — it is exactly why the env stays wired the way it is — but the
+comment narrates a future that already happened.
+
+**Trigger:** the next time this file is touched for an unrelated reason; reword the comment from
+"the moment it exists" to a plain statement of why the customer-initiated path needs these vars too.
+Cosmetic — nothing behaves differently either way.
+
+## #170 — The customer's booking read model carries no `providerId`
+
+Task 6's ruling recorded this rather than closing it: `CustomerBookingDetailDTO` has the provider's
+slug, name, verified mark and rating, but not the entity id `MessageProviderButton` needs to open a
+conversation from the booking detail page — the "Falar com o prestador" button the approved mockup
+draws. Reaching the provider today means going through the messages page and finding them by name
+instead of by one click from the booking that is actually the reason to write.
+
+**Trigger:** the day the mockup's button gets built. The fix is a one-column addition to
+`GetMyBookingProjection`'s select and `CustomerBookingDetailDTO` — the row already joins `provider`
+for the name and slug, so the id is already in scope, just not projected.
+
+## #171 — No per-tab ordering assertion on the customer's own bookings
+
+Task 2's review flagged this and the brief for that fix round matched it, so it was left rather than
+guessed at: `booking-read.repository.test.ts` proves `listForCustomer` puts the right bookings in the
+right tab and pages them correctly, but nothing asserts the *order* within a tab — newest request
+first while waiting, soonest slot first looking forward, most recent first looking back
+(`customerOrder` in `booking-read.repository.ts`). A regression that quietly reversed one of those
+three `ORDER BY` clauses would pass every existing test in the file.
+
+**Trigger:** the next edit to `customerOrder` or to `booking-read.repository.test.ts` — add one
+multi-row fixture per tab asserting the sequence, alongside whatever else that edit is already
+touching.
+
+## #172 — `pay-dialog.tsx` and `cancel-dialog.tsx` share a small amount of shape
+
+Both are a `Dialog` opened for exactly one booking, both own their own mutation and error mapping,
+both render a title, a body built from the same slot wording, a "keep/cancel" footer pair. Task 12's
+review called the duplication small enough to leave rather than force a shared abstraction ahead of
+a third caller — `PayDialog` is nearly three times `CancelDialog`'s size (342 lines against 117) once
+the phone-number step and the polling state are counted, so the honest shared surface is a handful
+of lines, not the whole component.
+
+**Trigger:** a third booking-action dialog (a decline-style confirmation for the customer, say, or a
+reschedule). Two callers sharing a little shape is a coincidence; three sharing the same little shape
+is a pattern worth a `BookingActionDialog` wrapper.
+
+## #173 — The money column reads "Valor" for the customer and "Preço" for the provider
+
+`bookings.json`'s `col.price` is "Valor" on the customer's own page; `provider.json`'s `col.price` is
+"Preço" on the provider's list of the exact same bookings. Task 5's implementer flagged this as a
+deliberate divergence — the customer mockup was signed off with "Valor" specifically — but it is the
+one place in the product where the same column, over the same rows, is named two different things
+depending on who is looking, and nothing records that the difference was chosen rather than missed.
+
+**Trigger:** the next visual audit that puts both zones' tables side by side, or a customer support
+ticket asking why the two don't match. If it turns out to be an oversight rather than a choice after
+all, it is a one-line change in either locale file, repeated across all eight languages.
+
+## #174 — A parity gate that compares files to each other cannot see whether the app loads them
+
+What actually let `bookings` ship unregistered in seven of eight locales (found and fixed in this
+same task, see the commit that introduced `#168`-`#173`) was not a missing test — `i18n-parity.test.ts`
+already existed and ran on every one of this branch's own CI passes. It compares each locale's JSON
+file to `en-US`'s, key for key, placeholder for placeholder. Every one of those comparisons agreed:
+the seven missing locales' `bookings.json` files were byte-correct, so the gate had nothing to
+disagree about. What it never asked is whether `i18n.ts`'s hand-maintained `resources` object —
+the thing i18next actually reads — carries the file it just finished comparing. A namespace whose
+JSON is perfect in all eight languages and registered in one still ships seven languages of raw key
+ids, and a gate built entirely out of file-to-file comparisons has no way to notice, by
+construction.
+
+This is now closed for `i18n.ts` specifically: a new assertion beside the existing parity checks
+(`i18n-parity.test.ts`, `describe("every namespace on disk is registered in i18n.ts for every
+locale")`) walks the same glob of files on disk and asks `i18n.hasResourceBundle(locale, ns)` of the
+real, initialized i18next instance — the same object a `useTranslation` call resolves against —
+rather than comparing JSON to JSON a second way. It would have caught this the day `bookings.json`
+landed for `en-US` and nowhere else.
+
+**Trigger:** the next namespace added to this app. If it ships with its JSON files in all eight
+locales but the new registration test above still goes red for seven of them, that is this exact
+failure mode recurring — the fix is the same one-line-per-locale addition to `i18n.ts`'s `resources`
+object this task made, not a change to the test. If the registration test itself is ever the thing
+that gets deleted or weakened (rather than a namespace forgetting to register), this entry is the
+record of why it exists.

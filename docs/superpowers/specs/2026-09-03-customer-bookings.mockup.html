@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-MZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>As minhas reservas — mockups (2026-09-03)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; padding:32px 24px 72px; background:#fafafa; font-family:Inter, system-ui, sans-serif; color:#222; }
+  h2 { font-family:Poppins, Inter, sans-serif; font-size:22px; margin:0 0 6px; max-width:1040px; margin-inline:auto; }
+  .subtitle { color:#666; font-size:13.5px; max-width:1040px; margin:0 auto 20px; line-height:1.55; }
+  hr.sep { border:0; border-top:1px solid #ddd; max-width:1040px; margin:56px auto; }
+  .intro { max-width:1040px; margin:0 auto 36px; font-size:14px; line-height:1.65; color:#444; }
+  .intro code { background:#eee; padding:1px 5px; border-radius:4px; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <strong>Mockups para a página "As minhas reservas" do cliente.</strong>
+  Dados fictícios. As cores, os tipos de letra, os raios e as sombras são os do sistema de desenho da Ntizo, lidos de
+  <code>packages/frontend/src/styles/globals.css</code>, para isto se parecer com o produto e não com um desenho à parte.
+  Poppins nos títulos, Inter no texto, azul <code>#006ffd</code>, tinta <code>#13171b</code>, cinzento <code>#71727a</code>.
+  Sem a linha azul antes das etiquetas em maiúsculas, por regra do dono.
+  Só em claro; o produto tem os dois temas e o escuro sai dos mesmos tokens.
+  A comissão não aparece em lado nenhum: o cliente vê o preço que paga, e mais nada sobre a divisão.
+</div>
+
+<style>
+  .nz { --ink:#13171b; --blue:#006ffd; --blue-deep:#0a4fbd; --muted:#71727a; --border:#e5e5e5;
+        --border-strong:#d7dbe3; --tint:#f2f8fe; --raised:#eef2f9; --card:#fff;
+        font-family:Inter, system-ui, sans-serif; color:var(--ink); }
+  .nz * { box-sizing:border-box; }
+  .nz .disp { font-family:Poppins, Inter, sans-serif; letter-spacing:-0.012em; }
+
+  /* the browser frame each screen sits in */
+  .pg { background:var(--raised); border:1px solid var(--border); border-radius:14px; overflow:hidden;
+        max-width:1040px; margin:0 auto; box-shadow:0 1px 3px rgba(19,23,27,.07), 0 12px 30px -22px rgba(19,23,27,.3); }
+  .sh { width:min(940px, 100% - 48px); margin-inline:auto; }
+
+  /* site header */
+  .hd { background:#fff; border-bottom:1px solid var(--border); }
+  .hd .in { display:flex; align-items:center; justify-content:space-between; padding:13px 0; }
+  .hd .logo { font-family:Poppins; font-weight:700; font-size:16px; letter-spacing:-0.02em; }
+  .hd .logo b { color:var(--blue); }
+  .hd .nav { display:flex; gap:20px; font-size:12.5px; color:var(--muted); font-weight:500; }
+  .hd .av { width:28px; height:28px; border-radius:999px; background:var(--tint); border:1px solid var(--border);
+            display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--blue-deep); }
+
+  .body { padding:30px 0 40px; }
+
+  .eyebrow { font-family:Poppins; font-weight:600; font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .h1 { font-family:Poppins; font-weight:600; font-size:27px; line-height:1.22; letter-spacing:-0.012em; margin:0; }
+  .lede { color:var(--muted); font-size:14px; line-height:1.55; margin:7px 0 0; max-width:62ch; }
+
+  /* tabs */
+  .tabs { display:flex; gap:26px; border-bottom:1px solid var(--border); margin:24px 0 0; }
+  .tab { padding:0 0 11px; font-size:13.5px; font-weight:500; color:var(--muted); position:relative; white-space:nowrap; }
+  .tab .n { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; background:#eceef1;
+            font-size:11px; font-weight:600; color:#5b6270; }
+  .tab.on { color:var(--ink); font-weight:600; }
+  .tab.on:after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--blue); border-radius:2px; }
+  .tab.on .n { background:var(--tint); color:var(--blue-deep); }
+
+  /* the list card */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden;
+          box-shadow:0 1px 2px rgba(19,23,27,.05); }
+  .list { width:100%; border-collapse:collapse; }
+  .list th { text-align:left; font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+             color:var(--muted); padding:13px 18px; border-bottom:1px solid var(--border); background:#fcfcfd; }
+  .list td { padding:15px 18px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13.5px; }
+  .list tr:last-child td { border-bottom:0; }
+  .svc { font-weight:600; font-size:14px; letter-spacing:-0.005em; }
+  .prov { color:var(--muted); font-size:12.5px; margin-top:3px; display:flex; align-items:center; gap:5px; }
+  .ver { color:var(--blue); font-size:11px; font-weight:600; }
+  .when { font-size:13.5px; }
+  .when i { display:block; color:var(--muted); font-size:12px; font-style:normal; margin-top:2px; }
+  .val { font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* status chips */
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px;
+          font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .chip .d { width:6px; height:6px; border-radius:999px; }
+  .chip.warn { background:#fff6e6; color:#8a5b00; } .chip.warn .d { background:#ffb020; }
+  .chip.info { background:#eaf2ff; color:#0a4fbd; } .chip.info .d { background:#006ffd; }
+  .chip.ok   { background:#e7f7ef; color:#0d7a4a; } .chip.ok .d { background:#21b872; }
+  .chip.bad  { background:#fdecec; color:#a52020; } .chip.bad .d { background:#ee4040; }
+  .chip.neu  { background:#f1f2f4; color:#5b6270; } .chip.neu .d { background:#a2a8b4; }
+  .clock { display:block; margin-top:5px; font-size:11.5px; color:#8a5b00; font-weight:600; }
+  .clock.cool { color:var(--blue-deep); }
+
+  /* buttons */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; border-radius:999px;
+         font-weight:700; font-size:13px; padding:9px 17px; white-space:nowrap; border:1px solid transparent; }
+  .btn.pri { background:var(--blue); color:#fff; box-shadow:0 1px 2px rgba(0,111,253,.3); }
+  .btn.gho { background:#fff; color:var(--ink); border-color:var(--border-strong); }
+  .btn.dan { background:#fff; color:#a52020; border-color:#f3c9c9; }
+  .btn.sm  { padding:7px 14px; font-size:12.5px; }
+  .lnk { color:var(--muted); font-size:12.5px; font-weight:500; }
+  .lnk.b { color:var(--blue); }
+
+  /* detail */
+  .back { color:var(--muted); font-size:12.5px; font-weight:500; display:inline-block; margin-bottom:14px; }
+  .dhead { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .ref { font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; letter-spacing:.04em; }
+  .cols { display:grid; grid-template-columns:1fr 320px; gap:20px; margin-top:22px; align-items:start; }
+  .sec { padding:20px; }
+  .sec + .sec { border-top:1px solid var(--border); }
+  .sec h3 { font-family:Poppins; font-weight:600; font-size:15px; margin:0 0 2px; }
+  .sec .blurb { color:var(--muted); font-size:12.5px; margin:0 0 14px; }
+  .dl { display:grid; grid-template-columns:1fr 1fr; gap:15px 22px; margin:0; }
+  .dl dt { font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .dl dd { margin:0; font-size:13.5px; line-height:1.5; }
+  .note { background:var(--tint); border-radius:10px; padding:13px 15px; font-size:13.5px; line-height:1.55; }
+
+  /* aside blocks */
+  .aside { display:flex; flex-direction:column; gap:14px; }
+  .money .tot { display:flex; align-items:baseline; justify-content:space-between; }
+  .money .tot b { font-family:Poppins; font-weight:600; font-size:22px; font-variant-numeric:tabular-nums; }
+  .money small { display:block; color:var(--muted); font-size:12px; line-height:1.5; margin-top:9px; }
+  .paid { display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:12.5px; font-weight:600; color:#0d7a4a; }
+
+  /* timeline */
+  .tl { list-style:none; margin:0; padding:0; }
+  .tl li { position:relative; padding:0 0 17px 24px; }
+  .tl li:last-child { padding-bottom:0; }
+  .tl li:before { content:""; position:absolute; left:3px; top:3px; width:9px; height:9px; border-radius:999px;
+                  background:#fff; border:2px solid var(--blue); }
+  .tl li:after { content:""; position:absolute; left:7px; top:14px; bottom:-3px; width:1px; background:var(--border); }
+  .tl li:last-child:after { display:none; }
+  .tl li.done:before { background:var(--blue); }
+  .tl li.now:before { border-color:#ffb020; background:#ffb020; box-shadow:0 0 0 4px #fff6e6; }
+  .tl li.todo:before { border-color:var(--border-strong); }
+  .tl .t { font-size:13px; font-weight:600; }
+  .tl .s { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .tl li.todo .t { color:#a2a8b4; font-weight:500; }
+
+  /* empty */
+  .empty { text-align:center; padding:52px 24px; }
+  .empty .badge { width:52px; height:52px; border-radius:999px; background:var(--tint); display:grid; place-items:center;
+                  margin:0 auto 16px; font-size:22px; }
+  .empty h3 { font-family:Poppins; font-weight:600; font-size:17px; margin:0 0 6px; }
+  .empty p { color:var(--muted); font-size:13.5px; margin:0 auto 20px; max-width:44ch; line-height:1.55; }
+
+  /* dialog + panels */
+  .scrim { background:rgba(19,23,27,.42); padding:40px 20px; display:grid; place-items:center; }
+  .modal { background:#fff; border-radius:16px; max-width:420px; width:100%; padding:24px;
+           box-shadow:0 20px 50px -20px rgba(19,23,27,.5); }
+  .modal h3 { font-family:Poppins; font-weight:600; font-size:18px; margin:0 0 8px; }
+  .modal p { color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 20px; }
+  .modal .row { display:flex; gap:10px; justify-content:flex-end; }
+  .field { display:block; width:100%; border:1px solid var(--border-strong); border-radius:8px; padding:11px 13px;
+           font-size:14px; font-family:Inter; color:var(--ink); background:#fff; }
+  .lbl { display:block; font-size:12.5px; font-weight:600; margin:0 0 6px; }
+  .hint { color:var(--muted); font-size:12px; margin:7px 0 0; line-height:1.5; }
+  .spin { width:15px; height:15px; border-radius:999px; border:2px solid #d8e6ff; border-top-color:var(--blue); display:inline-block; }
+  .caption { font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .flag { max-width:1040px; margin:10px auto 0; font-size:12.5px; color:#666; line-height:1.55; }
+</style>
+
+<!-- ═════════════════════════ 1. A LISTA ═════════════════════════ -->
+<h2>1. A lista, separador "A aguardar"</h2>
+<p class="subtitle">Onde vive o que ainda pede atenção: à espera da resposta do prestador, ou à espera do pagamento do cliente. É o único separador com botões.</p>
+
+<div class="nz"><div class="pg">
+  <div class="hd"><div class="sh in">
+    <div class="logo">nti<b>zo</b></div>
+    <div class="nav"><span>Explorar</span><span>Mensagens</span><span style="color:#13171b;font-weight:600">Reservas</span></div>
+    <div class="av">SF</div>
+  </div></div>
+  <div class="body"><div class="sh">
+    <h1 class="h1">As minhas reservas</h1>
+    <p class="lede">Tudo o que pediu, onde está cada pedido e o que falta fazer.</p>
+
+    <div class="tabs">
+      <span class="tab on">A aguardar<span class="n">2</span></span>
+      <span class="tab">Próximas<span class="n">1</span></span>
+      <span class="tab">Histórico<span class="n">4</span></span>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <table class="list">
+        <thead><tr><th style="width:38%">Serviço</th><th style="width:20%">Quando</th><th style="width:21%">Estado</th><th style="width:11%">Valor</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="svc">Limpeza profunda · 3 quartos</div>
+              <div class="prov">Hélder Cossa <span class="ver">✓ Verificado</span></div>
+            </td>
+            <td class="when">Sáb, 6 Set<i>09:00 · 240 min</i></td>
+            <td>
+              <span class="chip warn"><span class="d"></span>À espera do prestador</span>
+              <span class="clock">responde em 1h42</span>
+            </td>
+            <td class="val">2 500 MZN</td>
+            <td style="text-align:right"><span class="lnk">Cancelar</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="svc">Canalização · Reparação de fuga</div>
+              <div class="prov">Amélia Sitoe <span class="ver">✓ Verificado</span></div>
+            </td>
+            <td class="when">Seg, 8 Set<i>14:30 · 120 min</i></td>
+            <td>
+              <span class="chip info"><span class="d"></span>A aguardar pagamento</span>
+              <span class="clock cool">termina em 22 min</span>
+            </td>
+            <td class="val">1 800 MZN</td>
+            <td style="text-align:right"><span class="btn pri sm">Pagar</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div></div>
+</div></div>
+<p class="flag">O relógio só aparece quando há prazo a correr. Em ecrã estreito cada linha vira um cartão empilhado, como em todas as listas da aplicação.</p>
+
+<hr class="sep">
+
+<!-- ═════════════════════════ 2. PRÓXIMAS E HISTÓRICO ═════════════════════════ -->
+<h2>2. Separadores "Próximas" e "Histórico"</h2>
+<p class="subtitle">Próximas são as pagas com data por chegar. Histórico junta o que acabou, por qualquer via, e as confirmadas cuja data já passou. Nenhum dos dois tem botões.</p>
+
+<div class="nz"><div class="pg">
+  <div class="body" style="padding-top:24px"><div class="sh">
+    <div class="tabs" style="margin-top:0">
+      <span class="tab">A aguardar<span class="n">2</span></span>
+      <span class="tab on">Próximas<span class="n">1</span></span>
+      <span class="tab">Histórico<span class="n">4</span></span>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <table class="list">
+        <thead><tr><th style="width:38%">Serviço</th><th style="width:20%">Quando</th><th style="width:21%">Estado</th><th style="width:11%">Valor</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="svc">Jardinagem · Manutenção mensal</div><div class="prov">Verdes de Maputo, Lda <span class="ver">✓ Verificado</span></div></td>
+            <td class="when">Qui, 11 Set<i>07:30 · 180 min</i></td>
+            <td><span class="chip ok"><span class="d"></span>Confirmada</span></td>
+            <td class="val">3 200 MZN</td>
+            <td style="text-align:right"><span class="lnk b">Ver</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tabs" style="margin-top:34px">
+      <span class="tab">A aguardar<span class="n">2</span></span>
+      <span class="tab">Próximas<span class="n">1</span></span>
+      <span class="tab on">Histórico<span class="n">4</span></span>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <table class="list">
+        <thead><tr><th style="width:38%">Serviço</th><th style="width:20%">Quando</th><th style="width:21%">Estado</th><th style="width:11%">Valor</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="svc">Pintura · Sala e corredor</div><div class="prov">Nelson Machava</div></td>
+            <td class="when">Ter, 26 Ago<i>08:00 · 300 min</i></td>
+            <td><span class="chip ok"><span class="d"></span>Confirmada</span></td>
+            <td class="val">6 400 MZN</td>
+            <td style="text-align:right"><span class="lnk b">Ver</span></td>
+          </tr>
+          <tr>
+            <td><div class="svc">Electricidade · Quadro eléctrico</div><div class="prov">Rui Tembe</div></td>
+            <td class="when">Sex, 22 Ago<i>10:00 · 90 min</i></td>
+            <td><span class="chip bad"><span class="d"></span>Recusada</span></td>
+            <td class="val">1 200 MZN</td>
+            <td style="text-align:right"><span class="lnk b">Ver</span></td>
+          </tr>
+          <tr>
+            <td><div class="svc">Limpeza · Pós-obra</div><div class="prov">Clara Nhantumbo</div></td>
+            <td class="when">Qua, 20 Ago<i>13:00 · 240 min</i></td>
+            <td><span class="chip neu"><span class="d"></span>Cancelada</span></td>
+            <td class="val">2 900 MZN</td>
+            <td style="text-align:right"><span class="lnk b">Ver</span></td>
+          </tr>
+          <tr>
+            <td><div class="svc">Canalização · Instalação de torneira</div><div class="prov">Amélia Sitoe</div></td>
+            <td class="when">Seg, 18 Ago<i>16:00 · 60 min</i></td>
+            <td><span class="chip neu"><span class="d"></span>Expirada</span></td>
+            <td class="val">950 MZN</td>
+            <td style="text-align:right"><span class="lnk b">Ver</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div></div>
+</div></div>
+<p class="flag">Cinco estados chegam ao cliente por palavras: à espera do prestador, a aguardar pagamento, confirmada, recusada, cancelada, expirada. Rascunhos nunca aparecem, porque um rascunho é um checkout a meio.</p>
+
+<hr class="sep">
+
+<!-- ═════════════════════════ 3. VAZIO ═════════════════════════ -->
+<h2>3. Quando ainda não há nada</h2>
+<p class="subtitle">O estado vazio que a página já tem hoje, agora com uma saída em vez de um beco.</p>
+
+<div class="nz"><div class="pg">
+  <div class="body"><div class="sh">
+    <h1 class="h1">As minhas reservas</h1>
+    <p class="lede">Tudo o que pediu, onde está cada pedido e o que falta fazer.</p>
+    <div class="card" style="margin-top:22px">
+      <div class="empty">
+        <div class="badge">🗓</div>
+        <h3>Ainda não há reservas</h3>
+        <p>Quando reservar um serviço, aparece aqui com a data, o estado e o que falta fazer.</p>
+        <span class="btn pri">Explorar serviços</span>
+      </div>
+    </div>
+  </div></div>
+</div></div>
+
+<hr class="sep">
+
+<!-- ═════════════════════════ 4. DETALHE, A AGUARDAR PAGAMENTO ═════════════════════════ -->
+<h2>4. O detalhe, a aguardar pagamento</h2>
+<p class="subtitle">A página que responde a "em que pé está isto". A linha do tempo à direita conta o fluxo por palavras; os dois botões estão no topo, onde a decisão é tomada.</p>
+
+<div class="nz"><div class="pg">
+  <div class="hd"><div class="sh in">
+    <div class="logo">nti<b>zo</b></div>
+    <div class="nav"><span>Explorar</span><span>Mensagens</span><span style="color:#13171b;font-weight:600">Reservas</span></div>
+    <div class="av">SF</div>
+  </div></div>
+  <div class="body"><div class="sh">
+    <span class="back">← As minhas reservas</span>
+    <div class="dhead">
+      <div>
+        <h1 class="h1">Canalização · Reparação de fuga</h1>
+        <p class="lede" style="margin-top:6px">Amélia Sitoe · 4,8 ★ · Verificado</p>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+          <span class="chip info"><span class="d"></span>A aguardar pagamento</span>
+          <span class="ref">NB1F3A7C</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="btn dan">Cancelar reserva</span>
+        <span class="btn pri">Pagar 1 800 MZN</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <div class="sec">
+          <h3>A marcação</h3>
+          <p class="blurb">O que reservou e quando.</p>
+          <dl class="dl">
+            <div><dt>Quando</dt><dd>Segunda, 8 de Setembro de 2026<br>14:30 às 16:30</dd></div>
+            <div><dt>Duração</dt><dd>120 minutos</dd></div>
+            <div><dt>Onde</dt><dd>Em sua casa<br>Av. Julius Nyerere 1234, Bairro Central, Maputo</dd></div>
+            <div><dt>Indicações</dt><dd>Portão azul, 2.º andar</dd></div>
+          </dl>
+        </div>
+        <div class="sec">
+          <h3>O prestador</h3>
+          <p class="blurb">Com quem vai ficar o trabalho.</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="av" style="width:40px;height:40px;font-size:14px">AS</div>
+              <div>
+                <div style="font-weight:600;font-size:14px">Amélia Sitoe</div>
+                <div style="color:#71727a;font-size:12.5px;margin-top:2px">4,8 ★ · 132 trabalhos · Verificado</div>
+              </div>
+            </div>
+            <span class="btn gho sm">Falar com o prestador</span>
+          </div>
+        </div>
+        <div class="sec">
+          <h3>A sua nota</h3>
+          <p class="blurb">O que escreveu quando fez o pedido.</p>
+          <div class="note">A fuga é debaixo do lava-loiça e já molhou o armário. Se puder trazer vedante, agradeço.</div>
+        </div>
+      </div>
+
+      <div class="aside">
+        <div class="card sec money">
+          <h2 class="caption" style="margin:0 0 12px">O valor</h2>
+          <div class="tot"><span style="font-size:13.5px">Total a pagar</span><b>1 800 MZN</b></div>
+          <small>É o preço anunciado pelo prestador. A Ntizo não acrescenta nada por cima.</small>
+        </div>
+
+        <div class="card sec">
+          <h2 class="caption" style="margin:0 0 14px">Como vai isto</h2>
+          <ul class="tl">
+            <li class="done"><div class="t">Pedido enviado</div><div class="s">3 Set, 08:12</div></li>
+            <li class="done"><div class="t">Prestador aceitou</div><div class="s">3 Set, 09:40</div></li>
+            <li class="now"><div class="t">A aguardar o seu pagamento</div><div class="s">Termina em 22 minutos</div></li>
+            <li class="todo"><div class="t">Pagamento confirmado</div><div class="s">A vaga fica sua</div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div></div>
+<p class="flag">A linha do tempo termina em "pagamento confirmado" de propósito. Não existe hoje no sistema nenhuma transição para marcar o trabalho como feito ou concluído, e a página não finge um fim que não existe.</p>
+
+<hr class="sep">
+
+<!-- ═════════════════════════ 5. DETALHE, CONFIRMADA ═════════════════════════ -->
+<h2>5. O detalhe, já paga</h2>
+<p class="subtitle">Sem botões: depois de paga, a reserva não se cancela sozinha na aplicação. A página diz para onde ir em vez de deixar o cliente à procura.</p>
+
+<div class="nz"><div class="pg">
+  <div class="body"><div class="sh">
+    <span class="back">← As minhas reservas</span>
+    <div class="dhead">
+      <div>
+        <h1 class="h1">Jardinagem · Manutenção mensal</h1>
+        <p class="lede" style="margin-top:6px">Verdes de Maputo, Lda · 4,9 ★ · Verificado</p>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+          <span class="chip ok"><span class="d"></span>Confirmada</span>
+          <span class="ref">7C22E9A1</span>
+        </div>
+      </div>
+      <div style="text-align:right;max-width:250px">
+        <div style="font-size:12.5px;color:#71727a;line-height:1.55">Precisa de mudar ou desmarcar?</div>
+        <span class="lnk b" style="font-size:13px">Falar com o suporte</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <div class="sec">
+          <h3>A marcação</h3>
+          <p class="blurb">O que reservou e quando.</p>
+          <dl class="dl">
+            <div><dt>Quando</dt><dd>Quinta, 11 de Setembro de 2026<br>07:30 às 10:30</dd></div>
+            <div><dt>Duração</dt><dd>180 minutos</dd></div>
+            <div><dt>Onde</dt><dd>Em sua casa<br>Rua da Kongwa 88, Sommerschield, Maputo</dd></div>
+            <div><dt>Indicações</dt><dd>Tocar à campainha do portão lateral</dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="aside">
+        <div class="card sec money">
+          <h2 class="caption" style="margin:0 0 12px">O valor</h2>
+          <div class="tot"><span style="font-size:13.5px">Total pago</span><b>3 200 MZN</b></div>
+          <span class="paid">✓ Pago a 1 de Setembro, 14:07</span>
+          <small>É o preço anunciado pelo prestador. A Ntizo não acrescenta nada por cima.</small>
+        </div>
+        <div class="card sec">
+          <h2 class="caption" style="margin:0 0 14px">Como vai isto</h2>
+          <ul class="tl">
+            <li class="done"><div class="t">Pedido enviado</div><div class="s">1 Set, 11:20</div></li>
+            <li class="done"><div class="t">Prestador aceitou</div><div class="s">1 Set, 13:55</div></li>
+            <li class="done"><div class="t">Pagamento confirmado</div><div class="s">1 Set, 14:07</div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div></div>
+
+<hr class="sep">
+
+<!-- ═════════════════════════ 6. PAGAR ═════════════════════════ -->
+<h2>6. Pagar, os dois momentos</h2>
+<p class="subtitle">O botão pede ao servidor que empurre já a confirmação para o telemóvel e devolve logo o controlo. A página acompanha sozinha até a reserva ficar confirmada. Se faltar o número, pede-o antes de tentar.</p>
+
+<div class="nz"><div class="pg"><div class="scrim">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+      <span class="spin"></span>
+      <span class="caption" style="color:#0a4fbd">A aguardar confirmação</span>
+    </div>
+    <h3>Confirme no seu telemóvel</h3>
+    <p>Enviámos um pedido M-Pesa para <strong style="color:#13171b">+258 84 ••• 45 67</strong>. Introduza o PIN para autorizar <strong style="color:#13171b">1 800 MZN</strong>.</p>
+    <p style="margin-top:-8px">Esta página actualiza-se sozinha assim que o pagamento entrar. Pode fechá-la sem perigo.</p>
+    <div class="row"><span class="btn gho">Fechar</span></div>
+  </div>
+</div></div></div>
+
+<div class="nz" style="margin-top:20px"><div class="pg"><div class="scrim">
+  <div class="modal">
+    <h3>Falta o seu número M-Pesa</h3>
+    <p>É para lá que enviamos o pedido de pagamento. Fica guardado no seu perfil para as próximas vezes.</p>
+    <label class="lbl">Número de telemóvel</label>
+    <input class="field" value="+258 84 " >
+    <p class="hint">Tem de ser um número M-Pesa activo, com saldo suficiente para 1 800 MZN.</p>
+    <div class="row" style="margin-top:20px"><span class="btn gho">Agora não</span><span class="btn pri">Guardar e pagar</span></div>
+  </div>
+</div></div></div>
+<p class="flag">O número em falta é hoje a causa silenciosa de reservas que morrem: a cobrança automática gasta as tentativas e a reserva acaba cancelada por falta de pagamento, sem ninguém perceber porquê.</p>
+
+<hr class="sep">
+
+<!-- ═════════════════════════ 7. CANCELAR ═════════════════════════ -->
+<h2>7. Cancelar</h2>
+<p class="subtitle">Só antes de pagar. A confirmação diz o que acontece a seguir, em vez de perguntar "tem a certeza?" e deixar o resto por adivinhar.</p>
+
+<div class="nz"><div class="pg"><div class="scrim">
+  <div class="modal">
+    <h3>Cancelar esta reserva?</h3>
+    <p>A vaga de segunda, 8 de Setembro às 14:30 fica livre e Amélia Sitoe é avisada. Não há nada a devolver, porque ainda não pagou. Se mudar de ideias, terá de fazer um pedido novo.</p>
+    <div class="row"><span class="btn gho">Manter</span><span class="btn dan">Cancelar reserva</span></div>
+  </div>
+</div></div></div>
+
+</body>
+</html>

@@ -17,10 +17,12 @@ import { z } from "zod";
  * a consumer that reads `serviceName` off the service instead of off the
  * booking has reintroduced exactly the drift this model exists to prevent.
  *
- * `commissionBps` travels with `commissionMinor` on purpose. The amount alone
- * cannot be checked, and the rate alone cannot be reconciled against money
- * that already moved — an administrator changing a provider's rate tomorrow
- * must leave both of these untouched.
+ * **No commission.** The rate and the amount are the provider's payout being
+ * reduced, never a fee added to this customer's price, so a customer shown a
+ * split would be shown a charge they do not pay. They used to be here and be
+ * omitted by every caller by hand; follow-up #114 asked for the fence to be
+ * the type instead. The provider's own `providerBookingReadModel` is a
+ * separate mirror and keeps both, because there the split is the point.
  */
 export const bookingReadModel = z.object({
   id: z.string().min(1),
@@ -68,6 +70,21 @@ export const bookingReadModel = z.object({
   serviceId: z.string().min(1),
   serviceOptionId: z.string().min(1),
 
+  /**
+   * The business this booking is with — identity, on the same terms as the
+   * two ids above: `booking.provider_id` is a `NOT NULL` FK, an id names the
+   * same row forever, and there is nothing about it to drift.
+   *
+   * It is here because `providerSlug` cannot do this job. A slug addresses a
+   * *page*; starting a conversation addresses a *row* —
+   * `CommunicationStartThreadInput` takes `providerId`, and the customer's
+   * booking pages are exactly where wanting to message the provider happens.
+   * Before this, a "Mensagem" button on a booking had to either resolve the
+   * slug to an id first (a second round trip for a fact this read already
+   * held) or not exist, and it did not exist.
+   */
+  providerId: z.string().min(1),
+
   serviceName: z.string(),
   providerName: z.string(),
   providerSlug: z.string(),
@@ -99,6 +116,32 @@ export const bookingReadModel = z.object({
    */
   providerVerified: z.boolean(),
   providerRatingAverage: z.number().nullable(),
+
+  /**
+   * A picture of what was booked, and of who is doing it — the service's
+   * first image and the business's logo, as URLs already resolved.
+   *
+   * **Live, like the badge and the score above, and for the same reason:**
+   * neither is a term of the agreement. A provider who replaces a blurry
+   * photo should have the better one show on the bookings it already has;
+   * nobody is worse off for it, which is exactly the test that separates
+   * these from `optionName` and `priceMinor`.
+   *
+   * **Only the first image, not the array.** The two screens that read this
+   * — the customer's list row and the top of their booking's own page —
+   * draw one thumbnail each. Carrying every key so both could ignore all but
+   * the first would put a gallery on the wire for every row of every page.
+   *
+   * Null covers three cases the reader cannot tell apart and does not need
+   * to: no image was ever uploaded, the key resolves to no URL because
+   * nothing serves the bucket (`mediaUrl` answers null), and — for the
+   * service only — the `leftJoin` found nothing, which the `NOT NULL` FK
+   * makes unreachable. All three mean the same thing to a card: draw the
+   * placeholder.
+   */
+  serviceImageUrl: z.string().nullable(),
+  providerLogoUrl: z.string().nullable(),
+
   optionName: z.string(),
   durationMinutes: z.number().int().positive(),
 
@@ -144,8 +187,6 @@ export const bookingReadModel = z.object({
   locationType: z.string().nullable(),
 
   priceMinor: z.number().int().min(0),
-  commissionBps: z.number().int().min(0).max(10_000),
-  commissionMinor: z.number().int().min(0),
   currency: z.string(),
 
   startsAt: z.string(),
@@ -231,7 +272,60 @@ export const bookingReadModel = z.object({
    */
   expiresAt: z.string().nullable(),
 
+  /**
+   * When the payment landed, or null while it has not.
+   *
+   * The customer's own fact, unlike `paymentRef`, which stays off this model:
+   * a gateway reference identifies a transaction to whoever has to chase it,
+   * and the customer chasing it does so through support, who read it from the
+   * provider's side.
+   */
+  paidAt: z.string().nullable(),
+
   createdAt: z.string(),
 });
 
 export type BookingDTO = z.infer<typeof bookingReadModel>;
+
+/**
+ * One hop in a booking's history, read by both audiences.
+ *
+ * It lived beside the provider's models until the customer's page needed the
+ * same list. Neither audience owns it, so it sits with the model that is
+ * neither — and `provider-booking.schema.ts` re-exports it so nothing that
+ * imports it from there has to move.
+ */
+export const bookingTimelineEntryReadModel = z.object({
+  at: z.string(),
+  /** A machine token — `booking_change.reason`, or one of the two this read adds: `created_by_customer`, `respond_by`, `pay_by`. */
+  reason: z.string().min(1),
+  actor: z.enum(["customer", "provider", "system"]),
+  /** A deadline still ahead, drawn hollow. */
+  pending: z.boolean(),
+});
+
+/**
+ * One page of the customer's own bookings, plus what the tab chips render.
+ *
+ * All three counts on every read, rather than three requests: the chips are
+ * on screen whichever tab is open, and a count fetched per tab would show a
+ * stale number on the two the customer is not looking at.
+ */
+export const customerBookingPageReadModel = z.object({
+  items: z.array(bookingReadModel),
+  /** Rows in the requested tab, unpaged — the pager's denominator. */
+  total: z.number().int().min(0),
+  nextOffset: z.number().int().min(0).nullable(),
+  counts: z.object({
+    waiting: z.number().int().min(0),
+    upcoming: z.number().int().min(0),
+    history: z.number().int().min(0),
+  }),
+});
+export type CustomerBookingPageDTO = z.infer<typeof customerBookingPageReadModel>;
+
+/** One booking, for the page that tells its story. */
+export const customerBookingDetailReadModel = bookingReadModel.extend({
+  timeline: z.array(bookingTimelineEntryReadModel),
+});
+export type CustomerBookingDetailDTO = z.infer<typeof customerBookingDetailReadModel>;

@@ -97,9 +97,12 @@ function bookingFixture(status: BookingDTO["status"]): BookingDTO {
     status,
     serviceId: "svc-1",
     serviceOptionId: "opt-2",
+    providerId: "prv-1",
     serviceName: "Corte de cabelo",
     providerName: "Studio X",
     providerSlug: "studio-x",
+    serviceImageUrl: null,
+    providerLogoUrl: null,
     providerVerified: true,
     providerRatingAverage: 4.2,
     optionName: "Corte e barba",
@@ -113,8 +116,6 @@ function bookingFixture(status: BookingDTO["status"]): BookingDTO {
     // travel line override this to `at_customer`.
     locationType: "at_provider",
     priceMinor: 90000,
-    commissionBps: 1000,
-    commissionMinor: 9000,
     currency: "MZN",
     startsAt: "2026-09-04T13:00:00.000Z",
     endsAt: "2026-09-04T14:30:00.000Z",
@@ -126,6 +127,7 @@ function bookingFixture(status: BookingDTO["status"]): BookingDTO {
     addressDirections: null,
     description: null,
     expiresAt: "2026-09-04T12:30:00.000Z",
+    paidAt: null,
     createdAt: NOW,
   };
 }

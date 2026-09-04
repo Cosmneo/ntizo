@@ -75,20 +75,15 @@ export function createBooking(input: CreateBookingInput): Promise<CreatedBooking
 }
 
 /**
- * A booking as *checkout* reads it — `bookingReadModel` minus the commission.
+ * A booking as checkout reads it.
  *
- * The omission is the type saying what the design says: the commission comes
- * out of the provider's payout, so a customer shown a split would be shown a
- * fee they are not charged. The query below never asks for either field, so
- * neither is on the wire; this type is what turns a page reaching for one
- * into a compile error rather than an `undefined` on screen.
- *
- * The two levels are checked by two different things, and neither covers the
- * other: this one by the compiler, the wire one by
- * `__tests__/checkout.repository.test.ts` reading the document itself. It
- * went six reviews without the second.
+ * This used to be `BookingDTO` minus the commission, with a test that read
+ * the query document to prove neither field was asked for. Both fields left
+ * `bookingReadModel` itself on 2026-09-03 — see that model's own comment —
+ * so the alias is now the model, and the fence is the type rather than this
+ * file's discipline.
  */
-export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMinor">;
+export type CheckoutBooking = BookingDTO;
 
 /**
  * Every field checkout's steps 2 and 3 render, and no others.
@@ -111,8 +106,8 @@ export type CheckoutBooking = Omit<BookingDTO, "commissionBps" | "commissionMino
  * public, rendered on every browse card and on the provider's own page, and
  * they are what a customer about to hold a slot is deciding on. The
  * commission is neither public nor theirs — it comes out of the provider's
- * payout — so it stays off this document, and the test below reads the
- * document to prove it.
+ * payout — so it stays off this document, and cannot do otherwise: it left
+ * `bookingReadModel` itself, so there is no field left here to ask for.
  *
  * `locationType` is the rail's second line — "Em sua casa · 240 min" — and
  * the fact it decides "Deslocação — Incluída" from. Steps 2 and 3 had neither

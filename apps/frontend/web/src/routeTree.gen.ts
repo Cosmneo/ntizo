@@ -26,7 +26,6 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyPhoneRouteImport } from './routes/verify-phone'
 import { Route as CustomerAccountRouteRouteImport } from './routes/_customer/account/route'
 import { Route as CustomerActivityRouteImport } from './routes/_customer/activity'
-import { Route as CustomerBookingsRouteImport } from './routes/_customer/bookings'
 import { Route as CustomerFavouritesRouteImport } from './routes/_customer/favourites'
 import { Route as CustomerMessagesRouteImport } from './routes/_customer/messages'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
@@ -55,6 +54,8 @@ import { Route as CustomerAccountNotificationsRouteImport } from './routes/_cust
 import { Route as CustomerAccountPaymentMethodsRouteImport } from './routes/_customer/account/payment-methods'
 import { Route as CustomerAccountPreferencesRouteImport } from './routes/_customer/account/preferences'
 import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/account/security'
+import { Route as CustomerBookingsIndexRouteImport } from './routes/_customer/bookings.index'
+import { Route as CustomerBookingsBookingIdRouteImport } from './routes/_customer/bookings.$bookingId'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
@@ -156,11 +157,6 @@ const CustomerAccountRouteRoute = CustomerAccountRouteRouteImport.update({
 const CustomerActivityRoute = CustomerActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
-  getParentRoute: () => CustomerRouteRoute,
-} as any)
-const CustomerBookingsRoute = CustomerBookingsRouteImport.update({
-  id: '/bookings',
-  path: '/bookings',
   getParentRoute: () => CustomerRouteRoute,
 } as any)
 const CustomerFavouritesRoute = CustomerFavouritesRouteImport.update({
@@ -307,6 +303,17 @@ const CustomerAccountSecurityRoute = CustomerAccountSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => CustomerAccountRouteRoute,
 } as any)
+const CustomerBookingsIndexRoute = CustomerBookingsIndexRouteImport.update({
+  id: '/bookings/',
+  path: '/bookings/',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
+const CustomerBookingsBookingIdRoute =
+  CustomerBookingsBookingIdRouteImport.update({
+    id: '/bookings/$bookingId',
+    path: '/bookings/$bookingId',
+    getParentRoute: () => CustomerRouteRoute,
+  } as any)
 const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   id: '/accept-invite/$token',
   path: '/accept-invite/$token',
@@ -427,7 +434,6 @@ export interface FileRoutesByFullPath {
   '/account': typeof CustomerAccountRouteRouteWithChildren
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/activity': typeof CustomerActivityRoute
-  '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
@@ -454,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/account/payment-methods': typeof CustomerAccountPaymentMethodsRoute
   '/account/preferences': typeof CustomerAccountPreferencesRoute
   '/account/security': typeof CustomerAccountSecurityRoute
+  '/bookings/$bookingId': typeof CustomerBookingsBookingIdRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/admin/support/$threadId': typeof AdminSupportThreadIdRoute
@@ -468,6 +475,7 @@ export interface FileRoutesByFullPath {
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account/': typeof CustomerAccountIndexRoute
+  '/bookings/': typeof CustomerBookingsIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
   '/admin/support/': typeof AdminSupportIndexRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
@@ -489,7 +497,6 @@ export interface FileRoutesByTo {
   '/verify-phone': typeof VerifyPhoneRoute
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/activity': typeof CustomerActivityRoute
-  '/bookings': typeof CustomerBookingsRoute
   '/favourites': typeof CustomerFavouritesRoute
   '/messages': typeof CustomerMessagesRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
@@ -516,6 +523,7 @@ export interface FileRoutesByTo {
   '/account/payment-methods': typeof CustomerAccountPaymentMethodsRoute
   '/account/preferences': typeof CustomerAccountPreferencesRoute
   '/account/security': typeof CustomerAccountSecurityRoute
+  '/bookings/$bookingId': typeof CustomerBookingsBookingIdRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/admin/support/$threadId': typeof AdminSupportThreadIdRoute
@@ -530,6 +538,7 @@ export interface FileRoutesByTo {
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account': typeof CustomerAccountIndexRoute
+  '/bookings': typeof CustomerBookingsIndexRoute
   '/admin/providers': typeof AdminProvidersIndexRoute
   '/admin/support': typeof AdminSupportIndexRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
@@ -557,7 +566,6 @@ export interface FileRoutesById {
   '/_customer/account': typeof CustomerAccountRouteRouteWithChildren
   '/provider/$slug': typeof ProviderSlugRouteRouteWithChildren
   '/_customer/activity': typeof CustomerActivityRoute
-  '/_customer/bookings': typeof CustomerBookingsRoute
   '/_customer/favourites': typeof CustomerFavouritesRoute
   '/_customer/messages': typeof CustomerMessagesRoute
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
@@ -584,6 +592,7 @@ export interface FileRoutesById {
   '/_customer/account/payment-methods': typeof CustomerAccountPaymentMethodsRoute
   '/_customer/account/preferences': typeof CustomerAccountPreferencesRoute
   '/_customer/account/security': typeof CustomerAccountSecurityRoute
+  '/_customer/bookings/$bookingId': typeof CustomerBookingsBookingIdRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/admin/support/$threadId': typeof AdminSupportThreadIdRoute
@@ -598,6 +607,7 @@ export interface FileRoutesById {
   '/provider/$slug/settings': typeof ProviderSlugSettingsRoute
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/_customer/account/': typeof CustomerAccountIndexRoute
+  '/_customer/bookings/': typeof CustomerBookingsIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
   '/admin/support/': typeof AdminSupportIndexRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
@@ -624,7 +634,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/provider/$slug'
     | '/activity'
-    | '/bookings'
     | '/favourites'
     | '/messages'
     | '/forgot-password'
@@ -651,6 +660,7 @@ export interface FileRouteTypes {
     | '/account/payment-methods'
     | '/account/preferences'
     | '/account/security'
+    | '/bookings/$bookingId'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
     | '/admin/support/$threadId'
@@ -665,6 +675,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/settings'
     | '/provider/$slug/wallet'
     | '/account/'
+    | '/bookings/'
     | '/admin/providers/'
     | '/admin/support/'
     | '/provider/$slug/bookings/$bookingId'
@@ -686,7 +697,6 @@ export interface FileRouteTypes {
     | '/verify-phone'
     | '/provider/$slug'
     | '/activity'
-    | '/bookings'
     | '/favourites'
     | '/messages'
     | '/forgot-password'
@@ -713,6 +723,7 @@ export interface FileRouteTypes {
     | '/account/payment-methods'
     | '/account/preferences'
     | '/account/security'
+    | '/bookings/$bookingId'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
     | '/admin/support/$threadId'
@@ -727,6 +738,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/settings'
     | '/provider/$slug/wallet'
     | '/account'
+    | '/bookings'
     | '/admin/providers'
     | '/admin/support'
     | '/provider/$slug/bookings/$bookingId'
@@ -753,7 +765,6 @@ export interface FileRouteTypes {
     | '/_customer/account'
     | '/provider/$slug'
     | '/_customer/activity'
-    | '/_customer/bookings'
     | '/_customer/favourites'
     | '/_customer/messages'
     | '/_public/forgot-password'
@@ -780,6 +791,7 @@ export interface FileRouteTypes {
     | '/_customer/account/payment-methods'
     | '/_customer/account/preferences'
     | '/_customer/account/security'
+    | '/_customer/bookings/$bookingId'
     | '/_public/accept-invite/$token'
     | '/admin/providers/$providerId'
     | '/admin/support/$threadId'
@@ -794,6 +806,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/settings'
     | '/provider/$slug/wallet'
     | '/_customer/account/'
+    | '/_customer/bookings/'
     | '/admin/providers/'
     | '/admin/support/'
     | '/provider/$slug/bookings/$bookingId'
@@ -946,13 +959,6 @@ declare module '@tanstack/react-router' {
       path: '/activity'
       fullPath: '/activity'
       preLoaderRoute: typeof CustomerActivityRouteImport
-      parentRoute: typeof CustomerRouteRoute
-    }
-    '/_customer/bookings': {
-      id: '/_customer/bookings'
-      path: '/bookings'
-      fullPath: '/bookings'
-      preLoaderRoute: typeof CustomerBookingsRouteImport
       parentRoute: typeof CustomerRouteRoute
     }
     '/_customer/favourites': {
@@ -1151,6 +1157,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomerAccountSecurityRouteImport
       parentRoute: typeof CustomerAccountRouteRoute
     }
+    '/_customer/bookings/': {
+      id: '/_customer/bookings/'
+      path: '/bookings'
+      fullPath: '/bookings/'
+      preLoaderRoute: typeof CustomerBookingsIndexRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
+    '/_customer/bookings/$bookingId': {
+      id: '/_customer/bookings/$bookingId'
+      path: '/bookings/$bookingId'
+      fullPath: '/bookings/$bookingId'
+      preLoaderRoute: typeof CustomerBookingsBookingIdRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
     '/_public/accept-invite/$token': {
       id: '/_public/accept-invite/$token'
       path: '/accept-invite/$token'
@@ -1313,17 +1333,19 @@ const CustomerAccountRouteRouteWithChildren =
 interface CustomerRouteRouteChildren {
   CustomerAccountRouteRoute: typeof CustomerAccountRouteRouteWithChildren
   CustomerActivityRoute: typeof CustomerActivityRoute
-  CustomerBookingsRoute: typeof CustomerBookingsRoute
   CustomerFavouritesRoute: typeof CustomerFavouritesRoute
   CustomerMessagesRoute: typeof CustomerMessagesRoute
+  CustomerBookingsBookingIdRoute: typeof CustomerBookingsBookingIdRoute
+  CustomerBookingsIndexRoute: typeof CustomerBookingsIndexRoute
 }
 
 const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
   CustomerAccountRouteRoute: CustomerAccountRouteRouteWithChildren,
   CustomerActivityRoute: CustomerActivityRoute,
-  CustomerBookingsRoute: CustomerBookingsRoute,
   CustomerFavouritesRoute: CustomerFavouritesRoute,
   CustomerMessagesRoute: CustomerMessagesRoute,
+  CustomerBookingsBookingIdRoute: CustomerBookingsBookingIdRoute,
+  CustomerBookingsIndexRoute: CustomerBookingsIndexRoute,
 }
 
 const CustomerRouteRouteWithChildren = CustomerRouteRoute._addFileChildren(

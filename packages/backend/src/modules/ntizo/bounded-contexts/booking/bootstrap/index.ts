@@ -12,11 +12,14 @@ import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
 import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
+import { CancelBookingCommand } from "../app/use-cases/cancel-booking.command";
 import { SweepBookingCommand } from "../app/use-cases/sweep-booking.command";
 import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-bookings.internal.command";
 import { ChargeBookingCommand } from "../app/use-cases/charge-booking.command";
 import { ChargeAcceptedBookingsInternalCommand } from "../app/use-cases/charge-accepted-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
+import { RequestBookingChargeCommand } from "../app/use-cases/request-booking-charge.command";
+import { DeferredBookingCharge } from "../infrastructure/inbound-adapters/deferred-booking-charge.adapter";
 import type { RaiseNotificationInternalPort } from "../app/ports/outbound/raise-notification.port";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
@@ -51,6 +54,14 @@ import { DrizzleOutboxEventRepository } from "../../../../../shared/infrastructu
  * and drives the first over each. `markBookingPaid` stops being constructed
  * inline here because `chargeBooking` needs the very same instance — see
  * where it is built below.
+ *
+ * `requestBookingCharge` is Task 11's addition and reuses that same
+ * `chargeBooking` instance rather than building a second one — it wraps it
+ * in `DeferredBookingCharge` first, which is the one difference between the
+ * customer's "Pagar" and the sweep's own call: this path must not block the
+ * request that asked for it on a gateway call that can take up to 110
+ * seconds, and the sweep's path must, because a cron invocation has nothing
+ * to hand `waitUntil` and no reason to return before it knows the outcome.
  */
 export interface BookingBootstrapDeps {
   /**
@@ -111,6 +122,19 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
     paymentCharge,
     markBookingPaid,
   );
+  // The customer-facing counterpart to `chargeAccepted` below: same
+  // `ChargeBookingCommand` instance, wrapped so the request that asks for it
+  // does not pay for the gateway call — see `DeferredBookingCharge`'s own
+  // doc comment for why this is the one place that wiring decision is made.
+  const requestBookingCharge = new RequestBookingChargeCommand(
+    bookingRepository,
+    customerPhoneReader,
+    // The same adapter `chargeBooking` holds, asked the same synchronous
+    // question — see `RequestBookingChargeCommand`'s own doc comment for why
+    // the fast half has to ask it too rather than leaving it to the charge.
+    paymentCharge,
+    new DeferredBookingCharge(chargeBooking),
+  );
 
   return {
     adapters: {
@@ -169,8 +193,21 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
         outboxPort,
         deps.raiseNotification,
       ),
+      // Needs no `ProviderMemberReaderPort`, unlike `declineBooking` beside
+      // it: the fact this command authorises against — whose booking this
+      // is — is already on the row it reads, not a membership read
+      // elsewhere. Shares everything else declineBooking shares: the same
+      // repository, slot hold, unit of work, outbox and notification port.
+      cancelBooking: new CancelBookingCommand(
+        bookingRepository,
+        slotHold,
+        unitOfWork,
+        outboxPort,
+        deps.raiseNotification,
+      ),
       sweepBooking,
       chargeBooking,
+      requestBookingCharge,
       markBookingPaid,
       internal: {
         // The three clocks a cron sweeps — nobody asks for this, something

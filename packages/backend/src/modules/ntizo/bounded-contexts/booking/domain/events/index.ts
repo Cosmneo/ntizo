@@ -307,26 +307,28 @@ export class BookingDeclined extends BaseDomainEvent<{
  * does not face the same requirement because it is never machine-generated
  * in the first place.
  *
- * One member, not three. An earlier version of this union also declared
+ * Two members, not three. An earlier version of this union also declared
  * `"customer_cancelled"` and `"provider_cancelled"`, on the theory that a
  * cancellation policy would eventually want them and declaring them now
- * would save that work reopening this union later. That reasoning is
- * reversed here: neither member has a producer anywhere in this plan, and
- * the spec puts the cancellation policy explicitly out of scope — whether
- * either kind of cancellation even exists yet, let alone what a customer or
- * provider should be told about it, is a question nobody has answered.
+ * would save that work reopening this union later. That reasoning still
+ * holds for `"provider_cancelled"`: it has no producer anywhere in this
+ * plan, and the spec puts a provider-initiated cancellation policy
+ * explicitly out of scope — whether it even exists yet, let alone what a
+ * provider should be told about it, is a question nobody has answered, and
  * Notification cannot render a locale string for a reason nobody has
- * designed, so carrying the other two members was a contract this codebase
- * could not keep, not a convenience. `"customer_did_not_pay"` is the one
- * member with a real producer: a `PENDING_PAYMENT` booking swept past its
- * payment window, the case the spec's own failure section exists for, and
- * the only reason any task in this plan raises. When a cancellation policy
- * lands, it will name its own reasons against real rules it can actually
- * enforce — extending this union then, rather than guessing its shape now,
- * is what makes an exhaustive `switch` over it go red at exactly the right
- * moment.
+ * designed. `"customer_cancelled"` is not what reappears below —
+ * `"cancelled_by_customer"` is, under the name this plan actually gives it,
+ * now that it has a real producer: `Booking.cancelByCustomer`, a customer
+ * calling off a booking of their own accord, before any money has moved.
+ * `"customer_did_not_pay"` is the other member with a real producer: a
+ * `PENDING_PAYMENT` booking swept past its payment window, the case the
+ * spec's own failure section exists for. When a provider-side cancellation
+ * policy lands, it will name its own reasons against real rules it can
+ * actually enforce — extending this union then, rather than guessing its
+ * shape now, is what makes an exhaustive `switch` over it go red at exactly
+ * the right moment.
  */
-export type BookingCancelledReason = "customer_did_not_pay";
+export type BookingCancelledReason = "customer_did_not_pay" | "cancelled_by_customer";
 
 /**
  * A booking was called off after it had already committed a provider's

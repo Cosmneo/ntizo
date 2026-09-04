@@ -1,6 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import type { z } from "zod";
-import { acceptBooking, bookingWriteSchema, createBooking, declineBooking, submitBooking } from "../graphql/schema/mutations";
+import {
+  acceptBooking,
+  bookingWriteSchema,
+  cancelBooking,
+  createBooking,
+  declineBooking,
+  payBooking,
+  submitBooking,
+} from "../graphql/schema/mutations";
 
 // The kit's `SchemaAdapter` exposes `.validate()`, not `.parse()` — the raw
 // zod schema sits behind `_schema`, same accessor `read/booking`'s,
@@ -201,17 +209,20 @@ describe("booking.submit input", () => {
 });
 
 /**
- * The provider's yes and no. Both take only the booking id the person comes
- * from `requireUser(ctx)`, never from this input, for the same reason
+ * The provider's yes and no, the customer's own cancel, and the customer's
+ * own pay-now. All four take only the booking id — the person comes from
+ * `requireUser(ctx)`, never from this input, for the same reason
  * `booking.create` and `booking.submit` have no `customerId` field — see
  * those schemas' own doc comments.
  */
-describe("accept and decline", () => {
+describe("accept, decline, cancel and pay", () => {
   it("are mounted beside create and submit", () => {
     expect(Object.keys(bookingWriteSchema.fields.booking).sort()).toEqual([
       "accept",
+      "cancel",
       "create",
       "decline",
+      "pay",
       "submit",
     ]);
   });
@@ -224,6 +235,8 @@ describe("accept and decline", () => {
 
     expect(shapeKeys(acceptBooking)).toEqual(["bookingId"]);
     expect(shapeKeys(declineBooking)).toEqual(["bookingId", "reason"]);
+    expect(shapeKeys(cancelBooking)).toEqual(["bookingId"]);
+    expect(shapeKeys(payBooking)).toEqual(["bookingId"]);
   });
 
   it("refuses a free-text reason", () => {

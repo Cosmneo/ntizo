@@ -169,11 +169,11 @@ class FakeRepo implements BookingRepositoryPort {
   }
 
   /**
-   * Records the history rows `SweepBookingCommand` writes, and pushes
-   * `"append"` onto `unitOfWork.order` at the moment it writes them — the
-   * same treatment `save` gets, so a test can prove the append landed
-   * between the save and the release rather than merely that it happened.
-   * `MarkBookingPaidCommand` never calls this and asserts nothing about it.
+   * Records the history rows `SweepBookingCommand` and
+   * `MarkBookingPaidCommand` write, and pushes `"append"` onto
+   * `unitOfWork.order` at the moment it writes them — the same treatment
+   * `save` gets, so a test can prove the append landed after the save (and,
+   * for the sweep, before the release) rather than merely that it happened.
    */
   async appendChange(change: BookingChangeRecord): Promise<void> {
     this.appendedChanges.push(change);
@@ -196,6 +196,9 @@ class FakeRepo implements BookingRepositoryPort {
     return 1;
   }
   async abandonCharge(): Promise<void> {}
+  async chargeStateOf(): Promise<{ attempts: number; lastAttemptAt: Date | null }> {
+    return { attempts: 0, lastAttemptAt: null };
+  }
 }
 
 /**
@@ -270,6 +273,9 @@ class RacingFakeRepo implements BookingRepositoryPort {
     return 1;
   }
   async abandonCharge(): Promise<void> {}
+  async chargeStateOf(): Promise<{ attempts: number; lastAttemptAt: Date | null }> {
+    return { attempts: 0, lastAttemptAt: null };
+  }
 }
 
 /**
@@ -372,6 +378,45 @@ describe("MarkBookingPaidCommand", () => {
       currency: "MZN",
       paymentRef: "mpesa-123",
     });
+  });
+
+  /**
+   * I2. Without this row the timeline stopped at "Prestador aceitou" while
+   * the money card directly above it said "Pago a …" — two blocks on one
+   * screen disagreeing about the same booking. The spec says the timeline
+   * ends at "pagamento confirmado"; this is the hop that lets it.
+   */
+  it("writes the payment_confirmed hop, after the save, with no actor", async () => {
+    const { command, repo, unitOfWork } = setupMarkPaid(pendingBooking());
+    const input: MarkBookingPaidInput = { bookingId: "bk-1", paymentRef: "mpesa-123" };
+
+    await command.execute(input);
+
+    expect(repo.appendedChanges).toHaveLength(1);
+    expect(repo.appendedChanges[0]).toEqual({
+      bookingId: "bk-1",
+      // Null because nobody made this change: a payment webhook is being
+      // recorded, not a person acting.
+      changedByUserId: null,
+      reason: "payment_confirmed",
+      previousStartsAt: null,
+      previousEndsAt: null,
+      previousProviderMemberId: null,
+      previousPriceMinor: null,
+    });
+    // A history claiming a hop the row never made is worse than no history:
+    // the append only runs once the compare-and-swap has applied.
+    expect(unitOfWork.order.indexOf("append")).toBeGreaterThan(unitOfWork.order.indexOf("save"));
+  });
+
+  it("paying twice writes one payment_confirmed hop, not two", async () => {
+    const { command, repo } = setupMarkPaid(pendingBooking());
+    const input: MarkBookingPaidInput = { bookingId: "bk-1", paymentRef: "mpesa-123" };
+
+    await command.execute(input);
+    await command.execute(input);
+
+    expect(repo.appendedChanges).toHaveLength(1);
   });
 
   it("paying twice publishes once — the second call finds the booking already moved and returns quietly", async () => {

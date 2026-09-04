@@ -83,5 +83,23 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
       });
       return { bookingId: args.input.bookingId };
     })
+    .handle("booking.cancel", async (args, ctx) => {
+      await uc.cancelBooking.execute({ bookingId: args.input.bookingId, requesterUserId: requireUser(ctx) });
+      return { bookingId: args.input.bookingId };
+    })
+    .handle("booking.pay", async (args, ctx) => {
+      // `"already_sent"` is not a refusal and is deliberately not thrown —
+      // see `RequestBookingChargeOutcome`. It travels as a field so the
+      // dialog can say "the prompt is already on its way" instead of
+      // announcing a second one it did not send.
+      const outcome = await uc.requestBookingCharge.execute({
+        bookingId: args.input.bookingId,
+        requesterUserId: requireUser(ctx),
+      });
+      return {
+        bookingId: args.input.bookingId,
+        promptAlreadySent: outcome === "already_sent",
+      };
+    })
     .build();
 }

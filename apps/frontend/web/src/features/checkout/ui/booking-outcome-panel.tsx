@@ -7,25 +7,37 @@ import type { CheckoutOutcome } from "@/features/checkout/domain/booking-outcome
 import { momentWording } from "@/features/checkout/domain/slot-wording";
 
 /**
- * Where a customer goes from a page whose errand is finished.
+ * Where a customer goes from a page whose errand is finished: their own
+ * booking first, browsing second.
  *
- * **Not `/bookings`.** That route is a six-line placeholder rendering "Ainda
- * não há reservas." — nothing in this app queries `booking.mine` yet — so
- * sending somebody there straight after they successfully committed would
- * have the platform deny the thing they had just done, and the obvious
- * reaction to that is to book it again. It becomes the right destination the
- * day that page reads its own rows, and not before.
+ * `/bookings` was a placeholder for as long as this panel existed — see
+ * `bookings.$bookingId.tsx` — so every outcome here used to send a customer
+ * who had just committed nowhere near the thing they had just done. It reads
+ * real rows now, and the booking's own page is the honest answer to "what
+ * happens to this one next": the same page whether they arrive from here, a
+ * notification, or the list. "Ver outros serviços" stays, quieter, for
+ * somebody who came to book something else and has no interest in the one
+ * they just finished.
  */
-export function BrowseMoreLink() {
+export function BrowseMoreLink({ bookingId }: { bookingId: string }) {
   const { t } = useTranslation("checkout");
   return (
-    <Link
-      to="/services"
-      search={{}}
-      className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-    >
-      {t("browseMoreAction")}
-    </Link>
+    <div className="flex flex-wrap items-center justify-center gap-3">
+      <Link
+        to="/bookings/$bookingId"
+        params={{ bookingId }}
+        className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+      >
+        {t("viewBookingAction")}
+      </Link>
+      <Link
+        to="/services"
+        search={{}}
+        className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline"
+      >
+        {t("browseMoreAction")}
+      </Link>
+    </div>
   );
 }
 
@@ -83,7 +95,7 @@ export function SentPanel({
           ? t("sentBody", { provider: booking.providerName, date: by.date, time: by.time })
           : t("sentBodyNoDeadline", { provider: booking.providerName })
       }
-      action={<BrowseMoreLink />}
+      action={<BrowseMoreLink bookingId={booking.id} />}
     />
   );
 }
@@ -188,7 +200,7 @@ export function BookingOutcomePanel({
           badge={CalendarCheck}
           title={t("paidTitle")}
           body={t("paidBody")}
-          action={<BrowseMoreLink />}
+          action={<BrowseMoreLink bookingId={booking.id} />}
         />
       );
   }

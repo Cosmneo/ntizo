@@ -34,7 +34,9 @@ export interface CollectionColumn {
    * Hide this column's label/value pair on the mobile card.
    *
    * For anything already said by the primary block — repeating it under a
-   * label is noise on the screen with the least room for any.
+   * label is noise on the screen with the least room for any — and for
+   * anything the row lays out itself in `CollectionRow.cardBody`, which is
+   * the same rule with the arrangement moved to the caller.
    */
   hideOnCard?: boolean;
   /**
@@ -66,6 +68,29 @@ export interface CollectionRow {
   cells: Record<string, React.ReactNode>;
   /** The row's menu, if it has one. Last cell on desktop, top-right on mobile. */
   actions?: React.ReactNode;
+  /**
+   * What sits under `primary` on the mobile card, replacing the label/value
+   * list — for a row whose values want to share a line rather than stack.
+   *
+   * **This is not a second row description, and the difference is what makes
+   * it safe.** Handing this component rendered `<tr>`s was the mistake the
+   * header describes: the caller then owned the *whole* row and the desktop
+   * table and the mobile card became two things that drift. Here the columns
+   * still describe the row, `cells` still fills the table, and this changes
+   * only how the same values are arranged on the screen that has one column
+   * — which the `<dl>` cannot express, because it puts every value on a line
+   * of its own under a label.
+   *
+   * The rule for a caller that uses it: every value in here must also be in
+   * `cells`, and its column marked `hideOnCard`. Otherwise the two renderings
+   * disagree about what the row *says*, which is exactly what this component
+   * exists to prevent.
+   *
+   * Bookings is the caller that needed it: a status pill and a price want to
+   * be one line the eye can scan, and "Estado" and "Valor" written beside
+   * them are two words of chrome per row on the narrowest screen there is.
+   */
+  cardBody?: React.ReactNode;
 }
 
 export function CollectionCard({
@@ -76,6 +101,7 @@ export function CollectionCard({
   search,
   onSearchChange,
   searchPlaceholder,
+  action,
   onOpenFilters,
   activeFilterCount = 0,
   columns,
@@ -100,9 +126,12 @@ export function CollectionCard({
    */
   total: number;
   loading: boolean;
-  search: string;
-  onSearchChange: (value: string) => void;
-  searchPlaceholder: string;
+  /** Omit all three to render no search box — a card that shows a fixed few rows has nothing to search. */
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
+  /** Rendered where the search box would be: the dashboard's "Ver todas →". */
+  action?: ReactNode;
   /** Omit to render no filter button — some lists have nothing to filter by. */
   onOpenFilters?: () => void;
   activeFilterCount?: number;
@@ -215,7 +244,19 @@ export function CollectionCard({
           <p className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
             {title}
           </p>
-          <p className="type-body mt-0.5">
+          {/*
+           * `<div>`, not `<p>`: the loading branch renders `Skeleton`, which
+           * is a `<div>` (packages/frontend/src/components/skeleton.tsx) —
+           * a `<p>` cannot contain one. That combination shipped for years
+           * with nobody hitting it because unit tests render this component
+           * pre-resolved (`loading: false`) or don't watch the console, but
+           * a real browser session that reaches this card *while its query
+           * is still in flight* hits it every time: React logs "In HTML,
+           * <div> cannot be a descendant of <p>… This will cause a
+           * hydration error", and the mismatched subtree is discarded and
+           * rebuilt client-side.
+           */}
+          <div className="type-body mt-0.5">
             {loading ? (
               <Skeleton className="h-[19px] w-24" />
             ) : totalUnknown ? (
@@ -223,20 +264,23 @@ export function CollectionCard({
             ) : (
               t("peopleShown", { shown, total })
             )}
-          </p>
+          </div>
         </div>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5">
-          <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-            <Input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-              className="pl-9"
-            />
-          </div>
+          {onSearchChange && searchPlaceholder !== undefined && (
+            <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+              <Input
+                value={search ?? ""}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                className="pl-9"
+              />
+            </div>
+          )}
+          {action}
           {onOpenFilters && (
             <Button type="button" variant="outline" onClick={onOpenFilters}>
               <SlidersHorizontal className="h-4 w-4" />
@@ -372,26 +416,36 @@ export function CollectionCard({
                   {row.actions && <div className="shrink-0">{row.actions}</div>}
                 </div>
 
-                {/* Label and value on one line each. A phone has one column, so
-                    a column header at the top would leave the values orphaned
-                    from what they mean. */}
-                <dl className="mt-3 grid gap-2 border-t border-[var(--color-border)] pt-3">
-                  {restColumns
-                    .filter((c) => c.key !== "actions" && !c.hideOnCard)
-                    .map((column) => (
-                      <div
-                        key={column.key}
-                        className="flex items-baseline justify-between gap-4"
-                      >
-                        <dt className="type-caption shrink-0 text-[var(--color-muted-foreground)]">
-                          {column.label}
-                        </dt>
-                        <dd className="type-body m-0 min-w-0 text-right">
-                          {row.cells[column.key] ?? "—"}
-                        </dd>
-                      </div>
-                    ))}
-                </dl>
+                {/* The caller's own arrangement when it gave one, and the
+                    label/value list otherwise. Both sit under the same rule
+                    and the same top border, so a card that opts in does not
+                    also opt out of the chrome. */}
+                {row.cardBody ? (
+                  <div className="mt-3 border-t border-[var(--color-border)] pt-3">
+                    {row.cardBody}
+                  </div>
+                ) : (
+                  /* Label and value on one line each. A phone has one column, so
+                     a column header at the top would leave the values orphaned
+                     from what they mean. */
+                  <dl className="mt-3 grid gap-2 border-t border-[var(--color-border)] pt-3">
+                    {restColumns
+                      .filter((c) => c.key !== "actions" && !c.hideOnCard)
+                      .map((column) => (
+                        <div
+                          key={column.key}
+                          className="flex items-baseline justify-between gap-4"
+                        >
+                          <dt className="type-caption shrink-0 text-[var(--color-muted-foreground)]">
+                            {column.label}
+                          </dt>
+                          <dd className="type-body m-0 min-w-0 text-right">
+                            {row.cells[column.key] ?? "—"}
+                          </dd>
+                        </div>
+                      ))}
+                  </dl>
+                )}
               </li>
             ))}
           </ul>

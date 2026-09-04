@@ -200,6 +200,11 @@ class FakeRepo implements BookingRepositoryPort {
   async findDueForSweep(): Promise<Booking[]> {
     return [];
   }
+  // Not this file's concern — `RequestBookingChargeCommand` is the only
+  // caller, and it has its own test file with its own fake.
+  async chargeStateOf(): Promise<{ attempts: number; lastAttemptAt: Date | null }> {
+    return { attempts: 0, lastAttemptAt: null };
+  }
 }
 
 class FakePhoneReader implements CustomerPhoneReaderPort {

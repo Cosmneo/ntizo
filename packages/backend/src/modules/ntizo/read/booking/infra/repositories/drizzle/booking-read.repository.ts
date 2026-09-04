@@ -9,11 +9,14 @@ import {
   gte,
   ilike,
   inArray,
+  isNotNull,
   lt,
   or,
+  type SQL,
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { STATS_WINDOW_DAYS } from "@ntizo/shared/read-models";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   booking,
@@ -27,13 +30,18 @@ import {
 } from "../../../../../shared/infrastructure/database/provider/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import { profile, user } from "../../../../../shared/infrastructure/database/user/schemas";
+import type { CustomerBookingTab } from "@ntizo/shared";
 import {
   type BookingListRow,
   type BookingReadRepositoryPort,
+  CUSTOMER_TAB_STATUSES,
+  type CustomerListFilter,
   PROVIDER_TAB_STATUSES,
   type ProviderBookingRow,
   type ProviderListFilter,
   type ProviderMemberOption,
+  type ProviderStats,
+  type ProviderStatsDayRow,
   type ProviderTimelineRow,
 } from "../../../app/ports/outbound/booking-read.repository.port";
 
@@ -44,7 +52,12 @@ import {
  * reader exists instead of reusing `DrizzleBookingRepository`.
  */
 export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
-  async listForCustomer(customerId: string): Promise<BookingListRow[]> {
+  async listForCustomer(
+    customerId: string,
+    filter: CustomerListFilter,
+    limit: number,
+    offset: number,
+  ): Promise<BookingListRow[]> {
     const db = getDb();
     const reviewAgg = reviewAggregate(db);
     const verifiedAgg = verifiedAggregate(db);
@@ -56,13 +69,51 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       .leftJoin(service, eq(service.id, booking.serviceId))
       .leftJoin(reviewAgg, eq(reviewAgg.providerId, provider.id))
       .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, provider.id))
-      .where(eq(booking.customerId, customerId))
-      // Newest booking first, ties (two bookings made in the same instant)
-      // broken by id so the order is total and stable across calls — the
-      // same pairing `DrizzleActivityRepository.listForActor` orders by.
-      .orderBy(desc(booking.createdAt), desc(booking.id));
+      .where(customerWhere(customerId, filter))
+      .orderBy(...customerOrder(filter.tab))
+      .limit(limit)
+      .offset(offset);
 
     return rows.map(toRow);
+  }
+
+  async countForCustomer(customerId: string, filter: CustomerListFilter): Promise<number> {
+    // No joins: `customerWhere` reads only `booking`, and a count has nothing
+    // to display.
+    const [row] = await getDb().select({ n: count() }).from(booking).where(customerWhere(customerId, filter));
+    return Number(row?.n ?? 0);
+  }
+
+  async countsForCustomer(customerId: string, now: Date) {
+    const rows = await getDb()
+      .select({ bucket: customerBucket(now), n: count() })
+      .from(booking)
+      // The same two guards `customerWhere` carries, and for the same
+      // reasons — a chip counting rows the list does not show is a chip that
+      // disagrees with what is under it. See `submittedByCustomer()`.
+      .where(
+        and(
+          eq(booking.customerId, customerId),
+          sql`${booking.status} <> 'DRAFT'`,
+          submittedByCustomer(),
+        ),
+      )
+      // `bucket`, the alias `customerBucket` gives its CASE — not
+      // `customerBucket(now)` again and not an ordinal. See that function's
+      // own comment for why the CASE cannot be repeated here, and why the
+      // alias is what a column added ahead of `bucket` in this SELECT list
+      // cannot silently mis-group.
+      .groupBy(sql`bucket`);
+
+    const counts = { waiting: 0, upcoming: 0, history: 0 };
+    for (const row of rows) {
+      // A bucket the CASE cannot produce would be a bug in the CASE, not data
+      // to carry: the three names below are the whole domain of that expression.
+      if (row.bucket === "waiting" || row.bucket === "upcoming" || row.bucket === "history") {
+        counts[row.bucket] = Number(row.n);
+      }
+    }
+    return counts;
   }
 
   async findForCustomer(bookingId: string, customerId: string): Promise<BookingListRow | null> {
@@ -125,7 +176,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
           eq(booking.id, bookingId),
           eq(booking.providerId, providerId),
           sql`${booking.status} <> 'DRAFT'`,
-          askedOfProvider(),
+          submittedByCustomer(),
         ),
       )
       .limit(1);
@@ -166,7 +217,186 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
         r.firstName && r.firstName.trim() !== "" ? r.firstName : (r.email ?? "").split("@")[0] || "—",
     }));
   }
+
+  async statsForProvider(providerId: string, now: Date): Promise<ProviderStats> {
+    const db = getDb();
+
+    // The workspace's own clock, read first and then bound as a parameter:
+    // every window below is expressed in it, and a workspace with no bookings
+    // still has to know what "today" means.
+    const [row] = await db
+      .select({ timezone: provider.timezone })
+      .from(provider)
+      .where(eq(provider.id, providerId))
+      .limit(1);
+    const timezone = row?.timezone ?? DEFAULT_TIMEZONE;
+
+    // `now` as ISO text, cast back to an instant by Postgres — **never the
+    // `Date` itself**. A value interpolated into a bare `sql` template has no
+    // column behind it for drizzle to take an encoder from, so postgres-js
+    // meets a `Date` where its wire encoder wants a string and the query dies
+    // at Bind time with `ERR_INVALID_ARG_TYPE`, before Postgres sees it. The
+    // cast is what keeps the comparison a timestamp comparison rather than a
+    // text one.
+    const at = sql`${now.toISOString()}::timestamptz`;
+
+    // Postgres does the calendar. `at time zone` twice is not a typo: the
+    // first turns the instant into the workspace's wall clock, the second
+    // turns the truncated wall clock back into an instant to compare against
+    // `timestamptz` columns.
+    const localMidnight = sql`date_trunc('day', ${at} at time zone ${timezone})`;
+    const dayStart = sql`(${localMidnight}) at time zone ${timezone}`;
+    const dayEnd = sql`(${localMidnight} + interval '1 day') at time zone ${timezone}`;
+    const weekEnd = sql`(${localMidnight} + interval '7 days') at time zone ${timezone}`;
+    // `sql.raw` for the day count, and only for it: Postgres will not take a
+    // bind parameter inside an interval literal. What it interpolates is
+    // `STATS_WINDOW_DAYS`, a number this repository imports from the read
+    // model — never anything that came in with a request.
+    const windowStart = sql`(${localMidnight} - interval '${sql.raw(String(STATS_WINDOW_DAYS - 1))} days') at time zone ${timezone}`;
+    const localDate = (column: SQL<unknown> | AnyColumn) =>
+      sql<string>`to_char((${column} at time zone ${timezone})::date, 'YYYY-MM-DD')`;
+
+    const totalsQuery = db
+      .select({
+        awaitingResponse: sql<number>`count(*) filter (where ${booking.status} = 'AWAITING_PROVIDER')::int`,
+        awaitingPayment: sql<number>`count(*) filter (where ${booking.status} = 'PENDING_PAYMENT')::int`,
+        upcomingToday: sql<number>`count(*) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${dayStart} and ${booking.startsAt} < ${dayEnd})::int`,
+        upcomingWeek: sql<number>`count(*) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${dayStart} and ${booking.startsAt} < ${weekEnd})::int`,
+        completedLast30: sql<number>`count(*) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart})::int`,
+        declinedLast30: sql<number>`count(*) filter (where ${booking.status} = 'DECLINED' and ${booking.declinedAt} >= ${windowStart})::int`,
+        // The provider's share, twice. `coalesce` because a workspace with no
+        // completed work sums to null, and a dashboard does not show null.
+        //
+        // **No `::int`**, unlike the counts above. `sum()` over an `int4`
+        // column already answers `bigint`, and casting it back down is a
+        // ceiling, not a convenience: a workspace whose month passed
+        // 2 147 483 647 minor units — about 21.5 M MZN — would stop getting a
+        // dashboard at all, with `integer out of range`, rather than a large
+        // number. postgres-js hands a `bigint` back as a string, which is why
+        // the two are typed as either and why the mapper below runs every
+        // field through `Number`.
+        revenueLast30Minor: sql<string | number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)`,
+        pipelineMinor: sql<string | number>`coalesce(sum(${booking.priceMinor} - ${booking.commissionMinor}) filter (where ${booking.status} = 'CONFIRMED' and ${booking.startsAt} >= ${at}), 0)`,
+        currency: sql<string | null>`max(${booking.currency})`,
+      })
+      .from(booking)
+      // No `askedOfProvider()` guard, unlike `providerWhere` below: every
+      // status *counted* above is one a booking can only reach through
+      // `submit`, so an abandoned checkout — a `DRAFT` or the `EXPIRED` it
+      // becomes — is already outside all eight filters. The guard would cost a
+      // correlated subquery per row to change nothing.
+      //
+      // `max(currency)` is the one unfiltered aggregate, and deliberately so:
+      // it names the workspace's own currency, which an abandoned draft
+      // carries as truthfully as a finished job.
+      .where(eq(booking.providerId, providerId));
+
+    const requestsQuery = db
+      .select({ date: localDate(bookingChange.changedAt), n: sql<number>`count(*)::int` })
+      .from(bookingChange)
+      .innerJoin(booking, eq(booking.id, bookingChange.bookingId))
+      .where(
+        and(
+          eq(booking.providerId, providerId),
+          eq(bookingChange.reason, SUBMITTED_BY_CUSTOMER),
+          gte(bookingChange.changedAt, windowStart),
+        ),
+      )
+      // `GROUP BY 1`, the output column's ordinal, rather than a second copy
+      // of the expression: `localDate` carries the timezone as a bind
+      // parameter, so calling it twice writes `$3` here where the selection
+      // wrote `$1`, and Postgres matches grouping expressions structurally —
+      // two different placeholders are two different expressions, and it
+      // answers `column "changed_at" must appear in the GROUP BY clause`.
+      .groupBy(sql`1`);
+
+    // **`paidAt`, not the column called `confirmed_at`** — and the name is
+    // the whole trap. `accept` stamps `confirmed_at` and moves the booking to
+    // `PENDING_PAYMENT`: that column has meant "the provider said yes" since
+    // before the pay-after-accept reversal (see `BookingProps.confirmedAt`)
+    // and is an *acceptance*, not a confirmation. What reaches the `CONFIRMED`
+    // status is `markPaid`, which stamps `paidAt`. This series is the one the
+    // chart draws under "confirmadas", so it counts money arriving — see
+    // `providerBookingStatsDayReadModel`, which says it in words: "paid, not
+    // merely accepted". A booking accepted and then never paid belongs in no
+    // bucket here, and `awaitingPayment` above is where it is counted instead.
+    const confirmedQuery = db
+      .select({ date: localDate(booking.paidAt), n: sql<number>`count(*)::int` })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.providerId, providerId),
+          isNotNull(booking.paidAt),
+          gte(booking.paidAt, windowStart),
+        ),
+      )
+      // The ordinal again, for the reason the requests series above gives.
+      .groupBy(sql`1`);
+
+    const todayQuery = db.select({ today: localDate(at) }).from(sql`(select 1) as one`);
+
+    const [totalsRows, requestRows, confirmedRows, todayRows] = await Promise.all([
+      totalsQuery,
+      requestsQuery,
+      confirmedQuery,
+      todayQuery,
+    ]);
+
+    const totals = totalsRows[0];
+    const byDate = new Map<string, ProviderStatsDayRow>();
+    for (const r of requestRows) {
+      byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
+    }
+    for (const r of confirmedRows) {
+      const hit = byDate.get(r.date);
+      if (hit) hit.confirmed = Number(r.n);
+      else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
+    }
+
+    return {
+      totals: {
+        awaitingResponse: Number(totals?.awaitingResponse ?? 0),
+        awaitingPayment: Number(totals?.awaitingPayment ?? 0),
+        upcomingToday: Number(totals?.upcomingToday ?? 0),
+        upcomingWeek: Number(totals?.upcomingWeek ?? 0),
+        completedLast30: Number(totals?.completedLast30 ?? 0),
+        declinedLast30: Number(totals?.declinedLast30 ?? 0),
+        revenueLast30Minor: Number(totals?.revenueLast30Minor ?? 0),
+        pipelineMinor: Number(totals?.pipelineMinor ?? 0),
+        currency: totals?.currency ?? null,
+        // The fallback is unreachable — a `select` from a constant always
+        // returns exactly one row — and is UTC, which is the wrong calendar.
+        // It is here so the type is honest, not because it is a second answer.
+        today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
+      },
+      perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  }
 }
+
+/**
+ * The zone a workspace's days are counted in when it has none of its own —
+ * the same default `provider.timezone` carries on the column itself.
+ *
+ * Reached only when there is no `provider` row at all, which is what an
+ * unknown id looks like: the column is `NOT NULL`, so a real workspace always
+ * answers with its own. A dashboard for an id nothing has written still has
+ * to be able to say what today is.
+ */
+const DEFAULT_TIMEZONE = "Africa/Maputo";
+
+/**
+ * The `booking_change.reason` a submitted booking carries, and the token the
+ * two readers in this file key on — `askedOfProvider()` below and the
+ * dashboard's per-day requests series above.
+ *
+ * **Deliberately not imported** from `SubmitBookingCommand`, which declares
+ * its own copy: a `read/` module reaching into a bounded context's `app/`
+ * tree is the boundary this codebase keeps, and the string is a stored
+ * database value rather than a shared type. Declared once here so the two
+ * readers in this file cannot disagree about it.
+ */
+const SUBMITTED_BY_CUSTOMER = "submitted_by_customer";
 
 /**
  * The provider's review score, grouped to one row per provider.
@@ -280,12 +510,25 @@ function selectedColumns(
     status: booking.status,
     serviceId: booking.serviceId,
     serviceOptionId: booking.serviceOptionId,
+    /**
+     * Off `booking`, not `provider`: the FK column is on the row being read
+     * and is `NOT NULL`, so it needs no join to be here and cannot be null.
+     * `provider.id` would be the same value one join away.
+     */
+    providerId: booking.providerId,
     serviceName: booking.serviceName,
     providerName: booking.providerName,
     providerSlug: booking.providerSlug,
     providerRatingAverage: reviewAgg.average,
     /** Null when the left join found nothing — see `verifiedAggregate`. */
     providerVerifiedId: verifiedAgg.providerId,
+    /**
+     * The keys, resolved to URLs by `toBookingDTO` rather than here — see
+     * `BookingListRow`'s own note on the pair for why the seam is there and
+     * not in this file.
+     */
+    serviceImageKeys: service.imageKeys,
+    providerLogoKey: provider.logoKey,
     optionName: booking.optionName,
     durationMinutes: booking.durationMinutes,
     /**
@@ -295,8 +538,6 @@ function selectedColumns(
      */
     locationType: service.locationType,
     priceMinor: booking.priceMinor,
-    commissionBps: booking.commissionBps,
-    commissionMinor: booking.commissionMinor,
     currency: booking.currency,
     startsAt: booking.startsAt,
     endsAt: booking.endsAt,
@@ -308,6 +549,7 @@ function selectedColumns(
     addressDirections: booking.addressDirections,
     description: booking.description,
     expiresAt: booking.expiresAt,
+    paidAt: booking.paidAt,
     createdAt: booking.createdAt,
   };
 }
@@ -385,6 +627,76 @@ function providerSelect() {
 }
 
 /**
+ * The rows one customer tab holds.
+ *
+ * `DRAFT` is excluded here rather than in each caller, so a tab added later
+ * cannot forget it. The `upcoming` split is by `startsAt`, not `endsAt`: a
+ * booking whose start has passed is no longer something the customer is
+ * waiting for, even while the work is still happening.
+ *
+ * **`submittedByCustomer()` sits beside the `<> 'DRAFT'` guard for the reason
+ * that function gives, and it is the customer's reason as much as the
+ * provider's.** A draft does not stay a draft: the checkout hold running out,
+ * or the customer starting a second checkout, moves it to `EXPIRED` — which
+ * is one of `CUSTOMER_TAB_STATUSES.history`. Without this clause every
+ * abandoned step-1 checkout would surface in **Histórico** as an "Expirada"
+ * row carrying the service, the option and the price, inflate that tab's
+ * count chip, and open a detail page whose timeline says "Pedido enviado"
+ * about a request the customer never sent.
+ */
+function customerWhere(customerId: string, filter: CustomerListFilter) {
+  const live = inArray(booking.status, [...CUSTOMER_TAB_STATUSES.upcoming]);
+
+  const bucket =
+    filter.tab === "waiting"
+      ? inArray(booking.status, [...CUSTOMER_TAB_STATUSES.waiting])
+      : filter.tab === "upcoming"
+        ? and(live, gte(booking.startsAt, filter.now))
+        : or(
+            inArray(booking.status, [...CUSTOMER_TAB_STATUSES.history]),
+            and(live, lt(booking.startsAt, filter.now)),
+          );
+
+  return and(
+    eq(booking.customerId, customerId),
+    sql`${booking.status} <> 'DRAFT'`,
+    submittedByCustomer(),
+    bucket,
+  );
+}
+
+/** Newest request first while waiting; soonest first when looking forward; most recent first when looking back. */
+function customerOrder(tab: CustomerBookingTab) {
+  if (tab === "waiting") return [desc(booking.createdAt), desc(booking.id)];
+  if (tab === "upcoming") return [asc(booking.startsAt), asc(booking.id)];
+  return [desc(booking.startsAt), desc(booking.id)];
+}
+
+/** One CASE, so three counts are one trip and cannot disagree with each other. */
+function customerBucket(now: Date) {
+  // `now` is nested through `gte()` rather than interpolated bare, so the
+  // driver binds it with `startsAt`'s own column type instead of guessing
+  // one for an untyped raw parameter — the same reason `customerWhere`
+  // reaches for `gte(booking.startsAt, filter.now)` instead of writing the
+  // comparison out by hand.
+  //
+  // `.as("bucket")` names the SELECT list item so `countsForCustomer` can
+  // `GROUP BY bucket` — Postgres resolves an unqualified `GROUP BY` name
+  // against an output alias when nothing in the FROM list matches it. The
+  // alias is not cosmetic: the CASE cannot simply be *repeated* in the
+  // `GROUP BY` instead, because building it a second time would bind a
+  // second, distinct parameter for `now`, and Postgres treats the two
+  // resulting expressions as different parse trees even though both are
+  // bound to the same value — the query is then rejected with "column
+  // booking.status must appear in the GROUP BY clause".
+  return sql<string>`case
+    when ${booking.status} in ('AWAITING_PROVIDER','PENDING_PAYMENT') then 'waiting'
+    when ${booking.status} = 'CONFIRMED' and ${gte(booking.startsAt, now)} then 'upcoming'
+    else 'history'
+  end`.as("bucket");
+}
+
+/**
  * The provider's WHERE: this workspace, never a draft, the tab's statuses,
  * the tab's side of `now` for the two live statuses, an optional member and
  * an optional search. `unaccent` is not installed, so the search lowers both
@@ -393,14 +705,13 @@ function providerSelect() {
 function providerWhere(providerId: string, filter: ProviderListFilter) {
   const live = inArray(booking.status, [...PROVIDER_TAB_STATUSES.upcoming]);
   const byTab =
-    filter.tab === "requests"
-      ? inArray(booking.status, [...PROVIDER_TAB_STATUSES.requests])
-      : filter.tab === "upcoming"
-        ? and(live, gte(booking.startsAt, filter.now))
-        : or(
-            inArray(booking.status, [...PROVIDER_TAB_STATUSES.history]),
-            and(live, lt(booking.startsAt, filter.now)),
-          );
+    filter.tab === "all"
+      ? undefined
+      : filter.tab === "requests"
+        ? inArray(booking.status, [...PROVIDER_TAB_STATUSES.requests])
+        : filter.tab === "upcoming"
+          ? and(live, gte(booking.startsAt, filter.now))
+          : or(inArray(booking.status, [...PROVIDER_TAB_STATUSES.history]), and(live, lt(booking.startsAt, filter.now)));
   const byMember =
     filter.memberId === null ? undefined : eq(booking.providerMemberId, filter.memberId);
   const needle = filter.q?.trim();
@@ -414,7 +725,7 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
   return and(
     eq(booking.providerId, providerId),
     sql`${booking.status} <> 'DRAFT'`,
-    askedOfProvider(),
+    submittedByCustomer(),
     byTab,
     byMember,
     bySearch,
@@ -422,26 +733,34 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
 }
 
 /**
- * A booking the provider was actually asked about: one that left `DRAFT`
- * through `submit`, which writes this change row in the same transaction as
- * the hop (see `SubmitBookingCommand`).
+ * A booking that was actually *sent*: one that left `DRAFT` through `submit`,
+ * which writes this change row in the same transaction as the hop (see
+ * `SubmitBookingCommand`).
  *
  * **The `<> 'DRAFT'` guard beside this one is not enough on its own.** A draft
  * whose checkout hold ran out, or one superseded by the customer starting a
  * second checkout (`CreateBookingCommand`), is moved to `EXPIRED` by
- * `Booking.expire` — and `EXPIRED` is one of `PROVIDER_TAB_STATUSES.history`.
- * Without this clause every abandoned step-1 checkout would surface in the
- * provider's history as an "Expirada" row carrying the customer's first name
- * and the service, inflate the tab's total, and answer `findForProvider`. Such
- * a row has the *status* of a finished booking and none of its history: nobody
- * ever asked the provider anything, which is the same reason a live `DRAFT` is
- * hidden from them.
+ * `Booking.expire` — and `EXPIRED` is in *both* audiences' history bucket
+ * (`PROVIDER_TAB_STATUSES.history`, `CUSTOMER_TAB_STATUSES.history`).
+ * Without this clause every abandoned step-1 checkout would surface as an
+ * "Expirada" row carrying the service and the price, inflate the tab's total,
+ * and answer the detail read. Such a row has the *status* of a finished
+ * booking and none of its history: nobody ever asked the provider anything,
+ * and the customer never sent a request — which is the same reason a live
+ * `DRAFT` is hidden from both.
+ *
+ * **One function, read by both `providerWhere` and `customerWhere`**, for the
+ * reason `selectedColumns` gives one level up: the customer's query was
+ * written after the provider's and inherited none of its guards, which is
+ * exactly how the two sides of one booking start disagreeing about whether it
+ * exists. Named after the fact it tests — the change row's own reason — rather
+ * than after either audience, so neither can read as the other's business.
  *
  * A correlated `EXISTS` rather than a join, because this is a test on the
  * booking and not a column to select: a join to an append-only log would
  * multiply a booking by its number of change rows.
  */
-function askedOfProvider() {
+function submittedByCustomer() {
   return exists(
     getDb()
       .select({ one: sql`1` })
@@ -449,7 +768,7 @@ function askedOfProvider() {
       .where(
         and(
           eq(bookingChange.bookingId, booking.id),
-          eq(bookingChange.reason, "submitted_by_customer"),
+          eq(bookingChange.reason, SUBMITTED_BY_CUSTOMER),
         ),
       ),
   );
@@ -507,7 +826,8 @@ function unaccentedJs(value: string): string {
 
 /** Requests newest first; upcoming soonest first; history most recent first. Ties broken by id, as `listForCustomer` does. */
 function providerOrder(tab: ProviderListFilter["tab"]) {
-  if (tab === "requests") return [desc(booking.createdAt), desc(booking.id)];
+  // `all` orders like `requests` — both answer "what happened lately".
+  if (tab === "requests" || tab === "all") return [desc(booking.createdAt), desc(booking.id)];
   if (tab === "upcoming") return [asc(booking.startsAt), asc(booking.id)];
   return [desc(booking.startsAt), desc(booking.id)];
 }
