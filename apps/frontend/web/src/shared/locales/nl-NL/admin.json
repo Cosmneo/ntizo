@@ -336,7 +336,7 @@
     "completeNow": "Nu afronden"
   },
   "bookingsActionFailed": "De boeking kon niet worden afgerond.",
-  "bookingsDisputeFailed": "Het geschil kon niet worden beslist.",
+  "bookingsDisputeFailed": "Het geschil kon niet worden beslecht.",
   "bookingsDisputeAction": {
     "upheld": "De klant gelijk geven",
     "rejected": "Afronding handhaven"

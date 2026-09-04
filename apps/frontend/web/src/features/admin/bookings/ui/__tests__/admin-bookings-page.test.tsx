@@ -9,9 +9,15 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { ADMIN_BOOKING_TABS, type AdminBookingTab } from "@ntizo/shared/read-models";
+import type { AdminBookingTab } from "@ntizo/shared/read-models";
 import i18n from "@/shared/lib/i18n";
 import type { AdminBookingRowDTO } from "../../data/admin-booking.repository";
+// The route's own rule, not a copy of it. `src/routes/**` is the `routes`
+// element and a `ui` file may not import one — so the rule lives in `domain`,
+// which both may reach, and `routes/admin/bookings.tsx` passes this very
+// function as its `validateSearch`. The copy that used to stand here passed
+// while the real route's rule could be deleted outright.
+import { parseAdminQueueSearch } from "../../domain/queue-search";
 import { AdminBookingsPage } from "../admin-bookings-page";
 
 /**
@@ -30,28 +36,6 @@ const fakes = vi.hoisted(() => ({ graphql: vi.fn() }));
 vi.mock("@/shared/lib/graphql/session-graphql", () => ({
   sessionGraphql: fakes.graphql,
 }));
-
-/**
- * The same validator the real route carries, duplicated rather than imported:
- * `src/routes/**` is the `routes` element and a `ui` file may not import one,
- * test files included. What matters is that the harness rejects the same
- * values the address bar does, or "the tab is in the URL" would be a claim
- * about this file's leniency.
- */
-function validateSearch(search: Record<string, unknown>): {
-  tab?: AdminBookingTab;
-  offset?: number;
-} {
-  const tab = search["tab"];
-  const offset = Number(search["offset"]);
-  return {
-    tab:
-      typeof tab === "string" && (ADMIN_BOOKING_TABS as readonly string[]).includes(tab)
-        ? (tab as AdminBookingTab)
-        : undefined,
-    offset: Number.isSafeInteger(offset) && offset > 0 ? offset : undefined,
-  };
-}
 
 /** Two days and a bit ago, so "2 dias" is the answer for any run. */
 function twoDaysAgo(): string {
@@ -92,6 +76,32 @@ const MARKED_DONE_ROW = rowFixture({
   markedDoneAt: twoDaysAgo(),
 });
 
+/**
+ * A row built so that every number the `Quando` cell prints is a fact rather
+ * than a coincidence.
+ *
+ * Three separate clocks meet in that one cell and all three were unpinned:
+ *
+ * - **Which zone.** 09:00 UTC is **11:00** in `Africa/Maputo`. A row rendered
+ *   in UTC — or in the machine's zone — says 09:00, and a booking shown an
+ *   hour or two out is the failure `slotWording`'s own doc comment records
+ *   costing this flow once already.
+ * - **Which end of the slot.** The appointment ends at 10:30 UTC, **12:30** in
+ *   Maputo. A row that printed `slot.end` would say 12:30 and look perfectly
+ *   plausible.
+ * - **Which instant the wait runs from.** `markedDoneAt` is two days ago and
+ *   the appointment is a fixed date in the past, so a wait measured from
+ *   `endsAt` instead cannot read "2 dias" on any day this test is ever run.
+ */
+const CLOCK_ROW = rowFixture({
+  id: "bk-7",
+  status: "MARKED_DONE",
+  customerFirstName: "Dina",
+  startsAt: "2026-09-01T09:00:00.000Z",
+  endsAt: "2026-09-01T10:30:00.000Z",
+  markedDoneAt: twoDaysAgo(),
+});
+
 type Page = { items: AdminBookingRowDTO[]; total: number; nextOffset: number | null };
 
 const page = (items: AdminBookingRowDTO[], over: Partial<Page> = {}): Page => ({
@@ -123,6 +133,13 @@ interface Options {
    * window assertable.
    */
   deferMutations?: boolean;
+  /**
+   * A page the reader was on before the queue, so Back has somewhere to go.
+   *
+   * Only a history with a previous entry can show what a *pushed* correction
+   * costs: it lands between the reader and wherever they came from.
+   */
+  from?: string;
 }
 
 function renderQueue(at: string, options: Options = {}) {
@@ -152,7 +169,7 @@ function renderQueue(at: string, options: Options = {}) {
   const queueRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/admin/bookings",
-    validateSearch,
+    validateSearch: parseAdminQueueSearch,
     component: AdminBookingsPage,
   });
   // Registered so the two links a row can carry are asserted against the
@@ -171,7 +188,9 @@ function renderQueue(at: string, options: Options = {}) {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([queueRoute, threadRoute, providerRoute]),
-    history: createMemoryHistory({ initialEntries: [at] }),
+    history: createMemoryHistory({
+      initialEntries: options.from ? [options.from, at] : [at],
+    }),
   });
 
   render(
@@ -187,7 +206,7 @@ function renderQueue(at: string, options: Options = {}) {
  * One row of the table, by whatever names it.
  *
  * jsdom applies no CSS, so `CollectionCard`'s two layouts — the table from
- * `md` and the stacked cards below it — are both in the document and every
+ * `lg` here and the stacked cards below it — are both in the document and every
  * value on a row is present twice. Naming the table's row picks one of them,
  * and asserts that the customer, the service and the wait are on the *same*
  * row rather than merely somewhere on the page.
@@ -237,10 +256,19 @@ describe("AdminBookingsPage", () => {
     renderQueue("/admin/bookings");
     await row("Ana");
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((t) => t.textContent)).toEqual([
       "Por fechar",
       "Em janela",
       "Reclamações",
+    ]);
+    // Which one is selected, not merely that one is: `aria-selected` is the
+    // only thing that tells a screen reader where it is, and a hardcoded
+    // `true` (or `false`) on all three renders the same three tabs.
+    expect(tabs.map((t) => t.getAttribute("aria-selected"))).toEqual([
+      "true",
+      "false",
+      "false",
     ]);
   });
 
@@ -260,6 +288,26 @@ describe("AdminBookingsPage", () => {
     // `Intl`'s own abbreviation for the locale, which in `pt` is the whole word.
     expect(ana.getByText("à espera há 2 dias")).toBeInTheDocument();
     expect(ana.getByText("Confirmada")).toBeInTheDocument();
+  });
+
+  /**
+   * When the appointment was, and how long the row has waited since — the two
+   * facts an administrator weighs before closing somebody else's booking, and
+   * the two that had nothing holding them. See `CLOCK_ROW` for what each
+   * number rules out.
+   */
+  it("prints the appointment in the booking's own zone, at its start, and dates the wait from the right instant", async () => {
+    renderQueue("/admin/bookings?tab=in_window", { answer: page([CLOCK_ROW]) });
+
+    const dina = await row("Dina");
+    const when = dina.getByText(/^terça, 1\/09 · /);
+    // 09:00 UTC in Africa/Maputo. Rendered in UTC this reads 09:00.
+    expect(when).toHaveTextContent("11:00");
+    // The start of the slot, not its end — which is 12:30 in that same zone.
+    expect(when).not.toHaveTextContent("12:30");
+    // Measured from `markedDoneAt`. From `endsAt` — a fixed date in 2026 — no
+    // run of this test could ever read "2 dias".
+    expect(dina.getByText("à espera há 2 dias")).toBeInTheDocument();
   });
 
   it("asks the server for the tab that is in the address bar", async () => {
@@ -496,6 +544,9 @@ describe("AdminBookingsPage", () => {
 
     const table = await screen.findByRole("table");
     expect(await within(table).findByText("Sem reclamações")).toBeInTheDocument();
+    // And the card over it is headed by the tab, not by the page: `selector`
+    // picks the heading out from the tab button that carries the same word.
+    expect(screen.getByText("Reclamações", { selector: "p" })).toBeInTheDocument();
   });
 
   it("counts what is waiting, and pages when there is more than a page", async () => {
@@ -508,6 +559,9 @@ describe("AdminBookingsPage", () => {
     await row("Ana");
 
     expect(screen.getByText("21 reservas a precisar de atenção")).toBeInTheDocument();
+    // Two different numbers, and the card must not print the queue's where the
+    // page's belongs: one row is on screen out of twenty-one waiting.
+    expect(screen.getByText("1 de 21 mostradas")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Seguinte" }));
 
@@ -573,6 +627,29 @@ describe("AdminBookingsPage", () => {
     // Not stranded on an empty page under a count that says otherwise.
     await row("Ana");
     expect(within(await screen.findByRole("table")).queryByText("Nada por fechar")).not.toBeInTheDocument();
+  });
+
+  /**
+   * A correction the reader never asked for must not sit in their history.
+   *
+   * Pushed, the empty offset stays one Back away — and going Back to it runs
+   * the correction again, forward, so Back never leaves the queue at all.
+   */
+  it("corrects an empty page without trapping the Back button", async () => {
+    const { router } = renderQueue("/admin/bookings?offset=20", {
+      from: "/admin/providers/prov-1",
+      answer: ({ offset }) =>
+        offset === 0
+          ? page([rowFixture()], { total: 20, nextOffset: 20 })
+          : page([], { total: 20, nextOffset: null }),
+    });
+    await row("Ana");
+
+    router.history.back();
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/admin/providers/prov-1"),
+    );
   });
 
   it("keeps a way back when the last page empties, rather than unmounting the pager", async () => {

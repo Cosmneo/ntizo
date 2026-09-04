@@ -336,7 +336,7 @@
     "completeNow": "Completa ora"
   },
   "bookingsActionFailed": "Non è stato possibile completare la prenotazione.",
-  "bookingsDisputeFailed": "Non è stato possibile decidere la contestazione.",
+  "bookingsDisputeFailed": "Non è stato possibile risolvere la contestazione.",
   "bookingsDisputeAction": {
     "upheld": "Dai ragione al cliente",
     "rejected": "Mantieni il completamento"

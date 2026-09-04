@@ -12,6 +12,7 @@ import {
   ADMIN_BOOKINGS_PAGE_SIZE,
   type AdminBookingRowDTO,
 } from "../data/admin-booking.repository";
+import type { AdminQueueSearch } from "../domain/queue-search";
 import { lastPageOffset, waitedWording, waitingSince } from "../domain/waiting";
 import {
   useAdminBookingActions,
@@ -52,19 +53,30 @@ export function AdminBookingsPage() {
   const { t, i18n } = useTranslation("admin");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { tab?: AdminBookingTab; offset?: number };
+  const search = useSearch({ strict: false }) as AdminQueueSearch;
   const tab: AdminBookingTab = search.tab ?? "unclosed";
   const offset = search.offset ?? 0;
 
   usePageHeader(t("bookingsTitle"), t("bookingsSubtitle"));
 
-  const go = (next: { tab: AdminBookingTab; offset?: number }) =>
+  /**
+   * Where the queue goes next.
+   *
+   * `replace` for a correction the reader did not ask for, a push for a move
+   * they did. Everything here pushes except the empty-page correction below:
+   * that one *replaces* the address it is correcting, because a pushed
+   * correction puts an entry in the history for a page the reader never chose
+   * and Back walks straight back into it — arriving from the dashboard on an
+   * empty second page, four presses of Back never left the queue.
+   */
+  const go = (next: { tab: AdminBookingTab; offset?: number; replace?: boolean }) =>
     void navigate({
       to: "/admin/bookings",
       // A zero offset is the absence of one: `/admin/bookings?tab=disputed`
       // rather than `…&offset=0`, so the first page of a tab has exactly one
       // address.
       search: { tab: next.tab, offset: next.offset ? next.offset : undefined },
+      replace: next.replace ?? false,
     });
 
   const query = useAdminBookings({ tab, offset });
@@ -126,11 +138,15 @@ export function AdminBookingsPage() {
    * navigation and a render may not have side effects. The frame it replaces
    * is not a lie the page invented: it is exactly what the server answered for
    * that offset.
+   *
+   * `replace`, so the address it corrects leaves no entry behind. Pushed, the
+   * reader's next Back went to the empty page, which corrected itself forward
+   * again — a queue you could arrive at from the dashboard and not leave.
    */
   useEffect(() => {
     if (!query.data || query.data.items.length > 0 || offset === 0) return;
     const back = lastPageOffset(query.data.total, ADMIN_BOOKINGS_PAGE_SIZE);
-    if (back !== offset) go({ tab, offset: back });
+    if (back !== offset) go({ tab, offset: back, replace: true });
     // `go` and `tab` are stable for a given URL; re-running on the answer and
     // the offset is the whole of what this watches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
