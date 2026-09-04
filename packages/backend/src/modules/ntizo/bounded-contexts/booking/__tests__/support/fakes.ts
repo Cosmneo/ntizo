@@ -130,18 +130,39 @@ export function withId(booking: Booking, id: string): Booking {
  * `try`/`catch` in `raiseQuietly` untested — the exact code whose absence
  * nothing else in this suite would notice.
  *
+ * **`insideTransactionAtCall` is the witness for BR-P6's other half**, and it
+ * has to be recorded here, at the moment of the call, because nothing
+ * observable afterwards can answer the question — the same argument
+ * `submit-accept-decline-booking.command.test.ts`'s `FakePhoneReader` makes
+ * for its own copy of this field. `TrackingUnitOfWork.atomicExecute` clears
+ * `insideTransaction` in its `finally`, so by the time a test body runs, a
+ * raise made from *inside* the transaction and one made after it read exactly
+ * alike; an assertion on `raised` alone passes just as happily against a
+ * command that announced a write a rollback could still have taken back.
+ * Recorded before the `failWith` throw, so a raiser built to fail still says
+ * where it was called from. Only populated when a `unitOfWork` is passed —
+ * the callers that do not care leave it empty rather than being handed a
+ * column of meaningless `false`s.
+ *
  * Shared by `submit-accept-decline-booking.command.test.ts`,
- * `booking-lifecycle.command.test.ts`, `bootstrap.test.ts` and the two
- * dev-database tests that wire commands the way `bootstrapBooking()` does —
- * one fake rather than five copies, for the same reason
- * `TrackingUnitOfWork` is here.
+ * `booking-lifecycle.command.test.ts`, `close-booking.command.test.ts`,
+ * `bootstrap.test.ts` and the two dev-database tests that wire commands the
+ * way `bootstrapBooking()` does — one fake rather than six copies, for the
+ * same reason `TrackingUnitOfWork` is here.
  */
 export class FakeRaiser implements RaiseNotificationInternalPort {
   public readonly raised: RaiseNotificationInput[] = [];
+  public readonly insideTransactionAtCall: boolean[] = [];
 
-  constructor(private readonly failWith: Error | null = null) {}
+  constructor(
+    private readonly failWith: Error | null = null,
+    private readonly unitOfWork?: TrackingUnitOfWork,
+  ) {}
 
   async execute(input: RaiseNotificationInput): Promise<{ notificationId: string }> {
+    if (this.unitOfWork) {
+      this.insideTransactionAtCall.push(this.unitOfWork.insideTransaction);
+    }
     if (this.failWith) throw this.failWith;
     this.raised.push(input);
     return { notificationId: `n-${this.raised.length}` };

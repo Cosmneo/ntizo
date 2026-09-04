@@ -7,6 +7,9 @@ import {
   BookingAccepted,
   BookingDeclined,
   BookingCancelled,
+  BookingKeptOpen,
+  BookingMarkedDone,
+  BookingCompleted,
   type BookingCancelledReason,
   type BookingExpiredCause,
 } from "../domain/events";
@@ -365,5 +368,135 @@ describe("BookingCancelled", () => {
     const event = new BookingCancelled(payload);
 
     expect(event.payload.reason).toBe("customer_did_not_pay");
+  });
+});
+
+describe("BookingKeptOpen", () => {
+  it("publishes as booking.kept_open with the booking id as aggregate id", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      askAgainAt: new Date("2026-09-11T09:00:00.000Z"),
+    } satisfies ConstructorParameters<typeof BookingKeptOpen>[0];
+
+    const event = new BookingKeptOpen(payload);
+
+    // The underscore is deliberate and pinned here rather than left to a
+    // reader's eye: `outbox_event.event_type` is a plain varchar with no
+    // check constraint, so a name typed wrong reaches the database happily
+    // and surfaces only as a consumer that never fires.
+    expect(event.eventName).toBe("booking.kept_open");
+    expect(event.aggregateId).toBe("b1");
+  });
+
+  it("round-trips the payload", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      askAgainAt: new Date("2026-09-11T09:00:00.000Z"),
+    } satisfies ConstructorParameters<typeof BookingKeptOpen>[0];
+
+    const event = new BookingKeptOpen(payload);
+
+    expect(event.payload).toEqual(payload);
+  });
+});
+
+describe("BookingMarkedDone", () => {
+  it("publishes as booking.marked_done with the booking id as aggregate id", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      feedbackBy: new Date("2026-09-07T09:00:00.000Z"),
+    } satisfies ConstructorParameters<typeof BookingMarkedDone>[0];
+
+    const event = new BookingMarkedDone(payload);
+
+    expect(event.eventName).toBe("booking.marked_done");
+    expect(event.aggregateId).toBe("b1");
+  });
+
+  it("round-trips the payload", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      feedbackBy: new Date("2026-09-07T09:00:00.000Z"),
+    } satisfies ConstructorParameters<typeof BookingMarkedDone>[0];
+
+    const event = new BookingMarkedDone(payload);
+
+    expect(event.payload).toEqual(payload);
+  });
+
+  it("carries the deadline the customer's window closes on, not the row's column name", () => {
+    // `feedbackBy`, not `expiresAt` — the same distinction `BookingSubmitted`
+    // draws with `respondBy`. A consumer telling the customer how long they
+    // have reads this key; renaming it to match the column would break them
+    // silently, since the value is identical.
+    const event = new BookingMarkedDone({
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      feedbackBy: new Date("2026-09-07T09:00:00.000Z"),
+    });
+
+    expect(event.payload.feedbackBy).toEqual(new Date("2026-09-07T09:00:00.000Z"));
+  });
+});
+
+describe("BookingCompleted", () => {
+  it("publishes as booking.completed with the booking id as aggregate id", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      priceMinor: 150000,
+      commissionMinor: 15000,
+      currency: "MZN",
+    } satisfies ConstructorParameters<typeof BookingCompleted>[0];
+
+    const event = new BookingCompleted(payload);
+
+    expect(event.eventName).toBe("booking.completed");
+    expect(event.aggregateId).toBe("b1");
+  });
+
+  it("round-trips the payload", () => {
+    const payload = {
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      priceMinor: 150000,
+      commissionMinor: 15000,
+      currency: "MZN",
+    } satisfies ConstructorParameters<typeof BookingCompleted>[0];
+
+    const event = new BookingCompleted(payload);
+
+    expect(event.payload).toEqual(payload);
+  });
+
+  // The three fields this event exists to carry, pinned individually rather
+  // than only through the round-trip above. Completion is what makes a payout
+  // owed, and the commission comes *out of* that payout — a consumer handed a
+  // zeroed price, a zeroed commission or the wrong currency pays the wrong
+  // provider the wrong amount, and nothing downstream of here can tell.
+  it("carries the money the payout will be computed from", () => {
+    const event = new BookingCompleted({
+      bookingId: "b1",
+      customerId: "u1",
+      providerId: "p1",
+      priceMinor: 150000,
+      commissionMinor: 15000,
+      currency: "MZN",
+    });
+
+    expect(event.payload.priceMinor).toBe(150000);
+    expect(event.payload.commissionMinor).toBe(15000);
+    expect(event.payload.currency).toBe("MZN");
   });
 });

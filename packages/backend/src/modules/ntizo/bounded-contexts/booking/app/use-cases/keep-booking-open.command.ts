@@ -5,9 +5,7 @@ import { BookingNotFoundError, NotProviderMemberError } from "../../domain/excep
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 import type { BookingRepositoryPort } from "../ports/outbound/booking.repository.port";
 import type { ProviderMemberReaderPort } from "../ports/outbound/provider-member-reader.port";
-import { ASK_AGAIN_AFTER_DAYS } from "./mark-booking-done.command";
-
-const DAY_MS = 86_400_000;
+import { ASK_AGAIN_AFTER_DAYS, DAY_MS } from "./mark-booking-done.command";
 
 /**
  * What `booking_change.reason` records for this hop.

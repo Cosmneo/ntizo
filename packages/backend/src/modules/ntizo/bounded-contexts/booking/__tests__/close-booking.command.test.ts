@@ -19,10 +19,9 @@ import { BookingStatus } from "../../../shared/infrastructure/database/booking/e
 import { FakeRaiser, TrackingUnitOfWork, withId } from "./support/fakes";
 
 /**
- * A day, in milliseconds — the same number the two commands compute their
- * windows from, written out here rather than imported so an assertion can
- * disagree with the implementation. Importing the implementation's own
- * arithmetic would leave these tests unable to catch a wrong one.
+ * A day, in milliseconds. Used only to build fixtures — never to compute an
+ * expected deadline, which is the whole point of `FEEDBACK_BY` and
+ * `ASK_AGAIN_AT` below.
  */
 const DAY_MS = 86_400_000;
 
@@ -48,6 +47,26 @@ const DAY_MS = 86_400_000;
  * left the clock frozen would hand the next file a world where nothing moves.
  */
 const NOW = new Date("2026-05-04T09:00:00.000Z");
+
+/**
+ * The two deadlines this file exists to pin: `NOW` plus three days, and `NOW`
+ * plus seven, written out as literal instants rather than computed.
+ *
+ * **They are typed out on purpose, and must stay typed out.** An assertion
+ * spelled `FEEDBACK_WINDOW_DAYS * 24 * 3_600_000` re-derives the expected
+ * value from the very constant the implementation multiplies, so it proves
+ * the arithmetic and nothing else — set `FEEDBACK_WINDOW_DAYS` to 4 and it
+ * stays green, which is exactly what an earlier version of this file did.
+ * The number of days is the promise the customer's notification makes and the
+ * value the brief names; only a literal can fail for it. Changing either
+ * constant now turns a test red and the failure names both instants, so the
+ * reader is told which number moved rather than left to work it out.
+ *
+ * Do not replace these with a helper, a second constant, or arithmetic over
+ * `NOW` — every one of those re-opens the hole.
+ */
+const FEEDBACK_BY = new Date("2026-05-07T09:00:00.000Z");
+const ASK_AGAIN_AT = new Date("2026-05-11T09:00:00.000Z");
 
 /** A slot that started 25 hours ago: over, and over by more than its own duration. */
 const ENDED_YESTERDAY = new Date(NOW.getTime() - 25 * 3_600_000);
@@ -254,16 +273,24 @@ class CapturingOutbox implements OutboxPort {
   }
 }
 
-function setup(status: BookingStatus, raiser: FakeRaiser = new FakeRaiser()) {
+/**
+ * Takes the error the raiser should throw rather than a ready-made raiser,
+ * because the raiser now has to be built *after* the unit of work it watches:
+ * `FakeRaiser.insideTransactionAtCall` is what proves a raise happened after
+ * the transaction resolved, and it can only record that if it holds the same
+ * `TrackingUnitOfWork` the command was given.
+ */
+function setup(status: BookingStatus, failWith: Error | null = null) {
   const unitOfWork = new TrackingUnitOfWork();
   const outbox = new CapturingOutbox(unitOfWork);
   const repo = new FakeRepo(status, unitOfWork);
   const members = new FakeProviderMemberReader();
+  const raiser = new FakeRaiser(failWith, unitOfWork);
   return { unitOfWork, outbox, repo, members, raiser };
 }
 
-function setupMarkDone(raiser?: FakeRaiser) {
-  const parts = setup(BookingStatus.Confirmed, raiser);
+function setupMarkDone(failWith?: Error) {
+  const parts = setup(BookingStatus.Confirmed, failWith ?? null);
   return {
     ...parts,
     cmd: new MarkBookingDoneCommand(
@@ -276,8 +303,8 @@ function setupMarkDone(raiser?: FakeRaiser) {
   };
 }
 
-function setupKeepOpen(raiser?: FakeRaiser) {
-  const parts = setup(BookingStatus.Confirmed, raiser);
+function setupKeepOpen() {
+  const parts = setup(BookingStatus.Confirmed);
   return {
     ...parts,
     // Four arguments, not five: this command announces nothing, so it takes
@@ -292,8 +319,8 @@ function setupKeepOpen(raiser?: FakeRaiser) {
   };
 }
 
-function setupComplete(raiser?: FakeRaiser) {
-  const parts = setup(BookingStatus.MarkedDone, raiser);
+function setupComplete(failWith?: Error) {
+  const parts = setup(BookingStatus.MarkedDone, failWith ?? null);
   return {
     ...parts,
     complete: new CompleteBookingCommand(
@@ -311,6 +338,18 @@ beforeEach(() => {
 
 afterEach(() => {
   setSystemTime();
+});
+
+// The two numbers themselves, pinned separately from the behaviour they
+// produce. The deadline assertions below already fail if either moves, but
+// they fail on an instant; these say which constant that instant came from,
+// and they are what Task 5's sweep and anything else importing these values
+// are entitled to rely on.
+describe("the two windows", () => {
+  it("gives the customer three days and the provider seven", () => {
+    expect(FEEDBACK_WINDOW_DAYS).toBe(3);
+    expect(ASK_AGAIN_AFTER_DAYS).toBe(7);
+  });
 });
 
 describe("MarkBookingDoneCommand", () => {
@@ -361,8 +400,12 @@ describe("MarkBookingDoneCommand", () => {
 
     await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
 
-    const window = repo.saved!.expiresAt!.getTime() - NOW.getTime();
-    expect(window).toBe(FEEDBACK_WINDOW_DAYS * 24 * 3_600_000);
+    // The literal instant, not `FEEDBACK_WINDOW_DAYS * 24 * 3_600_000` — see
+    // `FEEDBACK_BY`'s own comment for why re-deriving it proves nothing.
+    expect(repo.saved!.expiresAt).toEqual(FEEDBACK_BY);
+    // And the arithmetic behind it, so a wrong multiplier is named separately
+    // from a wrong number of days.
+    expect(repo.saved!.expiresAt!.getTime() - NOW.getTime()).toBe(3 * 24 * 3_600_000);
   });
 
   it("announces the very deadline it wrote, not a second reading of the clock", async () => {
@@ -395,20 +438,59 @@ describe("MarkBookingDoneCommand", () => {
     expect(outbox.published[0]?.aggregateType).toBe("booking");
     expect(outbox.published[0]?.insideTransaction).toBe(true);
     expect(outbox.published[0]?.afterSave).toBe(true);
-    expect(outbox.published[0]?.events[0]).toBeInstanceOf(BookingMarkedDone);
+    const event = outbox.published[0]?.events[0];
+    expect(event).toBeInstanceOf(BookingMarkedDone);
+    // The whole payload, not only the class. `toBeInstanceOf` cannot see a
+    // field wired to the wrong value, and the deadline this event carries is
+    // the one a consumer would tell the customer about.
+    expect(event?.payload).toEqual({
+      bookingId: BOOKING_ID,
+      customerId: CUSTOMER_ID,
+      providerId: PROVIDER_ID,
+      feedbackBy: FEEDBACK_BY,
+    });
+  });
+
+  // BR-P6's other half, and the half no assertion on `raised` can see: the
+  // transaction has to have resolved before anything is announced, or a
+  // rollback takes back a fact the customer has already been told. Both arms
+  // asserted at once — the platform's is the only path that raises twice.
+  it("announces only once the transaction has resolved, on both arms", async () => {
+    const provider = setupMarkDone();
+    await provider.cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    // A second, untouched fixture: the first call has already moved its own
+    // repository to `MARKED_DONE`, and `markDone` refuses from there.
+    const platform = setupMarkDone();
+    await platform.cmd.execute({
+      bookingId: BOOKING_ID,
+      requesterUserId: null,
+      reason: "marked_done_by_platform",
+    });
+
+    expect(provider.raiser.insideTransactionAtCall).toEqual([false]);
+    expect(platform.raiser.insideTransactionAtCall).toEqual([false, false]);
   });
 
   it("raises nothing when the compare-and-swap loses", async () => {
-    const { cmd, repo, raiser } = setupMarkDone();
+    const { cmd, repo, raiser, outbox } = setupMarkDone();
     repo.saveReturns = false;
 
     await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
 
     expect(raiser.raised).toEqual([]);
+    // The whole of "nothing happened", not only the quiet part. A lost race
+    // that still appended a change row would give this booking's history a
+    // hop it never made, and one that still published would hand a consumer
+    // an event describing a status the row does not hold — both silent, and
+    // both invisible to an assertion that only reads the notifications.
+    expect(repo.saved).toBeNull();
+    expect(repo.changes).toEqual([]);
+    expect(outbox.published).toEqual([]);
   });
 
   it("does not fail the write when the raiser throws", async () => {
-    const { cmd, repo } = setupMarkDone(new FakeRaiser(new Error("smtp down")));
+    const { cmd, repo } = setupMarkDone(new Error("smtp down"));
 
     await expect(
       cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID }),
@@ -449,6 +531,22 @@ describe("MarkBookingDoneCommand", () => {
     ]);
   });
 
+  // A caller with no user and no reason is the platform, and the row says so.
+  // The alternative — defaulting every reasonless call to the provider's
+  // token — would write "the provider said the work was done" with nobody
+  // having said it, and would skip the notification that arm owes them.
+  it("a call with no requester and no reason is the platform's, not an unattributed provider's", async () => {
+    const { cmd, repo, raiser } = setupMarkDone();
+
+    await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: null });
+
+    expect(repo.changes.at(-1)).toMatchObject({
+      reason: "marked_done_by_platform",
+      changedByUserId: null,
+    });
+    expect(raiser.raised.at(-1)).toMatchObject({ type: "PROVIDER_BOOKING_AUTO_CLOSED" });
+  });
+
   // An administrator is a real person with a user id, and they are not a
   // member of the provider they are closing for. The membership check is the
   // provider's own hop, not this one — the admin edge already authorised it.
@@ -478,15 +576,21 @@ describe("KeepBookingOpenCommand", () => {
     await keepOpen.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
 
     expect(repo.saved?.status).toBe("CONFIRMED");
-    expect(repo.saved!.expiresAt!.getTime() - NOW.getTime()).toBe(
-      ASK_AGAIN_AFTER_DAYS * 24 * 3_600_000,
-    );
+    // The literal instant, for the reason `ASK_AGAIN_AT`'s own comment gives.
+    expect(repo.saved!.expiresAt).toEqual(ASK_AGAIN_AT);
+    expect(repo.saved!.expiresAt!.getTime() - NOW.getTime()).toBe(7 * 24 * 3_600_000);
     expect(repo.changes.at(-1)).toMatchObject({
       reason: "still_ongoing",
       changedByUserId: OWNER_ID,
     });
   });
 
+  // Documentation of the design decision rather than coverage of it: this
+  // command holds no raiser at all, so `raised` is necessarily empty and no
+  // change to the command could turn this red — handing it a fifth
+  // constructor argument would be a compile error in `setupKeepOpen`, not a
+  // failing test. Kept because the decision is easy to reverse by accident
+  // and hard to notice; counted as coverage of nothing.
   it("tells nobody — this is an answer to the platform, not news for the customer", async () => {
     const { keepOpen, raiser } = setupKeepOpen();
 
@@ -507,7 +611,14 @@ describe("KeepBookingOpenCommand", () => {
     expect(outbox.published[0]?.aggregateType).toBe("booking");
     expect(outbox.published[0]?.insideTransaction).toBe(true);
     expect(outbox.published[0]?.afterSave).toBe(true);
-    expect(outbox.published[0]?.events[0]).toBeInstanceOf(BookingKeptOpen);
+    const event = outbox.published[0]?.events[0];
+    expect(event).toBeInstanceOf(BookingKeptOpen);
+    expect(event?.payload).toEqual({
+      bookingId: BOOKING_ID,
+      customerId: CUSTOMER_ID,
+      providerId: PROVIDER_ID,
+      askAgainAt: ASK_AGAIN_AT,
+    });
   });
 
   it("refuses somebody who is not in the workspace", async () => {
@@ -519,6 +630,23 @@ describe("KeepBookingOpenCommand", () => {
 
     expect(repo.saved).toBeNull();
     expect(repo.changes).toEqual([]);
+  });
+
+  // The hop where losing the race does the most damage, which is why this
+  // guard needs a test of its own rather than being taken on the strength of
+  // its two neighbours': the writer this call loses to is the sweep's own
+  // seven-day arm, so a `keepOpen` that wrote anyway would put a
+  // `MARKED_DONE` booking back to `CONFIRMED` and hand it a fresh week —
+  // resurrecting a booking the platform had just closed.
+  it("writes and publishes nothing when the compare-and-swap loses", async () => {
+    const { keepOpen, repo, outbox } = setupKeepOpen();
+    repo.saveReturns = false;
+
+    await keepOpen.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(repo.saved).toBeNull();
+    expect(repo.changes).toEqual([]);
+    expect(outbox.published).toEqual([]);
   });
 });
 
@@ -597,7 +725,20 @@ describe("CompleteBookingCommand", () => {
     expect(outbox.published[0]?.aggregateType).toBe("booking");
     expect(outbox.published[0]?.insideTransaction).toBe(true);
     expect(outbox.published[0]?.afterSave).toBe(true);
-    expect(outbox.published[0]?.events[0]).toBeInstanceOf(BookingCompleted);
+    const event = outbox.published[0]?.events[0];
+    expect(event).toBeInstanceOf(BookingCompleted);
+    // The money especially. This is the event a payout will be computed from,
+    // and a zeroed price or a wrong currency here pays the wrong amount with
+    // nothing downstream able to tell — `toBeInstanceOf` sees none of it.
+    // The numbers are the fixture's own: 150000 minor at 1000 bps.
+    expect(event?.payload).toEqual({
+      bookingId: BOOKING_ID,
+      customerId: CUSTOMER_ID,
+      providerId: PROVIDER_ID,
+      priceMinor: 150000,
+      commissionMinor: 15000,
+      currency: "MZN",
+    });
   });
 
   it("refuses a booking that is not waiting out its window", async () => {
@@ -615,8 +756,22 @@ describe("CompleteBookingCommand", () => {
     });
   });
 
-  it("tells nobody when the compare-and-swap loses", async () => {
-    const { complete, repo, raiser } = setupComplete();
+  // Both raises, after the transaction resolved — see the same assertion on
+  // `MarkBookingDoneCommand` above for why `raised` alone cannot see this.
+  it("announces both sides only once the transaction has resolved", async () => {
+    const { complete, raiser } = setupComplete();
+
+    await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_timer",
+      changedByUserId: null,
+    });
+
+    expect(raiser.insideTransactionAtCall).toEqual([false, false]);
+  });
+
+  it("writes, publishes and tells nothing when the compare-and-swap loses", async () => {
+    const { complete, repo, raiser, outbox } = setupComplete();
     repo.saveReturns = false;
 
     await complete.execute({
@@ -626,11 +781,13 @@ describe("CompleteBookingCommand", () => {
     });
 
     expect(repo.saved).toBeNull();
+    expect(repo.changes).toEqual([]);
+    expect(outbox.published).toEqual([]);
     expect(raiser.raised).toEqual([]);
   });
 
   it("does not fail the write when the raiser throws", async () => {
-    const { complete, repo } = setupComplete(new FakeRaiser(new Error("smtp down")));
+    const { complete, repo } = setupComplete(new Error("smtp down"));
 
     await expect(
       complete.execute({

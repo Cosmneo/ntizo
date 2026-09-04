@@ -23,8 +23,10 @@ import {
  * an administrator can change between the sending and the expiring is not one.
  *
  * Exported because the hop that closes the window has to agree with the hop
- * that opened it, and because the tests for both assert the number rather
- * than re-deriving it from the row they are checking.
+ * that opened it. `close-booking.command.test.ts` pins the number both ways:
+ * directly, and through a literal deadline asserted against a frozen clock —
+ * deliberately *not* by re-deriving the expected instant from this constant,
+ * which is an assertion that can only ever prove the multiplication.
  */
 export const FEEDBACK_WINDOW_DAYS = 3;
 
@@ -42,7 +44,12 @@ export const FEEDBACK_WINDOW_DAYS = 3;
  */
 export const ASK_AGAIN_AFTER_DAYS = 7;
 
-const DAY_MS = 86_400_000;
+/**
+ * A day, in milliseconds. Exported alongside the two windows it multiplies,
+ * so `KeepBookingOpenCommand` — which already imports `ASK_AGAIN_AFTER_DAYS`
+ * from here — reads the same number rather than keeping a second copy of it.
+ */
+export const DAY_MS = 86_400_000;
 
 /**
  * What `booking_change.reason` records for this hop — which of the three
@@ -128,7 +135,16 @@ export class MarkBookingDoneCommand {
   async execute(input: MarkBookingDoneInput): Promise<void> {
     // Computed once, before the transition — the instant this command ran.
     const at = new Date();
-    const reason: MarkDoneReason = input.reason ?? "marked_done_by_provider";
+    // A null requester is nobody, and nobody is the platform. Defaulting a
+    // null requester to `marked_done_by_provider` — which is what a single
+    // `?? "marked_done_by_provider"` does — would write a history row saying
+    // the provider claimed the work was done with no provider having claimed
+    // it, and would then skip the auto-closed notification that arm owes
+    // them. There is no caller that reaches this branch today; the point is
+    // that the dishonest row cannot be produced at all.
+    const reason: MarkDoneReason =
+      input.reason ??
+      (input.requesterUserId === null ? "marked_done_by_platform" : "marked_done_by_provider");
 
     const moved = await this.unitOfWork.atomicExecute(async (): Promise<Booking | null> => {
       const booking = await this.repo.findById(input.bookingId);
