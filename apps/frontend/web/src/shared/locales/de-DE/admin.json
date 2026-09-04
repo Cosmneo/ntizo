@@ -312,7 +312,7 @@
   "supportNotFound": "Diese Anfrage gibt es nicht.",
   "supportLoadError": "Die Anfrage konnte nicht geladen werden.",
   "bookingsTitle": "Buchungen",
-  "bookingsSubtitle": "Buchungen, die geschlossen werden müssen, Buchungen in der Antwortfrist der Kundschaft und Reklamationen, die auf eine Entscheidung warten.",
+  "bookingsSubtitle": "Buchungen, die geschlossen werden müssen, Buchungen in der Antwortfrist der Kunden und Reklamationen, die auf eine Entscheidung warten.",
   "bookingsOpenCount_one": "{{count}} Buchung erfordert Aufmerksamkeit",
   "bookingsOpenCount_other": "{{count}} Buchungen erfordern Aufmerksamkeit",
   "bookingsOpenCount_many": "{{count}} Buchungen erfordern Aufmerksamkeit",
@@ -334,7 +334,7 @@
   },
   "bookingsActionFailed": "Die Buchung konnte nicht abgeschlossen werden.",
   "bookingsDisputeAction": {
-    "upheld": "Der Kundschaft recht geben",
+    "upheld": "Dem Kunden recht geben",
     "rejected": "Abschluss beibehalten"
   },
   "bookingsEmpty": {
@@ -344,11 +344,11 @@
     },
     "in_window": {
       "title": "Nichts in der Frist",
-      "body": "Als erledigt markierte Buchungen, die auf die Antwort der Kundschaft warten, erscheinen hier."
+      "body": "Als erledigt markierte Buchungen, die auf die Antwort der Kunden warten, erscheinen hier."
     },
     "disputed": {
       "title": "Keine Reklamationen",
-      "body": "Reklamationen, die die Kundschaft eingereicht hat, erscheinen hier und warten auf eine Entscheidung."
+      "body": "Reklamationen, die die Kunden eingereicht haben, erscheinen hier und warten auf eine Entscheidung."
     }
   },
   "bookingsError": "Die Buchungen konnten nicht geladen werden.",

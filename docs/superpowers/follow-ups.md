@@ -3945,3 +3945,44 @@ The fix is a reconciliation the next time a dispute is opened (adopt the orphan 
 opening a second thread), or an outbox hop that retries the transition, or an administrator-side
 tab that lists dispute-kind requests whose booking never moved. Deciding which is the point of
 the follow-up; leaving the thread outside the transaction is not the part to change.
+
+## #170 — Eight locales spell out "three days" and "in a week" as words, coupled to nothing
+
+`FEEDBACK_WINDOW_DAYS = 3` and `ASK_AGAIN_AFTER_DAYS = 7` (`mark-booking-done.command.ts`) are
+the two clocks the booking-completion phase's copy promises the customer and the provider by
+name, not by number: `bookings.markDoneConfirm`, `bookings.markedDone` and
+`bookings.stillOngoingDone` in `provider.json`, plus `type.bookingMarkedDone` in
+`notifications.json`, spell out "three days" and "in a week" (or their translations) across all
+eight locales — 32 strings in total. Correct today, checked against the code at implementation
+and again at review. Nothing ties either number to the words: changing `FEEDBACK_WINDOW_DAYS`
+to, say, five would leave all 32 strings lying, and nothing in the build would notice.
+
+`MarkBookingDoneCommand`'s own doc comment already names this coupling — the window is "a
+promise made to the customer in the message this command sends them" — which is the argument
+for fixing it, not against. It was left alone because no call site for any of the four keys
+exists yet: tasks 11 and 12 build the screens that render them. A `{{days}}` placeholder added
+now would be an interpolation contract guessed on behalf of two unwritten tasks, and a pinning
+test now would have nothing to render against.
+
+**Trigger:** anyone changes `FEEDBACK_WINDOW_DAYS` or `ASK_AGAIN_AFTER_DAYS`, or task 11/12
+wires up the first screen that renders `markDoneConfirm`, `markedDone`, `stillOngoingDone` or
+`type.bookingMarkedDone` — at that point either add a `{{days}}`/`{{weeks}}` placeholder the
+call site supplies and interpolate the real constant, or add a one-line test asserting each
+constant still equals the number the copy spells out by hand.
+
+## #171 — `admin.json` carries three sibling `*OpenCount` keys in two different plural shapes
+
+`contactOpenCount`/`supportOpenCount` (pre-existing, not part of this phase) use `_one`/`_other`
+only, with no `_many` form. `Intl.PluralRules('pt').select(1_000_000)` resolves to `"many"`, so
+i18next looks up `contactOpenCount_many`, finds nothing, and renders the raw key id instead of a
+count — in every locale with a `many` category (`pt-MZ`, `pt-PT`, `es-ES`, `fr-FR`, `it-IT`).
+The booking-completion phase's own `bookingsOpenCount` was given `_one`/`_other`/`_many` in all
+eight locales when this exact gap was found in its review; a million-row admin queue is not
+reachable in practice, so leaving the other two keys as they were was judged non-blocking for
+that pass. It means `admin.json` now carries the identical class of counter in two shapes with
+nothing anywhere recording why one has three plural forms and its two neighbours have two.
+
+**Trigger:** anyone touches `contactOpenCount` or `supportOpenCount` for an unrelated reason
+(that is the cheapest moment to add the missing `_many` to both), or a fourth `*OpenCount` key
+is added to `admin.json` and needs a precedent to follow — at that point settle on one shape for
+all of them rather than copying whichever neighbour happens to be closest.

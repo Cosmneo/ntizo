@@ -332,7 +332,7 @@
     "markDone": "Segna come completata",
     "completeNow": "Completa ora"
   },
-  "bookingsActionFailed": "Non è stato possibile completare.",
+  "bookingsActionFailed": "Non è stato possibile completare la prenotazione.",
   "bookingsDisputeAction": {
     "upheld": "Dai ragione al cliente",
     "rejected": "Mantieni il completamento"

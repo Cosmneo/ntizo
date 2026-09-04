@@ -332,7 +332,7 @@
     "markDone": "Marquer comme terminée",
     "completeNow": "Terminer maintenant"
   },
-  "bookingsActionFailed": "Impossible de terminer.",
+  "bookingsActionFailed": "Impossible de terminer la réservation.",
   "bookingsDisputeAction": {
     "upheld": "Donner raison au client",
     "rejected": "Maintenir la clôture"

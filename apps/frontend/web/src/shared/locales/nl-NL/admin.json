@@ -344,7 +344,7 @@
     },
     "in_window": {
       "title": "Niets in reactietermijn",
-      "body": "Boekingen die als voltooid zijn gemarkeerd, wachtend op een reactie van de klant, verschijnen hier."
+      "body": "Boekingen die als afgerond zijn gemarkeerd, wachtend op een reactie van de klant, verschijnen hier."
     },
     "disputed": {
       "title": "Geen geschillen",

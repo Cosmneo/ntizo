@@ -332,7 +332,7 @@
     "markDone": "Marcar como concluído",
     "completeNow": "Concluir agora"
   },
-  "bookingsActionFailed": "Não foi possível concluir.",
+  "bookingsActionFailed": "Não foi possível concluir a reserva.",
   "bookingsDisputeAction": {
     "upheld": "Dar razão ao cliente",
     "rejected": "Manter conclusão"
