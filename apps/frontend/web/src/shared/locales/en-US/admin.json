@@ -315,6 +315,7 @@
   "bookingsSubtitle": "Bookings that need closing, ones inside the customer's window, and disputes waiting on a decision.",
   "bookingsOpenCount_one": "{{count}} booking needing attention",
   "bookingsOpenCount_other": "{{count}} bookings needing attention",
+  "bookingsOpenCount_many": "{{count}} bookings needing attention",
   "bookingsTab": {
     "unclosed": "Unclosed",
     "in_window": "In window",
@@ -331,7 +332,7 @@
     "markDone": "Mark as done",
     "completeNow": "Complete now"
   },
-  "bookingsActionFailed": "Could not complete.",
+  "bookingsActionFailed": "The booking could not be completed.",
   "bookingsDisputeAction": {
     "upheld": "Side with the customer",
     "rejected": "Keep the completion"
@@ -339,7 +340,7 @@
   "bookingsEmpty": {
     "unclosed": {
       "title": "Nothing to close",
-      "body": "Bookings whose appointment has passed and haven't been closed appear here."
+      "body": "Bookings whose appointment has passed and that haven't been closed appear here."
     },
     "in_window": {
       "title": "Nothing in window",

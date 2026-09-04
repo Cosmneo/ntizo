@@ -312,16 +312,17 @@
   "supportNotFound": "Questa richiesta non esiste.",
   "supportLoadError": "Non è stato possibile caricare la richiesta.",
   "bookingsTitle": "Prenotazioni",
-  "bookingsSubtitle": "Prenotazioni da chiudere, prenotazioni nella finestra del cliente, e contestazioni in attesa di una decisione.",
+  "bookingsSubtitle": "Prenotazioni da chiudere, prenotazioni nel termine di risposta del cliente e contestazioni in attesa di una decisione.",
   "bookingsOpenCount_one": "{{count}} prenotazione che richiede attenzione",
   "bookingsOpenCount_other": "{{count}} prenotazioni che richiedono attenzione",
+  "bookingsOpenCount_many": "{{count}} prenotazioni che richiedono attenzione",
   "bookingsTab": {
     "unclosed": "Da chiudere",
-    "in_window": "In finestra",
+    "in_window": "In attesa del cliente",
     "disputed": "Contestazioni"
   },
   "bookingsCol": {
-    "provider": "Operatore",
+    "provider": "Fornitore",
     "customer": "Cliente",
     "service": "Servizio",
     "when": "Quando",
@@ -333,16 +334,16 @@
   },
   "bookingsActionFailed": "Non è stato possibile completare.",
   "bookingsDisputeAction": {
-    "upheld": "Dare ragione al cliente",
-    "rejected": "Mantenere il completamento"
+    "upheld": "Dai ragione al cliente",
+    "rejected": "Mantieni il completamento"
   },
   "bookingsEmpty": {
     "unclosed": {
       "title": "Niente da chiudere",
-      "body": "Le prenotazioni il cui appuntamento è già passato e non sono ancora state chiuse compaiono qui."
+      "body": "Le prenotazioni il cui appuntamento è già passato e che non sono ancora state chiuse compaiono qui."
     },
     "in_window": {
-      "title": "Niente in finestra",
+      "title": "Niente in attesa",
       "body": "Le prenotazioni segnate come completate, in attesa della risposta del cliente, compaiono qui."
     },
     "disputed": {

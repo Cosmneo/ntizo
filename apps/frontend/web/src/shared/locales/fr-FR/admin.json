@@ -312,12 +312,13 @@
   "supportNotFound": "Cette demande n'existe pas.",
   "supportLoadError": "La demande n'a pas pu être chargée.",
   "bookingsTitle": "Réservations",
-  "bookingsSubtitle": "Réservations à clôturer, réservations dans la fenêtre du client, et litiges en attente d'une décision.",
-  "bookingsOpenCount_one": "{{count}} réservation nécessitant une attention",
-  "bookingsOpenCount_other": "{{count}} réservations nécessitant une attention",
+  "bookingsSubtitle": "Réservations à clôturer, réservations dans le délai de réponse du client et litiges en attente d'une décision.",
+  "bookingsOpenCount_one": "{{count}} réservation à traiter",
+  "bookingsOpenCount_other": "{{count}} réservations à traiter",
+  "bookingsOpenCount_many": "{{count}} réservations à traiter",
   "bookingsTab": {
     "unclosed": "À clôturer",
-    "in_window": "Dans la fenêtre",
+    "in_window": "Dans le délai",
     "disputed": "Litiges"
   },
   "bookingsCol": {
@@ -342,7 +343,7 @@
       "body": "Les réservations dont le rendez-vous est passé et qui n'ont pas encore été clôturées apparaissent ici."
     },
     "in_window": {
-      "title": "Rien dans la fenêtre",
+      "title": "Rien dans le délai",
       "body": "Les réservations marquées comme terminées, en attente de la réponse du client, apparaissent ici."
     },
     "disputed": {

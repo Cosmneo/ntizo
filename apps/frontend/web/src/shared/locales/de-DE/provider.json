@@ -163,7 +163,7 @@
       "customer_did_not_pay": "Storniert: Zahlung nicht abgeschlossen", "checkout_hold_expired": "Entwurf abgelaufen",
       "marked_done_by_provider": "Vom Anbieter abgeschlossen",
       "marked_done_by_platform": "Automatisch abgeschlossen",
-      "marked_done_by_admin": "Von der Plattform abgeschlossen",
+      "marked_done_by_admin": "Von der Plattform als erledigt markiert",
       "still_ongoing": "Läuft noch",
       "close_reminder": "Aufforderung zum Schließen",
       "completed_by_timer": "Ohne Antwort abgeschlossen",

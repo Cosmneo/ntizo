@@ -312,12 +312,13 @@
   "supportNotFound": "Dit verzoek bestaat niet.",
   "supportLoadError": "Het verzoek kon niet worden geladen.",
   "bookingsTitle": "Boekingen",
-  "bookingsSubtitle": "Boekingen die gesloten moeten worden, boekingen binnen het venster van de klant, en geschillen die op een beslissing wachten.",
+  "bookingsSubtitle": "Boekingen die gesloten moeten worden, boekingen binnen de reactietermijn van de klant en geschillen die op een beslissing wachten.",
   "bookingsOpenCount_one": "{{count}} boeking die aandacht nodig heeft",
   "bookingsOpenCount_other": "{{count}} boekingen die aandacht nodig hebben",
+  "bookingsOpenCount_many": "{{count}} boekingen die aandacht nodig hebben",
   "bookingsTab": {
     "unclosed": "Te sluiten",
-    "in_window": "In venster",
+    "in_window": "In reactietermijn",
     "disputed": "Geschillen"
   },
   "bookingsCol": {
@@ -328,12 +329,12 @@
     "status": "Status"
   },
   "bookingsAction": {
-    "markDone": "Markeren als voltooid",
+    "markDone": "Markeren als afgerond",
     "completeNow": "Nu afronden"
   },
-  "bookingsActionFailed": "Kon niet worden afgerond.",
+  "bookingsActionFailed": "De boeking kon niet worden afgerond.",
   "bookingsDisputeAction": {
-    "upheld": "Gelijk geven aan de klant",
+    "upheld": "De klant gelijk geven",
     "rejected": "Afronding handhaven"
   },
   "bookingsEmpty": {
@@ -342,7 +343,7 @@
       "body": "Boekingen waarvan de afspraak al voorbij is en die nog niet zijn gesloten, verschijnen hier."
     },
     "in_window": {
-      "title": "Niets in venster",
+      "title": "Niets in reactietermijn",
       "body": "Boekingen die als voltooid zijn gemarkeerd, wachtend op een reactie van de klant, verschijnen hier."
     },
     "disputed": {

@@ -312,12 +312,13 @@
   "supportNotFound": "Diese Anfrage gibt es nicht.",
   "supportLoadError": "Die Anfrage konnte nicht geladen werden.",
   "bookingsTitle": "Buchungen",
-  "bookingsSubtitle": "Buchungen, die geschlossen werden müssen, solche innerhalb des Kundenfensters, und Reklamationen, die auf eine Entscheidung warten.",
-  "bookingsOpenCount_one": "{{count}} Buchung braucht Aufmerksamkeit",
-  "bookingsOpenCount_other": "{{count}} Buchungen brauchen Aufmerksamkeit",
+  "bookingsSubtitle": "Buchungen, die geschlossen werden müssen, Buchungen in der Antwortfrist der Kundschaft und Reklamationen, die auf eine Entscheidung warten.",
+  "bookingsOpenCount_one": "{{count}} Buchung erfordert Aufmerksamkeit",
+  "bookingsOpenCount_other": "{{count}} Buchungen erfordern Aufmerksamkeit",
+  "bookingsOpenCount_many": "{{count}} Buchungen erfordern Aufmerksamkeit",
   "bookingsTab": {
     "unclosed": "Offen",
-    "in_window": "Im Fenster",
+    "in_window": "In der Frist",
     "disputed": "Reklamationen"
   },
   "bookingsCol": {
@@ -331,7 +332,7 @@
     "markDone": "Als erledigt markieren",
     "completeNow": "Jetzt abschließen"
   },
-  "bookingsActionFailed": "Konnte nicht abgeschlossen werden.",
+  "bookingsActionFailed": "Die Buchung konnte nicht abgeschlossen werden.",
   "bookingsDisputeAction": {
     "upheld": "Der Kundschaft recht geben",
     "rejected": "Abschluss beibehalten"
@@ -342,7 +343,7 @@
       "body": "Buchungen, deren Termin vorbei ist und die noch nicht geschlossen wurden, erscheinen hier."
     },
     "in_window": {
-      "title": "Nichts im Fenster",
+      "title": "Nichts in der Frist",
       "body": "Als erledigt markierte Buchungen, die auf die Antwort der Kundschaft warten, erscheinen hier."
     },
     "disputed": {

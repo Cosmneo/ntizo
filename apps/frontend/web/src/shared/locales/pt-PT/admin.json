@@ -312,9 +312,10 @@
   "supportNotFound": "Este pedido não existe.",
   "supportLoadError": "Não foi possível carregar o pedido.",
   "bookingsTitle": "Reservas",
-  "bookingsSubtitle": "Reservas por fechar, dentro da janela do cliente, e reclamações por decidir.",
+  "bookingsSubtitle": "Reservas por fechar, reservas dentro da janela do cliente e reclamações por decidir.",
   "bookingsOpenCount_one": "{{count}} reserva a precisar de atenção",
   "bookingsOpenCount_other": "{{count}} reservas a precisar de atenção",
+  "bookingsOpenCount_many": "{{count}} reservas a precisar de atenção",
   "bookingsTab": {
     "unclosed": "Por fechar",
     "in_window": "Em janela",

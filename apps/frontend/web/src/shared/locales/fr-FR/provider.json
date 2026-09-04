@@ -163,7 +163,7 @@
       "customer_did_not_pay": "Annulée : paiement non finalisé", "checkout_hold_expired": "Brouillon expiré",
       "marked_done_by_provider": "Terminée par le prestataire",
       "marked_done_by_platform": "Terminée automatiquement",
-      "marked_done_by_admin": "Terminée par la plateforme",
+      "marked_done_by_admin": "Marquée terminée par la plateforme",
       "still_ongoing": "Toujours en cours",
       "close_reminder": "Demande de clôture",
       "completed_by_timer": "Terminée sans réponse",

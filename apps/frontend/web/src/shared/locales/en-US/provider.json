@@ -153,7 +153,7 @@
     "stillOngoingDone": "Got it. We'll ask again in a week.",
     "markedDone": "Done. The customer has three days to respond.",
     "closeError": "Could not close the booking right now. Try again.",
-    "feedbackBy": "Customer responds by {{time}}",
+    "feedbackBy": "The customer responds by {{time}}",
     "askedToClose": "We've asked you to close this booking.",
     "timeline": "Timeline",
     "timelineReason": {
@@ -163,7 +163,7 @@
       "customer_did_not_pay": "Cancelled: payment not completed", "checkout_hold_expired": "Draft expired",
       "marked_done_by_provider": "Completed by the provider",
       "marked_done_by_platform": "Completed automatically",
-      "marked_done_by_admin": "Completed by the platform",
+      "marked_done_by_admin": "Marked done by the platform",
       "still_ongoing": "Still ongoing",
       "close_reminder": "Asked to close",
       "completed_by_timer": "Completed without a response",
