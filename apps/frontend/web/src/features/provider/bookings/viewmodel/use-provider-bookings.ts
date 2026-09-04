@@ -4,6 +4,8 @@ import { RECENT_BOOKINGS_LIMIT } from "../domain/status";
 import {
   acceptBooking,
   declineBooking,
+  keepBookingOpen,
+  markBookingDone,
   providerBookingQueries,
   type ProviderBookingsPageInput,
 } from "../data/booking.repository";
@@ -64,4 +66,37 @@ export function useAnswerBooking(providerId: string) {
     onSuccess: invalidate,
   });
   return { accept, decline };
+}
+
+/**
+ * The two ways a provider ends the platform's question about a finished job:
+ * the work is done, or it is still going.
+ *
+ * Both invalidate the whole workspace prefix, exactly as accepting and
+ * declining do — the row changes tab, the detail's status and timeline move,
+ * and `["provider", id, "booking-stats"]` sits under the same prefix, so the
+ * dashboard's "concluídas" and its revenue follow without a second key being
+ * named here.
+ *
+ * **Neither writes an answer into the cache, and that is the point.** An
+ * optimistic `MARKED_DONE` would be the one thing this pair cannot honestly
+ * promise: the mutation replies `{ bookingId }` whether it moved the row or
+ * lost the compare-and-swap to the platform's sweep (see
+ * `MarkBookingDoneCommand`, whose own `execute` answers `null` for exactly
+ * that case and whose GraphQL handler cannot pass the distinction on). The
+ * refetch is the only witness of who won, so it is what the page waits for
+ * rather than a cheerful guess it might have to take back.
+ */
+export function useCloseBooking(providerId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["provider", providerId] });
+  const markDone = useMutation({
+    mutationFn: (bookingId: string) => markBookingDone(bookingId),
+    onSuccess: invalidate,
+  });
+  const stillOngoing = useMutation({
+    mutationFn: (bookingId: string) => keepBookingOpen(bookingId),
+    onSuccess: invalidate,
+  });
+  return { markDone, stillOngoing };
 }

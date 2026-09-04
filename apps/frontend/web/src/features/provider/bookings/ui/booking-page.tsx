@@ -15,7 +15,11 @@ import {
   shortReference,
   timeLeftWording,
 } from "../domain/status";
-import { useAnswerBooking, useProviderBooking } from "../viewmodel/use-provider-bookings";
+import {
+  useAnswerBooking,
+  useCloseBooking,
+  useProviderBooking,
+} from "../viewmodel/use-provider-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
 import { DeclineDialog } from "./decline-dialog";
 
@@ -34,6 +38,32 @@ const CAPTION =
  */
 const REVEALED = new Set(["CONFIRMED", "MARKED_DONE", "COMPLETED", "DISPUTED"]);
 
+/** What the strip above the page can be saying, and the sentence for each. */
+type Notice =
+  | "accepted"
+  | "declined"
+  | "already"
+  | "error"
+  | "markedDone"
+  | "stillOngoing"
+  | "closeError";
+
+const NOTICE_KEY: Record<Notice, string> = {
+  accepted: "bookings.accepted",
+  declined: "bookings.declined",
+  already: "bookings.alreadyAnswered",
+  error: "bookings.actionError",
+  markedDone: "bookings.markedDone",
+  stillOngoing: "bookings.stillOngoingDone",
+  closeError: "bookings.closeError",
+};
+
+/** The two that report a failure; the rest report something that worked. */
+const FAILED: ReadonlySet<Notice> = new Set<Notice>(["error", "closeError"]);
+
+/** The hop the platform records when it asks a provider to close a booking. */
+const CLOSE_REMINDER = "close_reminder";
+
 /**
  * One booking, for the page that decides it. The header is the decision:
  * name, status, reference, the two actions while it is waiting, and the
@@ -50,10 +80,9 @@ export function BookingPage() {
   const providerId = activeProvider?.id ?? "";
   const query = useProviderBooking(providerId, bookingId);
   const { accept, decline } = useAnswerBooking(providerId);
+  const { markDone, stillOngoing } = useCloseBooking(providerId);
   const [declining, setDeclining] = useState(false);
-  const [notice, setNotice] = useState<"accepted" | "declined" | "already" | "error" | null>(
-    null,
-  );
+  const [notice, setNotice] = useState<Notice | null>(null);
   const b = query.data;
 
   usePageHeader(
@@ -123,12 +152,51 @@ export function BookingPage() {
   const coarse = [b.addressDistrict, b.addressCity].filter(Boolean);
 
   /**
+   * A booking can only be closed after the work it was sold for is over —
+   * `Booking.markDone` refuses anything else — so the button is not offered
+   * while the appointment is still ahead. `now` is the moment of the last
+   * read, not this render's, which is the same bargain the countdown makes:
+   * the two buttons appear on the next refetch after the appointment ends
+   * rather than materialising mid-sentence.
+   */
+  const ended = new Date(b.endsAt).getTime() <= now.getTime();
+  const closable = b.status === "CONFIRMED" && ended;
+  /**
+   * The platform has already asked for this one. `close_reminder` is that
+   * question, recorded on the booking's own history — the only place this
+   * read model carries it — and it is worth repeating on the page: seven days
+   * of silence and the platform closes the booking itself.
+   */
+  const asked = closable && b.timeline.some((e) => e.reason === CLOSE_REMINDER);
+  // The window the customer is standing in, while they are standing in it.
+  const feedbackBy = b.status === "MARKED_DONE" ? b.expiresAt : null;
+  // A refetch is running behind the press that caused it: the buttons are
+  // pointed at data already known to be stale, and pressing again would send
+  // a second mutation the backend will refuse.
+  const closing = markDone.isPending || stillOngoing.isPending || query.isFetching;
+
+  /** The timeline's format, shared with the two deadline lines above it. */
+  const stamp = (iso: string) =>
+    new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: b.timezone,
+    }).format(new Date(iso));
+
+  /**
    * A refused answer is nearly always a race — the customer cancelled, or the
    * deadline passed, while this page sat open — so the failure is reported as
    * the state it actually is and the page is re-read rather than left saying
    * something that is no longer true.
+   *
+   * `fallback` is what to say when the refusal is not that race: answering a
+   * request and closing a finished job fail at opposite ends of a booking's
+   * life, and "não foi possível responder" over a job that ended yesterday
+   * would name the wrong action.
    */
-  const onError = (error: unknown) => {
+  const failed = (fallback: Notice) => (error: unknown) => {
     const code = (error as { code?: string } | null)?.code;
     // Closed on the way out, not only on success. A decline that came back
     // refused otherwise leaves its dialog sitting over the notice explaining
@@ -137,9 +205,35 @@ export function BookingPage() {
     // already taken the header's own actions off. Closing a dialog that was
     // never open (the accept path) is a no-op, so the one handler covers both.
     setDeclining(false);
-    setNotice(code === "BOOKING_INVALID_TRANSITION" ? "already" : "error");
+    setNotice(code === "BOOKING_INVALID_TRANSITION" ? "already" : fallback);
     void query.refetch();
   };
+  const onError = failed("error");
+  const onCloseError = failed("closeError");
+
+  /**
+   * What the strip is allowed to say, given what the page now knows.
+   *
+   * "Voltamos a perguntar daqui a uma semana" is a promise about a booking
+   * that is still open, and `stillOngoing` is the one press here that can
+   * lose its race without being told: the platform's sweep marks the same
+   * booking done from the other side, the compare-and-swap drops the write,
+   * and the mutation answers `{ bookingId }` all the same (see
+   * `MarkBookingDoneCommand` — its own `execute` returns null for this, and
+   * the GraphQL field has nowhere to put it). The read that follows is the
+   * only witness, so a booking that came back no longer `CONFIRMED` replaces
+   * the acknowledgement with what actually happened.
+   *
+   * `markedDone` needs no such repair: whoever won that race, the booking is
+   * marked done and the customer has their three days, which is exactly what
+   * the sentence says.
+   */
+  const shown: Notice | null =
+    notice === "stillOngoing" && b.status !== "CONFIRMED"
+      ? b.status === "MARKED_DONE"
+        ? "markedDone"
+        : "already"
+      : notice;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -161,6 +255,16 @@ export function BookingPage() {
           {waiting && left && (
             <p className="type-body-medium mt-1 font-semibold">
               {t("bookings.respondIn", { time: left })}
+            </p>
+          )}
+          {feedbackBy && (
+            <p className="type-body-medium mt-1 font-semibold">
+              {t("bookings.feedbackBy", { time: stamp(feedbackBy) })}
+            </p>
+          )}
+          {asked && (
+            <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
+              {t("bookings.askedToClose")}
             </p>
           )}
         </div>
@@ -189,27 +293,70 @@ export function BookingPage() {
             </Button>
           </div>
         )}
+        {/* The same two-button shape one stage later: the job is over and the
+            platform wants to know whether it is finished. Both wrap onto
+            their own line on a phone rather than squeezing "Marcar como
+            concluído" into half a screen. */}
+        {closable && (
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 sm:flex-none"
+                disabled={closing}
+                onClick={() =>
+                  stillOngoing.mutate(b.id, {
+                    onSuccess: () => setNotice("stillOngoing"),
+                    onError: onCloseError,
+                  })
+                }
+              >
+                {t("bookings.stillOngoing")}
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 sm:flex-none"
+                disabled={closing}
+                onClick={() =>
+                  markDone.mutate(b.id, {
+                    onSuccess: () => setNotice("markedDone"),
+                    onError: onCloseError,
+                  })
+                }
+              >
+                {t("bookings.markDone")}
+              </Button>
+            </div>
+            {/* Said before the press, not after it. Marking a job done starts
+                a clock the provider cannot take back, and "Concluído. O
+                cliente tem três dias" arriving only once it is running is
+                the news a press late. */}
+            <p className="type-caption w-full max-w-80 text-[var(--color-muted-foreground)]">
+              {t("bookings.markDoneConfirm")}
+            </p>
+          </div>
+        )}
+        {/* Confirmed, but the appointment has not happened yet. Saying why the
+            button is not there beats leaving a provider hunting for it. */}
+        {b.status === "CONFIRMED" && !ended && (
+          <p className="type-caption max-w-64 text-[var(--color-muted-foreground)]">
+            {t("bookings.markDoneHint")}
+          </p>
+        )}
       </header>
 
-      {notice && (
+      {shown && (
         <p
           role="status"
           className={cn(
             "type-body mt-4 rounded-[var(--radius-card-sm)] p-3",
-            notice === "error"
+            FAILED.has(shown)
               ? "bg-[color-mix(in_srgb,var(--color-destructive)_8%,transparent)]"
               : "bg-[var(--color-muted)]",
           )}
         >
-          {t(
-            notice === "accepted"
-              ? "bookings.accepted"
-              : notice === "declined"
-                ? "bookings.declined"
-                : notice === "already"
-                  ? "bookings.alreadyAnswered"
-                  : "bookings.actionError",
-          )}
+          {t(NOTICE_KEY[shown])}
         </p>
       )}
 
@@ -373,13 +520,7 @@ export function BookingPage() {
                         {label}
                       </p>
                       <p className="type-caption text-[var(--color-muted-foreground)] tabular-nums">
-                        {new Intl.DateTimeFormat(locale, {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZone: b.timezone,
-                        }).format(new Date(e.at))}
+                        {stamp(e.at)}
                       </p>
                     </div>
                   </li>

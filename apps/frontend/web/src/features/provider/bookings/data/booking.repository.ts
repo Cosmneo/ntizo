@@ -50,6 +50,16 @@ const DECLINE = `
     bookingDecline(input: $input) { bookingId }
   }`;
 
+const MARK_DONE = `
+  mutation BookingMarkDone($input: BookingMarkDoneInput!) {
+    bookingMarkDone(input: $input) { bookingId }
+  }`;
+
+const STILL_ONGOING = `
+  mutation BookingStillOngoing($input: BookingStillOngoingInput!) {
+    bookingStillOngoing(input: $input) { bookingId }
+  }`;
+
 export interface ProviderBookingsPageInput {
   providerId: string;
   tab: ProviderQueryTab;
@@ -132,5 +142,33 @@ export async function acceptBooking(bookingId: string): Promise<void> {
 export async function declineBooking(bookingId: string, reason?: BookingDeclineReason): Promise<void> {
   await sessionGraphql<{ bookingDecline: { bookingId: string } }>(DECLINE, {
     input: { bookingId, ...(reason ? { reason } : {}) },
+  });
+}
+
+/**
+ * "The work is done." Takes the booking and nothing else — who is asking
+ * comes from the session, and the *reason* written to the booking's history
+ * is a literal the server writes itself. There is deliberately no field for
+ * it on this input: two of the three reasons the command accepts turn its
+ * membership check off, so a client that could name one could close any
+ * booking on the platform.
+ *
+ * **Answering does not mean it moved.** The mutation replies `{ bookingId }`
+ * — an echo of the request — whether the row changed or the compare-and-swap
+ * lost to the platform's own sweep, which watches the same booking from the
+ * other side. Nothing here can tell those apart; the read that follows can,
+ * which is why the hook invalidates rather than writing an answer into the
+ * cache.
+ */
+export async function markBookingDone(bookingId: string): Promise<void> {
+  await sessionGraphql<{ bookingMarkDone: { bookingId: string } }>(MARK_DONE, {
+    input: { bookingId },
+  });
+}
+
+/** "Still going" — the same shape, and the same silence about a lost race. */
+export async function keepBookingOpen(bookingId: string): Promise<void> {
+  await sessionGraphql<{ bookingStillOngoing: { bookingId: string } }>(STILL_ONGOING, {
+    input: { bookingId },
   });
 }

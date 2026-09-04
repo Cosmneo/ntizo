@@ -65,6 +65,16 @@ function inNinetyMinutes(): string {
 }
 
 /**
+ * An instant relative to the run, because the page's closing rule is a
+ * comparison against the clock: "has this appointment ended yet". A literal
+ * date in a fixture answers that question differently depending on when the
+ * suite is run, which is the one thing these tests must not depend on.
+ */
+function hoursFromNow(hours: number): string {
+  return new Date(Date.now() + hours * 3_600_000).toISOString();
+}
+
+/**
  * The request as the provider first sees it: nothing revealed, the money
  * still to be decided, and a timeline whose last entry is the deadline it is
  * being decided against.
@@ -116,6 +126,43 @@ function detailFixture(
   };
 }
 
+/**
+ * A paid booking whose appointment is over: the state the two closing
+ * buttons exist for. The contact is filled in because the mapper reveals it
+ * from `CONFIRMED` onwards, and the timeline carries the hops that got it
+ * here.
+ */
+function confirmedFixture(over: Partial<ProviderBookingDetailDTO> = {}): ProviderBookingDetailDTO {
+  return detailFixture({
+    status: "CONFIRMED",
+    respondBy: null,
+    startsAt: hoursFromNow(-25),
+    endsAt: hoursFromNow(-24),
+    // `markPaid` hands `expires_at` on to the appointment's own end.
+    expiresAt: hoursFromNow(-24),
+    customerPhone: "+258840000001",
+    customerEmail: "ana@example.com",
+    addressLabel: "Casa",
+    addressLine: "Av. X 1",
+    paymentRef: "MP-77",
+    timeline: [
+      {
+        at: "2026-09-02T08:00:00.000Z",
+        reason: "submitted_by_customer",
+        actor: "customer",
+        pending: false,
+      },
+      {
+        at: "2026-09-02T08:05:00.000Z",
+        reason: "accepted_by_provider",
+        actor: "provider",
+        pending: false,
+      },
+    ],
+    ...over,
+  });
+}
+
 function renderBooking(at: string, detail: ProviderBookingDetailDTO = detailFixture()) {
   fakes.graphql.mockReset();
   // Dispatched on the operation, not on call order: the page reads once and
@@ -127,6 +174,12 @@ function renderBooking(at: string, detail: ProviderBookingDetailDTO = detailFixt
     }
     if (query.includes("bookingDecline")) {
       return Promise.resolve({ bookingDecline: { bookingId: detail.id } });
+    }
+    if (query.includes("bookingMarkDone")) {
+      return Promise.resolve({ bookingMarkDone: { bookingId: detail.id } });
+    }
+    if (query.includes("bookingStillOngoing")) {
+      return Promise.resolve({ bookingStillOngoing: { bookingId: detail.id } });
     }
     return Promise.resolve({ bookingByIdForProvider: detail });
   });
@@ -303,5 +356,143 @@ describe("BookingPage", () => {
     expect(await screen.findByText("+258840000001")).toBeInTheDocument();
     expect(screen.getByText("Av. X 1", { exact: false })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Aceitar" })).not.toBeInTheDocument();
+  });
+
+  it("offers to close a confirmed booking whose appointment has passed", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+
+    expect(
+      await screen.findByRole("button", { name: "Marcar como concluído" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ainda a decorrer" })).toBeInTheDocument();
+    // What the press does, before it is pressed: the three days start the
+    // moment it lands and nothing here can call them back.
+    expect(
+      screen.getByText("O cliente fica com três dias para avaliar ou reclamar."),
+    ).toBeInTheDocument();
+  });
+
+  it("offers nothing while the appointment is still ahead", async () => {
+    renderBooking(
+      "/provider/estudio/bookings/bk-2",
+      confirmedFixture({ id: "bk-2", startsAt: hoursFromNow(24), endsAt: hoursFromNow(25) }),
+    );
+
+    await screen.findByRole("heading", { name: "Ana" });
+
+    expect(
+      screen.queryByRole("button", { name: "Marcar como concluído" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ainda a decorrer" }),
+    ).not.toBeInTheDocument();
+    // Not merely absent: the page says why, so a provider looking for the
+    // button is told it is coming rather than left thinking it is missing.
+    expect(screen.getByText("Só depois de o serviço ter terminado.")).toBeInTheDocument();
+  });
+
+  it("says what happens next when the provider closes it", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Marcar como concluído" }),
+    );
+
+    expect(await screen.findByText(/o cliente tem três dias/i)).toBeInTheDocument();
+    expect(fakes.graphql).toHaveBeenCalledWith(
+      expect.stringContaining("BookingMarkDone"),
+      { input: { bookingId: "bk-1" } },
+    );
+  });
+
+  it("pushes the clock when the work is still going", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ainda a decorrer" }));
+
+    expect(await screen.findByText(/voltamos a perguntar/i)).toBeInTheDocument();
+    expect(fakes.graphql).toHaveBeenCalledWith(
+      expect.stringContaining("BookingStillOngoing"),
+      { input: { bookingId: "bk-1" } },
+    );
+  });
+
+  it("says nothing about another week when the platform closed it first", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+    await screen.findByRole("button", { name: "Ainda a decorrer" });
+
+    // The race the compare-and-swap is silent about: the sweep's own
+    // seven-day arm marked this booking done a moment before the press. The
+    // mutation still answers `{ bookingId }` — the wire cannot say "nothing
+    // moved" — and only the read that follows shows who won.
+    fakes.graphql.mockImplementation((query: string) => {
+      if (query.includes("bookingStillOngoing")) {
+        return Promise.resolve({ bookingStillOngoing: { bookingId: "bk-1" } });
+      }
+      return Promise.resolve({
+        bookingByIdForProvider: confirmedFixture({
+          status: "MARKED_DONE",
+          expiresAt: hoursFromNow(48),
+        }),
+      });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Ainda a decorrer" }));
+
+    expect(await screen.findByText(/o cliente tem três dias/i)).toBeInTheDocument();
+    expect(screen.queryByText(/voltamos a perguntar/i)).not.toBeInTheDocument();
+  });
+
+  it("says the closing failed in the closing's own words", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+    await screen.findByRole("button", { name: "Marcar como concluído" });
+
+    fakes.graphql.mockImplementation((query: string) => {
+      if (query.includes("bookingMarkDone")) {
+        return Promise.reject(
+          new GraphqlError(500, [{ message: "boom", extensions: { code: "INTERNAL" } }]),
+        );
+      }
+      return Promise.resolve({ bookingByIdForProvider: confirmedFixture() });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Marcar como concluído" }));
+
+    expect(
+      await screen.findByText("Não foi possível fechar a reserva agora. Tente de novo."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the window on a booking that is waiting for the customer", async () => {
+    renderBooking(
+      "/provider/estudio/bookings/bk-3",
+      confirmedFixture({ id: "bk-3", status: "MARKED_DONE", expiresAt: hoursFromNow(48) }),
+    );
+
+    expect(await screen.findByText(/o cliente responde até/i)).toBeInTheDocument();
+    // Closed once, and not offered again: the window is the customer's now.
+    expect(
+      screen.queryByRole("button", { name: "Marcar como concluído" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Marcada como concluída")).toBeInTheDocument();
+  });
+
+  it("says so when the platform has already asked for this one to be closed", async () => {
+    renderBooking(
+      "/provider/estudio/bookings/bk-1",
+      confirmedFixture({
+        timeline: [
+          {
+            at: "2026-09-02T08:00:00.000Z",
+            reason: "submitted_by_customer",
+            actor: "customer",
+            pending: false,
+          },
+          { at: hoursFromNow(-2), reason: "close_reminder", actor: "system", pending: false },
+        ],
+      }),
+    );
+
+    expect(await screen.findByText("Pedimos-lhe que feche esta reserva.")).toBeInTheDocument();
   });
 });
