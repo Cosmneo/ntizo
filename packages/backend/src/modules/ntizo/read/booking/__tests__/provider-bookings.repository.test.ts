@@ -791,6 +791,39 @@ describe("statsForProvider", () => {
       // row carries a `confirmed_at` of today, and the customer has not paid.
       expect(totals.awaitingPayment).toBe(1);
 
+      // That 1 is *this* booking, and not a number that happens to be 1.
+      //
+      // Everything else in this test is a count, and a count cannot say
+      // which row it counted. That matters most for the zeroes: if
+      // `acceptedUnpaidId` quietly stopped being an accepted-and-unpaid
+      // booking — a fixture date that drifted, an `accept` that no longer
+      // stamps `confirmed_at`, a `commit` that silently did not apply —
+      // then `today.confirmed` would still be 0 and `pipelineMinor` still
+      // 0, and this test would keep passing while proving nothing at all.
+      // A series bucketed on `confirmed_at` cannot draw a confirmation the
+      // provider never got if there is no such booking to draw.
+      //
+      // So the premise gets pinned by id. Its own fixture comment says it
+      // "belongs in `awaitingPayment` and nowhere else"; these are the two
+      // halves of that sentence, asserted where a list can name the row
+      // rather than only total it.
+      const inTab = async (tab: "upcoming" | "history") =>
+        (
+          await readRepo.listForProvider(otherProviderId, { tab, q: null, memberId: null, now }, 20, 0)
+        ).map((r) => r.id);
+
+      // Where it does belong: still `PENDING_PAYMENT`, one of the upcoming
+      // tab's two live statuses, with its slot still ahead of `now`.
+      expect((await readRepo.findForProvider(acceptedUnpaidId, otherProviderId))?.status).toBe(
+        "PENDING_PAYMENT",
+      );
+      expect(await inTab("upcoming")).toEqual([acceptedUnpaidId]);
+
+      // And nowhere else. `revenueLast30Minor` and `completedLast30` are both
+      // driven by `COMPLETED`, a history status — so the two bookings of this
+      // workspace are told apart here by id, not only by the 72 000 below.
+      expect(await inTab("history")).toEqual([completedId]);
+
       const today = perDay.find((d) => d.date === totals.today);
       expect(today?.requests).toBe(2); // both of this workspace's bookings were submitted today
       // The claim this fixture exists for: a series bucketed on `confirmed_at`
