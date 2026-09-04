@@ -49,7 +49,7 @@ async function renderFooter() {
           </>
         ),
       }),
-      ...["/about", "/contact", "/help", "/feedback", "/become-provider", "/careers", "/terms", "/privacy", "/admin"].map(stub),
+      ...["/about", "/contact", "/help", "/feedback", "/become-provider", "/careers", "/terms", "/privacy"].map(stub),
     ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -91,6 +91,18 @@ describe("Footer", () => {
     await renderFooter();
     const support = screen.getByRole("button", { name: /talk to support/i });
     expect(support.style.textAlign).toBe("start");
+  });
+
+  it("offers no way into the admin console", async () => {
+    // A `/admin` row sat under the two legal links until 2026-09-04, labelled
+    // with a key (`admin`, in the `landing` namespace) that no locale file
+    // defines — so it rendered the fallback, the bare lower-case key, beside
+    // "Termos de Serviço" and "Política de Privacidade". Asserting on the href
+    // rather than on that label, because the label is the accident: a later
+    // edit that puts the link back with proper copy should still turn this red.
+    await renderFooter();
+    const hrefs = Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(hrefs).not.toContain("/admin");
   });
 
   it("prints the support address on the ntizo.co.mz domain and nothing on .com", async () => {
