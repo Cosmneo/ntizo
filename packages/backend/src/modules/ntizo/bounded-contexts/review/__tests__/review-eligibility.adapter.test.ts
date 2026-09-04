@@ -8,14 +8,17 @@
  * already prove the pass-through (a verdict's `bookingId` lands on the
  * review); what only a real query can prove is the verdict itself.
  *
- * Six customers, not one, each proving a different way this could go wrong
+ * Eight customers, not one, each proving a different way this could go wrong
  * silently. The query has three predicates — `status`, `providerId`,
  * `customerId` — and each is pinned by exactly one test below, not merely
  * exercised in passing by whichever fixture happens to be there:
- *  - `status`: "refuses a customer whose only booking with this provider is
- *    not COMPLETED". A fixture holding only completed bookings could pass
- *    this file even if the status filter were deleted; this is the row that
- *    makes that a failing test instead.
+ *  - `status`: "refuses a customer whose bookings with this provider are
+ *    neither marked done nor completed". A fixture holding only reviewable
+ *    bookings could pass this file even if the status filter were deleted;
+ *    this is the row that makes that a failing test instead. Its two rows are
+ *    `CONFIRMED` (paid, appointment possibly still ahead) and `DISPUTED` (the
+ *    customer saying the opposite of a review) — the two neighbours of the
+ *    admitted pair, and the two a careless widening would swallow.
  *  - `providerId`: "refuses a customer whose COMPLETED booking is with the
  *    other provider". Catches `providerId` being dropped, which would let
  *    anyone who ever completed any booking review every provider on the
@@ -28,8 +31,8 @@
  *    this does not depend on which other tests ran first, unlike the
  *    file-order coincidence it replaces (see that test's own comment).
  *
- * Two more tests cover behaviour once eligibility is established, rather than
- * a single predicate:
+ * Four more tests cover behaviour once eligibility is established, rather
+ * than a single predicate:
  *  - a single `COMPLETED` booking against the provider under test — allowed,
  *    with that booking's own id.
  *  - two `COMPLETED` bookings against the provider under test, at different
@@ -37,6 +40,15 @@
  *    completed one specifically, not merely at "a" completed booking. Its
  *    own customer, not any other test's, so the assertion depends on
  *    `completedAt` rather than on cross-test insertion order.
+ *  - a single `MARKED_DONE` booking — allowed. This is the widening this
+ *    task is about: the customer's review is what ends the dispute window,
+ *    so the window is exactly when they must be able to write one.
+ *  - a `COMPLETED` booking finished after a `MARKED_DONE` one — allowed, and
+ *    pointed at the completed one. That is the assertion the `coalesce` in
+ *    the ORDER BY exists for: `completed_at` is null on a marked-done row
+ *    and Postgres sorts nulls FIRST under DESC, so ordering by that column
+ *    alone would deterministically return the older marked-done booking
+ *    instead.
  *
  * Fixtures follow `booking-repository.test.ts`'s pattern: a random `suffix`
  * per run so this file's rows cannot collide with another worktree's or
@@ -75,10 +87,12 @@ const db = drizzle(sql, { schema: authSchema });
 const adapter = new BookingReviewEligibilityAdapter();
 const suffix = crypto.randomUUID();
 
-let customerNotCompletedId: string;
+let customerNotReviewableId: string;
 let customerWrongProviderId: string;
 let customerEarnedId: string;
 let customerMultipleCompletedId: string;
+let customerMarkedDoneId: string;
+let customerMixedEndingsId: string;
 let customerSelfId: string;
 let customerOtherId: string;
 let ownerAId: string;
@@ -94,10 +108,12 @@ let serviceOptionAId: string;
 let serviceOptionBId: string;
 
 beforeAll(async () => {
-  customerNotCompletedId = crypto.randomUUID();
+  customerNotReviewableId = crypto.randomUUID();
   customerWrongProviderId = crypto.randomUUID();
   customerEarnedId = crypto.randomUUID();
   customerMultipleCompletedId = crypto.randomUUID();
+  customerMarkedDoneId = crypto.randomUUID();
+  customerMixedEndingsId = crypto.randomUUID();
   customerSelfId = crypto.randomUUID();
   customerOtherId = crypto.randomUUID();
   ownerAId = crypto.randomUUID();
@@ -105,8 +121,8 @@ beforeAll(async () => {
 
   await db.insert(user).values([
     {
-      id: customerNotCompletedId,
-      email: `review-elig-not-completed-${suffix}@ntizo.test`,
+      id: customerNotReviewableId,
+      email: `review-elig-not-reviewable-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -125,6 +141,18 @@ beforeAll(async () => {
     {
       id: customerMultipleCompletedId,
       email: `review-elig-multiple-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: customerMarkedDoneId,
+      email: `review-elig-marked-done-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
+    {
+      id: customerMixedEndingsId,
+      email: `review-elig-mixed-endings-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
     },
@@ -246,10 +274,12 @@ afterAll(async () => {
     () => db.delete(providerMember).where(eq(providerMember.id, memberBId)),
     () => db.delete(provider).where(eq(provider.id, providerAId)),
     () => db.delete(provider).where(eq(provider.id, providerBId)),
-    () => db.delete(user).where(eq(user.id, customerNotCompletedId)),
+    () => db.delete(user).where(eq(user.id, customerNotReviewableId)),
     () => db.delete(user).where(eq(user.id, customerWrongProviderId)),
     () => db.delete(user).where(eq(user.id, customerEarnedId)),
     () => db.delete(user).where(eq(user.id, customerMultipleCompletedId)),
+    () => db.delete(user).where(eq(user.id, customerMarkedDoneId)),
+    () => db.delete(user).where(eq(user.id, customerMixedEndingsId)),
     () => db.delete(user).where(eq(user.id, customerSelfId)),
     () => db.delete(user).where(eq(user.id, customerOtherId)),
     () => db.delete(user).where(eq(user.id, ownerAId)),
@@ -261,7 +291,7 @@ afterAll(async () => {
 /** A row that satisfies every booking NOT NULL, distinct `startsAt`/`endsAt` per call. */
 function bookingRow(overrides: Partial<NewBookingRow> = {}): NewBookingRow {
   return {
-    customerId: customerNotCompletedId,
+    customerId: customerNotReviewableId,
     providerId: providerAId,
     serviceId: serviceAId,
     serviceOptionId: serviceOptionAId,
@@ -286,21 +316,108 @@ function bookingRow(overrides: Partial<NewBookingRow> = {}): NewBookingRow {
 }
 
 describe("BookingReviewEligibilityAdapter — real status filter, real providerId predicate", () => {
-  test("refuses a customer whose only booking with this provider is not COMPLETED", async () => {
-    await db.insert(booking).values(
+  test("refuses a customer whose bookings with this provider are neither marked done nor completed", async () => {
+    // The two neighbours of the admitted pair, and the two a careless
+    // widening would swallow. `CONFIRMED` is paid with the appointment
+    // possibly still ahead — nothing has been delivered to have an opinion
+    // about. `DISPUTED` is the customer already saying the opposite of a
+    // review, and letting them score the provider while an administrator is
+    // still reading the case would be the platform taking a side.
+    //
+    // Only `CONFIRMED` holds a slot, so the two rows cannot collide under
+    // `booking_member_slot_no_overlap` however their times are chosen; they
+    // are given different days anyway, so this stays true if `DISPUTED` ever
+    // joins `SLOT_HOLDING_STATUSES`.
+    await db.insert(booking).values([
       bookingRow({
-        customerId: customerNotCompletedId,
-        status: BookingStatus.MarkedDone,
+        customerId: customerNotReviewableId,
+        status: BookingStatus.Confirmed,
         startsAt: new Date("2026-09-10T09:00:00Z"),
         endsAt: new Date("2026-09-10T10:00:00Z"),
       }),
-    );
+      bookingRow({
+        customerId: customerNotReviewableId,
+        status: BookingStatus.Disputed,
+        disputedAt: new Date("2026-09-14T11:00:00Z"),
+        markedDoneAt: new Date("2026-09-13T10:00:00Z"),
+        startsAt: new Date("2026-09-13T09:00:00Z"),
+        endsAt: new Date("2026-09-13T10:00:00Z"),
+      }),
+    ]);
 
     const verdict = await __runWithTransactionContextForTests(db, () =>
-      adapter.check(providerAId, customerNotCompletedId),
+      adapter.check(providerAId, customerNotReviewableId),
     );
 
     expect(verdict).toEqual({ allowed: false, bookingId: null });
+  });
+
+  test("allows a customer whose booking is MARKED_DONE — the review is what ends that window", async () => {
+    // The widening this task is about. `MARKED_DONE` is the provider's claim
+    // that the job is done, sitting inside the customer's three-day dispute
+    // window; the customer's review is their answer to that claim, so the
+    // window is exactly when they have to be able to write one.
+    const [row] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerMarkedDoneId,
+          status: BookingStatus.MarkedDone,
+          markedDoneAt: new Date("2026-10-02T10:00:00Z"),
+          startsAt: new Date("2026-10-02T09:00:00Z"),
+          endsAt: new Date("2026-10-02T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const verdict = await __runWithTransactionContextForTests(db, () =>
+      adapter.check(providerAId, customerMarkedDoneId),
+    );
+
+    expect(verdict).toEqual({ allowed: true, bookingId: row!.id });
+  });
+
+  test("points at the most recently finished job whichever column recorded it", async () => {
+    // The assertion the `coalesce` in the ORDER BY exists for. `completed_at`
+    // is null on a marked-done row, and Postgres sorts nulls FIRST under
+    // DESC — so `ORDER BY completed_at DESC` alone would deterministically
+    // return the OLDER marked-done booking here, filing this customer's
+    // review against a job they had done four months before the one they are
+    // actually thinking about.
+    const [markedDoneEarlier] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerMixedEndingsId,
+          status: BookingStatus.MarkedDone,
+          markedDoneAt: new Date("2026-03-01T10:00:00Z"),
+          startsAt: new Date("2026-03-01T09:00:00Z"),
+          endsAt: new Date("2026-03-01T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const [completedLater] = await db
+      .insert(booking)
+      .values(
+        bookingRow({
+          customerId: customerMixedEndingsId,
+          status: BookingStatus.Completed,
+          markedDoneAt: new Date("2026-07-01T10:00:00Z"),
+          completedAt: new Date("2026-07-04T10:00:00Z"),
+          startsAt: new Date("2026-07-01T09:00:00Z"),
+          endsAt: new Date("2026-07-01T10:00:00Z"),
+        }),
+      )
+      .returning({ id: booking.id });
+
+    const verdict = await __runWithTransactionContextForTests(db, () =>
+      adapter.check(providerAId, customerMixedEndingsId),
+    );
+
+    expect(verdict.allowed).toBe(true);
+    expect(verdict.bookingId).toBe(completedLater!.id);
+    expect(verdict.bookingId).not.toBe(markedDoneEarlier!.id);
   });
 
   test("refuses a customer whose COMPLETED booking is with the other provider", async () => {

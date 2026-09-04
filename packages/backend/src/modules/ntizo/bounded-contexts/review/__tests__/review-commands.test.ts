@@ -25,7 +25,16 @@ import type {
   ReviewEligibility,
   ReviewEligibilityPort,
 } from "../app/ports/outbound/review-eligibility.port";
+import type { CompleteBookingPort } from "../app/ports/outbound/complete-booking.port";
 import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
+// The booking context's own refusal, imported into a *test* — never into
+// this context's `app/` or `domain/` tree, which is where the no-cross-context
+// rule bites. It is what the command behind `CompleteBookingPort` really
+// throws when the sweep closed the booking a second before the review
+// reached it (`Booking.complete` refuses from `COMPLETED`), and inventing a
+// generic `Error` here would make the swallow test about a failure that never
+// happens instead of the one that will.
+import { BookingTransitionError } from "../../booking/domain/exceptions";
 
 /**
  * Flips `insideTransaction` around `work()`, and resets an `order` log at the
@@ -163,20 +172,57 @@ class FakeEligibility implements ReviewEligibilityPort {
   }
 }
 
+/**
+ * Records every booking this command asked to close, and — per call — whether
+ * it asked from inside `unitOfWork.atomicExecute`. The second half is the
+ * point: closing a booking is a write in *another* bounded context, so doing
+ * it inside this one's transaction would hold that transaction open across a
+ * foreign call and, worse, would let a rollback here take back a booking
+ * closure the other side has already announced. A fake asserting only "was
+ * complete called" cannot tell that apart.
+ *
+ * `failWith` makes the port refuse, which is the case that decides whether a
+ * review survives a booking that will not close.
+ */
+class FakeCompleteBooking implements CompleteBookingPort {
+  public calls: { bookingId: string; requesterUserId: string }[] = [];
+  public insideTransaction: boolean[] = [];
+  public failWith: Error | null = null;
+
+  constructor(private readonly unitOfWork?: TrackingUnitOfWork) {}
+
+  async execute(input: { bookingId: string; requesterUserId: string }): Promise<void> {
+    this.calls.push(input);
+    this.insideTransaction.push(this.unitOfWork?.insideTransaction ?? false);
+    if (this.failWith) throw this.failWith;
+  }
+}
+
 const INPUT = { requesterUserId: "u1", providerId: "p1", rating: 5, comment: "bom" };
 
+/** The reviewer in the completion tests below — the booking's own customer. */
+const CUSTOMER_ID = "cus-1";
+
 /**
- * `SubmitReviewCommand` now takes a `UnitOfWorkPort` and an `OutboxPort` —
- * every test below that does not care about either gets a fresh, unshared
- * pair from this helper, exactly as `decide-provider-status.command.test.ts`
- * does for the tests that predate its own outbox wiring.
+ * `SubmitReviewCommand` now takes a `UnitOfWorkPort`, an `OutboxPort` and a
+ * `CompleteBookingPort` — every test below that does not care about any of
+ * them gets a fresh, unshared set from this helper, exactly as
+ * `decide-provider-status.command.test.ts` does for the tests that predate
+ * its own outbox wiring.
  */
 function command(
   repo: ReviewRepositoryPort,
   eligibility: ReviewEligibilityPort,
+  completeBooking: CompleteBookingPort = new FakeCompleteBooking(),
 ): SubmitReviewCommand {
   const unitOfWork = new TrackingUnitOfWork();
-  return new SubmitReviewCommand(repo, eligibility, unitOfWork, new CapturingOutbox(unitOfWork));
+  return new SubmitReviewCommand(
+    repo,
+    eligibility,
+    unitOfWork,
+    new CapturingOutbox(unitOfWork),
+    completeBooking,
+  );
 }
 
 describe("SubmitReviewCommand", () => {
@@ -289,6 +335,7 @@ describe("the outbox", () => {
       eligibility,
       unitOfWork,
       outbox,
+      new FakeCompleteBooking(),
     ).execute(INPUT);
 
     expect(outbox.published).toHaveLength(1);
@@ -325,7 +372,7 @@ describe("the outbox", () => {
     const repo = new FakeRepo({ inserted: false }, unitOfWork);
     const eligibility = new FakeEligibility({ allowed: true, bookingId: "b7" });
 
-    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT);
+    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox, new FakeCompleteBooking()).execute(INPUT);
 
     expect(repo.upserted).not.toBeNull();
     expect(outbox.published).toHaveLength(0);
@@ -344,7 +391,7 @@ describe("the outbox", () => {
     const repo = new FakeRepo({ existing }, unitOfWork);
     const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
 
-    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT);
+    await new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox, new FakeCompleteBooking()).execute(INPUT);
 
     expect(repo.upserted).not.toBeNull();
     expect(outbox.published).toHaveLength(0);
@@ -356,7 +403,7 @@ describe("the outbox", () => {
     const repo = new FakeRepo({ reviewable: false }, unitOfWork);
 
     await expect(
-      new SubmitReviewCommand(repo, new FakeEligibility(), unitOfWork, outbox).execute(INPUT),
+      new SubmitReviewCommand(repo, new FakeEligibility(), unitOfWork, outbox, new FakeCompleteBooking()).execute(INPUT),
     ).rejects.toThrow(ProviderNotReviewableError);
 
     expect(outbox.published).toHaveLength(0);
@@ -368,7 +415,7 @@ describe("the outbox", () => {
     const repo = new FakeRepo({ works: true }, unitOfWork);
 
     await expect(
-      new SubmitReviewCommand(repo, new FakeEligibility(), unitOfWork, outbox).execute(INPUT),
+      new SubmitReviewCommand(repo, new FakeEligibility(), unitOfWork, outbox, new FakeCompleteBooking()).execute(INPUT),
     ).rejects.toThrow(CannotReviewOwnBusinessError);
 
     expect(outbox.published).toHaveLength(0);
@@ -381,10 +428,207 @@ describe("the outbox", () => {
     const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
 
     await expect(
-      new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox).execute(INPUT),
+      new SubmitReviewCommand(repo, eligibility, unitOfWork, outbox, new FakeCompleteBooking()).execute(INPUT),
     ).rejects.toThrow(ReviewNotEarnedError);
 
     expect(outbox.published).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The customer's review IS the validation. A booking the provider marked done
+// opens a three-day window in which the customer may dispute the work; the
+// sweep closes it when they do not. Writing a review is that customer saying
+// the work happened, so it closes the window immediately rather than making
+// them press a second button for something they have already answered.
+//
+// What these tests pin is not "complete was called" but the four things that
+// decide whether that call is safe: which booking (the caller's own, the one
+// eligibility handed back), when (after the review's transaction resolved,
+// never inside it), that a refusal cannot take the review down with it, and
+// that nothing at all is closed on any path that did not write a new review.
+// ---------------------------------------------------------------------------
+
+describe("the booking a review closes", () => {
+  const COMPLETION_INPUT = {
+    providerId: "prov-1",
+    requesterUserId: CUSTOMER_ID,
+    rating: 5,
+    comment: "óptimo",
+  };
+
+  it("completes the booking it was written about", async () => {
+    const repo = new FakeRepo();
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "bk-1" });
+    const completeBooking = new FakeCompleteBooking();
+
+    await command(repo, eligibility, completeBooking).execute(COMPLETION_INPUT);
+
+    // The booking id is the one `ReviewEligibilityPort` returned for THIS
+    // requester, which is what makes the call safe without the booking
+    // context re-checking: that query is keyed on `customerId = requester`,
+    // so it can only ever hand back a booking of the caller's own. Both
+    // fields are asserted together for that reason — a call carrying the
+    // right booking and the wrong person would close somebody else's job in
+    // their name.
+    expect(completeBooking.calls).toEqual([{ bookingId: "bk-1", requesterUserId: CUSTOMER_ID }]);
+  });
+
+  it("closes the booking after the transaction that wrote the review, never inside it", async () => {
+    // A write in another bounded context, made from inside this one's
+    // transaction, would hold that transaction open across a foreign call and
+    // let a rollback here take back a closure the other side already
+    // announced. Same discipline every booking command keeps for its own
+    // notifications.
+    const unitOfWork = new TrackingUnitOfWork();
+    const outbox = new CapturingOutbox(unitOfWork);
+    const repo = new FakeRepo({}, unitOfWork);
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "bk-1" });
+    const completeBooking = new FakeCompleteBooking(unitOfWork);
+
+    await new SubmitReviewCommand(
+      repo,
+      eligibility,
+      unitOfWork,
+      outbox,
+      completeBooking,
+    ).execute(COMPLETION_INPUT);
+
+    expect(completeBooking.insideTransaction).toEqual([false]);
+  });
+
+  it("does not fail the review when the booking refuses to complete", async () => {
+    // The realistic refusal: the sweep's own window arm closed this booking a
+    // second earlier, so `Booking.complete` refuses from `COMPLETED`.
+    const repo = new FakeRepo();
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "bk-1" });
+    const completeBooking = new FakeCompleteBooking();
+    completeBooking.failWith = new BookingTransitionError("COMPLETED", "COMPLETED");
+
+    await expect(
+      command(repo, eligibility, completeBooking).execute({
+        providerId: "prov-1",
+        requesterUserId: CUSTOMER_ID,
+        rating: 5,
+        comment: null,
+      }),
+    ).resolves.toBeDefined();
+
+    // And the review really is there — a caller that resolved having thrown
+    // the review away would satisfy the line above and satisfy nobody else.
+    expect(repo.upserted).not.toBeNull();
+    expect(completeBooking.calls).toHaveLength(1);
+  });
+
+  it("logs the booking it could not close, so a window left open is not silent", async () => {
+    const repo = new FakeRepo();
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "bk-1" });
+    const completeBooking = new FakeCompleteBooking();
+    completeBooking.failWith = new BookingTransitionError("COMPLETED", "COMPLETED");
+
+    const seen: unknown[][] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      seen.push(args);
+    };
+    // try/finally, not a bare restore after the await, for the reason
+    // `record-activity.test.ts` gives: this is the test proving `execute`
+    // survives the refusal, so if that guarantee ever broke an unguarded
+    // restore below a rejected await would never run and the patched
+    // `console.error` would leak into every test after this one.
+    try {
+      await command(repo, eligibility, completeBooking).execute({
+        providerId: "prov-1",
+        requesterUserId: CUSTOMER_ID,
+        rating: 5,
+        comment: null,
+      });
+    } finally {
+      console.error = original;
+    }
+
+    expect(seen).toHaveLength(1);
+    // The booking id has to be IN the line, or a booking silently left open
+    // cannot be found from the logs — which is the entire reason the swallow
+    // is acceptable.
+    expect(String(seen[0]![0])).toContain("bk-1");
+  });
+
+  it("completes nothing when the review was a revision, not a new one", async () => {
+    // Changing one's mind about a business is not new evidence that the job
+    // happened, and the booking it points at was closed the first time round.
+    const existing = Review.create({
+      providerId: "prov-1",
+      authorUserId: CUSTOMER_ID,
+      bookingId: "bk-1",
+      rating: 1,
+      comment: "mau",
+    });
+    const repo = new FakeRepo({ existing });
+    const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
+    const completeBooking = new FakeCompleteBooking();
+
+    await command(repo, eligibility, completeBooking).execute({
+      providerId: "prov-1",
+      requesterUserId: CUSTOMER_ID,
+      rating: 4,
+      comment: null,
+    });
+
+    expect(repo.upserted).not.toBeNull();
+    expect(completeBooking.calls).toEqual([]);
+  });
+
+  it("completes nothing when the write says another submission got there first", async () => {
+    // The double-submit race `review.repository.ts` names: `findByAuthor` saw
+    // nothing, but by the time this call's `upsert` ran a racing submission
+    // had already inserted the row, so Postgres reports an update. The write
+    // decides, not the read — the same rule that governs `ReviewCreated`
+    // above, and for the same reason: the racing call already closed it.
+    const repo = new FakeRepo({ inserted: false });
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: "bk-1" });
+    const completeBooking = new FakeCompleteBooking();
+
+    await command(repo, eligibility, completeBooking).execute({
+      providerId: "prov-1",
+      requesterUserId: CUSTOMER_ID,
+      rating: 4,
+      comment: null,
+    });
+
+    expect(repo.upserted).not.toBeNull();
+    expect(completeBooking.calls).toEqual([]);
+  });
+
+  it("completes nothing when eligibility named no booking to close", async () => {
+    // `allowed` without a `bookingId` is what the old open adapter answered
+    // and what any future adapter that says yes on some other ground would
+    // answer. There is no job to close, and `bookingId!` would send a literal
+    // "undefined" across the boundary.
+    const repo = new FakeRepo();
+    const eligibility = new FakeEligibility({ allowed: true, bookingId: null });
+    const completeBooking = new FakeCompleteBooking();
+
+    await command(repo, eligibility, completeBooking).execute(COMPLETION_INPUT);
+
+    expect(repo.upserted).not.toBeNull();
+    expect(completeBooking.calls).toEqual([]);
+  });
+
+  it("completes nothing when the submission was refused", async () => {
+    // No review was written, so nothing validated anything. Asserted on the
+    // not-earned refusal specifically, because that is the one whose input
+    // carries a booking-shaped verdict at all.
+    const repo = new FakeRepo();
+    const eligibility = new FakeEligibility({ allowed: false, bookingId: null });
+    const completeBooking = new FakeCompleteBooking();
+
+    await expect(
+      command(repo, eligibility, completeBooking).execute(COMPLETION_INPUT),
+    ).rejects.toThrow(ReviewNotEarnedError);
+
+    expect(repo.upserted).toBeNull();
+    expect(completeBooking.calls).toEqual([]);
   });
 });
 

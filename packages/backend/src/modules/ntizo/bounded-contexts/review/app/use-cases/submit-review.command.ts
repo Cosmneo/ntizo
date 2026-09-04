@@ -8,6 +8,7 @@ import {
   ReviewNotFoundError,
 } from "../../domain/exceptions";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
+import type { CompleteBookingPort } from "../ports/outbound/complete-booking.port";
 import type { ReviewEligibilityPort } from "../ports/outbound/review-eligibility.port";
 import type { ReviewRepositoryPort } from "../ports/outbound/review.repository.port";
 
@@ -28,6 +29,13 @@ import type { ReviewRepositoryPort } from "../ports/outbound/review.repository.p
  * (`BookingReviewEligibilityAdapter`). Validation of the score itself lives in
  * the aggregate, and runs last because it is the only one whose message is
  * about what the caller typed rather than about who they are.
+ *
+ * **A new review also closes the booking it is about.** The eligibility rule
+ * now accepts a `MARKED_DONE` booking — the provider's claim that the job is
+ * done, sitting inside the customer's three-day dispute window — and writing
+ * a review is that customer answering the claim. See the tail of `execute`
+ * for why that hop happens after the transaction and why it cannot fail the
+ * review.
  */
 export class SubmitReviewCommand {
   constructor(
@@ -35,6 +43,13 @@ export class SubmitReviewCommand {
     private readonly eligibility: ReviewEligibilityPort,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly outboxPort: OutboxPort,
+    /**
+     * Last, the position the notification port holds in every booking command
+     * for the same reason: it is the dependency that acts once the write is
+     * already safe, and reading the argument list top-to-bottom should read
+     * in that order.
+     */
+    private readonly completeBooking: CompleteBookingPort,
   ) {}
 
   async execute(input: {
@@ -73,7 +88,10 @@ export class SubmitReviewCommand {
           comment: input.comment,
         });
 
-    const { id: reviewId } = await this.unitOfWork.atomicExecute(async () => {
+    // The whole `UpsertedReview`, not just its id: what happens after this
+    // transaction depends on `inserted` as much as the publish inside it
+    // does.
+    const written = await this.unitOfWork.atomicExecute(async () => {
       const upserted = await this.repo.upsert(review);
 
       // Whether this publishes ReviewCreated is decided by what THIS write
@@ -104,7 +122,54 @@ export class SubmitReviewCommand {
       return upserted;
     });
 
-    return { reviewId };
+    // The customer's review IS the validation the window was waiting for, so
+    // a new review closes the booking it is about instead of leaving the
+    // customer a second button to press for something they have just
+    // answered.
+    //
+    // **After the transaction, never inside it.** This is a write in another
+    // bounded context; making it from inside this one's transaction would
+    // hold that transaction open across a foreign call and let a rollback
+    // here take back a closure the other side has already announced. Same
+    // discipline every booking command keeps for its own notifications
+    // (BR-P6).
+    //
+    // **`written.inserted`, not `existing === null`.** Postgres' own xmax is
+    // the only thing that knows whether THIS call wrote a new review; the
+    // read above ran before the transaction and two racing submissions can
+    // both have seen "nothing here". Only the one that actually inserted
+    // should close anything — the same rule the `ReviewCreated` publish
+    // follows, and here it also means a revision closes nothing, which is
+    // right: changing one's mind is not new evidence that the job happened.
+    //
+    // **`bookingId` may legitimately be null.** A verdict that allows a
+    // review without naming a booking — what the old open adapter answered,
+    // and what any future adapter saying yes on some other ground would
+    // answer — has no job to close.
+    //
+    // **Quietly, and this is the deliberate part.** A review that was
+    // written, saved, and then thrown away because a booking write raced is
+    // strictly worse than a booking that stays open until the sweep closes it
+    // hours later: the review is the customer's own words and there is no
+    // second copy, while the booking has a timer behind it that produces the
+    // same ending anyway. The realistic failure is not even a bug — the
+    // sweep's window arm closing this booking a second earlier makes
+    // `Booking.complete` refuse from `COMPLETED`, which is the correct
+    // outcome arriving by the other door. Logged with the booking id, because
+    // the only thing that makes swallowing acceptable is that a window left
+    // open can be found afterwards.
+    if (written.inserted && bookingId) {
+      try {
+        await this.completeBooking.execute({
+          bookingId,
+          requesterUserId: input.requesterUserId,
+        });
+      } catch (error) {
+        console.error(`[review] booking ${bookingId} not completed by its review`, error);
+      }
+    }
+
+    return { reviewId: written.id };
   }
 }
 

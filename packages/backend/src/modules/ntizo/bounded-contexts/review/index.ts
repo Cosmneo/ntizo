@@ -12,3 +12,4 @@ export type {
   ReviewEligibility,
   ReviewEligibilityPort,
 } from "./app/ports/outbound/review-eligibility.port";
+export type { CompleteBookingPort } from "./app/ports/outbound/complete-booking.port";

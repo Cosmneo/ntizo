@@ -71,6 +71,7 @@ import { createGraphqlContextFactory } from "./context-factory";
 import { graphqlCorsFetch } from "./cors";
 import { AttachmentStorageAdapter, runWithAttachmentsBucket } from "../attachment-storage.adapter";
 import { disputeThreadOver } from "../dispute-thread.adapter";
+import { bookingCompletionOver } from "../booking-completion.adapter";
 import type { AppBindings } from "../types";
 
 /**
@@ -105,7 +106,6 @@ export function buildPrivateGraphQLFields(): {
   const catalogRead = bootstrapCatalogRead();
   const catalog = bootstrapCatalog();
   const scheduling = bootstrapScheduling();
-  const review = bootstrapReview();
   const reviewRead = bootstrapReviewRead();
   const contact = bootstrapContact();
   const contactRead = bootstrapContactRead();
@@ -140,6 +140,13 @@ export function buildPrivateGraphQLFields(): {
   const booking = bootstrapBooking({
     raiseNotification: notification.useCases.internal.raiseNotification,
     openDisputeThread: disputeThreadOver(communication.useCases.openSupportRequest),
+  });
+  // Below `bootstrapBooking` rather than up with the other reads, because it
+  // now takes one of its use cases: the customer's review is what ends a
+  // marked-done booking's dispute window, and this is the one place allowed
+  // to know both halves exist — see `bookingCompletionOver`.
+  const review = bootstrapReview({
+    completeBooking: bookingCompletionOver(booking.useCases.completeBooking),
   });
   const workflows = bootstrapProviderWorkflows({
     userInternal: {
