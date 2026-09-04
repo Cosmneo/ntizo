@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { z } from "zod";
+import { generateGraphQLSDL } from "@cosmneo/onion-lasagna/graphql/sdl";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
 import {
   acceptBooking,
@@ -31,8 +32,58 @@ const shape = (field: { input: unknown }): z.ZodObject<z.ZodRawShape> =>
  * part of what is being pinned here: a mutation whose fields are read off in
  * the order the schema declares them is one a reader can check against the
  * command it feeds without re-sorting either list in their head.
+ *
+ * Read off the **published** JSON Schema rather than `_schema.shape`. Those two
+ * lists happen to agree today, and the point of preferring the published one is
+ * that it is the surface a client is held to — the same argument
+ * `write/user`'s test makes for `toJsonSchema()` over a zod-internals reach.
  */
-const shapeKeys = (field: { input: unknown }): string[] => Object.keys(shape(field).shape);
+const shapeKeys = (field: { input?: unknown }): string[] => {
+  const schema = field.input as { toJsonSchema(): unknown } | undefined;
+  if (!schema) throw new Error("the field declares no input");
+  return Object.keys((schema.toJsonSchema() as { properties?: Record<string, unknown> }).properties ?? {});
+};
+
+/**
+ * The other two accessors, and the reason there are three rather than one.
+ *
+ * `shape` above reaches the raw zod object, which is what the *handler* sees
+ * after the kit has validated. It is not the contract a client is held to.
+ * That contract is the SDL the kit publishes and the JSON Schema it derives it
+ * from — `jsonRequired` reads the second, and `sdlLine` the first. The
+ * distinction is not academic: `resolveBookingDispute`'s `note` is `required`
+ * in the JSON Schema and still renders `note: String` in the SDL, because the
+ * kit stamps `!` only on a field that is required *and* not nullable. Only the
+ * SDL line is what a document is actually coerced against.
+ *
+ * `toJsonSchema()` is the kit's own published surface — the accessor
+ * `write/user`'s test already argues for, because it survives a zod-internals
+ * change that a `_schema` reach would not.
+ */
+const jsonRequired = (field: { input?: unknown; output?: unknown }, side: "input" | "output" = "input"): string[] => {
+  const schema = field[side] as { toJsonSchema(): unknown } | undefined;
+  if (!schema) throw new Error(`the field declares no ${side}`);
+  return ((schema.toJsonSchema() as { required?: string[] }).required ?? []).slice();
+};
+
+/**
+ * The SDL this slice publishes, generated once from the real schema object the
+ * API mounts. Asserted rather than described, because the previous revision of
+ * this file described the rendering in a comment and the description was wrong.
+ */
+const bookingSdl = ((): string => {
+  const generated = generateGraphQLSDL(bookingWriteSchema as never) as string | { sdl: string };
+  return typeof generated === "string" ? generated : generated.sdl;
+})();
+
+/** One SDL line, by a needle that must match exactly one of them. */
+const sdlLine = (needle: string): string => {
+  const matches = bookingSdl.split("\n").filter((line) => line.trim().startsWith(needle));
+  if (matches.length !== 1) {
+    throw new Error(`expected exactly one SDL line starting with ${needle}, found ${matches.length}`);
+  }
+  return matches[0]!.trim();
+};
 
 const VALID_CREATE_INPUT = {
   serviceOptionId: "opt-1",
@@ -375,6 +426,39 @@ describe("the six ways a booking can end", () => {
     ).toThrow();
   });
 
+  /**
+   * Each bound on the descriptor, one at a time. A stronger check exists
+   * downstream for the one field that is trusted — `resolveAttachments`
+   * refuses a `storageKey` that does not start with `attachment/<senderId>/`,
+   * which an empty string also fails — so this is not the only thing standing
+   * between a blank key and a read. It is the bound this schema declares, and a
+   * declared bound with no assertion is one somebody deletes as dead weight.
+   */
+  it("refuses an attachment descriptor with a blank or nonsensical field", () => {
+    const good = {
+      storageKey: "attachment/u-1/a",
+      fileName: "a.png",
+      contentType: "image/png",
+      sizeBytes: 12,
+    };
+    const withAttachment = (over: Record<string, unknown>) =>
+      shape(disputeBooking).parse({
+        bookingId: "b",
+        message: "oi",
+        attachments: [{ ...good, ...over }],
+      });
+
+    expect(() => withAttachment({ storageKey: "" })).toThrow();
+    expect(() => withAttachment({ fileName: "" })).toThrow();
+    expect(() => withAttachment({ contentType: "" })).toThrow();
+    // Not merely "a number": a size of zero is a file with no bytes and a
+    // fractional one is not a byte count at all.
+    expect(() => withAttachment({ sizeBytes: 0 })).toThrow();
+    expect(() => withAttachment({ sizeBytes: -1 })).toThrow();
+    expect(() => withAttachment({ sizeBytes: 1.5 })).toThrow();
+    expect(withAttachment({})).toMatchObject({ attachments: [good] });
+  });
+
   it("takes a decision and an optional note from the administrator", () => {
     expect(shape(resolveBookingDispute).parse({ bookingId: "b", upheld: true })).toEqual({
       bookingId: "b",
@@ -386,6 +470,129 @@ describe("the six ways a booking can end", () => {
     });
     expect(() => shape(resolveBookingDispute).parse({ bookingId: "b" })).toThrow();
     expect(() => shape(resolveBookingDispute).parse({ bookingId: "b", upheld: "yes" })).toThrow();
+    // The same 2000 its twin `message` two fields away carries, and pinned the
+    // same way. `.max(2000)` is the ONLY bound anywhere on this value's path —
+    // it travels into two notification payloads and nothing downstream checks
+    // its length again.
+    expect(() =>
+      shape(resolveBookingDispute).parse({ bookingId: "b", upheld: true, note: "x".repeat(2001) }),
+    ).toThrow();
+    expect(
+      shape(resolveBookingDispute).parse({ bookingId: "b", upheld: true, note: "x".repeat(2000) }),
+    ).toMatchObject({ note: "x".repeat(2000) });
+  });
+
+  /**
+   * Every one of the six refuses a blank booking id. The bound was untested on
+   * `acceptBooking` and `declineBooking` before this task, so this covers those
+   * two as well rather than leaving the file half-pinned.
+   */
+  it("refuses a blank booking id on every field", () => {
+    const rest: Record<string, Record<string, unknown>> = {
+      dispute: { message: "oi" },
+      resolveDispute: { upheld: true },
+    };
+    for (const [name, field] of [
+      ["accept", acceptBooking],
+      ["decline", declineBooking],
+      ["markDone", markBookingDone],
+      ["stillOngoing", keepBookingOpen],
+      ["dispute", disputeBooking],
+      ["adminMarkDone", adminMarkBookingDone],
+      ["adminComplete", adminCompleteBooking],
+      ["resolveDispute", resolveBookingDispute],
+    ] as const) {
+      const extra = rest[name] ?? {};
+      expect(() => shape(field).parse({ bookingId: "", ...extra })).toThrow();
+      expect(shape(field).parse({ bookingId: "b", ...extra })).toMatchObject({ bookingId: "b" });
+    }
+  });
+
+  /**
+   * `booking.dispute` is the only field here whose answer is not an echo of the
+   * request, so it is the only one whose output bound can be wrong in a way
+   * nothing else would notice: a command that answered `threadId: ""` would
+   * send the customer to a conversation that does not exist. The kit runs this
+   * very schema over every handler's return value.
+   */
+  it("refuses an empty thread id on the dispute's answer", () => {
+    const out = disputeBooking.output!;
+    expect(out.validate({ bookingId: "b", threadId: "" }).success).toBe(false);
+    expect(out.validate({ bookingId: "", threadId: "t" }).success).toBe(false);
+    expect(out.validate({ bookingId: "b", threadId: "t" }).success).toBe(true);
+  });
+});
+
+/**
+ * The contract a client is held to, as opposed to the one the handler sees.
+ *
+ * These assertions read the **published** surface — the generated SDL and the
+ * JSON Schema behind it — rather than the zod object the rest of this file
+ * reaches for. That distinction is the whole reason this block exists: the
+ * first revision of `booking.dispute` rendered `attachments` non-null in the
+ * SDL, so a dispute with no files could not be sent at all, and every one of
+ * the 56 tests that existed at the time stayed green because none of them
+ * looked at what a client would actually be coerced against. The web zone
+ * hand-writes its documents against these names; nothing generates them.
+ */
+describe("the wire contract the customer's dispute screen will hardcode", () => {
+  it("publishes the six fields under the names the web zone hardcodes", () => {
+    for (const field of [
+      "bookingMarkDone(input: BookingMarkDoneInput!): BookingMarkDoneOutput",
+      "bookingStillOngoing(input: BookingStillOngoingInput!): BookingStillOngoingOutput",
+      "bookingDispute(input: BookingDisputeInput!): BookingDisputeOutput",
+      "bookingAdminMarkDone(input: BookingAdminMarkDoneInput!): BookingAdminMarkDoneOutput",
+      "bookingAdminComplete(input: BookingAdminCompleteInput!): BookingAdminCompleteOutput",
+      "bookingResolveDispute(input: BookingResolveDisputeInput!): BookingResolveDisputeOutput",
+    ]) {
+      expect(bookingSdl).toContain(field);
+    }
+  });
+
+  /**
+   * The finding this block was written for. `[Item]` — no `!` — is what lets a
+   * dispute with no files be sent at all, and it takes all three of
+   * `.nullable()`, `.default([])` and `.optional()` to get there: the kit
+   * stamps `!` on a field that is required and not nullable, a bare
+   * `.default([])` is *required* in the JSON Schema, and `.nullable()` alone
+   * does not clear the flag for a list. Both halves are asserted because they
+   * fail independently — the SDL line is what a document is coerced against,
+   * and `required` is where the `!` comes from.
+   */
+  it("lets a dispute leave its attachments out", () => {
+    expect(sdlLine("attachments:")).toBe("attachments: [BookingDisputeInput_Attachments_Item]");
+    expect(jsonRequired(disputeBooking)).toEqual(["bookingId", "message"]);
+  });
+
+  /**
+   * The other half of the same ruling: an explicit `attachments: null` is a
+   * client saying "no files" in the other spelling, and it parses. The handler
+   * is what turns it into `[]` — see its own test below.
+   */
+  it("lets a dispute say no files with an explicit null", () => {
+    expect(shape(disputeBooking).parse({ bookingId: "b", message: "oi", attachments: null })).toEqual({
+      bookingId: "b",
+      message: "oi",
+      attachments: null,
+    });
+  });
+
+  /**
+   * `note` is nullable in the SDL for a *different* reason than `attachments`
+   * is, and the difference is worth pinning rather than assuming they behave
+   * alike: `note` is still `required` in the JSON Schema, and it renders
+   * without a `!` only because the kit's nullability check fires for a scalar
+   * where it does not for a list. Asserting `required` here would therefore
+   * prove the opposite of what it proves for `attachments`.
+   */
+  it("keeps the administrator's note omittable, by the other route", () => {
+    expect(sdlLine("note:")).toBe("note: String");
+    expect(jsonRequired(resolveBookingDispute)).toEqual(["bookingId", "upheld", "note"]);
+  });
+
+  it("publishes the dispute's two-field answer", () => {
+    expect(bookingSdl).toContain("input BookingDisputeInput_Attachments_Item {");
+    expect(jsonRequired(disputeBooking, "output")).toEqual(["bookingId", "threadId"]);
   });
 });
 
@@ -551,25 +758,31 @@ describe("createBookingWriteHandlers", () => {
     });
 
     /**
-     * The zod default, which is what keeps `undefined` out of
-     * `DisputeBookingInput.attachments` — a required field on that interface.
-     * It is *not* a claim that the wire lets the key be omitted: the SDL
-     * renders `attachments` as a non-null list with no GraphQL default, so a
-     * document that leaves it out is refused at validation before any of this
-     * runs. See the schema's own doc comment.
+     * Both spellings of "no files", collapsed to the one thing
+     * `DisputeBookingInput.attachments` has — a required, non-nullable list.
+     * The omitted key is the schema's `.default([])`; the explicit `null` is
+     * the handler's `?? []`, and each fails without the other.
      */
-    it("dispute defaults to no attachments rather than undefined", async () => {
-      const { module, spies } = makeModule();
+    for (const { name, args } of [
+      { name: "omits the key", args: { bookingId: "bk-9", message: "nada funciona" } },
+      {
+        name: "sends an explicit null",
+        args: { bookingId: "bk-9", message: "nada funciona", attachments: null },
+      },
+    ] as const) {
+      it(`dispute reaches the command with an empty list when the client ${name}`, async () => {
+        const { module, spies } = makeModule();
 
-      await handlerFor(module, "booking.dispute").handler(
-        { bookingId: "bk-9", message: "nada funciona" },
-        ctx({ requesterUserId: "u-cust", role: "customer" }),
-      );
+        await handlerFor(module, "booking.dispute").handler(
+          args,
+          ctx({ requesterUserId: "u-cust", role: "customer" }),
+        );
 
-      expect(spies.disputeBooking.calls).toEqual([
-        { bookingId: "bk-9", requesterUserId: "u-cust", message: "nada funciona", attachments: [] },
-      ]);
-    });
+        expect(spies.disputeBooking.calls).toEqual([
+          { bookingId: "bk-9", requesterUserId: "u-cust", message: "nada funciona", attachments: [] },
+        ]);
+      });
+    }
 
     /**
      * The wrong person, on the three fields this edge deliberately does not

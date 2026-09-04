@@ -226,17 +226,35 @@ export const keepBookingOpen = defineMutation({
  * judged not worth the asymmetry, narrowing this to `{ storageKey }` means
  * following `DisputeAttachment` down with it — its own doc comment says so.
  *
- * **`attachments` is required over the wire — send `[]`, not nothing.**
- * `.default([])` makes the key optional to *zod*, which is what guarantees
- * `args.input.attachments` is a list by the time the handler reads it, but the
- * SDL this schema generates renders the field as
- * `[BookingDisputeInput_Attachments_Item]!` with no GraphQL default, and a
- * document that omits it is refused at validation with `Field "attachments" of
- * required type ... was not provided` before any resolver runs (verified
- * against the running API). `note` on `resolveBookingDispute` below is the
- * other case and behaves the other way: `.nullable()` is what makes a field
- * omittable in the SDL, and it has one. Written down because the customer's
- * zone hardcodes this document.
+ * **`attachments` takes three modifiers where one would look like enough, and
+ * each earns its place at a different layer.** A dispute with no files is the
+ * ordinary case, so both spellings of "no files" — omitting the key and
+ * sending an explicit `null` — have to reach the handler as `[]`:
+ *
+ * - `.optional()` is the only one of the three that changes the **SDL**. The
+ *   kit renders `required && !nullable` as `!`, and a bare `.default([])` is
+ *   *required* in the generated JSON Schema (zod's default output semantics:
+ *   a defaulted field is always present after parsing). So `.default([])`
+ *   alone renders `[BookingDisputeInput_Attachments_Item]!` and a document
+ *   that omits the key is refused at coercion, before any resolver runs.
+ * - `.nullable()` is what lets an explicit `attachments: null` past coercion.
+ *   On its own it is **not** enough to drop the `!` here — verified, not
+ *   assumed: `.nullable().default([])` still renders non-null, because the
+ *   field stays `required` in the JSON Schema and the kit's `isNullable`
+ *   check does not fire on the `nullable: true` that the OpenAPI-3.0 target
+ *   emits for an array.
+ * - `.default([])` is what turns an *omitted* key into `[]` rather than
+ *   `undefined`, which is what `DisputeBookingInput.attachments` — required,
+ *   non-nullable — needs.
+ *
+ * The handler still writes `?? []`, and it is not redundant: `.nullable()`
+ * means an explicit `null` parses to `null`, and collapsing the wire's two
+ * ways of saying "nothing" into the domain's one is this boundary's job — the
+ * same argument `booking.submit`'s `description` makes about itself.
+ *
+ * `write/booking`'s own test pins the rendered SDL line and the JSON Schema's
+ * `required` list, because prose in this comment is exactly what silently
+ * became false the first time this field was written.
  */
 export const disputeBooking = defineMutation({
   input: zodSchema(
@@ -253,7 +271,9 @@ export const disputeBooking = defineMutation({
           }),
         )
         .max(5)
-        .default([]),
+        .nullable()
+        .default([])
+        .optional(),
     }),
   ),
   output: zodSchema(z.object({ bookingId: z.string().min(1), threadId: z.string().min(1) })),

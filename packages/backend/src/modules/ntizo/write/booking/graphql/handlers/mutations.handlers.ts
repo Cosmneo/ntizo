@@ -154,9 +154,12 @@ export function createBookingWriteHandlers(mod: BookingWriteModule) {
         // where the person it checks comes from.
         requesterUserId: requireUser(ctx),
         message: args.input.message,
-        // Already defaulted to `[]` by the input schema — `DisputeBookingInput`
-        // requires the list, so there is no `?? []` to write here.
-        attachments: args.input.attachments,
+        // The wire has two ways to say "no files" — an omitted key and an
+        // explicit `null` — and `DisputeBookingInput.attachments` has one: a
+        // required, non-nullable list. Collapsing them is this boundary's job,
+        // exactly as `booking.submit` collapses its `description`. The schema's
+        // `.default([])` covers the omission; this covers the null.
+        attachments: args.input.attachments ?? [],
       });
       // The thread id is the command's answer, and the only field on this
       // surface that is not an echo of the request.
