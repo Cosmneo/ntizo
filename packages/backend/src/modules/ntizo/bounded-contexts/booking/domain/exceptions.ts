@@ -140,9 +140,21 @@ export class BookingTransitionError extends UnprocessableError {
  * provider tapping "Concluído" an hour early with a message telling them
  * their booking is in the wrong state, which it is not.
  *
- * Thrown by `Booking.markDone` alone. `complete` and `resolveDispute` do not
- * need it: neither is reachable except from a status `markDone` already put
- * the booking into, so the appointment is behind it by construction.
+ * Thrown by `Booking.markDone` and `Booking.keepOpen` — the two hops a
+ * provider can reach on a `CONFIRMED` booking, and so the two an edge can
+ * reach without the sweep's own timing behind it. `keepOpen` needs it for a
+ * reason of its
+ * own beyond the rule above: a "still going" accepted before the appointment
+ * moves the sweep's clock in front of `endsAt`, which leaves the sweep handing
+ * over to `markDone` and being refused, for ever. See `Booking.keepOpen`.
+ *
+ * `complete`, `dispute` and `resolveDispute` do not need it: none is reachable
+ * except from a status `markDone` already put the booking into, so the
+ * appointment is behind them by construction. `reminded` is the deliberate
+ * omission — it also sits on `CONFIRMED`, but its only caller is the sweep,
+ * where a throw is caught, counted failed and re-tried every minute rather
+ * than shown to anybody. See `Booking.reminded`, which states the invariant
+ * that makes an early firing unreachable in the first place.
  */
 export class BookingNotEndedError extends UnprocessableError {
   constructor(

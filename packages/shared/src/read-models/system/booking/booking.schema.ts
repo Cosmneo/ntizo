@@ -207,27 +207,50 @@ export const bookingReadModel = z.object({
 
   /**
    * The deadline currently running against this booking — **whichever of the
-   * design's three clocks its status is standing on**, not the payment window
-   * in particular. Each hop stamps this column with its own clock's deadline:
-   * `DRAFT` carries the checkout hold, `AWAITING_PROVIDER` the provider's
-   * response window, `PENDING_PAYMENT` the payment window. Those three are
-   * the only statuses on which this field means anything, and every one of
-   * them caps its deadline at `startsAt` — a slot is never held past its own
-   * start.
+   * design's five clocks its status is standing on**, not the payment window
+   * in particular. Each hop stamps this column with its own clock's deadline,
+   * in the order a booking meets them:
    *
-   * **It is never cleared, so read the status first.** No transition nulls
-   * this: a `CONFIRMED` or `MARKED_DONE` booking still carries the deadline
-   * it was last given, now in the past, deliberately — see
-   * `BookingProps.expiresAt` in the backend for the argument, which is that
-   * a customer disputing "you gave my slot away" needs the deadline they
-   * were actually given, and the three window lengths are live settings that
-   * cannot reconstruct it afterwards. A countdown driven off this field
-   * ("Hora reservada 29:40") must therefore check `status` against those
-   * three before rendering anything; a consumer that trusts the date alone
-   * will show an expired timer on a booking that is paid and confirmed.
+   * - `DRAFT` — the checkout hold.
+   * - `AWAITING_PROVIDER` — the provider's response window.
+   * - `PENDING_PAYMENT` — the payment window.
+   * - `CONFIRMED` — the platform's question to the provider. Paying parks it
+   *   on the appointment's own `endsAt`, which is when the platform first
+   *   asks "how did it go"; each ask, and each "still going" answering one,
+   *   pushes it seven days further out. So a confirmed booking's date runs
+   *   from the end of the work rather than from anything the customer did.
+   * - `MARKED_DONE` — **the customer's window to dispute**, three days from
+   *   the moment the provider (or the platform on their behalf) said the work
+   *   was done. This is the one a customer screen counts down.
    *
-   * Null only ever means the column was never stamped, which nothing writes
-   * today. It stays nullable because the column is.
+   * The first three cap their deadline at `startsAt` — a slot is never held
+   * past its own start. The last two are the opposite: both begin at or after
+   * `endsAt`, so on those two statuses this date is normally **ahead**, not
+   * behind.
+   *
+   * **Read the status first, because the column is handed on rather than
+   * reset.** Every hop overwrites the previous hop's deadline with its own,
+   * and nothing wipes it on the way to a terminal status — a `COMPLETED`
+   * booking still carries the feedback window that closed, an `EXPIRED` one
+   * the window it ran out of. That is deliberate: a customer disputing "you
+   * gave my slot away" needs the deadline they were actually given, and the
+   * window lengths are live settings that cannot reconstruct it afterwards
+   * (see `BookingProps.expiresAt` in the backend for the full argument). So a
+   * consumer that trusts the date alone will show an expired timer on a
+   * booking that is finished, and — since the two live clocks were added —
+   * will equally miss a *running* one it should be showing. Check `status`
+   * against the five above before rendering anything.
+   *
+   * **One transition clears it, and the null is a fact rather than a gap.**
+   * `Booking.dispute` nulls this column: the customer complained inside their
+   * window, an administrator is reading the case, and nobody is on a clock
+   * until they decide. `DISPUTED` is therefore the one status where null
+   * means "no deadline" rather than "never stamped", and the `COMPLETED` or
+   * `CANCELLED` booking an administrator resolves it into keeps that null,
+   * because nothing re-stamps the column afterwards. Otherwise null would
+   * mean a column nothing ever wrote, which no hop produces today: `create`
+   * takes the checkout hold as an argument and always stamps it. It stays
+   * nullable because the column is.
    */
   expiresAt: z.string().nullable(),
 

@@ -645,6 +645,30 @@ describe("KeepBookingOpenCommand", () => {
     expect(repo.changes).toEqual([]);
   });
 
+  // The same refusal `MarkBookingDoneCommand` gives, and the reason it has to
+  // be here too is the sweep rather than the wording. `markPaid` parks
+  // `expires_at` on `endsAt`, so the sweep never meets a confirmed booking
+  // before its appointment; this is the only other hop that writes that column
+  // while `CONFIRMED`, so it is the only one that could move the clock in
+  // *front* of `endsAt`. Seven days from `NOW` is well short of
+  // `ENDS_TOMORROW` plus its 90 minutes, which is exactly the shape that
+  // poisons the sweep: it would ask early, and a week later hand over to
+  // `markDone`, which refuses — writing nothing, leaving the row due, and
+  // being re-tried every minute until the appointment finally passes. The
+  // page never offers the button that early; the mutation takes a booking id
+  // and nothing else.
+  it("refuses a booking whose appointment has not ended", async () => {
+    const { keepOpen, repo, outbox } = setupKeepOpen();
+
+    await expect(
+      keepOpen.execute({ bookingId: FUTURE_ID, requesterUserId: OWNER_ID }),
+    ).rejects.toMatchObject({ code: "BOOKING_NOT_ENDED" });
+
+    expect(repo.saved).toBeNull();
+    expect(repo.changes).toEqual([]);
+    expect(outbox.published).toEqual([]);
+  });
+
   // The hop where losing the race does the most damage, which is why this
   // guard needs a test of its own rather than being taken on the strength of
   // its two neighbours': the writer this call loses to is the sweep's own

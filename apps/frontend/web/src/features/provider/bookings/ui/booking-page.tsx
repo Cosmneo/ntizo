@@ -153,7 +153,8 @@ export function BookingPage() {
 
   /**
    * A booking can only be closed after the work it was sold for is over —
-   * `Booking.markDone` refuses anything else — so the button is not offered
+   * `Booking.markDone` and `Booking.keepOpen` both refuse anything else, which
+   * is why one gate governs the pair — so neither button is offered
    * while the appointment is still ahead. `now` is the moment of the last
    * read, not this render's, which is the same bargain the countdown makes:
    * the two buttons appear on the next refetch after the appointment ends

@@ -1036,6 +1036,23 @@ export class Booking {
    * quietly no-opped would write `remindedAt` on nothing and leave the next
    * firing unable to tell it had already asked, which is the one fact this
    * method exists to record.
+   *
+   * **The third hop on `CONFIRMED`, and the one that deliberately does not
+   * carry `markDone`'s and `keepOpen`'s end-of-appointment guard.** It does
+   * not need one, and adding one would be the defect it looks like a fix for.
+   * It does not need one because every write of `expires_at` a confirmed
+   * booking can receive leaves it at or after `endsAt`: `markPaid` parks it
+   * exactly there on the way in, and the only two hops that move it afterwards
+   * are this one and `keepOpen`, both pushing seven days past a `now` that is
+   * itself at or after `endsAt` — `keepOpen` because its guard says so, and
+   * this one because the sweep is its only caller and reaches it only when
+   * `expires_at <= now`. The invariant closes on itself. And adding one would
+   * be worse
+   * than useless: this hop runs inside the sweep with nobody to hear a
+   * refusal, so a throw here would be caught per booking, counted failed, and
+   * re-tried every minute for as long as the condition held — which is
+   * precisely the loop `keepOpen`'s own guard exists to prevent, moved one hop
+   * downstream. A guard belongs where a person is waiting on the answer.
    */
   reminded(at: Date, askAgainAt: Date): Booking {
     if (this.props.status !== BookingStatus.Confirmed) {
@@ -1088,6 +1105,25 @@ export class Booking {
    * Deliberately leaves `remindedAt` where it stands. It is not a second
    * asking — the platform asked once and is being answered — and rewriting
    * it would erase when the conversation actually started.
+   *
+   * **It carries `markDone`'s end-of-appointment guard, and it is not there
+   * for symmetry.** "Still going" is a claim about a job that has outrun its
+   * slot, which is not something anybody can say before the slot has run
+   * out; `BookingNotEndedError`'s own doc comment already states the rule as
+   * universal. What makes it load-bearing rather than tidy is that this is
+   * the only hop reachable from an *edge* that writes `expires_at` while the
+   * booking is `CONFIRMED` — `markPaid` writes it on the way in and `reminded`
+   * only ever runs inside the sweep. `markPaid` parks the clock on `endsAt`,
+   * so the sweep meets a confirmed booking for the first time at or after its
+   * appointment ends and `markDone` can never be reached early. Without this
+   * guard one call on a booking whose appointment is a month out would move
+   * `expires_at` to seven days from *now*, which is before `endsAt`: the
+   * sweep would then ask early, burn `remindedAt` on a booking that has not
+   * happened, and a week later hand over to `MarkBookingDoneCommand`, which
+   * refuses. Nothing is written, the row stays due, and the sweep re-tries it
+   * every minute — at the head of its own `asc(expires_at)` batch — until the
+   * appointment finally passes. Checked after the dates are, and after the
+   * status is, for the reason `markDone` gives.
    */
   keepOpen(at: Date, askAgainAt: Date): Booking {
     if (this.props.status !== BookingStatus.Confirmed) {
@@ -1096,6 +1132,10 @@ export class Booking {
 
     Booking.requireValidDate(at, "at");
     Booking.requireValidDate(askAgainAt, "askAgainAt");
+
+    if (at.getTime() < this.props.endsAt.getTime()) {
+      throw new BookingNotEndedError(this.props.endsAt, at);
+    }
 
     return new Booking({ ...this.props, expiresAt: askAgainAt });
   }

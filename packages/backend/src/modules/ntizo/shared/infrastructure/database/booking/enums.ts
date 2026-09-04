@@ -142,11 +142,23 @@ export const SLOT_HOLDING_STATUSES = [
  * and fails until the migration has run.
  *
  * Membership here is only the question, same as it was for the original
- * three — `SweepBookingCommand` still has to answer it. As of this commit it
- * does not: `CONFIRMED` and `MARKED_DONE` have no arm in that switch, so a
- * booking selected on either clock is counted as swept and left completely
- * untouched (see `booking-sweep.test.ts`). Task 5 ("the sweep asks, then
- * acts") is what gives them one.
+ * three — `SweepBookingCommand` is what answers it, and all five now have an
+ * arm in its switch. `CONFIRMED`'s asks the provider once and pushes its own
+ * clock seven days, then hands over to `MarkBookingDoneCommand`;
+ * `MARKED_DONE`'s hands over to `CompleteBookingCommand` (see
+ * `booking-sweep.test.ts`, which pins both).
+ *
+ * **A sixth member added here without an arm there is selected, counted as
+ * swept and left completely untouched**, because that switch ends in a
+ * `default:` returning null. Nothing fails: the row is read every minute for
+ * ever and answered by nobody, which is the failure mode this paragraph
+ * exists to warn the next person about. Adding a status to this list is
+ * therefore two edits, not one.
+ *
+ * `DISPUTED` is deliberately absent, and that absence is load-bearing:
+ * `Booking.dispute` also nulls `expires_at`, so the status filter and the
+ * null say the same thing twice and the sweep cannot reach a booking an
+ * administrator is still reading.
  */
 export const DEADLINE_BEARING_STATUSES = [
   BookingStatus.Draft,

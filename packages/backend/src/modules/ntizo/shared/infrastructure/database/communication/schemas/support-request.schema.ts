@@ -28,10 +28,20 @@ export const supportRequest = communicationSchema.table(
     subject: varchar("subject", { length: 120 }).notNull(),
     bookingId: uuid("booking_id").references(() => booking.id),
     /**
-     * What this request is. A dispute moves a booking when it is resolved and
-     * an ordinary request does not, so the difference is a column rather than
-     * an inference from "has a booking id" — which would break the first time
+     * What this request is. A dispute is the thread behind a booking sitting
+     * at `DISPUTED`, waiting on an administrator's decision; an ordinary
+     * request is a question. The difference is a column rather than an
+     * inference from "has a booking id", which would break the first time
      * somebody asks a normal question about a booking they are disputing.
+     *
+     * **Resolving this row moves no booking**, and neither kind is an
+     * exception to that. The decision that ends a dispute is
+     * `bookingResolveDispute`, on the other side of the context boundary, and
+     * the split is deliberate — see `resolve-booking-dispute.command.ts`. So
+     * an administrator who resolves a dispute thread here has closed the
+     * conversation and left the booking where it was. Nothing on the support
+     * screens says so today, because no read model publishes this column:
+     * follow-up #180.
      */
     kind: varchar("kind", { length: 16 }).notNull().default("support"),
     status: varchar("status", { length: 16 }).notNull(),

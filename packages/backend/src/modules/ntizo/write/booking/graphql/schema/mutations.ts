@@ -184,6 +184,15 @@ export const markBookingDone = defineMutation({
  * least dangerous of the six. It still takes only the booking id, because a
  * caller who could name the member would be answering the platform's question
  * on somebody else's behalf.
+ *
+ * **It refuses `BOOKING_NOT_ENDED`, the same as `booking.markDone`**, and a
+ * caller has to be ready for it even though the provider's page never draws
+ * the button before the appointment ends. "Still going" is a claim about a
+ * job that has outrun its slot, so it cannot be made before the slot runs
+ * out — and this is the one field on the closing surface where accepting it
+ * early would not merely record something untrue: it moves the sweep's clock
+ * in front of `endsAt` and leaves the sweep refusing that booking every
+ * minute until the appointment finally passes. See `Booking.keepOpen`.
  */
 export const keepBookingOpen = defineMutation({
   input: zodSchema(z.object({ bookingId: z.string().min(1) })),
@@ -200,6 +209,23 @@ export const keepBookingOpen = defineMutation({
  * stop until an administrator decides. `DisputeBookingCommand` refuses anybody
  * but the booking's own customer, so there is no `requesterUserId` field here
  * for the same reason `booking.submit` has no `customerId`.
+ *
+ * **`SUPPORT_TOO_MANY_OPEN` is a refusal this field can give, and the screen
+ * that calls it has to have an answer for it.** A dispute *is* a support
+ * request — `DisputeBookingCommand` opens the thread through
+ * `OpenSupportRequestCommand` before its own write — so it inherits that
+ * command's cap of ten open requests per person
+ * (`MAX_OPEN_SUPPORT_REQUESTS`, `support-request.aggregate.ts`). A customer
+ * already at the cap is refused here, and nothing about their booking pauses
+ * while they are: the three-day window keeps running and the sweep completes
+ * the booking when it ends. That is a forfeiture on a hard deadline, so it
+ * must not be reported through whatever generic "try again" branch the form
+ * uses — the customer has to be told which of their open threads to close,
+ * and the code is the only thing that distinguishes it.
+ *
+ * Whether disputes should be exempt from that cap at all is a policy question
+ * this branch deliberately did not answer; `dispute-thread.adapter.ts` is
+ * where an allowance would go, and follow-up #181 carries the decision.
  *
  * **The attachment shape is the upload route's answer, unchanged.**
  * `POST /api/communication/attachments` stores the bytes and replies with
@@ -328,6 +354,15 @@ export const adminCompleteBooking = defineMutation({
  * `ResolveBookingDisputeInput.note` has, rather than a third state the command
  * would have to reconcile. No `.min(1)`: an empty note is the same fact as no
  * note, and the default is what turns it into one.
+ *
+ * **Nothing sends it today, and nothing enforces the record it defers to.**
+ * The administrator queue's `RESOLVE_DISPUTE` document
+ * (`features/admin/bookings/data/admin-booking.repository.ts`) sends
+ * `bookingId` and `upheld` only, so `note` is null in both notifications; and
+ * no schema, handler or page requires the thread message this field calls the
+ * real record to exist at all. A caller may therefore supply words that live
+ * nowhere but a notification payload, which nothing consumes yet. Follow-up
+ * #182 carries both halves.
  *
  * Tagged `Admin` alongside its two siblings above even though it does not
  * carry `admin` in its name — the command it drives takes an `adminUserId` and

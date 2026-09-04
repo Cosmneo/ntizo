@@ -1193,6 +1193,26 @@ describe("closing a booking", () => {
     expect(twice.remindedAt).toEqual(at);
   });
 
+  it("refuses to be kept open before the appointment has ended", () => {
+    // The same guard `markDone` carries, on the other button of the same
+    // screen — and here it is not symmetry, it is the sweep's survival.
+    // `markPaid` parks `expires_at` on `endsAt`, so a confirmed booking is
+    // never met by the sweep before its appointment; a `keepOpen` accepted a
+    // month early would move that clock to seven days from now, in *front* of
+    // `endsAt`. The sweep would ask early, burn `remindedAt` on a booking that
+    // has not happened, and a week later hand over to `markDone` — which
+    // refuses, writes nothing, leaves the row due, and is re-tried every
+    // minute for as long as the appointment is still ahead.
+    //
+    // The exact-boundary half of the rule is pinned by the test above, which
+    // keeps a booking open at precisely its own `endsAt`: `<` must not become
+    // `<=`.
+    const b = confirmed({ endsAt: new Date("2026-09-10T10:00:00.000Z") });
+    expect(() => b.keepOpen(new Date("2026-09-10T09:59:00.000Z"), later())).toThrow(
+      BookingNotEndedError,
+    );
+  });
+
   it("refuses to be asked, or kept open, from any status but confirmed", () => {
     // These are the two hops with no status change to assert, so it is easy
     // to leave them without a refusal test at all — and they are the two a

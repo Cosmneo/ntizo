@@ -4032,11 +4032,17 @@ nobody can act inside. Every booking that reaches `MARKED_DONE` will run its win
 closed by the sweep, because the only two things a customer could do inside it have no screen.
 
 **Trigger:** `feat/customer-bookings` merging, which is when the contract in
-`2026-09-03-booking-completion-design.md` gets its screens. One thing to settle at that moment
-rather than after: `BookingDisputeInput.attachments` is **required** over the wire (Task 8's
-Concern 2), so a dispute with no files must send `attachments: []`. If the form is meant to be
-able to omit the key, the fix is `.nullable()` beside the default plus a `?? []` in the handler,
-and it is cheaper before the query document is written than after.
+`2026-09-03-booking-completion-design.md` gets its screens. Two things about `booking.dispute` the
+form can rely on when it does, both already settled here rather than left to be discovered:
+
+- `BookingDisputeInput.attachments` is **optional and nullable**. Task 8's own fix round
+  (`c260c22d`) narrowed the SDL from `[BookingDisputeInput_Attachments_Item]!` to
+  `[BookingDisputeInput_Attachments_Item]`, and the handler carries `?? []`, so omitting the key
+  and sending an explicit `null` both arrive as `[]`. A dispute with no files sends nothing.
+  (An earlier version of this entry said the opposite — that the field was required and the fix
+  still owed — which was already false when it was written.)
+- It can refuse with `SUPPORT_TOO_MANY_OPEN`, and that refusal costs the customer their window.
+  See #181, which is the decision, not the wiring.
 
 ---
 
@@ -4208,3 +4214,132 @@ before closing it on their behalf. A finished job no longer says "Confirmada" fo
 is the other half of the original entry — reschedule and cancel by the provider are still drawn in
 the state machine with no command — and the wallet-release work this entry names as its other
 trigger, which needs #174's relay before "done" turns into money.
+
+---
+
+## #180 — `support_request.kind` is written and published nowhere, so a dispute is invisible on the screen where it is answered
+
+Task 2 added the column, Task 6 writes `'dispute'` to it, Task 9 reads it in the administrator
+booking queue's join. Nobody owned the support side, and the seam only shows from outside a single
+task's diff: `supportRequestSummaryReadModel`
+(`packages/shared/src/read-models/system/support/support-request.schema.ts`) has no `kind` field,
+and a grep across `read/` and `packages/shared/src/read-models` finds exactly one reader of the
+column anywhere — `booking-read.repository.ts:894`.
+
+So on `/admin/support` and `/admin/support/$threadId` a dispute looks like any other question. Its
+`subject` is `booking.serviceName.slice(0, 120)` — "Corte de cabelo" — and the detail page shows a
+raw `bookingId` as monospace text with no link, under a comment that still says there is no admin
+page for a booking to point at. There now is one (`/admin/bookings`, the `disputed` tab), just not
+a per-booking one.
+
+Two consequences, and the first is the one that bites:
+
+- **Resolving the thread there moves no booking.** That is by design — `bookingResolveDispute` is
+  the decision and `resolve-booking-dispute.command.ts` says why the two are separate — but nothing
+  on the screen says it. An administrator who closes the conversation has left the booking at
+  `DISPUTED` with `expires_at` null and no clock. It is recoverable, because the booking queue's
+  `disputed` tab still lists it, but only from a screen that administrator had no reason to open,
+  and the link runs one way only (booking → thread, never thread → booking).
+- **The customer's screens inherit it.** A customer can match `bookingId` on `supportRequests`, but
+  cannot tell the dispute from an ordinary question about the same booking — precisely the case
+  `kind`'s own doc comment says the column exists to separate.
+
+**Trigger:** the first dispute an administrator tries to handle from the support queue instead of
+the booking queue. The fix is one field on `supportRequestSummaryReadModel`, one column in the
+support read repository's select, a badge on both support screens, and a link from the thread to
+`/admin/bookings?tab=disputed` — all of it in the communication context's read side, which is why
+it was not taken at the last step of `feat/booking-completion`.
+
+---
+
+## #181 — A customer at the open-support-request cap cannot dispute, and their window runs out anyway
+
+`DisputeBookingCommand` computes the transition and then calls `OpenDisputeThreadPort` *before* its
+own write (`dispute-booking.command.ts:156`). That port is `OpenSupportRequestCommand`, which
+refuses with `SupportTooManyOpenError` (`SUPPORT_TOO_MANY_OPEN`) when the requester already has
+`MAX_OPEN_SUPPORT_REQUESTS = 10` open — an abuse guard whose own comment calls itself "a cheap
+abuse guard, not a product rule".
+
+A customer at the cap therefore cannot dispute at all. The mutation throws, the booking stays
+`MARKED_DONE`, the three-day clock keeps running, and the sweep completes it. The right they lose is
+the one this whole phase exists to give them, and they lose it on a hard deadline they cannot pause.
+
+`OpenDisputeThreadPort`'s doc comment discloses the refusal honestly and names
+`dispute-thread.adapter.ts` as where an allowance would go, and `booking.dispute`'s own schema
+docblock now says the screen must report the code distinguishably rather than through a generic
+"try again". **What is not decided is the policy**: either disputes are exempt from the cap
+(a per-`kind` allowance in the adapter, or a `kind`-aware count in
+`open-support-request.command.ts`), or they are not and the refusal is accepted as correct. This
+branch deliberately did not choose — it is the communication context's rule, and changing a cap at
+the last step of a 36-commit branch is not a reviewable change.
+
+**Trigger:** the first customer who hits the cap and cannot dispute, or any decision to change
+`MAX_OPEN_SUPPORT_REQUESTS`. Whoever picks it up should decide the exemption before
+`feat/customer-bookings` writes the form's error handling, not after.
+
+---
+
+## #182 — An administrator's reason for a dispute decision is recorded nowhere
+
+`bookingResolveDispute` takes a `note`, documented as a *copy* of words that live on the dispute's
+own thread, carried into the two notifications so neither side has to open the thread. Task 6's
+ruling accepted that notification-only home on one condition — "costs a follow-up if the admin
+screen turns out not to force a thread message". It does not, so here is the follow-up. Two halves,
+both true at HEAD:
+
+- **No caller sends it.** The admin queue's `RESOLVE_DISPUTE` document
+  (`apps/frontend/web/src/features/admin/bookings/data/admin-booking.repository.ts`) sends
+  `bookingId` and `upheld` only, and the page offers no note field. `note` is `null` in both
+  notifications on every real call, so an administrator's reasoning about a money-affecting decision
+  is recorded nowhere at all unless they separately open the thread from the row's link and write
+  there — which nothing prompts and nothing checks.
+- **Nothing makes the record it defers to exist.** No schema, handler or page requires a thread
+  message before the decision lands. A caller can supply a note that exists only in a notification
+  payload, and no consumer of those payloads exists yet (#174), so those words reach nobody.
+
+**Trigger:** the first dispute decision somebody has to justify afterwards — a customer asking why,
+or the wallet work paying out on `dispute_upheld`. Two ways to fix it, and they are alternatives
+rather than steps: give the admin dispute dialog a note field that posts a message on the thread
+before resolving (the design's own answer, and the one that keeps a single copy), or give the
+booking a durable column and accept the second copy. Deciding that is what this entry is for.
+
+---
+
+## #183 — `MARKED_DONE` and `DISPUTED` sit in the provider's "history" tab
+
+`PROVIDER_TAB_STATUSES.history` (`read/booking/app/ports/outbound/booking-read.repository.port.ts`)
+lists `MARKED_DONE`, `COMPLETED`, `DISPUTED`, `DECLINED`, `CANCELLED` and `EXPIRED`. The list
+predates this branch — it is byte-identical at `f2f8254f` — but both of the first two statuses were
+unreachable then, so nothing was misfiled. They are reachable now, and neither is history: one is a
+customer window still open on the provider's own work, the other an unresolved complaint the
+provider is waiting on somebody else to decide.
+
+A provider who misses the notification finds both under "Histórico", filed beside bookings that are
+genuinely over. Discoverability of a live dispute is carried entirely by the notification's deep
+link, and `PROVIDER_BOOKING_*` notifications are in-app only (#146).
+
+**Trigger:** the first provider who asks where a disputed booking went, or any work on the provider
+bookings tabs. The change is not one line: moving either status into `upcoming` renames what that
+tab means, and a fourth tab is a page change with eight locales behind it — which is why it was left
+rather than taken at the last step of `feat/booking-completion`.
+
+---
+
+## #146 — updated 2026-09-04
+
+`feat/booking-completion` added six notification types and none of them has a template either, so
+this entry is now nine rather than three: `BOOKING_MARKED_DONE`, `PROVIDER_BOOKING_CLOSE_REMINDER`,
+`PROVIDER_BOOKING_AUTO_CLOSED`, `ADMIN_BOOKING_AUTO_CLOSED`, `BOOKING_DISPUTED` and
+`BOOKING_DISPUTE_RESOLVED` are all absent from `TEMPLATE_REGISTRY`
+(`bounded-contexts/notification/infrastructure/templates/registry.ts`), which is `Partial` by
+design. All six are routed correctly in the web presentation map and in `bucketForNotificationType`,
+so the in-app inbox is complete.
+
+What changed is the cost. Two of the six carry a deadline the recipient loses something by missing —
+`BOOKING_MARKED_DONE` tells the customer their three days have started, and
+`PROVIDER_BOOKING_CLOSE_REMINDER` tells the provider the platform closes the booking in seven — and
+both reach their reader only if that reader opens the app. The original entry's three were
+confirmations of something that had already happened; these two are the start of a clock.
+
+**Trigger unchanged**, with one addition: the first customer who lets a dispute window run out
+without knowing it had opened.
