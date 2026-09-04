@@ -28,6 +28,12 @@
     "bookingConfirmed": "Je boeking is bevestigd",
     "providerBookingConfirmed": "Een boeking is betaald en bevestigd",
     "providerBookingCancelledByCustomer": "Een boeking is geannuleerd",
+    "providerBookingCloseReminder": "Je hebt een boeking om te sluiten",
+    "bookingMarkedDone": "De dienstverlener zegt dat de dienst is afgerond — je hebt drie dagen om te reageren",
+    "providerBookingAutoClosed": "We hebben een boeking gesloten omdat je niet op tijd hebt gereageerd",
+    "adminBookingAutoClosed": "Een boeking is automatisch gesloten en heeft aandacht nodig",
+    "bookingDisputed": "Er is een geschil geopend over een boeking",
+    "bookingDisputeResolved": "Er is een beslissing genomen over het geschil van je boeking",
     "unknown": "Je hebt een nieuwe melding"
   }
 }

@@ -310,5 +310,46 @@
   "supportConversationError": "De conversatie kon niet worden geladen.",
   "supportPlatformSender": "Ntizo-ondersteuning",
   "supportNotFound": "Dit verzoek bestaat niet.",
-  "supportLoadError": "Het verzoek kon niet worden geladen."
+  "supportLoadError": "Het verzoek kon niet worden geladen.",
+  "bookingsTitle": "Boekingen",
+  "bookingsSubtitle": "Boekingen die gesloten moeten worden, boekingen binnen het venster van de klant, en geschillen die op een beslissing wachten.",
+  "bookingsOpenCount_one": "{{count}} boeking die aandacht nodig heeft",
+  "bookingsOpenCount_other": "{{count}} boekingen die aandacht nodig hebben",
+  "bookingsTab": {
+    "unclosed": "Te sluiten",
+    "in_window": "In venster",
+    "disputed": "Geschillen"
+  },
+  "bookingsCol": {
+    "provider": "Aanbieder",
+    "customer": "Klant",
+    "service": "Dienst",
+    "when": "Wanneer",
+    "status": "Status"
+  },
+  "bookingsAction": {
+    "markDone": "Markeren als voltooid",
+    "completeNow": "Nu afronden"
+  },
+  "bookingsActionFailed": "Kon niet worden afgerond.",
+  "bookingsDisputeAction": {
+    "upheld": "Gelijk geven aan de klant",
+    "rejected": "Afronding handhaven"
+  },
+  "bookingsEmpty": {
+    "unclosed": {
+      "title": "Niets te sluiten",
+      "body": "Boekingen waarvan de afspraak al voorbij is en die nog niet zijn gesloten, verschijnen hier."
+    },
+    "in_window": {
+      "title": "Niets in venster",
+      "body": "Boekingen die als voltooid zijn gemarkeerd, wachtend op een reactie van de klant, verschijnen hier."
+    },
+    "disputed": {
+      "title": "Geen geschillen",
+      "body": "Geschillen die klanten hebben geopend, verschijnen hier, wachtend op een beslissing."
+    }
+  },
+  "bookingsError": "De boekingen konden niet worden geladen.",
+  "bookingsRetry": "Opnieuw proberen"
 }

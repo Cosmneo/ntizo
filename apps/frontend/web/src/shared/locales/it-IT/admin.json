@@ -310,5 +310,46 @@
   "supportConversationError": "Non è stato possibile caricare la conversazione.",
   "supportPlatformSender": "Assistenza Ntizo",
   "supportNotFound": "Questa richiesta non esiste.",
-  "supportLoadError": "Non è stato possibile caricare la richiesta."
+  "supportLoadError": "Non è stato possibile caricare la richiesta.",
+  "bookingsTitle": "Prenotazioni",
+  "bookingsSubtitle": "Prenotazioni da chiudere, prenotazioni nella finestra del cliente, e contestazioni in attesa di una decisione.",
+  "bookingsOpenCount_one": "{{count}} prenotazione che richiede attenzione",
+  "bookingsOpenCount_other": "{{count}} prenotazioni che richiedono attenzione",
+  "bookingsTab": {
+    "unclosed": "Da chiudere",
+    "in_window": "In finestra",
+    "disputed": "Contestazioni"
+  },
+  "bookingsCol": {
+    "provider": "Operatore",
+    "customer": "Cliente",
+    "service": "Servizio",
+    "when": "Quando",
+    "status": "Stato"
+  },
+  "bookingsAction": {
+    "markDone": "Segna come completata",
+    "completeNow": "Completa ora"
+  },
+  "bookingsActionFailed": "Non è stato possibile completare.",
+  "bookingsDisputeAction": {
+    "upheld": "Dare ragione al cliente",
+    "rejected": "Mantenere il completamento"
+  },
+  "bookingsEmpty": {
+    "unclosed": {
+      "title": "Niente da chiudere",
+      "body": "Le prenotazioni il cui appuntamento è già passato e non sono ancora state chiuse compaiono qui."
+    },
+    "in_window": {
+      "title": "Niente in finestra",
+      "body": "Le prenotazioni segnate come completate, in attesa della risposta del cliente, compaiono qui."
+    },
+    "disputed": {
+      "title": "Nessuna contestazione",
+      "body": "Le contestazioni aperte dai clienti compaiono qui, in attesa di una decisione."
+    }
+  },
+  "bookingsError": "Non è stato possibile caricare le prenotazioni.",
+  "bookingsRetry": "Riprova"
 }

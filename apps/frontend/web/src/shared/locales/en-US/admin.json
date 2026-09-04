@@ -310,5 +310,46 @@
   "supportConversationError": "The conversation could not be loaded.",
   "supportPlatformSender": "Ntizo Support",
   "supportNotFound": "No such request.",
-  "supportLoadError": "The request could not be loaded."
+  "supportLoadError": "The request could not be loaded.",
+  "bookingsTitle": "Bookings",
+  "bookingsSubtitle": "Bookings that need closing, ones inside the customer's window, and disputes waiting on a decision.",
+  "bookingsOpenCount_one": "{{count}} booking needing attention",
+  "bookingsOpenCount_other": "{{count}} bookings needing attention",
+  "bookingsTab": {
+    "unclosed": "Unclosed",
+    "in_window": "In window",
+    "disputed": "Disputes"
+  },
+  "bookingsCol": {
+    "provider": "Provider",
+    "customer": "Customer",
+    "service": "Service",
+    "when": "When",
+    "status": "Status"
+  },
+  "bookingsAction": {
+    "markDone": "Mark as done",
+    "completeNow": "Complete now"
+  },
+  "bookingsActionFailed": "Could not complete.",
+  "bookingsDisputeAction": {
+    "upheld": "Side with the customer",
+    "rejected": "Keep the completion"
+  },
+  "bookingsEmpty": {
+    "unclosed": {
+      "title": "Nothing to close",
+      "body": "Bookings whose appointment has passed and haven't been closed appear here."
+    },
+    "in_window": {
+      "title": "Nothing in window",
+      "body": "Bookings marked done, waiting on the customer's response, appear here."
+    },
+    "disputed": {
+      "title": "No disputes",
+      "body": "Disputes customers have opened appear here, waiting on a decision."
+    }
+  },
+  "bookingsError": "Could not load the bookings.",
+  "bookingsRetry": "Try again"
 }

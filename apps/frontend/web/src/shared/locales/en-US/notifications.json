@@ -28,6 +28,12 @@
     "bookingConfirmed": "Your booking is confirmed",
     "providerBookingConfirmed": "A booking was paid and is confirmed",
     "providerBookingCancelledByCustomer": "A booking was cancelled",
+    "providerBookingCloseReminder": "You have a booking to close",
+    "bookingMarkedDone": "The provider says the work is done — you have three days to respond",
+    "providerBookingAutoClosed": "We closed a booking because you didn't respond in time",
+    "adminBookingAutoClosed": "A booking was closed automatically and needs attention",
+    "bookingDisputed": "A dispute was opened on a booking",
+    "bookingDisputeResolved": "A decision was made on your booking's dispute",
     "unknown": "You have a new notification"
   }
 }

@@ -28,6 +28,12 @@
     "bookingConfirmed": "A sua reserva está confirmada",
     "providerBookingConfirmed": "Uma reserva foi paga e está confirmada",
     "providerBookingCancelledByCustomer": "Uma reserva foi cancelada",
+    "providerBookingCloseReminder": "Tem uma reserva para fechar",
+    "bookingMarkedDone": "O prestador diz que o serviço terminou — tem três dias para responder",
+    "providerBookingAutoClosed": "Fechámos uma reserva porque não respondeu a tempo",
+    "adminBookingAutoClosed": "Uma reserva foi fechada automaticamente e precisa de atenção",
+    "bookingDisputed": "Uma reclamação foi aberta sobre uma reserva",
+    "bookingDisputeResolved": "Foi tomada uma decisão sobre a reclamação da sua reserva",
     "unknown": "Tem uma notificação nova"
   }
 }

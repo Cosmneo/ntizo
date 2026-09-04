@@ -310,5 +310,46 @@
   "supportConversationError": "Die Unterhaltung konnte nicht geladen werden.",
   "supportPlatformSender": "Ntizo-Support",
   "supportNotFound": "Diese Anfrage gibt es nicht.",
-  "supportLoadError": "Die Anfrage konnte nicht geladen werden."
+  "supportLoadError": "Die Anfrage konnte nicht geladen werden.",
+  "bookingsTitle": "Buchungen",
+  "bookingsSubtitle": "Buchungen, die geschlossen werden müssen, solche innerhalb des Kundenfensters, und Reklamationen, die auf eine Entscheidung warten.",
+  "bookingsOpenCount_one": "{{count}} Buchung braucht Aufmerksamkeit",
+  "bookingsOpenCount_other": "{{count}} Buchungen brauchen Aufmerksamkeit",
+  "bookingsTab": {
+    "unclosed": "Offen",
+    "in_window": "Im Fenster",
+    "disputed": "Reklamationen"
+  },
+  "bookingsCol": {
+    "provider": "Anbieter",
+    "customer": "Kunde",
+    "service": "Leistung",
+    "when": "Wann",
+    "status": "Status"
+  },
+  "bookingsAction": {
+    "markDone": "Als erledigt markieren",
+    "completeNow": "Jetzt abschließen"
+  },
+  "bookingsActionFailed": "Konnte nicht abgeschlossen werden.",
+  "bookingsDisputeAction": {
+    "upheld": "Der Kundschaft recht geben",
+    "rejected": "Abschluss beibehalten"
+  },
+  "bookingsEmpty": {
+    "unclosed": {
+      "title": "Nichts zu schließen",
+      "body": "Buchungen, deren Termin vorbei ist und die noch nicht geschlossen wurden, erscheinen hier."
+    },
+    "in_window": {
+      "title": "Nichts im Fenster",
+      "body": "Als erledigt markierte Buchungen, die auf die Antwort der Kundschaft warten, erscheinen hier."
+    },
+    "disputed": {
+      "title": "Keine Reklamationen",
+      "body": "Reklamationen, die die Kundschaft eingereicht hat, erscheinen hier und warten auf eine Entscheidung."
+    }
+  },
+  "bookingsError": "Die Buchungen konnten nicht geladen werden.",
+  "bookingsRetry": "Erneut versuchen"
 }

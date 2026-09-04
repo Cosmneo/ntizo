@@ -28,6 +28,12 @@
     "bookingConfirmed": "Ihre Buchung ist bestätigt",
     "providerBookingConfirmed": "Eine Buchung wurde bezahlt und ist bestätigt",
     "providerBookingCancelledByCustomer": "Eine Buchung wurde storniert",
+    "providerBookingCloseReminder": "Sie haben eine Buchung zu schließen",
+    "bookingMarkedDone": "Der Anbieter sagt, dass die Leistung erledigt ist — Sie haben drei Tage Zeit zu antworten",
+    "providerBookingAutoClosed": "Wir haben eine Buchung geschlossen, weil Sie nicht rechtzeitig geantwortet haben",
+    "adminBookingAutoClosed": "Eine Buchung wurde automatisch geschlossen und benötigt Aufmerksamkeit",
+    "bookingDisputed": "Für eine Buchung wurde eine Reklamation eingereicht",
+    "bookingDisputeResolved": "Es gibt eine Entscheidung zur Reklamation Ihrer Buchung",
     "unknown": "Sie haben eine neue Benachrichtigung"
   }
 }

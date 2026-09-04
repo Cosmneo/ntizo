@@ -28,6 +28,12 @@
     "bookingConfirmed": "La tua prenotazione è confermata",
     "providerBookingConfirmed": "Una prenotazione è stata pagata ed è confermata",
     "providerBookingCancelledByCustomer": "Una prenotazione è stata annullata",
+    "providerBookingCloseReminder": "Hai una prenotazione da chiudere",
+    "bookingMarkedDone": "Il professionista dice che il servizio è terminato — hai tre giorni per rispondere",
+    "providerBookingAutoClosed": "Abbiamo chiuso una prenotazione perché non hai risposto in tempo",
+    "adminBookingAutoClosed": "Una prenotazione è stata chiusa automaticamente e richiede attenzione",
+    "bookingDisputed": "È stata aperta una contestazione su una prenotazione",
+    "bookingDisputeResolved": "È stata presa una decisione sulla contestazione della tua prenotazione",
     "unknown": "Hai una nuova notifica"
   }
 }

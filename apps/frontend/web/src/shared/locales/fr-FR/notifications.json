@@ -28,6 +28,12 @@
     "bookingConfirmed": "Votre réservation est confirmée",
     "providerBookingConfirmed": "Une réservation a été payée et est confirmée",
     "providerBookingCancelledByCustomer": "Une réservation a été annulée",
+    "providerBookingCloseReminder": "Vous avez une réservation à clôturer",
+    "bookingMarkedDone": "Le prestataire dit que le service est terminé — vous avez trois jours pour répondre",
+    "providerBookingAutoClosed": "Nous avons clôturé une réservation car vous n'avez pas répondu à temps",
+    "adminBookingAutoClosed": "Une réservation a été clôturée automatiquement et nécessite votre attention",
+    "bookingDisputed": "Un litige a été ouvert sur une réservation",
+    "bookingDisputeResolved": "Une décision a été prise concernant le litige de votre réservation",
     "unknown": "Vous avez une nouvelle notification"
   }
 }

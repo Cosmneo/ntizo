@@ -4,12 +4,15 @@ import {
   CalendarCheck,
   CalendarX,
   CheckCircle2,
+  CircleCheck,
   CircleDollarSign,
   FileWarning,
+  Gavel,
   LifeBuoy,
   Mail,
   MessageSquare,
   Store,
+  TriangleAlert,
   UserPlus,
 } from "lucide-react";
 
@@ -44,6 +47,14 @@ const PRESENTATION: Record<string, { icon: LucideIcon; key: string }> = {
   BOOKING_CONFIRMED: { icon: CalendarCheck, key: "bookingConfirmed" },
   PROVIDER_BOOKING_CONFIRMED: { icon: CalendarCheck, key: "providerBookingConfirmed" },
   PROVIDER_BOOKING_CANCELLED_BY_CUSTOMER: { icon: CalendarX, key: "providerBookingCancelledByCustomer" },
+
+  // Booking completion: mark done, keep open, close, dispute, resolve.
+  PROVIDER_BOOKING_CLOSE_REMINDER: { icon: CalendarCheck, key: "providerBookingCloseReminder" },
+  BOOKING_MARKED_DONE: { icon: CircleCheck, key: "bookingMarkedDone" },
+  PROVIDER_BOOKING_AUTO_CLOSED: { icon: CalendarCheck, key: "providerBookingAutoClosed" },
+  ADMIN_BOOKING_AUTO_CLOSED: { icon: CalendarCheck, key: "adminBookingAutoClosed" },
+  BOOKING_DISPUTED: { icon: TriangleAlert, key: "bookingDisputed" },
+  BOOKING_DISPUTE_RESOLVED: { icon: Gavel, key: "bookingDisputeResolved" },
 };
 
 const FALLBACK = { icon: Mail, key: "unknown" } as const;

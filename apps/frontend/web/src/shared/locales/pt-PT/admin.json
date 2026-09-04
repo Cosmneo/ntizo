@@ -310,5 +310,46 @@
   "supportConversationError": "Não foi possível carregar a conversa.",
   "supportPlatformSender": "Suporte Ntizo",
   "supportNotFound": "Este pedido não existe.",
-  "supportLoadError": "Não foi possível carregar o pedido."
+  "supportLoadError": "Não foi possível carregar o pedido.",
+  "bookingsTitle": "Reservas",
+  "bookingsSubtitle": "Reservas por fechar, dentro da janela do cliente, e reclamações por decidir.",
+  "bookingsOpenCount_one": "{{count}} reserva a precisar de atenção",
+  "bookingsOpenCount_other": "{{count}} reservas a precisar de atenção",
+  "bookingsTab": {
+    "unclosed": "Por fechar",
+    "in_window": "Em janela",
+    "disputed": "Reclamações"
+  },
+  "bookingsCol": {
+    "provider": "Prestador",
+    "customer": "Cliente",
+    "service": "Serviço",
+    "when": "Quando",
+    "status": "Estado"
+  },
+  "bookingsAction": {
+    "markDone": "Marcar como concluído",
+    "completeNow": "Concluir agora"
+  },
+  "bookingsActionFailed": "Não foi possível concluir.",
+  "bookingsDisputeAction": {
+    "upheld": "Dar razão ao cliente",
+    "rejected": "Manter conclusão"
+  },
+  "bookingsEmpty": {
+    "unclosed": {
+      "title": "Nada por fechar",
+      "body": "As reservas cujo horário já passou e ainda não foram fechadas aparecem aqui."
+    },
+    "in_window": {
+      "title": "Nada em janela",
+      "body": "As reservas marcadas como concluídas, à espera de resposta do cliente, aparecem aqui."
+    },
+    "disputed": {
+      "title": "Sem reclamações",
+      "body": "As reclamações abertas pelos clientes aparecem aqui, à espera de uma decisão."
+    }
+  },
+  "bookingsError": "Não foi possível carregar as reservas.",
+  "bookingsRetry": "Tentar de novo"
 }
