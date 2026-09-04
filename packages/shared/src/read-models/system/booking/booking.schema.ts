@@ -70,6 +70,21 @@ export const bookingReadModel = z.object({
   serviceId: z.string().min(1),
   serviceOptionId: z.string().min(1),
 
+  /**
+   * The business this booking is with — identity, on the same terms as the
+   * two ids above: `booking.provider_id` is a `NOT NULL` FK, an id names the
+   * same row forever, and there is nothing about it to drift.
+   *
+   * It is here because `providerSlug` cannot do this job. A slug addresses a
+   * *page*; starting a conversation addresses a *row* —
+   * `CommunicationStartThreadInput` takes `providerId`, and the customer's
+   * booking pages are exactly where wanting to message the provider happens.
+   * Before this, a "Mensagem" button on a booking had to either resolve the
+   * slug to an id first (a second round trip for a fact this read already
+   * held) or not exist, and it did not exist.
+   */
+  providerId: z.string().min(1),
+
   serviceName: z.string(),
   providerName: z.string(),
   providerSlug: z.string(),
@@ -101,6 +116,32 @@ export const bookingReadModel = z.object({
    */
   providerVerified: z.boolean(),
   providerRatingAverage: z.number().nullable(),
+
+  /**
+   * A picture of what was booked, and of who is doing it — the service's
+   * first image and the business's logo, as URLs already resolved.
+   *
+   * **Live, like the badge and the score above, and for the same reason:**
+   * neither is a term of the agreement. A provider who replaces a blurry
+   * photo should have the better one show on the bookings it already has;
+   * nobody is worse off for it, which is exactly the test that separates
+   * these from `optionName` and `priceMinor`.
+   *
+   * **Only the first image, not the array.** The two screens that read this
+   * — the customer's list row and the top of their booking's own page —
+   * draw one thumbnail each. Carrying every key so both could ignore all but
+   * the first would put a gallery on the wire for every row of every page.
+   *
+   * Null covers three cases the reader cannot tell apart and does not need
+   * to: no image was ever uploaded, the key resolves to no URL because
+   * nothing serves the bucket (`mediaUrl` answers null), and — for the
+   * service only — the `leftJoin` found nothing, which the `NOT NULL` FK
+   * makes unreachable. All three mean the same thing to a card: draw the
+   * placeholder.
+   */
+  serviceImageUrl: z.string().nullable(),
+  providerLogoUrl: z.string().nullable(),
+
   optionName: z.string(),
   durationMinutes: z.number().int().positive(),
 

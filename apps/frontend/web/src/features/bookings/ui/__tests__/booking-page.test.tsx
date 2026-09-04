@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -20,7 +20,13 @@ import { BookingPage } from "../booking-page";
  */
 const fakes = vi.hoisted(() => ({ graphql: vi.fn() }));
 
-vi.mock("@/shared/lib/graphql/session-graphql", () => ({
+// The real module's other exports are kept, and `sessionGraphql` alone is
+// replaced. A factory that returned only the fake left `GraphqlError`
+// undefined, and `messagingErrorCode` — reached through the page's
+// "Mensagem" button — reads that class to tell a domain refusal from a
+// coarse wire code. Losing it took the whole page down at import time.
+vi.mock("@/shared/lib/graphql/session-graphql", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/lib/graphql/session-graphql")>()),
   sessionGraphql: fakes.graphql,
 }));
 
@@ -32,9 +38,12 @@ function bookingFixture(
     status: "AWAITING_PROVIDER",
     serviceId: "svc-1",
     serviceOptionId: "opt-1",
+    providerId: "prv-1",
     serviceName: "Canalização",
     providerName: "Amélia Sitoe",
     providerSlug: "amelia-sitoe",
+    serviceImageUrl: null,
+    providerLogoUrl: null,
     providerVerified: true,
     providerRatingAverage: 4.8,
     optionName: "Reparação de fuga",
@@ -137,10 +146,73 @@ describe("BookingPage", () => {
     await renderBooking();
 
     const steps = await screen.findAllByRole("listitem");
+    // Three hops the server sent, then the one still ahead of them. The last
+    // is the page's own addition and carries no date, because it has none to
+    // give — see `upcomingSteps`.
     expect(steps.map((s) => s.textContent)).toEqual([
       expect.stringContaining("Pedido enviado"),
       expect.stringContaining("Prestador aceitou"),
       expect.stringContaining("A aguardar o seu pagamento"),
+      "Reserva confirmada",
+    ]);
+  });
+
+  it("names both steps still to come while the provider has not answered", async () => {
+    // The case a first-time customer most needs told: the server's timeline
+    // says a request was sent and a deadline is running, and stops there.
+    // Payment and confirmation are what happens next, and nothing on the page
+    // said so.
+    setDetail(
+      bookingFixture({
+        status: "AWAITING_PROVIDER",
+        timeline: [
+          {
+            at: "2026-09-03T08:12:00Z",
+            reason: "created_by_customer",
+            actor: "customer",
+            pending: false,
+          },
+          { at: "2026-09-03T10:02:00Z", reason: "respond_by", actor: "system", pending: true },
+        ],
+      }),
+    );
+    await renderBooking();
+    expect((await screen.findAllByRole("listitem")).map((s) => s.textContent)).toEqual([
+      expect.stringContaining("Pedido enviado"),
+      expect.stringContaining("A aguardar resposta do prestador"),
+      "Pagamento",
+      "Reserva confirmada",
+    ]);
+  });
+
+  it("promises nothing further once the booking is confirmed", async () => {
+    // Because there is nothing further the platform can do: work happening,
+    // being marked done and money being released have no transitions today.
+    // A ladder drawn from the design rather than from the machine would show
+    // all three greyed, and they would never light up.
+    setDetail(
+      bookingFixture({
+        status: "CONFIRMED",
+        timeline: [
+          {
+            at: "2026-09-03T08:12:00Z",
+            reason: "created_by_customer",
+            actor: "customer",
+            pending: false,
+          },
+          {
+            at: "2026-09-03T12:30:00Z",
+            reason: "payment_confirmed",
+            actor: "system",
+            pending: false,
+          },
+        ],
+      }),
+    );
+    await renderBooking();
+    expect((await screen.findAllByRole("listitem")).map((s) => s.textContent)).toEqual([
+      expect.stringContaining("Pedido enviado"),
+      expect.stringContaining("Pagamento confirmado"),
     ]);
   });
 
@@ -150,6 +222,97 @@ describe("BookingPage", () => {
   // `currencyDisplay` at its default, which is `pt-MZ`'s own narrow symbol
   // for MZN. Verified against the list's own identical assertion in
   // `bookings-page.test.tsx` rather than guessed.
+  /**
+   * Two decisions that are invisible to every other assertion in this file,
+   * because jsdom has no viewport and never applies a breakpoint. Pinned as
+   * classes for exactly that reason: nothing else here can tell that the
+   * phone layout came back, and a merge that took the other side of this file
+   * would put it back silently.
+   */
+  describe("the layout a phone gets", () => {
+    it("puts the money and the timeline above the record, and back beside it on a laptop", async () => {
+      // One column stacks in source order, and source order is the two-column
+      // layout's: the record first, the rail second. Stacked, that buried
+      // "quanto pago" and "onde é que isto está" under the address, the
+      // duration and the customer's own note — three blocks they wrote
+      // themselves.
+      setDetail(bookingFixture());
+      await renderBooking();
+      await screen.findByRole("heading", { level: 1 });
+
+      const rail = document.querySelector("aside")!;
+      expect(rail.className).toContain("order-1");
+      expect(rail.className).toContain("lg:order-2");
+    });
+
+    it("gives Cancelar and Pagar the whole width, stacked, until there is room for a row", async () => {
+      // Wrapping under the header at whatever width their words gave them
+      // left Pagar as a half-width button beside Cancelar on a 360px screen:
+      // neither an easy target, and the destructive one exactly as prominent
+      // as the action being waited for.
+      setDetail(bookingFixture({ status: "PENDING_PAYMENT" }));
+      await renderBooking();
+
+      const group = await screen.findByRole("group", { name: "Ações" });
+      expect(group.className).toContain("flex-col");
+      expect(group.className).toContain("sm:flex-row");
+      // Written in their real order, so what is read and what is tabbed
+      // agree with what is on the screen — no `flex-col-reverse`. Pagar
+      // lands at the bottom of the pair, where a thumb already is.
+      expect(group.className).not.toContain("flex-col-reverse");
+      for (const button of within(group).getAllByRole("button")) {
+        expect(button.className).toContain("w-full");
+        expect(button.className).toContain("sm:w-auto");
+      }
+    });
+  });
+
+  it("points at the provider's public page, by the slug this read already carried", async () => {
+    // The reviews, the other services and the trading hours all live there,
+    // and a booking's own record has no business repeating any of them. The
+    // slug has been on this read since checkout needed it — nothing new had
+    // to be fetched to offer this.
+    setDetail(bookingFixture({ providerSlug: "amelia-sitoe" }));
+    await renderBooking();
+
+    expect(await screen.findByRole("link", { name: "Ver perfil" })).toHaveAttribute(
+      "href",
+      "/providers/amelia-sitoe",
+    );
+  });
+
+  it("offers a message to the provider on a booking that is over", async () => {
+    // Not gated on status, unlike Cancelar and Pagar: a question about a job
+    // that was declined is still a question. `providerId` is what makes this
+    // possible at all — `communicationStartThread` takes an id and the slug
+    // could not have answered for it.
+    setDetail(bookingFixture({ status: "DECLINED" }));
+    await renderBooking();
+
+    expect(
+      await screen.findByRole("button", { name: /Mensagem/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the provider's logo when there is one, and their initials when there is not", async () => {
+    setDetail(bookingFixture({ providerLogoUrl: "https://media.test/logo.png" }));
+    await renderBooking();
+    expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(
+      document.querySelector('img[src="https://media.test/logo.png"]'),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to initials rather than the brand mark where a face belongs", async () => {
+    // `BrandImage`'s mark is right for a missing photograph and wrong here:
+    // the Ntizo logo where a business's own avatar goes reads as "booked with
+    // Ntizo". "AS" says who, in the business's own name.
+    setDetail(bookingFixture({ providerLogoUrl: null, providerName: "Amélia Sitoe" }));
+    await renderBooking();
+
+    expect(await screen.findByText("AS")).toBeInTheDocument();
+  });
+
   it("shows the total and never a split", async () => {
     setDetail(bookingFixture({ priceMinor: 180_000, currency: "MZN" }));
     await renderBooking();

@@ -25,7 +25,11 @@ import { BookingsPage } from "../bookings-page";
  */
 const fakes = vi.hoisted(() => ({ graphql: vi.fn() }));
 
-vi.mock("@/shared/lib/graphql/session-graphql", () => ({
+// Keeps the real module's other exports — see the identical note on the
+// detail page's suite for what went missing when this returned the fake
+// alone.
+vi.mock("@/shared/lib/graphql/session-graphql", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/lib/graphql/session-graphql")>()),
   sessionGraphql: fakes.graphql,
 }));
 
@@ -52,9 +56,12 @@ function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
     status: "AWAITING_PROVIDER",
     serviceId: "svc-1",
     serviceOptionId: "opt-1",
+    providerId: "prv-1",
     serviceName: "Canalização",
     providerName: "Amélia Sitoe",
     providerSlug: "amelia-sitoe",
+    serviceImageUrl: null,
+    providerLogoUrl: null,
     providerVerified: true,
     providerRatingAverage: 4.8,
     optionName: "Reparação de fuga",
@@ -172,6 +179,21 @@ async function row(serviceName: string) {
 }
 
 /**
+ * The same row on the other screen — the card `CollectionCard` draws below
+ * `md`, which is where a customer actually reads this list.
+ *
+ * Both renderings are always in the DOM and CSS picks between them, so an
+ * assertion that does not say which one it means can pass on the strength of
+ * the table while the card shows nothing. The card is found through the `ul`
+ * the table has no counterpart for.
+ */
+async function card(serviceName: string) {
+  const list = await screen.findByRole("list");
+  const found = await within(list).findByText(serviceName, { exact: false });
+  return within(found.closest("li")!);
+}
+
+/**
  * The locale is pinned, not inherited: every assertion here reads Portuguese
  * copy and the suite's default resolves to English (`test/setup.ts`).
  */
@@ -240,6 +262,86 @@ describe("BookingsPage", () => {
     expect(
       r.queryByRole("button", { name: "Cancelar" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("the card a phone reads", () => {
+    it("arranges the appointment, the pill and the total without labelling any of them", async () => {
+      setPage(
+        pageFixture([
+          bookingFixture({ status: "PENDING_PAYMENT", priceMinor: 35_000, currency: "MZN" }),
+        ]),
+      );
+      await renderBookings();
+
+      const c = await card("Canalização");
+      expect(c.getByText("A aguardar pagamento")).toBeInTheDocument();
+      expect(c.getByText("350,00 MTn")).toBeInTheDocument();
+      // "Estado" and "Valor" are two words of chrome per row on the screen
+      // with the least room for any. They belong to the table's header, and
+      // this card is not the table.
+      expect(c.queryByText("Estado")).not.toBeInTheDocument();
+      expect(c.queryByText("Valor")).not.toBeInTheDocument();
+      expect(c.queryByText("Quando")).not.toBeInTheDocument();
+
+      // And the table still carries all three, off `cells` — which is what
+      // stops the two renderings from becoming two designs.
+      const table = within(await screen.findByRole("table"));
+      expect(table.getByText("Estado")).toBeInTheDocument();
+      expect(table.getByText("Valor")).toBeInTheDocument();
+      expect(table.getByText("350,00 MTn")).toBeInTheDocument();
+    });
+
+    it("gives the card a link to the booking that is not the title", async () => {
+      // The title is a link on both screens, but a line of text is a poor
+      // target for a thumb — this is the one the card is tapped by.
+      setPage(pageFixture([bookingFixture({ id: "bk-9" })]));
+      await renderBookings();
+
+      const link = (await card("Canalização")).getByRole("link", { name: /Ver detalhe/ });
+      expect(link).toHaveAttribute("href", "/bookings/bk-9");
+    });
+
+    it("offers the provider a message from every row, whatever the booking's status", async () => {
+      // A customer with a question about a job that is over has the same
+      // right to ask it as one waiting to pay, so this is not gated on
+      // status the way Pagar and Cancelar are.
+      setPage(pageFixture([bookingFixture({ status: "CANCELLED" })]));
+      await renderBookings();
+
+      expect(
+        (await card("Canalização")).getByRole("button", { name: /Mensagem/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("draws the service photo when the booking has one", async () => {
+      setPage(
+        pageFixture([bookingFixture({ serviceImageUrl: "https://media.test/svc-1.jpg" })]),
+      );
+      await renderBookings();
+
+      // By tag, not by role: `alt=""` is deliberate — the title is right
+      // beside it and reading the service name twice says nothing new the
+      // second time — and an empty alt makes the image presentational, so
+      // `getByRole("img")` correctly finds nothing.
+      const list = await screen.findByRole("list");
+      expect(list.querySelector("li img")).toHaveAttribute(
+        "src",
+        "https://media.test/svc-1.jpg",
+      );
+    });
+
+    it("draws the house fallback when it has none", async () => {
+      // Not a grey rectangle and not a broken-image glyph: `BrandImage`'s
+      // mark on the soft ground, which is what every missing picture in the
+      // app shows. Most bookings have no photo, so this is the common case
+      // rather than the exception.
+      setPage(pageFixture([bookingFixture({ serviceImageUrl: null })]));
+      await renderBookings();
+
+      const list = await screen.findByRole("list");
+      expect(list.querySelector("li img")).toBeNull();
+      expect((await card("Canalização")).getByTestId("media-fallback")).toBeInTheDocument();
+    });
   });
 
   it("renders the tab counts", async () => {

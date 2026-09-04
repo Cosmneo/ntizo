@@ -11,8 +11,9 @@ import {
 
 /** No commission fields: they left `bookingReadModel` on 2026-09-03 and cannot be asked for. */
 const ROW_FIELDS = `
-  id status serviceId serviceOptionId serviceName providerName providerSlug providerVerified
-  providerRatingAverage optionName durationMinutes locationType priceMinor currency
+  id status serviceId serviceOptionId providerId serviceName providerName providerSlug providerVerified
+  providerRatingAverage serviceImageUrl providerLogoUrl optionName durationMinutes locationType
+  priceMinor currency
   startsAt endsAt timezone addressLabel addressLine addressCity addressDistrict addressDirections
   description expiresAt paidAt createdAt`;
 

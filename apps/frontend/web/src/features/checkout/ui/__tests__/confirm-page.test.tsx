@@ -118,9 +118,12 @@ function bookingFixture(over: Partial<BookingDTO> = {}): BookingDTO {
     status: "DRAFT",
     serviceId: "svc-1",
     serviceOptionId: "opt-2",
+    providerId: "prv-1",
     serviceName: "Corte de cabelo",
     providerName: "Studio X",
     providerSlug: "studio-x",
+    serviceImageUrl: null,
+    providerLogoUrl: null,
     // Read live off the provider rather than snapshotted — and printed here
     // now that this page renders the shared rail. 4,2 rather than the rail
     // suite's own 4,8: no default and no other fixture in the repo produces

@@ -31,6 +31,9 @@
   "pay": "Paga",
   "cancel": "Annulla",
   "view": "Vedi",
+  "viewDetail": "Vedi dettaglio",
+  "message": "Messaggio",
+  "viewProfile": "Vedi profilo",
   "reference": "Riferimento {{ref}}",
   "minutes": "{{count}} min",
   "verified": "Verificato",
@@ -111,6 +114,10 @@
     "superseded_by_new_draft": "Sostituita da una nuova prenotazione",
     "respond_by": "In attesa della risposta del professionista",
     "pay_by": "In attesa del tuo pagamento",
-    "unknown": "Stato cambiato"
+    "unknown": "Stato cambiato",
+    "ahead": {
+      "payment": "Pagamento",
+      "confirmed": "Prenotazione confermata"
+    }
   }
 }

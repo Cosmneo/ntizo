@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { CalendarDays } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
 import type { BookingDTO, CustomerBookingPageDTO } from "@ntizo/shared/read-models";
+import { BrandImage } from "@/shared/components/brand-image";
 import { CollectionCard } from "@/shared/components/collection-card";
+import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { formatAmount } from "@/features/directory/services/domain/service-card";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
@@ -47,6 +49,17 @@ function countdownTone(status: CustomerBookingStatus): string {
  * URL; it is not worth those three, and the provider's list settled this
  * question already — see its `loaded`/`page` pair, which this mirrors down
  * to why both are needed.
+ *
+ * **The narrow screen is composed rather than labelled.** `CollectionCard`'s
+ * own mobile card stacks every value under its column's name — "Quando",
+ * "Estado", "Valor", one line each — which is right for a list of people and
+ * wrong here: on a phone this list is read by scanning for a status and a
+ * price, and those two want to share a line rather than sit under two words
+ * of chrome. So all three columns are `hideOnCard` and the row hands the card
+ * a `cardBody` instead. The table above `md` is untouched and still reads
+ * every value off `cells`, which is what stops the two from becoming two
+ * designs — see `CollectionRow.cardBody` for the rule that keeps them
+ * honest.
  *
  * No search box: the mockup draws none, `bookingMine` carries no `q` the way
  * the provider's `bookingForProvider` does, and a client-side filter over a
@@ -198,20 +211,31 @@ export function BookingsPage() {
           shown={items.length}
           total={data?.total ?? 0}
           loading={query.isLoading && offset === 0}
+          // All three facts are marked `hideOnCard` because all three are in
+          // `cardBody` below, arranged rather than labelled — the rule
+          // `CollectionRow.cardBody` states for anyone using the slot. The
+          // table is unchanged and still reads them off `cells`.
           columns={[
             { key: "service", label: t("col.service"), className: "pl-5" },
-            { key: "when", label: t("col.when"), skeletonWidth: "w-28" },
+            {
+              key: "when",
+              label: t("col.when"),
+              skeletonWidth: "w-28",
+              hideOnCard: true,
+            },
             {
               key: "status",
               label: t("col.status"),
               skeletonWidth: "w-24",
               skeletonShape: "badge",
+              hideOnCard: true,
             },
             {
               key: "price",
               label: t("col.price"),
               align: "right",
               skeletonWidth: "w-20",
+              hideOnCard: true,
             },
             { key: "actions", label: "", className: "pr-5" },
           ]}
@@ -253,23 +277,47 @@ export function BookingsPage() {
             return {
               key: b.id,
               primary: (
-                <div>
-                  <Link
-                    to="/bookings/$bookingId"
-                    params={{ bookingId: b.id }}
-                    className="type-body-medium font-semibold hover:underline"
-                  >
-                    {b.serviceName}
-                    {b.optionName ? ` · ${b.optionName}` : ""}
-                  </Link>
-                  <p className="type-caption mt-0.5 flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
-                    {b.providerName}
-                    {b.providerVerified && (
-                      <span className="font-semibold text-[var(--color-primary)]">
-                        ✓ {t("verified")}
-                      </span>
-                    )}
-                  </p>
+                <div className="flex items-start gap-3">
+                  {/* `BrandImage`, not an `<img>`: a booking's service photo
+                      is missing more often than not, and every dead URL on
+                      dev is one of these. The mark on the soft ground is the
+                      app's single treatment for that — see its own comment.
+                      Empty `alt`, because the title is right beside it. */}
+                  <span className="h-12 w-12 shrink-0 overflow-hidden rounded-[var(--radius-card-sm)]">
+                    <BrandImage
+                      src={b.serviceImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                  <div className="min-w-0">
+                    <Link
+                      to="/bookings/$bookingId"
+                      params={{ bookingId: b.id }}
+                      className="type-body-medium font-semibold hover:underline"
+                    >
+                      {b.serviceName}
+                      {b.optionName ? ` · ${b.optionName}` : ""}
+                    </Link>
+                    <p className="type-caption mt-0.5 flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
+                      {b.providerName}
+                      {b.providerVerified && (
+                        <span className="font-semibold text-[var(--color-primary)]">
+                          ✓ {t("verified")}
+                        </span>
+                      )}
+                    </p>
+                    {/* The appointment, on the narrow screen only. The table
+                        has a "Quando" column two cells to the right and this
+                        would be the same fact printed twice on a laptop;
+                        below `md` that column is hidden, and a date belongs
+                        with the name it qualifies rather than under a
+                        heading of its own. */}
+                    <p className="type-caption mt-0.5 tabular-nums text-[var(--color-muted-foreground)] md:hidden">
+                      {slot.date} · {slot.start} ·{" "}
+                      {t("minutes", { count: b.durationMinutes })}
+                    </p>
+                  </div>
                 </div>
               ),
               cells: {
@@ -310,6 +358,60 @@ export function BookingsPage() {
                   </span>
                 ),
               },
+              // The same three facts as the cells above, arranged for one
+              // column instead of labelled in a list: the pill and the total
+              // share a line because they are what the eye goes to, and
+              // "Estado" and "Valor" written beside them are two words of
+              // chrome on the narrowest screen the app has.
+              cardBody: (
+                <div className="grid gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="inline-flex flex-col items-start gap-1">
+                      <BookingStatusBadge status={b.status} />
+                      {left && (
+                        <span
+                          className={cn(
+                            "type-caption font-semibold",
+                            countdownTone(b.status),
+                          )}
+                        >
+                          {b.status === "PENDING_PAYMENT"
+                            ? t("payIn", { time: left })
+                            : t("respondIn", { time: left })}
+                        </span>
+                      )}
+                    </span>
+                    {/* The same exact amount the cell carries, at the size the
+                        detail page gives the total — never the rounded
+                        headline. See the `price` cell below. */}
+                    <span className="type-h3 shrink-0 font-semibold tabular-nums">
+                      {formatAmount(b.priceMinor, b.currency, locale)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    {/* The provider is one press away from every row, whatever
+                        the booking's status: a customer with a question about
+                        a job that is over has the same right to ask it as one
+                        waiting to be paid for. */}
+                    <MessageProviderButton
+                      providerId={b.providerId}
+                      compact
+                      label={t("message")}
+                    />
+                    {/* The row's title is a link too, but a line of text is a
+                        poor target for a thumb. This is the one the card is
+                        actually tapped by. */}
+                    <Link
+                      to="/bookings/$bookingId"
+                      params={{ bookingId: b.id }}
+                      className="type-caption inline-flex items-center gap-1 font-semibold text-[var(--color-primary)] hover:underline"
+                    >
+                      {t("viewDetail")}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              ),
               // One action, never two: a confirmed booking has nothing to do
               // here at all, and a `PENDING_PAYMENT` row shows only Pagar —
               // both buttons together belong to the detail page, not this

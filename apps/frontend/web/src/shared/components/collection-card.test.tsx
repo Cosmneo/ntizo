@@ -84,6 +84,62 @@ describe("CollectionCard", () => {
     expect(screen.getByText("24 Jun 2026")).toBeTruthy();
   });
 
+  it("lets a row arrange the card itself, and still fills the table from the columns", () => {
+    // The whole point of the slot: a caller composes the narrow screen — here
+    // a role and a date sharing one line — without taking the table with it.
+    // The table is still built from `columns` and `cells`, which is what
+    // stops the two renderings from becoming two designs.
+    renderCard({
+      columns: [
+        { key: "person", label: "Person" },
+        { key: "role", label: "Role", hideOnCard: true },
+        { key: "date", label: "Date", hideOnCard: true },
+        { key: "actions", label: "Actions" },
+      ],
+      rows: [
+        {
+          key: "r1",
+          primary: <span>Salif Faustino</span>,
+          cells: { role: "Admin", date: "24 Jun 2026" },
+          cardBody: <p>Admin · 24 Jun 2026</p>,
+        },
+      ],
+    });
+    const card = screen.getByRole("list").querySelector("li")!;
+    expect(within(card).getByText("Admin · 24 Jun 2026")).toBeTruthy();
+    // No labels left over from the list it replaced.
+    expect(within(card).queryByText("Role")).toBeNull();
+    expect(within(card).queryByText("Date")).toBeNull();
+    // And the desktop table still carries both values, off `cells`.
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Admin")).toBeTruthy();
+    expect(within(table).getByText("24 Jun 2026")).toBeTruthy();
+  });
+
+  it("draws the labelled pairs for every row that gives no arrangement of its own", () => {
+    // The slot is opt-in per row, not per card: a list where one row composes
+    // itself and the next does not must not lose the second row's values.
+    renderCard({
+      rows: [
+        {
+          key: "r1",
+          primary: <span>Salif Faustino</span>,
+          cells: { role: "Admin", date: "24 Jun 2026" },
+          cardBody: <p>Composed</p>,
+        },
+        {
+          key: "r2",
+          primary: <span>Ana Sitoe</span>,
+          cells: { role: "Staff", date: "25 Jun 2026" },
+        },
+      ],
+    });
+    const cards = screen.getByRole("list").querySelectorAll("li");
+    expect(within(cards[0]!).getByText("Composed")).toBeTruthy();
+    expect(within(cards[1]!).getByText("Role")).toBeTruthy();
+    expect(within(cards[1]!).getByText("Staff")).toBeTruthy();
+  });
+
   it("says nothing matches when filters are on, and empty when they are not", () => {
     const empty = renderCard({ rows: [], shown: 0, total: 0, filtered: false });
     expect(screen.getAllByText("Nobody here yet.").length).toBeGreaterThan(0);

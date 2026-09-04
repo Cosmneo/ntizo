@@ -533,6 +533,7 @@ function validBookingRow() {
     status: "PENDING_PAYMENT" as const,
     serviceId: "svc-1",
     serviceOptionId: "opt-1",
+    providerId: "prv-1",
     serviceName: "Avaria eléctrica urgente",
     providerName: "Hélder Cossa",
     providerSlug: "helder-cossa-electricidade",
@@ -542,6 +543,10 @@ function validBookingRow() {
     // produce, so a fixture carrying them could not tell that apart.
     providerVerified: true,
     providerRatingAverage: 4.8,
+    // Both pictures present, and neither the null a mapper that dropped them
+    // would produce — the same argument the pair above is set for.
+    serviceImageUrl: "https://media.ntizo.test/service/svc-1/1",
+    providerLogoUrl: "https://media.ntizo.test/provider/prv-1/logo",
     optionName: "Diagnóstico e reparação",
     durationMinutes: 60,
     // A callout, which is the one class of location type checkout draws a
@@ -607,6 +612,34 @@ describe("bookingReadModel", () => {
     const withoutIt: Record<string, unknown> = { ...base };
     delete withoutIt.locationType;
     expect(() => bookingReadModel.parse(withoutIt)).toThrow();
+  });
+
+  it("requires a provider id, because a slug cannot start a conversation", () => {
+    // `providerSlug` addresses a page; `CommunicationStartThreadInput` takes
+    // an id. Blank is refused as well as missing — an empty string would
+    // reach `startThread` and fail there, one round trip after the page had
+    // already drawn a button promising it would work.
+    expect(() => bookingReadModel.parse({ ...base, providerId: "" })).toThrow();
+    const withoutIt: Record<string, unknown> = { ...base };
+    delete withoutIt.providerId;
+    expect(() => bookingReadModel.parse(withoutIt)).toThrow();
+  });
+
+  it("requires both picture fields, and accepts null for either", () => {
+    // Null is what a service with no image, a key nothing serves, and a
+    // provider with no logo all reduce to — one answer, because a card draws
+    // the same placeholder for all three. Missing stays refused for the
+    // reason the location type's own case gives: a mapper that dropped the
+    // field would otherwise pass as though it had answered "no picture", and
+    // every thumbnail on every row would quietly become a grey tile.
+    expect(() =>
+      bookingReadModel.parse({ ...base, serviceImageUrl: null, providerLogoUrl: null }),
+    ).not.toThrow();
+    for (const key of ["serviceImageUrl", "providerLogoUrl"]) {
+      const withoutIt: Record<string, unknown> = { ...base };
+      delete withoutIt[key];
+      expect(() => bookingReadModel.parse(withoutIt)).toThrow();
+    }
   });
 
   it("rejects a negative price", () => {
