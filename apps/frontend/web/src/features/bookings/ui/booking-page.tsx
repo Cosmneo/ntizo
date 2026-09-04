@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, FileText, User } from "lucide-react";
 import { Button, Skeleton, cn } from "@ntizo/frontend-ui";
+import { BrandImage } from "@/shared/components/brand-image";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { slotWording } from "@/features/checkout/domain/slot-wording";
@@ -11,12 +12,14 @@ import {
   formatAmount,
   formatRating,
 } from "@/features/directory/services/domain/service-card";
+import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import {
   canCancel,
   canPay,
   shortReference,
   timeLeftWording,
+  upcomingSteps,
 } from "../domain/status";
 import { useMyBooking } from "../viewmodel/use-my-bookings";
 import { BookingStatusBadge } from "./booking-status-badge";
@@ -211,28 +214,48 @@ export function BookingPage() {
       {back}
 
       <header className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="type-h1">
-            {b.serviceName}
-            {b.optionName ? ` · ${b.optionName}` : ""}
-          </h1>
-          <p className="type-body mt-1.5 text-[var(--color-muted-foreground)]">
-            {b.providerName}
-            {(() => {
-              const line = trustLine(
-                b.providerRatingAverage,
-                b.providerVerified,
-                locale,
-                t("verified"),
-              );
-              return line ? ` · ${line}` : null;
-            })()}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <BookingStatusBadge status={b.status} />
-            <span className="type-caption rounded-full bg-[var(--color-muted)] px-2.5 py-1 font-semibold tabular-nums">
-              {t("reference", { ref: shortReference(b.id) })}
-            </span>
+        <div className="flex min-w-0 items-start gap-4">
+          {/* The picture of what was booked, at the top of the record it
+              belongs to — same component and same reasons as the list's own
+              thumbnail, one size up. */}
+          <span className="h-14 w-14 shrink-0 overflow-hidden rounded-[var(--radius-card-sm)] sm:h-20 sm:w-20">
+            <BrandImage
+              src={b.serviceImageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </span>
+          <div className="min-w-0">
+            {/* 22px on a phone, the token's own 28px from `sm` up. A service
+                name and its package together run long — "Fotografia de
+                casamento · Pacote completo" took three lines at 28px in the
+                ~270px this column has beside the thumbnail, and a heading
+                that tall pushed the status and the actions below the fold.
+                The overriding utility wins because `type-h1` lives in the
+                components layer; `overview-cards.tsx` does the same thing
+                for the same reason. */}
+            <h1 className="type-h1 text-[22px] sm:text-[28px]">
+              {b.serviceName}
+              {b.optionName ? ` · ${b.optionName}` : ""}
+            </h1>
+            <p className="type-body mt-1.5 text-[var(--color-muted-foreground)]">
+              {b.providerName}
+              {(() => {
+                const line = trustLine(
+                  b.providerRatingAverage,
+                  b.providerVerified,
+                  locale,
+                  t("verified"),
+                );
+                return line ? ` · ${line}` : null;
+              })()}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <BookingStatusBadge status={b.status} />
+              <span className="type-caption rounded-full bg-[var(--color-muted)] px-2.5 py-1 font-semibold tabular-nums">
+                {t("reference", { ref: shortReference(b.id) })}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -240,17 +263,39 @@ export function BookingPage() {
             Cancelar alone while the provider is still deciding, a pointer to
             support once the booking is paid, and nothing for every other
             (terminal) status — there is no live action left to offer. */}
+        {/* **Full width and stacked on a phone, inline from `sm` up.** They
+            used to wrap under the header at whatever width their words gave
+            them, which on a 360px screen left Pagar as a half-width button
+            beside Cancelar — neither an easy target, and the destructive one
+            exactly as prominent as the action actually being waited for.
+            Stacked in their written order, Pagar lands at the bottom of the
+            pair, which is where a thumb already is, and Cancelar is the one
+            that has to be reached up to. No `flex-col-reverse` to arrange
+            that: reading order and tab order would then disagree with what is
+            on the screen, and the order that is right visually is the one the
+            markup already has.
+            One rendering, not two: the mockup draws these at the foot of the
+            page, but a Pagar that has to be scrolled to is a Pagar that gets
+            put off. They stay where the eye lands. */}
         {showBoth ? (
-          <div role="group" aria-label={t("actionsLabel")} className="flex gap-2.5">
+          <div
+            role="group"
+            aria-label={t("actionsLabel")}
+            className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row"
+          >
             <Button
               type="button"
               variant="outline"
-              className={DESTRUCTIVE_OUTLINE}
+              className={cn(DESTRUCTIVE_OUTLINE, "w-full sm:w-auto")}
               onClick={() => setCancelling(true)}
             >
               {t("cancelBooking")}
             </Button>
-            <Button type="button" onClick={() => setPaying(true)}>
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => setPaying(true)}
+            >
               {/* `formatAmount`, not `formatHeadlinePrice`: the button
                   names the amount this press will debit, and the headline
                   formatter rounds to whole units. See the money block below,
@@ -264,7 +309,7 @@ export function BookingPage() {
           <Button
             type="button"
             variant="outline"
-            className={DESTRUCTIVE_OUTLINE}
+            className={cn(DESTRUCTIVE_OUTLINE, "w-full sm:w-auto")}
             onClick={() => setCancelling(true)}
           >
             {t("cancelBooking")}
@@ -285,7 +330,15 @@ export function BookingPage() {
       </header>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+        {/* **Second on a phone, first on a laptop.** One column stacks in
+            source order, and the source order is the two-column layout's: the
+            record on the left, the money and the timeline in the rail on the
+            right. Stacked, that put "quanto pago" and "onde é que isto está"
+            below the address, the duration and the customer's own note —
+            three blocks the reader already knows, since they wrote them. The
+            `order` pair moves the rail above them under `lg` and puts it back
+            beside them above it. */}
+        <div className="order-2 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] divide-y divide-[var(--color-border)] lg:order-1">
           <DetailSection
             icon={<CalendarDays className="h-4.5 w-4.5" />}
             title={t("section.appointment")}
@@ -333,19 +386,62 @@ export function BookingPage() {
             title={t("section.provider")}
             blurb={t("section.providerBlurb")}
           >
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[13px] font-semibold text-[var(--color-primary)]"
-              >
-                {initialsFrom(b.providerName)}
-              </span>
-              <div>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* The logo when there is one, initials when there is not —
+                  **not** `BrandImage`'s mark, which is right for a missing
+                  photograph and wrong for a missing face: the Ntizo mark
+                  where a business's own avatar goes reads as "booked with
+                  Ntizo". Initials say who, and say it in the business's own
+                  name. `BrandImage` still covers the logo that exists in the
+                  data but no longer at its URL, which is most seeded ones on
+                  dev. */}
+              {b.providerLogoUrl ? (
+                <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
+                  <BrandImage
+                    src={b.providerLogoUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </span>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-muted)] text-[13px] font-semibold text-[var(--color-primary)]"
+                >
+                  {initialsFrom(b.providerName)}
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
                 <p className="type-body-medium font-semibold">{b.providerName}</p>
                 <p className="type-caption mt-0.5 text-[var(--color-muted-foreground)]">
                   {trustLine(b.providerRatingAverage, b.providerVerified, locale, t("verified"))}
                 </p>
               </div>
+              {/* The slug has been on this read since checkout needed it; the
+                  page it addresses is public and carries the reviews, the
+                  other services and the trading hours — everything a customer
+                  might want to check that a booking's own record has no
+                  business repeating. */}
+              <Link
+                to="/providers/$slug"
+                params={{ slug: b.providerSlug }}
+                className="type-caption shrink-0 font-semibold text-[var(--color-primary)] hover:underline"
+              >
+                {t("viewProfile")}
+              </Link>
+            </div>
+
+            {/* Under the name rather than in the header: talking to the
+                provider is not one of the booking's own actions — it is
+                available on every status, including the ones where there is
+                nothing left to cancel or pay. Outline, because on this page
+                the filled button is Pagar. */}
+            <div className="mt-4">
+              <MessageProviderButton
+                providerId={b.providerId}
+                variant="outline"
+                label={t("message")}
+              />
             </div>
           </DetailSection>
 
@@ -362,7 +458,7 @@ export function BookingPage() {
           )}
         </div>
 
-        <aside className="grid gap-4 lg:sticky lg:top-6">
+        <aside className="order-1 grid gap-4 lg:order-2 lg:sticky lg:top-6">
           {/* The total the customer pays, the sentence saying it carries no
               markup, and — once paid — when. No split, ever: the commission
               is the provider's payout being reduced, not a charge this
@@ -452,6 +548,33 @@ export function BookingPage() {
                   </li>
                 );
               })}
+
+              {/* What has not happened yet — greyed, and with no date under
+                  it, because there is none to give. The server's timeline is
+                  a history: it answers "what happened to my request" and
+                  leaves a first-time customer to guess "and then what?".
+                  These are the hops still to come, read off the state machine
+                  by `upcomingSteps` so the page can only ever name a step
+                  this booking can actually reach — nothing after CONFIRMED,
+                  because nothing after CONFIRMED has a transition. */}
+              {upcomingSteps(b.status).map((step) => (
+                <li
+                  key={`ahead-${step}`}
+                  aria-label={t(`timeline.ahead.${step}`)}
+                  className="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3"
+                >
+                  {/* Filled, but in the muted grey rather than the brand blue
+                      — a hollow ring is already spent on the deadline that is
+                      running, and these are a step further off than that. */}
+                  <span
+                    aria-hidden="true"
+                    className="mt-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-border)]"
+                  />
+                  <p className="type-body-medium text-[var(--color-muted-foreground)]">
+                    {t(`timeline.ahead.${step}`)}
+                  </p>
+                </li>
+              ))}
             </ol>
           </section>
         </aside>

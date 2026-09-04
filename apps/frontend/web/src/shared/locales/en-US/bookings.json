@@ -31,6 +31,9 @@
   "pay": "Pay",
   "cancel": "Cancel",
   "view": "View",
+  "viewDetail": "View details",
+  "message": "Message",
+  "viewProfile": "View profile",
   "reference": "Reference {{ref}}",
   "minutes": "{{count}} min",
   "verified": "Verified",
@@ -111,6 +114,10 @@
     "superseded_by_new_draft": "Replaced by a new booking",
     "respond_by": "Waiting on the provider's response",
     "pay_by": "Waiting on your payment",
-    "unknown": "Status changed"
+    "unknown": "Status changed",
+    "ahead": {
+      "payment": "Payment",
+      "confirmed": "Booking confirmed"
+    }
   }
 }

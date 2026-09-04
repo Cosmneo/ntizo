@@ -22,6 +22,8 @@ export interface BookingListRow {
    */
   serviceId: string;
   serviceOptionId: string;
+  /** Identity too, and `NOT NULL` on the table — see `bookingReadModel.providerId`. */
+  providerId: string;
 
   serviceName: string;
   providerName: string;
@@ -38,6 +40,24 @@ export interface BookingListRow {
    */
   providerVerified: boolean;
   providerRatingAverage: number | null;
+
+  /**
+   * **Storage keys, not URLs** — the row reports what the columns hold and
+   * `toBookingDTO` resolves them, the same seam
+   * `ListMyServicesProjection` puts between `image_keys` and `imageUrls`.
+   * A repository that returned URLs would have to know which bucket serves
+   * them, which is a decision `mediaUrl` owns and the database has no part
+   * in.
+   *
+   * The whole array rather than the first key: "which one is the thumbnail"
+   * is the reader's question, not the table's, and the array is what
+   * `service.image_keys` is. Null for a service that has never had one, and
+   * — for `serviceImageKeys` — for a `leftJoin` that found nothing, which
+   * the `NOT NULL` FK makes unreachable.
+   */
+  serviceImageKeys: string[] | null;
+  providerLogoKey: string | null;
+
   optionName: string;
   durationMinutes: number;
 

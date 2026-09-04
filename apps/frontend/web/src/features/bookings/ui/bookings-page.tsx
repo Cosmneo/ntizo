@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { CalendarDays } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
 import type { BookingDTO, CustomerBookingPageDTO } from "@ntizo/shared/read-models";
+import { BrandImage } from "@/shared/components/brand-image";
 import { CollectionCard } from "@/shared/components/collection-card";
+import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
 import { formatAmount } from "@/features/directory/services/domain/service-card";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
@@ -47,6 +49,17 @@ function countdownTone(status: CustomerBookingStatus): string {
  * URL; it is not worth those three, and the provider's list settled this
  * question already — see its `loaded`/`page` pair, which this mirrors down
  * to why both are needed.
+ *
+ * **The narrow screen is composed rather than labelled.** `CollectionCard`'s
+ * own mobile card stacks every value under its column's name — "Quando",
+ * "Estado", "Valor", one line each — which is right for a list of people and
+ * wrong here: on a phone this list is read by scanning for a status and a
+ * price, and those two want to share a line rather than sit under two words
+ * of chrome. So all three columns are `hideOnCard` and the row hands the card
+ * a `cardBody` instead. The table above `md` is untouched and still reads
+ * every value off `cells`, which is what stops the two from becoming two
+ * designs — see `CollectionRow.cardBody` for the rule that keeps them
+ * honest.
  *
  * No search box: the mockup draws none, `bookingMine` carries no `q` the way
  * the provider's `bookingForProvider` does, and a client-side filter over a
@@ -198,20 +211,31 @@ export function BookingsPage() {
           shown={items.length}
           total={data?.total ?? 0}
           loading={query.isLoading && offset === 0}
+          // All three facts are marked `hideOnCard` because all three are in
+          // `cardBody` below, arranged rather than labelled — the rule
+          // `CollectionRow.cardBody` states for anyone using the slot. The
+          // table is unchanged and still reads them off `cells`.
           columns={[
             { key: "service", label: t("col.service"), className: "pl-5" },
-            { key: "when", label: t("col.when"), skeletonWidth: "w-28" },
+            {
+              key: "when",
+              label: t("col.when"),
+              skeletonWidth: "w-28",
+              hideOnCard: true,
+            },
             {
               key: "status",
               label: t("col.status"),
               skeletonWidth: "w-24",
               skeletonShape: "badge",
+              hideOnCard: true,
             },
             {
               key: "price",
               label: t("col.price"),
               align: "right",
               skeletonWidth: "w-20",
+              hideOnCard: true,
             },
             { key: "actions", label: "", className: "pr-5" },
           ]}
@@ -250,26 +274,83 @@ export function BookingsPage() {
             // yet, so it gets the only action that applies: cancel.
             const showPay = canPay(b.status);
             const showCancel = canCancel(b.status) && !showPay;
+            // Declared once and used by both renderings — the table's last
+            // cell and the foot of the phone's card — rather than written
+            // out twice with two sets of classes. `w-full md:w-auto` is what
+            // lets one element be a full-width target on the card and a
+            // compact control in the cell: below `md` only the card is on
+            // screen, above it only the table.
+            const payButton = (
+              <Button
+                type="button"
+                size="sm"
+                className="w-full md:w-auto"
+                onClick={() => setPaying(b)}
+              >
+                {t("pay")}
+              </Button>
+            );
+            // A `<button>`, not a link: it opens a dialog rather than
+            // navigating. Styled quietly, as the mockup draws it — this is
+            // not the page's primary action, on either screen.
+            const cancelButton = (
+              <button
+                type="button"
+                onClick={() => setCancelling(b)}
+                className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
+              >
+                {t("cancel")}
+              </button>
+            );
             return {
               key: b.id,
               primary: (
-                <div>
-                  <Link
-                    to="/bookings/$bookingId"
-                    params={{ bookingId: b.id }}
-                    className="type-body-medium font-semibold hover:underline"
-                  >
-                    {b.serviceName}
-                    {b.optionName ? ` · ${b.optionName}` : ""}
-                  </Link>
-                  <p className="type-caption mt-0.5 flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
-                    {b.providerName}
-                    {b.providerVerified && (
-                      <span className="font-semibold text-[var(--color-primary)]">
-                        ✓ {t("verified")}
-                      </span>
-                    )}
-                  </p>
+                <div className="flex items-start gap-3">
+                  {/* `BrandImage`, not an `<img>`: a booking's service photo
+                      is missing more often than not, and every dead URL on
+                      dev is one of these. The mark on the soft ground is the
+                      app's single treatment for that — see its own comment.
+                      Empty `alt`, because the title is right beside it. */}
+                  <span className="h-12 w-12 shrink-0 overflow-hidden rounded-[var(--radius-card-sm)]">
+                    <BrandImage
+                      src={b.serviceImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                  <div className="min-w-0">
+                    <Link
+                      to="/bookings/$bookingId"
+                      params={{ bookingId: b.id }}
+                      className="type-body-medium font-semibold hover:underline"
+                    >
+                      {b.serviceName}
+                      {b.optionName ? ` · ${b.optionName}` : ""}
+                    </Link>
+                    {/* `truncate` on the name and `shrink-0` on the badge, so
+                        a long business name loses its own tail rather than
+                        pushing "✓ Verificado" onto a second line — which is
+                        what a card 266px wide did to every provider whose
+                        name ran past about twenty characters. */}
+                    <p className="type-caption mt-0.5 flex items-center gap-1.5 text-[var(--color-muted-foreground)]">
+                      <span className="truncate">{b.providerName}</span>
+                      {b.providerVerified && (
+                        <span className="shrink-0 font-semibold whitespace-nowrap text-[var(--color-primary)]">
+                          ✓ {t("verified")}
+                        </span>
+                      )}
+                    </p>
+                    {/* The appointment, on the narrow screen only. The table
+                        has a "Quando" column two cells to the right and this
+                        would be the same fact printed twice on a laptop;
+                        below `md` that column is hidden, and a date belongs
+                        with the name it qualifies rather than under a
+                        heading of its own. */}
+                    <p className="type-caption mt-0.5 tabular-nums text-[var(--color-muted-foreground)] md:hidden">
+                      {slot.date} · {slot.start} ·{" "}
+                      {t("minutes", { count: b.durationMinutes })}
+                    </p>
+                  </div>
                 </div>
               ),
               cells: {
@@ -310,25 +391,86 @@ export function BookingsPage() {
                   </span>
                 ),
               },
+              // The same three facts as the cells above, arranged for one
+              // column instead of labelled in a list: the pill and the total
+              // share a line because they are what the eye goes to, and
+              // "Estado" and "Valor" written beside them are two words of
+              // chrome on the narrowest screen the app has.
+              cardBody: (
+                <div className="grid gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="inline-flex flex-col items-start gap-1">
+                      <BookingStatusBadge status={b.status} />
+                      {left && (
+                        <span
+                          className={cn(
+                            "type-caption font-semibold",
+                            countdownTone(b.status),
+                          )}
+                        >
+                          {b.status === "PENDING_PAYMENT"
+                            ? t("payIn", { time: left })
+                            : t("respondIn", { time: left })}
+                        </span>
+                      )}
+                    </span>
+                    {/* The same exact amount the cell carries, at the size the
+                        detail page gives the total — never the rounded
+                        headline. See the `price` cell below. */}
+                    <span className="type-h3 shrink-0 font-semibold tabular-nums">
+                      {formatAmount(b.priceMinor, b.currency, locale)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-4">
+                      {/* The provider is one press away from every row,
+                          whatever the booking's status: a customer with a
+                          question about a job that is over has the same right
+                          to ask it as one waiting to be paid for. */}
+                      <MessageProviderButton
+                        providerId={b.providerId}
+                        compact
+                        label={t("message")}
+                      />
+                      {showCancel && cancelButton}
+                    </span>
+                    {/* The row's title is a link too, but a line of text is a
+                        poor target for a thumb. This is the one the card is
+                        actually tapped by. */}
+                    <Link
+                      to="/bookings/$bookingId"
+                      params={{ bookingId: b.id }}
+                      className="type-caption inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--color-primary)] hover:underline"
+                    >
+                      {t("viewDetail")}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                  </div>
+                  {/* The one action that is being waited on, given the width
+                      a thumb wants. Cancelar sits quietly in the row above
+                      instead: a booking nobody has answered yet has nothing
+                      pressing about calling it off. */}
+                  {showPay && payButton}
+                </div>
+              ),
               // One action, never two: a confirmed booking has nothing to do
               // here at all, and a `PENDING_PAYMENT` row shows only Pagar —
               // both buttons together belong to the detail page, not this
               // row (see the comment on `showPay`/`showCancel` above).
+              //
+              // **Table only, and the card draws its own copy full width.**
+              // `CollectionCard` puts this in the card's top-right corner,
+              // which on a 390px screen took about a third of the room the
+              // title had and wrapped "Fotografia de casamento · Pacote
+              // completo" onto three lines under a cramped button. The same
+              // control lives at the foot of `cardBody` above instead, where
+              // it is a full-width target rather than a corner one. Hidden
+              // rather than conditional, because a row description is one
+              // object for both renderings — see `CollectionRow.cardBody`.
               actions: showPay ? (
-                <Button type="button" size="sm" onClick={() => setPaying(b)}>
-                  {t("pay")}
-                </Button>
+                <span className="hidden md:inline-flex">{payButton}</span>
               ) : showCancel ? (
-                // A `<button>`, not a link: it opens a dialog rather than
-                // navigating. Styled quietly, as the mockup draws it — this
-                // is not the page's primary action.
-                <button
-                  type="button"
-                  onClick={() => setCancelling(b)}
-                  className="type-caption font-medium text-[var(--color-muted-foreground)] hover:underline disabled:pointer-events-none disabled:opacity-50"
-                >
-                  {t("cancel")}
-                </button>
+                <span className="hidden md:inline-flex">{cancelButton}</span>
               ) : undefined,
             };
           })}

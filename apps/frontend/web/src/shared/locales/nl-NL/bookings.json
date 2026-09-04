@@ -31,6 +31,9 @@
   "pay": "Betalen",
   "cancel": "Annuleren",
   "view": "Bekijken",
+  "viewDetail": "Details bekijken",
+  "message": "Bericht",
+  "viewProfile": "Profiel bekijken",
   "reference": "Referentie {{ref}}",
   "minutes": "{{count}} min",
   "verified": "Geverifieerd",
@@ -111,6 +114,10 @@
     "superseded_by_new_draft": "Vervangen door een nieuwe boeking",
     "respond_by": "Wachten op reactie van de dienstverlener",
     "pay_by": "Wachten op jouw betaling",
-    "unknown": "Status gewijzigd"
+    "unknown": "Status gewijzigd",
+    "ahead": {
+      "payment": "Betaling",
+      "confirmed": "Boeking bevestigd"
+    }
   }
 }

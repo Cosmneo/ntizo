@@ -60,6 +60,40 @@ export function timeLeftWording(deadlineIso: string, now: Date): string | null {
   return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
 }
 
+/**
+ * The hops this booking has not reached yet, in the order it would reach
+ * them — `[]` once there is nothing left to promise.
+ *
+ * The timeline the server sends is a **history**: what happened, plus the one
+ * deadline currently running. That answers "what happened to my request" and
+ * leaves "and then what?" to a customer who has never used the platform
+ * before. These are the steps drawn under it, greyed and dateless.
+ *
+ * **Dateless, and that is the point.** A step still ahead has no instant —
+ * inventing one ("provavelmente sexta") would be the page guessing about
+ * somebody else's decision. The words are all this can honestly say.
+ *
+ * Read off the state machine rather than off a fixed ladder, so it can only
+ * ever name hops this booking can actually reach:
+ *
+ * - `AWAITING_PROVIDER` — the provider decides, then payment, then confirmed.
+ *   The deciding itself is already on the server's timeline as the pending
+ *   `respond_by`, so it is not repeated here.
+ * - `PENDING_PAYMENT` — the payment is the pending `pay_by`; only the
+ *   confirmation is still unnamed.
+ * - `CONFIRMED` — **nothing**, deliberately. What follows a confirmed booking
+ *   is the work happening, being marked done and the money being released,
+ *   and none of those three has a transition today: `MARKED_DONE`,
+ *   `COMPLETED` and `DISPUTED` are values no code path can reach. Listing
+ *   them would promise a customer a step the platform cannot take.
+ * - Every terminal status — nothing left to reach.
+ */
+export function upcomingSteps(status: CustomerBookingStatus): readonly string[] {
+  if (status === "AWAITING_PROVIDER") return ["payment", "confirmed"];
+  if (status === "PENDING_PAYMENT") return ["confirmed"];
+  return [];
+}
+
 export function canCancel(status: CustomerBookingStatus): boolean {
   return status === "AWAITING_PROVIDER" || status === "PENDING_PAYMENT";
 }

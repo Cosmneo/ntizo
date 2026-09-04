@@ -510,12 +510,25 @@ function selectedColumns(
     status: booking.status,
     serviceId: booking.serviceId,
     serviceOptionId: booking.serviceOptionId,
+    /**
+     * Off `booking`, not `provider`: the FK column is on the row being read
+     * and is `NOT NULL`, so it needs no join to be here and cannot be null.
+     * `provider.id` would be the same value one join away.
+     */
+    providerId: booking.providerId,
     serviceName: booking.serviceName,
     providerName: booking.providerName,
     providerSlug: booking.providerSlug,
     providerRatingAverage: reviewAgg.average,
     /** Null when the left join found nothing — see `verifiedAggregate`. */
     providerVerifiedId: verifiedAgg.providerId,
+    /**
+     * The keys, resolved to URLs by `toBookingDTO` rather than here — see
+     * `BookingListRow`'s own note on the pair for why the seam is there and
+     * not in this file.
+     */
+    serviceImageKeys: service.imageKeys,
+    providerLogoKey: provider.logoKey,
     optionName: booking.optionName,
     durationMinutes: booking.durationMinutes,
     /**
