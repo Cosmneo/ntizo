@@ -3986,3 +3986,225 @@ nothing anywhere recording why one has three plural forms and its two neighbours
 (that is the cheapest moment to add the missing `_many` to both), or a fourth `*OpenCount` key
 is added to `admin.json` and needs a precedent to follow — at that point settle on one shape for
 all of them rather than copying whichever neighbour happens to be closest.
+
+---
+
+## #172 — Nothing stops a provider from pushing "ainda a decorrer" forever
+
+`KeepBookingOpenCommand` has no cap, and the absence is deliberate: a job is finished when it is
+finished, and the platform is not standing in the room. Each press of `booking.stillOngoing`
+writes a `booking_change` of reason `still_ongoing`, publishes `BookingKeptOpen`, and pushes
+`expires_at` another `ASK_AGAIN_AFTER_DAYS` out, with the status never leaving `CONFIRMED`.
+Nothing counts the presses and nothing refuses the nth.
+
+A provider who presses it every week therefore keeps a booking out of the customer's hands
+indefinitely. The three-day feedback window is what gives the customer both of their actions, and
+it only opens at `MARKED_DONE`: `Booking.dispute` throws from any other status, and the review
+eligibility adapter admits only `MARKED_DONE` and `COMPLETED`. So a booking pushed forever is one
+the customer can neither review nor dispute, and whose completion — the hop
+`complete-booking.command.ts` calls "the payout becomes owed" — never happens.
+
+It is at least visible. Such a booking stays `CONFIRMED` with `ends_at` in the past, which is
+exactly `adminWhere`'s `unclosed` tab, and `adminOrder` sorts that tab by `asc(booking.endsAt)` —
+so the longest-pushed booking on the platform is the first row an administrator sees, and every
+push is a row in that booking's own history. Visible is not the same as stopped.
+
+**Trigger:** the first workspace that does it, or a customer complaining that a job they paid for
+never closed. The fix is a cap, an alert on the nth push, or an explicit decision that unlimited
+is correct and the queue is the only control — recorded either way, because the code currently
+records only the last of those and only in a doc comment.
+
+---
+
+## #173 — The customer cannot review or dispute anything yet
+
+Both halves of the customer's side of this phase are built, tested and mounted, and neither has a
+caller. `booking.dispute` is a mutation on the private schema and `grep` finds no reference to
+`bookingDispute` anywhere under `apps/frontend/web/src` — the three *administrator* mutations
+(`bookingAdminMarkDone`, `bookingAdminComplete`, `bookingResolveDispute`) all have one, in
+`features/admin/bookings/data/admin-booking.repository.ts`, so the absence is this one field
+specifically rather than the whole slice being unwired. `review.submit` is the same shape: mounted
+in `write/review/graphql/schema/mutations.ts`, and called by nothing in the web app.
+
+That is not an omission — the customer's booking zone is `feat/customer-bookings`, a different
+branch — but it means the three-day window this phase spends its design on is currently a timer
+nobody can act inside. Every booking that reaches `MARKED_DONE` will run its window down and be
+closed by the sweep, because the only two things a customer could do inside it have no screen.
+
+**Trigger:** `feat/customer-bookings` merging, which is when the contract in
+`2026-09-03-booking-completion-design.md` gets its screens. One thing to settle at that moment
+rather than after: `BookingDisputeInput.attachments` is **required** over the wire (Task 8's
+Concern 2), so a dispute with no files must send `attachments: []`. If the form is meant to be
+able to omit the key, the fix is `.nullable()` beside the default plus a `?? []` in the handler,
+and it is cheaper before the query document is written than after.
+
+---
+
+## #174 — Every domain event this phase publishes is written and read by nobody, and one of them is the payout seam
+
+Follow-up #8 records that the outbox has no relay in general. This entry is the specific cost that
+phase now carries, because the events it added are not notifications — they are the hand-offs the
+rest of the platform is supposed to hang off.
+
+Verified rather than assumed: the only handlers registered on `EventRouter` are for
+`provider.created`, `provider.invite.accepted`, `provider.invite.sent`, `provider.status.decided`,
+`review.created`, `service.created`, `service.published`, `service.unpublished` and
+`user.registered`. **Not one `booking.*` subscription exists**, in-process or otherwise. So
+`booking.marked_done`, `booking.kept_open`, `booking.completed` and `booking.cancelled` all land
+in `outbox_event` as `pending` rows that nothing will ever advance or read.
+
+`booking.completed` is the one that matters. `complete-booking.command.ts`'s own doc comment says
+the payout becomes owed at that event, `BookingCompleted`'s doc comment says "the payout reads
+`BookingCompleted` below, days later", and `ResolveBookingDisputeCommand` publishes it as the
+"completion stands" outcome of a dispute. There is no payout module — `grep payout` over
+`packages/backend/src` finds only the provider's payout *destination* fields
+(`payoutType`, `payoutIdentifier`) and nothing that moves money. **A provider who wins a dispute
+is therefore not paid.** The only thing that moves today is the dashboard's `revenueLast30Minor`,
+which counts `COMPLETED` rows directly off the table and so reports money that has not been sent.
+
+**Trigger:** the first real payout, or the first dispute resolved in the provider's favour —
+whichever comes first, and either one makes #8 the work rather than a note. Whoever picks it up
+inherits #8's two hard requirements (the missing sequence column, and the replay-safety decision)
+before a single booking event can be drained.
+
+---
+
+## #175 — `adminOrder` cannot be pinned, because it is not exported
+
+`adminOrder(tab)` (`booking-read.repository.ts:857`) is a module-private function returning the
+`order by` for each of the administrator queue's three tabs, each with `asc(booking.id)` as the
+tiebreak that makes the order total — which is what stops `LIMIT`/`OFFSET` showing one booking on
+two pages and another on none.
+
+Task 9 could not pin that tiebreak behaviourally and said so rather than claiming otherwise:
+Postgres's sort is unstable, so deleting `asc(booking.id)` reddens roughly one run in two. A
+~50% detector is not a flaky test — the assertion passes deterministically against correct code —
+it is a flaky *detector* of that line's removal, which is worse in the way that matters, because
+the run that goes green is the one somebody commits on.
+
+This repo already has the tool for it. `service-read.repository.test.ts` builds a lazily-connecting
+`postgres()` client and asserts `.toSQL()` text against `orderByFor` — an **exported** helper — and
+that file's own comment records the trap to avoid (asserting the whole statement text is vacuous,
+because drizzle names every selected column in the SELECT list; cut the clause out first).
+`public-provider.test.ts` does the same against a private `wheres` method reached through a cast,
+so the precedent for a non-exported helper exists too. Exporting `adminOrder` is the cleaner of the
+two and costs one keyword.
+
+**Trigger:** the next change to that query's ordering — a fourth tab, a different sort, or anyone
+"simplifying" the tiebreak away. Pin it in the same pass; retro-fitting a pin after a paging bug is
+the expensive order to do it in.
+
+---
+
+## #176 — Mutation testing on UI code kills behaviour and spares display, and no review rubric says so
+
+Not a defect and not a code change — a pattern strong enough across this phase's web tasks to be
+worth starting the next UI review from.
+
+Every unmutated assertion this phase found in a web task was an assertion about what the page
+*renders*, never one about what it *does*. Task 12 alone produced four: the card's heading, the
+`shown={rows.length}` count, the route's `validateSearch`, and the per-tab empty-state body — that
+last one because the single test asserting it was satisfied by copy hardcoded to the tab it
+happened to check, which is precisely how it got through. Task 11 produced four more of the same
+kind: the double-press `disabled` guard, `asked`'s `closable` conjunct, the `stamp()` date format,
+and the failure tint on `closeError`. Meanwhile the behavioural mutants went red without help —
+the wire's `limit`, the `replace` on the URL correction, the tab's `aria-selected`, the customer
+and service cells, the dispute link's `threadId`.
+
+The mechanism is not mysterious: a behavioural mutant changes what a later assertion can observe,
+so some other test catches it, while a display mutant changes only the string under the assertion
+that was never written. The practical form is a question to ask of a UI diff — *which rendered
+values does this component choose, and is each one asserted against a fixture that would make the
+wrong choice look different?* — with per-case assertions (`it.each` over the tabs) rather than one
+case, since one case is satisfied by a hardcoded answer.
+
+**Trigger:** the next UI task's review. Cheapest place to put it is whatever checklist that review
+already runs from.
+
+---
+
+## #177 — A review of any rating irreversibly ends the customer's right to dispute
+
+Handed down by this phase's design ("leaving a review is how they accept") and implemented
+faithfully; recorded because the consequence is sharper than the sentence sounds.
+
+`SubmitReviewCommand` calls `CompleteBookingPort` on the booking its eligibility adapter picked, so
+writing a review moves that booking to `COMPLETED`. `Booking.dispute` throws unless the status is
+exactly `MARKED_DONE`. The instant a review lands, therefore, the customer's right to dispute is
+gone for good — **including for a one-star review whose text says the provider never turned up**,
+which is the case where a customer is most likely to be doing both things at once. They then
+receive a "your booking is completed" notification seconds after writing it.
+
+No money moves today (#174), so the damage is currently confined to the customer losing an option
+they did not know they were spending. That stops being true the day a payout consumer exists.
+
+**Trigger:** `feat/customer-bookings` building the review form (#173) — that is the moment to
+decide between a rating threshold, a confirmation step that says what leaving a review costs, or
+an explicit recorded decision that any review means acceptance. Sooner if a payout relay lands
+first, which turns this from a lost option into money.
+
+---
+
+## #178 — Neither of the administrator queue's two scans has an index behind it
+
+`adminWhere` filters `booking` on `status` plus one date column, platform-wide with no provider to
+narrow on, and `countForAdmin` runs the same predicate as a bare `count()`. The table's existing
+indexes cannot serve it: `booking_provider_status_idx` leads on `provider_id`, and both
+`booking_sweep_idx` and `booking_charge_idx` are partial on `expires_at` with predicates the
+queue's `unclosed` and `disputed` tabs do not imply. So the queue and its total are two sequential
+scans of the whole booking table per page view.
+
+The second scan is the dispute join. `disputeThreadAggregate` deduplicates `support_request` with a
+`selectDistinctOn` subquery — load-bearing, because `DisputeBookingCommand` can leave more than one
+dispute row on a booking (#169) and a naive join would show that booking twice on a page whose
+`total` joins nothing. `support_request` has no index on `booking_id`; its only index is
+`idx_support_request_status_created`. The subquery therefore scans that table once per queue query.
+
+Both are cheap today and were left as documented costs rather than silent migrations, which was the
+right call at this size — the queue is admin-only and both tables are small.
+
+**Trigger:** the administrator's booking queue getting visibly slow, or the support table passing
+the size where a full scan per page view is free. The fix is two indexes —
+`(status, ends_at)` on `booking` and `booking_id` on `support_request` — in one migration, and the
+migration-numbering hazard this phase already carries is worth checking before adding it.
+
+---
+
+## #179 — A disputed row's wait is an upper bound, because the read model does not carry `disputedAt`
+
+`adminBookingReadModel` publishes `remindedAt`, `markedDoneAt` and `expiresAt`, and no
+`disputedAt` — even though the server sorts the `disputed` tab by exactly that column. The admin
+queue page's `waitingSince` therefore measures a disputed row from `markedDoneAt`.
+
+That reads correctly as "this booking has been unfinished for N", which is true of all three tabs,
+and it cannot be wrong in the dangerous direction: a dispute can only be raised inside the window,
+so `markedDoneAt` is the earliest the complaint can possibly have existed and the figure is an
+upper bound. But it is not the number an administrator is actually looking for on that tab, which
+is how long *they* have been sitting on a complaint. A booking marked done on the 1st and disputed
+on the 3rd shows the wait from the 1st.
+
+**Trigger:** an administrator working the `disputed` tab by wait time, or any SLA on how quickly a
+dispute gets a decision. One field on `adminBookingReadModel` and one line in `toAdminRow` fixes it
+exactly; the page's `waitingSince` already has the doc comment saying what it is measuring and why.
+
+---
+
+## #106 — updated 2026-09-04
+
+Three of the five transitions are now implemented (`feat/booking-completion`): `CONFIRMED →
+MARKED_DONE`, `MARKED_DONE → COMPLETED` and `MARKED_DONE → DISPUTED`, plus `DISPUTED →
+COMPLETED`/`CANCELLED`. **`COMPLETED` is reachable and the review-eligibility consequence this
+entry was mostly about is gone** — `booking-review-eligibility.adapter.ts` now admits
+`MARKED_DONE` and `COMPLETED`, so reviews are possible. What remains of #106 is
+`CONFIRMED → CANCELLED` and reschedule, neither of which this phase touched.
+
+---
+
+## #145 — updated 2026-09-04
+
+Partly answered by `feat/booking-completion`: a provider can now act on a `CONFIRMED` booking whose
+start has passed, through `booking.markDone` and `booking.stillOngoing`, and the sweep asks them to
+before closing it on their behalf. A finished job no longer says "Confirmada" forever. What remains
+is the other half of the original entry — reschedule and cancel by the provider are still drawn in
+the state machine with no command — and the wallet-release work this entry names as its other
+trigger, which needs #174's relay before "done" turns into money.
