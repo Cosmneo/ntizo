@@ -191,12 +191,19 @@ export function BookingPage() {
    * the state it actually is and the page is re-read rather than left saying
    * something that is no longer true.
    *
-   * `fallback` is what to say when the refusal is not that race: answering a
-   * request and closing a finished job fail at opposite ends of a booking's
-   * life, and "não foi possível responder" over a job that ended yesterday
-   * would name the wrong action.
+   * **Both sentences are per-action, because both differ by action.**
+   * `BOOKING_INVALID_TRANSITION` is the race, and it is the *only* refusal a
+   * closing button can realistically produce: the pair is drawn only over a
+   * `CONFIRMED` booking, and `CONFIRMED` has exactly one exit — somebody else
+   * marked this one done. "Este pedido já foi respondido" is the answer to
+   * that at the other end of the booking's life; here the true thing to say
+   * is that it is closed and the customer's window is open, which is
+   * `markedDone` — the same sentence the silent-loss repair below settles on,
+   * because it is the same event seen through a different door. `fallback`
+   * covers everything else: an infrastructure failure while closing must not
+   * borrow "não foi possível *responder*" a day after the appointment.
    */
-  const failed = (fallback: Notice) => (error: unknown) => {
+  const failed = (race: Notice, fallback: Notice) => (error: unknown) => {
     const code = (error as { code?: string } | null)?.code;
     // Closed on the way out, not only on success. A decline that came back
     // refused otherwise leaves its dialog sitting over the notice explaining
@@ -205,11 +212,11 @@ export function BookingPage() {
     // already taken the header's own actions off. Closing a dialog that was
     // never open (the accept path) is a no-op, so the one handler covers both.
     setDeclining(false);
-    setNotice(code === "BOOKING_INVALID_TRANSITION" ? "already" : fallback);
+    setNotice(code === "BOOKING_INVALID_TRANSITION" ? race : fallback);
     void query.refetch();
   };
-  const onError = failed("error");
-  const onCloseError = failed("closeError");
+  const onError = failed("already", "error");
+  const onCloseError = failed("markedDone", "closeError");
 
   /**
    * What the strip is allowed to say, given what the page now knows.
@@ -331,8 +338,18 @@ export function BookingPage() {
             {/* Said before the press, not after it. Marking a job done starts
                 a clock the provider cannot take back, and "Concluído. O
                 cliente tem três dias" arriving only once it is running is
-                the news a press late. */}
-            <p className="type-caption w-full max-w-80 text-[var(--color-muted-foreground)]">
+                the news a press late.
+
+                Full width and nothing else. The wrapper is `sm:items-end`, so
+                a max width on this line — anything narrower than the button
+                row — pushes it right of the buttons it belongs to at every
+                width where the header wraps the pair onto its own
+                left-aligned line. It read as a floating sentence under the
+                middle of the pair, which is the opposite of a caption.
+                (Naming a utility class in a comment is enough for Tailwind's
+                scanner to emit its rule, so this one describes rather than
+                quotes.) */}
+            <p className="type-caption w-full text-[var(--color-muted-foreground)]">
               {t("bookings.markDoneConfirm")}
             </p>
           </div>

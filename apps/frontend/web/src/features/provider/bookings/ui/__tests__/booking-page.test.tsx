@@ -405,6 +405,60 @@ describe("BookingPage", () => {
     );
   });
 
+  it("re-reads the booking after closing it, and draws what came back", async () => {
+    // The refresh the mutation's `onSuccess` buys, asserted on the one press
+    // this phase exists for. Without it the page would sit on its cached
+    // `CONFIRMED` copy: the badge would still read "Confirmada" and both
+    // closing buttons would still be drawn over a booking that is closed.
+    const closed = confirmedFixture({ status: "MARKED_DONE", expiresAt: hoursFromNow(48) });
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+    await screen.findByRole("button", { name: "Marcar como concluído" });
+
+    fakes.graphql.mockImplementation((query: string) => {
+      if (query.includes("bookingMarkDone")) {
+        return Promise.resolve({ bookingMarkDone: { bookingId: "bk-1" } });
+      }
+      return Promise.resolve({ bookingByIdForProvider: closed });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Marcar como concluído" }));
+
+    expect(await screen.findByText("Marcada como concluída")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Marcar como concluído" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Ainda a decorrer" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("takes both presses off the table while one is in flight", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+    await screen.findByRole("button", { name: "Marcar como concluído" });
+
+    let land: (answer: unknown) => void = () => {};
+    fakes.graphql.mockImplementation((query: string) => {
+      if (query.includes("bookingMarkDone")) {
+        return new Promise((resolve) => {
+          land = resolve;
+        });
+      }
+      return Promise.resolve({ bookingByIdForProvider: confirmedFixture() });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Marcar como concluído" }));
+
+    // A second press over data the page already knows is stale would send a
+    // mutation the backend refuses.
+    expect(screen.getByRole("button", { name: "Marcar como concluído" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ainda a decorrer" })).toBeDisabled();
+
+    land({ bookingMarkDone: { bookingId: "bk-1" } });
+    expect(await screen.findByText(/o cliente tem três dias/i)).toBeInTheDocument();
+  });
+
   it("pushes the clock when the work is still going", async () => {
     renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
 
@@ -441,6 +495,46 @@ describe("BookingPage", () => {
 
     expect(await screen.findByText(/o cliente tem três dias/i)).toBeInTheDocument();
     expect(screen.queryByText(/voltamos a perguntar/i)).not.toBeInTheDocument();
+    // And the page went and looked, rather than taking the mutation's echo
+    // for an answer: the badge and the buttons are the read's, not the
+    // press's.
+    expect(screen.getByText("Marcada como concluída")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ainda a decorrer" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a close the platform got to first says the booking is closed, not that the request was answered", async () => {
+    renderBooking("/provider/estudio/bookings/bk-1", confirmedFixture());
+    await screen.findByRole("button", { name: "Marcar como concluído" });
+
+    // The refusal a closing button can actually produce. The pair is drawn
+    // only over a `CONFIRMED` booking and `CONFIRMED` has one exit, so a
+    // refused close means somebody else marked this one done while the page
+    // sat open — not that a request went unanswered.
+    fakes.graphql.mockImplementation((query: string) => {
+      if (query.includes("bookingMarkDone")) {
+        return Promise.reject(
+          new GraphqlError(200, [
+            {
+              message: "Booking cannot move from MARKED_DONE to MARKED_DONE.",
+              extensions: { code: "CONFLICT", originalCode: "BOOKING_INVALID_TRANSITION" },
+            },
+          ]),
+        );
+      }
+      return Promise.resolve({
+        bookingByIdForProvider: confirmedFixture({
+          status: "MARKED_DONE",
+          expiresAt: hoursFromNow(48),
+        }),
+      });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Marcar como concluído" }));
+
+    expect(await screen.findByText(/o cliente tem três dias/i)).toBeInTheDocument();
+    expect(screen.queryByText("Este pedido já foi respondido.")).not.toBeInTheDocument();
   });
 
   it("says the closing failed in the closing's own words", async () => {
@@ -458,23 +552,53 @@ describe("BookingPage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Marcar como concluído" }));
 
-    expect(
-      await screen.findByText("Não foi possível fechar a reserva agora. Tente de novo."),
-    ).toBeInTheDocument();
+    const notice = await screen.findByText(
+      "Não foi possível fechar a reserva agora. Tente de novo.",
+    );
+    expect(notice).toBeInTheDocument();
+    // A failure is drawn on the failure wash, not on the same neutral strip
+    // that carries "Concluído."
+    expect(notice.className).toContain("destructive");
   });
 
   it("shows the window on a booking that is waiting for the customer", async () => {
     renderBooking(
       "/provider/estudio/bookings/bk-3",
-      confirmedFixture({ id: "bk-3", status: "MARKED_DONE", expiresAt: hoursFromNow(48) }),
+      confirmedFixture({
+        id: "bk-3",
+        status: "MARKED_DONE",
+        expiresAt: hoursFromNow(48),
+        // A booking the platform asked about before it was closed keeps that
+        // row in its history for good — which is why the reminder line is
+        // tied to the question still being open, not to the row existing.
+        timeline: [
+          {
+            at: "2026-09-02T08:00:00.000Z",
+            reason: "submitted_by_customer",
+            actor: "customer",
+            pending: false,
+          },
+          { at: hoursFromNow(-4), reason: "close_reminder", actor: "system", pending: false },
+          {
+            at: hoursFromNow(-2),
+            reason: "marked_done_by_provider",
+            actor: "provider",
+            pending: false,
+          },
+        ],
+      }),
     );
 
-    expect(await screen.findByText(/o cliente responde até/i)).toBeInTheDocument();
+    // A date in the reader's own format, not the ISO instant off the wire.
+    expect(
+      await screen.findByText(/^O cliente responde até \d{1,2}\/\d{2}, \d{2}:\d{2}$/),
+    ).toBeInTheDocument();
     // Closed once, and not offered again: the window is the customer's now.
     expect(
       screen.queryByRole("button", { name: "Marcar como concluído" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Marcada como concluída")).toBeInTheDocument();
+    expect(screen.queryByText("Pedimos-lhe que feche esta reserva.")).not.toBeInTheDocument();
   });
 
   it("says so when the platform has already asked for this one to be closed", async () => {
