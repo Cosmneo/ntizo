@@ -637,8 +637,11 @@ describe("SweepDueBookingsInternalCommand", () => {
       expect(paid.status).toBe("CONFIRMED");
       // The clock it stands on is its own appointment's end — 10:00, two
       // hours before `now`, so the sweep will select it — and not the 09:00
-      // payment deadline it was paid against.
+      // payment deadline it was paid against. The second assertion is what
+      // keeps the first from passing on a fixture where the two dates happen
+      // to coincide, which would prove nothing about the hand-on.
       expect(paid.expiresAt).toEqual(inserted.endsAt);
+      expect(paid.expiresAt).not.toEqual(inserted.expiresAt);
       const applied = await repo.save(paid, "PENDING_PAYMENT");
       expect(applied).toBe(true);
 

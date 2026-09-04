@@ -12,6 +12,7 @@ import {
   PaymentReferenceMismatchError,
 } from "../domain/exceptions";
 import {
+  BOOKING_STATUSES,
   BookingStatus,
   DEADLINE_BEARING_STATUSES,
   SLOT_HOLDING_STATUSES,
@@ -1184,6 +1185,12 @@ describe("closing a booking", () => {
     expect(twice.status).toBe(BookingStatus.Confirmed);
     expect(twice.expiresAt).toEqual(new Date("2026-09-17T10:00:00.000Z"));
     expect(twice.markedDoneAt).toBeNull();
+    // `keepOpen` promises in its doc comment to leave `remindedAt` alone:
+    // it is an answer to the platform's one question, not a second asking,
+    // and rewriting it would erase when the conversation started. Nothing
+    // else here would notice — every other assertion in this test stays
+    // green whether `keepOpen` stamps the field, nulls it, or leaves it.
+    expect(twice.remindedAt).toEqual(at);
   });
 
   it("refuses to be asked, or kept open, from any status but confirmed", () => {
@@ -1225,5 +1232,45 @@ describe("closing a booking", () => {
     expect(upheld.cancelledAt).toEqual(at);
 
     expect(() => markedDone().resolveDispute(at, true)).toThrow(BookingTransitionError);
+  });
+
+  it("keeps dispute_upheld to disputed bookings, and leaves resolveDispute the way out", () => {
+    // Adding `dispute_upheld` to `BookingCancelledReason` forced an entry in
+    // `CANCELLABLE_FROM`, and answering that question truthfully — `DISPUTED`
+    // — also made `cancel(at, "dispute_upheld")` a legal transition nobody
+    // asked for. Nothing passes that reason to `cancel` today, so without
+    // this the entry is a door with no test on either side of it. The next
+    // task writes the dispute commands and is exactly who might reach for it.
+    const at = new Date("2026-09-20T10:00:00.000Z");
+
+    // Half one: it opens onto a dispute and nothing else. Every other status
+    // is a no-op, including `PENDING_PAYMENT`, which the *other* reason
+    // governs — a flat cancellable-statuses list would have let each reason
+    // cancel from the union of both.
+    for (const status of BOOKING_STATUSES.filter((s) => s !== BookingStatus.Disputed)) {
+      const booking = Booking.restore(endedAt(status));
+      expect(booking.cancel(at, "dispute_upheld")).toBe(booking);
+    }
+
+    // And the reverse, so the two reasons cannot quietly become one list:
+    // the reason that cancels an unpaid booking is not a second way out of a
+    // dispute.
+    const inDispute = disputed();
+    expect(inDispute.cancel(at, "customer_did_not_pay")).toBe(inDispute);
+
+    // Half two: from a dispute the entry *is* live — it is a true answer,
+    // not a decorative one — and that is precisely why `resolveDispute`
+    // writes `CANCELLED` itself instead of delegating. Both reach the same
+    // status; only one of them refuses. A stale read is silent here and
+    // loud there, and an administrator pressing a button needs the loud one.
+    expect(inDispute.cancel(at, "dispute_upheld").status).toBe(BookingStatus.Cancelled);
+    expect(inDispute.resolveDispute(at, true).status).toBe(BookingStatus.Cancelled);
+
+    // The difference the comment above turns on, side by side on one
+    // booking: from a status neither governs, `cancel` says nothing and
+    // `resolveDispute` says no.
+    const notInDispute = markedDone();
+    expect(notInDispute.cancel(at, "dispute_upheld")).toBe(notInDispute);
+    expect(() => notInDispute.resolveDispute(at, true)).toThrow(BookingTransitionError);
   });
 });

@@ -49,8 +49,11 @@ export function toProviderBookingDTO(row: ProviderBookingRow): ProviderBookingDT
     commissionBps: row.commissionBps,
     commissionMinor: row.commissionMinor,
     currency: row.currency,
-    // `expiresAt` is never cleared — see `bookingReadModel.expiresAt` — so
-    // it only means "respond by" while the status says so.
+    // `expiresAt` carries five different deadlines depending on the status,
+    // and only `dispute` ever clears it — see `bookingReadModel.expiresAt` —
+    // so it means "respond by" only while the status says so. The status
+    // check is what does the work here; the column being non-null is not
+    // evidence of anything on its own.
     respondBy: row.status === "AWAITING_PROVIDER" && row.expiresAt ? row.expiresAt.toISOString() : null,
   };
 }

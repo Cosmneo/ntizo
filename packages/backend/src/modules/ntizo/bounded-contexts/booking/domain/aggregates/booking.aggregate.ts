@@ -82,6 +82,29 @@ const EXPIRABLE_STATUSES: readonly BookingStatus[] = [
  */
 const CANCELLABLE_FROM: Record<BookingCancelledReason, readonly BookingStatus[]> = {
   customer_did_not_pay: [BookingStatus.PendingPayment],
+  /**
+   * True, and not the door to use. **`resolveDispute` is how a booking
+   * leaves `DISPUTED`; `cancel` is not.**
+   *
+   * The entry exists because this `Record` is exhaustive — adding a member
+   * to `BookingCancelledReason` is a type error here until somebody says
+   * which statuses it may cancel from — and `DISPUTED` is the honest answer
+   * to that question. But answering it truthfully also made
+   * `cancel(at, "dispute_upheld")` a legal transition, and that is a worse
+   * seam than the one it shadows: `cancel` is a no-op from a status it does
+   * not govern, because its caller is the sweep reading a deadline. An
+   * administrator upholding a dispute is not a sweep. If their read went
+   * stale — someone resolved it a second earlier — `cancel` hands the
+   * instance back in silence and the console says the decision was
+   * recorded, while `resolveDispute` throws and tells them it was not.
+   *
+   * So nothing passes this reason to `cancel` today, and nothing should.
+   * `resolveDispute` writes `CANCELLED` itself rather than delegating here,
+   * for exactly that reason — see its own doc comment. What this entry is
+   * *for* is the event: `BookingCancelled` carries `dispute_upheld` so the
+   * wallet work knows what not to pay out. See the aggregate test
+   * "keeps dispute_upheld to disputed bookings", which pins both halves.
+   */
   dispute_upheld: [BookingStatus.Disputed],
 };
 

@@ -77,10 +77,17 @@ export interface BookingListRow {
   description: string | null;
 
   /**
-   * Whichever of the three clocks this booking's status is standing on, never
-   * cleared once it stops applying — read straight off `booking.expires_at`.
-   * See `bookingReadModel` for which status carries which clock, and for why
-   * a consumer must check the status before trusting the date.
+   * Whichever of the five clocks this booking's status is standing on — read
+   * straight off `booking.expires_at`. See `bookingReadModel` for which
+   * status carries which clock, and for why a consumer must check the status
+   * before trusting the date.
+   *
+   * Each hop hands the column on to the next deadline rather than clearing
+   * it, so a stale value never sits here meaning nothing. `Booking.dispute`
+   * is the single exception, and its null is a fact rather than a gap: an
+   * administrator is reading the case and nobody is on a clock. A consumer
+   * still has to check the status first either way — the null narrows what
+   * this date can be, it does not replace that check.
    */
   expiresAt: Date | null;
 
