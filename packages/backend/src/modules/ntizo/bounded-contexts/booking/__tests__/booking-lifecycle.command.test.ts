@@ -1157,12 +1157,19 @@ describe("the sweep, on a confirmed booking whose appointment has ended", () => 
   });
 
   it("marks it done itself once it has asked and been ignored", async () => {
-    const { command, repo, members } = setupSweep(alreadyAskedBooking());
+    const { command, repo, members, slotHold } = setupSweep(alreadyAskedBooking());
 
     const outcome = await command.execute({ bookingId: "bk-1" });
 
     expect(outcome?.reason).toBe("marked_done_by_platform");
     expect(repo.savedArg?.status).toBe("MARKED_DONE");
+
+    // Nothing is released here either — the appointment ended days ago, so
+    // there is no calendar to free, and handing the slot back would say this
+    // booking had stopped occupying a window it still legitimately owns. The
+    // asking arm and the completing arm are both pinned the same way; this is
+    // the third of three.
+    expect(slotHold.released).toEqual([]);
     expect(repo.savedArg?.markedDoneAt).toEqual(SWEEP_NOW);
 
     // Three days for the customer, as a literal instant — the window
@@ -1327,6 +1334,75 @@ describe("the sweep, on a confirmed booking whose appointment has ended", () => 
     expect(repo.savedArg?.status).toBe("MARKED_DONE");
     expect(raiser.raised.filter((r) => r.type === "ADMIN_BOOKING_AUTO_CLOSED")).toEqual([]);
     // And the two the hand-over owed still went out.
+    expect(raiser.raised.map((r) => r.type)).toEqual([
+      NotificationType.BookingMarkedDone,
+      NotificationType.ProviderBookingAutoClosed,
+    ]);
+  });
+
+  /**
+   * BR-P6 over the fan-out itself, which is a different failure from the one
+   * above: there, listing the administrators failed and nobody was reached;
+   * here every list read succeeds and the *notification adapter* throws.
+   *
+   * Without `raiseQuietly` around each raise, that exception leaves
+   * `SweepBookingCommand.execute`, `SweepDueBookingsInternalCommand` catches
+   * it, and a booking that really did close — and really did publish
+   * `booking.marked_done` — is counted `failed` in the wave's tally and logged
+   * as unsettled. The write has already committed by then; there is nothing
+   * for the throw to undo and everything for it to misreport.
+   */
+  it("a raiser that throws does not fail the close", async () => {
+    const raiser = new FakeRaiser(new Error("smtp down"));
+    const { command, repo } = setupSweep(alreadyAskedBooking(), { raiser });
+
+    const outcome = await command.execute({ bookingId: "bk-1" });
+
+    expect(outcome?.reason).toBe("marked_done_by_platform");
+    expect(repo.savedArg?.status).toBe("MARKED_DONE");
+    // Every one of the four was attempted and every one was swallowed.
+    expect(raiser.attempts).toBe(4);
+    expect(raiser.raised).toEqual([]);
+  });
+
+  /**
+   * The `raiseQuietly` is *inside* the loop, not around it.
+   *
+   * One `try` wrapped around the whole fan-out would pass the test above just
+   * as happily, and would silently drop every administrator after the first
+   * one whose adapter hiccupped. This is the only assertion that separates
+   * them: administrator 1's raise throws, and administrator 2 still hears.
+   */
+  it("one administrator's notification failing still reaches the next", async () => {
+    const raiser = new FakeRaiser(
+      new Error("smtp down"),
+      undefined,
+      (input) => input.audience === "user" && input.userId === "admin-1",
+    );
+    const { command, repo, admins } = setupSweep(alreadyAskedBooking(), { raiser });
+
+    await command.execute({ bookingId: "bk-1" });
+
+    expect(repo.savedArg?.status).toBe("MARKED_DONE");
+    expect(raiser.attempts).toBe(admins.ids.length + 2);
+    const toAdmins = raiser.raised.filter((r) => r.type === NotificationType.AdminBookingAutoClosed);
+    expect(toAdmins.map((r) => (r.audience === "user" ? r.userId : null))).toEqual(["admin-2"]);
+  });
+
+  /**
+   * The promise `AdminUserReaderPort` makes in its own doc comment: an empty
+   * list is not an error. A platform with no administrators closes the booking
+   * and tells nobody, and the two the hand-over owes still go out.
+   */
+  it("closes it even when there is no administrator to tell", async () => {
+    const { command, repo, raiser } = setupSweep(alreadyAskedBooking(), {
+      admins: new FakeAdminUserReader([]),
+    });
+
+    const outcome = await command.execute({ bookingId: "bk-1" });
+
+    expect(outcome?.reason).toBe("marked_done_by_platform");
+    expect(repo.savedArg?.status).toBe("MARKED_DONE");
     expect(raiser.raised.map((r) => r.type)).toEqual([
       NotificationType.BookingMarkedDone,
       NotificationType.ProviderBookingAutoClosed,

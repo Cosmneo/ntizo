@@ -3870,3 +3870,45 @@ appeared but the value is already at its 28px `sm:` size, and the two-up card is
 page that copies this grid — then size the value from the card rather than the window
 (`@container` on `Card`, with the type step as a container query), which removes every band
 above at once instead of moving another breakpoint.
+
+## #167 — An ordinary lost race on either of the sweep's hand-overs is reported as a failure
+
+`SweepBookingCommand.handOver` drives `MarkBookingDoneCommand` and `CompleteBookingCommand`
+after its own transaction has returned. Between the sweep's read and the sub-command's, a
+provider can press "Concluído" (`CONFIRMED → MARKED_DONE`) or a customer can dispute
+(`MARKED_DONE → DISPUTED`). `Booking.markDone` and `Booking.complete` **throw** from a status
+they do not govern, where `expire` and `cancel` no-op — so the sub-command throws
+`BookingTransitionError`, the sweep propagates it, and `SweepDueBookingsInternalCommand`
+counts one `failed` and logs the booking as unsettled.
+
+Nothing is corrupted and the booking is not re-selected (its `expires_at` has moved or been
+nulled by the winner), so the cost is a wrong tally and a log line that reads like a fault
+when it is the ordinary race the sweep is built to lose gracefully everywhere else. The
+compare-and-swap half of the same race *is* covered — `booking-lifecycle.command.test.ts`'s
+"a lost race on the closing tells no administrator the platform closed it" — the throw half
+is not.
+
+**Trigger:** the first `could not settle a due booking` line naming a `BookingTransitionError`
+in a sweep log, or an alert wired to the wave's `failed` count. The fix is either a status
+re-check in `handOver` or a no-op-on-wrong-status variant of the two transitions; deciding
+which is the point of the follow-up.
+
+## #168 — The dev-database suites share one `DEV_DB_URL` across worktrees, and now write to each other's rows
+
+`booking-sweep.test.ts` creates a real `role = 'admin', status = 'active'` user for the length
+of its run, so a concurrently-running sibling worktree's Communication admin fan-out addresses
+this test's administrator. The mirror of that is what Task 5's review found in the other
+direction: since `CONFIRMED` and `MARKED_DONE` joined `DEADLINE_BEARING_STATUSES`, a sweep
+started by one worktree does not merely *count* a foreign due row, it stamps `reminded_at` on
+it, or closes it, publishes `booking.completed` and announces it to every real administrator.
+
+That specific hole is closed inside the sweep test — `scopedToFixtures` narrows
+`findDueForSweep` to `createdBookingIds`, proved by "a sweep started here cannot reach a
+booking this file did not create" — but the scoping is per-file and per-query. It does not
+help the admin user, it does not help the next dev-database suite that runs an unscoped
+query, and one interrupted run still leaves rows another worktree's suite can see.
+
+**Trigger:** a dev-database test failing for a reason that is not in its own diff, or a second
+person running the suites at the same time. The real fix is a per-worktree database (or a
+per-run schema) rather than another scoping wrapper, which is why this is a follow-up rather
+than a patch.

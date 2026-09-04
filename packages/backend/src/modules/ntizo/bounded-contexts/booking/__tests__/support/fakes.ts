@@ -153,17 +153,39 @@ export function withId(booking: Booking, id: string): Booking {
 export class FakeRaiser implements RaiseNotificationInternalPort {
   public readonly raised: RaiseNotificationInput[] = [];
   public readonly insideTransactionAtCall: boolean[] = [];
+  /**
+   * Every call, whether it succeeded or threw. `raised` only records the ones
+   * that got through, so it cannot answer "did the caller keep going after one
+   * of them failed?" — which is the whole question a fan-out over several
+   * recipients raises.
+   */
+  public attempts = 0;
 
   constructor(
     private readonly failWith: Error | null = null,
     private readonly unitOfWork?: TrackingUnitOfWork,
+    /**
+     * Which calls `failWith` applies to, when only some of them should fail.
+     *
+     * Omitted, a non-null `failWith` fails every call — the shape every
+     * existing caller uses, and the one that proves a raise cannot fail the
+     * write that already committed. Given, it fails only the calls it selects,
+     * which is how a *fan-out* is tested: `SweepBookingCommand` raises
+     * `AdminBookingAutoClosed` once per administrator inside its own
+     * `raiseQuietly`, and the only thing separating that from one `try` around
+     * the whole loop is whether the second administrator still hears when the
+     * first one's raise throws. A raiser that can only fail all or none cannot
+     * tell those apart.
+     */
+    private readonly failWhen?: (input: RaiseNotificationInput) => boolean,
   ) {}
 
   async execute(input: RaiseNotificationInput): Promise<{ notificationId: string }> {
+    this.attempts += 1;
     if (this.unitOfWork) {
       this.insideTransactionAtCall.push(this.unitOfWork.insideTransaction);
     }
-    if (this.failWith) throw this.failWith;
+    if (this.failWith && (this.failWhen?.(input) ?? true)) throw this.failWith;
     this.raised.push(input);
     return { notificationId: `n-${this.raised.length}` };
   }

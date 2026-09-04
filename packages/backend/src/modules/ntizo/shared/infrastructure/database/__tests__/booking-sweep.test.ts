@@ -23,9 +23,15 @@
  * does not stop the wave, and the limit is respected.
  *
  * **Every booking is deleted in a `finally`, never after the last
- * assertion** — see `withBookings`. That is not tidiness: this file's sweeps
- * run against an unscoped query, so a row one test leaks is a row every
- * later test's sweep will claim.
+ * assertion** — see `withBookings`. That is not tidiness: a leaked row stays
+ * in `createdBookingIds` for the rest of the run, so every later test's sweep
+ * claims it.
+ *
+ * **What each sweep can reach is narrowed to this file's own bookings** — see
+ * `scopedToFixtures`. The query production runs is unscoped, and against a
+ * dev database two worktrees share that is not something a test may start:
+ * since `CONFIRMED` and `MARKED_DONE` joined the deadline filter, a sweep
+ * reaching a foreign row does not merely count it, it writes to it.
  *
  * Fixtures follow `booking-repository.test.ts`'s pattern: one provider and
  * one provider member, created fresh under a random `suffix` in
@@ -300,14 +306,72 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
 }
 
 /**
+ * How many due rows to ask the real query for before scoping.
+ *
+ * Generous rather than equal to the caller's `limit`: a foreign row occupying
+ * a slot in the batch would otherwise push one of this file's own fixtures
+ * out of it and turn an exact-count assertion red for a reason that has
+ * nothing to do with the sweep.
+ */
+const FIXTURE_BATCH = 200;
+
+/**
+ * The repository, with `findDueForSweep` narrowed to the bookings this file
+ * created.
+ *
+ * **The production query is deliberately unscoped** — it selects every due row
+ * in the database, which is what production has to do — and this file runs it
+ * against a *shared* dev database. Two worktrees point at one `DEV_DB_URL`,
+ * and a sibling's in-flight fixtures are due rows like any other.
+ *
+ * That used to cost only an inflated `swept` count. It costs more now: since
+ * `CONFIRMED` and `MARKED_DONE` joined the deadline filter, a foreign row is
+ * no longer merely *counted* by a sweep this file starts — it is asked about,
+ * or closed, published to the outbox and announced to every real
+ * administrator, and a foreign `MARKED_DONE` row is completed with
+ * `booking.completed` published, which is the event a payout hangs off. A test
+ * file has no business doing any of that to somebody else's row.
+ *
+ * `limit` is applied *after* the filter, so the exact-count assertions below
+ * mean what they say: a foreign due row can neither inflate a count nor
+ * displace one of this file's fixtures out of the batch. That
+ * `findDueForSweep` itself applies its `LIMIT` in SQL is proven separately, in
+ * `booking-repository.test.ts`'s own `findDueForSweep` tests — so asking for a
+ * wider batch here gives that proof up nowhere.
+ */
+function scopedToFixtures(inner: BookingRepositoryPort): BookingRepositoryPort {
+  return {
+    insert: (b, capacity) => inner.insert(b, capacity),
+    findById: (id) => inner.findById(id),
+    findOpenDraftForCustomer: (customerId) => inner.findOpenDraftForCustomer(customerId),
+    save: (b, expectedStatus) => inner.save(b, expectedStatus),
+    appendChange: (c) => inner.appendChange(c),
+    findAwaitingCharge: (criteria) => inner.findAwaitingCharge(criteria),
+    recordChargeAttempt: (claim) => inner.recordChargeAttempt(claim),
+    abandonCharge: (abandonment) => inner.abandonCharge(abandonment),
+    async findDueForSweep(now, limit) {
+      const due = await inner.findDueForSweep(now, FIXTURE_BATCH);
+      return due.filter((b) => createdBookingIds.includes(b.id as string)).slice(0, limit);
+    },
+  };
+}
+
+/**
  * A fresh sweep, wired exactly the way `bootstrapBooking()` wires it in
  * production — the same `SweepBookingCommand` instance backs both
  * `useCases.sweepBooking` and `useCases.internal.sweepDue` there, and this
  * mirrors that rather than constructing two independent commands that could
  * drift apart.
+ *
+ * The one thing it does *not* mirror is the reach of `findDueForSweep`: the
+ * repository is wrapped once here, so every sweep this file starts sees only
+ * this file's own bookings. Wrapping at this single boundary rather than at
+ * each call site is what makes that true of all of them — including the
+ * `flaky` repository the last test passes in, whose own `findById`
+ * interception still works because `scopedToFixtures` delegates to it.
  */
 function buildSweep(
-  bookingRepo: BookingRepositoryPort,
+  rawRepo: BookingRepositoryPort,
   now: () => Date = () => new Date(),
   // A fake rather than the real `RaiseNotificationInternalCommand`: what this
   // file proves about notifications is *which* ending announces and which
@@ -316,6 +380,7 @@ function buildSweep(
   // assertion here. The one test that reads it back passes its own.
   raiser: FakeRaiser = new FakeRaiser(),
 ) {
+  const bookingRepo = scopedToFixtures(rawRepo);
   const slotHold = new BookingRowSlotHold();
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
@@ -437,6 +502,86 @@ async function historyFor(
 }
 
 describe("SweepDueBookingsInternalCommand", () => {
+  /**
+   * The harness, not the sweep — and it earns its place because every other
+   * test in this file now depends on it silently.
+   *
+   * `scopedToFixtures` is the only thing standing between a sweep started here
+   * and a row belonging to somebody else's worktree, and nothing else would
+   * notice if it stopped filtering: the dev database usually holds no foreign
+   * due row, so an unfiltered `findDueForSweep` passes every assertion below
+   * right up until the day it does not, and on that day it does not merely
+   * miscount — it stamps, closes, publishes and announces a stranger's
+   * booking.
+   *
+   * So this test manufactures exactly that row. It inserts a due `DRAFT` and
+   * **deliberately does not `track` it**, which is what makes it foreign as
+   * far as `createdBookingIds` is concerned, and deletes it by hand in a
+   * `finally` — the one place in this file that cannot use `withBookings`'
+   * cleanup, because being outside that list is the whole point.
+   *
+   * **`limit: 1`, with the foreign row holding the older deadline, is what
+   * makes this test say two things rather than one.** `findDueForSweep`
+   * returns oldest first, so a wrapper that passed the caller's `limit` down
+   * to SQL would come back holding only the foreign row, filter it away and
+   * sweep nothing — leaving this file's own fixture unswept for a reason that
+   * has nothing to do with it. That is what `FIXTURE_BATCH` prevents, and why
+   * the slice happens after the filter rather than in the query.
+   */
+  test("a sweep started here cannot reach a booking this file did not create", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2026-11-12T14:00:00.000Z");
+
+      // The older deadline, so the real query returns this one first.
+      const foreign = await repo.insert(
+        draftBooking(
+          bookingInput({
+            startsAt: new Date("2026-11-12T09:00:00.000Z"),
+            expiresAt: new Date("2026-11-12T08:00:00.000Z"),
+          }),
+        ),
+        1,
+      );
+      const foreignId = foreign.id as string;
+
+      try {
+        const mine = track(
+          await repo.insert(
+            draftBooking(
+              bookingInput({
+                startsAt: new Date("2026-11-12T11:00:00.000Z"),
+                expiresAt: new Date("2026-11-12T09:30:00.000Z"),
+              }),
+            ),
+            1,
+          ),
+        );
+        // Both due by every measure the real query applies — past their
+        // checkout hold, in a deadline-bearing status. Only one of them is
+        // this file's.
+        expect(foreign.status).toBe("DRAFT");
+        expect(mine.status).toBe("DRAFT");
+
+        const result = await buildSweep(repo, () => now).execute({ limit: 1 });
+
+        // The one slot the caller allowed went to this file's booking, not to
+        // the older foreign one.
+        expect(result).toEqual({ swept: 1, failed: 0 });
+        expect((await repo.findById(mine.id as string))?.status).toBe("EXPIRED");
+
+        // And the foreign row came through untouched: not expired, no history
+        // row, nothing announced about it.
+        const reread = await repo.findById(foreignId);
+        expect(reread?.status).toBe("DRAFT");
+        expect(reread?.expiredAt).toBeNull();
+        expect(await announcementsFor(foreignId)).toEqual([]);
+        expect(await historyFor(foreignId)).toEqual([]);
+      } finally {
+        await db.delete(booking).where(eq(booking.id, foreignId));
+      }
+    });
+  });
+
   test("expires a DRAFT past its checkout hold, and leaves one still inside it alone", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-05T12:00:00.000Z");
@@ -702,18 +847,13 @@ describe("SweepDueBookingsInternalCommand", () => {
       const raiser = new FakeRaiser();
       const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
 
-      // Not an exact match, unlike this file's other counts: `swept` is read
-      // off an unscoped query (see `withBookings` above), and any other
-      // CONFIRMED or MARKED_DONE row anywhere in the shared dev database with
-      // a past `expires_at` now counts too. Before the deadline statuses were
-      // widened, a foreign row could only disturb this count while sitting in
-      // a transient status; CONFIRMED and MARKED_DONE are states a row can sit
-      // in indefinitely, so a foreign one showing up here is expected, not a
-      // bug — pinning an exact number would make this test flaky by design.
-      // `failed` has no such excuse: this booking is the only thing this sweep
-      // run could fail on, and it must not.
-      expect(result.failed).toBe(0);
-      expect(result.swept).toBeGreaterThanOrEqual(1);
+      // An exact count, like every other in this file, and it is `buildSweep`'s
+      // scoping that makes it one: the sweep can only see the two bookings
+      // this test created, of which exactly one is due. Without that, a
+      // CONFIRMED or MARKED_DONE row belonging to a sibling worktree would
+      // count here — those two are states a row sits in indefinitely, unlike
+      // the three transient ones — and the number would say nothing.
+      expect(result).toEqual({ swept: 1, failed: 0 });
 
       const reread = await repo.findById(inserted.id as string);
       // Asked, not closed — the point of the whole arm. The payment fields
@@ -803,8 +943,7 @@ describe("SweepDueBookingsInternalCommand", () => {
 
       const raiser = new FakeRaiser();
       const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
-      expect(result.failed).toBe(0);
-      expect(result.swept).toBeGreaterThanOrEqual(1);
+      expect(result).toEqual({ swept: 1, failed: 0 });
 
       const reread = await repo.findById(inserted.id as string);
       expect(reread?.status).toBe("MARKED_DONE");
@@ -880,8 +1019,7 @@ describe("SweepDueBookingsInternalCommand", () => {
 
       const raiser = new FakeRaiser();
       const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
-      expect(result.failed).toBe(0);
-      expect(result.swept).toBeGreaterThanOrEqual(1);
+      expect(result).toEqual({ swept: 1, failed: 0 });
 
       const reread = await repo.findById(inserted.id as string);
       expect(reread?.status).toBe("COMPLETED");
