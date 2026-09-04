@@ -1,6 +1,9 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
 import { NotificationType } from "@ntizo/shared";
-import type { SupportAudience } from "../../../../shared/infrastructure/database/communication/enums";
+import type {
+  SupportAudience,
+  SupportKind,
+} from "../../../../shared/infrastructure/database/communication/enums";
 import { Message } from "../../domain/aggregates/message.aggregate";
 import { MAX_OPEN_SUPPORT_REQUESTS, SupportRequest } from "../../domain/aggregates/support-request.aggregate";
 import {
@@ -29,6 +32,23 @@ export interface OpenSupportRequestInput {
   body: string;
   bookingId?: string | null | undefined;
   attachments?: AttachmentDescriptor[] | undefined;
+  /**
+   * What this request is — an ordinary question, or a dispute over the
+   * booking `bookingId` names.
+   *
+   * Optional and defaulted to `"support"`, so every caller that existed
+   * before disputes did keeps working unchanged. Exactly one caller passes
+   * the other value: the booking context's `OpenDisputeThreadPort`, filled at
+   * the composition root, whose `DisputeBookingCommand` moves the booking in
+   * its own transaction while this one opens the conversation. The two halves
+   * never import each other; this field is the whole of what crosses.
+   *
+   * Not inferred from `bookingId` being set, which is the trap
+   * `support-request.schema.ts` records: an ordinary question about a booking
+   * somebody is *also* disputing is a normal thing to ask, and it must not
+   * move that booking when an administrator resolves it.
+   */
+  kind?: SupportKind | undefined;
 }
 
 /**
@@ -94,7 +114,17 @@ export class OpenSupportRequestCommand {
     const threadId = await this.unitOfWork.atomicExecute(async () => {
       const id = await this.threads.openSupport(input.requesterUserId, providerId, now);
       await this.supportRequests.insert(
-        SupportRequest.open({ threadId: id, audience: input.audience, subject, bookingId, now }),
+        SupportRequest.open({
+          threadId: id,
+          audience: input.audience,
+          subject,
+          bookingId,
+          // Passed through undefined and all: the `?? "support"` lives on the
+          // aggregate rather than here, so a second caller of
+          // `SupportRequest.open` cannot default it differently.
+          kind: input.kind,
+          now,
+        }),
       );
       const message = Message.compose({
         threadId: id,

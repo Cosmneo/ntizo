@@ -39,7 +39,16 @@ export type {
   CompleteBookingInput,
   CompleteReason,
 } from "./app/use-cases/complete-booking.command";
+export { DisputeBookingCommand } from "./app/use-cases/dispute-booking.command";
+export type { DisputeBookingInput } from "./app/use-cases/dispute-booking.command";
+export { ResolveBookingDisputeCommand } from "./app/use-cases/resolve-booking-dispute.command";
+export type { ResolveBookingDisputeInput } from "./app/use-cases/resolve-booking-dispute.command";
 export type { AdminUserReaderPort } from "./app/ports/outbound/admin-user-reader.port";
+export type {
+  DisputeAttachment,
+  OpenDisputeThreadInput,
+  OpenDisputeThreadPort,
+} from "./app/ports/outbound/open-dispute-thread.port";
 export type {
   BookingChangeRecord,
   BookingRepositoryPort,

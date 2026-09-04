@@ -1,5 +1,6 @@
 import type {
   SupportAudience,
+  SupportKind,
   SupportStatus,
 } from "../../../../shared/infrastructure/database/communication/enums";
 import {
@@ -24,6 +25,13 @@ export interface SupportRequestProps {
   readonly audience: SupportAudience;
   readonly subject: string;
   readonly bookingId: string | null;
+  /**
+   * An ordinary request, or a customer's dispute over the booking this points
+   * at. Required on `props` rather than optional, so a `rehydrate` that
+   * forgot to read the column is a compile error rather than a dispute that
+   * quietly stops being one on its way out of the database.
+   */
+  readonly kind: SupportKind;
   readonly status: SupportStatus;
   readonly resolvedAt: Date | null;
   readonly resolvedByUserId: string | null;
@@ -70,6 +78,13 @@ export class SupportRequest {
     audience: SupportAudience;
     subject: string;
     bookingId: string | null;
+    /**
+     * Optional, defaulted to `"support"` exactly as the column's own
+     * `DEFAULT 'support'` does: every caller that existed before disputes did
+     * opens an ordinary request, and only a booking's dispute asks for the
+     * other value.
+     */
+    kind?: SupportKind | undefined;
     now: Date;
   }): SupportRequest {
     return new SupportRequest({
@@ -77,6 +92,7 @@ export class SupportRequest {
       audience: params.audience,
       subject: SupportRequest.normaliseSubject(params.subject),
       bookingId: params.bookingId,
+      kind: params.kind ?? "support",
       status: "open",
       resolvedAt: null,
       resolvedByUserId: null,
@@ -119,6 +135,9 @@ export class SupportRequest {
   }
   get bookingId(): string | null {
     return this.props.bookingId;
+  }
+  get kind(): SupportKind {
+    return this.props.kind;
   }
   get status(): SupportStatus {
     return this.props.status;

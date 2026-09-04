@@ -4,7 +4,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as authSchema from "../../../../better-auth/infrastructure/database/schema";
 import { __runWithTransactionContextForTests } from "../../../../../shared/infrastructure/database/tx-context";
-import { thread } from "../../../shared/infrastructure/database/communication/schemas";
+import { supportRequest, thread } from "../../../shared/infrastructure/database/communication/schemas";
+import type { SupportKind } from "../../../shared/infrastructure/database/communication/enums";
 import { user } from "../../../shared/infrastructure/database/user/schemas";
 import { provider, providerMember } from "../../../shared/infrastructure/database/provider/schemas";
 import { CursorInvalidError } from "../domain/exceptions";
@@ -63,11 +64,11 @@ let adminId: string;
 let providerId: string;
 const threadIds: string[] = [];
 
-async function openPersonal(subject: string, at = NOW): Promise<string> {
+async function openPersonal(subject: string, at = NOW, kind?: SupportKind): Promise<string> {
   return run(async () => {
     const id = await threads.openSupport(customerId, null, at);
     threadIds.push(id);
-    await requests.insert(SupportRequest.open({ threadId: id, audience: "customer", subject, bookingId: null, now: at }));
+    await requests.insert(SupportRequest.open({ threadId: id, audience: "customer", subject, bookingId: null, kind, now: at }));
     await messages.insert(Message.compose({ threadId: id, senderUserId: customerId, senderSide: "customer", body: subject, now: at }));
     return id;
   });
@@ -123,6 +124,64 @@ describe("open and find", () => {
     expect(await run(() => threads.findSupportThread(inquiryId))).toBeNull();
     expect(await run(() => requests.findByThreadId(inquiryId))).toBeNull();
     expect(await run(() => requests.findListItem(inquiryId))).toBeNull();
+  });
+
+  // The column Task 2 added and this task first writes. Both directions
+  // matter: a request opened as a dispute has to come back a dispute — a
+  // repository that inserted the column and forgot to read it would leave
+  // every stored dispute looking like an ordinary request the moment it is
+  // loaded, and an administrator resolving it would stop moving the booking.
+  test("a dispute round-trips as a dispute, and an ordinary request as support", async () => {
+    const disputeId = await openPersonal("Avaria eléctrica urgente", NOW, "dispute");
+    const supportId = await openPersonal("Reembolso");
+
+    expect((await run(() => requests.findByThreadId(disputeId)))?.kind).toBe("dispute");
+    expect((await run(() => requests.findByThreadId(supportId)))?.kind).toBe("support");
+
+    // And through the batched read too, which rehydrates by a different call
+    // path than `findByThreadId` appears to — it is the one that actually
+    // maps the row.
+    const byId = await run(() => requests.findByThreadIds([disputeId, supportId]));
+    expect(byId.get(disputeId)?.kind).toBe("dispute");
+    expect(byId.get(supportId)?.kind).toBe("support");
+  });
+
+  /**
+   * The check constraint itself, against the real database.
+   *
+   * `SupportKind` stops a third value from being *written by this codebase*,
+   * and stops nothing else: a migration, a manual `UPDATE`, or a future
+   * caller that casts around the union all reach this column with TypeScript
+   * out of the room. Note that the insert below needs no cast at all — the
+   * column is a `varchar`, so Drizzle types it as a bare `string` and
+   * `"nonsense"` type-checks perfectly. `support_request_kind_known` is the
+   * only thing between that and a row nothing downstream can interpret, and
+   * this is the test that proves it is actually on the database rather than
+   * only in `support-request.schema.ts`.
+   */
+  test("the database refuses a kind that is neither support nor dispute", async () => {
+    const threadId = await run(() => threads.openSupport(customerId, null, NOW));
+    threadIds.push(threadId);
+
+    // Awaited inside an async function rather than handed to `rejects`
+    // directly: Drizzle's insert builder is a thenable, not a `Promise`, and
+    // `expect(...).rejects` wants the real thing.
+    const insertUnknownKind = async () =>
+      await db.insert(supportRequest).values({
+        threadId,
+        audience: "customer",
+        subject: "Nem uma coisa nem outra",
+        bookingId: null,
+        kind: "nonsense",
+        status: "open",
+        createdAt: NOW,
+      });
+
+    await expect(insertUnknownKind()).rejects.toThrow(/support_request_kind_known/);
+
+    // Refused outright, not coerced to the column's default: nothing was
+    // written for this thread at all.
+    expect(await run(() => requests.findByThreadId(threadId))).toBeNull();
   });
 
   test("save persists a resolution, and findByThreadIds batches", async () => {

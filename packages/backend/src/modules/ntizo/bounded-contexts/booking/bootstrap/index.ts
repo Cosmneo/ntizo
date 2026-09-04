@@ -21,6 +21,9 @@ import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.comma
 import { MarkBookingDoneCommand } from "../app/use-cases/mark-booking-done.command";
 import { KeepBookingOpenCommand } from "../app/use-cases/keep-booking-open.command";
 import { CompleteBookingCommand } from "../app/use-cases/complete-booking.command";
+import { DisputeBookingCommand } from "../app/use-cases/dispute-booking.command";
+import { ResolveBookingDisputeCommand } from "../app/use-cases/resolve-booking-dispute.command";
+import type { OpenDisputeThreadPort } from "../app/ports/outbound/open-dispute-thread.port";
 import type { RaiseNotificationInternalPort } from "../app/ports/outbound/raise-notification.port";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
@@ -74,6 +77,26 @@ export interface BookingBootstrapDeps {
    * `bootstrapCommunication` already takes.
    */
   raiseNotification: RaiseNotificationInternalPort;
+  /**
+   * How a dispute opens the conversation it lives in — the communication
+   * context's `OpenSupportRequestCommand`, mapped at the composition root
+   * (see `apps/backend/api/src/dispute-thread.adapter.ts`, which is where
+   * `audience: "customer"` and `kind: "dispute"` are decided).
+   *
+   * An adapter rather than the command itself, unlike `raiseNotification`
+   * above: the two shapes are not the same, and deliberately not — see
+   * `OpenDisputeThreadPort`'s own doc comment for what differs and why this
+   * side must not be the one to decide it.
+   *
+   * Required, for exactly the reason `raiseNotification` is: an optional
+   * dependency would let a composition root construct a booking context whose
+   * `disputeBooking` silently opens no thread, which is a customer telling
+   * the platform something and the platform losing it. The cron passes one it
+   * never calls — the same shape it already uses for the
+   * `AttachmentStorageAdapter` `bootstrapCommunication` requires and the
+   * unread sweep never touches.
+   */
+  openDisputeThread: OpenDisputeThreadPort;
 }
 
 export function bootstrapBooking(deps: BookingBootstrapDeps) {
@@ -222,6 +245,31 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
         outboxPort,
       ),
       completeBooking,
+      // The two halves of a dispute. `disputeBooking` stops one argument
+      // short of the others and it is the outbox it stops at: there is no
+      // `booking.disputed` event for it to publish, so it holds no port it
+      // would never call — the same shape `keepBookingOpen` above has for its
+      // missing notification port. It takes `adminUserReader` because every
+      // administrator is told a dispute opened, the second reader that queue
+      // has after the sweep's own auto-close arm.
+      //
+      // `resolveBookingDispute` takes no `providerMemberReader` for the
+      // reason `completeBooking` does not: an administrator is authorised by
+      // the edge that let them in, not by belonging to the provider whose
+      // booking they are deciding about.
+      disputeBooking: new DisputeBookingCommand(
+        bookingRepository,
+        deps.openDisputeThread,
+        adminUserReader,
+        unitOfWork,
+        deps.raiseNotification,
+      ),
+      resolveBookingDispute: new ResolveBookingDisputeCommand(
+        bookingRepository,
+        unitOfWork,
+        outboxPort,
+        deps.raiseNotification,
+      ),
       sweepBooking,
       chargeBooking,
       markBookingPaid,

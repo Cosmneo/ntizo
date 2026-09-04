@@ -71,6 +71,7 @@ describe("resolving and reopening", () => {
       audience: "provider",
       subject: "",
       bookingId: "b1",
+      kind: "dispute",
       status: "resolved",
       resolvedAt: LATER,
       resolvedByUserId: "admin-1",
@@ -78,5 +79,27 @@ describe("resolving and reopening", () => {
     });
     expect(r.subject).toBe("");
     expect(r.audience).toBe("provider");
+    // A stored dispute comes back a dispute. `rehydrate` takes `kind`
+    // required rather than defaulted for exactly this: a repository that
+    // forgot to read the column would otherwise hand back an ordinary
+    // request, and resolving it would stop moving the booking it is about.
+    expect(r.kind).toBe("dispute");
+  });
+
+  // The other half, and the one every caller that predates disputes relies
+  // on: `open` without a `kind` is an ordinary support request, matching the
+  // column's own `DEFAULT 'support'`.
+  it("opens as an ordinary support request unless a kind says otherwise", () => {
+    expect(open().kind).toBe("support");
+    expect(
+      SupportRequest.open({
+        threadId: "t1",
+        audience: "customer",
+        subject: "Avaria eléctrica urgente",
+        bookingId: "b1",
+        kind: "dispute",
+        now: NOW,
+      }).kind,
+    ).toBe("dispute");
   });
 });

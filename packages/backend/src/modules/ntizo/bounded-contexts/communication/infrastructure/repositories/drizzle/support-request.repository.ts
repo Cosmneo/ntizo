@@ -72,6 +72,7 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
       audience: request.audience,
       subject: request.subject,
       bookingId: request.bookingId,
+      kind: request.kind,
       status: request.status,
       resolvedAt: request.resolvedAt,
       resolvedByUserId: request.resolvedByUserId,
@@ -96,6 +97,12 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
           audience: r.audience as SupportRequest["audience"],
           subject: r.subject,
           bookingId: r.bookingId,
+          // Cast for the same reason `audience` and `status` are cast: the
+          // column is a `varchar` with a CHECK behind it, not a Postgres
+          // enum, so Drizzle types it as a bare `string`. The database is
+          // what guarantees the value is one of the two — see
+          // `support_request_kind_known`.
+          kind: r.kind as SupportRequest["kind"],
           status: r.status as SupportRequest["status"],
           resolvedAt: r.resolvedAt,
           resolvedByUserId: r.resolvedByUserId,

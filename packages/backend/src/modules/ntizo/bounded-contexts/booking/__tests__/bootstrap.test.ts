@@ -10,6 +10,8 @@ import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.comma
 import { MarkBookingDoneCommand } from "../app/use-cases/mark-booking-done.command";
 import { KeepBookingOpenCommand } from "../app/use-cases/keep-booking-open.command";
 import { CompleteBookingCommand } from "../app/use-cases/complete-booking.command";
+import { DisputeBookingCommand } from "../app/use-cases/dispute-booking.command";
+import { ResolveBookingDisputeCommand } from "../app/use-cases/resolve-booking-dispute.command";
 import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
@@ -55,9 +57,30 @@ function sweepDependencies(command: object): unknown[] {
   return Object.values(command);
 }
 
+/**
+ * The two dependencies every one of these calls has to supply, in one place
+ * rather than repeated eight times.
+ *
+ * `openDisputeThread` is required rather than optional for the reason
+ * `BookingBootstrapDeps` gives: an optional one would let a composition root
+ * build a `disputeBooking` that silently opens no thread. Here it is a fake
+ * that answers with a fixed id and is never called — these tests assert what
+ * was *constructed*, not what it does.
+ */
+function bootstrapDeps() {
+  return {
+    raiseNotification: new FakeRaiser(),
+    openDisputeThread: {
+      async execute() {
+        return { threadId: "th-1" };
+      },
+    },
+  };
+}
+
 describe("bootstrapBooking", () => {
   it("constructs every use case, including the two nothing calls yet", () => {
-    const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { useCases } = bootstrapBooking(bootstrapDeps());
 
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
     expect(useCases.submitBooking).toBeInstanceOf(SubmitBookingCommand);
@@ -75,7 +98,7 @@ describe("bootstrapBooking", () => {
   // end, and nothing else here would notice — their own tests construct the
   // classes directly, the same blind spot this file exists for.
   it("constructs the three commands that close a booking", () => {
-    const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { useCases } = bootstrapBooking(bootstrapDeps());
 
     expect(useCases.markBookingDone).toBeInstanceOf(MarkBookingDoneCommand);
     expect(useCases.keepBookingOpen).toBeInstanceOf(KeepBookingOpenCommand);
@@ -87,14 +110,35 @@ describe("bootstrapBooking", () => {
   // provider-membership reader nothing real backs, and every accept or
   // decline would silently skip the one check that closes off a stranger
   // acting on somebody else's provider.
+  // The booking-completion plan's Task 6. Both are constructed here and
+  // called from Task 8's mutations; a bootstrap that dropped either would
+  // leave a booking with no way to be disputed or a dispute with no way to be
+  // decided, and nothing else would notice — their own tests construct the
+  // classes directly, the same blind spot the rest of this file exists for.
+  //
+  // The port and the administrator reader are asserted through the object
+  // graph, not by type: `disputeBooking` is the only command holding a
+  // dispute-thread port, and a bootstrap that handed it a second
+  // `DrizzleAdminUserReader` instead of the one the sweep uses would still
+  // pass every `toBeInstanceOf` in this file.
+  it("constructs the two halves of a dispute, over the deps it was handed", () => {
+    const deps = bootstrapDeps();
+    const { useCases, adapters } = bootstrapBooking(deps);
+
+    expect(useCases.disputeBooking).toBeInstanceOf(DisputeBookingCommand);
+    expect(useCases.resolveBookingDispute).toBeInstanceOf(ResolveBookingDisputeCommand);
+    expect(sweepDependencies(useCases.disputeBooking)).toContain(deps.openDisputeThread);
+    expect(sweepDependencies(useCases.disputeBooking)).toContain(adapters.adminUserReader);
+  });
+
   it("wires the provider-membership reader acceptBooking and declineBooking share", () => {
-    const { adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { adapters } = bootstrapBooking(bootstrapDeps());
 
     expect(adapters.providerMemberReader).toBeInstanceOf(DrizzleProviderMemberReader);
   });
 
   it("wires the sweep Task 12's cron calls, over the same sweepBooking instance", () => {
-    const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { useCases } = bootstrapBooking(bootstrapDeps());
 
     expect(useCases.internal.sweepDue).toBeInstanceOf(SweepDueBookingsInternalCommand);
   });
@@ -106,7 +150,7 @@ describe("bootstrapBooking", () => {
   // reader out, would still type-check and still pass every unit test in this
   // context, because those construct the classes directly.
   it("gives the sweep the very commands it hands its last two arms to", () => {
-    const { useCases, adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { useCases, adapters } = bootstrapBooking(bootstrapDeps());
 
     expect(adapters.adminUserReader).toBeInstanceOf(DrizzleAdminUserReader);
     // One instance each, shared with the sweep, the same way `markBookingPaid`
@@ -120,7 +164,7 @@ describe("bootstrapBooking", () => {
   });
 
   it("builds the two real readers and the two no-op adapters — the whole point of this task", () => {
-    const { adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { adapters } = bootstrapBooking(bootstrapDeps());
 
     expect(adapters.bookingRepository).toBeInstanceOf(DrizzleBookingRepository);
     expect(adapters.pricingReader).toBeInstanceOf(DrizzleServicePricingReader);
@@ -136,7 +180,7 @@ describe("bootstrapBooking", () => {
   // above because it postdates "the whole point of this task" (Task 10) —
   // this is the wiring Task 13 added on top of it.
   it("wires the payment-window reader Task 13 added", () => {
-    const { adapters, useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { adapters, useCases } = bootstrapBooking(bootstrapDeps());
 
     expect(adapters.platformSettingsReader).toBeInstanceOf(DrizzlePlatformSettingsReader);
     expect(useCases.createBooking).toBeInstanceOf(CreateBookingCommand);
@@ -147,7 +191,7 @@ describe("bootstrapBooking", () => {
   // every booking would silently skip the check that closes the
   // calendar-blocking hole.
   it("wires the slot-validity reader that closes the calendar-blocking hole", () => {
-    const { adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+    const { adapters } = bootstrapBooking(bootstrapDeps());
 
     expect(adapters.slotValidityReader).toBeInstanceOf(DrizzleSlotValidityReader);
   });

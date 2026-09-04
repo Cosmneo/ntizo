@@ -70,6 +70,7 @@ import { buildHardeningPlugins } from "./hardening";
 import { createGraphqlContextFactory } from "./context-factory";
 import { graphqlCorsFetch } from "./cors";
 import { AttachmentStorageAdapter, runWithAttachmentsBucket } from "../attachment-storage.adapter";
+import { disputeThreadOver } from "../dispute-thread.adapter";
 import type { AppBindings } from "../types";
 
 /**
@@ -119,14 +120,14 @@ export function buildPrivateGraphQLFields(): {
   // to tell somebody, and this is the one place that coupling is written
   // down.
   const notification = bootstrapNotification();
-  const booking = bootstrapBooking({
-    raiseNotification: notification.useCases.internal.raiseNotification,
-  });
   const bookingRead = bootstrapBookingRead();
   const walletRead = bootstrapWalletRead();
   const activityRead = bootstrapActivityRead();
   const communicationRead = bootstrapCommunicationRead();
   const supportRead = bootstrapSupportRead();
+  // Hoisted above `bootstrapBooking`, which now takes one of its use cases:
+  // a dispute is a support request that moves a booking, and this is the one
+  // place allowed to know both halves exist — see `disputeThreadOver`.
   const communication = bootstrapCommunication({
     raiseNotification: notification.useCases.internal.raiseNotification,
     // Reads the CURRENT request's `ATTACHMENTS_BUCKET` via
@@ -135,6 +136,10 @@ export function buildPrivateGraphQLFields(): {
     // comment), before any request, and therefore before any `c.env`,
     // exists.
     attachmentStorage: new AttachmentStorageAdapter(),
+  });
+  const booking = bootstrapBooking({
+    raiseNotification: notification.useCases.internal.raiseNotification,
+    openDisputeThread: disputeThreadOver(communication.useCases.openSupportRequest),
   });
   const workflows = bootstrapProviderWorkflows({
     userInternal: {

@@ -3,8 +3,12 @@ import { closeDbBehindDeferredWork } from "@ntizo/backend/shared/infra/database"
 import type { Stage } from "@ntizo/backend/shared/infra/config";
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
-import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import {
+  bootstrapBooking,
+  type OpenDisputeThreadPort,
+} from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
 import { AttachmentStorageAdapter } from "./attachment-storage.adapter";
+import { disputeThreadOver } from "./dispute-thread.adapter";
 import type { AppBindings } from "./types";
 
 /**
@@ -60,6 +64,35 @@ export const BOOKING_SWEEP_LIMIT = 200;
  * number to revisit first if it ever isn't.
  */
 export const BOOKING_CHARGE_LIMIT = 5;
+
+/**
+ * The dispute-thread port `bootstrapBooking` requires, for a caller that will
+ * never open a dispute.
+ *
+ * The cron reaches `internal.sweepDue` and `internal.chargeAccepted` and
+ * nothing else, and neither of those can dispute anything — but a bootstrap
+ * that constructs every use case constructs `DisputeBookingCommand` too, so
+ * it needs the real port and not a stub. Same situation as the
+ * `AttachmentStorageAdapter` this file already hands `bootstrapCommunication`
+ * for a sweep that never touches an attachment.
+ *
+ * The communication graph behind it is built **inside `execute`**, so a run
+ * that never disputes never builds it — which is every run. Constructing it
+ * eagerly would also mean reaching for a binding declared in another `try`
+ * block, tying the two sweeps' failure modes back together; see the comments
+ * at each call site for why that was undone.
+ */
+function disputeThreadForCron(): OpenDisputeThreadPort {
+  return {
+    execute: (input) =>
+      disputeThreadOver(
+        bootstrapCommunication({
+          raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+          attachmentStorage: new AttachmentStorageAdapter(),
+        }).useCases.openSupportRequest,
+      ).execute(input),
+  };
+}
 
 /**
  * The worker that wakes up to check for unread messages.
@@ -206,6 +239,8 @@ export async function scheduled(
           // cheap object graphs over the same request-scoped `getDb()`.
           const booking = bootstrapBooking({
             raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+            // Never called from here — see `disputeThreadForCron`.
+            openDisputeThread: disputeThreadForCron(),
           });
           const { swept, failed: bookingFailed } = await booking.useCases.internal.sweepDue.execute({
             limit: BOOKING_SWEEP_LIMIT,
@@ -246,6 +281,8 @@ export async function scheduled(
         try {
           const booking = bootstrapBooking({
             raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+            // Never called from here either — see `disputeThreadForCron`.
+            openDisputeThread: disputeThreadForCron(),
           });
           const { attempted, failed: chargeFailed } =
             await booking.useCases.internal.chargeAccepted.execute({

@@ -158,6 +158,30 @@ describe("opening a personal request", () => {
     ).rejects.toBeInstanceOf(SupportBookingNotYoursError);
   });
 
+  // The column Task 2 added, and the whole reason it exists: resolving a
+  // dispute moves the booking it is about, and resolving an ordinary support
+  // request must not. Every caller that predates disputes keeps opening
+  // `support`, and only the booking context's port asks for the other value.
+  it("opens as support by default and as a dispute when asked", async () => {
+    const { command, requests } = openCommand();
+
+    await command.execute({ requesterUserId: customerId, audience: "customer", subject: "Reembolso", body: "x" });
+    expect(requests.inserted[0]?.kind).toBe("support");
+
+    await command.execute({
+      requesterUserId: customerId,
+      audience: "customer",
+      subject: "Avaria eléctrica urgente",
+      body: "não ficou bem",
+      bookingId: "b1",
+      kind: "dispute",
+    });
+    expect(requests.inserted[1]?.kind).toBe("dispute");
+    // The booking travels with it — a dispute with no booking on it is a
+    // complaint about nothing, and the admin queue joins on this column.
+    expect(requests.inserted[1]?.bookingId).toBe("b1");
+  });
+
   it("refuses the eleventh open request", async () => {
     const { command } = openCommand({ requests: new FakeSupportRequestRepository(new Map(), 10, uow) });
     await expect(

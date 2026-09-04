@@ -23,3 +23,18 @@ export type SupportAudience = (typeof SUPPORT_AUDIENCES)[number];
 /** Two states, on purpose — see the spec's "Domain and use cases". */
 export const SUPPORT_STATUSES = ["open", "resolved"] as const;
 export type SupportStatus = (typeof SUPPORT_STATUSES)[number];
+
+/**
+ * What a support request *is*: an ordinary question, or a customer's dispute
+ * over a booking.
+ *
+ * A column rather than an inference from "has a booking id", because
+ * resolving a dispute moves a booking and resolving a support request must
+ * not — and the first person to ask an ordinary question about a booking they
+ * are also disputing would break any rule that guessed. Mirrors the
+ * `support_request_kind_known` check constraint in `support-request.schema.ts`;
+ * the database is what actually refuses a third value, and
+ * `support-request.repository.test.ts` proves it does.
+ */
+export const SUPPORT_KINDS = ["support", "dispute"] as const;
+export type SupportKind = (typeof SUPPORT_KINDS)[number];
