@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import type { InboxPageDTO, UnreadCountDTO } from "@ntizo/shared/read-models";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 
@@ -54,14 +54,41 @@ const PROVIDER_COUNT = `
  */
 const BADGE_POLL_MS = 30_000;
 
+/**
+ * Where the next page starts, or `undefined` when there is no next page.
+ *
+ * The inbox pages by offset, not by cursor, and the response carries only
+ * `total` — no `nextOffset` the way `walletQueries.forProvider`'s does — so
+ * the offset to ask for next is how many rows have arrived so far.
+ *
+ * Summed across the pages rather than computed as
+ * `pages.length * INBOX_PAGE_SIZE`: a page that comes back short — the server
+ * clamps `limit` at 50, and rows move between two requests — would make that
+ * multiplication skip the rows in the gap, silently.
+ *
+ * The `items.length === 0` clause is the one that earns its place.
+ * `hasNextPage` reads `undefined` as "no more" and anything else as "more",
+ * and the bottom of this list is watched by an `IntersectionObserver` now:
+ * without that clause, a `total` the server cannot actually satisfy (rows
+ * deleted between two requests is enough) would leave an empty offset asked
+ * for again every time the reader scrolled to the end.
+ */
+function nextInboxOffset(last: InboxPageDTO, pages: InboxPageDTO[]): number | undefined {
+  if (last.items.length === 0) return undefined;
+  const loaded = pages.reduce((count, page) => count + page.items.length, 0);
+  return loaded < last.total ? loaded : undefined;
+}
+
 export const notificationQueries = {
-  mine: (offset = 0) =>
-    queryOptions({
-      queryKey: ["notifications", "mine", offset] as const,
-      queryFn: () =>
+  mine: () =>
+    infiniteQueryOptions({
+      queryKey: ["notifications", "mine"] as const,
+      queryFn: ({ pageParam }) =>
         sessionGraphql<{ notificationMine: InboxPageDTO }>(MINE, {
-          input: { limit: INBOX_PAGE_SIZE, offset },
+          input: { limit: INBOX_PAGE_SIZE, offset: pageParam },
         }).then((d) => d.notificationMine),
+      initialPageParam: 0,
+      getNextPageParam: nextInboxOffset,
     }),
 
   mineUnreadCount: () =>
@@ -75,13 +102,15 @@ export const notificationQueries = {
       refetchInterval: BADGE_POLL_MS,
     }),
 
-  forProvider: (providerId: string, offset = 0) =>
-    queryOptions({
-      queryKey: ["notifications", "provider", providerId, offset] as const,
-      queryFn: () =>
+  forProvider: (providerId: string) =>
+    infiniteQueryOptions({
+      queryKey: ["notifications", "provider", providerId] as const,
+      queryFn: ({ pageParam }) =>
         sessionGraphql<{ notificationForProvider: InboxPageDTO }>(FOR_PROVIDER, {
-          input: { providerId, limit: INBOX_PAGE_SIZE, offset },
+          input: { providerId, limit: INBOX_PAGE_SIZE, offset: pageParam },
         }).then((d) => d.notificationForProvider),
+      initialPageParam: 0,
+      getNextPageParam: nextInboxOffset,
       // Without this the provider shell fires a query with an empty id while the
       // workspace is still resolving — the same guard `walletQueries` needs.
       enabled: providerId.length > 0,

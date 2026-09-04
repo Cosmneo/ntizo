@@ -11,6 +11,7 @@
   "unreadBadge_other": "{{count}} unread notifications",
   "loadError": "Could not load your notifications.",
   "showingCount": "Showing {{shown}} of {{total}}.",
+  "loadMore": "Load more",
   "type": {
     "welcome": "Welcome to Ntizo",
     "providerWorkspaceWelcome": "Your workspace is set up",

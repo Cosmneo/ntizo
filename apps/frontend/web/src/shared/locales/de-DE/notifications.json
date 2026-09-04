@@ -11,6 +11,7 @@
   "unreadBadge_other": "{{count}} ungelesene Benachrichtigungen",
   "loadError": "Ihre Benachrichtigungen konnten nicht geladen werden.",
   "showingCount": "{{shown}} von {{total}} angezeigt.",
+  "loadMore": "Mehr laden",
   "type": {
     "welcome": "Willkommen bei Ntizo",
     "providerWorkspaceWelcome": "Ihr Arbeitsbereich ist eingerichtet",

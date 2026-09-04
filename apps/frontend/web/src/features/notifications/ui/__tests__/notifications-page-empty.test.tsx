@@ -10,20 +10,13 @@ vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
     page: { total: 0, items: [] },
     isPending: false,
     isError: false,
+    hasMore: false,
+    isLoadingMore: false,
+    loadMore: vi.fn(),
   }),
 }));
 vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
-}));
-// See the same mock in `notifications-page.test.tsx`: `useMyActivity()`
-// throws without a `QueryClientProvider` unless stubbed.
-vi.mock("@/features/activity/viewmodel/use-activity", () => ({
-  useMyActivity: () => ({
-    entries: [],
-    loading: false,
-    hasMore: false,
-    loadMore: vi.fn(),
-  }),
 }));
 
 describe("NotificationsPage (empty inbox)", () => {
