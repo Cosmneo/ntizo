@@ -15,6 +15,7 @@ import { DrizzleServicePricingReader } from "../infrastructure/repositories/driz
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
 import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
 import { DrizzleProviderMemberReader } from "../infrastructure/repositories/drizzle/provider-member.reader";
+import { DrizzleAdminUserReader } from "../infrastructure/repositories/drizzle/admin-user.reader";
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
 import { BookingRowDelayedJobs } from "../infrastructure/adapters/booking-row-delayed-jobs.adapter";
@@ -40,6 +41,20 @@ import { FakeRaiser } from "./support/fakes";
  * discrepancy in the two requirement files rather than resolved by
  * inventing a fourth command.
  */
+/**
+ * Every dependency a constructed command is actually holding.
+ *
+ * `SweepBookingCommand` stores its eight arguments in `private readonly`
+ * fields, which are private only to TypeScript — at runtime they are ordinary
+ * own properties. Reading them is what turns "the bootstrap built a
+ * `MarkBookingDoneCommand`" into "the bootstrap gave the sweep *this*
+ * `MarkBookingDoneCommand`", and the second is the wiring this file exists to
+ * assert. A `toBeInstanceOf` cannot tell one instance from another.
+ */
+function sweepDependencies(command: object): unknown[] {
+  return Object.values(command);
+}
+
 describe("bootstrapBooking", () => {
   it("constructs every use case, including the two nothing calls yet", () => {
     const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
@@ -82,6 +97,26 @@ describe("bootstrapBooking", () => {
     const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
 
     expect(useCases.internal.sweepDue).toBeInstanceOf(SweepDueBookingsInternalCommand);
+  });
+
+  // The booking-completion plan's Task 5. The sweep's last two arms hand their
+  // hop to `markBookingDone` and `completeBooking` rather than writing it, and
+  // its auto-close arm tells every administrator through `adminUserReader` —
+  // so a bootstrap that built a second copy of either command, or left the
+  // reader out, would still type-check and still pass every unit test in this
+  // context, because those construct the classes directly.
+  it("gives the sweep the very commands it hands its last two arms to", () => {
+    const { useCases, adapters } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+
+    expect(adapters.adminUserReader).toBeInstanceOf(DrizzleAdminUserReader);
+    // One instance each, shared with the sweep, the same way `markBookingPaid`
+    // is shared with `chargeBooking` — asserted through the object graph
+    // rather than by type, because two `MarkBookingDoneCommand`s are both
+    // instances of it and only one of them is this wiring.
+    expect(useCases.sweepBooking).toBeInstanceOf(SweepBookingCommand);
+    expect(sweepDependencies(useCases.sweepBooking)).toContain(useCases.markBookingDone);
+    expect(sweepDependencies(useCases.sweepBooking)).toContain(useCases.completeBooking);
+    expect(sweepDependencies(useCases.sweepBooking)).toContain(adapters.adminUserReader);
   });
 
   it("builds the two real readers and the two no-op adapters — the whole point of this task", () => {

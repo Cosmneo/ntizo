@@ -88,6 +88,13 @@ export interface CompleteBookingInput {
  * applied path** (BR-P6), the same discipline every other command in this
  * directory keeps: nothing announced that a rollback could take back, and
  * nothing announced for a compare-and-swap somebody else won.
+ *
+ * **`execute` answers with the booking it moved, or `null` when it moved
+ * nothing.** Its callers are free to ignore that, and the review context and
+ * the administrator's button do; `SweepBookingCommand` does not, because it
+ * reports which of its five endings a booking got and cannot honestly claim
+ * one it lost the race for. `MarkBookingDoneCommand` returns the same way and
+ * for the same reason.
  */
 export class CompleteBookingCommand {
   constructor(
@@ -97,7 +104,7 @@ export class CompleteBookingCommand {
     private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
-  async execute(input: CompleteBookingInput): Promise<void> {
+  async execute(input: CompleteBookingInput): Promise<Booking | null> {
     // Computed once, before the transition — the instant this command ran.
     const at = new Date();
 
@@ -152,7 +159,7 @@ export class CompleteBookingCommand {
     });
 
     if (!moved) {
-      return;
+      return null;
     }
 
     await raiseQuietly(
@@ -193,5 +200,7 @@ export class CompleteBookingCommand {
       },
       input.bookingId,
     );
+
+    return moved;
   }
 }

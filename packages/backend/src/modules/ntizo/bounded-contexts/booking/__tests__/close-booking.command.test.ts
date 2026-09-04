@@ -492,10 +492,23 @@ describe("MarkBookingDoneCommand", () => {
   it("does not fail the write when the raiser throws", async () => {
     const { cmd, repo } = setupMarkDone(new Error("smtp down"));
 
+    // The moved booking comes back, not `undefined`: a lost announcement is
+    // not a lost hop, and the sweep reads this answer to decide whether it
+    // may tell the administrators the platform closed a booking alone.
+    const moved = await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(moved?.status).toBe("MARKED_DONE");
+    expect(repo.saved?.status).toBe("MARKED_DONE");
+  });
+
+  // The other half of that answer, and the half the sweep actually acts on.
+  it("answers with nothing when the compare-and-swap loses", async () => {
+    const { cmd, repo } = setupMarkDone();
+    repo.saveReturns = false;
+
     await expect(
       cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID }),
-    ).resolves.toBeUndefined();
-    expect(repo.saved?.status).toBe("MARKED_DONE");
+    ).resolves.toBeNull();
   });
 
   // The sweep's arm. It asked nobody, so there is nobody to check and nobody
@@ -774,12 +787,14 @@ describe("CompleteBookingCommand", () => {
     const { complete, repo, raiser, outbox } = setupComplete();
     repo.saveReturns = false;
 
-    await complete.execute({
+    const moved = await complete.execute({
       bookingId: BOOKING_ID,
       reason: "completed_by_timer",
       changedByUserId: null,
     });
 
+    // The answer the sweep reads: nothing moved, so it reports no outcome.
+    expect(moved).toBeNull();
     expect(repo.saved).toBeNull();
     expect(repo.changes).toEqual([]);
     expect(outbox.published).toEqual([]);
@@ -789,13 +804,16 @@ describe("CompleteBookingCommand", () => {
   it("does not fail the write when the raiser throws", async () => {
     const { complete, repo } = setupComplete(new Error("smtp down"));
 
-    await expect(
-      complete.execute({
-        bookingId: BOOKING_ID,
-        reason: "completed_by_timer",
-        changedByUserId: null,
-      }),
-    ).resolves.toBeUndefined();
+    // As with `MarkBookingDoneCommand`: the moved booking comes back even
+    // though nobody could be told, because a lost announcement is not a lost
+    // hop and the sweep reads this answer.
+    const moved = await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_timer",
+      changedByUserId: null,
+    });
+
+    expect(moved?.status).toBe("COMPLETED");
     expect(repo.saved?.status).toBe("COMPLETED");
   });
 });

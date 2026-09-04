@@ -54,7 +54,11 @@ import { bookingChange } from "../booking/schemas/booking-change.schema";
 import { outboxEvent } from "../outbox/schemas/outbox-event.schema";
 import { Booking } from "../../../../bounded-contexts/booking/domain/aggregates/booking.aggregate";
 import { DrizzleBookingRepository } from "../../../../bounded-contexts/booking/infrastructure/repositories/drizzle/booking.repository";
+import { DrizzleProviderMemberReader } from "../../../../bounded-contexts/booking/infrastructure/repositories/drizzle/provider-member.reader";
+import { DrizzleAdminUserReader } from "../../../../bounded-contexts/booking/infrastructure/repositories/drizzle/admin-user.reader";
 import { BookingRowSlotHold } from "../../../../bounded-contexts/booking/infrastructure/adapters/booking-row-slot-hold.adapter";
+import { MarkBookingDoneCommand } from "../../../../bounded-contexts/booking/app/use-cases/mark-booking-done.command";
+import { CompleteBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/complete-booking.command";
 import { SweepBookingCommand } from "../../../../bounded-contexts/booking/app/use-cases/sweep-booking.command";
 import { SweepDueBookingsInternalCommand } from "../../../../bounded-contexts/booking/app/use-cases/sweep-due-bookings.internal.command";
 import { FakeRaiser } from "../../../../bounded-contexts/booking/__tests__/support/fakes";
@@ -76,6 +80,22 @@ const suffix = crypto.randomUUID();
 
 let customerId: string;
 let ownerUserId: string;
+/**
+ * One administrator who must hear about a booking the platform closed alone,
+ * and one who must not.
+ *
+ * `DrizzleAdminUserReader` filters on `role = 'admin' AND status = 'active'`,
+ * and the second half of that is the load-bearing one: a suspended
+ * administrator's inbox is not somewhere a booking's affairs should keep
+ * arriving. Only a pair can prove it — a fixture with the active one alone
+ * passes just as happily against a reader that never looked at `status`.
+ *
+ * The assertions read these two by id and say nothing about the length of the
+ * list, because the query is unscoped: every real administrator in the shared
+ * dev database is in this fan-out too.
+ */
+let activeAdminUserId: string;
+let suspendedAdminUserId: string;
 let providerId: string;
 let memberId: string;
 let categoryId: string;
@@ -94,6 +114,8 @@ const createdBookingIds: string[] = [];
 beforeAll(async () => {
   customerId = crypto.randomUUID();
   ownerUserId = crypto.randomUUID();
+  activeAdminUserId = crypto.randomUUID();
+  suspendedAdminUserId = crypto.randomUUID();
   await db.insert(user).values([
     {
       id: customerId,
@@ -106,6 +128,18 @@ beforeAll(async () => {
       email: `booking-sweep-owner-${suffix}@ntizo.test`,
       role: "customer",
       status: "active",
+    },
+    {
+      id: activeAdminUserId,
+      email: `booking-sweep-admin-${suffix}@ntizo.test`,
+      role: "admin",
+      status: "active",
+    },
+    {
+      id: suspendedAdminUserId,
+      email: `booking-sweep-ex-admin-${suffix}@ntizo.test`,
+      role: "admin",
+      status: "suspended",
     },
   ]);
 
@@ -178,6 +212,10 @@ afterAll(async () => {
     () => db.delete(provider).where(eq(provider.id, providerId)),
     () => db.delete(user).where(eq(user.id, customerId)),
     () => db.delete(user).where(eq(user.id, ownerUserId)),
+    // Both administrators go too. A leaked `role = 'admin'` row in the shared
+    // dev database is not inert: every later run's fan-out would address it.
+    () => db.delete(user).where(eq(user.id, activeAdminUserId)),
+    () => db.delete(user).where(eq(user.id, suspendedAdminUserId)),
     () => sql.end({ timeout: 5 }),
   ]);
 }, DEV_DB_COLD_START_TIMEOUT_MS);
@@ -281,12 +319,29 @@ function buildSweep(
   const slotHold = new BookingRowSlotHold();
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
+  // The two commands the sweep's last two arms hand over to, and the real
+  // reader behind its administrator fan-out — the same instances
+  // `bootstrapBooking()` gives it. `DrizzleAdminUserReader` rather than a fake
+  // because this file is where the real query gets to run: the fixtures below
+  // create one active administrator and one suspended one, and only the first
+  // is supposed to hear anything.
+  const markBookingDone = new MarkBookingDoneCommand(
+    bookingRepo,
+    new DrizzleProviderMemberReader(),
+    unitOfWork,
+    outboxPort,
+    raiser,
+  );
+  const completeBooking = new CompleteBookingCommand(bookingRepo, unitOfWork, outboxPort, raiser);
   const sweepBooking = new SweepBookingCommand(
     bookingRepo,
     slotHold,
     unitOfWork,
     outboxPort,
     raiser,
+    markBookingDone,
+    completeBooking,
+    new DrizzleAdminUserReader(),
   );
   return new SweepDueBookingsInternalCommand(bookingRepo, sweepBooking, now);
 }
@@ -603,22 +658,21 @@ describe("SweepDueBookingsInternalCommand", () => {
   });
 
   /**
-   * A booking already paid, whose appointment has since ended, is selected
-   * by the sweep now — five statuses pass the filter, and `CONFIRMED` is one
-   * of them, since bookings gained an ending — but comes out of it with its
-   * row untouched: `SweepBookingCommand`'s switch has no arm for `CONFIRMED`
-   * yet, so it falls to `default` and returns without writing anything.
-   * Selected and counted is not the same as moved.
+   * A booking already paid, whose appointment has since ended, is selected by
+   * the sweep — five statuses pass the filter, and `CONFIRMED` is one of them
+   * since bookings gained an ending — and is **asked about, not closed**. The
+   * status stays exactly where it was; what moves is `reminded_at` and the
+   * clock.
    *
    * What makes it due is its own appointment being over, not a leftover
-   * payment clock: `markPaid` hands `expiresAt` on to `endsAt` on the way
-   * out of `PENDING_PAYMENT` (see `booking-repository.test.ts`) rather than
+   * payment clock: `markPaid` hands `expiresAt` on to `endsAt` on the way out
+   * of `PENDING_PAYMENT` (see `booking-repository.test.ts`) rather than
    * leaving the payment deadline standing or clearing the column. It has to.
    * Nothing past `PENDING_PAYMENT` carried a clock at all until `CONFIRMED`
    * gained one, so a payment deadline left behind there was inert; now it
    * would be live, and every freshly paid booking would arrive here due.
    */
-  test("a confirmed booking whose appointment has ended is counted by the sweep but left otherwise untouched", async () => {
+  test("asks the provider to close a confirmed booking whose appointment has ended", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-02T12:00:00.000Z");
 
@@ -645,35 +699,225 @@ describe("SweepDueBookingsInternalCommand", () => {
       const applied = await repo.save(paid, "PENDING_PAYMENT");
       expect(applied).toBe(true);
 
-      const result = await buildSweep(repo, () => now).execute({ limit: 10 });
+      const raiser = new FakeRaiser();
+      const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
 
-      // Not an exact match, unlike this file's other counts: `swept` is
-      // read off an unscoped query (see `withBookings` above), and any
-      // other CONFIRMED or MARKED_DONE row anywhere in the shared dev
-      // database with a past `expires_at` now counts too. Before this task
-      // a foreign row could only disturb this count while sitting in a
-      // transient status; CONFIRMED and MARKED_DONE are states a row can
-      // sit in indefinitely, so a foreign one showing up here is expected,
-      // not a bug — pinning an exact number would make this test flaky by
-      // design. `failed` has no such excuse: this booking is the only thing
-      // this sweep run could fail on, and it must not.
-      //
-      // The sweep selects these now and does nothing with them; the arms
-      // that give them an ending are the next task's (Task 5).
+      // Not an exact match, unlike this file's other counts: `swept` is read
+      // off an unscoped query (see `withBookings` above), and any other
+      // CONFIRMED or MARKED_DONE row anywhere in the shared dev database with
+      // a past `expires_at` now counts too. Before the deadline statuses were
+      // widened, a foreign row could only disturb this count while sitting in
+      // a transient status; CONFIRMED and MARKED_DONE are states a row can sit
+      // in indefinitely, so a foreign one showing up here is expected, not a
+      // bug — pinning an exact number would make this test flaky by design.
+      // `failed` has no such excuse: this booking is the only thing this sweep
+      // run could fail on, and it must not.
       expect(result.failed).toBe(0);
       expect(result.swept).toBeGreaterThanOrEqual(1);
 
-      // The test's real content: the row, the payment fields, and the
-      // announcement stream are exactly what they were before the sweep
-      // ran — `SweepBookingCommand`'s switch has no arm for CONFIRMED yet,
-      // so it falls to `default` and returns without saving, appending,
-      // releasing, or publishing anything. The counts above only prove the
-      // row was reached at all; these four prove nothing happened to it.
       const reread = await repo.findById(inserted.id as string);
+      // Asked, not closed — the point of the whole arm. The payment fields
+      // are untouched too: this hop has nothing to do with money.
       expect(reread?.status).toBe("CONFIRMED");
+      expect(reread?.markedDoneAt).toBeNull();
       expect(reread?.paidAt?.toISOString()).toBe(paid.paidAt?.toISOString());
       expect(reread?.paymentRef).toBe("mpesa-sweep-test");
+
+      // Both columns really persisted, and the clock really moved off the
+      // appointment's end. The instant itself is pinned against a frozen
+      // clock in `booking-lifecycle.command.test.ts`; what only this file can
+      // say is that `reminded_at` and the pushed-out `expires_at` survived a
+      // round trip through Postgres and are seven days apart on the row.
+      expect(reread?.remindedAt).not.toBeNull();
+      expect(reread?.expiresAt).not.toEqual(inserted.endsAt);
+      expect(
+        (reread?.expiresAt as Date).getTime() - (reread?.remindedAt as Date).getTime(),
+      ).toBe(7 * 24 * 3_600_000);
+
+      // Asking is not an ending, so there is no event for it — the fact lives
+      // on the row above and in the history row below.
       expect(await announcementsFor(inserted.id as string)).toEqual([]);
+      expect(await historyFor(inserted.id as string)).toEqual([
+        { reason: "close_reminder", changedByUserId: null },
+      ]);
+
+      // The provider is the one being asked, and the only one told.
+      expect(raiser.raised).toEqual([
+        {
+          type: NotificationType.ProviderBookingCloseReminder,
+          audience: "provider",
+          providerId,
+          payload: {
+            bookingId: inserted.id,
+            serviceName: reread?.serviceName,
+            startsAt: reread?.startsAt.toISOString(),
+            closeBy: (reread?.expiresAt as Date).toISOString(),
+          },
+        },
+      ]);
+    });
+  });
+
+  /**
+   * The second firing, seven days after the first, over a row that already
+   * carries `reminded_at`.
+   *
+   * The asking is done here by writing the row the first firing would have
+   * written, rather than by sweeping twice: `SweepBookingCommand` stamps its
+   * deadlines from the real clock while this file asks its query at a
+   * fictional instant, so a two-run version of this test would be reasoning
+   * about the distance between those two rather than about the arm.
+   *
+   * **This fixture's slot is in the real past, unlike every other one in this
+   * file, and it has to be.** `MarkBookingDoneCommand` reads `new Date()` and
+   * `Booking.markDone` refuses to close a booking whose appointment has not
+   * ended yet — a fictional November slot would be refused by that guard
+   * however the query's `now` was set, because only the *selection* is
+   * fictional here and the *transition* is not. August 2026 is safely behind
+   * whenever this suite runs and only gets more so.
+   */
+  test("closes a confirmed booking it already asked about, and tells the active administrator alone", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2026-08-28T12:00:00.000Z");
+
+      const inserted = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2026-08-20T09:00:00.000Z"),
+              expiresAt: new Date("2026-08-20T08:30:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const paid = inserted.markPaid("mpesa-sweep-asked", new Date("2026-08-20T08:45:00.000Z"));
+      expect(await repo.save(paid, "PENDING_PAYMENT")).toBe(true);
+
+      // Asked the day the job finished, and the seven days it bought are up.
+      const asked = paid.reminded(
+        new Date("2026-08-20T11:00:00.000Z"),
+        new Date("2026-08-27T11:00:00.000Z"),
+      );
+      expect(await repo.save(asked, "CONFIRMED")).toBe(true);
+
+      const raiser = new FakeRaiser();
+      const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
+      expect(result.failed).toBe(0);
+      expect(result.swept).toBeGreaterThanOrEqual(1);
+
+      const reread = await repo.findById(inserted.id as string);
+      expect(reread?.status).toBe("MARKED_DONE");
+      expect(reread?.markedDoneAt).not.toBeNull();
+      // The asking is not erased by the closing: the row still says when the
+      // conversation started.
+      expect(reread?.remindedAt?.toISOString()).toBe("2026-08-20T11:00:00.000Z");
+      // And the customer's window really opened, three days wide.
+      expect(
+        (reread?.expiresAt as Date).getTime() - (reread?.markedDoneAt as Date).getTime(),
+      ).toBe(3 * 24 * 3_600_000);
+
+      // Two history rows would mean the sweep wrote one of its own on top of
+      // the command's; there is exactly one, and it names the platform.
+      expect(await historyFor(inserted.id as string)).toEqual([
+        { reason: "marked_done_by_platform", changedByUserId: null },
+      ]);
+
+      // One `booking.marked_done`, published by the command that owns the
+      // hop — not a second copy from the sweep.
+      const announced = await announcementsFor(inserted.id as string);
+      expect(announced.map((a) => a.eventType)).toEqual(["booking.marked_done"]);
+
+      // The customer hears once, the provider hears once, and the
+      // administrators hear because a provider who stopped answering is
+      // something the platform may need to act on. Read by id rather than by
+      // count: this fan-out runs the real `DrizzleAdminUserReader`, so every
+      // genuine administrator of the dev database is in it too.
+      const types = raiser.raised.map((r) => r.type);
+      expect(types.filter((t) => t === NotificationType.BookingMarkedDone)).toHaveLength(1);
+      expect(types.filter((t) => t === NotificationType.ProviderBookingAutoClosed)).toHaveLength(1);
+
+      const toldIds = raiser.raised
+        .filter((r) => r.type === NotificationType.AdminBookingAutoClosed)
+        .map((r) => (r.audience === "user" ? r.userId : null));
+      expect(toldIds).toContain(activeAdminUserId);
+      // The half of the reader's predicate that is easy to drop.
+      expect(toldIds).not.toContain(suspendedAdminUserId);
+    });
+  });
+
+  /**
+   * The ending the whole flow aims at. A booking somebody said was finished,
+   * whose customer said nothing for three days, is completed — and it is
+   * `CompleteBookingCommand` that writes it, so `booking.completed` (which
+   * the payout will hang off) really is published.
+   */
+  test("completes a marked-done booking whose window has closed", async () => {
+    await withBookings(async (track) => {
+      const now = new Date("2026-11-09T12:00:00.000Z");
+
+      const inserted = track(
+        await repo.insert(
+          pendingBooking(
+            bookingInput({
+              startsAt: new Date("2026-11-09T09:00:00.000Z"),
+              expiresAt: new Date("2026-11-09T09:00:00.000Z"),
+            }),
+          ),
+          1,
+        ),
+      );
+      const paid = inserted.markPaid("mpesa-sweep-done", new Date("2026-11-09T08:45:00.000Z"));
+      expect(await repo.save(paid, "PENDING_PAYMENT")).toBe(true);
+
+      // Marked done at 10:30, with a window that closed at 11:00 — half an
+      // hour before this sweep's `now`.
+      const done = paid.markDone(
+        new Date("2026-11-09T10:30:00.000Z"),
+        new Date("2026-11-09T11:00:00.000Z"),
+      );
+      expect(await repo.save(done, "CONFIRMED")).toBe(true);
+
+      const raiser = new FakeRaiser();
+      const result = await buildSweep(repo, () => now, raiser).execute({ limit: 10 });
+      expect(result.failed).toBe(0);
+      expect(result.swept).toBeGreaterThanOrEqual(1);
+
+      const reread = await repo.findById(inserted.id as string);
+      expect(reread?.status).toBe("COMPLETED");
+      expect(reread?.completedAt).not.toBeNull();
+      // Nothing was disputed and nothing was cancelled: this is the clean
+      // ending, and the two stamps that would say otherwise stay empty.
+      expect(reread?.disputedAt).toBeNull();
+      expect(reread?.cancelledAt).toBeNull();
+
+      // The outcome the sweep reports is `feedback_window_closed`; the row it
+      // leaves behind says `completed_by_timer`. Two vocabularies, on purpose
+      // — see `SweepBookingCommand`.
+      expect(await historyFor(inserted.id as string)).toEqual([
+        { reason: "completed_by_timer", changedByUserId: null },
+      ]);
+
+      const announced = await announcementsFor(inserted.id as string);
+      expect(announced.map((a) => a.eventType)).toEqual(["booking.completed"]);
+      // The money the payout will be computed from travels on the event, so a
+      // consumer never has to read the booking back for it.
+      expect(announced[0]?.payload).toMatchObject({
+        bookingId: inserted.id,
+        customerId,
+        providerId,
+        priceMinor: 100_000,
+        commissionMinor: 10_000,
+        currency: "MZN",
+      });
+
+      // Both sides, once each, and nothing added by the sweep — no
+      // administrator hears about a booking that ended the way it should.
+      expect(raiser.raised.map((r) => r.type)).toEqual([
+        NotificationType.BookingCompleted,
+        NotificationType.BookingCompleted,
+      ]);
+      expect(raiser.raised.map((r) => r.audience)).toEqual(["user", "provider"]);
     });
   });
 

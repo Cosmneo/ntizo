@@ -122,6 +122,17 @@ export interface MarkBookingDoneInput {
  * other command in this directory puts it there: nothing is announced that a
  * rollback could take back, and `raiseQuietly` keeps a provider who closed
  * their booking from being told it failed because an email adapter hiccupped.
+ *
+ * **`execute` answers with the booking it moved, or `null` when it moved
+ * nothing**, rather than returning nothing at all. Every caller but one is
+ * free to ignore it — the GraphQL mutations behind the provider's and the
+ * administrator's buttons do. `SweepBookingCommand` cannot: it hands this
+ * command its own seven-day arm and then owes the administrators a
+ * notification saying the platform closed a booking alone, and that
+ * notification must not go out when the compare-and-swap below lost to the
+ * provider pressing "Concluído" a moment earlier. Nothing observable
+ * afterwards can tell those two apart — the row says `MARKED_DONE` either way
+ * — so the answer has to come from here.
  */
 export class MarkBookingDoneCommand {
   constructor(
@@ -132,7 +143,7 @@ export class MarkBookingDoneCommand {
     private readonly raiseNotification: RaiseNotificationInternalPort,
   ) {}
 
-  async execute(input: MarkBookingDoneInput): Promise<void> {
+  async execute(input: MarkBookingDoneInput): Promise<Booking | null> {
     // Computed once, before the transition — the instant this command ran.
     const at = new Date();
     // A null requester is nobody, and nobody is the platform. Defaulting a
@@ -211,7 +222,7 @@ export class MarkBookingDoneCommand {
     });
 
     if (!moved) {
-      return;
+      return null;
     }
 
     // `feedbackBy` is the point of this one. A customer told the work is
@@ -253,5 +264,7 @@ export class MarkBookingDoneCommand {
         input.bookingId,
       );
     }
+
+    return moved;
   }
 }

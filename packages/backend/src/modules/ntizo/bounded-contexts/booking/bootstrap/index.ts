@@ -3,6 +3,7 @@ import { DrizzleServicePricingReader } from "../infrastructure/repositories/driz
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
 import { DrizzlePlatformSettingsReader } from "../infrastructure/repositories/drizzle/platform-settings.reader";
 import { DrizzleProviderMemberReader } from "../infrastructure/repositories/drizzle/provider-member.reader";
+import { DrizzleAdminUserReader } from "../infrastructure/repositories/drizzle/admin-user.reader";
 import { DrizzleSlotValidityReader } from "../infrastructure/repositories/drizzle/slot-validity.reader";
 import { DrizzleCustomerPhoneReader } from "../infrastructure/repositories/drizzle/customer-phone.reader";
 import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-hold.adapter";
@@ -81,6 +82,7 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
   const providerReader = new DrizzleProviderSnapshotReader();
   const platformSettingsReader = new DrizzlePlatformSettingsReader();
   const providerMemberReader = new DrizzleProviderMemberReader();
+  const adminUserReader = new DrizzleAdminUserReader();
   const slotValidityReader = new DrizzleSlotValidityReader();
   const customerPhoneReader = new DrizzleCustomerPhoneReader();
   const slotHold = new BookingRowSlotHold();
@@ -89,12 +91,35 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
   const unitOfWork = new DrizzleUnitOfWork();
   const outboxPort = new OutboxAdapter(new DrizzleOutboxEventRepository());
 
+  // Hoisted out of the `useCases` literal below for the same reason
+  // `markBookingPaid` is: `sweepBooking` drives both of them. Its
+  // seven-day arm is `markBookingDone`'s third caller and its window arm is
+  // `completeBooking`'s first, and two instances would be two copies of the
+  // same compare-and-swap and the same announcements wired to one repository.
+  const markBookingDone = new MarkBookingDoneCommand(
+    bookingRepository,
+    providerMemberReader,
+    unitOfWork,
+    outboxPort,
+    deps.raiseNotification,
+  );
+  const completeBooking = new CompleteBookingCommand(
+    bookingRepository,
+    unitOfWork,
+    outboxPort,
+    deps.raiseNotification,
+  );
   const sweepBooking = new SweepBookingCommand(
     bookingRepository,
     slotHold,
     unitOfWork,
     outboxPort,
     deps.raiseNotification,
+    markBookingDone,
+    completeBooking,
+    // Only the seven-day arm reads this, and only to tell the
+    // administrators that a booking closed with no provider answering.
+    adminUserReader,
   );
   // Hoisted out of the `useCases` literal below, unlike every other command
   // there, because it now has a second caller inside this function:
@@ -122,6 +147,7 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
       providerReader,
       platformSettingsReader,
       providerMemberReader,
+      adminUserReader,
       slotValidityReader,
       customerPhoneReader,
       slotHold,
@@ -176,7 +202,9 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
       // with three callers rather than one — the provider's own button, an
       // administrator, and the sweep's seven-day arm, which is why it takes
       // `providerMemberReader` even though only the first of the three is
-      // checked against it (see that command's own doc comment).
+      // checked against it (see that command's own doc comment). It and
+      // `completeBooking` are built above rather than here, because
+      // `sweepBooking` holds the very same two instances.
       //
       // `keepBookingOpen` stops one argument short of the rest, and that is
       // the design rather than an omission: it announces nothing, so it takes
@@ -186,25 +214,14 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
       // its three callers (the sweep, the review context, an administrator)
       // are each authorised at their own edge and none of them is a member of
       // the provider they are closing for.
-      markBookingDone: new MarkBookingDoneCommand(
-        bookingRepository,
-        providerMemberReader,
-        unitOfWork,
-        outboxPort,
-        deps.raiseNotification,
-      ),
+      markBookingDone,
       keepBookingOpen: new KeepBookingOpenCommand(
         bookingRepository,
         providerMemberReader,
         unitOfWork,
         outboxPort,
       ),
-      completeBooking: new CompleteBookingCommand(
-        bookingRepository,
-        unitOfWork,
-        outboxPort,
-        deps.raiseNotification,
-      ),
+      completeBooking,
       sweepBooking,
       chargeBooking,
       markBookingPaid,

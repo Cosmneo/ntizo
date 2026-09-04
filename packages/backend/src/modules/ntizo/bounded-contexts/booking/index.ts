@@ -39,6 +39,7 @@ export type {
   CompleteBookingInput,
   CompleteReason,
 } from "./app/use-cases/complete-booking.command";
+export type { AdminUserReaderPort } from "./app/ports/outbound/admin-user-reader.port";
 export type {
   BookingChangeRecord,
   BookingRepositoryPort,
