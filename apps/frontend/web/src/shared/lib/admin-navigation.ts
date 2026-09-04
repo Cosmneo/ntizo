@@ -1,6 +1,7 @@
 import {
   Activity,
   Briefcase,
+  CalendarCheck,
   LayoutDashboard,
   LifeBuoy,
   Mail,
@@ -26,8 +27,14 @@ export const adminNavGroups: readonly NavGroup[] = [
       // The help center's "Suporte" queue lands beside it (its own spec).
       { titleKey: "nav.contact", url: "/admin/contact", icon: Mail },
       { titleKey: "nav.support", url: "/admin/support", icon: LifeBuoy },
-      // The catalog last: it is set up once and revisited, where the two above
-      // are looked at daily.
+      // After the two message queues, and for the same reason they sit where
+      // they do: this is work arriving rather than content the platform
+      // curates. A booking nobody closed, a customer's window running out, a
+      // complaint waiting on a decision — all three are somebody's money or
+      // somebody's time held up until an administrator looks.
+      { titleKey: "nav.bookings", url: "/admin/bookings", icon: CalendarCheck },
+      // The catalog last: it is set up once and revisited, where the three
+      // above are looked at daily.
       { titleKey: "nav.categories", url: "/admin/categories", icon: Tags },
       // Beside the catalog rather than beside the queues: like categories,
       // this is content the platform curates and revisits, not a stream of

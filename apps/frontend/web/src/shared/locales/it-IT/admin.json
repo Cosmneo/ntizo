@@ -13,7 +13,8 @@
     "activity": "Attività",
     "reviews": "Recensioni",
     "contact": "Contatti",
-    "support": "Supporto"
+    "support": "Supporto",
+    "bookings": "Prenotazioni"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -326,8 +327,10 @@
     "customer": "Cliente",
     "service": "Servizio",
     "when": "Quando",
-    "status": "Stato"
+    "status": "Stato",
+    "actions": "Azioni"
   },
+  "bookingsWaiting": "in attesa da {{duration}}",
   "bookingsAction": {
     "markDone": "Segna come completata",
     "completeNow": "Completa ora"
@@ -337,6 +340,7 @@
     "upheld": "Dai ragione al cliente",
     "rejected": "Mantieni il completamento"
   },
+  "bookingsOpenDispute": "Apri il reclamo",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Niente da chiudere",
@@ -352,5 +356,7 @@
     }
   },
   "bookingsError": "Non è stato possibile caricare le prenotazioni.",
-  "bookingsRetry": "Riprova"
+  "bookingsRetry": "Riprova",
+  "bookingsPrevious": "Precedente",
+  "bookingsNext": "Successiva"
 }

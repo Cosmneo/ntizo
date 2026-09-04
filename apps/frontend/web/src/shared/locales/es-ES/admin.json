@@ -13,7 +13,8 @@
     "activity": "Actividad",
     "reviews": "Reseñas",
     "contact": "Contacto",
-    "support": "Soporte"
+    "support": "Soporte",
+    "bookings": "Reservas"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",
@@ -326,8 +327,10 @@
     "customer": "Cliente",
     "service": "Servicio",
     "when": "Cuándo",
-    "status": "Estado"
+    "status": "Estado",
+    "actions": "Acciones"
   },
+  "bookingsWaiting": "esperando desde hace {{duration}}",
   "bookingsAction": {
     "markDone": "Marcar como completada",
     "completeNow": "Completar ahora"
@@ -337,6 +340,7 @@
     "upheld": "Dar la razón al cliente",
     "rejected": "Mantener la finalización"
   },
+  "bookingsOpenDispute": "Abrir la reclamación",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Nada por cerrar",
@@ -352,5 +356,7 @@
     }
   },
   "bookingsError": "No se pudieron cargar las reservas.",
-  "bookingsRetry": "Intentar de nuevo"
+  "bookingsRetry": "Intentar de nuevo",
+  "bookingsPrevious": "Anterior",
+  "bookingsNext": "Siguiente"
 }

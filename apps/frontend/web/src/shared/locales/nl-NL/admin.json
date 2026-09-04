@@ -13,7 +13,8 @@
     "activity": "Activiteit",
     "reviews": "Beoordelingen",
     "contact": "Contact",
-    "support": "Ondersteuning"
+    "support": "Ondersteuning",
+    "bookings": "Boekingen"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -326,8 +327,10 @@
     "customer": "Klant",
     "service": "Dienst",
     "when": "Wanneer",
-    "status": "Status"
+    "status": "Status",
+    "actions": "Acties"
   },
+  "bookingsWaiting": "wacht al {{duration}}",
   "bookingsAction": {
     "markDone": "Markeren als afgerond",
     "completeNow": "Nu afronden"
@@ -337,6 +340,7 @@
     "upheld": "De klant gelijk geven",
     "rejected": "Afronding handhaven"
   },
+  "bookingsOpenDispute": "Klacht openen",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Niets te sluiten",
@@ -352,5 +356,7 @@
     }
   },
   "bookingsError": "De boekingen konden niet worden geladen.",
-  "bookingsRetry": "Opnieuw proberen"
+  "bookingsRetry": "Opnieuw proberen",
+  "bookingsPrevious": "Vorige",
+  "bookingsNext": "Volgende"
 }

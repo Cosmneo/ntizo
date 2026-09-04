@@ -13,7 +13,8 @@
     "activity": "Activity",
     "reviews": "Reviews",
     "contact": "Contact",
-    "support": "Support"
+    "support": "Support",
+    "bookings": "Bookings"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",
@@ -326,8 +327,10 @@
     "customer": "Customer",
     "service": "Service",
     "when": "When",
-    "status": "Status"
+    "status": "Status",
+    "actions": "Actions"
   },
+  "bookingsWaiting": "waiting {{duration}}",
   "bookingsAction": {
     "markDone": "Mark as done",
     "completeNow": "Complete now"
@@ -337,6 +340,7 @@
     "upheld": "Side with the customer",
     "rejected": "Keep the completion"
   },
+  "bookingsOpenDispute": "Open the dispute",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Nothing to close",
@@ -352,5 +356,7 @@
     }
   },
   "bookingsError": "Could not load the bookings.",
-  "bookingsRetry": "Try again"
+  "bookingsRetry": "Try again",
+  "bookingsPrevious": "Previous",
+  "bookingsNext": "Next"
 }

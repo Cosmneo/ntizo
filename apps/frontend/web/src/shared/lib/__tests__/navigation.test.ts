@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { adminNavGroups } from "../admin-navigation";
 import { providerNavGroups } from "../navigation";
 
 /**
@@ -30,5 +31,28 @@ describe("providerNavGroups: bookings", () => {
   it("is the first entry of the work group", () => {
     const work = providerNavGroups.find((g) => g.labelKey === "nav.work")!;
     expect(work.items[0]).toMatchObject({ titleKey: "nav.bookings", url: "/provider/$slug/bookings" });
+  });
+});
+
+/**
+ * The same gate the provider zone's entries keep, for the admin zone's own
+ * queue: `routes/admin/bookings.tsx` and `AdminBookingsPage` can both exist
+ * and still be reachable by nobody, because the admin sidebar renders
+ * `adminNavGroups` and nothing else.
+ */
+describe("adminNavGroups: the bookings queue", () => {
+  const items = adminNavGroups.flatMap((group) => group.items);
+
+  it("links to the admin bookings route, exactly once", () => {
+    const matches = items.filter((item) => item.url === "/admin/bookings");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.titleKey).toBe("nav.bookings");
+  });
+
+  it("sits after Support, where the queues worked daily are", () => {
+    const support = items.findIndex((item) => item.url === "/admin/support");
+    const bookings = items.findIndex((item) => item.url === "/admin/bookings");
+    expect(support).toBeGreaterThanOrEqual(0);
+    expect(bookings).toBe(support + 1);
   });
 });
