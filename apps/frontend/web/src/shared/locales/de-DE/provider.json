@@ -108,7 +108,7 @@
     "respondBy": "Antworten bis {{time}}",
     "status": {
       "AWAITING_PROVIDER": "Antwort ausstehend", "PENDING_PAYMENT": "Zahlung ausstehend", "CONFIRMED": "Bestätigt",
-      "MARKED_DONE": "Abgeschlossen", "COMPLETED": "Abgeschlossen", "DISPUTED": "Strittig",
+      "MARKED_DONE": "Erledigt", "COMPLETED": "Abgeschlossen", "DISPUTED": "Strittig",
       "DECLINED": "Abgelehnt", "CANCELLED": "Storniert", "EXPIRED": "Abgelaufen"
     },
     "empty": {

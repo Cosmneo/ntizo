@@ -108,7 +108,7 @@
     "respondBy": "Reageren voor {{time}}",
     "status": {
       "AWAITING_PROVIDER": "Wacht op antwoord", "PENDING_PAYMENT": "Wacht op betaling", "CONFIRMED": "Bevestigd",
-      "MARKED_DONE": "Afgerond", "COMPLETED": "Afgerond", "DISPUTED": "In geschil",
+      "MARKED_DONE": "Als afgerond gemarkeerd", "COMPLETED": "Afgerond", "DISPUTED": "In geschil",
       "DECLINED": "Geweigerd", "CANCELLED": "Geannuleerd", "EXPIRED": "Verlopen"
     },
     "empty": {

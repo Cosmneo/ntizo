@@ -108,7 +108,7 @@
     "respondBy": "Respond by {{time}}",
     "status": {
       "AWAITING_PROVIDER": "Awaiting response", "PENDING_PAYMENT": "Awaiting payment", "CONFIRMED": "Confirmed",
-      "MARKED_DONE": "Completed", "COMPLETED": "Completed", "DISPUTED": "Disputed",
+      "MARKED_DONE": "Marked done", "COMPLETED": "Completed", "DISPUTED": "Disputed",
       "DECLINED": "Declined", "CANCELLED": "Cancelled", "EXPIRED": "Expired"
     },
     "empty": {
