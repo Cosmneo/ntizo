@@ -7,6 +7,9 @@ import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command"
 import { SweepBookingCommand } from "../app/use-cases/sweep-booking.command";
 import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
+import { MarkBookingDoneCommand } from "../app/use-cases/mark-booking-done.command";
+import { KeepBookingOpenCommand } from "../app/use-cases/keep-booking-open.command";
+import { CompleteBookingCommand } from "../app/use-cases/complete-booking.command";
 import { DrizzleBookingRepository } from "../infrastructure/repositories/drizzle/booking.repository";
 import { DrizzleServicePricingReader } from "../infrastructure/repositories/drizzle/service-pricing.reader";
 import { DrizzleProviderSnapshotReader } from "../infrastructure/repositories/drizzle/provider-snapshot.reader";
@@ -47,6 +50,21 @@ describe("bootstrapBooking", () => {
     expect(useCases.declineBooking).toBeInstanceOf(DeclineBookingCommand);
     expect(useCases.sweepBooking).toBeInstanceOf(SweepBookingCommand);
     expect(useCases.markBookingPaid).toBeInstanceOf(MarkBookingPaidCommand);
+  });
+
+  // The booking-completion plan's Task 4. Nothing calls these three yet
+  // either: the sweep reaches for `markBookingDone` and `completeBooking`
+  // next, the review context reaches for `completeBooking` after that, and
+  // the provider's own two buttons reach this far through GraphQL last. A
+  // bootstrap that dropped any of them would leave a booking with no way to
+  // end, and nothing else here would notice — their own tests construct the
+  // classes directly, the same blind spot this file exists for.
+  it("constructs the three commands that close a booking", () => {
+    const { useCases } = bootstrapBooking({ raiseNotification: new FakeRaiser() });
+
+    expect(useCases.markBookingDone).toBeInstanceOf(MarkBookingDoneCommand);
+    expect(useCases.keepBookingOpen).toBeInstanceOf(KeepBookingOpenCommand);
+    expect(useCases.completeBooking).toBeInstanceOf(CompleteBookingCommand);
   });
 
   // The payment-and-confirmation-order plan's Task 3: without this,

@@ -23,6 +23,22 @@ export {
 export type { ChargeAcceptedBookingsInternalInput } from "./app/use-cases/charge-accepted-bookings.internal.command";
 export { MarkBookingPaidCommand } from "./app/use-cases/mark-booking-paid.command";
 export type { MarkBookingPaidInput } from "./app/use-cases/mark-booking-paid.command";
+export {
+  ASK_AGAIN_AFTER_DAYS,
+  FEEDBACK_WINDOW_DAYS,
+  MarkBookingDoneCommand,
+} from "./app/use-cases/mark-booking-done.command";
+export type {
+  MarkBookingDoneInput,
+  MarkDoneReason,
+} from "./app/use-cases/mark-booking-done.command";
+export { KeepBookingOpenCommand } from "./app/use-cases/keep-booking-open.command";
+export type { KeepBookingOpenInput } from "./app/use-cases/keep-booking-open.command";
+export { CompleteBookingCommand } from "./app/use-cases/complete-booking.command";
+export type {
+  CompleteBookingInput,
+  CompleteReason,
+} from "./app/use-cases/complete-booking.command";
 export type {
   BookingChangeRecord,
   BookingRepositoryPort,

@@ -1,0 +1,644 @@
+import { afterEach, beforeEach, describe, expect, it, setSystemTime } from "bun:test";
+import type { BaseDomainEvent } from "@cosmneo/onion-lasagna";
+import { Booking } from "../domain/aggregates/booking.aggregate";
+import { BookingCompleted, BookingKeptOpen, BookingMarkedDone } from "../domain/events";
+import {
+  ASK_AGAIN_AFTER_DAYS,
+  FEEDBACK_WINDOW_DAYS,
+  MarkBookingDoneCommand,
+} from "../app/use-cases/mark-booking-done.command";
+import { KeepBookingOpenCommand } from "../app/use-cases/keep-booking-open.command";
+import { CompleteBookingCommand } from "../app/use-cases/complete-booking.command";
+import type {
+  BookingChangeRecord,
+  BookingRepositoryPort,
+} from "../app/ports/outbound/booking.repository.port";
+import type { ProviderMemberReaderPort } from "../app/ports/outbound/provider-member-reader.port";
+import type { OutboxPort } from "../../../shared/app/ports/outbox.port";
+import { BookingStatus } from "../../../shared/infrastructure/database/booking/enums";
+import { FakeRaiser, TrackingUnitOfWork, withId } from "./support/fakes";
+
+/**
+ * A day, in milliseconds — the same number the two commands compute their
+ * windows from, written out here rather than imported so an assertion can
+ * disagree with the implementation. Importing the implementation's own
+ * arithmetic would leave these tests unable to catch a wrong one.
+ */
+const DAY_MS = 86_400_000;
+
+/**
+ * **The clock is frozen for this whole file, and that is load-bearing.**
+ *
+ * Every command here stamps a deadline computed from `new Date()` — three
+ * days for the customer's window, seven for the platform's next question —
+ * and the promise each makes is an exact number of days, not "about" that
+ * many. Bracketing the call with `Date.now()` either side, the way
+ * `submit-accept-decline-booking.command.test.ts` does, proves the deadline
+ * lands *within* a millisecond or two of the right one; it cannot prove the
+ * constant is 3 rather than 2.9999. Freezing the clock lets these assert the
+ * window exactly, which is what the design actually promises the customer.
+ *
+ * It is also what makes "the appointment has not ended" a fixed fact rather
+ * than one relative to whenever the suite happens to run: `ENDED_YESTERDAY`
+ * and `ENDS_TOMORROW` below are both defined against this instant, so the
+ * `markDone` guard is tested against a slot that really is on the other side
+ * of it.
+ *
+ * Restored in `afterEach` — `setSystemTime` is process-wide, and a file that
+ * left the clock frozen would hand the next file a world where nothing moves.
+ */
+const NOW = new Date("2026-05-04T09:00:00.000Z");
+
+/** A slot that started 25 hours ago: over, and over by more than its own duration. */
+const ENDED_YESTERDAY = new Date(NOW.getTime() - 25 * 3_600_000);
+
+/** A slot that has not happened yet — what `Booking.markDone` refuses. */
+const ENDS_TOMORROW = new Date(NOW.getTime() + 24 * 3_600_000);
+
+const BOOKING_ID = "bk-1";
+const FUTURE_ID = "bk-2";
+const CUSTOMER_ID = "cust-1";
+const PROVIDER_ID = "prov-1";
+
+/** A member of `prov-1` — the booking's own provider, so authorised to close it. */
+const OWNER_ID = "user-right-1";
+
+/**
+ * A `CONFIRMED` booking, built the way a real one gets there: created,
+ * submitted, accepted, paid. Not `Booking.restore` with the status typed in,
+ * because a fixture that skips the transitions is a fixture no command could
+ * have produced — `confirmedAt`, `paidAt` and `paymentRef` would all be
+ * whatever the test felt like, and `markDone`'s own guard reads `endsAt`,
+ * which `create` derives.
+ */
+function confirmedBooking(startsAt: Date): Booking {
+  const draft = Booking.create({
+    customerId: CUSTOMER_ID,
+    providerId: PROVIDER_ID,
+    serviceId: "svc-1",
+    serviceOptionId: "opt-1",
+    providerMemberId: "member-1",
+    startsAt,
+    durationMinutes: 90,
+    priceMinor: 150000,
+    commissionBps: 1000,
+    currency: "MZN",
+    serviceName: "Avaria eléctrica urgente",
+    providerName: "Hélder Cossa",
+    providerSlug: "helder-cossa-electricidade",
+    optionName: "Diagnóstico e reparação",
+    description: null,
+    expiresAt: new Date(startsAt.getTime() - 3 * 3_600_000),
+  });
+  const submitted = draft.submit(
+    new Date(startsAt.getTime() - 3 * 3_600_000),
+    new Date(startsAt.getTime() - 2 * 3_600_000),
+    { label: "Casa", line: "Av. Julius Nyerere 812", city: "Maputo" },
+    null,
+  );
+  const accepted = submitted.accept(
+    new Date(startsAt.getTime() - 2 * 3_600_000),
+    new Date(startsAt.getTime() - 3_600_000),
+  );
+  return accepted.markPaid("mpesa-abc", new Date(startsAt.getTime() - 90 * 60_000));
+}
+
+/**
+ * A stored booking with an id, at whichever of the two statuses these three
+ * commands read from.
+ *
+ * The `markDone` that produces the `MARKED_DONE` fixture is handed a
+ * deliberately arbitrary `feedbackBy` — two days, not three. Reusing
+ * `FEEDBACK_WINDOW_DAYS` here would let a wrong constant produce a fixture
+ * that agrees with it, and `CompleteBookingCommand`'s tests read nothing off
+ * that field anyway.
+ *
+ * Throws rather than defaulting on any other status: a test asking for a
+ * fixture this file has no way to build should hear so, not be handed a
+ * `CONFIRMED` booking and a green assertion about the wrong thing.
+ */
+function bookingAt(status: BookingStatus, id: string, startsAt: Date): Booking {
+  const confirmed = confirmedBooking(startsAt);
+  if (status === BookingStatus.Confirmed) {
+    return withId(confirmed, id);
+  }
+  if (status === BookingStatus.MarkedDone) {
+    return withId(confirmed.markDone(NOW, new Date(NOW.getTime() + 2 * DAY_MS)), id);
+  }
+  throw new Error(`close-booking.command.test.ts has no fixture for ${status}`);
+}
+
+/**
+ * A transactional fake in the shape these three commands actually use: one
+ * booking, read by id, written back under a compare-and-swap, plus the change
+ * rows the hops append.
+ *
+ * `status` is what `findById` hands out *and* what the compare-and-swap
+ * compares against — one field rather than the two
+ * `submit-accept-decline-booking.command.test.ts` needs, because none of
+ * these commands re-reads the row after losing. Setting it is how a test says
+ * "the booking is not where this command expects it".
+ *
+ * `saveReturns` is the other half, and it is not the same thing. `status`
+ * makes the *aggregate* refuse; `saveReturns = false` lets the transition
+ * happen and makes only the *write* lose — the race where another writer
+ * committed between this command's read and its own `UPDATE`. That is the
+ * one this file needs to prove nothing gets announced on, and no status
+ * change can simulate it.
+ */
+class FakeRepo implements BookingRepositoryPort {
+  public saved: Booking | null = null;
+  public changes: BookingChangeRecord[] = [];
+  public saveReturns = true;
+  public status: BookingStatus;
+
+  constructor(
+    status: BookingStatus,
+    private readonly unitOfWork?: TrackingUnitOfWork,
+  ) {
+    this.status = status;
+  }
+
+  async findById(id: string): Promise<Booking | null> {
+    if (id === FUTURE_ID) {
+      return bookingAt(BookingStatus.Confirmed, FUTURE_ID, ENDS_TOMORROW);
+    }
+    return id === BOOKING_ID ? bookingAt(this.status, BOOKING_ID, ENDED_YESTERDAY) : null;
+  }
+
+  async save(booking: Booking, expectedStatus: Booking["status"]): Promise<boolean> {
+    this.unitOfWork?.order.push("save");
+    if (!this.saveReturns || expectedStatus !== this.status) {
+      return false;
+    }
+    const commit = () => {
+      this.saved = booking;
+      this.status = booking.status;
+    };
+    if (this.unitOfWork) {
+      this.unitOfWork.stage(commit);
+    } else {
+      commit();
+    }
+    return true;
+  }
+
+  async appendChange(change: BookingChangeRecord): Promise<void> {
+    this.unitOfWork?.order.push("appendChange");
+    this.changes.push(change);
+  }
+
+  // None of these three commands call these — `BookingRepositoryPort` still
+  // requires them, the same way every other command test's fake answers the
+  // whole interface without exercising it.
+  async insert(booking: Booking): Promise<Booking> {
+    return booking;
+  }
+  async findOpenDraftForCustomer(): Promise<Booking | null> {
+    return null;
+  }
+  async findDueForSweep(): Promise<Booking[]> {
+    return [];
+  }
+  async findAwaitingCharge(): Promise<Booking[]> {
+    return [];
+  }
+  async recordChargeAttempt(): Promise<number | null> {
+    return 1;
+  }
+  async abandonCharge(): Promise<void> {}
+}
+
+/**
+ * The same two-provider fake `submit-accept-decline-booking.command.test.ts`
+ * uses, and for the same reason: `user-wrong` is a real member of a real
+ * provider that is not this booking's, so a fixture holding only the right
+ * person cannot pass an authorisation check that was dropped.
+ */
+class FakeProviderMemberReader implements ProviderMemberReaderPort {
+  public queries: { providerId: string; userId: string }[] = [];
+  private readonly members = new Map<string, Set<string>>([
+    ["prov-1", new Set(["user-right-1", "user-right-2"])],
+    ["prov-2", new Set(["user-wrong"])],
+  ]);
+
+  async isMember(providerId: string, userId: string): Promise<boolean> {
+    this.queries.push({ providerId, userId });
+    return this.members.get(providerId)?.has(userId) ?? false;
+  }
+}
+
+/**
+ * Records what each command hands the outbox, and whether that call landed
+ * inside the transaction after the save had already run — the same shape
+ * `submit-accept-decline-booking.command.test.ts`'s own capturing outbox uses.
+ */
+class CapturingOutbox implements OutboxPort {
+  public published: {
+    events: BaseDomainEvent[];
+    aggregateType: string;
+    insideTransaction: boolean;
+    afterSave: boolean;
+  }[] = [];
+
+  constructor(private readonly unitOfWork: TrackingUnitOfWork) {}
+
+  async publish(events: BaseDomainEvent[], aggregateType: string): Promise<void> {
+    const record = {
+      events,
+      aggregateType,
+      insideTransaction: this.unitOfWork.insideTransaction,
+      afterSave: this.unitOfWork.order.includes("save"),
+    };
+    this.unitOfWork.stage(() => this.published.push(record));
+  }
+}
+
+function setup(status: BookingStatus, raiser: FakeRaiser = new FakeRaiser()) {
+  const unitOfWork = new TrackingUnitOfWork();
+  const outbox = new CapturingOutbox(unitOfWork);
+  const repo = new FakeRepo(status, unitOfWork);
+  const members = new FakeProviderMemberReader();
+  return { unitOfWork, outbox, repo, members, raiser };
+}
+
+function setupMarkDone(raiser?: FakeRaiser) {
+  const parts = setup(BookingStatus.Confirmed, raiser);
+  return {
+    ...parts,
+    cmd: new MarkBookingDoneCommand(
+      parts.repo,
+      parts.members,
+      parts.unitOfWork,
+      parts.outbox,
+      parts.raiser,
+    ),
+  };
+}
+
+function setupKeepOpen(raiser?: FakeRaiser) {
+  const parts = setup(BookingStatus.Confirmed, raiser);
+  return {
+    ...parts,
+    // Four arguments, not five: this command announces nothing, so it takes
+    // no notification port at all — see its own doc comment. `parts.raiser`
+    // is still here so a test can prove it was never handed one to use.
+    keepOpen: new KeepBookingOpenCommand(
+      parts.repo,
+      parts.members,
+      parts.unitOfWork,
+      parts.outbox,
+    ),
+  };
+}
+
+function setupComplete(raiser?: FakeRaiser) {
+  const parts = setup(BookingStatus.MarkedDone, raiser);
+  return {
+    ...parts,
+    complete: new CompleteBookingCommand(
+      parts.repo,
+      parts.unitOfWork,
+      parts.outbox,
+      parts.raiser,
+    ),
+  };
+}
+
+beforeEach(() => {
+  setSystemTime(NOW);
+});
+
+afterEach(() => {
+  setSystemTime();
+});
+
+describe("MarkBookingDoneCommand", () => {
+  it("refuses somebody who is not in the workspace", async () => {
+    const { cmd, repo, raiser } = setupMarkDone();
+
+    await expect(
+      cmd.execute({ bookingId: BOOKING_ID, requesterUserId: "stranger" }),
+    ).rejects.toMatchObject({
+      code: "NOT_PROVIDER_MEMBER",
+    });
+
+    // Refused before anything was written, which is the point of the check.
+    expect(repo.saved).toBeNull();
+    expect(repo.changes).toEqual([]);
+    expect(raiser.raised).toEqual([]);
+  });
+
+  it("refuses a member of some other provider, not only a stranger to every one", async () => {
+    const { cmd } = setupMarkDone();
+
+    await expect(
+      cmd.execute({ bookingId: BOOKING_ID, requesterUserId: "user-wrong" }),
+    ).rejects.toMatchObject({ code: "NOT_PROVIDER_MEMBER" });
+  });
+
+  it("moves the booking, records the hop, and tells the customer their window is open", async () => {
+    const { cmd, repo, raiser, members } = setupMarkDone();
+
+    await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(members.queries).toEqual([{ providerId: PROVIDER_ID, userId: OWNER_ID }]);
+    expect(repo.saved?.status).toBe("MARKED_DONE");
+    expect(repo.changes.at(-1)).toMatchObject({
+      reason: "marked_done_by_provider",
+      changedByUserId: OWNER_ID,
+    });
+    expect(raiser.raised.at(-1)).toMatchObject({
+      type: "BOOKING_MARKED_DONE",
+      audience: "user",
+      userId: CUSTOMER_ID,
+      payload: expect.objectContaining({ feedbackBy: expect.any(String) }),
+    });
+  });
+
+  it("gives the customer three days", async () => {
+    const { cmd, repo } = setupMarkDone();
+
+    await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    const window = repo.saved!.expiresAt!.getTime() - NOW.getTime();
+    expect(window).toBe(FEEDBACK_WINDOW_DAYS * 24 * 3_600_000);
+  });
+
+  it("announces the very deadline it wrote, not a second reading of the clock", async () => {
+    const { cmd, repo, raiser } = setupMarkDone();
+
+    await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(raiser.raised[0]?.payload.feedbackBy).toBe(repo.saved!.expiresAt!.toISOString());
+  });
+
+  it("refuses a booking whose appointment has not ended", async () => {
+    const { cmd, repo, raiser } = setupMarkDone();
+
+    await expect(
+      cmd.execute({ bookingId: FUTURE_ID, requesterUserId: OWNER_ID }),
+    ).rejects.toMatchObject({
+      code: "BOOKING_NOT_ENDED",
+    });
+
+    expect(repo.saved).toBeNull();
+    expect(raiser.raised).toEqual([]);
+  });
+
+  it("publishes BookingMarkedDone inside the transaction, after the write it describes", async () => {
+    const { cmd, outbox } = setupMarkDone();
+
+    await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(outbox.published).toHaveLength(1);
+    expect(outbox.published[0]?.aggregateType).toBe("booking");
+    expect(outbox.published[0]?.insideTransaction).toBe(true);
+    expect(outbox.published[0]?.afterSave).toBe(true);
+    expect(outbox.published[0]?.events[0]).toBeInstanceOf(BookingMarkedDone);
+  });
+
+  it("raises nothing when the compare-and-swap loses", async () => {
+    const { cmd, repo, raiser } = setupMarkDone();
+    repo.saveReturns = false;
+
+    await cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(raiser.raised).toEqual([]);
+  });
+
+  it("does not fail the write when the raiser throws", async () => {
+    const { cmd, repo } = setupMarkDone(new FakeRaiser(new Error("smtp down")));
+
+    await expect(
+      cmd.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID }),
+    ).resolves.toBeUndefined();
+    expect(repo.saved?.status).toBe("MARKED_DONE");
+  });
+
+  // The sweep's arm. It asked nobody, so there is nobody to check and nobody
+  // to attribute the row to — and the provider, who never answered, is owed
+  // the news that the platform closed their booking for them.
+  it("the platform's own arm checks no membership and tells both sides", async () => {
+    const { cmd, repo, raiser, members } = setupMarkDone();
+
+    await cmd.execute({
+      bookingId: BOOKING_ID,
+      requesterUserId: null,
+      reason: "marked_done_by_platform",
+    });
+
+    expect(members.queries).toEqual([]);
+    expect(repo.saved?.status).toBe("MARKED_DONE");
+    expect(repo.changes.at(-1)).toMatchObject({
+      reason: "marked_done_by_platform",
+      changedByUserId: null,
+    });
+    expect(raiser.raised).toEqual([
+      expect.objectContaining({
+        type: "BOOKING_MARKED_DONE",
+        audience: "user",
+        userId: CUSTOMER_ID,
+        payload: expect.objectContaining({ markedBy: "marked_done_by_platform" }),
+      }),
+      expect.objectContaining({
+        type: "PROVIDER_BOOKING_AUTO_CLOSED",
+        audience: "provider",
+        providerId: PROVIDER_ID,
+      }),
+    ]);
+  });
+
+  // An administrator is a real person with a user id, and they are not a
+  // member of the provider they are closing for. The membership check is the
+  // provider's own hop, not this one — the admin edge already authorised it.
+  it("an administrator closes it without belonging to the provider, and tells only the customer", async () => {
+    const { cmd, repo, raiser, members } = setupMarkDone();
+
+    await cmd.execute({
+      bookingId: BOOKING_ID,
+      requesterUserId: "admin-1",
+      reason: "marked_done_by_admin",
+    });
+
+    expect(members.queries).toEqual([]);
+    expect(repo.changes.at(-1)).toMatchObject({
+      reason: "marked_done_by_admin",
+      changedByUserId: "admin-1",
+    });
+    expect(raiser.raised).toHaveLength(1);
+    expect(raiser.raised[0]).toMatchObject({ type: "BOOKING_MARKED_DONE" });
+  });
+});
+
+describe("KeepBookingOpenCommand", () => {
+  it("pushes the question out seven days and records why", async () => {
+    const { keepOpen, repo } = setupKeepOpen();
+
+    await keepOpen.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(repo.saved?.status).toBe("CONFIRMED");
+    expect(repo.saved!.expiresAt!.getTime() - NOW.getTime()).toBe(
+      ASK_AGAIN_AFTER_DAYS * 24 * 3_600_000,
+    );
+    expect(repo.changes.at(-1)).toMatchObject({
+      reason: "still_ongoing",
+      changedByUserId: OWNER_ID,
+    });
+  });
+
+  it("tells nobody — this is an answer to the platform, not news for the customer", async () => {
+    const { keepOpen, raiser } = setupKeepOpen();
+
+    await keepOpen.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(raiser.raised).toEqual([]);
+  });
+
+  // The one event in this context that reports no status change: a job
+  // running past the slot it was sold for is a fact, and it is invisible to
+  // anybody who only ever sees `CONFIRMED`.
+  it("publishes BookingKeptOpen inside the transaction, after the write it describes", async () => {
+    const { keepOpen, outbox } = setupKeepOpen();
+
+    await keepOpen.execute({ bookingId: BOOKING_ID, requesterUserId: OWNER_ID });
+
+    expect(outbox.published).toHaveLength(1);
+    expect(outbox.published[0]?.aggregateType).toBe("booking");
+    expect(outbox.published[0]?.insideTransaction).toBe(true);
+    expect(outbox.published[0]?.afterSave).toBe(true);
+    expect(outbox.published[0]?.events[0]).toBeInstanceOf(BookingKeptOpen);
+  });
+
+  it("refuses somebody who is not in the workspace", async () => {
+    const { keepOpen, repo } = setupKeepOpen();
+
+    await expect(
+      keepOpen.execute({ bookingId: BOOKING_ID, requesterUserId: "user-wrong" }),
+    ).rejects.toMatchObject({ code: "NOT_PROVIDER_MEMBER" });
+
+    expect(repo.saved).toBeNull();
+    expect(repo.changes).toEqual([]);
+  });
+});
+
+describe("CompleteBookingCommand", () => {
+  it("completes a marked-done booking and tells both sides", async () => {
+    const { complete, repo, raiser } = setupComplete();
+
+    await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_timer",
+      changedByUserId: null,
+    });
+
+    expect(repo.saved?.status).toBe("COMPLETED");
+    expect(raiser.raised).toEqual([
+      expect.objectContaining({
+        type: "BOOKING_COMPLETED",
+        audience: "user",
+        userId: CUSTOMER_ID,
+      }),
+      expect.objectContaining({
+        type: "BOOKING_COMPLETED",
+        audience: "provider",
+        providerId: PROVIDER_ID,
+      }),
+    ]);
+  });
+
+  it("records the hop with the reason its caller gave, and nobody to attribute it to", async () => {
+    const { complete, repo } = setupComplete();
+
+    await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_review",
+      changedByUserId: null,
+    });
+
+    expect(repo.changes).toEqual([
+      {
+        bookingId: BOOKING_ID,
+        changedByUserId: null,
+        reason: "completed_by_review",
+        previousStartsAt: null,
+        previousEndsAt: null,
+        previousProviderMemberId: null,
+        previousPriceMinor: null,
+      },
+    ]);
+  });
+
+  it("attributes an administrator's completion to them", async () => {
+    const { complete, repo } = setupComplete();
+
+    await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_admin",
+      changedByUserId: "admin-1",
+    });
+
+    expect(repo.changes.at(-1)).toMatchObject({
+      reason: "completed_by_admin",
+      changedByUserId: "admin-1",
+    });
+  });
+
+  it("publishes BookingCompleted inside the transaction, after the write it describes", async () => {
+    const { complete, outbox } = setupComplete();
+
+    await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_timer",
+      changedByUserId: null,
+    });
+
+    expect(outbox.published).toHaveLength(1);
+    expect(outbox.published[0]?.aggregateType).toBe("booking");
+    expect(outbox.published[0]?.insideTransaction).toBe(true);
+    expect(outbox.published[0]?.afterSave).toBe(true);
+    expect(outbox.published[0]?.events[0]).toBeInstanceOf(BookingCompleted);
+  });
+
+  it("refuses a booking that is not waiting out its window", async () => {
+    const { complete, repo } = setupComplete();
+    repo.status = "CONFIRMED";
+
+    await expect(
+      complete.execute({
+        bookingId: BOOKING_ID,
+        reason: "completed_by_timer",
+        changedByUserId: null,
+      }),
+    ).rejects.toMatchObject({
+      code: "BOOKING_INVALID_TRANSITION",
+    });
+  });
+
+  it("tells nobody when the compare-and-swap loses", async () => {
+    const { complete, repo, raiser } = setupComplete();
+    repo.saveReturns = false;
+
+    await complete.execute({
+      bookingId: BOOKING_ID,
+      reason: "completed_by_timer",
+      changedByUserId: null,
+    });
+
+    expect(repo.saved).toBeNull();
+    expect(raiser.raised).toEqual([]);
+  });
+
+  it("does not fail the write when the raiser throws", async () => {
+    const { complete, repo } = setupComplete(new FakeRaiser(new Error("smtp down")));
+
+    await expect(
+      complete.execute({
+        bookingId: BOOKING_ID,
+        reason: "completed_by_timer",
+        changedByUserId: null,
+      }),
+    ).resolves.toBeUndefined();
+    expect(repo.saved?.status).toBe("COMPLETED");
+  });
+});

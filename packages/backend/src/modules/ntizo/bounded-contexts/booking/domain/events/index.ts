@@ -380,3 +380,139 @@ export class BookingCancelled extends BaseDomainEvent<{
     super("booking.cancelled", payload.bookingId, payload);
   }
 }
+
+/**
+ * The provider says the job is still running, so the platform's question is
+ * pushed out rather than answered.
+ *
+ * **The one event in this file that reports no status change.** The booking
+ * was `CONFIRMED` before this and is `CONFIRMED` after; the only thing that
+ * moved on the row is `expires_at`. It is an event anyway because the fact it
+ * carries outlives this context: a job that has run past the slot it was sold
+ * for is the ordinary case in the trades this platform serves, and it is
+ * invisible to anybody who only ever sees the status. Repeatable by design,
+ * so a booking pushed out four times raises this four times — see
+ * `Booking.keepOpen`, which deliberately leaves `remindedAt` where it stands
+ * so the platform's first asking is not overwritten by its answers.
+ *
+ * `askAgainAt` is what `keepOpen` wrote onto `expiresAt` — carried under its
+ * own name, the same way `BookingSubmitted` carries `respondBy`, because
+ * "expiresAt" names a column rather than a fact. It carries no calendar and
+ * no money, for the reason the two events below carry none either: nothing
+ * about the slot or the price changed, and re-stating them would be padding.
+ */
+export class BookingKeptOpen extends BaseDomainEvent<{
+  bookingId: string;
+  customerId: string;
+  providerId: string;
+  askAgainAt: Date;
+}> {
+  constructor(payload: {
+    bookingId: string;
+    customerId: string;
+    providerId: string;
+    askAgainAt: Date;
+  }) {
+    super("booking.kept_open", payload.bookingId, payload);
+  }
+}
+
+/**
+ * The work is said to be done, and the customer's window to disagree is open.
+ *
+ * Raised when a booking transitions to `MARKED_DONE` — by the provider, by an
+ * administrator, or by the platform after seven days of silence. All three
+ * produce this one event, because all three produce the same fact: the
+ * booking is claimed finished and a clock is now running against that claim.
+ *
+ * **`feedbackBy` is the whole reason this event carries anything beyond an
+ * id.** It is what `markDone` actually wrote onto `expiresAt` (see that
+ * method's own doc comment for why it takes the deadline as an input rather
+ * than computing it), carried under its own name here rather than
+ * `expiresAt` for the same reason `BookingSubmitted` carries `respondBy`:
+ * "expiresAt" is a fact about the row, not a name this payload owes any
+ * column. A consumer that has to tell the customer how long they have cannot
+ * do it from the booking id alone, and reading the booking back to find out
+ * is exactly what carrying a fact on an event exists to make unnecessary.
+ *
+ * **Deliberately narrower than `BookingPaid`, on both sides.** No calendar —
+ * `markDone` refuses before `endsAt`, so the appointment is behind this event
+ * by construction and no consumer of it has a slot left to do anything with.
+ * No money either: nothing moves at `MARKED_DONE`, which is the whole point
+ * of the status. The payout reads `BookingCompleted` below, days later.
+ *
+ * **And deliberately no reason.** *Who* said the work was done is a
+ * `booking_change` row, not an event field — the same line
+ * `SweepBookingCommand` draws for its own expiry reasons ("the cancellation's
+ * reason *is* an event field, so the event owns it; the expiries' reasons are
+ * not carried on any event, so they are owned here"). No consumer of this
+ * event behaves differently for a provider's claim than for the platform's,
+ * and `MarkBookingDoneCommand` already tells its two audiences apart itself,
+ * through the notification port, without waiting for anybody to drain this.
+ *
+ * The name keeps the underscore its status has. `booking.done` would read
+ * cleaner and would say the wrong thing: `MARKED_DONE` is named as it is
+ * precisely because the platform has not agreed the work is done — see that
+ * status's own doc comment on why it is not called `AWAITING_DISPUTE`.
+ */
+export class BookingMarkedDone extends BaseDomainEvent<{
+  bookingId: string;
+  customerId: string;
+  providerId: string;
+  feedbackBy: Date;
+}> {
+  constructor(payload: {
+    bookingId: string;
+    customerId: string;
+    providerId: string;
+    feedbackBy: Date;
+  }) {
+    super("booking.marked_done", payload.bookingId, payload);
+  }
+}
+
+/**
+ * A booking finished cleanly. This is the ending the whole flow is aimed at.
+ *
+ * Raised when a booking transitions to `COMPLETED`: the customer's window
+ * closed without a dispute, their review closed it early, or an administrator
+ * closed it by hand. `resolveDispute`'s "the completion stands" outcome
+ * reaches the same status by another door, and the command that owns that hop
+ * raises this same event — one status, one event, whichever hop got there.
+ *
+ * **It carries money, unlike `BookingCancelled`, and the asymmetry is the
+ * point.** Completion is what makes a payout owed: the platform held the
+ * customer's payment through the appointment and through the window after it,
+ * and this is the moment that money becomes the provider's.
+ * `commissionMinor` travels with it because the commission comes *out of*
+ * that payout rather than being added to the price, so a wallet consumer
+ * needs both numbers and would otherwise read the booking back for the second
+ * — the drift the snapshot exists to prevent. `BookingCancelled` carries none
+ * because refunding is explicitly out of this plan's scope and that event is
+ * not the seam the refund decision will use; here the payout seam is exactly
+ * what this event is for.
+ *
+ * No calendar, for the same reason `BookingMarkedDone` has none: `COMPLETED`
+ * is reachable only from `MARKED_DONE`, which is reachable only once the
+ * appointment has ended. Nothing is left to release, and a slot that came
+ * free days ago is not news.
+ */
+export class BookingCompleted extends BaseDomainEvent<{
+  bookingId: string;
+  customerId: string;
+  providerId: string;
+  priceMinor: number;
+  commissionMinor: number;
+  currency: string;
+}> {
+  constructor(payload: {
+    bookingId: string;
+    customerId: string;
+    providerId: string;
+    priceMinor: number;
+    commissionMinor: number;
+    currency: string;
+  }) {
+    super("booking.completed", payload.bookingId, payload);
+  }
+}

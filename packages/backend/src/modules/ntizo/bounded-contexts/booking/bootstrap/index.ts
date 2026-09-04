@@ -17,6 +17,9 @@ import { SweepDueBookingsInternalCommand } from "../app/use-cases/sweep-due-book
 import { ChargeBookingCommand } from "../app/use-cases/charge-booking.command";
 import { ChargeAcceptedBookingsInternalCommand } from "../app/use-cases/charge-accepted-bookings.internal.command";
 import { MarkBookingPaidCommand } from "../app/use-cases/mark-booking-paid.command";
+import { MarkBookingDoneCommand } from "../app/use-cases/mark-booking-done.command";
+import { KeepBookingOpenCommand } from "../app/use-cases/keep-booking-open.command";
+import { CompleteBookingCommand } from "../app/use-cases/complete-booking.command";
 import type { RaiseNotificationInternalPort } from "../app/ports/outbound/raise-notification.port";
 import { DrizzleUnitOfWork } from "../../../../../shared/infrastructure/unit-of-work";
 import { OutboxAdapter } from "../../../../../shared/infrastructure/outbox/outbox.adapter";
@@ -62,7 +65,7 @@ export interface BookingBootstrapDeps {
    * exists; see the port's own doc comment for why it is declared inside this
    * context rather than imported from the notification context's `app/` tree.
    *
-   * Required rather than optional, and that is deliberate. Five of the
+   * Required rather than optional, and that is deliberate. Seven of the
    * commands below announce something, and an optional dependency would let a
    * composition root construct a booking context that silently tells nobody
    * anything — the exact failure `bootstrap.test.ts` exists to catch, made
@@ -165,6 +168,39 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
         bookingRepository,
         providerMemberReader,
         slotHold,
+        unitOfWork,
+        outboxPort,
+        deps.raiseNotification,
+      ),
+      // The three hops that close a booking. `markBookingDone` is the one
+      // with three callers rather than one — the provider's own button, an
+      // administrator, and the sweep's seven-day arm, which is why it takes
+      // `providerMemberReader` even though only the first of the three is
+      // checked against it (see that command's own doc comment).
+      //
+      // `keepBookingOpen` stops one argument short of the rest, and that is
+      // the design rather than an omission: it announces nothing, so it takes
+      // no `deps.raiseNotification` — the same shape `createBooking` above
+      // already has, and for the same reason. `completeBooking` stops one
+      // short at the other end: it takes no `providerMemberReader`, because
+      // its three callers (the sweep, the review context, an administrator)
+      // are each authorised at their own edge and none of them is a member of
+      // the provider they are closing for.
+      markBookingDone: new MarkBookingDoneCommand(
+        bookingRepository,
+        providerMemberReader,
+        unitOfWork,
+        outboxPort,
+        deps.raiseNotification,
+      ),
+      keepBookingOpen: new KeepBookingOpenCommand(
+        bookingRepository,
+        providerMemberReader,
+        unitOfWork,
+        outboxPort,
+      ),
+      completeBooking: new CompleteBookingCommand(
+        bookingRepository,
         unitOfWork,
         outboxPort,
         deps.raiseNotification,
