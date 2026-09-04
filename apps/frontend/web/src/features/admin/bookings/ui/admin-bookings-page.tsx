@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarCheck, MessageSquareWarning } from "lucide-react";
@@ -12,8 +12,12 @@ import {
   ADMIN_BOOKINGS_PAGE_SIZE,
   type AdminBookingRowDTO,
 } from "../data/admin-booking.repository";
-import { waitedWording, waitingSince } from "../domain/waiting";
-import { useAdminBookingActions, useAdminBookings } from "../viewmodel/use-admin-bookings";
+import { lastPageOffset, waitedWording, waitingSince } from "../domain/waiting";
+import {
+  useAdminBookingActions,
+  useAdminBookings,
+  type AdminBookingAction,
+} from "../viewmodel/use-admin-bookings";
 
 /**
  * The bookings an administrator has to look at, in the three tabs the queue
@@ -23,9 +27,15 @@ import { useAdminBookingActions, useAdminBookings } from "../viewmodel/use-admin
  * `AdminContactPage`'s anatomy — `usePageHeader`, a count of what is waiting,
  * `CollectionCard` and per-row actions — with the provider list's tab row,
  * because these three are tabs rather than filters: `bookingNeedsAttentionForAdmin`
- * answers a different result set per tab, not the same one narrowed, and the
- * tab lives in the URL so a refresh keeps it and a link to "the disputes" is a
- * link. No search box: the field has no search argument to offer, and
+ * answers a different result set per tab, not the same one narrowed.
+ *
+ * **The tab and the page are both in the URL**, so a refresh keeps your place
+ * and a link to "the second page of the disputes" is a link. The page used to
+ * be component state while the tab was not, which made a refresh keep half of
+ * where you were; the asymmetry bought nothing. Changing tab simply omits the
+ * offset, so a new list starts at its own first page with no reset to write.
+ *
+ * No search box: the field has no search argument to offer, and
  * `CollectionCard`'s search became optional, so none is drawn rather than one
  * that does nothing.
  *
@@ -42,22 +52,20 @@ export function AdminBookingsPage() {
   const { t, i18n } = useTranslation("admin");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { tab?: AdminBookingTab };
+  const search = useSearch({ strict: false }) as { tab?: AdminBookingTab; offset?: number };
   const tab: AdminBookingTab = search.tab ?? "unclosed";
+  const offset = search.offset ?? 0;
 
   usePageHeader(t("bookingsTitle"), t("bookingsSubtitle"));
 
-  const [offset, setOffset] = useState(0);
-  // A new tab is a new list, and it starts at its own first page. Adjusted
-  // during the render that changes tab rather than in an effect: a passive
-  // effect runs after the paint, so page three of "Por fechar" would be asked
-  // for under "Reclamações" for one frame — and with the app's 30s staleness
-  // that frame can be a cached answer rather than a spinner.
-  const [appliedTab, setAppliedTab] = useState(tab);
-  if (appliedTab !== tab) {
-    setAppliedTab(tab);
-    setOffset(0);
-  }
+  const go = (next: { tab: AdminBookingTab; offset?: number }) =>
+    void navigate({
+      to: "/admin/bookings",
+      // A zero offset is the absence of one: `/admin/bookings?tab=disputed`
+      // rather than `…&offset=0`, so the first page of a tab has exactly one
+      // address.
+      search: { tab: next.tab, offset: next.offset ? next.offset : undefined },
+    });
 
   const query = useAdminBookings({ tab, offset });
   const actions = useAdminBookingActions();
@@ -78,30 +86,59 @@ export function AdminBookingsPage() {
   );
 
   /**
-   * The row whose button was last pressed, and the answer that was on screen
-   * when it was pressed.
+   * The row whose button was last pressed, held until the queue has been read
+   * again.
    *
-   * A press cannot be repeated until the queue has been read again. Not
-   * cosmetic: the write lands before the refetch replaces the list, so a second
-   * press in that gap sends a transition the booking has already made, and the
-   * platform refuses it — which would put "could not be completed" on screen
-   * about a booking that was completed. Every button on the queue is disabled
+   * Not cosmetic: the write lands before the refetch replaces the list, so a
+   * second press in that gap sends a transition the booking has already made,
+   * and the platform refuses it — which would put "não foi possível" on screen
+   * about a booking that in fact moved. Every button on the queue is disabled
    * while a write is in flight; this one row stays disabled until the read
    * that follows says what actually happened.
+   *
+   * **Released by an answer of either kind.** `answeredAt` takes the later of
+   * the query's success and failure stamps rather than `dataUpdatedAt` alone:
+   * a refusal now invalidates too (`onSettled`, see `useAdminBookingActions`),
+   * and if that refetch itself fails there is still an answer — the page draws
+   * `bookingsError` with a retry — so the row must not stay locked behind it.
+   * Tied to `dataUpdatedAt` only, a refused action left the one control that
+   * could repeat it disabled until a reload.
    */
+  const answeredAt = Math.max(query.dataUpdatedAt, query.errorUpdatedAt);
   const [actedOn, setActedOn] = useState<string | null>(null);
-  const [answeredAt, setAnsweredAt] = useState(query.dataUpdatedAt);
-  if (answeredAt !== query.dataUpdatedAt) {
-    setAnsweredAt(query.dataUpdatedAt);
+  const [seenAnswer, setSeenAnswer] = useState(answeredAt);
+  if (seenAnswer !== answeredAt) {
+    setSeenAnswer(answeredAt);
     setActedOn(null);
   }
 
-  const setTab = (next: AdminBookingTab) =>
-    void navigate({ to: "/admin/bookings", search: { tab: next } });
+  /**
+   * A page that emptied under the reader goes back to one that has not.
+   *
+   * An administrator working this queue empties it, and emptying the page they
+   * are standing on is how that normally ends: close the twenty-first booking
+   * and page two has nothing on it, while the count above still says twenty
+   * need attention. `lastPageOffset` answers with the last offset that can
+   * hold a row, so the correction is one hop from anywhere — including a
+   * nonsense offset typed into the address bar.
+   *
+   * In an effect rather than during render, because the correction is a
+   * navigation and a render may not have side effects. The frame it replaces
+   * is not a lie the page invented: it is exactly what the server answered for
+   * that offset.
+   */
+  useEffect(() => {
+    if (!query.data || query.data.items.length > 0 || offset === 0) return;
+    const back = lastPageOffset(query.data.total, ADMIN_BOOKINGS_PAGE_SIZE);
+    if (back !== offset) go({ tab, offset: back });
+    // `go` and `tab` are stable for a given URL; re-running on the answer and
+    // the offset is the whole of what this watches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.data, offset, tab]);
 
-  function act(bookingId: string, run: () => void) {
-    setActedOn(bookingId);
-    run();
+  function act(action: AdminBookingAction) {
+    setActedOn(action.bookingId);
+    actions.run(action);
   }
 
   return (
@@ -112,11 +149,6 @@ export function AdminBookingsPage() {
           <button type="button" className="underline" onClick={() => void query.refetch()}>
             {t("bookingsRetry")}
           </button>
-        </p>
-      )}
-      {actions.failed && (
-        <p role="alert" className="type-body text-[var(--color-destructive)]">
-          {t("bookingsActionFailed")}
         </p>
       )}
 
@@ -132,7 +164,7 @@ export function AdminBookingsPage() {
               type="button"
               role="tab"
               aria-selected={tab === key}
-              onClick={() => setTab(key)}
+              onClick={() => go({ tab: key })}
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
                 tab === key
@@ -180,16 +212,36 @@ export function AdminBookingsPage() {
         noMatchesTitle={t(`bookingsEmpty.${tab}.title`)}
         noMatchesText={t(`bookingsEmpty.${tab}.body`)}
         filtered={false}
-        rows={rows.map((b) => queueRow(b, { locale, now, t, actions, act, actedOn }))}
+        /**
+         * Cards until a 1024px viewport, not the card's usual 768.
+         *
+         * Measured inside the real `AdminShell` rather than reasoned about,
+         * which is the whole difference: the sidebar takes 16rem from `md`
+         * up, so a 768px viewport leaves this card **462px** — and the table
+         * this row needs is about 730. At that width every action button and
+         * the `ACÇÕES` header sat off the right edge, reachable only by
+         * finding a horizontal scrollbar inside the card. Six columns, the
+         * last of them buttons, simply do not go into 462px; a stacked card
+         * shows all of it. From `lg` the box is 718 and the table fits.
+         */
+        tableFrom="lg"
+        rows={rows.map((b) =>
+          queueRow(b, { locale, now, t, act, actedOn, pending: actions.pending, failure: actions.failure }),
+        )}
       />
 
-      {total > ADMIN_BOOKINGS_PAGE_SIZE && (
+      {/* Shown whenever there is anywhere to go, which is not the same
+          question as whether the queue is longer than a page. Tied to
+          `total > PAGE_SIZE`, both buttons unmounted the moment the count fell
+          to exactly one page while the reader was standing on the second —
+          the pager disappearing at precisely the moment it was needed. */}
+      {(offset > 0 || nextOffset !== null) && (
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
             size="sm"
             disabled={offset === 0}
-            onClick={() => setOffset((o) => Math.max(0, o - ADMIN_BOOKINGS_PAGE_SIZE))}
+            onClick={() => go({ tab, offset: Math.max(0, offset - ADMIN_BOOKINGS_PAGE_SIZE) })}
           >
             {t("bookingsPrevious")}
           </Button>
@@ -197,7 +249,7 @@ export function AdminBookingsPage() {
             variant="outline"
             size="sm"
             disabled={nextOffset === null}
-            onClick={() => nextOffset !== null && setOffset(nextOffset)}
+            onClick={() => nextOffset !== null && go({ tab, offset: nextOffset })}
           >
             {t("bookingsNext")}
           </Button>
@@ -207,15 +259,14 @@ export function AdminBookingsPage() {
   );
 }
 
-type Actions = ReturnType<typeof useAdminBookingActions>;
-
 interface RowContext {
   locale: string;
   now: Date;
   t: ReturnType<typeof useTranslation<"admin">>["t"];
-  actions: Actions;
-  act: (bookingId: string, run: () => void) => void;
+  act: (action: AdminBookingAction) => void;
   actedOn: string | null;
+  pending: boolean;
+  failure: AdminBookingAction | null;
 }
 
 /**
@@ -230,7 +281,7 @@ interface RowContext {
 function queueRow(b: AdminBookingRowDTO, ctx: RowContext): CollectionRow {
   const { locale, now, t } = ctx;
   const slot = compactSlotWording(b.startsAt, b.endsAt, locale, b.timezone);
-  const waited = waitedWording(waitingSince(b), now);
+  const waited = waitedWording(waitingSince(b), now, locale);
   return {
     key: b.id,
     primary: (
@@ -240,7 +291,7 @@ function queueRow(b: AdminBookingRowDTO, ctx: RowContext): CollectionRow {
         // `pr-4` on the link rather than on the cell: `CollectionCard` gives
         // the primary column `pl-5` and no right padding at all, which is
         // invisible for the avatar-and-name blocks the other lists put there
-        // and not for a workspace's full name, which wraps at `md` and
+        // and not for a workspace's full name, which wraps in the table and
         // otherwise ends flush against the customer's.
         className="type-body-medium block pr-4 font-semibold hover:underline"
       >
@@ -249,7 +300,22 @@ function queueRow(b: AdminBookingRowDTO, ctx: RowContext): CollectionRow {
     ),
     cells: {
       customer: b.customerFirstName,
-      service: <span className="block max-w-[24ch] truncate">{b.serviceName}</span>,
+      /**
+       * Truncated hardest exactly where the table is tightest.
+       *
+       * A service name is the longest free text on the row, and in the one
+       * band where the table has least room it was the widest column: 243px
+       * of the 718 a 1024 viewport leaves once the admin sidebar has taken
+       * its 16rem. Below `lg` the row is a card, where the value has a line
+       * of its own and 24ch costs nothing; from `xl` the table's box is 974
+       * and can afford it again. Only `lg`–`xl` is squeezed, so only that
+       * band pays.
+       */
+      service: (
+        <span className="block max-w-[24ch] truncate lg:max-w-[14ch] xl:max-w-[24ch]">
+          {b.serviceName}
+        </span>
+      ),
       when: (
         <span className="grid gap-0.5">
           <span className="tabular-nums">
@@ -278,7 +344,7 @@ function queueRow(b: AdminBookingRowDTO, ctx: RowContext): CollectionRow {
        * status precisely so this link cannot point somewhere wrong.
        */
       status: (
-        <span className="inline-grid justify-items-end gap-1 md:justify-items-start">
+        <span className="inline-grid justify-items-end gap-1 lg:justify-items-start">
           <BookingStatusBadge status={b.status} />
           {b.threadId && (
             <Link
@@ -308,64 +374,78 @@ function queueRow(b: AdminBookingRowDTO, ctx: RowContext): CollectionRow {
  * offering a refusal.
  */
 function RowActions({ booking, ctx }: { booking: AdminBookingRowDTO; ctx: RowContext }) {
-  const { t, actions, act, actedOn } = ctx;
+  const { t, act, actedOn, pending, failure } = ctx;
   // Every button on the queue while a write is in flight, and this row's until
   // the read that follows has said what the write actually did.
-  const disabled = actions.pending || actedOn === booking.id;
+  const disabled = pending || actedOn === booking.id;
+
+  /**
+   * The refusal, on the row it happened to and naming what was refused.
+   *
+   * A page-level banner said neither. It could not name the row, and because
+   * each of the three actions used to carry its own `useMutation`, a refused
+   * mark-done went on saying so while a *successful* completion landed on
+   * another row — the one kind of false sentence this screen is built to avoid.
+   *
+   * Two sentences, not one: `bookingsActionFailed` says the booking could not
+   * be completed, which is what a refused mark-done or complete is. A refused
+   * dispute decision is not that — when it succeeds it may *cancel* the
+   * booking rather than complete it — so it says the dispute could not be
+   * decided, which is true of either outcome.
+   */
+  const refused = failure?.bookingId === booking.id ? failure : null;
+  const notice = refused && (
+    <span role="alert" className="type-caption block max-w-[24ch] text-[var(--color-destructive)]">
+      {t(refused.kind === "resolveDispute" ? "bookingsDisputeFailed" : "bookingsActionFailed")}
+    </span>
+  );
 
   if (booking.status === "DISPUTED") {
     return (
-      /* Two long labels, and four widths to keep them honest at. Stacked on a
-         phone, where `CollectionCard` gives the actions whatever the card's
-         primary block does not need and side by side would leave the
-         workspace's name thirty pixels; side by side once the card is wide
-         (`sm`); stacked again from `md`, which is where the card becomes a
-         table *and* the admin sidebar takes its 16rem — the narrowest the
-         table is ever asked to fit — and side by side again from `lg`, where
-         it has the room. */
-      <span className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end md:flex-col md:items-stretch lg:flex-row lg:items-center lg:justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          onClick={() => act(booking.id, () => actions.resolve.mutate({ bookingId: booking.id, upheld: true }))}
-        >
-          {t("bookingsDisputeAction.upheld")}
-        </Button>
-        <Button
-          size="sm"
-          disabled={disabled}
-          onClick={() => act(booking.id, () => actions.resolve.mutate({ bookingId: booking.id, upheld: false }))}
-        >
-          {t("bookingsDisputeAction.rejected")}
-        </Button>
+      <span className="grid justify-items-stretch gap-2 lg:justify-items-end">
+        {/* Two long labels, and four widths to keep them honest at — every one
+            of the four measured inside the real `AdminShell`, because
+            Tailwind's breakpoints are viewport widths and this row's box is
+            the viewport minus the sidebar's 16rem.
+
+            Stacked on a phone, where `CollectionCard` gives the actions
+            whatever the card's primary block does not need and side by side
+            would leave the workspace's name thirty pixels. Side by side once
+            the card is wide (`sm`, and still no sidebar). Stacked again from
+            `md`, where the sidebar appears and the card's own width drops to
+            430. Side by side only from `xl`: at `lg` the row is a table in a
+            718px box, and these two stacked bring the table to 727 — abreast
+            they added a button's width again and pushed the second one off the
+            right edge, which is what a `lg:` switch was doing. */}
+        <span className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end md:flex-col md:items-stretch xl:flex-row xl:items-center xl:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => act({ kind: "resolveDispute", bookingId: booking.id, upheld: true })}
+          >
+            {t("bookingsDisputeAction.upheld")}
+          </Button>
+          <Button
+            size="sm"
+            disabled={disabled}
+            onClick={() => act({ kind: "resolveDispute", bookingId: booking.id, upheld: false })}
+          >
+            {t("bookingsDisputeAction.rejected")}
+          </Button>
+        </span>
+        {notice}
       </span>
     );
   }
 
-  if (booking.status === "MARKED_DONE") {
-    return (
-      <span className="flex justify-end">
-        <Button
-          size="sm"
-          disabled={disabled}
-          onClick={() => act(booking.id, () => actions.complete.mutate(booking.id))}
-        >
-          {t("bookingsAction.completeNow")}
-        </Button>
-      </span>
-    );
-  }
-
+  const kind = booking.status === "MARKED_DONE" ? "complete" : "markDone";
   return (
-    <span className="flex justify-end">
-      <Button
-        size="sm"
-        disabled={disabled}
-        onClick={() => act(booking.id, () => actions.markDone.mutate(booking.id))}
-      >
-        {t("bookingsAction.markDone")}
+    <span className="grid justify-items-stretch gap-2 lg:justify-items-end">
+      <Button size="sm" disabled={disabled} onClick={() => act({ kind, bookingId: booking.id })}>
+        {t(kind === "complete" ? "bookingsAction.completeNow" : "bookingsAction.markDone")}
       </Button>
+      {notice}
     </span>
   );
 }

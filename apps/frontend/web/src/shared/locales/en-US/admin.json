@@ -336,6 +336,7 @@
     "completeNow": "Complete now"
   },
   "bookingsActionFailed": "The booking could not be completed.",
+  "bookingsDisputeFailed": "The dispute could not be decided.",
   "bookingsDisputeAction": {
     "upheld": "Side with the customer",
     "rejected": "Keep the completion"

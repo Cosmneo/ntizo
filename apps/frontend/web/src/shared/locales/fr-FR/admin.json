@@ -336,11 +336,12 @@
     "completeNow": "Terminer maintenant"
   },
   "bookingsActionFailed": "Impossible de terminer la réservation.",
+  "bookingsDisputeFailed": "Le litige n'a pas pu être tranché.",
   "bookingsDisputeAction": {
     "upheld": "Donner raison au client",
     "rejected": "Maintenir la clôture"
   },
-  "bookingsOpenDispute": "Ouvrir la réclamation",
+  "bookingsOpenDispute": "Ouvrir le litige",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Rien à clôturer",

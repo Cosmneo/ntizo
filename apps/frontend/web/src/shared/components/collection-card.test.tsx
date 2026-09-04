@@ -225,4 +225,37 @@ describe("CollectionCard while loading", () => {
     renderLoading({ search: "sal" });
     expect(screen.getByPlaceholderText("Search")).toBeTruthy();
   });
+
+  /**
+   * Which of the two renderings the viewport gets is decided by two Tailwind
+   * classes and nothing else, and jsdom evaluates neither — so the classes
+   * themselves are what a test can hold. Asserted because the breakpoint is
+   * now a caller's choice: a `tableFrom` that silently did nothing would leave
+   * a list drawing a six-column table into the 462px an admin sidebar leaves
+   * at a 768px viewport, which is what this prop exists to prevent.
+   */
+  describe("tableFrom", () => {
+    const wrappers = (container: HTMLElement) => ({
+      table: container.querySelector("table")!.closest("div")!.className,
+      cards: container.querySelector("ul")!.closest("div[class*='border-t']")!.className,
+    });
+
+    it("draws the table from md by default, as every list did before the prop existed", () => {
+      const { container } = renderCard();
+      const { table, cards } = wrappers(container);
+      expect(table).toContain("md:block");
+      expect(cards).toContain("md:hidden");
+    });
+
+    it("moves both halves of the switch together when a caller raises it", () => {
+      const { container } = renderCard({ tableFrom: "lg" });
+      const { table, cards } = wrappers(container);
+      expect(table).toContain("lg:block");
+      expect(table).not.toContain("md:block");
+      // Both, not one: a table that appears at `lg` while the cards vanish at
+      // `md` leaves a band showing neither.
+      expect(cards).toContain("lg:hidden");
+      expect(cards).not.toContain("md:hidden");
+    });
+  });
 });

@@ -38,17 +38,22 @@ vi.mock("@/shared/lib/graphql/session-graphql", () => ({
  * values the address bar does, or "the tab is in the URL" would be a claim
  * about this file's leniency.
  */
-function validateSearch(search: Record<string, unknown>): { tab?: AdminBookingTab } {
+function validateSearch(search: Record<string, unknown>): {
+  tab?: AdminBookingTab;
+  offset?: number;
+} {
   const tab = search["tab"];
+  const offset = Number(search["offset"]);
   return {
     tab:
       typeof tab === "string" && (ADMIN_BOOKING_TABS as readonly string[]).includes(tab)
         ? (tab as AdminBookingTab)
         : undefined,
+    offset: Number.isSafeInteger(offset) && offset > 0 ? offset : undefined,
   };
 }
 
-/** Two days and a bit ago, so "waiting 2 d" is the answer for any run. */
+/** Two days and a bit ago, so "2 dias" is the answer for any run. */
 function twoDaysAgo(): string {
   return new Date(Date.now() - (2 * 24 + 3) * 60 * 60_000).toISOString();
 }
@@ -243,9 +248,17 @@ describe("AdminBookingsPage", () => {
     renderQueue("/admin/bookings");
 
     const ana = await row("Ana");
-    expect(ana.getByRole("link", { name: "Estúdio Mavalane" })).toBeInTheDocument();
+    // The `href`, not only the name: a link whose accessible name is the
+    // workspace can still point at the booking's own id, and asserting the
+    // name alone let exactly that through — `params={{ providerId: b.id }}`
+    // kept the whole suite green.
+    expect(ana.getByRole("link", { name: "Estúdio Mavalane" })).toHaveAttribute(
+      "href",
+      "/admin/providers/prov-1",
+    );
     expect(ana.getByText("Corte de cabelo")).toBeInTheDocument();
-    expect(ana.getByText("à espera há 2 d")).toBeInTheDocument();
+    // `Intl`'s own abbreviation for the locale, which in `pt` is the whole word.
+    expect(ana.getByText("à espera há 2 dias")).toBeInTheDocument();
     expect(ana.getByText("Confirmada")).toBeInTheDocument();
   });
 
@@ -388,23 +401,94 @@ describe("AdminBookingsPage", () => {
     // Nothing congratulates anybody. A success notice would be a sentence the
     // wire never justified: `bookingAdminMarkDone` answers `{ bookingId }`
     // whether it moved the row or lost the race to the platform's sweep.
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("status")).toHaveLength(0);
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
     // And the press is live again, because the queue has been re-read.
     expect(after.getByRole("button", { name: "Marcar como concluído" })).toBeEnabled();
   });
 
-  it("says so when the platform refuses the action", async () => {
+  it("says so when the platform refuses the action, and lets it be tried again", async () => {
     renderQueue("/admin/bookings", {
+      answer: page([rowFixture(), rowFixture({ id: "bk-2", customerFirstName: "Bruno" })]),
       onMutation: () => new Error("nope"),
     });
     const ana = await row("Ana");
 
     await userEvent.click(ana.getByRole("button", { name: "Marcar como concluído" }));
 
-    expect(
-      await screen.findByText("Não foi possível concluir a reserva."),
-    ).toBeInTheDocument();
+    const refused = await row("Ana");
+    expect(refused.getByRole("alert")).toHaveTextContent("Não foi possível concluir a reserva.");
+    // The whole point of saying so. A refusal that also removes the only
+    // control that could repeat it is a dead end, and the commonest refusal —
+    // the row moved under you — is one a re-read fixes.
+    await waitFor(() =>
+      expect(refused.getByRole("button", { name: "Marcar como concluído" })).toBeEnabled(),
+    );
+    // A refusal re-reads the queue too: the row on screen is precisely the one
+    // the platform has just said is out of date.
+    expect(queueReads()).toBe(2);
+    // And it is that row's failure, not the queue's.
+    expect((await row("Bruno")).queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stops saying an action failed once another one works", async () => {
+    const refuse = { markDone: true };
+    renderQueue("/admin/bookings?tab=in_window", {
+      answer: page([
+        rowFixture({ id: "bk-1", customerFirstName: "Ana" }),
+        MARKED_DONE_ROW,
+      ]),
+      onMutation: (field) =>
+        field === "bookingAdminMarkDone" && refuse.markDone ? new Error("nope") : undefined,
+    });
+
+    await userEvent.click((await row("Ana")).getByRole("button", { name: "Marcar como concluído" }));
+    // `getAllByRole`, not `getByRole`: `CollectionCard` draws every row twice,
+    // once into the table and once into the phone's card list, so anything on
+    // a row is in the document twice at once (see `row()` above).
+    await waitFor(() => expect(screen.getAllByRole("alert")).not.toHaveLength(0));
+
+    // A different row, a different action, and it succeeds. The sentence about
+    // the first row must not survive it: it would be a false statement about
+    // an action that worked, which is the one thing this screen must not say.
+    await userEvent.click((await row("Carla")).getByRole("button", { name: "Concluir agora" }));
+
+    await waitFor(() => expect(screen.queryAllByRole("alert")).toHaveLength(0));
+  });
+
+  it("names a refused dispute decision as a decision, not as a completion", async () => {
+    renderQueue("/admin/bookings?tab=disputed", {
+      answer: page([DISPUTED_ROW]),
+      onMutation: () => new Error("nope"),
+    });
+
+    await userEvent.click((await row("Bruno")).getByRole("button", { name: "Dar razão ao cliente" }));
+
+    // Upholding a dispute *cancels* the booking. "Não foi possível concluir a
+    // reserva" would name the opposite of what was attempted.
+    const refused = await row("Bruno");
+    expect(refused.getByRole("alert")).toHaveTextContent("Não foi possível decidir a reclamação.");
+    expect(refused.queryByText("Não foi possível concluir a reserva.")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Measured, not guessed: inside the real `AdminShell` the sidebar takes
+   * 16rem from `md` up, so a 768px viewport leaves this card 462px while the
+   * table it would draw is about 730 — every action button and the `ACÇÕES`
+   * header off the right edge, behind a scrollbar inside the card. Cards until
+   * `lg`, where the box is 718 and the table fits.
+   */
+  it("stays a list of cards until there is room for its table", async () => {
+    renderQueue("/admin/bookings");
+    // The rows, not just the table: while the card is loading it draws a
+    // skeleton `div` where the card list will be, and there is no `ul` to find.
+    await row("Ana");
+
+    // Which rendering the viewport gets is two Tailwind classes and nothing
+    // else, and jsdom evaluates neither — so the classes are what is held.
+    expect(screen.getByRole("table").closest("div")).toHaveClass("lg:block");
+    const cards = document.querySelector("ul.list-none")!;
+    expect(cards.closest("div[class*='border-t']")).toHaveClass("lg:hidden");
   });
 
   it("names the empty tab in its own words", async () => {
@@ -415,7 +499,7 @@ describe("AdminBookingsPage", () => {
   });
 
   it("counts what is waiting, and pages when there is more than a page", async () => {
-    renderQueue("/admin/bookings", {
+    const { router } = renderQueue("/admin/bookings", {
       answer: ({ offset }) =>
         offset === 0
           ? page([rowFixture()], { total: 21, nextOffset: 20 })
@@ -432,5 +516,75 @@ describe("AdminBookingsPage", () => {
     expect(fakes.graphql).toHaveBeenCalledWith(expect.stringContaining("bookingNeedsAttentionForAdmin"), {
       input: { tab: "unclosed", limit: 20, offset: 20 },
     });
+    // The page is in the URL, like the tab: a refresh here stays here.
+    expect(router.state.location.search).toMatchObject({ offset: 20 });
+  });
+
+  it("opens the page named in the address bar, and ignores a nonsense one", async () => {
+    renderQueue("/admin/bookings?offset=20", {
+      answer: ({ offset }) =>
+        page([rowFixture({ id: "bk-21", customerFirstName: "Zita" })], {
+          total: 21,
+          nextOffset: null,
+          ...(offset === 0 ? { items: [rowFixture()] } : {}),
+        }),
+    });
+    await row("Zita");
+    expect(fakes.graphql).toHaveBeenCalledWith(expect.stringContaining("bookingNeedsAttentionForAdmin"), {
+      input: { tab: "unclosed", limit: 20, offset: 20 },
+    });
+  });
+
+  it("ignores an offset that is not a whole number of rows", async () => {
+    const { router } = renderQueue("/admin/bookings?offset=-5");
+    await row("Ana");
+
+    expect(router.state.location.search).not.toMatchObject({ offset: -5 });
+    expect(fakes.graphql).toHaveBeenCalledWith(expect.stringContaining("bookingNeedsAttentionForAdmin"), {
+      input: { tab: "unclosed", limit: 20, offset: 0 },
+    });
+  });
+
+  /**
+   * The failure a queue meets by being used: you empty the page you are
+   * standing on. Twenty-one bookings, page two holds one, you close it — and
+   * page two is now empty while the count says twenty still need attention.
+   */
+  it("goes back to a page that has something on it when this one empties", async () => {
+    const closed = { yes: false };
+    const { router } = renderQueue("/admin/bookings?offset=20", {
+      answer: ({ offset }) => {
+        const total = closed.yes ? 20 : 21;
+        if (offset === 0) return page([rowFixture()], { total, nextOffset: 20 });
+        return page(closed.yes ? [] : [rowFixture({ id: "bk-21", customerFirstName: "Zita" })], {
+          total,
+          nextOffset: null,
+        });
+      },
+      onMutation: () => {
+        closed.yes = true;
+        return undefined;
+      },
+    });
+
+    await userEvent.click((await row("Zita")).getByRole("button", { name: "Marcar como concluído" }));
+
+    await waitFor(() => expect(router.state.location.search).not.toMatchObject({ offset: 20 }));
+    // Not stranded on an empty page under a count that says otherwise.
+    await row("Ana");
+    expect(within(await screen.findByRole("table")).queryByText("Nada por fechar")).not.toBeInTheDocument();
+  });
+
+  it("keeps a way back when the last page empties, rather than unmounting the pager", async () => {
+    renderQueue("/admin/bookings?offset=20", {
+      answer: ({ offset }) =>
+        offset === 0
+          ? page([rowFixture()], { total: 20, nextOffset: 20 })
+          : page([], { total: 20, nextOffset: null }),
+    });
+
+    // `total` is exactly one page, so a pager gated on `total > 20` would have
+    // unmounted both buttons while the reader stands on the second page.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Anterior" })).toBeInTheDocument());
   });
 });

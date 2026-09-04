@@ -55,6 +55,34 @@ export interface CollectionColumn {
   skeletonShape?: "text" | "badge";
 }
 
+/**
+ * The width at which this card stops stacking rows and starts drawing a table.
+ *
+ * `md` is the default and what every list here used before there was a choice.
+ * It is a *viewport* breakpoint, though, and two of the app's zones put a
+ * 16rem sidebar beside their content — so at a 768px viewport an admin list is
+ * drawing a table into a 462px box. That is fine for a four-column list and
+ * not for one whose last column holds buttons: they end up off the right edge,
+ * reachable only by finding the horizontal scroll. A list that needs more room
+ * than `md` gives it says so here rather than every list paying for its width.
+ */
+export type CollectionBreakpoint = "md" | "lg" | "xl";
+
+/**
+ * Written out in full, never composed, because Tailwind reads source text: a
+ * class assembled as `` `${bp}:block` `` produces no rule at all.
+ */
+const TABLE_AT: Record<CollectionBreakpoint, string> = {
+  md: "hidden overflow-x-auto md:block",
+  lg: "hidden overflow-x-auto lg:block",
+  xl: "hidden overflow-x-auto xl:block",
+};
+const CARDS_BELOW: Record<CollectionBreakpoint, string> = {
+  md: "border-t border-[var(--color-border)] md:hidden",
+  lg: "border-t border-[var(--color-border)] lg:hidden",
+  xl: "border-t border-[var(--color-border)] xl:hidden",
+};
+
 export interface CollectionRow {
   key: string;
   /**
@@ -91,6 +119,7 @@ export function CollectionCard({
   skeletonPlaceholders = 5,
   reorder,
   totalUnknown = false,
+  tableFrom = "md",
 }: {
   title: string;
   shown: number;
@@ -173,6 +202,15 @@ export function CollectionCard({
    * asserting one.
    */
   totalUnknown?: boolean;
+  /**
+   * The width from which rows are drawn as a table rather than as cards.
+   *
+   * `md` by default, which is what every list drew before this existed. Raise
+   * it when the row carries controls the table would push off its right edge
+   * in a zone whose sidebar has already taken 16rem of the viewport — see
+   * `CollectionBreakpoint`.
+   */
+  tableFrom?: CollectionBreakpoint;
 }) {
   const { t } = useTranslation("provider");
   const isEmpty = !loading && rows.length === 0;
@@ -259,7 +297,7 @@ export function CollectionCard({
       </div>
 
       {/* ── Wide screens: a table ─────────────────────────────────────────── */}
-      <div className="hidden overflow-x-auto md:block">
+      <div className={TABLE_AT[tableFrom]}>
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-y border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-muted)_35%,transparent)]">
@@ -358,7 +396,7 @@ export function CollectionCard({
       </div>
 
       {/* ── Narrow screens: one card per row ──────────────────────────────── */}
-      <div className="border-t border-[var(--color-border)] md:hidden">
+      <div className={CARDS_BELOW[tableFrom]}>
         {loading ? (
           <CardSkeleton
             restColumns={restColumns}

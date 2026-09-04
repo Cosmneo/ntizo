@@ -336,11 +336,12 @@
     "completeNow": "Jetzt abschließen"
   },
   "bookingsActionFailed": "Die Buchung konnte nicht abgeschlossen werden.",
+  "bookingsDisputeFailed": "Über die Reklamation konnte nicht entschieden werden.",
   "bookingsDisputeAction": {
     "upheld": "Dem Kunden recht geben",
     "rejected": "Abschluss beibehalten"
   },
-  "bookingsOpenDispute": "Beschwerde öffnen",
+  "bookingsOpenDispute": "Reklamation öffnen",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Nichts zu schließen",

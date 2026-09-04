@@ -336,11 +336,12 @@
     "completeNow": "Completa ora"
   },
   "bookingsActionFailed": "Non è stato possibile completare la prenotazione.",
+  "bookingsDisputeFailed": "Non è stato possibile decidere la contestazione.",
   "bookingsDisputeAction": {
     "upheld": "Dai ragione al cliente",
     "rejected": "Mantieni il completamento"
   },
-  "bookingsOpenDispute": "Apri il reclamo",
+  "bookingsOpenDispute": "Apri la contestazione",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Niente da chiudere",

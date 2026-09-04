@@ -336,6 +336,7 @@
     "completeNow": "Completar ahora"
   },
   "bookingsActionFailed": "No se pudo completar la reserva.",
+  "bookingsDisputeFailed": "No se ha podido decidir la reclamación.",
   "bookingsDisputeAction": {
     "upheld": "Dar la razón al cliente",
     "rejected": "Mantener la finalización"

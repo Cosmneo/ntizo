@@ -336,11 +336,12 @@
     "completeNow": "Nu afronden"
   },
   "bookingsActionFailed": "De boeking kon niet worden afgerond.",
+  "bookingsDisputeFailed": "Het geschil kon niet worden beslist.",
   "bookingsDisputeAction": {
     "upheld": "De klant gelijk geven",
     "rejected": "Afronding handhaven"
   },
-  "bookingsOpenDispute": "Klacht openen",
+  "bookingsOpenDispute": "Geschil openen",
   "bookingsEmpty": {
     "unclosed": {
       "title": "Niets te sluiten",
