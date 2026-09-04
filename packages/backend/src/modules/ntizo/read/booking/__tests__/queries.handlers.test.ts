@@ -126,13 +126,22 @@ describe("booking.needsAttentionForAdmin", () => {
   it("asks the projection for the tab, defaulting the page to the first twenty", async () => {
     const { module, listForAdmin } = makeModule();
 
+    const before = Date.now();
     const out = await handlerFor(module).handler({ tab: "disputed" }, adminCtx());
+    const after = Date.now();
 
     expect(out).toEqual(EMPTY_PAGE);
     expect(listForAdmin.calls).toHaveLength(1);
     expect(listForAdmin.calls[0]).toMatchObject({ tab: "disputed", limit: 20, offset: 0 });
-    // The instant is the edge's, not the query's — see `AdminBookingFilter.now`.
-    expect((listForAdmin.calls[0] as { now: Date }).now).toBeInstanceOf(Date);
+    // **The instant this request ran**, bracketed by the test's own clock —
+    // not merely "a Date". `unclosed`'s predicate is `endsAt < now`, so a
+    // handler passing any fixed instant (an epoch zero, a constant) would
+    // empty or fill the tab wholesale while still handing the projection
+    // something of the right type. See `AdminBookingFilter.now`.
+    const { now } = listForAdmin.calls[0] as { now: Date };
+    expect(now).toBeInstanceOf(Date);
+    expect(now.getTime()).toBeGreaterThanOrEqual(before);
+    expect(now.getTime()).toBeLessThanOrEqual(after);
   });
 
   it("passes a page the caller asked for through unchanged", async () => {

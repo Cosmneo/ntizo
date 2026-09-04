@@ -927,7 +927,23 @@ function adminSelect() {
     .leftJoin(user, eq(user.id, booking.customerId))
     .leftJoin(providerMember, eq(providerMember.id, booking.providerMemberId))
     .leftJoin(memberProfile, eq(memberProfile.userId, providerMember.userId))
-    .leftJoin(disputes, eq(disputes.bookingId, booking.id));
+    // **The status is half of the join condition, not just the booking id.**
+    // The orphan `disputeThreadAggregate` exists to deduplicate is by
+    // definition a `kind = 'dispute'` request whose booking never reached
+    // `DISPUTED` — it is still `MARKED_DONE`, which is to say it is sitting
+    // in the `in_window` tab. Joined on the id alone, that row comes back
+    // with a `threadId`, and `AdminBookingRow.threadId` promises the opposite
+    // ("null on every row that is not a dispute") — as does
+    // `adminBookingReadModel.threadId` on the wire. A screen rendering a
+    // "ver disputa" link from `threadId != null` would then put one on a
+    // booking nobody has disputed: the same false positive the
+    // `kind = 'dispute'` filter was added to prevent, arriving by the other
+    // door. In the ON clause rather than the WHERE, so it costs the match
+    // and never the row.
+    .leftJoin(
+      disputes,
+      and(eq(disputes.bookingId, booking.id), eq(booking.status, ADMIN_TAB_STATUS.disputed)),
+    );
 }
 
 /**
@@ -939,6 +955,15 @@ function adminSelect() {
  * reason. Every other name on this row is what was agreed at the sale, and an
  * administrator resolving a dispute is reading that sale; `providerId` beside
  * it is what links to the workspace as it stands today.
+ *
+ * **The spread carries more than the queue publishes.** `providerColumns()`
+ * selects the customer's phone, email, street line, directions and the
+ * payment reference, and none of those is on `adminBookingReadModel` —
+ * `toAdminBookingDTO` names the seventeen fields it maps, one at a time, and
+ * the field's own output schema refuses anything else. They are here only
+ * because the selection is shared with the provider's queries, which do need
+ * them. Anybody adding a field to that mapper is publishing from a row that
+ * is wider than the contract, and should check the read model first.
  */
 function adminColumns(disputes: ReturnType<typeof disputeThreadAggregate>) {
   return {

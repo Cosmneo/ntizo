@@ -27,24 +27,41 @@
  * intact: two of this file's own rows in the wrong order stay in the wrong
  * order after every foreign row is dropped.
  *
- * The fixture seeds seven bookings: **two per tab**, plus one `CONFIRMED`
- * whose appointment is still ahead of `NOW` and therefore belongs to no tab
- * at all.
+ * The fixture seeds ten bookings, and each one exists to make a different
+ * mistake fail.
  *
- * Two per tab rather than one, because each tab makes a claim about *order*
- * as well as about membership, and a queue of one row is in the right order
- * whatever the `ORDER BY` says. The seventh is what makes `unclosed` mean
- * *ended* rather than merely confirmed: without it, dropping the `endsAt <
- * now` half of that predicate would change nothing.
+ * **Membership** — two `CONFIRMED` bookings whose appointment has ended
+ * (`unclosed`), two `MARKED_DONE` (`in_window`), three `DISPUTED`
+ * (`disputed`), one `CONFIRMED` six months away and one `CONFIRMED` **in
+ * progress at `NOW`**. The last two belong to no tab, and they are not the
+ * same claim: the future one is what makes `unclosed` mean more than
+ * "confirmed", and the in-progress one — started at 09:30, ending at 10:30,
+ * asked at 10:00 — is the only fixture that can tell `endsAt < now` from
+ * `startsAt < now`.
  *
- * Three support requests, not one. The dispute's; an ordinary `support`
- * request about the marked-done booking, which is the only thing that can
- * fail a lookup that forgot `kind = 'dispute'` and took whichever request
- * mentioned the booking; and a *second* dispute request on the disputed
- * booking, which is the only thing that can fail a lookup that forgot to
- * deduplicate. That second one is not hypothetical — see
+ * **Order** — every tab has at least two rows, because a queue of one row is
+ * in the right order whatever the `ORDER BY` says. `in_window`'s two are
+ * marked done in one order and given windows closing in the *other*, so
+ * ordering by the wrong clock is a different answer rather than the same one.
+ * `unclosed` has a third: a booking ending at the **same instant** as another,
+ * on a second member's calendar so the slot constraint permits it, because a
+ * tiebreak that is never tied is a line no test can be wrong about.
+ *
+ * **The dispute's conversation** — five support requests. One `support`
+ * request about a marked-done booking, which is the only thing that can fail
+ * a lookup that forgot `kind = 'dispute'`. Two dispute requests on one
+ * disputed booking, five minutes apart, which is the only thing that can fail
+ * a lookup that forgot to deduplicate — and not hypothetical: see
  * `DisputeBookingCommand`'s own doc comment for the compare-and-swap that
- * leaves it behind.
+ * leaves an orphan behind. Two more on another disputed booking at the **same
+ * instant**, so `created_at` cannot separate them and only the thread-id
+ * tiebreak can. And one dispute request on a booking that is still
+ * `MARKED_DONE` — the orphan itself, which an id-only join would render as a
+ * dispute link on a booking nobody has disputed.
+ *
+ * The workspace is **renamed after every booking is written**, so the name on
+ * the row and the name on the workspace differ and a query reading the live
+ * column instead of the snapshot can be told apart.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -102,44 +119,88 @@ const FIXTURE_BATCH = 1000;
 
 const PROVIDER_NAME = "Admin Queue Test Provider";
 
+/** Bumped once per `confirmed()` so no two fixtures share a payment reference. */
+let paymentRefs = 0;
+
+/**
+ * The workspace's name **as it stands today**, and deliberately not the name
+ * any of these bookings was sold under.
+ *
+ * `PROVIDER_NAME` above is what `booking.provider_name` snapshotted at sale
+ * time; the workspace is renamed to this the moment the fixtures are written.
+ * The queue has to answer with the snapshot — see `adminColumns` for the
+ * argument — and with one string in both columns a query reading either would
+ * pass.
+ */
+const PROVIDER_RENAMED_TO = "Admin Queue Test Provider (renomeado)";
+
 let customerId: string;
 let ownerUserId: string;
+/** The second member's person — see `twinMemberId`. */
+let staffUserId: string;
 let providerId: string;
 let memberId: string;
+/** A second member, so two bookings can hold the *same slot* without tripping `booking_member_slot_no_overlap`. */
+let twinMemberId: string;
 let categoryId: string;
 let serviceId: string;
 let serviceOptionId: string;
 
-/** `CONFIRMED`, ended at 10:00 on the 1st — the older of the two unclosed, and never reminded. */
+/** `CONFIRMED`, ended at 10:00 on the 1st — the oldest unclosed, and never reminded. */
 let unclosedEarlyId: string;
+/**
+ * `CONFIRMED`, ending at **exactly** `unclosedEarly`'s instant, on the second
+ * member's calendar. Its only job is to tie: with one clock value shared by
+ * two rows, `endsAt` alone cannot order them and `asc(booking.id)` is the only
+ * thing that can.
+ */
+let unclosedTwinId: string;
 /** `CONFIRMED`, ended at 10:00 on the 2nd, and asked about once — the row that proves `remindedAt` travels. */
 let unclosedLateId: string;
-/** `MARKED_DONE` on the 3rd with two days of window left at `NOW` — the window closing first. */
-let inWindowId: string;
-/** `MARKED_DONE` too, with a day more window than the one above. Its only job is to pin the order. */
-let inWindowLaterId: string;
-/** `DISPUTED` on the 3rd at 14:00, with the conversation the customer opened. */
+/** `CONFIRMED` and **in progress at `NOW`**: started at 09:30, ends at 10:30. Started is not ended. */
+let inProgressId: string;
+/** `MARKED_DONE` first, and the window that closes **last** — so `markedDoneAt` and `expiresAt` disagree about the order. */
+let windowClosesLastId: string;
+/** `MARKED_DONE` last, and the window that closes **first**. This is the row the `in_window` tab must show at the top. */
+let windowClosesFirstId: string;
+/** `DISPUTED` on the 3rd at 14:00, carrying two dispute requests written five minutes apart. */
 let disputedId: string;
-/** `DISPUTED` six hours later, and **with no conversation at all** — the left join must still return it. */
+/** `DISPUTED` at 17:00, carrying two dispute requests written at the **same instant**. */
+let disputedTiedId: string;
+/** `DISPUTED` at 20:00, and **with no conversation at all** — the left join must still return it. */
 let disputedLaterId: string;
 /** `CONFIRMED` and still six months away — visible status, no queue. */
 let futureId: string;
 
-/** The dispute's conversation, opened last. The row's `threadId` must be exactly this. */
+/** The dispute's conversation, opened last of the two on `disputedId`. The row's `threadId` must be exactly this. */
 let disputeThreadId: string;
 /**
- * A **second** `dispute` request on the same booking, opened five minutes
- * earlier — the orphan `DisputeBookingCommand`'s own doc comment describes: a
- * thread opened before a compare-and-swap that then lost, with the customer's
- * retry opening the one above. Joined naively this booking comes back twice.
+ * A **second** `dispute` request on `disputedId`, opened five minutes earlier
+ * — the orphan `DisputeBookingCommand`'s own doc comment describes: a thread
+ * opened before a compare-and-swap that then lost, with the customer's retry
+ * opening the one above. Joined naively this booking comes back twice.
  */
 let orphanThreadId: string;
-/** An ordinary question about `inWindowId`. Nothing may ever read this as a dispute. */
+/**
+ * `disputedTiedId`'s two conversations, written at one instant so only
+ * `desc(threadId)` can separate them — **as `[lower, higher]`**, which is also
+ * the order their requests were written in. See `openTiedThreads`.
+ */
+let tiedThreadIds: [string, string];
+/**
+ * An orphan on a booking that is **still `MARKED_DONE`** — a dispute whose
+ * compare-and-swap lost and was never retried. `kind = 'dispute'` and a
+ * booking in the `in_window` tab: the exact row that gives an id-only join a
+ * dispute link on a booking nobody has disputed.
+ */
+let inWindowOrphanThreadId: string;
+/** An ordinary question about `windowClosesLastId`. Nothing may ever read this as a dispute. */
 let supportThreadId: string;
 
 beforeAll(async () => {
   customerId = crypto.randomUUID();
   ownerUserId = crypto.randomUUID();
+  staffUserId = crypto.randomUUID();
   await db.insert(user).values([
     {
       id: customerId,
@@ -153,10 +214,17 @@ beforeAll(async () => {
       role: "customer",
       status: "active",
     },
+    {
+      id: staffUserId,
+      email: `admin-bookings-staff-${suffix}@ntizo.test`,
+      role: "customer",
+      status: "active",
+    },
   ]);
   await db.insert(profile).values([
     { userId: customerId, firstName: "Ana", lastName: "Machava", phoneNumber: "+258840000009" },
     { userId: ownerUserId, firstName: "Beatriz", lastName: "Cossa" },
+    { userId: staffUserId, firstName: "Carla", lastName: "Nhaca" },
   ]);
 
   const [providerRow] = await db
@@ -177,6 +245,17 @@ beforeAll(async () => {
     .values({ providerId, userId: ownerUserId, role: "owner" })
     .returning({ id: providerMember.id });
   memberId = memberRow!.id;
+
+  // `booking_member_slot_no_overlap` keys on the member, so two bookings can
+  // share an instant only if they are on two calendars. That is the whole
+  // reason this second member exists — see `unclosedTwinId`.
+  // Its own user, because `provider_member_provider_user_uniq` allows one
+  // membership per person per workspace.
+  const [twinMemberRow] = await db
+    .insert(providerMember)
+    .values({ providerId, userId: staffUserId, role: "staff" })
+    .returning({ id: providerMember.id });
+  twinMemberId = twinMemberRow!.id;
 
   const [categoryRow] = await db
     .insert(category)
@@ -203,14 +282,16 @@ beforeAll(async () => {
   serviceOptionId = optionRow!.id;
 
   await __runWithTransactionContextForTests(db, async () => {
-    // Every slot below is its own hour: `booking_member_slot_no_overlap` is an
-    // exclusion constraint on the member's time, and this workspace's member
-    // holds all five.
+    // Every slot below is its own hour on the owner's calendar:
+    // `booking_member_slot_no_overlap` is an exclusion constraint on the
+    // member's time. The one exception is `unclosedTwin`, which shares an
+    // instant deliberately and is therefore on the second member's.
     unclosedEarlyId = await confirmed(new Date("2026-09-01T09:00:00.000Z"));
+    unclosedTwinId = await confirmed(new Date("2026-09-01T09:00:00.000Z"), twinMemberId);
 
     unclosedLateId = await confirmed(new Date("2026-09-02T09:00:00.000Z"));
     // Asked once, and still not answered. `reminded` is the only thing that
-    // writes `remindedAt`; the earlier row keeps its null so the column is
+    // writes `remindedAt`; the earlier rows keep their null so the column is
     // proven in both directions rather than just being present.
     const reminded = (await load(unclosedLateId)).reminded(
       new Date("2026-09-02T12:00:00.000Z"),
@@ -218,24 +299,34 @@ beforeAll(async () => {
     );
     await commit(reminded, BookingStatus.Confirmed);
 
-    inWindowId = await confirmed(new Date("2026-09-03T09:00:00.000Z"));
+    // **Straddling `NOW`**: started at 09:30, ends at 10:30, and `NOW` is
+    // 10:00. Confirmed, in progress, and not stuck — a job running late is
+    // the ordinary case for the trades this platform serves. This is the only
+    // fixture that can tell `endsAt < now` from `startsAt < now`, which four
+    // doc comments insist are different questions.
+    inProgressId = await confirmed(new Date("2026-09-04T09:30:00.000Z"));
+
+    windowClosesLastId = await confirmed(new Date("2026-09-03T09:00:00.000Z"));
     // `markDone` refuses an instant before the appointment ended, so the hop
-    // is stamped half an hour after it. Three days of window, closing on the
-    // 6th — two days past `NOW`.
-    const markedDone = (await load(inWindowId)).markDone(
+    // is stamped half an hour after it. Marked done **first**, and given the
+    // window that closes **last**.
+    const markedDoneFirst = (await load(windowClosesLastId)).markDone(
       new Date("2026-09-03T10:30:00.000Z"),
       new Date("2026-09-06T10:30:00.000Z"),
     );
-    await commit(markedDone, BookingStatus.Confirmed);
+    await commit(markedDoneFirst, BookingStatus.Confirmed);
 
-    // A day more window than the one above, so `in_window`'s order has two
-    // rows to be wrong about.
-    inWindowLaterId = await confirmed(new Date("2026-09-03T15:00:00.000Z"));
-    const markedDoneLater = (await load(inWindowLaterId)).markDone(
+    // Marked done six hours **later** and given a window that closes a day
+    // **earlier**, so `markedDoneAt` and `expiresAt` rank these two rows the
+    // opposite way round. The tab's claim is "the window closing soonest
+    // first"; without this disagreement, ordering by either column would look
+    // identical.
+    windowClosesFirstId = await confirmed(new Date("2026-09-03T15:00:00.000Z"));
+    const markedDoneLast = (await load(windowClosesFirstId)).markDone(
       new Date("2026-09-03T16:30:00.000Z"),
-      new Date("2026-09-07T16:30:00.000Z"),
+      new Date("2026-09-05T16:30:00.000Z"),
     );
-    await commit(markedDoneLater, BookingStatus.Confirmed);
+    await commit(markedDoneLast, BookingStatus.Confirmed);
 
     disputedId = await confirmed(new Date("2026-09-03T12:00:00.000Z"));
     const done = (await load(disputedId)).markDone(
@@ -249,11 +340,23 @@ beforeAll(async () => {
     const disputed = done.dispute(new Date("2026-09-03T14:00:00.000Z"));
     await commit(disputed, BookingStatus.MarkedDone);
 
-    // Disputed six hours after the one above, and deliberately left without a
-    // conversation. Two things at once: `disputed`'s order has two rows, and
-    // the thread lookup is proven to be a *left* join — a booking whose
-    // thread is missing must still reach the administrator who has to decide
-    // it, rather than disappearing out of the only tab that would show it.
+    // Two dispute requests written at **one instant**, so `created_at` cannot
+    // separate them and only `desc(thread_id)` can — the tie the dedup's own
+    // comment names ("`created_at` defaults to `now()` and two rows written in
+    // one transaction share it") and which the pair above deliberately avoids.
+    disputedTiedId = await confirmed(new Date("2026-09-03T15:00:00.000Z"), twinMemberId);
+    const doneTied = (await load(disputedTiedId)).markDone(
+      new Date("2026-09-03T16:30:00.000Z"),
+      new Date("2026-09-06T16:30:00.000Z"),
+    );
+    await commit(doneTied, BookingStatus.Confirmed);
+    const disputedTied = doneTied.dispute(new Date("2026-09-03T17:00:00.000Z"));
+    await commit(disputedTied, BookingStatus.MarkedDone);
+
+    // Disputed last, and deliberately left without a conversation. The thread
+    // lookup is proven to be a *left* join — a booking whose thread is missing
+    // must still reach the administrator who has to decide it, rather than
+    // disappearing out of the only tab that would show it.
     disputedLaterId = await confirmed(new Date("2026-09-03T18:00:00.000Z"));
     const doneLater = (await load(disputedLaterId)).markDone(
       new Date("2026-09-03T19:30:00.000Z"),
@@ -268,7 +371,23 @@ beforeAll(async () => {
 
   orphanThreadId = await openThread(disputedId, "dispute", new Date("2026-09-03T14:00:00.000Z"));
   disputeThreadId = await openThread(disputedId, "dispute", new Date("2026-09-03T14:05:00.000Z"));
-  supportThreadId = await openThread(inWindowId, "support", new Date("2026-09-03T11:00:00.000Z"));
+  tiedThreadIds = await openTiedThreads(disputedTiedId, new Date("2026-09-03T17:00:00.000Z"));
+  inWindowOrphanThreadId = await openThread(
+    windowClosesFirstId,
+    "dispute",
+    new Date("2026-09-03T17:30:00.000Z"),
+  );
+  supportThreadId = await openThread(
+    windowClosesLastId,
+    "support",
+    new Date("2026-09-03T11:00:00.000Z"),
+  );
+
+  // **Renamed after every booking was written**, so `provider.name` and the
+  // `provider_name` snapshotted onto each row now hold different strings. A
+  // query reading the live column instead of the snapshot is otherwise
+  // indistinguishable from one reading the right one.
+  await db.update(provider).set({ name: PROVIDER_RENAMED_TO }).where(eq(provider.id, providerId));
 });
 
 afterAll(async () => {
@@ -278,6 +397,9 @@ afterAll(async () => {
     // booking with a request still pointing at it refuses to be deleted.
     () => db.delete(thread).where(eq(thread.id, disputeThreadId)),
     () => db.delete(thread).where(eq(thread.id, orphanThreadId)),
+    () => db.delete(thread).where(eq(thread.id, tiedThreadIds[0])),
+    () => db.delete(thread).where(eq(thread.id, tiedThreadIds[1])),
+    () => db.delete(thread).where(eq(thread.id, inWindowOrphanThreadId)),
     () => db.delete(thread).where(eq(thread.id, supportThreadId)),
     // `booking_change` cascades on the booking it logs — see its schema.
     () => db.delete(booking).where(eq(booking.providerId, providerId)),
@@ -285,23 +407,26 @@ afterAll(async () => {
     () => db.delete(service).where(eq(service.id, serviceId)),
     () => db.delete(category).where(eq(category.id, categoryId)),
     () => db.delete(providerMember).where(eq(providerMember.id, memberId)),
+    () => db.delete(providerMember).where(eq(providerMember.id, twinMemberId)),
     () => db.delete(provider).where(eq(provider.id, providerId)),
     () => db.delete(profile).where(eq(profile.userId, customerId)),
     () => db.delete(profile).where(eq(profile.userId, ownerUserId)),
+    () => db.delete(profile).where(eq(profile.userId, staffUserId)),
     () => db.delete(user).where(eq(user.id, customerId)),
     () => db.delete(user).where(eq(user.id, ownerUserId)),
+    () => db.delete(user).where(eq(user.id, staffUserId)),
     () => sql.end({ timeout: 5 }),
   ]);
 }, DEV_DB_COLD_START_TIMEOUT_MS);
 
-/** Every `Booking.create` input this file needs, with the caller's slot. */
-function bookingInput(startsAt: Date): Parameters<typeof Booking.create>[0] {
+/** Every `Booking.create` input this file needs, with the caller's slot and calendar. */
+function bookingInput(startsAt: Date, providerMemberId: string): Parameters<typeof Booking.create>[0] {
   return {
     customerId,
     providerId,
     serviceId,
     serviceOptionId,
-    providerMemberId: memberId,
+    providerMemberId,
     startsAt,
     durationMinutes: 60,
     priceMinor: 100_000,
@@ -323,9 +448,16 @@ function bookingInput(startsAt: Date): Parameters<typeof Booking.create>[0] {
  * Every deadline handed to a hop is derived from the slot so the walk is
  * plausible for a slot in 2026 and for one in 2027 alike; none of them is
  * what the assertions read.
+ *
+ * `providerMemberId` defaults to the owner. The one caller that passes the
+ * second member is doing so to put two bookings on the same instant — see
+ * `twinMemberId`.
  */
-async function confirmed(startsAt: Date): Promise<string> {
-  const created = await writeRepo.insert(Booking.create(bookingInput(startsAt)), 1);
+async function confirmed(startsAt: Date, providerMemberId: string = memberId): Promise<string> {
+  const created = await writeRepo.insert(
+    Booking.create(bookingInput(startsAt, providerMemberId)),
+    1,
+  );
   const submitted = created.submit(
     new Date(startsAt.getTime() - 172_800_000),
     new Date(startsAt.getTime() - 86_400_000),
@@ -353,8 +485,12 @@ async function confirmed(startsAt: Date): Promise<string> {
     new Date(startsAt.getTime() - 43_200_000),
   );
   await commit(accepted, BookingStatus.AwaitingProvider);
+  // Numbered rather than keyed on the slot: two fixtures now share an instant
+  // on two calendars, and two payments for one reference is a shape M-Pesa
+  // never produces.
+  paymentRefs += 1;
   const paid = accepted.markPaid(
-    `mpesa-${suffix}-${startsAt.toISOString()}`,
+    `mpesa-${suffix}-${paymentRefs}`,
     new Date(startsAt.getTime() - 86_400_000),
   );
   await commit(paid, BookingStatus.PendingPayment);
@@ -394,11 +530,7 @@ async function openThread(
   kind: "dispute" | "support",
   createdAt: Date,
 ): Promise<string> {
-  const [row] = await db
-    .insert(thread)
-    .values({ type: "support", customerUserId: customerId, lastMessageAt: createdAt })
-    .returning({ id: thread.id });
-  const threadId = row!.id;
+  const threadId = await newSupportThread(createdAt);
   // `createdAt` written rather than defaulted: which of two dispute requests
   // on one booking is the current one is decided by this column, and two rows
   // inserted milliseconds apart would leave that up to the clock.
@@ -412,6 +544,44 @@ async function openThread(
     createdAt,
   });
   return threadId;
+}
+
+/**
+ * Two dispute conversations about one booking, written at **one instant**.
+ *
+ * The two threads are created first and their requests inserted **lower id
+ * first**, deliberately. `created_at` cannot separate these two rows, so the
+ * only thing that can is `desc(thread_id)` — and without it Postgres is free
+ * to hand `DISTINCT ON` whichever row it reaches first, which for a small
+ * table means the one written first. Inserting the loser first is therefore
+ * what makes the missing tiebreak *visible*: with the winner written first,
+ * the incidental order and the intended order agree and dropping the tiebreak
+ * changes nothing.
+ */
+async function openTiedThreads(bookingId: string, createdAt: Date): Promise<[string, string]> {
+  const ids = await Promise.all([newSupportThread(createdAt), newSupportThread(createdAt)]);
+  const [lower, higher] = [...ids].sort() as [string, string];
+  for (const threadId of [lower, higher]) {
+    await db.insert(supportRequest).values({
+      threadId,
+      audience: "customer",
+      subject: "Limpeza profunda",
+      bookingId,
+      kind: "dispute",
+      status: "open",
+      createdAt,
+    });
+  }
+  return [lower, higher];
+}
+
+/** A bare support thread, with no request attached yet. */
+async function newSupportThread(lastMessageAt: Date): Promise<string> {
+  const [row] = await db
+    .insert(thread)
+    .values({ type: "support", customerUserId: customerId, lastMessageAt })
+    .returning({ id: thread.id });
+  return row!.id;
 }
 
 /**
@@ -436,13 +606,46 @@ function filter(tab: AdminBookingFilter["tab"]): AdminBookingFilter {
 function ours(): ReadonlySet<string> {
   return new Set([
     unclosedEarlyId,
+    unclosedTwinId,
     unclosedLateId,
-    inWindowId,
-    inWindowLaterId,
+    inProgressId,
+    windowClosesLastId,
+    windowClosesFirstId,
     disputedId,
+    disputedTiedId,
     disputedLaterId,
     futureId,
   ]);
+}
+
+/**
+ * The two bookings tied on `endsAt`, in the order `asc(booking.id)` puts them.
+ *
+ * Sorted here rather than written down, because both ids are random UUIDs and
+ * no run can know which is smaller. That is not a weakened assertion: the
+ * claim under test is "ties are broken by id", and this is that claim written
+ * as an expectation rather than as a guess. Postgres compares `uuid` by its
+ * sixteen bytes and the canonical lowercase rendering is those bytes in hex,
+ * so a JavaScript string sort agrees with the database's.
+ *
+ * **What this can and cannot prove, stated so nobody believes more than is
+ * true.** With the tiebreak in place these two rows come back in id order
+ * every time, and that is the contract `adminOrder` promises. With it removed
+ * the answer is *unspecified* rather than wrong: Postgres's sort is not
+ * stable, so a tied pair comes back in an order it is free to choose, and
+ * roughly half the time it chooses the one this assertion wanted. So dropping
+ * `asc(booking.id)` reddens this file about one run in two, not every run.
+ *
+ * That was measured, not assumed — four runs of the mutant gave two red and
+ * two green — and forcing it was tried and abandoned: rewriting the
+ * smaller-id row to move it down the heap changes nothing, because the plan
+ * sorts rather than scanning in physical order. A tie the query is asked to
+ * resolve is the strongest thing a black-box test can set up here; making the
+ * *absence* of a tiebreak fail deterministically would take reading the plan,
+ * which is a different kind of test than this file is.
+ */
+function tiedByIdAsc(): [string, string] {
+  return [unclosedEarlyId, unclosedTwinId].sort() as [string, string];
 }
 
 /**
@@ -456,53 +659,124 @@ async function queue(tab: AdminBookingFilter["tab"]): Promise<AdminBookingRow[]>
   return rows.filter((r) => mine.has(r.id));
 }
 
+/** One row of a tab's answer, by id, so an assertion about a booking does not depend on how many rows precede it. */
+function rowOf(rows: readonly AdminBookingRow[], bookingId: string): AdminBookingRow {
+  const found = rows.find((r) => r.id === bookingId);
+  if (!found) throw new Error(`expected ${bookingId} in this tab`);
+  return found;
+}
+
+/**
+ * The body, run inside a single `repeatable read` transaction bound into the
+ * app's context.
+ *
+ * `__runWithTransactionContextForTests` alone binds a db handle and opens no
+ * transaction, so two reads in one test take two independent `READ COMMITTED`
+ * snapshots — and against a shared `DEV_DB_URL` a sibling worktree can commit
+ * a matching booking between them. That is harmless for a test that reads
+ * once, and not harmless for the two below that compare two unscoped reads to
+ * each other: `countForAdmin` against `listForAdmin`, and one page against the
+ * next. One snapshot for both reads removes the race without weakening either
+ * assertion.
+ */
+async function inOneSnapshot<T>(work: () => Promise<T>): Promise<T> {
+  return db.transaction(
+    async (tx) =>
+      // `tx` is a `PgTransaction`, structurally close to but not assignable to
+      // `DrizzleDb` (it lacks `$client`), and it supports the whole query
+      // surface a repository actually uses. The same cast `runInTransaction`
+      // makes in production, for the same reason and with the same words.
+      __runWithTransactionContextForTests(tx as unknown as Parameters<typeof __runWithTransactionContextForTests>[0], work),
+    { isolationLevel: "repeatable read" },
+  );
+}
+
 describe("DrizzleBookingReadRepository, administrator side", () => {
   test("unclosed lists the confirmed bookings whose appointment has ended, longest-stuck first", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const rows = await queue("unclosed");
-      // Both, in `endsAt` order — the older appointment at the top, which is
-      // the only thing a queue's order is for.
-      expect(rows.map((r) => r.id)).toEqual([unclosedEarlyId, unclosedLateId]);
-      expect(rows.map((r) => r.status)).toEqual(["CONFIRMED", "CONFIRMED"]);
+      // All three, in `endsAt` order — the older appointment at the top,
+      // which is the only thing a queue's order is for. The first two share
+      // an `endsAt` to the millisecond, so `asc(booking.id)` is what puts
+      // them in *some* order rather than an arbitrary one.
+      expect(rows.map((r) => r.id)).toEqual([...tiedByIdAsc(), unclosedLateId]);
+      expect(rows.map((r) => r.status)).toEqual(["CONFIRMED", "CONFIRMED", "CONFIRMED"]);
       // The confirmed booking still six months away is confirmed and not
       // stuck: without the `endsAt < now` half it would sit here too.
       expect(rows.map((r) => r.id)).not.toContain(futureId);
     });
   });
 
-  test("unclosed carries the workspace's name, and whether the platform has asked yet", async () => {
+  test("unclosed means the appointment has ended, not that it has started", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const rows = await queue("unclosed");
-      expect(rows.map((r) => r.providerName)).toEqual([PROVIDER_NAME, PROVIDER_NAME]);
-      // Both directions of the same column: one asked, one not.
-      expect(rows[0]!.remindedAt).toBeNull();
-      expect(rows[1]!.remindedAt?.toISOString()).toBe("2026-09-02T12:00:00.000Z");
+      // Started at 09:30, ends at 10:30, and `NOW` is 10:00 — a job running
+      // over its slot, which is ordinary for the trades this platform serves.
+      // `startsAt < now` is true of it and `endsAt < now` is not; only the
+      // second is the question the tab asks, and only this fixture can tell
+      // the two predicates apart.
+      expect(rows.map((r) => r.id)).not.toContain(inProgressId);
+      // Still `CONFIRMED`, so it is not hiding in another tab either — it is
+      // simply not anybody's problem yet.
+      expect((await queue("in_window")).map((r) => r.id)).not.toContain(inProgressId);
+      expect((await queue("disputed")).map((r) => r.id)).not.toContain(inProgressId);
+    });
+  });
+
+  test("unclosed carries the workspace's name as it was sold, and whether the platform has asked yet", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const rows = await queue("unclosed");
+      // The snapshot, not today's name: the workspace was renamed after these
+      // bookings were written, and a row reading `provider.name` would say
+      // `PROVIDER_RENAMED_TO` here.
+      expect(rows.map((r) => r.providerName)).toEqual([PROVIDER_NAME, PROVIDER_NAME, PROVIDER_NAME]);
+      expect(rows.map((r) => r.providerName)).not.toContain(PROVIDER_RENAMED_TO);
+      expect(rows.map((r) => r.providerId)).toEqual([providerId, providerId, providerId]);
+      // Both directions of the same column: one asked, two not.
+      expect(rowOf(rows, unclosedEarlyId).remindedAt).toBeNull();
+      expect(rowOf(rows, unclosedTwinId).remindedAt).toBeNull();
+      expect(rowOf(rows, unclosedLateId).remindedAt?.toISOString()).toBe("2026-09-02T12:00:00.000Z");
       // Nothing here is a dispute, so nothing here has a conversation.
-      expect(rows.map((r) => r.threadId)).toEqual([null, null]);
+      expect(rows.map((r) => r.threadId)).toEqual([null, null, null]);
     });
   });
 
   test("in_window lists the marked-done bookings, the window closing soonest first", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const rows = await queue("in_window");
-      expect(rows.map((r) => r.id)).toEqual([inWindowId, inWindowLaterId]);
+      // Ordered by `expiresAt`, and **not** by `markedDoneAt`: the two
+      // fixtures were marked done in one order and given windows closing in
+      // the other, so a query reading the wrong clock returns the wrong row
+      // first rather than the same list.
+      expect(rows.map((r) => r.id)).toEqual([windowClosesFirstId, windowClosesLastId]);
       expect(rows.map((r) => r.status)).toEqual(["MARKED_DONE", "MARKED_DONE"]);
-      expect(rows[0]!.markedDoneAt?.toISOString()).toBe("2026-09-03T10:30:00.000Z");
-      // The window's own deadline, which is what this tab orders by — and the
-      // second row's is a day later, which is the whole of the order's claim.
-      expect(rows[0]!.expiresAt?.toISOString()).toBe("2026-09-06T10:30:00.000Z");
-      expect(rows[1]!.expiresAt?.toISOString()).toBe("2026-09-07T16:30:00.000Z");
+      expect(rows.map((r) => r.expiresAt?.toISOString())).toEqual([
+        "2026-09-05T16:30:00.000Z",
+        "2026-09-06T10:30:00.000Z",
+      ]);
+      // Marked done the other way round, which is what makes the line above
+      // an assertion about `expiresAt` rather than about either clock.
+      expect(rows.map((r) => r.markedDoneAt?.toISOString())).toEqual([
+        "2026-09-03T16:30:00.000Z",
+        "2026-09-03T10:30:00.000Z",
+      ]);
     });
   });
 
-  test("in_window never reads an ordinary support request as a dispute", async () => {
+  test("in_window never reads a support request — or an orphaned dispute — as this booking's dispute", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const rows = await queue("in_window");
-      // There *is* a support request pointing at this booking — of kind
-      // `support`. A subselect that matched on `booking_id` alone would hand
-      // this row a thread id and put a "ver disputa" link on a booking nobody
-      // has disputed.
-      expect(rows[0]!.threadId).toBeNull();
+      // Two different ways a `support_request` can point at a booking in this
+      // tab, and neither may become a "ver disputa" link:
+      //
+      //  - `windowClosesLast` has one of kind `support` — an ordinary
+      //    question, which a lookup matching on `booking_id` alone would take.
+      //  - `windowClosesFirst` has one of kind **`dispute`**: the orphan a
+      //    lost compare-and-swap leaves behind, whose booking never reached
+      //    `DISPUTED`. `kind = 'dispute'` does not exclude it — only the
+      //    status half of the join condition does.
+      expect(rowOf(rows, windowClosesLastId).threadId).toBeNull();
+      expect(rowOf(rows, windowClosesFirstId).threadId).toBeNull();
     });
   });
 
@@ -511,30 +785,45 @@ describe("DrizzleBookingReadRepository, administrator side", () => {
       const rows = await queue("disputed");
       // Ordered by when the customer complained — `disputedAt` — which is the
       // only clock a disputed booking has: `dispute` nulls `expiresAt`.
-      expect(rows.map((r) => r.id)).toEqual([disputedId, disputedLaterId]);
-      expect(rows.map((r) => r.status)).toEqual(["DISPUTED", "DISPUTED"]);
-      expect(rows[0]!.threadId).toBe(disputeThreadId);
-      // The second has no conversation, and is here anyway: a left join, so a
+      expect(rows.map((r) => r.id)).toEqual([disputedId, disputedTiedId, disputedLaterId]);
+      expect(rows.map((r) => r.status)).toEqual(["DISPUTED", "DISPUTED", "DISPUTED"]);
+      expect(rowOf(rows, disputedId).threadId).toBe(disputeThreadId);
+      // The last has no conversation, and is here anyway: a left join, so a
       // missing thread costs a link rather than the whole row.
-      expect(rows[1]!.threadId).toBeNull();
-      expect(rows.map((r) => r.expiresAt)).toEqual([null, null]);
+      expect(rowOf(rows, disputedLaterId).threadId).toBeNull();
+      expect(rows.map((r) => r.expiresAt)).toEqual([null, null, null]);
     });
   });
 
   test("a booking with two dispute threads is listed once, linked to the later one", async () => {
     await __runWithTransactionContextForTests(db, async () => {
       const rows = await queue("disputed");
-      // Exactly two rows for two bookings, though one of them carries two
-      // `kind = 'dispute'` requests. A join that did not deduplicate would
-      // return three — the same booking twice — against a `total` counted off
-      // `booking` alone, and paging the queue would then show one complaint
-      // twice and push another off the end.
+      // Exactly one row per booking, though two of them carry two
+      // `kind = 'dispute'` requests each. A join that did not deduplicate
+      // would return five — two bookings twice — against a `total` counted
+      // off `booking` alone, and paging the queue would then show one
+      // complaint twice and push another off the end.
       expect(rows.filter((r) => r.id === disputedId)).toHaveLength(1);
-      expect(rows).toHaveLength(2);
+      expect(rows.filter((r) => r.id === disputedTiedId)).toHaveLength(1);
+      expect(rows).toHaveLength(3);
       // And the link goes to the retry that actually moved the booking, not
       // to the thread whose compare-and-swap lost.
-      expect(rows[0]!.threadId).toBe(disputeThreadId);
-      expect(rows[0]!.threadId).not.toBe(orphanThreadId);
+      expect(rowOf(rows, disputedId).threadId).toBe(disputeThreadId);
+      expect(rowOf(rows, disputedId).threadId).not.toBe(orphanThreadId);
+    });
+  });
+
+  test("two dispute threads opened in one instant are separated by thread id", async () => {
+    await __runWithTransactionContextForTests(db, async () => {
+      const rows = await queue("disputed");
+      // `created_at` cannot choose between these two — they carry the same
+      // one, which is exactly what two rows written in one transaction get
+      // from `now()`. Only `desc(thread_id)` can, and the loser was written
+      // first on purpose (see `openTiedThreads`), so a query without that
+      // tiebreak answers with the lower id rather than merely being lucky.
+      const [lower, higher] = tiedThreadIds;
+      expect(rowOf(rows, disputedTiedId).threadId).toBe(higher);
+      expect(rowOf(rows, disputedTiedId).threadId).not.toBe(lower);
     });
   });
 
@@ -546,23 +835,32 @@ describe("DrizzleBookingReadRepository, administrator side", () => {
         queue("disputed"),
       ]);
       const ids = (rows: AdminBookingRow[]) => rows.map((r) => r.id);
-      expect(ids(unclosed)).toEqual([unclosedEarlyId, unclosedLateId]);
-      expect(ids(inWindow)).toEqual([inWindowId, inWindowLaterId]);
-      expect(ids(disputed)).toEqual([disputedId, disputedLaterId]);
-      // And nothing shows the booking whose appointment has not happened.
+      expect(ids(unclosed)).toEqual([...tiedByIdAsc(), unclosedLateId]);
+      expect(ids(inWindow)).toEqual([windowClosesFirstId, windowClosesLastId]);
+      expect(ids(disputed)).toEqual([disputedId, disputedTiedId, disputedLaterId]);
+      // And no tab shows either booking whose appointment has not finished.
       for (const rows of [unclosed, inWindow, disputed]) {
         expect(ids(rows)).not.toContain(futureId);
+        expect(ids(rows)).not.toContain(inProgressId);
       }
     });
   });
 
   test("counting a tab agrees with listing it", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    // One snapshot for both reads — see `inOneSnapshot`. Without it a
+    // sibling worktree committing a matching booking between the count and
+    // the list would fail this test for a reason that is not in the query.
+    await inOneSnapshot(async () => {
       for (const tab of ["unclosed", "in_window", "disputed"] as const) {
         // Both sides read the whole platform, so this is asserted against the
         // *unfiltered* answer: the claim is that the count and the list share
         // one WHERE, not that this file is the only thing in the database.
         const rows = await readRepo.listForAdmin(filter(tab), FIXTURE_BATCH, 0);
+        // The list is capped and the count is not, so the two can only be
+        // compared while the tab fits in one batch. Asserted rather than
+        // assumed, so that outgrowing `FIXTURE_BATCH` says so instead of
+        // reading like a query bug.
+        expect(rows.length).toBeLessThan(FIXTURE_BATCH);
         expect(await readRepo.countForAdmin(filter(tab))).toBe(rows.length);
       }
     });
@@ -573,24 +871,27 @@ describe("DrizzleBookingReadRepository, administrator side", () => {
       // A count that shared the list's WHERE but answered zero would pass the
       // test above only if the list were empty too, which the tabs above
       // already refute — so this pins the floor rather than the agreement.
-      expect(await readRepo.countForAdmin(filter("unclosed"))).toBeGreaterThanOrEqual(2);
+      expect(await readRepo.countForAdmin(filter("unclosed"))).toBeGreaterThanOrEqual(3);
       expect(await readRepo.countForAdmin(filter("in_window"))).toBeGreaterThanOrEqual(2);
-      expect(await readRepo.countForAdmin(filter("disputed"))).toBeGreaterThanOrEqual(2);
+      expect(await readRepo.countForAdmin(filter("disputed"))).toBeGreaterThanOrEqual(3);
     });
   });
 
   test("an offset walks past a row rather than repeating it", async () => {
-    await __runWithTransactionContextForTests(db, async () => {
+    // Three unscoped reads compared to each other, so they need one snapshot
+    // for the reason `counting a tab agrees with listing it` does.
+    await inOneSnapshot(async () => {
       // Paging is proven on the *whole* platform's answer, not on this file's
       // slice of it: `LIMIT`/`OFFSET` are applied in SQL before anything can
       // be filtered, so a page taken from the filtered rows would prove
       // nothing about the query. What has to hold is that the two pages are
       // disjoint and consecutive, which is a property of the ordering being
       // total.
-      const [first, second] = await Promise.all([
-        readRepo.listForAdmin(filter("unclosed"), 1, 0),
-        readRepo.listForAdmin(filter("unclosed"), 1, 1),
-      ]);
+      // Sequential, not `Promise.all`: these run on one reserved connection
+      // inside a transaction, and issuing them in order is the honest way to
+      // ask for that rather than leaving it to the driver's pipelining.
+      const first = await readRepo.listForAdmin(filter("unclosed"), 1, 0);
+      const second = await readRepo.listForAdmin(filter("unclosed"), 1, 1);
       expect(first).toHaveLength(1);
       expect(second).toHaveLength(1);
       expect(first[0]!.id).not.toBe(second[0]!.id);

@@ -3912,3 +3912,36 @@ query, and one interrupted run still leaves rows another worktree's suite can se
 person running the suites at the same time. The real fix is a per-worktree database (or a
 per-run schema) rather than another scoping wrapper, which is why this is a follow-up rather
 than a patch.
+
+## #169 — A dispute whose compare-and-swap loses leaves the customer's complaint where nobody will read it
+
+`DisputeBookingCommand` opens the conversation through `OpenDisputeThreadPort` *before* its
+own transaction, and says so deliberately: the thread is another bounded context's write, and
+putting it inside this context's transaction would expose it to a rollback that has nothing to
+do with it — and, against a real database on its own connection, would not roll it back
+anyway. So when the compare-and-swap loses (an administrator completing the booking, or the
+sweep closing the window, in the seconds the thread took to open), the command returns the
+`threadId` to the customer and the booking stays where it was. The class's doc comment states
+this outcome and calls it the smaller wrong: an orphaned conversation somebody can read and
+act on, against a dispute whose thread never opened.
+
+**The second half of that argument does not currently hold: nobody can read it.** The
+customer has written their account of what went wrong into a `support_request` of
+`kind = 'dispute'` attached to a booking that is still `MARKED_DONE`. The administrator's
+booking queue (`bookingNeedsAttentionForAdmin`) is keyed on status, so the booking appears in
+the `in_window` tab as an ordinary marked-done job with **no dispute link** — deliberately, so
+that a row nobody has disputed does not render one (`adminSelect`'s join carries
+`booking.status = 'DISPUTED'` as half its condition, pinned by "in_window never reads a support
+request — or an orphaned dispute — as this booking's dispute"). The support queue orders by
+the thread's own `last_message_at` and does not filter on `kind`, so the thread is *reachable*
+there — but `listColumns` does not even select `kind`, so nothing on that page marks it as a
+complaint that was supposed to move a booking, and the window it was written inside closes on
+its own a few days later. The customer sees a dispute
+they believe they filed; the platform sees a marked-done booking that completes on schedule.
+
+**Trigger:** the first real dispute race — a `support_request` of `kind = 'dispute'` whose
+booking is not `DISPUTED` — or the first customer asking why their complaint went unanswered.
+The fix is a reconciliation the next time a dispute is opened (adopt the orphan rather than
+opening a second thread), or an outbox hop that retries the transition, or an administrator-side
+tab that lists dispute-kind requests whose booking never moved. Deciding which is the point of
+the follow-up; leaving the thread outside the transaction is not the part to change.

@@ -211,7 +211,16 @@ export interface AdminBookingRow extends ProviderBookingRow {
   providerName: string;
   remindedAt: Date | null;
   markedDoneAt: Date | null;
-  /** The dispute's conversation. Null on every row that is not a dispute — and on a dispute whose thread is gone. */
+  /**
+   * The dispute's conversation. Null on every row that is not a dispute — and
+   * on a dispute whose thread is gone.
+   *
+   * The first half is enforced in the join rather than left to the tab that
+   * happened to ask: a booking whose dispute lost its compare-and-swap keeps a
+   * `kind = 'dispute'` support request while staying `MARKED_DONE`, so an
+   * id-only join would hand a thread to a row in the `in_window` tab. See
+   * `adminSelect`.
+   */
   threadId: string | null;
 }
 
