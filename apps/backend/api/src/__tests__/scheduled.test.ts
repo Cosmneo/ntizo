@@ -300,9 +300,10 @@ describe("the scheduled worker", () => {
     // Resolved, not merely called — the dev database holds zero due
     // bookings, so this is always { swept: 0, failed: 0 }, same reasoning as
     // test 1's assertion on the notify-unread sweep's own result. `swept`,
-    // not `expired`: the sweep gives two of its three clocks an expiry and
-    // the third a cancellation, so a count named for one of the two endings
-    // would be wrong for whichever bookings got the other — see
+    // not `expired`: of the sweep's five clocks only two end in an expiry —
+    // one is a cancellation, one a completion, and one only asks the provider
+    // a question — so a count named for any one outcome would be wrong for
+    // every booking that got another. See
     // `SweepDueBookingsInternalCommand.execute`.
     await expect(sweepDueSpy.mock.results[0]?.value).resolves.toEqual({
       swept: 0,

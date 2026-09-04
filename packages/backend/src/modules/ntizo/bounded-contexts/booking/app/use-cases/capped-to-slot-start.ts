@@ -1,11 +1,16 @@
 /**
  * Hold a deadline to the slot it protects: never later than `startsAt`.
  *
- * **A deadline may never outlive the thing it protects.** The design's three
- * clocks — the checkout hold (`create`), the provider's response window
+ * **A deadline may never outlive the thing it protects.** The design's first
+ * three clocks — the checkout hold (`create`), the provider's response window
  * (`submit`), the payment window (`accept`) — are stamped onto the same
  * `expires_at` column by whichever hop enters the status, and their defaults
- * sum to 165 minutes. The only lead-time rule anywhere is
+ * sum to 165 minutes. Those three are the whole of this helper's business:
+ * the two clocks a booking gains once the work is over (`markPaid`'s park on
+ * `endsAt`, and `markDone`'s feedback window, pushed by `reminded` and
+ * `keepOpen`) all fall *after* the slot by construction, so capping them to
+ * `startsAt` would be the opposite of this rule — and none of them calls
+ * here. The only lead-time rule anywhere is
  * `SlotValidityReaderPort`'s `startsAt > now` at creation, which says nothing
  * about how much notice a booking needs. Without this cap: a customer books a
  * 14:00 slot at 13:30, submits at 13:45 against a window that runs to 15:45,

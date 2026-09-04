@@ -10,14 +10,17 @@ export interface SweepDueBookingsInternalInput {
  * The sweep that turns "a clock ran out and nobody moved" into "the slot is
  * free again" — the only caller of `SweepBookingCommand`.
  *
- * One question against three clocks: `findDueForSweep` asks which bookings
- * are past their own deadline, whichever of the design's three windows
+ * One question against five clocks: `findDueForSweep` asks which bookings
+ * are past their own deadline, whichever of the design's five windows
  * stamped it, and hands each one to `SweepBookingCommand`, which decides
- * what that particular status's clock running out actually means. **Two of
- * the three endings are an expiry and the third is a cancellation** — see
- * that command's doc comment; this class deliberately knows none of that,
- * which is why its counter is named for how many bookings it settled rather
- * than for one of the two endings.
+ * what that particular status's clock running out actually means. **The five
+ * do not share an ending, and one firing is not an ending at all** —
+ * `DRAFT` and `AWAITING_PROVIDER` expire, `PENDING_PAYMENT` is cancelled,
+ * `MARKED_DONE` is completed, and `CONFIRMED` is *asked* on its first firing
+ * (status unchanged, clock pushed seven days) and only marked done on the
+ * second. See that command's doc comment; this class deliberately knows none
+ * of it, which is why its counter is named for how many bookings it settled
+ * rather than for any one outcome.
  *
  * Without it, a customer who abandons a half-filled checkout, or a provider
  * who never answers, or a customer who never pays, would each hold that
@@ -51,12 +54,15 @@ export class SweepDueBookingsInternalCommand {
   ) {}
 
   /**
-   * `swept`, not `expired`: two of the three clocks end in `EXPIRED` and
-   * the third ends in `CANCELLED`, and this class cannot tell which of them
-   * a given booking got without re-deriving a decision that belongs to
-   * `SweepBookingCommand`. A count named for one of the two endings would
-   * be wrong for whichever bookings got the other. What this number honestly
-   * says is how many due bookings were settled without throwing.
+   * `swept`, not `expired`: of the five clocks only two end in `EXPIRED`,
+   * one ends in `CANCELLED`, one in `COMPLETED`, and one ends in nothing at
+   * all on its first firing — a `CONFIRMED` booking is asked, not closed,
+   * and keeps its status. This class cannot tell which a given
+   * booking got without re-deriving a decision that belongs to
+   * `SweepBookingCommand`, and a count named for any one outcome would be
+   * wrong for every booking that got another. What this number honestly says
+   * is how many due bookings were settled without throwing — including the
+   * ones that were only asked a question.
    */
   async execute(
     input: SweepDueBookingsInternalInput,

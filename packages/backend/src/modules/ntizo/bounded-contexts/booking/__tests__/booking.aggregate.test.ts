@@ -914,7 +914,7 @@ describe("Booking.expire", () => {
     // The row the whole design exists for. A `PENDING_PAYMENT` booking past
     // its window has a provider who blocked their calendar and got nothing,
     // and `EXPIRED` explains none of that to them. `cancel` is what ends it,
-    // carrying the reason. If somebody ever flattens the three clocks into
+    // carrying the reason. If somebody ever flattens the first three clocks into
     // one ending, this is the assertion that goes red first.
     const pending = Booking.restore(validProps({ status: "PENDING_PAYMENT" }));
     expect(pending.expire(new Date())).toBe(pending);

@@ -137,7 +137,7 @@ function disputeThreadForCron(): OpenDisputeThreadPort {
  * comment for the full argument.
  *
  * **The booking sweep runs in this same scope, not a second one of
- * its own.** A booking's `expires_at` — whichever of the three windows
+ * its own.** A booking's `expires_at` — whichever of the five windows
  * stamped it — is the same shape of question against the same clock as a
  * message's `notifyDueAt`, and this
  * function already builds the one context a cron invocation needs — a
@@ -259,9 +259,10 @@ export async function scheduled(
           if (bookingFailed > 0) {
             // Same reasoning as the notify-unread log above: no request scope
             // exists for getRequestScopedLogger() to read. "swept", not
-            // "expired": two of the three clocks end in `EXPIRED` and the
-            // third ends in `CANCELLED`, and this line cannot tell them
-            // apart — see `SweepDueBookingsInternalCommand.execute`.
+            // "expired": of the five clocks only two end in `EXPIRED`, one
+            // ends in `CANCELLED`, one in `COMPLETED`, and one only asks the
+            // provider a question — and this line cannot tell them apart, see
+            // `SweepDueBookingsInternalCommand.execute`.
             console.error(
               `[scheduled] booking sweep: ${swept} swept, ${bookingFailed} failed`,
             );

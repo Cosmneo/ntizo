@@ -12,10 +12,11 @@
  * thing every non-rollback test in `booking-repository.test.ts` relies on.
  *
  * **What only this file can prove:** that one sweep, over one query, gives
- * each of the design's three clocks the ending the design says it gets —
+ * each of the design's five clocks the ending the design says it gets —
  * `DRAFT` and `AWAITING_PROVIDER` expire, `PENDING_PAYMENT` is *cancelled
- * with a reason* — and that the event each one publishes carries enough for
- * Notification to know who to tell. The predicate itself (the widened status
+ * with a reason*, `CONFIRMED` is *asked* and only closed on a second firing,
+ * `MARKED_DONE` is completed — and that the event each one publishes carries
+ * enough for Notification to know who to tell. The predicate itself (the widened status
  * filter, ordering, limit) is proven against the database in
  * `booking-repository.test.ts`; the aggregate's own refusals are proven in
  * `booking.aggregate.test.ts`. This file is about the wiring between them,
@@ -781,11 +782,12 @@ describe("SweepDueBookingsInternalCommand", () => {
         { reason: "customer_did_not_pay", changedByUserId: null },
       ]);
 
-      // BR-P6, over the real sweep: this is the one of the three endings that
-      // costs somebody something, and the provider whose Saturday just
-      // emptied is told directly rather than only through an event a consumer
-      // may or may not exist to receive. The two expiries in this file raise
-      // nothing — asserted where they run.
+      // BR-P6, over the real sweep: of the three endings that can befall a
+      // booking before any work happens, this is the one that costs somebody
+      // something, and the provider whose Saturday just emptied is told
+      // directly rather than only through an event a consumer may or may not
+      // exist to receive. The two expiries in this file raise nothing —
+      // asserted where they run.
       expect(raiser.raised).toEqual([
         {
           type: NotificationType.ProviderBookingCancelledByCustomer,
@@ -1059,13 +1061,15 @@ describe("SweepDueBookingsInternalCommand", () => {
     });
   });
 
-  test("limit caps the batch and drains the oldest deadlines first, across all three clocks", async () => {
+  test("limit caps the batch and drains the oldest deadlines first, across three different clocks", async () => {
     await withBookings(async (track) => {
       const now = new Date("2026-11-03T12:00:00.000Z");
 
-      // One booking per clock, deliberately: the sweep asks one question of
-      // all three, so the ordering it drains in has to be by deadline and
-      // not by status.
+      // One booking on three different clocks, deliberately: the sweep asks
+      // one question of every clock at once, so the ordering it drains in has
+      // to be by deadline and not by status. Three of the five is enough to
+      // show that — the point is that the order ignores status, not that
+      // every status is present.
       const oldest = track(
         await repo.insert(
           draftBooking(

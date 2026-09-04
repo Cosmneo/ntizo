@@ -284,12 +284,14 @@ export const booking = bookingSchema.table(
     // The catalogue test still earns its keep: it proves the *live database*
     // agrees with what this file generates, which is a different claim.
     //
-    // `booking_sweep_idx`, not `booking_expiry_sweep_idx`: two of the three
-    // statuses this index serves are destined to expire and the third to be
-    // cancelled, so the old name described a third of its own rows wrongly —
-    // the same defect that renamed `SweepBookingCommand` and
-    // `findDueForSweep`. The rename is its own migration because the
-    // predicate change had already been applied by the time it was decided.
+    // `booking_sweep_idx`, not `booking_expiry_sweep_idx`: only two of the
+    // statuses this index serves are destined to expire — the rest are
+    // cancelled, completed, or merely asked a question — so the old name
+    // described most of its own rows wrongly, and described a third of them
+    // wrongly even when the predicate named three statuses rather than five.
+    // Same defect that renamed `SweepBookingCommand` and `findDueForSweep`.
+    // The rename is its own migration because the predicate change had
+    // already been applied by the time it was decided.
     index("booking_sweep_idx")
       .on(t.expiresAt)
       .where(sql`${t.status} in (${statusList(DEADLINE_BEARING_STATUSES)})`),
@@ -308,9 +310,9 @@ export const booking = bookingSchema.table(
     // ORDER BY expires_at ASC`.
     //
     // `booking_sweep_idx` above can technically serve it — `PENDING_PAYMENT`
-    // is one of its three statuses, so this predicate implies that one — but
+    // is one of its five statuses, so this predicate implies that one — but
     // it would serve it badly. That index's rows are every booking whose
-    // deadline has *not* yet passed across all three clocks, which is nearly
+    // deadline has *not* yet passed across all five clocks, which is nearly
     // every live booking on the platform; this one holds only the bookings a
     // provider has accepted and nobody has paid for, which at any instant is
     // a handful. Same column, deliberately narrower predicate, and the two

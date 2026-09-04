@@ -47,8 +47,8 @@ const CHARGEABLE_STATUSES: readonly BookingStatus[] = [
 ];
 
 /**
- * The statuses `expire` moves — the two of the design's three clocks whose
- * ending is an expiry.
+ * The statuses `expire` moves — the two of the design's five clocks whose
+ * ending is an expiry, both of them among the first three.
  *
  * `PENDING_PAYMENT` is deliberately absent, and that absence is the whole
  * point of the spec this method was rewritten for: a payment window that
@@ -943,8 +943,8 @@ export class Booking {
    * this method's whole rewrite. An earlier version moved exactly that one
    * status and no other, back when it was the only status with a deadline
    * on it: the customer paid first, so nothing but a payment window could
-   * ever lapse. Under the design's three clocks the two statuses *before*
-   * payment carry deadlines too, and the one *at* payment stopped belonging
+   * ever lapse. Under the design's first three clocks the two statuses
+   * *before* payment carry deadlines too, and the one *at* payment stopped belonging
    * here — by then a provider has blocked their calendar on the strength of
    * a promise the platform's own ordering made, and `EXPIRED` is a status
    * that explains nothing to them. That case is `cancel`'s, which ends it

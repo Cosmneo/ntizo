@@ -84,7 +84,7 @@ function pendingBooking(id = "bk-1"): Booking {
 
 /**
  * A stored `DRAFT` booking — a checkout the customer is still filling in,
- * standing on the checkout hold. The first of the design's three clocks, and
+ * standing on the checkout hold. The first of the design's five clocks, and
  * the one whose expiry tells nobody.
  */
 function draftBooking(id = "bk-1"): Booking {
@@ -651,7 +651,7 @@ describe("SweepBookingCommand", () => {
    * calendar, and the customer never paid. That is **not** an expiry. It is
    * a cancellation, and the provider is owed the reason.
    *
-   * Written so that it cannot pass if somebody flattens the three clocks
+   * Written so that it cannot pass if somebody flattens the first three clocks
    * into one ending: it pins the status, the event name, and the reason,
    * and asserts against `EXPIRED`/`booking.expired` directly.
    */
@@ -933,7 +933,7 @@ describe("notifications", () => {
     ]);
   });
 
-  // The design's three-row table: the two expiries are not cancellations and
+  // The design's three-row table for the pre-work clocks: the two expiries are not cancellations and
   // are not announced in this phase. A `DRAFT` past its checkout hold has
   // nobody to tell but the customer who walked away from their own checkout;
   // the provider's own window running out gets no type until a later phase

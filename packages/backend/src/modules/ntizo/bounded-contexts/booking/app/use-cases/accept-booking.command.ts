@@ -167,7 +167,7 @@ export class AcceptBookingCommand {
       // Which member committed this calendar, and when — the fact `booking`
       // has nowhere to put and this table exists for. Written before anything
       // is announced so it survives a consumer that never runs, the same
-      // argument `SweepBookingCommand` makes for its own three endings.
+      // argument `SweepBookingCommand` makes for each of its own endings.
       //
       // Every `previous*` field is null because this hop moved none of them:
       // it changed the status, and the status is on the booking, not here.

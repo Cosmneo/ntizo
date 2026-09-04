@@ -240,7 +240,7 @@ export class SubmitBookingCommand {
 
       // The durable record of who sent this request and when, written before
       // anything is announced so it survives a consumer that never runs — the
-      // same argument `SweepBookingCommand` makes for its own three endings.
+      // same argument `SweepBookingCommand` makes for each of its own endings.
       // `BookingSubmitted` is a message; this is the record.
       //
       // Every `previous*` field is null because this hop moved none of them:

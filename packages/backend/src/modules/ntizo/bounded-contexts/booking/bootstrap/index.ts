@@ -274,7 +274,7 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
       chargeBooking,
       markBookingPaid,
       internal: {
-        // The three clocks a cron sweeps — nobody asks for this, something
+        // The five clocks a cron sweeps — nobody asks for this, something
         // schedules it. See scheduled.ts. It takes no
         // `platformSettingsReader`, and that absence is the design: each hop
         // already stamped its own window onto `expires_at`, so the sweep

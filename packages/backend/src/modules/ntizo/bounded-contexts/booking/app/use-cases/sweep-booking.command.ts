@@ -407,11 +407,14 @@ export class SweepBookingCommand {
       // provider's own free-text decline reason too.
       let changeReason: BookingExpiredReason | BookingCancelledReason;
 
-      // The design's three-row table, in code. The transition, the fact its
-      // event has to carry, and the reason its history row records are
-      // decided together, off the one status read, because they are the same
-      // decision: which clock this booking was standing on. `expiresAt` says
-      // when the deadline was, never which window set it.
+      // The design's table, in code — the original three rows here, and the
+      // two clocks added when bookings gained an ending further down, which
+      // hand over rather than transition (see `SweepDecision`). The
+      // transition, the fact its event has to carry, and the reason its
+      // history row records are decided together, off the one status read,
+      // because they are the same decision: which clock this booking was
+      // standing on. `expiresAt` says when the deadline was, never which
+      // window set it.
       //
       // Literals rather than the `BookingStatus` const: that const lives in
       // `shared/infrastructure/database/booking/enums.ts`, and no use case

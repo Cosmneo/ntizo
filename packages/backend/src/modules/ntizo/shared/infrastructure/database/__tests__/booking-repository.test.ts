@@ -203,7 +203,7 @@ function pendingBooking(input: Parameters<typeof Booking.create>[0]): Booking {
 }
 
 /**
- * The middle of the three clocks: a request sent, waiting on the provider,
+ * The middle of the design's first three clocks: a request sent, waiting on the provider,
  * with `expiresAt` left at exactly the value the caller configured — the
  * same reuse of one date `pendingBooking` makes, and for the same reason.
  */
@@ -397,7 +397,7 @@ describe("booking_member_slot_active_uq, from behind the repository", () => {
       // A `DRAFT`, not a `PENDING_PAYMENT`, because `expire` governs the
       // two clocks *before* payment now: a checkout abandoned mid-form is
       // exactly what `Booking.create` produces and exactly what the first
-      // of the three clocks ends. A `PENDING_PAYMENT` past its window ends
+      // of the design's five clocks ends. A `PENDING_PAYMENT` past its window ends
       // as `CANCELLED` instead (see `save`'s guard test below, which uses
       // that path).
       const first = track(
@@ -497,10 +497,13 @@ describe("save's expectedStatus guard", () => {
 
 describe("findDueForSweep", () => {
   /**
-   * One predicate over three statuses, not three queries: each hop already
-   * stamped its own clock's deadline onto `expires_at`, so by the time this
-   * query runs the only thing left to ask is `expires_at <= now AND status
-   * IN (DEADLINE_BEARING_STATUSES)`.
+   * One predicate over every deadline-bearing status, not one query each:
+   * each hop already stamped its own clock's deadline onto `expires_at`, so
+   * by the time this query runs the only thing left to ask is `expires_at <=
+   * now AND status IN (DEADLINE_BEARING_STATUSES)`. The fixtures below use
+   * three of the five, which is enough to prove the predicate is one question
+   * rather than a per-status branch; `booking-sweep.test.ts` is where the two
+   * closing clocks get their own coverage.
    *
    * Runs through `withBookings`, like every other DB-backed test here, so
    * its inserts are cleaned up in a `finally` rather than after the last
@@ -513,7 +516,7 @@ describe("findDueForSweep", () => {
     await withBookings(async (track) => {
       const now = new Date("2026-10-04T12:00:00.000Z");
 
-      // Due: one booking on each of the three clocks, past its own
+      // Due: one booking on each of the first three clocks, past its own
       // deadline, at different slots so they don't collide with each
       // other. `DRAFT` and `AWAITING_PROVIDER` are what the widened
       // predicate added — before it, both of these rows sat here for ever

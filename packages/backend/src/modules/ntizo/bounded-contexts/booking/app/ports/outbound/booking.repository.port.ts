@@ -142,37 +142,47 @@ export interface BookingRepositoryPort {
   appendChange(change: BookingChangeRecord): Promise<void>;
 
   /**
-   * Find bookings standing past a deadline — any of the design's three
+   * Find bookings standing past a deadline — any of the design's five
    * clocks — oldest deadline first, up to a limit.
    *
-   * **One question, not three.** Each hop stamps `expires_at` with its own
+   * **One question, not five.** Each hop stamps `expires_at` with its own
    * clock's deadline as it enters the status (`create` the checkout hold,
-   * `submit` the provider's response window, `accept` the payment window),
-   * so by the time this query runs the right deadline is already in the
-   * column and the status is what says which clock put it there. That makes
-   * the whole predicate `expires_at <= now AND status IN
-   * (DEADLINE_BEARING_STATUSES)` — no per-status branch, and nothing here
-   * reads `platform_settings` to ask how long any window was. An
-   * implementation that joined that table to recompute a deadline would be
-   * answering with today's setting a question the booking already answered
-   * when it was created.
+   * `submit` the provider's response window, `accept` the payment window,
+   * `markPaid` the appointment's own end, `markDone` the customer's feedback
+   * window — with `reminded` and `keepOpen` pushing the fourth one out
+   * without moving the status), so by the time this query runs the right
+   * deadline is already in the column and the status is what says which
+   * clock put it there. That makes the whole predicate `expires_at <= now
+   * AND status IN (DEADLINE_BEARING_STATUSES)` — no per-status branch, and
+   * nothing here reads `platform_settings` to ask how long any window was.
+   * An implementation that joined that table to recompute a deadline would
+   * be answering with today's setting a question the booking already
+   * answered when it was created.
    *
-   * The status filter is load-bearing on its own: `expires_at` is not
-   * cleared when a booking leaves a deadline-bearing status (see
-   * `BookingProps.expiresAt`), so a paid, confirmed booking still carries a
-   * deadline long in the past and is kept out of this result by its status
-   * alone.
+   * The status filter is load-bearing on its own: `expires_at` is handed on
+   * from hop to hop rather than reset, and only `Booking.dispute` ever
+   * clears it (see `BookingProps.expiresAt`), so a terminal booking still
+   * carries the deadline it was last given, long in the past, and is kept
+   * out of this result by its status alone. `COMPLETED`, `CANCELLED`,
+   * `DECLINED` and `EXPIRED` are what that filter excludes — **not**
+   * `CONFIRMED` or `MARKED_DONE`, which joined
+   * `DEADLINE_BEARING_STATUSES` when bookings gained an ending and are
+   * selected here deliberately. `DISPUTED` is excluded twice over: it is
+   * absent from the constant, and `dispute` nulled its clock.
    *
    * The caller decides what each returned booking's status *becomes* — the
-   * three do not share an ending (see `SweepBookingCommand`). This method
-   * only answers which rows are past their own clock.
+   * five do not share an ending, and one of them is not an ending at all
+   * (see `SweepBookingCommand`). This method only answers which rows are
+   * past their own clock.
    *
-   * **Not `findDueForExpiry`, which is what this was called.** Two of the
-   * three statuses it returns are destined to expire and the third to be
-   * cancelled, so a name promising expiry describes a third of its own
-   * result wrongly — the same defect that renamed `SweepBookingCommand`,
-   * and a port method carries it further than a command does, because every
-   * implementer and every fake repeats the name.
+   * **Not `findDueForExpiry`, which is what this was called.** Only two of
+   * the statuses it returns are destined to expire — the rest are
+   * cancelled, closed, or merely asked a question — so a name promising
+   * expiry describes most of its own result wrongly, and described a third
+   * of it wrongly even under the original three clocks. Same defect that
+   * renamed `SweepBookingCommand`, and a port method carries it further
+   * than a command does, because every implementer and every fake repeats
+   * the name.
    *
    * Oldest first, with a limit, so a sweep that can only drain part of a
    * backlog drains it in the order it accumulated rather than starving

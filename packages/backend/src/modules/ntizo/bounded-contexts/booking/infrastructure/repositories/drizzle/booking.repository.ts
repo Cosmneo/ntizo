@@ -443,26 +443,32 @@ export class DrizzleBookingRepository implements BookingRepositoryPort {
 
   /**
    * `DEADLINE_BEARING_STATUSES`, not every slot-holding status and no
-   * longer `PENDING_PAYMENT` alone: the design's three clocks all stamp
-   * this one column, so the three windows are already baked into
-   * `expires_at` by the time this query sees the row and the whole
-   * difference between them is which status the row is in. One predicate
-   * answers all three — see `BookingRepositoryPort.findDueForSweep` for
-   * why that is not three queries, and `DEADLINE_BEARING_STATUSES` for why
-   * that list is not `SLOT_HOLDING_STATUSES`.
+   * longer `PENDING_PAYMENT` alone: the design's five clocks all stamp
+   * this one column, so every window is already baked into `expires_at` by
+   * the time this query sees the row and the whole difference between them
+   * is which status the row is in. One predicate answers all five — see
+   * `BookingRepositoryPort.findDueForSweep` for why that is not five
+   * queries, and `DEADLINE_BEARING_STATUSES` for why that list is not
+   * `SLOT_HOLDING_STATUSES`.
    *
-   * `CONFIRMED` and `MARKED_DONE` are what the status filter is keeping
-   * out, and it is the only thing keeping them out: both still hold the
-   * slot, and both still carry the `expires_at` they were given, because
-   * `markPaid` deliberately stopped nulling it (see `BookingProps.expiresAt`).
-   * A sweep that trusted `expires_at` alone would cancel sales that already
-   * completed.
+   * **`CONFIRMED` and `MARKED_DONE` are selected here, not kept out.** They
+   * were kept out while a booking had no ending; both joined the constant
+   * when it gained one, and they are the two clocks this sweep answers
+   * *after* the work is over — the platform's question to the provider, and
+   * the customer's window to dispute. What the status filter excludes now is
+   * the terminal statuses: `COMPLETED`, `CANCELLED`, `DECLINED` and
+   * `EXPIRED` all still carry the `expires_at` they were last given, because
+   * `markPaid` deliberately stopped nulling it (see
+   * `BookingProps.expiresAt`), and a sweep that trusted `expires_at` alone
+   * would act on sales that already finished.
    *
    * `expires_at IS NOT NULL` is belt-and-braces on top of that, not a
-   * second filter doing real work: `Booking.create` always sets it and no
-   * transition nulls it afterward, so a deadline-bearing row can never
-   * actually have a null here for this filter to need. The guard exists in
-   * case one somehow does anyway.
+   * second filter doing real work: `Booking.create` always sets it, and the
+   * one transition that nulls it — `Booking.dispute` — moves the booking to
+   * `DISPUTED`, which is not in this list, so the status filter has already
+   * excluded every row the null could describe. A deadline-bearing row can
+   * never actually have a null here for this filter to need; the guard
+   * exists in case one somehow does anyway.
    *
    * Oldest deadline first, so a sweep that can only process part of a
    * backlog drains it in the order it accumulated rather than starving
