@@ -343,6 +343,35 @@ function chart() {
 }
 
 /**
+ * The one render where `stats.data` — the chart's days, every card's action,
+ * every hint below "Por responder" — is actually committed, as opposed to
+ * merely started.
+ *
+ * `StatCard`'s label paints in the *first* render, before the query has
+ * resolved, because `overview-cards.tsx` deliberately keeps the label out of
+ * its own `loading` branch (see that file's doc comment). So `findByText` on
+ * a label — "Por responder", "Reservas recentes", "Avaliação" — resolves the
+ * instant the component mounts, proves nothing about whether the number
+ * beside it is still a skeleton, and a synchronous read right after it is a
+ * coin flip: on an idle process the mocked GraphQL promise usually settles
+ * first anyway, so the flip mostly comes up heads and the race hides. It
+ * comes up tails wherever the process is busier than that — a full-suite
+ * run sharing the machine's cores with 160-odd other files most of all —
+ * and then whichever assertion runs first in the file fails, not because
+ * anything leaked from another test, but because nothing in the test was
+ * ever actually waiting for `s` to exist.
+ *
+ * `awaitingResponse` is `3` in `STATS` above and appears nowhere else in
+ * this fixture, so waiting for it is waiting for the specific render where
+ * `s` — the chart's days included, since both come from the one
+ * `bookingStatsForProvider` response — is set, not merely for the card
+ * that first asked for it.
+ */
+async function waitForStats() {
+  await screen.findByText(String(STATS.awaitingResponse));
+}
+
+/**
  * The locale is pinned, not inherited: every assertion here reads Portuguese
  * copy and the suite's default resolves to English (`test/setup.ts` says so).
  */
@@ -373,7 +402,10 @@ describe("OverviewPage", () => {
     renderOverview();
 
     expect(await screen.findByText("Por responder")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    // `findByText`, not `getByText`: the label above is present from the
+    // first paint regardless of `stats.isLoading` (see `waitForStats`'s doc
+    // comment), so only the number itself proves the query has resolved.
+    expect(await screen.findByText("3")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Responder" })).toHaveAttribute(
       "href",
       expect.stringContaining("/provider/estudio/bookings"),
@@ -382,7 +414,12 @@ describe("OverviewPage", () => {
 
   it("gives no verb to the readings that are not tasks", async () => {
     renderOverview();
-    await screen.findByText("Por responder");
+    // The "Responder" link itself, not the "Por responder" label: the link
+    // only exists once `s` is set (`overview.tsx` computes it from
+    // `s && s.awaitingResponse > 0`), so finding it is the proof the other
+    // two cards' *absence* of a link below is a real reading, not a render
+    // that has not caught up yet.
+    await screen.findByRole("link", { name: "Responder" });
 
     // A card's label and its action are siblings inside the card's body, so
     // the label's parent *is* the card.
@@ -399,7 +436,7 @@ describe("OverviewPage", () => {
     renderOverview();
 
     expect(await screen.findByText("Próximos 7 dias")).toBeInTheDocument();
-    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(await screen.findByText("5")).toBeInTheDocument();
     expect(screen.getByText("2 hoje")).toBeInTheDocument();
   });
 
@@ -437,7 +474,9 @@ describe("OverviewPage", () => {
     renderOverview();
 
     expect(await screen.findByText("Avaliação")).toBeInTheDocument();
-    expect(screen.getByText("4,8")).toBeInTheDocument();
+    // The label paints before `rating.data` does, same as every other
+    // `StatCard` — the average is the actual proof this query resolved.
+    expect(await screen.findByText("4,8")).toBeInTheDocument();
     expect(screen.getByText("12 avaliações")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver avaliações" })).toHaveAttribute(
       "href",
@@ -447,7 +486,10 @@ describe("OverviewPage", () => {
 
   it("draws a bar for every day that has something and a table for everyone else", async () => {
     renderOverview();
-    await screen.findByText("Por responder");
+    // The chart reads `s?.perDay ?? []` (`overview.tsx`) — an empty array,
+    // and no rows, until `s` resolves — so it needs the same wait as any
+    // other reading, not just the page having mounted.
+    await waitForStats();
 
     // The sr-only table is the accessible copy: thirty rows, one per day.
     const table = screen.getByRole("table", { name: /pedidos e confirmações/i });
@@ -464,7 +506,9 @@ describe("OverviewPage", () => {
    */
   it("never lets the first day's tooltip hang off the card, and still centres the middle", async () => {
     renderOverview();
-    await screen.findByText("Por responder");
+    // Same reason as the test above: the thirty bars this test hovers do not
+    // exist until `s` does.
+    await waitForStats();
     const days = chart().querySelectorAll("svg rect");
     expect(days).toHaveLength(30);
 
@@ -490,7 +534,10 @@ describe("OverviewPage", () => {
     renderOverview();
 
     expect(await screen.findByText("Reservas recentes")).toBeInTheDocument();
-    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
+    // `findAllByText`, not `getAllByText`: `CollectionCard`'s title (above)
+    // renders whether or not `recent.isLoading` is still true, so it is not
+    // proof a single row has actually painted — the rows themselves are.
+    expect((await screen.findAllByText("Ana")).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Ver todas" })).toBeInTheDocument();
   });
 
@@ -515,7 +562,9 @@ describe("OverviewPage", () => {
 
   it("leaves the price off the recent list — the dashboard is not the ledger", async () => {
     renderOverview();
-    await screen.findByText("Reservas recentes");
+    // Same as "lists the recent bookings" above: wait for a row, not the
+    // card's title, or the `.find` below never matches and the `!` lies.
+    await screen.findAllByText("Ana");
 
     const table = screen
       .getAllByRole("table")
