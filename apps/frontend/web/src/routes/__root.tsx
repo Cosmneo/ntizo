@@ -31,6 +31,23 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: "viewport", content: "width=device-width, initial-scale=1.0" },
       { title: "Ntizo" },
     ],
+    // Four declarations of one icon, because four different consumers answer
+    // the question differently and none of them falls back to the others.
+    //
+    // The SVG is what Chrome, Firefox and Edge pick, and the only one that
+    // stays sharp on a retina tab. Safari does not read SVG favicons at all,
+    // so the raster entries are not belt-and-braces for it — they are the
+    // icon. `.ico` additionally answers the request a browser makes on its
+    // own, for a bookmark or a crawler or an address-bar hit that never
+    // parsed this document; without a file at that exact path it is a 404.
+    // And iOS wants its own, larger, un-rounded PNG for a home-screen
+    // shortcut, which it will not take as an SVG either.
+    links: [
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+      { rel: "icon", href: "/favicon-96.png", type: "image/png", sizes: "96x96" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+    ],
   }),
   component: RootComponent,
 });
