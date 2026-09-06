@@ -7,6 +7,7 @@ import { and, type SQL } from "drizzle-orm";
 import {
   providerPublicReadModel,
   type ProviderPublicDetailDTO,
+  type ProviderPublicDTO,
   type WeeklyHoursDTO,
 } from "@ntizo/shared/read-models";
 import type {
@@ -35,7 +36,7 @@ const dto: ProviderPublicDetailDTO = {
   description: null, city: null, district: null, country: null, logoUrl: null,
   photoUrls: [], verified: false, ratingAverage: null, reviewCount: 0,
   categories: [], serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
-  memberSince: null, serviceLocationTypes: [], weeklyHours: [],
+  memberSince: null, serviceLocationTypes: [], weeklyHours: [], services: [],
 };
 
 class FakeRepo implements ProviderPublicRepositoryPort {
@@ -145,6 +146,21 @@ describe("public provider repository source", () => {
     expect(end).toBeGreaterThan(start);
     expect(source.slice(start, end)).toContain('eq(service.status, "published")');
   });
+
+  it("only ever chips a published, priced service with an active option", () => {
+    // Isolated to `servicesFor` specifically, the same reasoning as the
+    // location-type aggregate above: several of these predicates already
+    // appear elsewhere in the file for an unrelated reason, so a bare
+    // `toContain` would pass even if `servicesFor` itself had lost one.
+    const start = source.indexOf("private async servicesFor(");
+    const end = source.indexOf("private static wheres(", start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const body = source.slice(start, end);
+    expect(body).toContain('eq(service.status, "published")');
+    expect(body).toContain('eq(service.bookingMode, "priced")');
+    expect(body).toContain("eq(serviceOption.isActive, true)");
+  });
 });
 
 /**
@@ -188,11 +204,17 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
         row: PublicProviderRow,
         categories: { code: string; name: string }[],
         weeklyHours: WeeklyHoursDTO[],
+        services: ProviderPublicDTO["services"],
       ): ProviderPublicDetailDTO;
     }
   ).toDTO;
-  /** The categories and weeklyHours arguments are not what these tests are about — always empty. */
-  const toDTO = (row: PublicProviderRow) => raw(row, [], []);
+  /**
+   * The categories and weeklyHours arguments are not what these tests are
+   * about — always empty. `services` defaults to empty too, and is only ever
+   * overridden by the two cases below that are about it.
+   */
+  const toDTO = (row: PublicProviderRow, services: ProviderPublicDTO["services"] = []) =>
+    raw(row, [], [], services);
 
   const row: PublicProviderRow = {
     id: "p1",
@@ -267,6 +289,20 @@ describe("DrizzleProviderPublicRepository.toDTO", () => {
   it("never carries createdAt, in any form, once mapped", () => {
     const result = toDTO({ ...row }) as Record<string, unknown>;
     expect(Object.keys(result)).not.toContain("createdAt");
+  });
+
+  it("carries the services array through untouched", () => {
+    const services: ProviderPublicDTO["services"] = [
+      { name: "Corte com barba", amountMinor: 80_000, currency: "MZN", pricingMode: "fixed" },
+      { name: "Barba", amountMinor: 45_000, currency: "MZN", pricingMode: "fixed" },
+    ];
+    const result = toDTO({ ...row }, services);
+    expect(result.services).toEqual(services);
+  });
+
+  it("defaults to an empty services array for a business with nothing priced", () => {
+    const result = toDTO({ ...row }, []);
+    expect(result.services).toEqual([]);
   });
 });
 
