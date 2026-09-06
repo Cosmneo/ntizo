@@ -240,7 +240,7 @@
   "titleProvidersTermCity": "{{term}} em {{city}}",
 
   "priceToAgree": "Preço a combinar",
-  "priceQuoteHint": "Pede um orçamento",
+  "priceQuoteHint": "Peça um orçamento",
   "priceOptionCount_one": "{{count}} opção",
   "priceOptionCount_other": "{{count}} opções",
   "priceFromPrefix": "desde",
@@ -255,8 +255,8 @@
   "providerOpenBusiness": "Ver negócio",
   "providerOpenPerson": "Ver perfil",
 
-  "searchPillSubmit": "Procurar",
-  "searchPillOpen": "Alterar a procura",
+  "searchPillSubmit": "Pesquisar",
+  "searchPillOpen": "Alterar a pesquisa",
   "categoryStripLabel": "Categorias",
   "categoryStripScrollLeft": "Categorias anteriores",
   "categoryStripScrollRight": "Categorias seguintes",
