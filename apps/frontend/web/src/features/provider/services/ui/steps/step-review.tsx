@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import type { ServiceStatus } from "@ntizo/shared";
-import type { SectionState } from "../../domain/completeness";
+import type { PublishBlocker } from "../../domain/completeness";
 import type { ServiceStep } from "../../domain/wizard-model";
 import {
   formatOptionPrice,
@@ -47,8 +47,14 @@ export function StepReview({
   categoryLabel: string;
   memberNames: readonly string[];
   locale: string;
-  blocker: SectionState["blockingCode"];
-  /** The step that would fix `blocker`, when there is one to point at. */
+  blocker: PublishBlocker;
+  /**
+   * The step that would fix `blocker`, when there is one to point at.
+   *
+   * Null for `PROVIDER_NOT_ACTIVE`: no step in this wizard can approve a
+   * workspace, so the banner states it and stays unclickable rather than
+   * sending somebody to a form that was never the problem.
+   */
   blockerStep: ServiceStep | null;
   onSeek: (step: ServiceStep) => void;
   /** Owners and admins publish; other members do not. */

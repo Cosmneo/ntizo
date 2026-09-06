@@ -5,6 +5,7 @@ import type { ServiceStatus } from "@ntizo/shared";
 import { isIndividualProvider } from "@/features/provider/availability/domain/types";
 import { useAvailabilityConfig } from "@/features/provider/availability/viewmodel/use-availability";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
+import { isWorkspaceLive } from "@/features/provider/domain/workspace-status";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useServices } from "./use-services";
 import { useCategoryOptions, useSaveService, useSetServiceStatus } from "./use-service-editor";
@@ -189,6 +190,9 @@ export function useServiceWizard() {
     optionCount: current?.options.length ?? 0,
     memberIds: draft.memberIds,
     individualProvider,
+    // The workspace, not the service. A pending or suspended one refuses
+    // every publish server-side, so the rail says so before the round trip.
+    workspaceActive: isWorkspaceLive(activeProvider?.status),
   };
   const blocker = publishBlocker(completenessInput);
   const blockerStep =

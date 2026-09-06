@@ -22,6 +22,13 @@ export interface CompletenessInput {
   memberIds: readonly string[];
   /** One member means the performers question has one answer and is not asked. */
   individualProvider: boolean;
+  /**
+   * Whether the platform has approved the workspace this service belongs to.
+   *
+   * Not a fact about the service, and the only input here that no amount of
+   * editing can change — which is why it produces a blocker with no section.
+   */
+  workspaceActive: boolean;
 }
 
 export interface SectionState {
@@ -37,6 +44,17 @@ export interface SectionState {
     | "SERVICE_NEEDS_MEMBER"
     | null;
 }
+
+/**
+ * What stands between this service and being live — every section code, plus
+ * the one thing that is not about the service at all.
+ *
+ * A wider type than `SectionState["blockingCode"]` on purpose:
+ * `PROVIDER_NOT_ACTIVE` is a property of the workspace, so no section may
+ * ever carry it. Widening only the return type is what keeps the rail from
+ * growing a task nobody can finish.
+ */
+export type PublishBlocker = SectionState["blockingCode"] | "PROVIDER_NOT_ACTIVE";
 
 type BasicsCode = "SERVICE_CATEGORY_REQUIRED" | "SERVICE_NAME_REQUIRED" | null;
 type PricingCode = "SERVICE_NEEDS_OPTION" | "SERVICE_QUOTE_HAS_OPTIONS" | null;
@@ -108,14 +126,22 @@ export function sectionStates(input: CompletenessInput): SectionState[] {
 }
 
 /**
- * The first blocking code, in `canPublish`'s own order: category, then
- * source name, then performers, then the booking-mode checks.
+ * The first blocking code, in the server's own order: the workspace itself,
+ * then category, then source name, then performers, then the booking-mode
+ * checks.
+ *
+ * The workspace comes first because `SetServiceStatusCommand` asks
+ * `isProviderActive` before it calls `service.publish()` at all. Reporting a
+ * missing category to somebody whose workspace is still under review would
+ * send them to fix a form that was never what stood in the way.
  *
  * Deliberately not derived by scanning `sectionStates`' array — that array
  * is ordered for the rail, not for this — so this function's order is its
  * own, and it is the one that has to keep matching the server's.
  */
-export function publishBlocker(input: CompletenessInput): SectionState["blockingCode"] {
+export function publishBlocker(input: CompletenessInput): PublishBlocker {
+  if (!input.workspaceActive) return "PROVIDER_NOT_ACTIVE";
+
   const basics = basicsCode(input);
   if (basics) return basics;
 

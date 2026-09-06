@@ -35,6 +35,7 @@ import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useProviderDetail } from "@/features/provider/viewmodel/use-providers";
+import { workspaceStatusBadgeKey } from "@/features/provider/domain/workspace-status";
 import { applyThemePreference } from "@/shared/lib/theme";
 
 export function SidebarUserMenu() {
@@ -141,6 +142,13 @@ export function SidebarUserMenu() {
                 <DropdownMenuSubContent className="w-64">
                   {providers.map((p) => {
                     const isActive = p.id === activeProvider?.id;
+                    // Not the same question as `isActive` above, which is
+                    // "am I looking at this one". This is whether the
+                    // platform has approved it — and it is the thing the
+                    // slug cannot say. Two workspaces with one name and two
+                    // slugs told you they were different; neither told you
+                    // that only one of them is on the marketplace.
+                    const badgeKey = workspaceStatusBadgeKey(p.status);
                     return (
                       <DropdownMenuItem
                         key={p.id}
@@ -165,6 +173,11 @@ export function SidebarUserMenu() {
                           <span className="truncate font-mono text-[11px] text-muted-foreground">
                             {p.slug}
                           </span>
+                          {badgeKey && (
+                            <span className="mt-0.5 w-fit rounded-full bg-[color-mix(in_srgb,var(--color-warning)_22%,transparent)] px-1.5 py-px text-[10px] font-medium text-[var(--color-foreground)]">
+                              {t(badgeKey)}
+                            </span>
+                          )}
                         </div>
                         {isActive && <Check className="ml-2 h-4 w-4" />}
                       </DropdownMenuItem>
