@@ -13,9 +13,13 @@ import { ConsoleSidebar } from "./console-sidebar";
 import { ConsoleStrip } from "./console-strip";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
-/** The 36px bordered square the bell sits in. On every width — see ConsoleHeader. */
+/**
+ * The bordered square the bell sits in. 44px on a phone — where it is the
+ * only route to the inbox, and the only control in this header a thumb has
+ * to hit — and the designed 36px from `md` up, beside the trigger.
+ */
 const BELL_CLASS =
-  "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent";
+  "relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-input bg-secondary text-foreground hover:bg-accent md:h-9 md:w-9";
 
 /**
  * The console: one shell for `/provider/$slug/*` and `/admin/*`.

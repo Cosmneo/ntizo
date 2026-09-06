@@ -147,6 +147,14 @@ describe("ConsoleShell · workspace", () => {
     expect(sidebar().getByRole("link", { name: "Messages" })).toHaveAttribute("href", "/provider/bela-vista/messages");
     expect(sidebar().queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
   });
+
+  it("keeps the bell — a phone's only route to the inbox — at 44px, linked to the workspace inbox", async () => {
+    renderWorkspace("/provider/bela-vista/overview");
+    await screen.findByText("Overview page");
+    const bell = screen.getByRole("link", { name: "Notifications" });
+    expect(bell).toHaveAttribute("href", "/provider/bela-vista/notifications");
+    expect(bell).toHaveClass("h-11", "w-11", "md:h-9", "md:w-9");
+  });
 });
 
 describe("ConsoleShell · platform", () => {
