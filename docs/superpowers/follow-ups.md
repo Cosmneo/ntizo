@@ -3324,3 +3324,21 @@ links carry `slug: ""` for the frame before the workspace resolves.
 
 **Trigger:** the next task that edits any of these files — Phase 3's badges on list tabs is the
 likely one.
+
+## #134 — The phone's menu sheet lacks two rows the old drawer's account menu had
+
+Below `md` the sidebar no longer renders, so its account menu — and with it the Appearance picker
+(light / dark / system) and the switcher's "Create new provider" — has no phone rendering. The
+sheet's foot carries My account, Back to Ntizo and Sign out. Both missing things remain reachable
+in more taps: the theme through the account area's own menu and Preferences, a new workspace
+through `/onboarding`. A convenience regression from the old hamburger drawer, not a lost
+capability.
+
+Two rows in the sheet's foot close it: an Appearance row (the same three `applyThemePreference`
+calls the menu makes) and, under the mobile switcher, a "Create new provider" row that navigates
+to `/onboarding`. While there: the sheet closes itself when the viewport crosses `md` while open
+(`console-menu-sheet.tsx`, the `useIsMobile` effect) and that has no dedicated test — one with a
+`matchMedia` stub whose `change` listener can be fired would pin it.
+
+**Trigger:** the first provider who asks where dark mode went on their phone, or Phase 3, which
+touches the sheet's badges anyway.
