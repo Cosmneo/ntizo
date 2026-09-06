@@ -35,7 +35,11 @@ async function renderFilters(current: DirectorySearch) {
 
 describe("ProviderFilters", () => {
   it("shows an applied filter's option as its pill's label, and its × removes just that filter", async () => {
-    const { container } = await renderFilters({ providerType: "individual", minRating: 4 });
+    const { container } = await renderFilters({
+      providerType: "individual",
+      minRating: 4,
+      q: "mavalane",
+    });
     // The "who provides it" pill fills with the chosen option, in place of
     // its own name — both on the closed pill's own summary and, unreached
     // before the reader opens it, on the option row now marked chosen inside.
@@ -47,6 +51,12 @@ describe("ProviderFilters", () => {
     const href = remove.getAttribute("href")!;
     expect(href).not.toContain("providerType");
     expect(href).toContain("minRating=4");
+
+    // The clear-all is on because a facet is narrowing the list, and it
+    // keeps `q` — the typed term is the header search pill's to clear, not
+    // this bar's, so "Clear all" here must not also wipe it.
+    const clearAll = screen.getByRole("link", { name: "Clear all" });
+    expect(clearAll.getAttribute("href")).toContain("q=mavalane");
   });
 
   it("fills no pill and offers no clear-all when nothing is applied", async () => {
@@ -60,5 +70,10 @@ describe("ProviderFilters", () => {
     // to clear all of.
     expect(screen.queryByRole("link", { name: /^Remove /i })).toBeNull();
     expect(screen.queryByText("Clear all")).toBeNull();
+  });
+
+  it("offers no clear-all for a typed term alone, because the bar does not narrow on it", async () => {
+    await renderFilters({ q: "mavalane" });
+    expect(screen.queryByRole("link", { name: "Clear all" })).toBeNull();
   });
 });

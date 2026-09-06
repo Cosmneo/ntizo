@@ -18,13 +18,20 @@ import { useProviderCities } from "@/features/directory/viewmodel/use-directory"
 import { DirectoryPriceFilter } from "@/features/directory/ui/directory-price-filter";
 
 /**
- * Everything the sidebar can narrow, taken off at once.
+ * Everything the pill bar can narrow, taken off at once — but not what was
+ * typed.
  *
- * Exactly the set `directoryFilterChips` lists, and for the same reasons: the
- * **category is kept**, because the rail above the results is still showing it
- * and clearing something visible from a control somewhere else reads as a bug;
- * the **sort is kept**, because an order is not a narrowing and clearing
- * filters should not also reorder what is left.
+ * Exactly the set `directoryFilterChips` lists other than `q`, and for the
+ * same reasons the category and the sort are kept: the **category is kept**,
+ * because the rail above the results is still showing it and clearing
+ * something visible from a control somewhere else reads as a bug; the
+ * **sort is kept**, because an order is not a narrowing and clearing filters
+ * should not also reorder what is left.
+ *
+ * **The term is kept too.** It lives in the header's search pill now, which
+ * has its own way off; a "Clear all" under a bar of empty pills that also
+ * wiped what the reader typed would be taking something this control never
+ * showed as on.
  *
  * `offset: undefined` because page 4 of a narrower result set is usually past
  * the end of it — a reader who cleared their filters would land on an empty
@@ -38,7 +45,6 @@ export function clearedDirectorySearch(current: DirectorySearch): DirectorySearc
     verified: undefined,
     minPrice: undefined,
     maxPrice: undefined,
-    q: undefined,
     offset: undefined,
   });
 }
@@ -206,13 +212,16 @@ export function ProviderFilters({ current }: { current: DirectorySearch }) {
         </FilterPill>
       )}
 
-      {/* Nothing to clear is not a disabled link — it is no link. */}
-      {chips.length > 0 && (
+      {/* Nothing to clear is not a disabled link — it is no link. Gated on
+          the chips other than `q`: the term is the header search pill's to
+          clear, not this bar's, so a search with only a typed term on gets
+          no clear-all here. */}
+      {chips.some((c) => c.key !== "q") && (
         <Link
           to="/providers"
           activeOptions={EXACT_MATCH}
           search={clearedDirectorySearch(current)}
-          className="type-caption font-semibold text-[var(--color-primary)] hover:underline"
+          className="type-caption font-semibold text-[var(--color-headline)] underline underline-offset-[3px] hover:opacity-80"
         >
           {t("filtersClearAll")}
         </Link>

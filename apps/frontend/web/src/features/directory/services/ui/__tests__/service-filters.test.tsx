@@ -38,6 +38,7 @@ describe("ServiceFilters", () => {
     const { container } = await renderFilters({
       locationType: "at_customer",
       paymentMode: "hourly",
+      q: "corte",
     });
     // The payment pill fills with the chosen option, in place of its own
     // name — both on the closed pill's own summary and, unreached before the
@@ -50,6 +51,12 @@ describe("ServiceFilters", () => {
     const href = remove.getAttribute("href")!;
     expect(href).not.toContain("paymentMode");
     expect(href).toContain("locationType=at_customer");
+
+    // The clear-all is on because a facet is narrowing the list, and it
+    // keeps `q` — the typed term is the header search pill's to clear, not
+    // this bar's, so "Clear all" here must not also wipe it.
+    const clearAll = screen.getByRole("link", { name: "Clear all" });
+    expect(clearAll.getAttribute("href")).toContain("q=corte");
   });
 
   it("fills no pill and offers no clear-all when nothing is applied", async () => {
@@ -62,5 +69,10 @@ describe("ServiceFilters", () => {
     // to clear all of.
     expect(screen.queryByRole("link", { name: /^Remove /i })).toBeNull();
     expect(screen.queryByText("Clear all")).toBeNull();
+  });
+
+  it("offers no clear-all for a typed term alone, because the bar does not narrow on it", async () => {
+    await renderFilters({ q: "corte" });
+    expect(screen.queryByRole("link", { name: "Clear all" })).toBeNull();
   });
 });
