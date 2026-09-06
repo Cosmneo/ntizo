@@ -29,6 +29,9 @@ export function usePageHeader(title: string, subtitle?: string) {
   const setHeader = useContext(PageHeaderContext)?.setHeader;
   useEffect(() => {
     setHeader?.({ title, subtitle });
+    // Clears on unmount, as `usePageAction` already does: a page that sets no
+    // title would otherwise wear the previous page's.
+    return () => setHeader?.({ title: "" });
   }, [title, subtitle, setHeader]);
 }
 

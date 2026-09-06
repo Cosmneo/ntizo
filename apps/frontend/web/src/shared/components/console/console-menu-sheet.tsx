@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, LogOut, User as UserIcon } from "lucide-react";
-import { Button, Sheet, SheetContent, cn } from "@ntizo/frontend-ui";
+import { Button, Sheet, SheetContent, cn, useIsMobile } from "@ntizo/frontend-ui";
 import { useSignOut } from "@/features/user/viewmodel/use-sign-out";
+import { CONSOLE_BADGE } from "./console-badge";
 import { useConsoleCounts } from "./console-counts";
 import { useConsoleMenu } from "./console-menu-context";
 import { CONSOLE_MENU_SHEET_ID, CONSOLE_MENU_TRIGGER_ID } from "./console-tab-bar";
@@ -74,6 +75,13 @@ export function ConsoleMenuSheet({
     setOpen(false);
   }, [pathname, setOpen]);
 
+  // A phone rotated to landscape can cross `md` with the sheet open; the
+  // panel would hide and its backdrop would not.
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    if (!isMobile) setOpen(false);
+  }, [isMobile, setOpen]);
+
   // Focus in on open; Escape and Tab while open; focus back out on close.
   useEffect(() => {
     if (!open) return;
@@ -105,14 +113,11 @@ export function ConsoleMenuSheet({
         params={{ slug: slug ?? "" }}
         className={ITEM}
         activeProps={{ className: cn(ITEM, ITEM_ACTIVE) }}
+        onClick={() => setOpen(false)}
       >
         <Icon className="h-[18px] w-[18px] text-[var(--color-muted-foreground)]" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">{t(entry.titleKey)}</span>
-        {count ? (
-          <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--color-primary)] px-1.5 text-[10.5px] font-bold text-[var(--color-primary-foreground)]">
-            {count}
-          </span>
-        ) : null}
+        {count ? <span className={CONSOLE_BADGE}>{count}</span> : null}
       </Link>
     );
   }
@@ -121,11 +126,12 @@ export function ConsoleMenuSheet({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="bottom"
-        className="max-h-[84svh] overflow-y-auto rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden"
+        className="max-h-[84svh] overflow-y-auto rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <div ref={panelRef} id={CONSOLE_MENU_SHEET_ID} role="dialog" aria-modal="true" aria-label={tc("menu")}>
           <div aria-hidden="true" className="mx-auto mb-3 h-1 w-9 rounded-full bg-[var(--color-border)]" />
-          {header ?? <p className="px-2.5 pb-2 text-xs text-[var(--color-muted-foreground)]">{zoneLabel}</p>}
+          <p className="px-2.5 pb-2 text-xs text-[var(--color-muted-foreground)]">{zoneLabel}</p>
+          {header}
 
           {item(nav.home, true)}
           <p className={GROUP}>{t("nav.work")}</p>

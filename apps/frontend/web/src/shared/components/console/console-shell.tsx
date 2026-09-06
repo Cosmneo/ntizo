@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SidebarInset, SidebarProvider } from "@ntizo/frontend-ui";
+import { SidebarInset, SidebarProvider, useIsMobile } from "@ntizo/frontend-ui";
 import { NotificationBellLink } from "@/shared/components/notification-bell-link";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useProviderDetail } from "@/features/provider/viewmodel/use-providers";
@@ -9,7 +9,6 @@ import { BottomEdgeProvider } from "@/shared/lib/console-bottom-edge";
 import { consoleNav, type ConsoleNav, type ConsoleZone } from "@/shared/lib/console-nav";
 import { useIsTablet } from "@/shared/hooks/use-is-tablet";
 import { PageHeaderContext, type PageHeaderState } from "@/shared/lib/page-header";
-import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
 import { ConsoleCountsProvider } from "./console-counts";
 import { ConsoleHeader } from "./console-header";
 import { ConsoleMenuProvider } from "./console-menu-context";
@@ -36,19 +35,12 @@ const BELL_CLASS =
  * strip row carries workspace facts — and each zone reads only its own data:
  * `WorkspaceShell` and `PlatformShell` call different hooks and render one
  * `ShellFrame`. Nothing in the frame knows which zone it is in.
- *
- * The theme preference is re-applied here rather than forced: it is global,
- * and a zone is not the right level to have an opinion about it.
  */
 export function ConsoleShell({ zone, children }: { zone: ConsoleZone; children: ReactNode }) {
   const [header, setHeader] = useState<PageHeaderState>({ title: "" });
   const [action, setAction] = useState<ReactNode>(null);
   // Stable identity so consumers don't re-render on every shell render.
   const headerCtx = useMemo(() => ({ header, setHeader, action, setAction }), [header, action]);
-
-  useEffect(() => {
-    applyThemePreference(readThemePreference());
-  }, []);
 
   const nav = consoleNav(zone);
 
@@ -155,9 +147,16 @@ function ShellFrame({
   // Between md and lg the sidebar starts as its icon rail; the person can
   // still expand it, and that choice survives — `defaultOpen` is read once.
   const isTablet = useIsTablet();
+  const isMobile = useIsMobile();
   return (
     <SidebarProvider defaultOpen={!isTablet}>
-      <ConsoleSidebar nav={nav} slug={slug} zoneLabel={zoneLabel} workspaceMenu={workspaceMenu} />
+      {/* Below `md` there is no sidebar — the bar and the sheet are the
+          navigation. Not rendered rather than hidden: `SidebarProvider`'s
+          ⌘B shortcut would otherwise open the primitive's own left-hand
+          drawer, the model the spec rejected, on any window under 768px. */}
+      {!isMobile && (
+        <ConsoleSidebar nav={nav} slug={slug} zoneLabel={zoneLabel} workspaceMenu={workspaceMenu} />
+      )}
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <ConsoleHeader bell={bell} />
         {strip}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -146,6 +146,7 @@ describe("ConsoleShell · workspace", () => {
     expect(links).toEqual(["Overview", "Messages", "Availability", "Services", "Members", "Wallet", "Activity", "Settings"]);
     expect(sidebar().getByRole("link", { name: "Messages" })).toHaveAttribute("href", "/provider/bela-vista/messages");
     expect(sidebar().queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
+    expect(sidebar().getByRole("link", { name: "Overview" })).toHaveAttribute("data-active", "true");
   });
 
   it("keeps the bell — a phone's only route to the inbox — at 44px, linked to the workspace inbox", async () => {
@@ -154,6 +155,15 @@ describe("ConsoleShell · workspace", () => {
     const bell = screen.getByRole("link", { name: "Notifications" });
     expect(bell).toHaveAttribute("href", "/provider/bela-vista/notifications");
     expect(bell).toHaveClass("h-11", "w-11", "md:h-9", "md:w-9");
+  });
+
+  it("clears the header when a page that set a title gives way to one that sets none", async () => {
+    renderWorkspace("/provider/bela-vista/settings");
+    await screen.findByText("Settings page");
+    expect(screen.getByText("Workspace settings")).toBeInTheDocument();
+    fireEvent.click(sidebar().getByRole("link", { name: "Overview" }));
+    await screen.findByText("Overview page");
+    expect(screen.queryByText("Workspace settings")).not.toBeInTheDocument();
   });
 });
 

@@ -11,6 +11,7 @@ import {
   cn,
 } from "@ntizo/frontend-ui";
 import { resolveUrl, type ConsoleNav, type ConsoleNavItem } from "@/shared/lib/console-nav";
+import { CONSOLE_BADGE } from "./console-badge";
 import { useConsoleCounts } from "./console-counts";
 
 /**
@@ -34,7 +35,7 @@ export function ConsoleNavItems({ nav, slug }: { nav: ConsoleNav; slug: string |
     // The template is what the router matches on; the resolved path is what
     // the current location is compared against.
     const href = resolveUrl(item.url, slug);
-    const isActive = href !== null && pathname.startsWith(href);
+    const isActive = href !== null && (pathname === href || pathname.startsWith(href + "/"));
     return (
       <SidebarMenuItem key={item.key}>
         <SidebarMenuButton asChild isActive={isActive} tooltip={t(item.titleKey)} className="relative">
@@ -47,7 +48,8 @@ export function ConsoleNavItems({ nav, slug }: { nav: ConsoleNav; slug: string |
               // The tooltip carries the label; the dot says only that something waits.
               <span
                 className={cn(
-                  "ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-primary)] px-1.5 text-[10px] font-semibold text-[var(--color-primary-foreground)]",
+                  "ml-auto",
+                  CONSOLE_BADGE,
                   "group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:right-1 group-data-[collapsible=icon]:top-1",
                   "group-data-[collapsible=icon]:h-2 group-data-[collapsible=icon]:w-2 group-data-[collapsible=icon]:min-w-0",
                   "group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:text-[0px]",

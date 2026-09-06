@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
+import { cn } from "@ntizo/frontend-ui";
 import { primaryItems, type ConsoleNav } from "@/shared/lib/console-nav";
 import { useBottomEdgeOwned } from "@/shared/lib/console-bottom-edge";
+import { CONSOLE_BADGE } from "./console-badge";
 import { useConsoleCounts } from "./console-counts";
 import { useConsoleMenu } from "./console-menu-context";
 
@@ -11,8 +13,6 @@ export const CONSOLE_MENU_SHEET_ID = "console-menu-sheet";
 
 const TAB =
   "flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-[var(--color-muted-foreground)]";
-const BADGE =
-  "absolute -top-1 left-1/2 ml-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-destructive)] px-1 text-[9px] font-bold leading-none text-white";
 
 /**
  * The phone's navigation: the three items marked `primary`, and Menu.
@@ -56,7 +56,9 @@ export function ConsoleTabBar({ nav, slug }: { nav: ConsoleNav; slug: string | u
           >
             <span className="relative">
               <Icon className="h-5 w-5" aria-hidden="true" />
-              {count ? <span className={BADGE}>{count}</span> : null}
+              {count ? (
+                <span className={cn(CONSOLE_BADGE, "absolute -top-1 left-1/2 ml-1")}>{count}</span>
+              ) : null}
             </span>
             {t(item.shortKey ?? item.titleKey)}
           </Link>

@@ -18,7 +18,7 @@ test("@mobile the console carries its navigation in a bottom bar and a menu shee
   const bar = page.getByRole("navigation", { name: "Main navigation" });
   await expect(bar).toBeVisible();
   await expect(bar.getByRole("link", { name: "Messages" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Toggle Sidebar" })).toBeHidden();
+  await expect(page.locator('[data-sidebar="trigger"]')).toBeHidden();
 
   await bar.getByRole("button", { name: "Menu" }).click();
   const sheet = page.getByRole("dialog", { name: "Menu" });

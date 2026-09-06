@@ -50,9 +50,9 @@ function DecidePage() {
   );
 }
 
-function renderAt(initialPath: string) {
+function renderAt(initialPath: string, providers: ProviderSummary[] = [PROVIDER]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-  qc.setQueryData(["providers", "mine"], [PROVIDER]);
+  qc.setQueryData(["providers", "mine"], providers);
   qc.setQueryData(["providers", PROVIDER.id], DETAIL);
   qc.setQueryData(["user", "me"], USER);
   qc.setQueryData(["notifications", "provider", PROVIDER.id, "unread"], 0);
@@ -63,11 +63,12 @@ function renderAt(initialPath: string) {
     path: "/provider/$slug",
     component: () => <ConsoleShell zone="workspace"><Outlet /></ConsoleShell>,
   });
+  const overview = createRoute({ getParentRoute: () => slugRoute, path: "/overview", component: () => <div>Overview page</div> });
   const services = createRoute({ getParentRoute: () => slugRoute, path: "/services", component: () => <div>Services page</div> });
   const settings = createRoute({ getParentRoute: () => slugRoute, path: "/settings", component: () => <div>Settings page</div> });
   const decide = createRoute({ getParentRoute: () => slugRoute, path: "/decide", component: DecidePage });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([slugRoute.addChildren([services, settings, decide])]),
+    routeTree: rootRoute.addChildren([slugRoute.addChildren([overview, services, settings, decide])]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
   });
   render(<QueryClientProvider client={qc}><RouterProvider router={router} /></QueryClientProvider>);
@@ -93,6 +94,24 @@ describe("the tab bar", () => {
     renderAt("/provider/bela-vista/decide");
     await screen.findByRole("button", { name: "Accept" });
     expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
+  });
+
+  it("renders no sidebar at all below md — the bar and the sheet are the navigation", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === "(max-width: 767px)", media: query, onchange: null,
+        addEventListener: () => {}, removeEventListener: () => {},
+        addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+      }) as unknown as MediaQueryList;
+    try {
+      renderAt("/provider/bela-vista/services");
+      await screen.findByText("Services page");
+      expect(document.querySelector('[data-slot="sidebar"]')).toBeNull();
+      expect(bar()).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });
 
@@ -134,6 +153,29 @@ describe("the menu sheet", () => {
     fireEvent.click(within(bar()).getByRole("button", { name: /menu/i }));
     await screen.findByRole("dialog", { name: /menu/i });
     fireEvent.click(document.querySelector(".fixed.inset-0") as HTMLElement);
+    expect(screen.queryByRole("dialog", { name: /menu/i })).not.toBeInTheDocument();
+  });
+
+  it("closes when the current page is picked again — a tap is an answer even when nothing moves", async () => {
+    renderAt("/provider/bela-vista/services");
+    await screen.findByText("Services page");
+    fireEvent.click(within(bar()).getByRole("button", { name: /menu/i }));
+    const sheet = await screen.findByRole("dialog", { name: /menu/i });
+    fireEvent.click(within(sheet).getByRole("link", { name: /services/i }));
+    expect(screen.queryByRole("dialog", { name: /menu/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Services page")).toBeInTheDocument();
+  });
+
+  it("lets a member of two workspaces switch from the sheet's head, and closes on the switch", async () => {
+    const OTHER: ProviderSummary = { ...PROVIDER, id: "p2", name: "Outra Casa", slug: "outra-casa" };
+    renderAt("/provider/bela-vista/services", [PROVIDER, OTHER]);
+    await screen.findByText("Services page");
+    fireEvent.click(within(bar()).getByRole("button", { name: /menu/i }));
+    const sheet = await screen.findByRole("dialog", { name: /menu/i });
+    expect(within(sheet).getByRole("button", { name: /bela vista studio/i })).toHaveAttribute("aria-current", "true");
+    expect(within(sheet).getByRole("button", { name: /outra casa/i })).not.toHaveAttribute("aria-current");
+    fireEvent.click(within(sheet).getByRole("button", { name: /outra casa/i }));
+    expect(await screen.findByText("Overview page")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: /menu/i })).not.toBeInTheDocument();
   });
 });
