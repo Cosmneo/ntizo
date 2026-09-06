@@ -2413,16 +2413,24 @@ git commit -m "feat(directory): /providers, composed on the new shell"
 
 ### Task 16: Delete what nothing imports, then prove it green
 
+Execution rulings R1 and R7 (in the SDD ledger) moved every deletion into
+this task, so that each earlier task ended on a green build and a green
+suite. Nothing was deleted before this point; everything below is deleted
+here.
+
 **Files:**
 - Delete: `browse-hero.tsx`, `price-stub.tsx`, `listing-card.tsx`, `listing-media.tsx`, `results-bar.tsx`, `active-filter-chips.tsx`, `mobile-search-sheet.tsx`, `category-rail.tsx` and each one's test, all under `apps/frontend/web/src/shared/components/browse/`
+- Delete: `FacetPanel` and `FacetGroup` from `apps/frontend/web/src/shared/components/browse/facet-panel.tsx`, and their cases in its test
+- Delete: `apps/frontend/web/src/features/directory/services/ui/service-listing-card.tsx`, `apps/frontend/web/src/features/directory/ui/provider-listing-card.tsx`, `apps/frontend/web/src/features/directory/services/ui/service-facets.tsx`, `apps/frontend/web/src/features/directory/ui/provider-facets.tsx`, and each one's test
 - Delete: `apps/frontend/web/src/features/directory/services/domain/service-stub.ts` and `__tests__/service-stub.test.ts`
+- Modify: the eight `apps/frontend/web/src/shared/locales/<locale>/directory.json` — remove the twelve keys only the deleted components read
 
 - [ ] **Step 1: Prove each file is unimported before deleting it**
 
 ```bash
 cd apps/frontend/web/src
-for f in browse-hero price-stub listing-card listing-media results-bar active-filter-chips mobile-search-sheet category-rail service-stub; do
-  echo "== $f"; grep -rn "$f" --include="*.ts" --include="*.tsx" . | grep -v "browse/$f\|domain/$f\|__tests__/$f"
+for f in browse-hero price-stub listing-card listing-media results-bar active-filter-chips mobile-search-sheet category-rail service-stub service-listing-card provider-listing-card service-facets provider-facets FacetPanel FacetGroup; do
+  echo "== $f"; grep -rn "$f" --include="*.ts" --include="*.tsx" . | grep -v "browse/$f\|domain/$f\|ui/$f\|__tests__/$f\|facet-panel.tsx"
 done
 ```
 Expected: no output under any heading. A hit means a page still imports it and Task 14 or 15 is incomplete.
@@ -2433,13 +2441,20 @@ Expected: no output under any heading. A hit means a page still imports it and T
 cd apps/frontend/web/src
 git rm shared/components/browse/{browse-hero,price-stub,listing-card,listing-media,results-bar,active-filter-chips,mobile-search-sheet,category-rail}.tsx
 git rm shared/components/browse/__tests__/{browse-hero,price-stub,listing-card,listing-media,results-bar,mobile-search-sheet,category-rail}.test.tsx
+git rm features/directory/services/ui/service-listing-card.tsx features/directory/services/ui/__tests__/service-listing-card.test.tsx
+git rm features/directory/ui/provider-listing-card.tsx features/directory/ui/__tests__/provider-listing-card.test.tsx
+git rm features/directory/services/ui/service-facets.tsx features/directory/ui/provider-facets.tsx
 git rm features/directory/services/domain/service-stub.ts features/directory/services/domain/__tests__/service-stub.test.ts
 ```
 
-- [ ] **Step 3: Confirm the dead copy went with them**
+Then remove `FacetPanel` and `FacetGroup` (and their doc comments) from `facet-panel.tsx`, keeping `facetOptionClass`, `FacetBox`, `FacetCount` and `closeOnChoice`; trim `__tests__/facet-panel.test.tsx` to the survivors.
 
-Run: `grep -rn "stubProviderRating\|stubQuoteAmount\|stubPerService\|listingByProvider\|mobileSearchTitle\|activeFiltersLabel\|heroSubtitle" apps/frontend/web/src`
-Expected: no hits. Any survivor is a key Task 4 removed from the locale files but a component still asks for, which renders as the raw key on screen.
+- [ ] **Step 3: Remove the dead copy, then confirm nothing reads it**
+
+From all eight `directory.json` files remove exactly: `stubProviderRating`, `stubQuoteAmount`, `stubPerService`, `listingByProvider`, `mobileSearchTitle`, `mobileSearchApply`, `servicesFilterByCategory`, `providersFilterByCategory`, `activeFiltersLabel`, `chipRemove`, `heroSubtitleServices`, `heroSubtitleProviders`.
+
+Run: `grep -rn "stubProviderRating\|stubQuoteAmount\|stubPerService\|listingByProvider\|mobileSearchTitle\|mobileSearchApply\|servicesFilterByCategory\|providersFilterByCategory\|activeFiltersLabel\|chipRemove\|heroSubtitle" apps/frontend/web/src`
+Expected: no hits. Any survivor is a key a component still asks for, which renders as the raw key on screen. Then run the parity gate: `cd apps/frontend/web && bunx vitest run src/shared/locales/__tests__/locales.test.ts`.
 
 - [ ] **Step 4: Run everything**
 
