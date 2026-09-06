@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { HeaderActions } from "@/shared/components/header-actions";
@@ -16,10 +17,17 @@ import { PUBLIC_NAV } from "@/shared/lib/public-nav";
  * the pill in the space left between the logo and the actions, which are
  * different widths — and the right one changes width with the signed-in user's
  * name, so the pill moved depending on who was looking at it.
+ *
+ * A variant, not a second header. `search` swaps the centre pill for the
+ * browse pages' `SearchPill` and moves the three destinations to the right, as
+ * plain text links ahead of the account cluster — the pill's own width made
+ * no room for a 600px search beside it. Left absent, every one of the eight
+ * pages that already import this component gets exactly what they get today.
  */
 export function SiteHeader({
   overlay = false,
   current = "explore",
+  search,
 }: {
   overlay?: boolean;
   /**
@@ -28,6 +36,12 @@ export function SiteHeader({
    * `endsWith("none")` matches no nav key, which is the whole mechanism.
    */
   current?: "explore" | "categories" | "services" | "providers" | "none";
+  /**
+   * The browse pages' search, drawn in the centre column in place of the nav
+   * pill. A variant rather than a second header: eight surfaces import this
+   * one, and the landing page keeps its own hero search.
+   */
+  search?: ReactNode;
 }) {
   const { t } = useTranslation("landing");
 
@@ -44,7 +58,13 @@ export function SiteHeader({
           and pushed the header past the viewport — which scrolls the whole
           page sideways, not just the header. Measured at a 180px viewport:
           155px of actions inside a 132px shell. */}
-      <div className="page-shell grid h-[84px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4">
+      <div
+        className={
+          search
+            ? "page-shell grid h-[84px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-4"
+            : "page-shell grid h-[84px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4"
+        }
+      >
         <Link to="/" className="justify-self-start">
           <img
             src={overlay ? "/brand/logo-white.svg" : "/brand/logo-primary.svg"}
@@ -53,34 +73,65 @@ export function SiteHeader({
           />
         </Link>
 
-        <nav
+        {search ? (
+          <div className="flex min-w-0 items-center justify-center">{search}</div>
+        ) : (
+          <nav
+            className={
+              overlay
+                ? "hidden justify-self-center gap-0.5 rounded-full bg-white/95 p-1 shadow-sm lg:flex"
+                : "hidden justify-self-center gap-0.5 rounded-full bg-[var(--color-muted)] p-1 lg:flex"
+            }
+          >
+            {PUBLIC_NAV.map((item) => {
+              const Icon = item.icon;
+              const active = item.key.endsWith(current);
+              return (
+                <Link
+                  key={item.key}
+                  to={item.to}
+                  className={
+                    active
+                      ? "flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white"
+                      : "flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  {t(item.key)}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+
+        <div
           className={
-            overlay
-              ? "hidden justify-self-center gap-0.5 rounded-full bg-white/95 p-1 shadow-sm lg:flex"
-              : "hidden justify-self-center gap-0.5 rounded-full bg-[var(--color-muted)] p-1 lg:flex"
+            search
+              ? "col-start-3 flex items-center justify-self-end gap-6"
+              : "col-start-3 justify-self-end"
           }
         >
-          {PUBLIC_NAV.map((item) => {
-            const Icon = item.icon;
-            const active = item.key.endsWith(current);
-            return (
-              <Link
-                key={item.key}
-                to={item.to}
-                className={
-                  active
-                    ? "flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white"
-                    : "flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-                }
-              >
-                <Icon className="h-4 w-4" />
-                {t(item.key)}
-              </Link>
-            );
-          })}
-        </nav>
+          {/* The pill's destinations minus "Explore": the logo already goes
+              home, and a text link repeating that would be a second one right
+              beside it. */}
+          {search &&
+            PUBLIC_NAV.slice(1).map((item) => {
+              const active = item.key.endsWith(current);
+              return (
+                <Link
+                  key={item.key}
+                  to={item.to}
+                  className={
+                    active
+                      ? "text-sm font-bold text-[var(--color-headline)]"
+                      : "text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                  }
+                >
+                  {t(item.key)}
+                </Link>
+              );
+            })}
 
-        <div className="col-start-3 justify-self-end">
           <HeaderActions
             onDark={overlay}
             signedOutAction={
