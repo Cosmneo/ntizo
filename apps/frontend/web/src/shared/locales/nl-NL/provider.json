@@ -356,7 +356,8 @@
     "SERVICE_NEEDS_MEMBER": "Deze dienst heeft minstens één persoon nodig die hem uitvoert.",
     "MEMBER_NOT_IN_PROVIDER": "Deze persoon maakt niet meer deel uit van het team.",
     "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan een dienst publiceren, de publicatie ongedaan maken of archiveren."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan een dienst publiceren, de publicatie ongedaan maken of archiveren.",
+    "PROVIDER_NOT_ACTIVE": "Dit bedrijf wordt nog beoordeeld, dus de diensten kunnen nog niet live. Zodra het is goedgekeurd, kun je publiceren."
   },
   "translationsTitle": "Vertalingen",
   "translationsHint": "Alleen de taal waarin je dit hebt geschreven is verplicht. Alle andere zijn optioneel — laat leeg wat je nog niet hebt geschreven, nu of later.",
@@ -520,5 +521,13 @@
   "activityTitle": "Recente activiteit",
   "activityHint": "Wat er in deze werkruimte is gebeurd.",
   "activityEmptyTitle": "Nog geen activiteit",
-  "activityEmpty": "Boekingen, betalingen en wijzigingen in deze werkruimte verschijnen hier zodra ze plaatsvinden."
+  "activityEmpty": "Boekingen, betalingen en wijzigingen in deze werkruimte verschijnen hier zodra ze plaatsvinden.",
+  "workspaceStatus": {
+    "pendingTitle": "Dit bedrijf wacht op goedkeuring",
+    "pendingBody": "Je kunt nu alles klaarzetten, maar wat je publiceert verschijnt pas in de marktplaats als het platform het bedrijf heeft goedgekeurd.",
+    "suspendedTitle": "Dit bedrijf is geschorst",
+    "suspendedBody": "De diensten zijn uit de marktplaats gehaald en kunnen pas opnieuw worden gepubliceerd als de schorsing is opgeheven.",
+    "badgePending": "Wacht op goedkeuring",
+    "badgeSuspended": "Geschorst"
+  }
 }

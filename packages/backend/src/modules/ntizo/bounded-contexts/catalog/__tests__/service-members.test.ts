@@ -131,6 +131,9 @@ class FakeServiceRepo implements ServiceRepositoryPort {
   async isProviderOwnerOrAdmin(): Promise<boolean> {
     throw new Error("not used by SetServiceMembersCommand");
   }
+  async isProviderActive(): Promise<boolean> {
+    throw new Error("not used by SetServiceMembersCommand — only publishing asks this");
+  }
   async memberBelongsToProvider(providerId: string, memberId: string): Promise<boolean> {
     return this.providerMembers.has(`${providerId}:${memberId}`);
   }

@@ -1,5 +1,9 @@
 import type { UnitOfWorkPort } from "@cosmneo/onion-lasagna/ports";
-import { NotProviderOwnerOrAdminError, ServiceNotFoundError } from "../../domain/exceptions";
+import {
+  NotProviderOwnerOrAdminError,
+  ProviderNotActiveError,
+  ServiceNotFoundError,
+} from "../../domain/exceptions";
 import type { ServiceRepositoryPort } from "../ports/outbound/service.repository.port";
 import type { OutboxPort } from "../../../../shared/app/ports/outbox.port";
 
@@ -23,6 +27,14 @@ export class SetServiceStatusCommand {
     // just the membership.
     if (!(await this.repo.isProviderOwnerOrAdmin(service.providerId, input.requesterUserId))) {
       throw new NotProviderOwnerOrAdminError();
+    }
+
+    // Only on the way up. A workspace suspended while a service was already
+    // live must still be able to draft or archive it — gating every status
+    // change would strand the row in a state its owner can see and cannot
+    // leave.
+    if (input.status === "published" && !(await this.repo.isProviderActive(service.providerId))) {
+      throw new ProviderNotActiveError(service.providerId);
     }
 
     // Publishing is where the invariants are checked; the aggregate throws the

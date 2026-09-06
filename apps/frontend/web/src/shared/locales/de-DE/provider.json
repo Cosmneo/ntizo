@@ -356,7 +356,8 @@
     "SERVICE_NEEDS_MEMBER": "Diese Leistung benötigt mindestens eine Person, die sie ausführt.",
     "MEMBER_NOT_IN_PROVIDER": "Diese Person gehört nicht mehr zum Team.",
     "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf dieses Unternehmen.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Unternehmens oder ein Administrator kann eine Leistung veröffentlichen, ihre Veröffentlichung aufheben oder archivieren."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Unternehmens oder ein Administrator kann eine Leistung veröffentlichen, ihre Veröffentlichung aufheben oder archivieren.",
+    "PROVIDER_NOT_ACTIVE": "Dieses Unternehmen wird noch geprüft, daher können seine Leistungen noch nicht veröffentlicht werden. Sobald es freigegeben ist, können Sie veröffentlichen."
   },
   "translationsTitle": "Übersetzungen",
   "translationsHint": "Nur die Sprache, in der Sie dies geschrieben haben, ist erforderlich. Alle anderen sind optional — lassen Sie leer, was Sie noch nicht geschrieben haben, jetzt oder später.",
@@ -520,5 +521,13 @@
   "activityTitle": "Letzte Aktivität",
   "activityHint": "Was in diesem Arbeitsbereich passiert ist.",
   "activityEmptyTitle": "Noch keine Aktivität",
-  "activityEmpty": "Buchungen, Zahlungen und Änderungen an diesem Arbeitsbereich erscheinen hier, sobald sie geschehen."
+  "activityEmpty": "Buchungen, Zahlungen und Änderungen an diesem Arbeitsbereich erscheinen hier, sobald sie geschehen.",
+  "workspaceStatus": {
+    "pendingTitle": "Dieses Unternehmen wartet auf Freigabe",
+    "pendingBody": "Sie können jetzt schon alles einrichten, aber nichts, was Sie veröffentlichen, erscheint im Marktplatz, bevor die Plattform das Unternehmen freigegeben hat.",
+    "suspendedTitle": "Dieses Unternehmen ist gesperrt",
+    "suspendedBody": "Seine Leistungen wurden aus dem Marktplatz entfernt und können erst wieder veröffentlicht werden, wenn die Sperre aufgehoben ist.",
+    "badgePending": "Wartet auf Freigabe",
+    "badgeSuspended": "Gesperrt"
+  }
 }

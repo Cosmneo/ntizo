@@ -356,7 +356,8 @@
     "SERVICE_NEEDS_MEMBER": "Ce service a besoin d'au moins une personne pour l'exécuter.",
     "MEMBER_NOT_IN_PROVIDER": "Cette personne ne fait plus partie de l'équipe.",
     "NOT_PROVIDER_MEMBER": "Vous n'avez pas accès à cette entreprise.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Seul le propriétaire de l'entreprise ou un administrateur peut publier, dépublier ou archiver un service."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Seul le propriétaire de l'entreprise ou un administrateur peut publier, dépublier ou archiver un service.",
+    "PROVIDER_NOT_ACTIVE": "Cette entreprise est encore en cours d'examen, ses services ne peuvent donc pas encore être mis en ligne. Vous pourrez les publier dès qu'elle sera approuvée."
   },
   "translationsTitle": "Traductions",
   "translationsHint": "Seule la langue dans laquelle vous avez écrit ceci est obligatoire. Toutes les autres sont facultatives — laissez vide ce que vous n'avez pas encore écrit, maintenant ou plus tard.",
@@ -520,5 +521,13 @@
   "activityTitle": "Activité récente",
   "activityHint": "Ce qui s’est passé dans cet espace de travail.",
   "activityEmptyTitle": "Aucune activité pour l’instant",
-  "activityEmpty": "Les réservations, les paiements et les modifications de cet espace de travail seront listés ici au fil de l’eau."
+  "activityEmpty": "Les réservations, les paiements et les modifications de cet espace de travail seront listés ici au fil de l’eau.",
+  "workspaceStatus": {
+    "pendingTitle": "Cette entreprise est en attente d'approbation",
+    "pendingBody": "Vous pouvez tout préparer dès maintenant, mais rien de ce que vous publiez n'apparaît sur la place de marché tant que la plateforme n'a pas approuvé l'entreprise.",
+    "suspendedTitle": "Cette entreprise est suspendue",
+    "suspendedBody": "Ses services ont été retirés de la place de marché et ne peuvent pas être republiés tant que la suspension n'est pas levée.",
+    "badgePending": "En attente d'approbation",
+    "badgeSuspended": "Suspendue"
+  }
 }

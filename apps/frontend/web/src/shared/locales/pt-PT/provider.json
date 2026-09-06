@@ -356,7 +356,8 @@
     "SERVICE_NEEDS_MEMBER": "Este serviço precisa de, pelo menos, uma pessoa a realizá-lo.",
     "MEMBER_NOT_IN_PROVIDER": "Essa pessoa já não faz parte da equipa.",
     "NOT_PROVIDER_MEMBER": "Não tem acesso a este negócio.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Só o proprietário do negócio ou um administrador pode publicar, despublicar ou arquivar um serviço."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Só o proprietário do negócio ou um administrador pode publicar, despublicar ou arquivar um serviço.",
+    "PROVIDER_NOT_ACTIVE": "Este negócio ainda está a ser analisado, por isso os seus serviços ainda não podem ficar visíveis. Poderá publicar assim que for aprovado."
   },
   "translationsTitle": "Traduções",
   "translationsHint": "Só é obrigatório o idioma em que escreveu isto. Todos os outros são opcionais — pode deixar em branco o que ainda não escreveu, agora ou mais tarde.",
@@ -520,5 +521,13 @@
   "activityTitle": "Atividade recente",
   "activityHint": "O que aconteceu neste espaço de trabalho.",
   "activityEmptyTitle": "Ainda sem atividade",
-  "activityEmpty": "Reservas, pagamentos e alterações a este espaço de trabalho serão listados aqui à medida que acontecem."
+  "activityEmpty": "Reservas, pagamentos e alterações a este espaço de trabalho serão listados aqui à medida que acontecem.",
+  "workspaceStatus": {
+    "pendingTitle": "Este negócio aguarda aprovação",
+    "pendingBody": "Pode preparar tudo agora, mas nada do que publicar aparece no mercado até a plataforma aprovar o negócio.",
+    "suspendedTitle": "Este negócio está suspenso",
+    "suspendedBody": "Os seus serviços foram retirados do mercado e não podem voltar a ser publicados até a suspensão ser levantada.",
+    "badgePending": "Aguarda aprovação",
+    "badgeSuspended": "Suspenso"
+  }
 }

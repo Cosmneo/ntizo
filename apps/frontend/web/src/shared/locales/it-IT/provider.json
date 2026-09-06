@@ -356,7 +356,8 @@
     "SERVICE_NEEDS_MEMBER": "Questo servizio ha bisogno di almeno una persona che lo svolga.",
     "MEMBER_NOT_IN_PROVIDER": "Questa persona non fa più parte del team.",
     "NOT_PROVIDER_MEMBER": "Non hai accesso a questa attività.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo il proprietario dell'attività o un amministratore può pubblicare, rimuovere la pubblicazione o archiviare un servizio."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo il proprietario dell'attività o un amministratore può pubblicare, rimuovere la pubblicazione o archiviare un servizio.",
+    "PROVIDER_NOT_ACTIVE": "Questa attività è ancora in fase di revisione, quindi i suoi servizi non possono ancora essere pubblicati. Potrai pubblicarli non appena verrà approvata."
   },
   "translationsTitle": "Traduzioni",
   "translationsHint": "È obbligatoria solo la lingua in cui hai scritto questo. Tutte le altre sono facoltative: lascia vuoto ciò che non hai ancora scritto, ora o più tardi.",
@@ -520,5 +521,13 @@
   "activityTitle": "Attività recente",
   "activityHint": "Che cosa è successo in questo spazio di lavoro.",
   "activityEmptyTitle": "Ancora nessuna attività",
-  "activityEmpty": "Prenotazioni, pagamenti e modifiche a questo spazio di lavoro compariranno qui man mano che avvengono."
+  "activityEmpty": "Prenotazioni, pagamenti e modifiche a questo spazio di lavoro compariranno qui man mano che avvengono.",
+  "workspaceStatus": {
+    "pendingTitle": "Questa attività è in attesa di approvazione",
+    "pendingBody": "Puoi preparare tutto ora, ma nulla di ciò che pubblichi compare nel marketplace finché la piattaforma non approva l'attività.",
+    "suspendedTitle": "Questa attività è sospesa",
+    "suspendedBody": "I suoi servizi sono stati rimossi dal marketplace e non possono essere ripubblicati finché la sospensione non viene revocata.",
+    "badgePending": "In attesa di approvazione",
+    "badgeSuspended": "Sospesa"
+  }
 }

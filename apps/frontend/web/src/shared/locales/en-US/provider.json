@@ -356,7 +356,8 @@
     "SERVICE_NEEDS_MEMBER": "This service needs at least one person performing it.",
     "MEMBER_NOT_IN_PROVIDER": "That person is no longer part of the team.",
     "NOT_PROVIDER_MEMBER": "You don't have access to this business.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Only the business's owner or an admin can publish, unpublish, or archive a service."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Only the business's owner or an admin can publish, unpublish, or archive a service.",
+    "PROVIDER_NOT_ACTIVE": "This business is still being reviewed, so its services can't go live yet. You'll be able to publish once it's approved."
   },
   "translationsTitle": "Translations",
   "translationsHint": "Only the language you wrote this in is required. Every other one is optional — leave what you haven't written yet blank, now or later.",
@@ -520,5 +521,13 @@
   "activityTitle": "Recent activity",
   "activityHint": "What has happened in this workspace.",
   "activityEmptyTitle": "No activity yet",
-  "activityEmpty": "Bookings, payments and changes to this workspace will be listed here as they happen."
+  "activityEmpty": "Bookings, payments and changes to this workspace will be listed here as they happen.",
+  "workspaceStatus": {
+    "pendingTitle": "This business is awaiting approval",
+    "pendingBody": "You can set everything up now, but nothing you publish appears in the marketplace until the platform approves the business.",
+    "suspendedTitle": "This business is suspended",
+    "suspendedBody": "Its services have been taken out of the marketplace and can't be published again until the suspension is lifted.",
+    "badgePending": "Awaiting approval",
+    "badgeSuspended": "Suspended"
+  }
 }
