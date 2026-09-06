@@ -174,7 +174,7 @@ function logoSvg(initials: string, code: string): string {
     </linearGradient>
   </defs>
   <rect width="160" height="160" rx="34" fill="url(#g)"/>
-  <text x="80" y="80" fill="#ffffff" font-family="Poppins, Inter, sans-serif"
+  <text x="80" y="80" fill="#ffffff" font-family="Figtree, sans-serif"
         font-size="62" font-weight="600" text-anchor="middle"
         dominant-baseline="central">${initials}</text>
 </svg>`;
@@ -197,7 +197,7 @@ function photoSvg(index: number, code: string): string {
   <circle cx="${60 + ((index * 71) % 280)}" cy="${50 + ((index * 43) % 200)}" r="${28 + ((index * 13) % 46)}"
           fill="#ffffff" fill-opacity="0.16"/>
   <text x="374" y="278" fill="#ffffff" fill-opacity="0.75" text-anchor="end"
-        font-family="Poppins, Inter, sans-serif" font-size="26" font-weight="600">${index}</text>
+        font-family="Figtree, sans-serif" font-size="26" font-weight="600">${index}</text>
 </svg>`;
 }
 
