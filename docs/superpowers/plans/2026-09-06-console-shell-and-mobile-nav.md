@@ -595,7 +595,7 @@ export function ConsoleStrip({
 
   if (isWorkspaceLive(status)) {
     return (
-      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border bg-muted/40 px-4 text-xs text-muted-foreground sm:px-6">
+      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border bg-muted/40 px-4 text-xs text-muted-foreground md:px-6">
         <Percent className="h-3 w-3 shrink-0" aria-hidden="true" />
         {/* `min-w-0` beside `truncate`: a flex child defaults to
             `min-width: auto` and refuses to shrink, so `truncate` alone does
@@ -612,7 +612,7 @@ export function ConsoleStrip({
     <div
       role="status"
       className={cn(
-        "flex min-h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-4 py-1 text-xs sm:px-6",
+        "flex min-h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-4 py-1 text-xs md:px-6",
         suspended
           ? "bg-[color-mix(in_srgb,var(--color-destructive)_10%,transparent)] text-[var(--color-destructive)]"
           : "bg-[color-mix(in_srgb,var(--color-warning)_16%,transparent)] text-[var(--color-foreground)]",
@@ -624,7 +624,7 @@ export function ConsoleStrip({
       </span>
       {/* The sentence that explains it, where there is room. On a phone the
           title alone is the honest amount that fits on one row. */}
-      <span className="hidden min-w-0 truncate text-[var(--color-muted-foreground)] sm:inline">
+      <span className="hidden min-w-0 truncate text-[var(--color-muted-foreground)] md:inline">
         {t(suspended ? "workspaceStatus.suspendedBody" : "workspaceStatus.pendingBody")}
       </span>
     </div>
@@ -1138,7 +1138,7 @@ export function ConsoleHeader({ bell }: { bell: ReactNode }) {
   const action = usePageHeaderAction();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 md:px-6">
       <SidebarTrigger className="hidden md:inline-flex" />
       <Separator orientation="vertical" className="hidden h-6 md:block" />
       {/* `min-w-0` because a flex child defaults to `min-width: auto` and
@@ -1150,7 +1150,7 @@ export function ConsoleHeader({ bell }: { bell: ReactNode }) {
           <span className="truncate text-xs text-muted-foreground">{header.subtitle}</span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <HeaderActions showAccount={false} />
         {bell}
         {action}
@@ -1689,7 +1689,7 @@ function ShellFrame({
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <ConsoleHeader bell={bell} />
         {strip}
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
@@ -2725,7 +2725,7 @@ function ShellFrame({ nav, slug, zoneLabel, bell, strip, workspaceMenu, sheetHea
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <ConsoleHeader bell={bell} />
         {strip}
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
         <ConsoleTabBar nav={nav} slug={slug} />
         <ConsoleMenuSheet nav={nav} slug={slug} zoneLabel={zoneLabel} header={sheetHeader} />
       </SidebarInset>
