@@ -198,3 +198,66 @@ export function formatRating(rating: number, locale: string): string {
     maximumFractionDigits: 1,
   }).format(rating);
 }
+
+/**
+ * What a tile prints where the price goes.
+ *
+ * The successor to `serviceStubParts`, which shaped the same four branches for
+ * a control the tile does not have: `PriceStub` needed an eyebrow above the
+ * amount and a CTA variant beneath it, and a tile has neither. Keyed off
+ * `servicePriceCell` so the branch order — `quote` before `defaultOption` is
+ * even inspected — is decided in exactly one place.
+ *
+ * Returns keys and minor units rather than strings: the amount is formatted in
+ * the reader's locale by the component, and a domain function that interpolated
+ * an English "min" would put it in front of every locale that calls this.
+ */
+export interface ServicePriceLine {
+  amount:
+    | { kind: "money"; amountMinor: number; currency: string; from: boolean; perHour: boolean }
+    | { kind: "words"; key: string };
+  /** The one phrase beside the amount, or nothing when the data has none. */
+  meta: { key: string; values?: Record<string, number> } | null;
+}
+
+export function servicePriceLine(service: ServiceDTO): ServicePriceLine {
+  const cell = servicePriceCell(service);
+
+  if (cell.kind === "quote") {
+    return { amount: { kind: "words", key: "priceToAgree" }, meta: { key: "priceQuoteHint" } };
+  }
+  if (cell.kind === "unavailable") {
+    return { amount: { kind: "words", key: "priceUnavailable" }, meta: null };
+  }
+  if (cell.kind === "from") {
+    return {
+      amount: {
+        kind: "money",
+        amountMinor: cell.amountMinor,
+        currency: cell.currency,
+        from: true,
+        perHour: false,
+      },
+      meta: { key: "priceOptionCount", values: { count: service.optionCount } },
+    };
+  }
+
+  const hourly = cell.option.pricingMode === "hourly";
+  const minutes = optionDurationMinutes(cell.option);
+  return {
+    amount: {
+      kind: "money",
+      amountMinor: cell.option.amountMinor,
+      currency: cell.option.currency,
+      from: false,
+      perHour: hourly,
+    },
+    meta:
+      minutes == null
+        ? null
+        : {
+            key: hourly ? "serviceMinimumMinutes" : "serviceDurationMinutes",
+            values: { count: minutes },
+          },
+  };
+}
