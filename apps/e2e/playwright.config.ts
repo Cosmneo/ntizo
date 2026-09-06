@@ -73,7 +73,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      grepInvert: BUILD_TEST_TITLE,
+      grepInvert: [BUILD_TEST_TITLE, /@mobile/],
       use: { ...devices["Desktop Chrome"] },
     },
     {
@@ -84,6 +84,14 @@ export default defineConfig({
       workers: 1,
       retries: 0,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // A phone, in Chromium — the only browser the harness installs. Tests
+      // opt in with "@mobile" in their title; everything else stays on the
+      // desktop project so a viewport-sensitive assertion is never run twice.
+      name: "mobile",
+      grep: /@mobile/,
+      use: { ...devices["Pixel 5"] },
     },
   ],
   // Two entries, so Playwright owns spawning AND teardown of both real apps

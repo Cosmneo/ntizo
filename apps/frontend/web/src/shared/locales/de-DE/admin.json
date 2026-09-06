@@ -11,7 +11,9 @@
     "providers": "Anbieter",
     "categories": "Kategorien",
     "activity": "Aktivität",
-    "reviews": "Bewertungen"
+    "reviews": "Bewertungen",
+    "work": "Arbeit",
+    "manage": "Verwalten"
   },
   "providersTitle": "Anbieter",
   "providersSubtitle": "Alle Betriebe der Plattform.",
@@ -237,5 +239,10 @@
     "hidden": "Ausgeblendet"
   },
   "reviewsSearchPlaceholder": "Betrieb, Name oder Gesagtes suchen",
-  "reviewsAction": "Startseite"
+  "reviewsAction": "Startseite",
+  "navShort": {
+    "providers": "Anbieter",
+    "reviews": "Bewertungen",
+    "users": "Benutzer"
+  }
 }

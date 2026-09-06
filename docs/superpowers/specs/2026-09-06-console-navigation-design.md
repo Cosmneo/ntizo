@@ -185,7 +185,7 @@ consoles ended up with two models; a second array is the first step back there.
 ### On a phone: four tabs and a sheet
 
 Below `md`, the sidebar is gone and a bottom tab bar carries the items marked `primary` — exactly
-four per zone, the fourth always **Menu**, which opens the complete sidebar as a bottom sheet.
+three per zone, plus a fourth that is always **Menu**, which opens the complete sidebar as a bottom sheet.
 
 | Zone | Tab 1 | Tab 2 | Tab 3 | Tab 4 |
 |---|---|---|---|---|
@@ -405,7 +405,8 @@ The twelve, each with how it is enforced.
 
 1. One shell — `ConsoleShell`; the old files are deleted (grep in CI).
 2. One nav schema — `consoleNav(zone)`; a test asserts both zones return the same group keys in
-   the same order, that exactly four items per zone are `primary`, and that the fourth is Menu.
+   the same order, that exactly three items per zone are `primary` (`PRIMARY_TAB_COUNT`), and that
+   the bar appends Menu as its fourth tab.
 3. Two breakpoints — no `sm:`/`xl:` layout switches in console chrome (lint, `console/**`).
 4. One page width — ESLint forbids `max-w-` in `features/**/ui/*.tsx` reached from console routes.
 5. The shell header owns the title — no `<h1>` in a console page (lint).

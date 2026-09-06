@@ -11,7 +11,9 @@
     "providers": "Aanbieders",
     "categories": "Categorieën",
     "activity": "Activiteit",
-    "reviews": "Beoordelingen"
+    "reviews": "Beoordelingen",
+    "work": "Werk",
+    "manage": "Beheren"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -237,5 +239,10 @@
     "hidden": "Verborgen"
   },
   "reviewsSearchPlaceholder": "Zoek een bedrijf, een naam of wat er is gezegd",
-  "reviewsAction": "Homepage"
+  "reviewsAction": "Homepage",
+  "navShort": {
+    "providers": "Aanbieders",
+    "reviews": "Reviews",
+    "users": "Gebruikers"
+  }
 }

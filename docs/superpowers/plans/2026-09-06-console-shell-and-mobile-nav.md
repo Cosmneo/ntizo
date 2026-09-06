@@ -16,6 +16,7 @@
 - **Every commit ends with these two trailer lines** (the session's attribution rule):
   `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and
   `Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v`.
+  Adjacent, as the last two lines, so git's trailer parser sees both: write the message through `git commit -F -` with a heredoc, as every commit step below shows — never as separate `-m` flags, which put a blank line between them.
   Commit only the files a task names. The working tree may hold other people's changes; never `git add -A`.
 - **Never delete a file before its replacement's tests pass.** Deletions are their own steps, after green.
 - **No new colours, no new breakpoints.** Only the tokens in `globals.css` and only `md` (768px) and `lg` (1024px) — the spec's rule 3.
@@ -25,6 +26,7 @@
   1. The tab bar is an in-flow last child of `SidebarInset`, not a fixed overlay, so `main` needs no bottom padding — `SidebarInset` is already a fixed-height flex column in which only `main` scrolls.
   2. The header bell becomes always visible (it is `hidden sm:inline-flex` today). Notifications leaves the sidebar and has no tab; without this a phone has no route to the inbox. The search field and the hamburger are leaving the same row, so it fits.
   3. The spec's rule 2 says "exactly four items per zone carry `primary`, and the fourth is Menu". Menu is not a nav item — it is the tab bar's own control — so the schema marks exactly **three** items `primary` (`PRIMARY_TAB_COUNT = 3`) and the bar appends Menu. Same four tabs on screen; the test asserts three.
+  4. Until the bookings plan lands, Services holds the provider's third tab (`primary`); Bookings then takes it and Services gives it up — see the comment on `WORKSPACE.work` in `console-nav.ts` and the note under the bookings plan's Task 8.
 
 ## File Structure
 
@@ -471,16 +473,19 @@ export function resolveUrl(url: string, slug: string | undefined): string | null
 - [ ] **Step 5: Run the test**
 
 Run: `cd apps/frontend/web && bun run vitest run src/shared/lib/__tests__/console-nav.test.ts`
-Expected: PASS, 13 tests.
+Expected: PASS, 20 tests (the locale case runs once per locale — eight of the twenty).
 
 - [ ] **Step 6: Commit**
 
 ```bash
 cd apps/frontend/web
 git add src/shared/lib/console-nav.ts src/shared/lib/__tests__/console-nav.test.ts src/shared/locales
-git commit -m "feat(console): one nav schema for both zones, and the strings the phone's tabs need" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): one nav schema for both zones, and the strings the phone's tabs need
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -595,7 +600,7 @@ export function ConsoleStrip({
 
   if (isWorkspaceLive(status)) {
     return (
-      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border bg-muted/40 px-4 text-xs text-muted-foreground sm:px-6">
+      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border bg-muted/40 px-4 text-xs text-muted-foreground md:px-6">
         <Percent className="h-3 w-3 shrink-0" aria-hidden="true" />
         {/* `min-w-0` beside `truncate`: a flex child defaults to
             `min-width: auto` and refuses to shrink, so `truncate` alone does
@@ -612,7 +617,7 @@ export function ConsoleStrip({
     <div
       role="status"
       className={cn(
-        "flex min-h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-4 py-1 text-xs sm:px-6",
+        "flex min-h-8 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-4 py-1 text-xs md:px-6",
         suspended
           ? "bg-[color-mix(in_srgb,var(--color-destructive)_10%,transparent)] text-[var(--color-destructive)]"
           : "bg-[color-mix(in_srgb,var(--color-warning)_16%,transparent)] text-[var(--color-foreground)]",
@@ -624,7 +629,7 @@ export function ConsoleStrip({
       </span>
       {/* The sentence that explains it, where there is room. On a phone the
           title alone is the honest amount that fits on one row. */}
-      <span className="hidden min-w-0 truncate text-[var(--color-muted-foreground)] sm:inline">
+      <span className="hidden min-w-0 truncate text-[var(--color-muted-foreground)] md:inline">
         {t(suspended ? "workspaceStatus.suspendedBody" : "workspaceStatus.pendingBody")}
       </span>
     </div>
@@ -642,9 +647,12 @@ Expected: PASS, 5 tests.
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/console-strip.tsx src/shared/components/console/console-strip.test.tsx
-git commit -m "feat(console): the strip carries the commission, or why the workspace is invisible" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): the strip carries the commission, or why the workspace is invisible
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -1019,9 +1027,12 @@ Expected: PASS, 3 tests. If the menu content does not appear after the click, ch
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/workspace-switcher.tsx src/shared/components/console/console-user-menu.tsx src/shared/components/console/console-user-menu.test.tsx
-git commit -m "feat(console): one account menu; the workspace switcher arrives from the zone that has one" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): one account menu; the workspace switcher arrives from the zone that has one
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -1138,7 +1149,7 @@ export function ConsoleHeader({ bell }: { bell: ReactNode }) {
   const action = usePageHeaderAction();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-sidebar-border bg-background px-4 md:px-6">
       <SidebarTrigger className="hidden md:inline-flex" />
       <Separator orientation="vertical" className="hidden h-6 md:block" />
       {/* `min-w-0` because a flex child defaults to `min-width: auto` and
@@ -1150,7 +1161,7 @@ export function ConsoleHeader({ bell }: { bell: ReactNode }) {
           <span className="truncate text-xs text-muted-foreground">{header.subtitle}</span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <HeaderActions showAccount={false} />
         {bell}
         {action}
@@ -1170,9 +1181,12 @@ Expected: PASS, 2 tests; typecheck clean.
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/console-header.tsx src/shared/components/console/console-page.tsx src/shared/components/console/console-page.test.tsx
-git commit -m "feat(console): the header with no fallback action, and the one page width" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): the header with no fallback action, and the one page width
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -1353,9 +1367,12 @@ Expected: clean. (`SidebarSeparator` takes `className` — `sidebar.tsx:324`.)
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/console-nav-items.tsx src/shared/components/console/console-sidebar.tsx
-git commit -m "feat(console): the sidebar draws home, Work and Manage from the schema" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): the sidebar draws home, Work and Manage from the schema
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -1689,7 +1706,7 @@ function ShellFrame({
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <ConsoleHeader bell={bell} />
         {strip}
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
@@ -1708,9 +1725,12 @@ If "Admin" is found more than once, the masthead label collides with another str
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/console-shell.tsx src/shared/components/console/console-shell.test.tsx
-git commit -m "feat(console): one shell for both zones; the not-live sentence rides on every route" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): one shell for both zones; the not-live sentence rides on every route
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -1772,7 +1792,7 @@ import { ConsoleShell } from "@/shared/components/console/console-shell";
 
 In `features/provider/ui/overview.tsx`: delete line 13 (`import { WorkspaceStatusNotice } …`) and lines 30–33 (the comment and `<WorkspaceStatusNotice />`).
 
-In `features/provider/services/ui/services-page.tsx`: delete line 19 (the import) and line 99 (`<WorkspaceStatusNotice />`).
+In `features/provider/services/ui/services-page.tsx`: delete the import, the `<WorkspaceStatusNotice />` line, and the four-line comment immediately above it, which describes only the notice. Locate all of these by content — line numbers drift.
 
 - [ ] **Step 4: Delete the replaced files**
 
@@ -1786,8 +1806,8 @@ git rm -q features/provider/ui/workspace-status-notice.tsx features/provider/ui/
 
 - [ ] **Step 5: Prove nothing still imports them**
 
-Run, from `apps/frontend/web/src`:
-`grep -rn "provider-shell\|admin-shell\|app-sidebar\|admin-sidebar\|lib/navigation\"\|admin-navigation\|workspace-status-notice" . ; echo "exit=$?"`
+Run, from `apps/frontend/web/src` — import statements only; a doc comment that names a deleted file as provenance is accurate history and stays:
+`grep -rn -E 'from "@/shared/components/(provider-shell|admin-shell|app-sidebar/|admin-sidebar/)|from "@/shared/lib/(navigation|admin-navigation)"|from "\./(provider-shell|admin-shell|app-sidebar|admin-sidebar)|workspace-status-notice"' . ; echo "exit=$?"`
 Expected: no matches, `exit=1`.
 
 - [ ] **Step 6: Point the bookings plan at the merged file**
@@ -1809,9 +1829,12 @@ Expected: all green. The route-suite tests under `src/routes/__tests__/` exercis
 cd apps/frontend/web
 git add src/routes/provider/route.tsx src/routes/admin/route.tsx src/features/provider/ui/overview.tsx src/features/provider/services/ui/services-page.tsx
 git add ../../../docs/superpowers/plans/2026-09-02-provider-bookings-phase-1.md
-git commit -m "feat(console): both zones run on ConsoleShell; the two shells and two sidebars are gone" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): both zones run on ConsoleShell; the two shells and two sidebars are gone
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 (`git rm` in Step 4 already staged the deletions.)
@@ -1973,9 +1996,12 @@ Expected: PASS, 4 tests.
 ```bash
 cd apps/frontend/web
 git add src/shared/lib/console-bottom-edge.tsx src/shared/lib/__tests__/console-bottom-edge.test.tsx src/shared/components/console/console-action-bar.tsx
-git commit -m "feat(console): the task owns the bottom edge of a phone, never two bars" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): the task owns the bottom edge of a phone, never two bars
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -2201,9 +2227,12 @@ Expected: PASS, 4 tests; typecheck clean. (`useAdminProviders` takes `{ status?:
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/console-menu-context.tsx src/shared/components/console/console-counts.tsx src/shared/components/console/console-counts.test.tsx src/shared/hooks/use-is-tablet.ts
-git commit -m "feat(console): the sheet's open state, and the badges' numbers from reads the zone already has" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): the sheet's open state, and the badges' numbers from reads the zone already has
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -2339,7 +2368,10 @@ describe("the menu sheet", () => {
     fireEvent.click(menu);
     const sheet = await screen.findByRole("dialog", { name: /menu/i });
     expect(menu).toHaveAttribute("aria-expanded", "true");
-    const links = within(sheet).getAllByRole("link").map((a) => a.textContent?.trim());
+    // The label span, not the whole anchor: the sheet carries the same badges
+    // the sidebar does, so a link's text is "Messages" plus its count.
+    const links = within(sheet).getAllByRole("link").map((a) => a.querySelector("span")?.textContent?.trim());
+    expect(within(sheet).getByRole("link", { name: /messages/i })).toHaveTextContent("2");
     expect(links).toEqual(["Overview", "Messages", "Availability", "Services", "Members", "Wallet", "Activity", "Settings"]);
     expect(document.activeElement).toBe(within(sheet).getByRole("link", { name: "Overview" }));
 
@@ -2725,7 +2757,7 @@ function ShellFrame({ nav, slug, zoneLabel, bell, strip, workspaceMenu, sheetHea
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <ConsoleHeader bell={bell} />
         {strip}
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
         <ConsoleTabBar nav={nav} slug={slug} />
         <ConsoleMenuSheet nav={nav} slug={slug} zoneLabel={zoneLabel} header={sheetHeader} />
       </SidebarInset>
@@ -2749,9 +2781,12 @@ Expected: clean.
 ```bash
 cd apps/frontend/web
 git add src/shared/components/console/console-tab-bar.tsx src/shared/components/console/console-menu-sheet.tsx src/shared/components/console/console-mobile.test.tsx src/shared/components/console/console-shell.tsx src/shared/components/console/console-nav-items.tsx
-git commit -m "feat(console): four tabs under the thumb, the whole menu one tap above them" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+feat(console): four tabs under the thumb, the whole menu one tap above them
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -2837,16 +2872,19 @@ test("@mobile the console carries its navigation in a bottom bar and a menu shee
 
 - [ ] **Step 3: Run the harness**
 
-Run, from the repo root: `bun run e2e`
+Run, from the repo root, with the harness's throwaway database up (`docker run -d -p 55432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ntizo_e2e postgres:16-alpine`, per `apps/e2e/fixtures/db.ts`): `bun run e2e`
 Expected: the new test passes on the `mobile` project and is skipped on `chromium`; every existing test still passes (`auth.spec.ts` drives the sidebar's user menu on desktop and depends on `ConsoleUserMenu` keeping the user's name in a `SidebarMenuButton` — Task 3's first test guards that).
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add apps/e2e/playwright.config.ts apps/e2e/tests/console-mobile.spec.ts
-git commit -m "test(e2e): a phone project, and the console's bar and sheet on it" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+test(e2e): a phone project, and the console's bar and sheet on it
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 ---
@@ -2859,7 +2897,7 @@ git commit -m "test(e2e): a phone project, and the console's bar and sheet on it
 - [ ] **Step 1: The whole suite, once more, from clean**
 
 Run: `cd apps/frontend/web && bun run vitest run && bun run typecheck && bun run lint`
-Then, from the root: `bun run e2e`
+Then, from the root, with the e2e database up (see Task 11 Step 3): `bun run e2e`
 Expected: all green.
 
 - [ ] **Step 2: A manual pass, on the dev server**
@@ -2886,9 +2924,12 @@ Append to `docs/superpowers/follow-ups.md`, in its existing numbered format, con
 
 ```bash
 git add docs/superpowers/follow-ups.md
-git commit -m "docs: follow-ups from the console shell and mobile navigation release" \
-  -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>" \
-  -m "Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v"
+git commit -F - <<'EOF'
+docs: follow-ups from the console shell and mobile navigation release
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_0137neNHJJv594fiF8cKvt5v
+EOF
 ```
 
 **Phases 1 and 2 ship here, as one release.** Phase 3 (lists and their states), Phase 4 (detail pages and Messages) and Phase 5 (dashboards, forms, the last of the drift) each get their own plan from the same spec.

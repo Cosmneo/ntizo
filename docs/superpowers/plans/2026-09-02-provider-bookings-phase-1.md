@@ -1768,6 +1768,8 @@ g commit -m "feat(notification): emails for a request received, accepted and dec
 
 ### Task 8: Locale blocks, the sidebar entry, and the inbox's presentation of the new types
 
+> **Superseded reference (2026-09-06):** `shared/lib/navigation.ts` and `providerNavGroups` no longer exist. The sidebar entry now goes into `shared/lib/console-nav.ts` — add `bookings` as the first item of `WORKSPACE.work` with `primary: true` and `count: "bookingRequests"`, remove `primary` from `services`, and extend `shared/lib/__tests__/console-nav.test.ts` (the "puts Messages, Calendar and Services on the provider bar" case becomes Bookings, Messages, Calendar). Also add `navShort.bookings` to all eight `provider.json` files. See `2026-09-06-console-navigation-design.md`.
+
 **Files:**
 - Modify: `apps/frontend/web/src/shared/locales/<8>/provider.json` — a `bookings` **object** block (the flat `"bookings": "Bookings"` string exists; replace it with the object below and keep `nav.bookings` for the sidebar)
 - Modify: `apps/frontend/web/src/shared/locales/<8>/notifications.json` — six `type.*` keys

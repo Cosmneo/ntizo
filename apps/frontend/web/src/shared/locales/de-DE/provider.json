@@ -18,7 +18,8 @@
     "services": "Leistungen",
     "messages": "Nachrichten",
     "availability": "Verfügbarkeit",
-    "activity": "Aktivität"
+    "activity": "Aktivität",
+    "manage": "Verwalten"
   },
   "myAccount": "Mein Konto",
   "noProvider": "Kein Anbieter",
@@ -529,5 +530,10 @@
     "suspendedBody": "Seine Leistungen wurden aus dem Marktplatz entfernt und können erst wieder veröffentlicht werden, wenn die Sperre aufgehoben ist.",
     "badgePending": "Wartet auf Freigabe",
     "badgeSuspended": "Gesperrt"
+  },
+  "navShort": {
+    "messages": "Nachrichten",
+    "availability": "Kalender",
+    "services": "Leistungen"
   }
 }

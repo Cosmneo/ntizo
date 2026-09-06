@@ -16,7 +16,6 @@ import { initialsFrom } from "@/shared/lib/initials";
 import { usePageAction, usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { isWorkspaceLive } from "@/features/provider/domain/workspace-status";
-import { WorkspaceStatusNotice } from "@/features/provider/ui/workspace-status-notice";
 import { useServices } from "../viewmodel/use-services";
 import { useSetServiceStatus } from "../viewmodel/use-service-editor";
 import { publishBlocker } from "../domain/completeness";
@@ -92,12 +91,6 @@ export function ServicesPage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
-      {/* The page where Publish lives, so the page that has to say why it is
-          greyed out. The menu already refuses (`publishBlocker` returns
-          PROVIDER_NOT_ACTIVE) — this is the sentence that makes the refusal
-          mean something. */}
-      <WorkspaceStatusNotice />
-
       {query.error && (
         <p className="type-body text-[var(--color-destructive)]">
           {t("servicesError")}

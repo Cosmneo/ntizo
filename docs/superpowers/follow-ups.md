@@ -3245,3 +3245,100 @@ attribute changing.
 
 **Trigger:** before any locale other than Portuguese has real users, and before anyone
 investigates the hydration warning on its own — it is a symptom of this, not a separate bug.
+
+## #126 — The Reviews tab declares a count nothing resolves yet
+
+`consoleNav("platform")` marks Reviews with `count: "flaggedReviews"`, and `console-counts.tsx`
+resolves nothing for that source, so the tab draws no badge. Nothing is wrong on screen — the
+declaration is the seam, so that the badge is one hook away rather than a redesign.
+
+**Trigger:** the moment the reviews read exposes a pending or flagged count, resolve it in
+`PlatformCounts`; the tab and the sidebar item light up with no other change.
+
+## #127 — The Messages badge counts the loaded page, not the inbox
+
+`WorkspaceCounts` counts the threads with `unreadCount > 0` among the pages `useProviderThreads`
+has loaded. `communicationProviderThreads` is paginated and exposes no total, so this is an honest
+floor — the same number the Messages page's first screen shows, from the same cache entry — and it
+never overstates. But a provider whose unread threads run past the first page sees a smaller
+number than the truth.
+
+**Trigger:** an aggregate unread-thread count on `communicationProviderThreads`, or the first
+provider whose inbox runs past one page and notices.
+
+## #128 — The not-live strip has nowhere to link for "what happens next"
+
+The spec's strip for a pending or suspended workspace carries a link to what happens next. No
+such page exists, so the strip shows the title and, from `md` up, the body sentence, with no
+link.
+
+**Trigger:** when the company and support pages land (`2026-09-02-company-pages-design.md`),
+point the strip at the one that explains the review, and the suspended variant at support.
+
+## #129 — Locale keys the console no longer reads
+
+`nav.management` and `nav.organization` in `provider.json`, and `nav.platform` in both
+`provider.json` and `admin.json`, are read by nothing since the menu became Work and Manage.
+Eight files each.
+
+**Trigger:** the Phase 5 locale sweep, or the next task that has to touch all eight files anyway.
+
+## #130 — `Sheet` does not make the page behind it inert
+
+The UI package's `Sheet` primitive — now the console's menu sheet, and before that the old
+left-hand drawer — draws a backdrop and traps Tab inside the panel, but does not mark the page
+behind it `inert` or `aria-hidden`, so a screen reader's rotor can still reach content under the
+backdrop while the sheet is open. Inherited, not introduced, by the console work.
+
+**Trigger:** the first accessibility audit, or before the console is put in front of a
+screen-reader user. The fix is in `packages/frontend/src/components/sheet.tsx`, not in any
+consumer.
+
+## #131 — A badge's count has no unit in its accessible name
+
+A tab reads "Messages 2" — or "Messages2" — to a screen reader; the sidebar link and the sheet
+link the same. The bell already does this right (`notifications:unreadBadge`, with the count in a
+sentence). Needs a string in eight locales — "{{count}} unread", or wording per count source — and
+`aria-hidden` on the visual badge with an sr-only sibling carrying the sentence.
+
+**Trigger:** the first accessibility audit, or Phase 3 putting counts on list tabs, which needs
+the same string.
+
+## #132 — Two `<main>` landmarks, with the navigation inside the outer one
+
+`SidebarInset` renders `<main>` (`packages/frontend/src/components/sidebar.tsx`); the console's
+scroll container is a second `<main>` inside it, and the tab bar's `<nav>` and the menu sheet now
+sit inside the outer one. The fix is in the UI package — `SidebarInset` becomes a `div`, or takes
+an `as` prop — not in any consumer.
+
+**Trigger:** with #130 — the same audit, the same file.
+
+## #133 — Console polish carried out of the final review
+
+Correct today, and would drift: `handleSignOut` is written in the account menu and again in the
+sheet (one `useSignOutWithToast`); the workspace row — tile, name, slug, status badge — is
+rendered in the dropdown switcher and again in the sheet's switcher (one `WorkspaceRow`); the
+three account actions appear in both. Also: `SidebarProvider` writes a `sidebar_state` cookie
+nothing reads, so the tablet default beats a remembered rail preference on every reload; and nav
+links carry `slug: ""` for the frame before the workspace resolves.
+
+**Trigger:** the next task that edits any of these files — Phase 3's badges on list tabs is the
+likely one.
+
+## #134 — The phone's menu sheet lacks two rows the old drawer's account menu had
+
+Below `md` the sidebar no longer renders, so its account menu — and with it the Appearance picker
+(light / dark / system) and the switcher's "Create new provider" — has no phone rendering. The
+sheet's foot carries My account, Back to Ntizo and Sign out. Both missing things remain reachable
+in more taps: the theme through the account area's own menu and Preferences, a new workspace
+through `/onboarding`. A convenience regression from the old hamburger drawer, not a lost
+capability.
+
+Two rows in the sheet's foot close it: an Appearance row (the same three `applyThemePreference`
+calls the menu makes) and, under the mobile switcher, a "Create new provider" row that navigates
+to `/onboarding`. While there: the sheet closes itself when the viewport crosses `md` while open
+(`console-menu-sheet.tsx`, the `useIsMobile` effect) and that has no dedicated test — one with a
+`matchMedia` stub whose `change` listener can be fired would pin it.
+
+**Trigger:** the first provider who asks where dark mode went on their phone, or Phase 3, which
+touches the sheet's badges anyway.

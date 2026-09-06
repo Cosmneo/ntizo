@@ -18,7 +18,8 @@
     "services": "Diensten",
     "messages": "Berichten",
     "availability": "Beschikbaarheid",
-    "activity": "Activiteit"
+    "activity": "Activiteit",
+    "manage": "Beheren"
   },
   "myAccount": "Mijn account",
   "noProvider": "Geen aanbieder",
@@ -529,5 +530,10 @@
     "suspendedBody": "De diensten zijn uit de marktplaats gehaald en kunnen pas opnieuw worden gepubliceerd als de schorsing is opgeheven.",
     "badgePending": "Wacht op goedkeuring",
     "badgeSuspended": "Geschorst"
+  },
+  "navShort": {
+    "messages": "Berichten",
+    "availability": "Agenda",
+    "services": "Diensten"
   }
 }

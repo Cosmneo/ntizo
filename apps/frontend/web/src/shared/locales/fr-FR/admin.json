@@ -11,7 +11,9 @@
     "providers": "Prestataires",
     "categories": "Catégories",
     "activity": "Activité",
-    "reviews": "Avis"
+    "reviews": "Avis",
+    "work": "Travail",
+    "manage": "Gérer"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",
@@ -237,5 +239,10 @@
     "hidden": "Masqué"
   },
   "reviewsSearchPlaceholder": "Rechercher une entreprise, un nom, ou ce qui a été dit",
-  "reviewsAction": "Accueil"
+  "reviewsAction": "Accueil",
+  "navShort": {
+    "providers": "Prestataires",
+    "reviews": "Avis",
+    "users": "Utilisateurs"
+  }
 }
