@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { authClient } from "@/shared/lib/api/auth-client";
 import { resolveProviderGuard } from "./provider-guard";
-import { ProviderShell } from "@/shared/components/provider-shell";
+import { ConsoleShell } from "@/shared/components/console/console-shell";
 
 export const Route = createFileRoute("/provider")({
   beforeLoad: async ({ location }) => {
@@ -11,8 +11,8 @@ export const Route = createFileRoute("/provider")({
     return { session };
   },
   component: () => (
-    <ProviderShell>
+    <ConsoleShell zone="workspace">
       <Outlet />
-    </ProviderShell>
+    </ConsoleShell>
   ),
 });

@@ -10,7 +10,6 @@ import {
 import { Card, CardContent } from "@ntizo/frontend-ui";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
-import { WorkspaceStatusNotice } from "./workspace-status-notice";
 
 export function OverviewPage() {
   const { t } = useTranslation("provider");
@@ -27,10 +26,6 @@ export function OverviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Above the numbers, because it explains them: every tile below reads
-          zero for a workspace nobody can see, and without this the provider
-          has no way to tell "no bookings yet" from "not on the marketplace". */}
-      <WorkspaceStatusNotice />
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Active services"

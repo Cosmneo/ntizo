@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { authClient } from "@/shared/lib/api/auth-client";
 import { fetchCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { resolveAdminGuard } from "./admin-guard";
-import { AdminShell } from "@/shared/components/admin-shell";
+import { ConsoleShell } from "@/shared/components/console/console-shell";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
@@ -29,8 +29,8 @@ export const Route = createFileRoute("/admin")({
     return { session, me };
   },
   component: () => (
-    <AdminShell>
+    <ConsoleShell zone="platform">
       <Outlet />
-    </AdminShell>
+    </ConsoleShell>
   ),
 });
