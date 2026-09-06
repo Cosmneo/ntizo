@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Check, Star } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
-import { initialsOf } from "@/features/landing/domain/initials";
+import { initialsOf } from "@/shared/domain/initials";
 import { ScrollRail } from "./scroll-rail";
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { usePopularProviders } from "@/features/landing/viewmodel/use-popular-providers";
