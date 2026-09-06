@@ -26,6 +26,7 @@
   1. The tab bar is an in-flow last child of `SidebarInset`, not a fixed overlay, so `main` needs no bottom padding — `SidebarInset` is already a fixed-height flex column in which only `main` scrolls.
   2. The header bell becomes always visible (it is `hidden sm:inline-flex` today). Notifications leaves the sidebar and has no tab; without this a phone has no route to the inbox. The search field and the hamburger are leaving the same row, so it fits.
   3. The spec's rule 2 says "exactly four items per zone carry `primary`, and the fourth is Menu". Menu is not a nav item — it is the tab bar's own control — so the schema marks exactly **three** items `primary` (`PRIMARY_TAB_COUNT = 3`) and the bar appends Menu. Same four tabs on screen; the test asserts three.
+  4. Until the bookings plan lands, Services holds the provider's third tab (`primary`); Bookings then takes it and Services gives it up — see the comment on `WORKSPACE.work` in `console-nav.ts` and the note under the bookings plan's Task 8.
 
 ## File Structure
 

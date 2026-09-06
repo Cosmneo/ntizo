@@ -3293,3 +3293,34 @@ backdrop while the sheet is open. Inherited, not introduced, by the console work
 **Trigger:** the first accessibility audit, or before the console is put in front of a
 screen-reader user. The fix is in `packages/frontend/src/components/sheet.tsx`, not in any
 consumer.
+
+## #131 — A badge's count has no unit in its accessible name
+
+A tab reads "Messages 2" — or "Messages2" — to a screen reader; the sidebar link and the sheet
+link the same. The bell already does this right (`notifications:unreadBadge`, with the count in a
+sentence). Needs a string in eight locales — "{{count}} unread", or wording per count source — and
+`aria-hidden` on the visual badge with an sr-only sibling carrying the sentence.
+
+**Trigger:** the first accessibility audit, or Phase 3 putting counts on list tabs, which needs
+the same string.
+
+## #132 — Two `<main>` landmarks, with the navigation inside the outer one
+
+`SidebarInset` renders `<main>` (`packages/frontend/src/components/sidebar.tsx`); the console's
+scroll container is a second `<main>` inside it, and the tab bar's `<nav>` and the menu sheet now
+sit inside the outer one. The fix is in the UI package — `SidebarInset` becomes a `div`, or takes
+an `as` prop — not in any consumer.
+
+**Trigger:** with #130 — the same audit, the same file.
+
+## #133 — Console polish carried out of the final review
+
+Correct today, and would drift: `handleSignOut` is written in the account menu and again in the
+sheet (one `useSignOutWithToast`); the workspace row — tile, name, slug, status badge — is
+rendered in the dropdown switcher and again in the sheet's switcher (one `WorkspaceRow`); the
+three account actions appear in both. Also: `SidebarProvider` writes a `sidebar_state` cookie
+nothing reads, so the tablet default beats a remembered rail preference on every reload; and nav
+links carry `slug: ""` for the frame before the workspace resolves.
+
+**Trigger:** the next task that edits any of these files — Phase 3's badges on list tabs is the
+likely one.
