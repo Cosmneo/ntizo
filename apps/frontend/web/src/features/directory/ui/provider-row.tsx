@@ -99,22 +99,34 @@ export function ProviderRow({
         ) : null
       }
       services={
-        provider.services.length > 0 ? (
+        provider.services.length > 0 || rest > 0 ? (
           <ul className="mt-2 flex list-none flex-wrap gap-1.5 p-0">
             {provider.services.map((s) => (
               <ServiceChip
-                key={s.name}
+                key={`${s.name}-${String(s.amountMinor)}`}
                 name={s.name}
                 price={formatHeadlinePrice(s.amountMinor, s.currency, locale)}
               />
             ))}
-            {/* Against `serviceCount`, not against the array: the array is
-                capped at three server-side, and counting it would always say
-                "+0". */}
-            {rest > 0 && (
+            {provider.services.length === 0 ? (
+              /* A business that only quotes sends no chips at all — the DTO
+                 skips a quote-priced service rather than sending it with no
+                 amount — but it still has a `serviceCount` worth naming.
+                 "2 more" with nothing before it would read as an error, so
+                 this says what it sells the same quiet way the side rail's
+                 own `providerServiceCount` already does. */
               <li className="self-center pl-0.5 text-[13px] font-semibold text-[var(--color-primary)]">
-                {t("providerServicesMore", { count: rest })}
+                {t("providerServiceCount", { count: provider.serviceCount })}
               </li>
+            ) : (
+              // Against `serviceCount`, not against the array: the array is
+              // capped at three server-side, and counting it would always say
+              // "+0".
+              rest > 0 && (
+                <li className="self-center pl-0.5 text-[13px] font-semibold text-[var(--color-primary)]">
+                  {t("providerServicesMore", { count: rest })}
+                </li>
+              )
             )}
           </ul>
         ) : null

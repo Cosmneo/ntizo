@@ -111,6 +111,30 @@ describe("ProviderRow", () => {
     expect(screen.queryByText(/more/)).toBeNull();
   });
 
+  it("says how many it sells when it only quotes, not how many more", async () => {
+    // A quote-priced service has no amount and the DTO skips it rather than
+    // sending it with none, so `services` can be empty while `serviceCount`
+    // is not — a business that quotes everything it sells. "2 more" with
+    // nothing before it would read as an error; this says "2 services"
+    // instead, the same way the side rail already does.
+    renderRow(
+      provider({ services: [], serviceCount: 2, fromAmountMinor: null, fromCurrency: null }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByText("2 services")).toBeInTheDocument();
+    expect(screen.queryByText(/more/)).toBeNull();
+  });
+
+  it("says nothing about services it does not have", async () => {
+    const { container } = renderRow(
+      provider({ services: [], serviceCount: 0, fromAmountMinor: null, fromCurrency: null }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    // No services list at all — not an empty one, and not a "0 services"
+    // line either.
+    expect(container.querySelector("ul.flex")).toBeNull();
+  });
+
   it("writes the kind and the place as one sentence", async () => {
     renderRow(
       provider({
@@ -127,9 +151,12 @@ describe("ProviderRow", () => {
   });
 
   it("centres the logo on the brand tile when there is no cover photo", async () => {
-    renderRow(provider({ photoUrls: [], logoUrl: null }));
+    const { container } = renderRow(
+      provider({ photoUrls: [], logoUrl: "https://cdn/logo.png" }),
+    );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+    expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn/logo.png");
   });
 
   it("is exactly one link, and the chevron is not a second one", async () => {
