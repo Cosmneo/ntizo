@@ -2451,9 +2451,9 @@ Then remove `FacetPanel` and `FacetGroup` (and their doc comments) from `facet-p
 
 - [ ] **Step 3: Remove the dead copy, then confirm nothing reads it**
 
-From all eight `directory.json` files remove exactly: `stubProviderRating`, `stubQuoteAmount`, `stubPerService`, `listingByProvider`, `mobileSearchTitle`, `mobileSearchApply`, `servicesFilterByCategory`, `providersFilterByCategory`, `activeFiltersLabel`, `chipRemove`, `heroSubtitleServices`, `heroSubtitleProviders`.
+From all eight `directory.json` files remove exactly: `stubProviderRating`, `stubQuoteAmount`, `stubPerService`, `listingByProvider`, `servicesFilterByCategory`, `providersFilterByCategory`, `activeFiltersLabel`, `chipRemove`, `heroSubtitleServices`, `heroSubtitleProviders`. **Keep `mobileSearchTitle` and `mobileSearchApply`** — ruling R17: `SearchPill`'s phone sheet reads them now.
 
-Run: `grep -rn "stubProviderRating\|stubQuoteAmount\|stubPerService\|listingByProvider\|mobileSearchTitle\|mobileSearchApply\|servicesFilterByCategory\|providersFilterByCategory\|activeFiltersLabel\|chipRemove\|heroSubtitle" apps/frontend/web/src`
+Run: `grep -rn "stubProviderRating\|stubQuoteAmount\|stubPerService\|listingByProvider\|servicesFilterByCategory\|providersFilterByCategory\|activeFiltersLabel\|chipRemove\|heroSubtitle" apps/frontend/web/src`
 Expected: no hits. Any survivor is a key a component still asks for, which renders as the raw key on screen. Then run the parity gate: `cd apps/frontend/web && bunx vitest run src/shared/locales/__tests__/locales.test.ts`.
 
 - [ ] **Step 4: Run everything**
