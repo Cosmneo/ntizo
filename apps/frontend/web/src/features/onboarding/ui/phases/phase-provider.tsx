@@ -26,6 +26,16 @@ export interface PhaseProviderProps {
   onChange: (patch: Partial<ProviderDraft>) => void;
   onBack?: () => void;
   onContinue: () => void;
+  /**
+   * A creation is already on the wire.
+   *
+   * Only the location step can be busy — it is the one that creates the
+   * workspace (`CREATES_PROVIDER`). The viewmodel refuses a second submit
+   * regardless; this is what stops it being attempted, which is the half
+   * that was missing when three accounts ended up with duplicate
+   * workspaces seconds apart.
+   */
+  busy?: boolean;
 }
 
 export function PhaseProvider({
@@ -35,6 +45,7 @@ export function PhaseProvider({
   onChange,
   onBack,
   onContinue,
+  busy,
 }: PhaseProviderProps) {
   const { t, i18n } = useTranslation("onboarding");
   const { t: tc } = useTranslation("auth");
@@ -280,7 +291,7 @@ export function PhaseProvider({
       </div>
 
       <StepFooter onBack={onBack} backLabel={t("back")}>
-        <Button onClick={onContinue}>{t("continue")}</Button>
+        <Button onClick={onContinue} disabled={busy}>{t("continue")}</Button>
       </StepFooter>
     </>
   );

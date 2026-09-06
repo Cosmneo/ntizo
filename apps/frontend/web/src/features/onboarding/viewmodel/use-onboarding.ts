@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ProviderType, type ProviderDocumentType } from "@ntizo/shared";
 import {
@@ -48,6 +48,21 @@ export function useOnboarding() {
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  /**
+   * Whether a creation is already on the wire.
+   *
+   * A ref and not `create.isPending`, which is the state this also drives:
+   * `isPending` flips on a React state update, so two clicks inside one tick
+   * both read it as false and both create a workspace. A ref changes on the
+   * assignment, which is the only thing fast enough to stand between them.
+   *
+   * Three accounts reached production holding duplicate workspaces created
+   * 1.8-3.9 seconds apart — gaps that wide because nothing on screen was
+   * disabled either, so people pressed Continue again when it looked like
+   * nothing had happened. `submitting` below is that half; this is the half
+   * that holds even when the button does not.
+   */
+  const creating = useRef(false);
 
   // Read after mount. `sessionStorage` does not exist during the server render,
   // and seeding from it there would render one draft and hydrate another.
@@ -74,6 +89,9 @@ export function useOnboarding() {
   }, []);
 
   const submit = useCallback(async () => {
+    // First, before the draft is even read: a second press must do nothing
+    // at all, not redo the validation and race into the same mutation.
+    if (creating.current) return;
     setSubmitError(null);
     // The whole draft, not only the current step. A restored session can be
     // complete on screen three and empty on screen one, and submitting that
@@ -85,6 +103,7 @@ export function useOnboarding() {
       return;
     }
 
+    creating.current = true;
     try {
       const { providerId } = await create.mutateAsync({
         type: (draft.type || ProviderType.Individual) as ProviderType,
@@ -104,6 +123,11 @@ export function useOnboarding() {
       setStep("media");
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "error.createFailed");
+    } finally {
+      // Released on failure too. A creation that errored must be retryable —
+      // latching this closed for good would turn one bad request into a
+      // wizard the person can never finish.
+      creating.current = false;
     }
   }, [draft, create, refresh, setActive]);
 

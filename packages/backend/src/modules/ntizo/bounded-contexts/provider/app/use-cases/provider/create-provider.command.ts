@@ -24,6 +24,24 @@ import { ProviderMemberAdded } from "../../../domain/events";
 
 const DEFAULT_WALLET_CURRENCY = "MZN";
 
+/**
+ * How long a just-created workspace absorbs an identical request instead of
+ * becoming a second one.
+ *
+ * Three accounts reached production holding two or three byte-identical
+ * workspaces, created 1.8, 3.3 and 3.9 seconds apart — a wizard submitted
+ * twice, with nothing on this side to notice. A minute is far wider than any
+ * of those gaps and far narrower than the gap between two deliberate acts:
+ * nobody registers the same business name twice in the same minute on
+ * purpose.
+ *
+ * A window rather than a permanent rule, because the permanent rule would be
+ * wrong. An owner may genuinely run two workspaces under one name — the same
+ * possibility `freeSlug` below exists to accommodate — and refusing them
+ * forever to catch a double-click charges the honest case for the accident.
+ */
+const DUPLICATE_SUBMIT_WINDOW_MS = 60_000;
+
 export class CreateProviderCommand implements CreateProviderPort {
   constructor(
     private readonly providerRepo: ProviderRepositoryPort,
@@ -39,6 +57,13 @@ export class CreateProviderCommand implements CreateProviderPort {
     input: CreateProviderInput,
   ): Promise<CreateProviderOutput> {
     const requester = requireAuthenticated(ctx);
+
+    // Before anything is minted. A repeated submit returns the workspace the
+    // first one made, so the caller cannot tell the difference — which is the
+    // point: the browser that sent twice wanted one workspace, and an error
+    // here would show a failure for something that worked.
+    const alreadyMade = await this.recentIdenticalWorkspace(requester.userId, input);
+    if (alreadyMade) return { providerId: alreadyMade };
 
     // Computed first: the slug is derived from it, which is what makes slug
     // generation a pure function of (name, id) rather than a probe loop.
@@ -99,6 +124,43 @@ export class CreateProviderCommand implements CreateProviderPort {
     });
 
     return { providerId: provider.id };
+  }
+
+  /**
+   * The id of a workspace this same person just created under this same name,
+   * if there is one.
+   *
+   * Keyed on owner + name + type, not on "owns anything already": two
+   * different businesses under one account are legitimate, and so is the same
+   * name under two different accounts — a Salão Beleza in Maputo and another
+   * in Beira. The only thing being caught is one person's browser sending the
+   * same form twice.
+   *
+   * Case- and whitespace-insensitive on the name, because a retry may carry
+   * the field re-trimmed or re-cased by the client and still be the same
+   * submission.
+   *
+   * This narrows the race without closing it — two truly simultaneous
+   * requests can both read before either writes. Closing it needs a unique
+   * index, and there is no correct one to add: the pair is only a duplicate
+   * within a time window, which an index cannot express. What changes is that
+   * the observed failure — submits seconds apart, not microseconds — stops
+   * happening.
+   */
+  private async recentIdenticalWorkspace(
+    ownerUserId: string,
+    input: CreateProviderInput,
+  ): Promise<string | null> {
+    const wanted = input.name.trim().toLocaleLowerCase();
+    const cutoff = Date.now() - DUPLICATE_SUBMIT_WINDOW_MS;
+    const mine = await this.providerRepo.findByOwnerUserId(ownerUserId);
+    const match = mine.find(
+      (p) =>
+        p.type === input.type &&
+        p.name.trim().toLocaleLowerCase() === wanted &&
+        p.createdAt.getTime() >= cutoff,
+    );
+    return match?.id ?? null;
   }
 
   /**

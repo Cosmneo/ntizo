@@ -36,6 +36,11 @@ function makeRepos(taken: string[]) {
   const slugs = new Set(taken);
 
   const providerRepo = {
+    // Empty: these are slug tests, and an owner with no existing workspace is
+    // what keeps the double-submit guard out of their way.
+    async findByOwnerUserId() {
+      return [] as Provider[];
+    },
     async findBySlug(slug: string) {
       return slugs.has(slug) ? ({} as Provider) : null;
     },
@@ -272,6 +277,9 @@ describe("CreateProviderCommand — slugs", () => {
     // not depend on knowing them.
     const seen: string[] = [];
     const providerRepo = {
+      async findByOwnerUserId() {
+        return [] as Provider[];
+      },
       async findBySlug(slug: string) {
         seen.push(slug);
         return seen.length <= 2 ? ({} as Provider) : null;
@@ -319,7 +327,10 @@ describe("CreateProviderCommand — slugs", () => {
     // Seven collisions running on one id is not a namespace problem — it is a
     // bug somewhere else, and minting a longer slug would hide it.
     const command = new CreateProviderCommand(
-      { async findBySlug() { return {} as Provider; } } as unknown as ProviderRepositoryPort,
+      {
+        async findByOwnerUserId() { return [] as Provider[]; },
+        async findBySlug() { return {} as Provider; },
+      } as unknown as ProviderRepositoryPort,
       { async save() {} } as unknown as ProviderMemberRepositoryPort,
       walletRepo as never,
       settingsRepo as never,
