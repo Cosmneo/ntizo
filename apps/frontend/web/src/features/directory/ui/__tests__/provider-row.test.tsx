@@ -1,0 +1,146 @@
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import type { ProviderPublicDTO } from "@ntizo/shared";
+import { ProviderRow } from "../provider-row";
+
+/**
+ * The row rendered inside a router stub, because every claim it makes is
+ * about a `<Link>` — where the title goes — and a `<Link>` outside a router
+ * throws rather than rendering an `<a>`.
+ *
+ * No `QueryClient` and no viewmodel mock: this row is handed a
+ * `ProviderPublicDTO` and asks nothing of anybody. The same harness
+ * `provider-listing-card.test.tsx` used, which is the point — the row
+ * replaces the card and its test should read as the card's test did.
+ */
+function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
+  return {
+    id: "prov-1",
+    name: "Estúdio Mavalane",
+    slug: "estudio-mavalane",
+    type: "organization",
+    description: null,
+    city: "Maputo",
+    district: "Mavalane",
+    country: "MZ",
+    logoUrl: null,
+    photoUrls: [],
+    verified: true,
+    ratingAverage: 4.7,
+    reviewCount: 6,
+    categories: [{ code: "hair", name: "Hair & beauty" }],
+    serviceCount: 6,
+    fromAmountMinor: 80_000,
+    fromCurrency: "MZN",
+    services: [],
+    ...over,
+  };
+}
+
+function renderRow(dto: ProviderPublicDTO, locale = "en-US") {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <ul>
+        <ProviderRow provider={dto} locale={locale} />
+      </ul>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  return render(<RouterProvider router={router} />);
+}
+
+describe("ProviderRow", () => {
+  it("shows what the business sells, with prices, without opening it", async () => {
+    renderRow(
+      provider({
+        services: [
+          { name: "Corte com barba", amountMinor: 80_000, currency: "MZN", pricingMode: "fixed" },
+          { name: "Barba", amountMinor: 45_000, currency: "MZN", pricingMode: "fixed" },
+        ],
+      }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByText("Corte com barba")).toBeInTheDocument();
+    // `formatHeadlinePrice(80_000, "MZN", "en-US")` renders "MZN 800" — the
+    // currency leads in this locale, not the amount. Scoped to the chip
+    // itself: the fixture's own `fromAmountMinor` is also 80_000, so the
+    // side rail's "from" price prints the identical string.
+    const chip = screen.getByText("Corte com barba").closest("li");
+    expect(chip).toHaveTextContent("MZN 800");
+  });
+
+  it("counts the rest against serviceCount, not against what it was sent", async () => {
+    renderRow(
+      provider({
+        serviceCount: 6,
+        services: [
+          { name: "A", amountMinor: 1000, currency: "MZN", pricingMode: "fixed" },
+          { name: "B", amountMinor: 2000, currency: "MZN", pricingMode: "fixed" },
+          { name: "C", amountMinor: 3000, currency: "MZN", pricingMode: "fixed" },
+        ],
+      }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByText("3 more")).toBeInTheDocument();
+  });
+
+  it("says nothing about the rest when there is no rest", async () => {
+    renderRow(
+      provider({
+        serviceCount: 2,
+        services: [
+          { name: "A", amountMinor: 1000, currency: "MZN", pricingMode: "fixed" },
+          { name: "B", amountMinor: 2000, currency: "MZN", pricingMode: "fixed" },
+        ],
+      }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.queryByText(/more/)).toBeNull();
+  });
+
+  it("writes the kind and the place as one sentence", async () => {
+    renderRow(
+      provider({
+        type: "individual",
+        district: "Sommerschield",
+        city: "Maputo",
+        categories: [{ code: "electrical", name: "Electrical" }],
+      }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByTestId("row-kind")).toHaveTextContent(
+      "Electrical in Sommerschield, Maputo",
+    );
+  });
+
+  it("centres the logo on the brand tile when there is no cover photo", async () => {
+    renderRow(provider({ photoUrls: [], logoUrl: null }));
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+  });
+
+  it("is exactly one link, and the chevron is not a second one", async () => {
+    renderRow(provider());
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("says a person's profile is a profile, not a business", async () => {
+    renderRow(provider({ type: "individual" }));
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByText("View profile")).toBeInTheDocument();
+  });
+});
