@@ -51,3 +51,33 @@ describe("directoryTitle", () => {
     expect(directoryTitle({ city: "  " }, null)).toEqual({ key: "titleProviders", values: {} });
   });
 });
+
+describe("directoryTitle with a typed term", () => {
+  it("reads the term back, in the city when there is one", () => {
+    expect(directoryTitle({ q: "corte de cabelo", city: "Maputo" }, null)).toEqual({
+      key: "titleProvidersTermCity",
+      values: { term: "corte de cabelo", city: "Maputo" },
+    });
+  });
+
+  it("reads the term back on its own", () => {
+    expect(directoryTitle({ q: "corte" }, null)).toEqual({
+      key: "titleProvidersTerm",
+      values: { term: "corte" },
+    });
+  });
+
+  it("lets the term outrank the category, which the strip is already showing", () => {
+    expect(directoryTitle({ q: "corte", category: "hair" }, "Beleza")).toEqual({
+      key: "titleProvidersTerm",
+      values: { term: "corte" },
+    });
+  });
+
+  it("ignores a term that is only whitespace", () => {
+    expect(directoryTitle({ q: "   ", city: "Maputo" }, null)).toEqual({
+      key: "titleProvidersCity",
+      values: { city: "Maputo" },
+    });
+  });
+});
