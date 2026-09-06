@@ -135,7 +135,9 @@ describe("ConsoleShell · workspace", () => {
   it("puts the page's title in the header, and no button where the page set no action", async () => {
     renderWorkspace("/provider/bela-vista/settings");
     expect(await screen.findByText("Settings page")).toBeInTheDocument();
-    expect(screen.getByText("Workspace settings")).toBeInTheDocument();
+    // Awaited, not read synchronously: the title reaches the header through
+    // `usePageHeader`'s effect, one commit after the page body is on screen.
+    expect(await screen.findByText("Workspace settings")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /new service/i })).not.toBeInTheDocument();
   });
 
