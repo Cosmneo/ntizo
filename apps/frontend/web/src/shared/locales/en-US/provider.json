@@ -18,7 +18,8 @@
     "services": "Services",
     "messages": "Messages",
     "availability": "Availability",
-    "activity": "Activity"
+    "activity": "Activity",
+    "manage": "Manage"
   },
   "myAccount": "My Account",
   "noProvider": "No provider",
@@ -529,5 +530,10 @@
     "suspendedBody": "Its services have been taken out of the marketplace and can't be published again until the suspension is lifted.",
     "badgePending": "Awaiting approval",
     "badgeSuspended": "Suspended"
+  },
+  "navShort": {
+    "messages": "Messages",
+    "availability": "Calendar",
+    "services": "Services"
   }
 }

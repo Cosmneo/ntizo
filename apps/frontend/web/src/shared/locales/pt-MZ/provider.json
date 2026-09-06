@@ -18,7 +18,8 @@
     "services": "Serviços",
     "messages": "Mensagens",
     "availability": "Disponibilidade",
-    "activity": "Actividade"
+    "activity": "Actividade",
+    "manage": "Gerir"
   },
   "myAccount": "Minha conta",
   "noProvider": "Sem prestador",
@@ -529,5 +530,10 @@
     "suspendedBody": "Os seus serviços foram retirados do mercado e não podem voltar a ser publicados até a suspensão ser levantada.",
     "badgePending": "Aguarda aprovação",
     "badgeSuspended": "Suspenso"
+  },
+  "navShort": {
+    "messages": "Mensagens",
+    "availability": "Agenda",
+    "services": "Serviços"
   }
 }

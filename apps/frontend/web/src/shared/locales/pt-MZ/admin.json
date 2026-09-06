@@ -11,7 +11,9 @@
     "providers": "Prestadores",
     "categories": "Categorias",
     "activity": "Actividade",
-    "reviews": "Avaliações"
+    "reviews": "Avaliações",
+    "work": "Trabalho",
+    "manage": "Gerir"
   },
   "providersTitle": "Prestadores",
   "providersSubtitle": "Todos os negócios da plataforma.",
@@ -237,5 +239,10 @@
     "hidden": "Oculta"
   },
   "reviewsSearchPlaceholder": "Procurar um negócio, um nome, ou o que foi dito",
-  "reviewsAction": "Página inicial"
+  "reviewsAction": "Página inicial",
+  "navShort": {
+    "providers": "Prestadores",
+    "reviews": "Avaliações",
+    "users": "Utilizadores"
+  }
 }

@@ -11,7 +11,9 @@
     "providers": "Operatori",
     "categories": "Categorie",
     "activity": "Attività",
-    "reviews": "Recensioni"
+    "reviews": "Recensioni",
+    "work": "Lavoro",
+    "manage": "Gestire"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -237,5 +239,10 @@
     "hidden": "Nascosta"
   },
   "reviewsSearchPlaceholder": "Cerca un'attività, un nome o ciò che è stato scritto",
-  "reviewsAction": "Home page"
+  "reviewsAction": "Home page",
+  "navShort": {
+    "providers": "Operatori",
+    "reviews": "Recensioni",
+    "users": "Utenti"
+  }
 }
