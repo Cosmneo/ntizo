@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import type { ProviderListItemDTO } from "@ntizo/shared";
 import type { ProviderRepositoryPort } from "../../../../app/ports/outbound";
 import { Provider } from "../../../../domain/aggregates/provider";
@@ -8,6 +8,37 @@ import {
 } from "../../../../../../shared/infrastructure/database/provider";
 import { getDb } from "../../../../../../../better-auth/infrastructure/client/drizzle";
 import { providerMapper } from "./provider.mapper";
+
+/**
+ * The order the workspace switcher lists somebody's workspaces in.
+ *
+ * There was no order at all before this, and Postgres is entitled to return
+ * the rows however it likes. That is not merely untidy: `useActiveProvider`
+ * falls back to `providers[0]` when neither the URL nor storage names one, so
+ * "which workspace am I in" was decided by the planner. An owner holding an
+ * approved workspace and a pending duplicate of it could be dropped into the
+ * pending one — where every service they publish is filtered straight back
+ * out of the storefront by `conditionsFor`'s `provider.status = 'active'`,
+ * with nothing on the page saying why.
+ *
+ * Approved first, then oldest first. The second key is what makes it an
+ * order rather than a preference: without it the first of two active
+ * workspaces is still arbitrary, and the switcher still shuffles between
+ * requests.
+ *
+ * A module-level export rather than an inline clause, the same reason
+ * `conditionsFor` and `orderByFor` are exported from
+ * `service-read.repository.ts`: a test asserts on the generated SQL via
+ * `.toSQL()`, and a clause buried in a method gives it no seam to call.
+ */
+export function workspaceListOrder() {
+  return [
+    // A boolean sorted descending — true before false. Written as raw SQL
+    // because the comparison is the sort key, not the column.
+    desc(sql`${providerTable.status} = 'active'`),
+    asc(providerTable.createdAt),
+  ];
+}
 
 export class DrizzleProviderRepository implements ProviderRepositoryPort {
   async findById(id: string): Promise<Provider | null> {
@@ -90,7 +121,11 @@ export class DrizzleProviderRepository implements ProviderRepositoryPort {
           eq(providerTable.ownerUserId, userId),
           eq(providerMemberTable.userId, userId),
         ),
-      );
+      )
+      // Before the de-duplication below, not after: that loop keeps the first
+      // row it sees for each id, so the order it reads in is the order it
+      // returns.
+      .orderBy(...workspaceListOrder());
 
     const seen = new Set<string>();
     const out: ProviderListItemDTO[] = [];

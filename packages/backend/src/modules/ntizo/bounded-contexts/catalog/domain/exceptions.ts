@@ -193,6 +193,34 @@ export class NotProviderOwnerOrAdminError extends ForbiddenError {
 }
 
 /**
+ * The workspace itself is not live, so nothing it sells can be either.
+ *
+ * A different refusal from every other one on this path, and the reason it
+ * exists: the rest of `canPublish` asks whether the *service* is ready, and
+ * this asks whether the *business* is. A workspace still awaiting review, or
+ * suspended, is filtered out of the storefront by `conditionsFor`
+ * (`service-read.repository.ts`) — `provider.status = 'active'` is in the
+ * browse's WHERE and re-checked in `ListServicesProjection`. Without this
+ * guard the two halves disagreed silently: the provider dashboard reported a
+ * published service and the browse never showed it, with nothing anywhere
+ * saying why.
+ *
+ * `ForbiddenError`, not `UnprocessableError`: nothing about the service is
+ * wrong, and there is no field the form could put this under. It is a
+ * permission the workspace has not been granted yet.
+ */
+export class ProviderNotActiveError extends ForbiddenError {
+  constructor(public readonly providerId: string) {
+    super({
+      message:
+        "This workspace is not active yet, so its services cannot go live. It appears in the browse once the platform approves it.",
+      code: "PROVIDER_NOT_ACTIVE",
+    });
+    this.name = "ProviderNotActiveError";
+  }
+}
+
+/**
  * Same `code` as the scheduling BC's own `MemberNotInProviderError` — both
  * name the one thing "this member id is not on this provider's roster"
  * means — but declared separately here rather than imported across bounded

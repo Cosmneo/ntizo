@@ -73,6 +73,7 @@ export function OnboardingPage() {
           onChange={vm.patch}
           {...(vm.step !== "type" ? { onBack: vm.back } : {})}
           onContinue={vm.advance}
+          busy={vm.submitting}
         />
       ) : null}
 

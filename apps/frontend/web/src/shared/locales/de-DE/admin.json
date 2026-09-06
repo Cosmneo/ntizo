@@ -14,7 +14,9 @@
     "reviews": "Bewertungen",
     "contact": "Kontakt",
     "support": "Support",
-    "bookings": "Buchungen"
+    "bookings": "Buchungen",
+    "work": "Arbeit",
+    "manage": "Verwalten"
   },
   "providersTitle": "Anbieter",
   "providersSubtitle": "Alle Betriebe der Plattform.",
@@ -359,5 +361,10 @@
   "bookingsError": "Die Buchungen konnten nicht geladen werden.",
   "bookingsRetry": "Erneut versuchen",
   "bookingsPrevious": "Zurück",
-  "bookingsNext": "Weiter"
+  "bookingsNext": "Weiter",
+  "navShort": {
+    "providers": "Anbieter",
+    "reviews": "Bewertungen",
+    "users": "Benutzer"
+  }
 }

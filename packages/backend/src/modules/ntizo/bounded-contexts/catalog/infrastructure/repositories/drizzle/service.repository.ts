@@ -8,7 +8,7 @@ import {
   serviceQuoteForm,
   serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
-import { providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
+import { provider, providerMember } from "../../../../../shared/infrastructure/database/provider/schemas";
 import type { Service } from "../../../domain/aggregates/service.aggregate";
 import type { ServiceRepositoryPort } from "../../../app/ports/outbound/service.repository.port";
 import { serviceMapper } from "./service.mapper";
@@ -117,6 +117,18 @@ export class DrizzleServiceRepository implements ServiceRepositoryPort {
       .where(and(eq(providerMember.providerId, providerId), eq(providerMember.userId, userId)))
       .limit(1);
     return row?.role === "owner" || row?.role === "admin";
+  }
+
+  async isProviderActive(providerId: string): Promise<boolean> {
+    const [row] = await getDb()
+      .select({ status: provider.status })
+      .from(provider)
+      .where(eq(provider.id, providerId))
+      .limit(1);
+    // A workspace that does not exist is not active. The caller reached here
+    // through a service row whose FK guarantees one, so this only ever means
+    // the row vanished mid-request — and "no" is the safe answer either way.
+    return row?.status === "active";
   }
 
   async memberBelongsToProvider(providerId: string, memberId: string): Promise<boolean> {

@@ -14,7 +14,9 @@
     "reviews": "Reviews",
     "contact": "Contact",
     "support": "Support",
-    "bookings": "Bookings"
+    "bookings": "Bookings",
+    "work": "Work",
+    "manage": "Manage"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",
@@ -359,5 +361,10 @@
   "bookingsError": "Could not load the bookings.",
   "bookingsRetry": "Try again",
   "bookingsPrevious": "Previous",
-  "bookingsNext": "Next"
+  "bookingsNext": "Next",
+  "navShort": {
+    "providers": "Providers",
+    "reviews": "Reviews",
+    "users": "Users"
+  }
 }

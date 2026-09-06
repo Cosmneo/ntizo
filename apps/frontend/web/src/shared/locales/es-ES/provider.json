@@ -19,7 +19,8 @@
     "bookings": "Reservas",
     "messages": "Mensajes",
     "availability": "Disponibilidad",
-    "activity": "Actividad"
+    "activity": "Actividad",
+    "manage": "Gestionar"
   },
   "myAccount": "Mi cuenta",
   "noProvider": "Sin proveedor",
@@ -97,24 +98,49 @@
   "bookings": {
     "title": "Reservas",
     "subtitle": "Solicitudes por responder, próximas citas y lo que ya ha pasado.",
-    "tab": { "requests": "Solicitudes", "upcoming": "Próximas", "history": "Historial" },
+    "tab": {
+      "requests": "Solicitudes",
+      "upcoming": "Próximas",
+      "history": "Historial"
+    },
     "searchPlaceholder": "Buscar cliente o servicio",
     "memberFilterAll": "Todos los profesionales",
     "memberAnyone": "Cualquiera",
-    "col": { "customer": "Cliente", "service": "Servicio", "when": "Cuándo", "price": "Precio", "status": "Estado" },
+    "col": {
+      "customer": "Cliente",
+      "service": "Servicio",
+      "when": "Cuándo",
+      "price": "Precio",
+      "status": "Estado"
+    },
     "shownOf": "Mostrando {{shown}} de {{total}}",
     "loadMore": "Más",
     "respondIn": "Responder en {{time}}",
     "respondBy": "Responder antes de {{time}}",
     "status": {
-      "AWAITING_PROVIDER": "Por responder", "PENDING_PAYMENT": "Esperando pago", "CONFIRMED": "Confirmada",
-      "MARKED_DONE": "Marcada como completada", "COMPLETED": "Completada", "DISPUTED": "En disputa",
-      "DECLINED": "Rechazada", "CANCELLED": "Cancelada", "EXPIRED": "Caducada"
+      "AWAITING_PROVIDER": "Por responder",
+      "PENDING_PAYMENT": "Esperando pago",
+      "CONFIRMED": "Confirmada",
+      "MARKED_DONE": "Marcada como completada",
+      "COMPLETED": "Completada",
+      "DISPUTED": "En disputa",
+      "DECLINED": "Rechazada",
+      "CANCELLED": "Cancelada",
+      "EXPIRED": "Caducada"
     },
     "empty": {
-      "requests": { "title": "Ninguna solicitud por responder", "body": "Cuando un cliente pida una cita, aparece aquí con el plazo para responder." },
-      "upcoming": { "title": "Nada por venir", "body": "Las reservas confirmadas y las que esperan pago están aquí." },
-      "history": { "title": "Todavía sin reservas", "body": "Lo que ya ha pasado, se rechazó o caducó aparece aquí." }
+      "requests": {
+        "title": "Ninguna solicitud por responder",
+        "body": "Cuando un cliente pida una cita, aparece aquí con el plazo para responder."
+      },
+      "upcoming": {
+        "title": "Nada por venir",
+        "body": "Las reservas confirmadas y las que esperan pago están aquí."
+      },
+      "history": {
+        "title": "Todavía sin reservas",
+        "body": "Lo que ya ha pasado, se rechazó o caducó aparece aquí."
+      }
     },
     "noMatchesTitle": "Sin coincidencias",
     "noMatches": "Ninguna reserva coincide con tu búsqueda.",
@@ -132,20 +158,41 @@
     "actionError": "No se pudo responder ahora. Inténtalo de nuevo.",
     "declineTitle": "¿Rechazar esta solicitud?",
     "declineBody": "Se avisa al cliente, que puede elegir otra hora u otro profesional. No se cobra nada.",
-    "declineReason": { "not_available": "No estoy disponible a esa hora", "cannot_perform": "No hago este servicio", "outside_area": "Fuera de mi zona", "other": "Otro motivo" },
+    "declineReason": {
+      "not_available": "No estoy disponible a esa hora",
+      "cannot_perform": "No hago este servicio",
+      "outside_area": "Fuera de mi zona",
+      "other": "Otro motivo"
+    },
     "declineConfirm": "Rechazar solicitud",
     "cancel": "Cancelar",
     "section": {
-      "appointment": "Cita", "appointmentBlurb": "Qué se pidió, cuándo y dónde.",
-      "customer": "Cliente", "customerBlurb": "Quién lo pidió.",
-      "note": "Nota del cliente", "noteBlurb": "Lo que el cliente escribió sobre el trabajo."
+      "appointment": "Cita",
+      "appointmentBlurb": "Qué se pidió, cuándo y dónde.",
+      "customer": "Cliente",
+      "customerBlurb": "Quién lo pidió.",
+      "note": "Nota del cliente",
+      "noteBlurb": "Lo que el cliente escribió sobre el trabajo."
     },
-    "when": "Cuándo", "duration": "Duración", "where": "Dónde", "with": "Con",
+    "when": "Cuándo",
+    "duration": "Duración",
+    "where": "Dónde",
+    "with": "Con",
     "minutes": "{{count}} min",
-    "location": { "at_customer": "En casa del cliente", "at_provider": "En tu local", "remote": "A distancia", "flexible": "A convenir" },
+    "location": {
+      "at_customer": "En casa del cliente",
+      "at_provider": "En tu local",
+      "remote": "A distancia",
+      "flexible": "A convenir"
+    },
     "hiddenUntilPaid": "El contacto y la dirección exacta aparecen cuando la reserva está confirmada y pagada.",
-    "phone": "Teléfono", "email": "Correo electrónico", "address": "Dirección",
-    "money": "Dinero", "price": "Precio", "commission": "Comisión ({{rate}})", "payout": "A cobrar",
+    "phone": "Teléfono",
+    "email": "Correo electrónico",
+    "address": "Dirección",
+    "money": "Dinero",
+    "price": "Precio",
+    "commission": "Comisión ({{rate}})",
+    "payout": "A cobrar",
     "markDone": "Marcar como completada",
     "markDoneHint": "Solo después de que el servicio haya terminado.",
     "markDoneConfirm": "El cliente tendrá tres días para dejar una reseña o reclamar.",
@@ -157,10 +204,17 @@
     "askedToClose": "Te hemos pedido que cierres esta reserva.",
     "timeline": "Cronología",
     "timelineReason": {
-      "created_by_customer": "Reserva iniciada", "submitted_by_customer": "Solicitud enviada", "accepted_by_provider": "Aceptada",
-      "declined_without_reason": "Rechazada", "not_available": "Rechazada: sin disponibilidad", "cannot_perform": "Rechazada: servicio no prestado",
-      "outside_area": "Rechazada: fuera de la zona", "other": "Rechazada", "provider_did_not_respond": "Caducó sin respuesta",
-      "customer_did_not_pay": "Cancelada: pago no completado", "checkout_hold_expired": "El borrador caducó",
+      "created_by_customer": "Reserva iniciada",
+      "submitted_by_customer": "Solicitud enviada",
+      "accepted_by_provider": "Aceptada",
+      "declined_without_reason": "Rechazada",
+      "not_available": "Rechazada: sin disponibilidad",
+      "cannot_perform": "Rechazada: servicio no prestado",
+      "outside_area": "Rechazada: fuera de la zona",
+      "other": "Rechazada",
+      "provider_did_not_respond": "Caducó sin respuesta",
+      "customer_did_not_pay": "Cancelada: pago no completado",
+      "checkout_hold_expired": "El borrador caducó",
       "marked_done_by_provider": "Marcada como completada por el proveedor",
       "marked_done_by_platform": "Marcada como completada automáticamente",
       "marked_done_by_admin": "Marcada como completada por la plataforma",
@@ -174,11 +228,19 @@
       "dispute_rejected": "Reclamación rechazada",
       "close_by": "Cerrar antes de",
       "feedback_by": "Respuesta antes de",
-      "payment_confirmed": "Pago confirmado", "cancelled_by_customer": "Cancelada por el cliente",
+      "payment_confirmed": "Pago confirmado",
+      "cancelled_by_customer": "Cancelada por el cliente",
       "superseded_by_new_draft": "Sustituida por una reserva nueva",
-      "respond_by": "Responder antes de", "pay_by": "Pagar antes de", "unknown": "Estado cambiado"
+      "respond_by": "Responder antes de",
+      "pay_by": "Pagar antes de",
+      "unknown": "Estado cambiado"
     },
-    "technical": "Detalles técnicos", "bookingId": "Reserva", "serviceOptionId": "Opción", "memberId": "Profesional", "paymentRef": "Referencia de pago", "none": "—"
+    "technical": "Detalles técnicos",
+    "bookingId": "Reserva",
+    "serviceOptionId": "Opción",
+    "memberId": "Profesional",
+    "paymentRef": "Referencia de pago",
+    "none": "—"
   },
   "revenue": "Ingresos",
   "comingSoon": "Próximamente.",
@@ -489,7 +551,8 @@
     "SERVICE_NEEDS_MEMBER": "Este servicio necesita al menos una persona que lo realice.",
     "MEMBER_NOT_IN_PROVIDER": "Esa persona ya no forma parte del equipo.",
     "NOT_PROVIDER_MEMBER": "No tienes acceso a este negocio.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo el propietario del negocio o un administrador puede publicar, despublicar o archivar un servicio."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo el propietario del negocio o un administrador puede publicar, despublicar o archivar un servicio.",
+    "PROVIDER_NOT_ACTIVE": "Este negocio aún está en revisión, así que sus servicios todavía no pueden publicarse. Podrás publicarlos en cuanto se apruebe."
   },
   "translationsTitle": "Traducciones",
   "translationsHint": "Solo es obligatorio el idioma en el que escribiste esto. Todos los demás son opcionales: deja en blanco lo que aún no hayas escrito, ahora o más tarde.",
@@ -653,5 +716,19 @@
   "activityTitle": "Actividad reciente",
   "activityHint": "Lo que ha ocurrido en este espacio de trabajo.",
   "activityEmptyTitle": "Aún sin actividad",
-  "activityEmpty": "Las reservas, los pagos y los cambios en este espacio de trabajo se listarán aquí a medida que ocurran."
+  "activityEmpty": "Las reservas, los pagos y los cambios en este espacio de trabajo se listarán aquí a medida que ocurran.",
+  "workspaceStatus": {
+    "pendingTitle": "Este negocio está pendiente de aprobación",
+    "pendingBody": "Puedes prepararlo todo ahora, pero nada de lo que publiques aparece en el mercado hasta que la plataforma apruebe el negocio.",
+    "suspendedTitle": "Este negocio está suspendido",
+    "suspendedBody": "Sus servicios se han retirado del mercado y no pueden volver a publicarse hasta que se levante la suspensión.",
+    "badgePending": "Pendiente de aprobación",
+    "badgeSuspended": "Suspendido"
+  },
+  "navShort": {
+    "messages": "Mensajes",
+    "availability": "Agenda",
+    "services": "Servicios",
+    "bookings": "Reservas"
+  }
 }

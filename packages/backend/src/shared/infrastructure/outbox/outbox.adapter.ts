@@ -81,6 +81,18 @@ export class OutboxAdapter extends BaseOutboundAdapter implements OutboxPort {
 
     await runAfterCommit(async () => {
       await getEventRouter().dispatch(events);
+
+      // After the dispatch, and swallowing its own failure. This is
+      // bookkeeping about something that has already happened: the handlers
+      // ran, the emails went, and a lost UPDATE must not turn that into a
+      // failed provider approval. The row simply stays `pending` — which,
+      // now that the column means something, reads as "may not have been
+      // delivered" rather than as a lie.
+      try {
+        await this.repository.markDispatched(events.map((e) => e.eventId));
+      } catch (error) {
+        console.error("[outbox] could not mark events dispatched", error);
+      }
     });
   }
 }

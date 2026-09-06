@@ -14,7 +14,9 @@
     "reviews": "Beoordelingen",
     "contact": "Contact",
     "support": "Ondersteuning",
-    "bookings": "Boekingen"
+    "bookings": "Boekingen",
+    "work": "Werk",
+    "manage": "Beheren"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
@@ -359,5 +361,10 @@
   "bookingsError": "De boekingen konden niet worden geladen.",
   "bookingsRetry": "Opnieuw proberen",
   "bookingsPrevious": "Vorige",
-  "bookingsNext": "Volgende"
+  "bookingsNext": "Volgende",
+  "navShort": {
+    "providers": "Aanbieders",
+    "reviews": "Reviews",
+    "users": "Gebruikers"
+  }
 }

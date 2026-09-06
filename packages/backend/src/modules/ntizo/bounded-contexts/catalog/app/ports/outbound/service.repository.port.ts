@@ -34,6 +34,21 @@ export interface ServiceRepositoryPort {
    */
   isProviderOwnerOrAdmin(providerId: string, userId: string): Promise<boolean>;
   /**
+   * Whether the platform has approved this workspace.
+   *
+   * Asked only by `SetServiceStatusCommand`, and only on the way to
+   * `published`. It reads the same column the storefront's own WHERE reads
+   * (`provider.status = 'active'`, `conditionsFor` in
+   * `service-read.repository.ts`), which is the point: those two are the
+   * only places that decide whether a listing is live, and they must agree.
+   *
+   * On this port rather than reached for across bounded contexts, the same
+   * precedent {@link isProviderOwnerOrAdmin} sets — catalog already asks the
+   * provider tables questions through its own repository rather than
+   * importing the provider context's.
+   */
+  isProviderActive(providerId: string): Promise<boolean>;
+  /**
    * Whether this provider-member id belongs to this provider.
    *
    * The catalog's own copy of scheduling's `memberBelongsToProvider` — same

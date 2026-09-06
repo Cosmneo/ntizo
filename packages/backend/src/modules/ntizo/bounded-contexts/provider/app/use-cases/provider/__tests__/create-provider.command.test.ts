@@ -77,8 +77,10 @@ class FakeProviderRepository implements ProviderRepositoryPort {
   async findById(id: string): Promise<Provider | null> {
     return this.store.providers.get(id) ?? null;
   }
-  async findByOwnerUserId(_ownerUserId: string): Promise<Provider[]> {
-    throw new Error("not used by this test");
+  async findByOwnerUserId(ownerUserId: string): Promise<Provider[]> {
+    return [...this.store.providers.values()].filter(
+      (p) => p.ownerUserId === ownerUserId,
+    );
   }
   async findBySlug(_slug: string): Promise<Provider | null> {
     // Free. These tests are about atomicity and events, not slug collisions —
@@ -227,5 +229,93 @@ describe("CreateProviderCommand — events", () => {
       userId: "owner-1",
       role: "owner",
     });
+  });
+});
+
+describe("CreateProviderCommand — double submit", () => {
+  /**
+   * The bug, observed in production: three separate accounts each held two or
+   * three byte-identical workspaces created 1.8-3.9 seconds apart. The wizard
+   * had been submitted twice, and nothing on this side noticed — every submit
+   * minted a fresh id, slug, member row and wallet.
+   *
+   * What made it expensive rather than untidy: the duplicates are
+   * indistinguishable in the switcher, only one of them ever gets approved,
+   * and a service created in the other is published into a workspace the
+   * storefront filters out. That is exactly how one provider's only listing
+   * went missing.
+   */
+  function commandOver(store: Store, outboxPort: OutboxPort) {
+    return new CreateProviderCommand(
+      new FakeProviderRepository(store),
+      new WorkingProviderMemberRepository(store),
+      walletRepo as never,
+      settingsRepo as never,
+      new InMemoryUnitOfWork(store),
+      outboxPort,
+    );
+  }
+
+  const acme = {
+    type: "organization" as const,
+    name: "Acme Cleaning",
+    slug: "acme-cleaning",
+  };
+
+  it("returns the workspace it just made instead of making a second one", async () => {
+    const store = createStore();
+    const command = commandOver(store, new CapturingOutboxPort());
+
+    const first = await command.execute(authenticatedCtx("owner-1"), acme);
+    const second = await command.execute(authenticatedCtx("owner-1"), acme);
+
+    expect(second.providerId).toBe(first.providerId);
+    expect(store.providers.size).toBe(1);
+    expect(store.members.size).toBe(1);
+  });
+
+  it("does not publish a second creation event for the repeated submit", async () => {
+    // A duplicate that is silently absorbed must not also announce itself —
+    // a second `provider.created` would have every downstream projection
+    // believe in a workspace that does not exist.
+    const store = createStore();
+    const outboxPort = new CapturingOutboxPort();
+    const command = commandOver(store, outboxPort);
+
+    await command.execute(authenticatedCtx("owner-1"), acme);
+    await command.execute(authenticatedCtx("owner-1"), acme);
+
+    const created = outboxPort.published.filter((e) => e.eventName === "provider.created");
+    expect(created).toHaveLength(1);
+  });
+
+  it("still lets a different person register the same business name", async () => {
+    // Two businesses may legitimately share a name — the reason `freeSlug`
+    // exists at all. The guard is about one person submitting twice, so it
+    // must never reach across owners.
+    const store = createStore();
+    const command = commandOver(store, new CapturingOutboxPort());
+
+    const mine = await command.execute(authenticatedCtx("owner-1"), acme);
+    const theirs = await command.execute(authenticatedCtx("owner-2"), acme);
+
+    expect(theirs.providerId).not.toBe(mine.providerId);
+    expect(store.providers.size).toBe(2);
+  });
+
+  it("still lets one person open a second workspace under another name", async () => {
+    // The guard keys on the name, not on "has a workspace already" — an
+    // owner opening a genuinely different business must not be blocked.
+    const store = createStore();
+    const command = commandOver(store, new CapturingOutboxPort());
+
+    const first = await command.execute(authenticatedCtx("owner-1"), acme);
+    const second = await command.execute(authenticatedCtx("owner-1"), {
+      ...acme,
+      name: "Acme Gardening",
+    });
+
+    expect(second.providerId).not.toBe(first.providerId);
+    expect(store.providers.size).toBe(2);
   });
 });

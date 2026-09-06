@@ -14,7 +14,9 @@
     "reviews": "Recensioni",
     "contact": "Contatti",
     "support": "Supporto",
-    "bookings": "Prenotazioni"
+    "bookings": "Prenotazioni",
+    "work": "Lavoro",
+    "manage": "Gestire"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",
@@ -359,5 +361,10 @@
   "bookingsError": "Non è stato possibile caricare le prenotazioni.",
   "bookingsRetry": "Riprova",
   "bookingsPrevious": "Precedente",
-  "bookingsNext": "Successiva"
+  "bookingsNext": "Successiva",
+  "navShort": {
+    "providers": "Operatori",
+    "reviews": "Recensioni",
+    "users": "Utenti"
+  }
 }

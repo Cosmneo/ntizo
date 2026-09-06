@@ -46,6 +46,11 @@ class FakeRepo implements ServiceRepositoryPort {
     ["prov-1:user-2", "staff"],
     ["prov-1:user-3", "admin"],
   ]);
+  // Which workspaces the platform has approved. `prov-1` is every other
+  // block's workspace and is active, so nothing outside this fixture has to
+  // know the gate exists; a test about a workspace still under review takes
+  // it out of the set.
+  activeProviders = new Set<string>(["prov-1"]);
   // The `provider_member.id` behind each user — what `service_member` rows
   // actually reference, and what `CreateServiceCommand` now seeds a new
   // service's `memberIds` with via `findMemberIdForUser`.
@@ -73,6 +78,9 @@ class FakeRepo implements ServiceRepositoryPort {
   async isProviderOwnerOrAdmin(providerId: string, userId: string) {
     const role = this.roles.get(`${providerId}:${userId}`);
     return role === "owner" || role === "admin";
+  }
+  async isProviderActive(providerId: string) {
+    return this.activeProviders.has(providerId);
   }
   async memberBelongsToProvider(): Promise<boolean> {
     throw new Error("not used by these tests — set members directly on the aggregate");
@@ -402,6 +410,44 @@ describe("SetServiceStatusCommand", () => {
         status: "published",
       }),
     ).rejects.toMatchObject({ code: "SERVICE_NEEDS_MEMBER" });
+  });
+
+  it("refuses to publish while the workspace is still under review", async () => {
+    // The bug this guards: a workspace created but never approved could
+    // publish a service, get a success toast, and never appear in the
+    // browse — because the storefront's own WHERE requires an active
+    // provider (`conditionsFor`, service-read.repository.ts). Publishing
+    // silently did nothing, and nothing told the person that.
+    const serviceId = await withOption();
+    repo.activeProviders.delete("prov-1");
+    await expect(
+      new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+        requesterUserId: "user-1",
+        serviceId,
+        status: "published",
+      }),
+    ).rejects.toMatchObject({ code: "PROVIDER_NOT_ACTIVE" });
+    expect(repo.stored.get(serviceId)!.toJSON().status).toBe("draft");
+  });
+
+  it("still lets an inactive workspace take a service back down", async () => {
+    // The gate is on going live, not on every status change. A workspace
+    // suspended while a service was published must still be able to draft
+    // it — refusing that would trap the row in a state its owner can see
+    // and cannot leave.
+    const serviceId = await withOption();
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+      requesterUserId: "user-1",
+      serviceId,
+      status: "published",
+    });
+    repo.activeProviders.delete("prov-1");
+    await new SetServiceStatusCommand(repo, unitOfWork, outbox).execute({
+      requesterUserId: "user-1",
+      serviceId,
+      status: "draft",
+    });
+    expect(repo.stored.get(serviceId)!.toJSON().status).toBe("draft");
   });
 
   it("refuses a stranger trying to change status", async () => {

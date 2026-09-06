@@ -19,7 +19,8 @@
     "bookings": "Buchungen",
     "messages": "Nachrichten",
     "availability": "Verfügbarkeit",
-    "activity": "Aktivität"
+    "activity": "Aktivität",
+    "manage": "Verwalten"
   },
   "myAccount": "Mein Konto",
   "noProvider": "Kein Anbieter",
@@ -97,24 +98,49 @@
   "bookings": {
     "title": "Buchungen",
     "subtitle": "Anfragen, die auf Antwort warten, bevorstehende Termine und was schon vorbei ist.",
-    "tab": { "requests": "Anfragen", "upcoming": "Bevorstehend", "history": "Verlauf" },
+    "tab": {
+      "requests": "Anfragen",
+      "upcoming": "Bevorstehend",
+      "history": "Verlauf"
+    },
     "searchPlaceholder": "Kunde oder Leistung suchen",
     "memberFilterAll": "Alle Fachkräfte",
     "memberAnyone": "Beliebig",
-    "col": { "customer": "Kunde", "service": "Leistung", "when": "Wann", "price": "Preis", "status": "Status" },
+    "col": {
+      "customer": "Kunde",
+      "service": "Leistung",
+      "when": "Wann",
+      "price": "Preis",
+      "status": "Status"
+    },
     "shownOf": "{{shown}} von {{total}} angezeigt",
     "loadMore": "Mehr",
     "respondIn": "Antworten in {{time}}",
     "respondBy": "Antworten bis {{time}}",
     "status": {
-      "AWAITING_PROVIDER": "Antwort ausstehend", "PENDING_PAYMENT": "Zahlung ausstehend", "CONFIRMED": "Bestätigt",
-      "MARKED_DONE": "Erledigt", "COMPLETED": "Abgeschlossen", "DISPUTED": "Strittig",
-      "DECLINED": "Abgelehnt", "CANCELLED": "Storniert", "EXPIRED": "Abgelaufen"
+      "AWAITING_PROVIDER": "Antwort ausstehend",
+      "PENDING_PAYMENT": "Zahlung ausstehend",
+      "CONFIRMED": "Bestätigt",
+      "MARKED_DONE": "Erledigt",
+      "COMPLETED": "Abgeschlossen",
+      "DISPUTED": "Strittig",
+      "DECLINED": "Abgelehnt",
+      "CANCELLED": "Storniert",
+      "EXPIRED": "Abgelaufen"
     },
     "empty": {
-      "requests": { "title": "Keine offenen Anfragen", "body": "Wenn die Kundschaft einen Termin anfragt, erscheint er hier mit der Frist zum Antworten." },
-      "upcoming": { "title": "Nichts Bevorstehendes", "body": "Bestätigte Buchungen und solche mit ausstehender Zahlung stehen hier." },
-      "history": { "title": "Noch keine Buchungen", "body": "Was bereits passiert, abgelehnt wurde oder abgelaufen ist, steht hier." }
+      "requests": {
+        "title": "Keine offenen Anfragen",
+        "body": "Wenn die Kundschaft einen Termin anfragt, erscheint er hier mit der Frist zum Antworten."
+      },
+      "upcoming": {
+        "title": "Nichts Bevorstehendes",
+        "body": "Bestätigte Buchungen und solche mit ausstehender Zahlung stehen hier."
+      },
+      "history": {
+        "title": "Noch keine Buchungen",
+        "body": "Was bereits passiert, abgelehnt wurde oder abgelaufen ist, steht hier."
+      }
     },
     "noMatchesTitle": "Keine Treffer",
     "noMatches": "Keine Buchung entspricht Ihrer Suche.",
@@ -132,20 +158,41 @@
     "actionError": "Gerade konnte nicht geantwortet werden. Versuchen Sie es erneut.",
     "declineTitle": "Diese Anfrage ablehnen?",
     "declineBody": "Die Kundschaft wird benachrichtigt und kann eine andere Zeit oder einen anderen Anbieter wählen. Es wird nichts berechnet.",
-    "declineReason": { "not_available": "Ich bin zu dieser Zeit nicht verfügbar", "cannot_perform": "Ich biete diese Leistung nicht an", "outside_area": "Außerhalb meines Gebiets", "other": "Anderer Grund" },
+    "declineReason": {
+      "not_available": "Ich bin zu dieser Zeit nicht verfügbar",
+      "cannot_perform": "Ich biete diese Leistung nicht an",
+      "outside_area": "Außerhalb meines Gebiets",
+      "other": "Anderer Grund"
+    },
     "declineConfirm": "Anfrage ablehnen",
     "cancel": "Abbrechen",
     "section": {
-      "appointment": "Termin", "appointmentBlurb": "Was angefragt wurde, wann und wo.",
-      "customer": "Kunde", "customerBlurb": "Wer angefragt hat.",
-      "note": "Notiz der Kundschaft", "noteBlurb": "Was die Kundschaft über den Auftrag geschrieben hat."
+      "appointment": "Termin",
+      "appointmentBlurb": "Was angefragt wurde, wann und wo.",
+      "customer": "Kunde",
+      "customerBlurb": "Wer angefragt hat.",
+      "note": "Notiz der Kundschaft",
+      "noteBlurb": "Was die Kundschaft über den Auftrag geschrieben hat."
     },
-    "when": "Wann", "duration": "Dauer", "where": "Wo", "with": "Mit",
+    "when": "Wann",
+    "duration": "Dauer",
+    "where": "Wo",
+    "with": "Mit",
     "minutes": "{{count}} Min.",
-    "location": { "at_customer": "Bei der Kundschaft zu Hause", "at_provider": "Bei Ihnen", "remote": "Aus der Ferne", "flexible": "Nach Vereinbarung" },
+    "location": {
+      "at_customer": "Bei der Kundschaft zu Hause",
+      "at_provider": "Bei Ihnen",
+      "remote": "Aus der Ferne",
+      "flexible": "Nach Vereinbarung"
+    },
     "hiddenUntilPaid": "Kontaktdaten und die genaue Adresse erscheinen, sobald die Buchung bestätigt und bezahlt ist.",
-    "phone": "Telefon", "email": "E-Mail", "address": "Adresse",
-    "money": "Geld", "price": "Preis", "commission": "Provision ({{rate}})", "payout": "Auszahlung",
+    "phone": "Telefon",
+    "email": "E-Mail",
+    "address": "Adresse",
+    "money": "Geld",
+    "price": "Preis",
+    "commission": "Provision ({{rate}})",
+    "payout": "Auszahlung",
     "markDone": "Als erledigt markieren",
     "markDoneHint": "Erst, nachdem die Leistung beendet ist.",
     "markDoneConfirm": "Die Kundschaft hat drei Tage Zeit, um zu bewerten oder zu reklamieren.",
@@ -157,10 +204,17 @@
     "askedToClose": "Wir haben Sie gebeten, diese Buchung zu schließen.",
     "timeline": "Zeitleiste",
     "timelineReason": {
-      "created_by_customer": "Buchung gestartet", "submitted_by_customer": "Anfrage gesendet", "accepted_by_provider": "Angenommen",
-      "declined_without_reason": "Abgelehnt", "not_available": "Abgelehnt: nicht verfügbar", "cannot_perform": "Abgelehnt: Leistung nicht angeboten",
-      "outside_area": "Abgelehnt: außerhalb des Gebiets", "other": "Abgelehnt", "provider_did_not_respond": "Ohne Antwort abgelaufen",
-      "customer_did_not_pay": "Storniert: Zahlung nicht abgeschlossen", "checkout_hold_expired": "Entwurf abgelaufen",
+      "created_by_customer": "Buchung gestartet",
+      "submitted_by_customer": "Anfrage gesendet",
+      "accepted_by_provider": "Angenommen",
+      "declined_without_reason": "Abgelehnt",
+      "not_available": "Abgelehnt: nicht verfügbar",
+      "cannot_perform": "Abgelehnt: Leistung nicht angeboten",
+      "outside_area": "Abgelehnt: außerhalb des Gebiets",
+      "other": "Abgelehnt",
+      "provider_did_not_respond": "Ohne Antwort abgelaufen",
+      "customer_did_not_pay": "Storniert: Zahlung nicht abgeschlossen",
+      "checkout_hold_expired": "Entwurf abgelaufen",
       "marked_done_by_provider": "Vom Anbieter als erledigt markiert",
       "marked_done_by_platform": "Automatisch als erledigt markiert",
       "marked_done_by_admin": "Von der Plattform als erledigt markiert",
@@ -174,11 +228,19 @@
       "dispute_rejected": "Reklamation abgelehnt",
       "close_by": "Schließen bis",
       "feedback_by": "Antwort bis",
-      "payment_confirmed": "Zahlung bestätigt", "cancelled_by_customer": "Vom Kunden storniert",
+      "payment_confirmed": "Zahlung bestätigt",
+      "cancelled_by_customer": "Vom Kunden storniert",
       "superseded_by_new_draft": "Durch eine neue Buchung ersetzt",
-      "respond_by": "Antworten bis", "pay_by": "Zahlen bis", "unknown": "Status geändert"
+      "respond_by": "Antworten bis",
+      "pay_by": "Zahlen bis",
+      "unknown": "Status geändert"
     },
-    "technical": "Technische Details", "bookingId": "Buchung", "serviceOptionId": "Option", "memberId": "Fachkraft", "paymentRef": "Zahlungsreferenz", "none": "—"
+    "technical": "Technische Details",
+    "bookingId": "Buchung",
+    "serviceOptionId": "Option",
+    "memberId": "Fachkraft",
+    "paymentRef": "Zahlungsreferenz",
+    "none": "—"
   },
   "revenue": "Umsatz",
   "comingSoon": "Demnächst verfügbar.",
@@ -489,7 +551,8 @@
     "SERVICE_NEEDS_MEMBER": "Diese Leistung benötigt mindestens eine Person, die sie ausführt.",
     "MEMBER_NOT_IN_PROVIDER": "Diese Person gehört nicht mehr zum Team.",
     "NOT_PROVIDER_MEMBER": "Sie haben keinen Zugriff auf dieses Unternehmen.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Unternehmens oder ein Administrator kann eine Leistung veröffentlichen, ihre Veröffentlichung aufheben oder archivieren."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Nur die Inhaberin oder der Inhaber des Unternehmens oder ein Administrator kann eine Leistung veröffentlichen, ihre Veröffentlichung aufheben oder archivieren.",
+    "PROVIDER_NOT_ACTIVE": "Dieses Unternehmen wird noch geprüft, daher können seine Leistungen noch nicht veröffentlicht werden. Sobald es freigegeben ist, können Sie veröffentlichen."
   },
   "translationsTitle": "Übersetzungen",
   "translationsHint": "Nur die Sprache, in der Sie dies geschrieben haben, ist erforderlich. Alle anderen sind optional — lassen Sie leer, was Sie noch nicht geschrieben haben, jetzt oder später.",
@@ -653,5 +716,19 @@
   "activityTitle": "Letzte Aktivität",
   "activityHint": "Was in diesem Arbeitsbereich passiert ist.",
   "activityEmptyTitle": "Noch keine Aktivität",
-  "activityEmpty": "Buchungen, Zahlungen und Änderungen an diesem Arbeitsbereich erscheinen hier, sobald sie geschehen."
+  "activityEmpty": "Buchungen, Zahlungen und Änderungen an diesem Arbeitsbereich erscheinen hier, sobald sie geschehen.",
+  "workspaceStatus": {
+    "pendingTitle": "Dieses Unternehmen wartet auf Freigabe",
+    "pendingBody": "Sie können jetzt schon alles einrichten, aber nichts, was Sie veröffentlichen, erscheint im Marktplatz, bevor die Plattform das Unternehmen freigegeben hat.",
+    "suspendedTitle": "Dieses Unternehmen ist gesperrt",
+    "suspendedBody": "Seine Leistungen wurden aus dem Marktplatz entfernt und können erst wieder veröffentlicht werden, wenn die Sperre aufgehoben ist.",
+    "badgePending": "Wartet auf Freigabe",
+    "badgeSuspended": "Gesperrt"
+  },
+  "navShort": {
+    "messages": "Nachrichten",
+    "availability": "Kalender",
+    "services": "Leistungen",
+    "bookings": "Buchungen"
+  }
 }

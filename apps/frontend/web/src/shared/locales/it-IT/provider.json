@@ -19,7 +19,8 @@
     "bookings": "Prenotazioni",
     "messages": "Messaggi",
     "availability": "Disponibilità",
-    "activity": "Attività"
+    "activity": "Attività",
+    "manage": "Gestire"
   },
   "myAccount": "Il mio account",
   "noProvider": "Nessun fornitore",
@@ -97,24 +98,49 @@
   "bookings": {
     "title": "Prenotazioni",
     "subtitle": "Richieste da rispondere, appuntamenti in arrivo e quello che è già successo.",
-    "tab": { "requests": "Richieste", "upcoming": "In arrivo", "history": "Cronologia" },
+    "tab": {
+      "requests": "Richieste",
+      "upcoming": "In arrivo",
+      "history": "Cronologia"
+    },
     "searchPlaceholder": "Cerca cliente o servizio",
     "memberFilterAll": "Tutti i professionisti",
     "memberAnyone": "Chiunque",
-    "col": { "customer": "Cliente", "service": "Servizio", "when": "Quando", "price": "Prezzo", "status": "Stato" },
+    "col": {
+      "customer": "Cliente",
+      "service": "Servizio",
+      "when": "Quando",
+      "price": "Prezzo",
+      "status": "Stato"
+    },
     "shownOf": "{{shown}} di {{total}} mostrate",
     "loadMore": "Altro",
     "respondIn": "Rispondere tra {{time}}",
     "respondBy": "Rispondere entro {{time}}",
     "status": {
-      "AWAITING_PROVIDER": "In attesa di risposta", "PENDING_PAYMENT": "In attesa di pagamento", "CONFIRMED": "Confermata",
-      "MARKED_DONE": "Segnata come completata", "COMPLETED": "Completata", "DISPUTED": "Contestata",
-      "DECLINED": "Rifiutata", "CANCELLED": "Annullata", "EXPIRED": "Scaduta"
+      "AWAITING_PROVIDER": "In attesa di risposta",
+      "PENDING_PAYMENT": "In attesa di pagamento",
+      "CONFIRMED": "Confermata",
+      "MARKED_DONE": "Segnata come completata",
+      "COMPLETED": "Completata",
+      "DISPUTED": "Contestata",
+      "DECLINED": "Rifiutata",
+      "CANCELLED": "Annullata",
+      "EXPIRED": "Scaduta"
     },
     "empty": {
-      "requests": { "title": "Nessuna richiesta da rispondere", "body": "Quando un cliente richiede un appuntamento, compare qui con la scadenza per rispondere." },
-      "upcoming": { "title": "Niente in arrivo", "body": "Le prenotazioni confermate e quelle in attesa di pagamento si trovano qui." },
-      "history": { "title": "Ancora nessuna prenotazione", "body": "Quello che è già successo, è stato rifiutato o è scaduto si trova qui." }
+      "requests": {
+        "title": "Nessuna richiesta da rispondere",
+        "body": "Quando un cliente richiede un appuntamento, compare qui con la scadenza per rispondere."
+      },
+      "upcoming": {
+        "title": "Niente in arrivo",
+        "body": "Le prenotazioni confermate e quelle in attesa di pagamento si trovano qui."
+      },
+      "history": {
+        "title": "Ancora nessuna prenotazione",
+        "body": "Quello che è già successo, è stato rifiutato o è scaduto si trova qui."
+      }
     },
     "noMatchesTitle": "Nessun risultato",
     "noMatches": "Nessuna prenotazione corrisponde alla tua ricerca.",
@@ -132,20 +158,41 @@
     "actionError": "Non è stato possibile rispondere ora. Riprova.",
     "declineTitle": "Rifiutare questa richiesta?",
     "declineBody": "Il cliente viene avvisato e può scegliere un altro orario o un altro professionista. Non viene addebitato nulla.",
-    "declineReason": { "not_available": "Non sono disponibile a quell'ora", "cannot_perform": "Non offro questo servizio", "outside_area": "Fuori dalla mia zona", "other": "Altro motivo" },
+    "declineReason": {
+      "not_available": "Non sono disponibile a quell'ora",
+      "cannot_perform": "Non offro questo servizio",
+      "outside_area": "Fuori dalla mia zona",
+      "other": "Altro motivo"
+    },
     "declineConfirm": "Rifiuta richiesta",
     "cancel": "Annulla",
     "section": {
-      "appointment": "Appuntamento", "appointmentBlurb": "Cosa è stato richiesto, quando e dove.",
-      "customer": "Cliente", "customerBlurb": "Chi ha fatto la richiesta.",
-      "note": "Nota del cliente", "noteBlurb": "Cosa ha scritto il cliente sul lavoro."
+      "appointment": "Appuntamento",
+      "appointmentBlurb": "Cosa è stato richiesto, quando e dove.",
+      "customer": "Cliente",
+      "customerBlurb": "Chi ha fatto la richiesta.",
+      "note": "Nota del cliente",
+      "noteBlurb": "Cosa ha scritto il cliente sul lavoro."
     },
-    "when": "Quando", "duration": "Durata", "where": "Dove", "with": "Con",
+    "when": "Quando",
+    "duration": "Durata",
+    "where": "Dove",
+    "with": "Con",
     "minutes": "{{count}} min",
-    "location": { "at_customer": "A casa del cliente", "at_provider": "Da te", "remote": "A distanza", "flexible": "Da concordare" },
+    "location": {
+      "at_customer": "A casa del cliente",
+      "at_provider": "Da te",
+      "remote": "A distanza",
+      "flexible": "Da concordare"
+    },
     "hiddenUntilPaid": "Il contatto e l'indirizzo esatto compaiono dopo che la prenotazione è confermata e pagata.",
-    "phone": "Telefono", "email": "E-mail", "address": "Indirizzo",
-    "money": "Denaro", "price": "Prezzo", "commission": "Commissione ({{rate}})", "payout": "Da ricevere",
+    "phone": "Telefono",
+    "email": "E-mail",
+    "address": "Indirizzo",
+    "money": "Denaro",
+    "price": "Prezzo",
+    "commission": "Commissione ({{rate}})",
+    "payout": "Da ricevere",
     "markDone": "Segna come completata",
     "markDoneHint": "Solo dopo che il servizio è terminato.",
     "markDoneConfirm": "Il cliente avrà tre giorni per valutare o contestare.",
@@ -157,10 +204,17 @@
     "askedToClose": "Ti abbiamo chiesto di chiudere questa prenotazione.",
     "timeline": "Linea temporale",
     "timelineReason": {
-      "created_by_customer": "Prenotazione avviata", "submitted_by_customer": "Richiesta inviata", "accepted_by_provider": "Accettata",
-      "declined_without_reason": "Rifiutata", "not_available": "Rifiutata: non disponibile", "cannot_perform": "Rifiutata: servizio non offerto",
-      "outside_area": "Rifiutata: fuori zona", "other": "Rifiutata", "provider_did_not_respond": "Scaduta senza risposta",
-      "customer_did_not_pay": "Annullata: pagamento non completato", "checkout_hold_expired": "Bozza scaduta",
+      "created_by_customer": "Prenotazione avviata",
+      "submitted_by_customer": "Richiesta inviata",
+      "accepted_by_provider": "Accettata",
+      "declined_without_reason": "Rifiutata",
+      "not_available": "Rifiutata: non disponibile",
+      "cannot_perform": "Rifiutata: servizio non offerto",
+      "outside_area": "Rifiutata: fuori zona",
+      "other": "Rifiutata",
+      "provider_did_not_respond": "Scaduta senza risposta",
+      "customer_did_not_pay": "Annullata: pagamento non completato",
+      "checkout_hold_expired": "Bozza scaduta",
       "marked_done_by_provider": "Segnata come completata dal fornitore",
       "marked_done_by_platform": "Segnata come completata automaticamente",
       "marked_done_by_admin": "Segnata come completata dalla piattaforma",
@@ -174,11 +228,19 @@
       "dispute_rejected": "Contestazione respinta",
       "close_by": "Chiudere entro",
       "feedback_by": "Risposta entro",
-      "payment_confirmed": "Pagamento confermato", "cancelled_by_customer": "Annullata dal cliente",
+      "payment_confirmed": "Pagamento confermato",
+      "cancelled_by_customer": "Annullata dal cliente",
       "superseded_by_new_draft": "Sostituita da una nuova prenotazione",
-      "respond_by": "Rispondere entro", "pay_by": "Pagare entro", "unknown": "Stato modificato"
+      "respond_by": "Rispondere entro",
+      "pay_by": "Pagare entro",
+      "unknown": "Stato modificato"
     },
-    "technical": "Dettagli tecnici", "bookingId": "Prenotazione", "serviceOptionId": "Opzione", "memberId": "Professionista", "paymentRef": "Riferimento di pagamento", "none": "—"
+    "technical": "Dettagli tecnici",
+    "bookingId": "Prenotazione",
+    "serviceOptionId": "Opzione",
+    "memberId": "Professionista",
+    "paymentRef": "Riferimento di pagamento",
+    "none": "—"
   },
   "revenue": "Ricavi",
   "comingSoon": "Prossimamente.",
@@ -489,7 +551,8 @@
     "SERVICE_NEEDS_MEMBER": "Questo servizio ha bisogno di almeno una persona che lo svolga.",
     "MEMBER_NOT_IN_PROVIDER": "Questa persona non fa più parte del team.",
     "NOT_PROVIDER_MEMBER": "Non hai accesso a questa attività.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo il proprietario dell'attività o un amministratore può pubblicare, rimuovere la pubblicazione o archiviare un servizio."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Solo il proprietario dell'attività o un amministratore può pubblicare, rimuovere la pubblicazione o archiviare un servizio.",
+    "PROVIDER_NOT_ACTIVE": "Questa attività è ancora in fase di revisione, quindi i suoi servizi non possono ancora essere pubblicati. Potrai pubblicarli non appena verrà approvata."
   },
   "translationsTitle": "Traduzioni",
   "translationsHint": "È obbligatoria solo la lingua in cui hai scritto questo. Tutte le altre sono facoltative: lascia vuoto ciò che non hai ancora scritto, ora o più tardi.",
@@ -653,5 +716,19 @@
   "activityTitle": "Attività recente",
   "activityHint": "Che cosa è successo in questo spazio di lavoro.",
   "activityEmptyTitle": "Ancora nessuna attività",
-  "activityEmpty": "Prenotazioni, pagamenti e modifiche a questo spazio di lavoro compariranno qui man mano che avvengono."
+  "activityEmpty": "Prenotazioni, pagamenti e modifiche a questo spazio di lavoro compariranno qui man mano che avvengono.",
+  "workspaceStatus": {
+    "pendingTitle": "Questa attività è in attesa di approvazione",
+    "pendingBody": "Puoi preparare tutto ora, ma nulla di ciò che pubblichi compare nel marketplace finché la piattaforma non approva l'attività.",
+    "suspendedTitle": "Questa attività è sospesa",
+    "suspendedBody": "I suoi servizi sono stati rimossi dal marketplace e non possono essere ripubblicati finché la sospensione non viene revocata.",
+    "badgePending": "In attesa di approvazione",
+    "badgeSuspended": "Sospesa"
+  },
+  "navShort": {
+    "messages": "Messaggi",
+    "availability": "Agenda",
+    "services": "Servizi",
+    "bookings": "Prenotazioni"
+  }
 }

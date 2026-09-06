@@ -14,7 +14,9 @@
     "reviews": "Avaliações",
     "contact": "Contactos",
     "support": "Suporte",
-    "bookings": "Reservas"
+    "bookings": "Reservas",
+    "work": "Trabalho",
+    "manage": "Gerir"
   },
   "providersTitle": "Prestadores",
   "providersSubtitle": "Todos os negócios da plataforma.",
@@ -359,5 +361,10 @@
   "bookingsError": "Não foi possível carregar as reservas.",
   "bookingsRetry": "Tentar de novo",
   "bookingsPrevious": "Anterior",
-  "bookingsNext": "Seguinte"
+  "bookingsNext": "Seguinte",
+  "navShort": {
+    "providers": "Prestadores",
+    "reviews": "Avaliações",
+    "users": "Utilizadores"
+  }
 }

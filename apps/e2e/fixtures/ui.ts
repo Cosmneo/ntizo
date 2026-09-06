@@ -25,12 +25,12 @@ export async function fillSignInForm(
 }
 
 /**
- * Opens the signed-in user's sidebar menu and clicks "Sign out". Both real
- * shells (`app-sidebar/sidebar-user-menu.tsx` for /provider,
- * `admin-sidebar/sidebar-user-menu.tsx` for /admin) render the trigger as a
- * plain `<button data-sidebar="menu-button">` with no shared accessible
- * role to hang a selector off (packages/frontend/src/components/sidebar.tsx),
- * so this matches on the trigger containing the current user's own visible
+ * Opens the signed-in user's sidebar menu and clicks "Sign out". Both zones
+ * now render the trigger through the same
+ * `src/shared/components/console/console-user-menu.tsx`, as a plain
+ * `<button data-sidebar="menu-button">` with no shared accessible role to
+ * hang a selector off (packages/frontend/src/components/sidebar.tsx), so
+ * this matches on the trigger containing the current user's own visible
  * name — which also happens to be the assertion that matters here: the
  * button we click is provably *this* user's, not a leftover from whoever
  * was signed in before.

@@ -19,7 +19,8 @@
     "bookings": "Boekingen",
     "messages": "Berichten",
     "availability": "Beschikbaarheid",
-    "activity": "Activiteit"
+    "activity": "Activiteit",
+    "manage": "Beheren"
   },
   "myAccount": "Mijn account",
   "noProvider": "Geen aanbieder",
@@ -97,24 +98,49 @@
   "bookings": {
     "title": "Boekingen",
     "subtitle": "Aanvragen die op antwoord wachten, aankomende afspraken en wat al is gebeurd.",
-    "tab": { "requests": "Aanvragen", "upcoming": "Aankomend", "history": "Geschiedenis" },
+    "tab": {
+      "requests": "Aanvragen",
+      "upcoming": "Aankomend",
+      "history": "Geschiedenis"
+    },
     "searchPlaceholder": "Zoek klant of dienst",
     "memberFilterAll": "Alle professionals",
     "memberAnyone": "Iedereen",
-    "col": { "customer": "Klant", "service": "Dienst", "when": "Wanneer", "price": "Prijs", "status": "Status" },
+    "col": {
+      "customer": "Klant",
+      "service": "Dienst",
+      "when": "Wanneer",
+      "price": "Prijs",
+      "status": "Status"
+    },
     "shownOf": "{{shown}} van {{total}} getoond",
     "loadMore": "Meer",
     "respondIn": "Reageren binnen {{time}}",
     "respondBy": "Reageren voor {{time}}",
     "status": {
-      "AWAITING_PROVIDER": "Wacht op antwoord", "PENDING_PAYMENT": "Wacht op betaling", "CONFIRMED": "Bevestigd",
-      "MARKED_DONE": "Als afgerond gemarkeerd", "COMPLETED": "Afgerond", "DISPUTED": "In geschil",
-      "DECLINED": "Geweigerd", "CANCELLED": "Geannuleerd", "EXPIRED": "Verlopen"
+      "AWAITING_PROVIDER": "Wacht op antwoord",
+      "PENDING_PAYMENT": "Wacht op betaling",
+      "CONFIRMED": "Bevestigd",
+      "MARKED_DONE": "Als afgerond gemarkeerd",
+      "COMPLETED": "Afgerond",
+      "DISPUTED": "In geschil",
+      "DECLINED": "Geweigerd",
+      "CANCELLED": "Geannuleerd",
+      "EXPIRED": "Verlopen"
     },
     "empty": {
-      "requests": { "title": "Geen aanvragen te beantwoorden", "body": "Wanneer een klant om een afspraak vraagt, verschijnt die hier met de termijn om te reageren." },
-      "upcoming": { "title": "Niets aankomend", "body": "Bevestigde boekingen en boekingen die op betaling wachten staan hier." },
-      "history": { "title": "Nog geen boekingen", "body": "Wat al is gebeurd, geweigerd is of is verlopen staat hier." }
+      "requests": {
+        "title": "Geen aanvragen te beantwoorden",
+        "body": "Wanneer een klant om een afspraak vraagt, verschijnt die hier met de termijn om te reageren."
+      },
+      "upcoming": {
+        "title": "Niets aankomend",
+        "body": "Bevestigde boekingen en boekingen die op betaling wachten staan hier."
+      },
+      "history": {
+        "title": "Nog geen boekingen",
+        "body": "Wat al is gebeurd, geweigerd is of is verlopen staat hier."
+      }
     },
     "noMatchesTitle": "Geen resultaten",
     "noMatches": "Geen boekingen komen overeen met je zoekopdracht.",
@@ -132,20 +158,41 @@
     "actionError": "Kon nu niet reageren. Probeer het opnieuw.",
     "declineTitle": "Deze aanvraag weigeren?",
     "declineBody": "De klant wordt op de hoogte gebracht en kan een ander tijdstip of een andere dienstverlener kiezen. Er wordt niets in rekening gebracht.",
-    "declineReason": { "not_available": "Ik ben op dat tijdstip niet beschikbaar", "cannot_perform": "Ik bied deze dienst niet aan", "outside_area": "Buiten mijn werkgebied", "other": "Andere reden" },
+    "declineReason": {
+      "not_available": "Ik ben op dat tijdstip niet beschikbaar",
+      "cannot_perform": "Ik bied deze dienst niet aan",
+      "outside_area": "Buiten mijn werkgebied",
+      "other": "Andere reden"
+    },
     "declineConfirm": "Aanvraag weigeren",
     "cancel": "Annuleren",
     "section": {
-      "appointment": "Afspraak", "appointmentBlurb": "Wat er is gevraagd, wanneer en waar.",
-      "customer": "Klant", "customerBlurb": "Wie de aanvraag deed.",
-      "note": "Notitie van de klant", "noteBlurb": "Wat de klant over de klus heeft geschreven."
+      "appointment": "Afspraak",
+      "appointmentBlurb": "Wat er is gevraagd, wanneer en waar.",
+      "customer": "Klant",
+      "customerBlurb": "Wie de aanvraag deed.",
+      "note": "Notitie van de klant",
+      "noteBlurb": "Wat de klant over de klus heeft geschreven."
     },
-    "when": "Wanneer", "duration": "Duur", "where": "Waar", "with": "Met",
+    "when": "Wanneer",
+    "duration": "Duur",
+    "where": "Waar",
+    "with": "Met",
     "minutes": "{{count}} min",
-    "location": { "at_customer": "Bij de klant thuis", "at_provider": "Bij jou", "remote": "Op afstand", "flexible": "In overleg" },
+    "location": {
+      "at_customer": "Bij de klant thuis",
+      "at_provider": "Bij jou",
+      "remote": "Op afstand",
+      "flexible": "In overleg"
+    },
     "hiddenUntilPaid": "Contactgegevens en het exacte adres verschijnen zodra de boeking bevestigd en betaald is.",
-    "phone": "Telefoon", "email": "E-mail", "address": "Adres",
-    "money": "Geld", "price": "Prijs", "commission": "Commissie ({{rate}})", "payout": "Uitbetaling",
+    "phone": "Telefoon",
+    "email": "E-mail",
+    "address": "Adres",
+    "money": "Geld",
+    "price": "Prijs",
+    "commission": "Commissie ({{rate}})",
+    "payout": "Uitbetaling",
     "markDone": "Markeren als afgerond",
     "markDoneHint": "Pas nadat de dienst is afgerond.",
     "markDoneConfirm": "De klant krijgt drie dagen om te beoordelen of een klacht in te dienen.",
@@ -157,10 +204,17 @@
     "askedToClose": "We hebben je gevraagd deze boeking te sluiten.",
     "timeline": "Tijdlijn",
     "timelineReason": {
-      "created_by_customer": "Boeking gestart", "submitted_by_customer": "Aanvraag verstuurd", "accepted_by_provider": "Geaccepteerd",
-      "declined_without_reason": "Geweigerd", "not_available": "Geweigerd: niet beschikbaar", "cannot_perform": "Geweigerd: dienst niet aangeboden",
-      "outside_area": "Geweigerd: buiten werkgebied", "other": "Geweigerd", "provider_did_not_respond": "Verlopen zonder reactie",
-      "customer_did_not_pay": "Geannuleerd: betaling niet voltooid", "checkout_hold_expired": "Concept verlopen",
+      "created_by_customer": "Boeking gestart",
+      "submitted_by_customer": "Aanvraag verstuurd",
+      "accepted_by_provider": "Geaccepteerd",
+      "declined_without_reason": "Geweigerd",
+      "not_available": "Geweigerd: niet beschikbaar",
+      "cannot_perform": "Geweigerd: dienst niet aangeboden",
+      "outside_area": "Geweigerd: buiten werkgebied",
+      "other": "Geweigerd",
+      "provider_did_not_respond": "Verlopen zonder reactie",
+      "customer_did_not_pay": "Geannuleerd: betaling niet voltooid",
+      "checkout_hold_expired": "Concept verlopen",
       "marked_done_by_provider": "Door de aanbieder als afgerond gemarkeerd",
       "marked_done_by_platform": "Automatisch als afgerond gemarkeerd",
       "marked_done_by_admin": "Door het platform als afgerond gemarkeerd",
@@ -174,11 +228,19 @@
       "dispute_rejected": "Geschil ongegrond",
       "close_by": "Sluiten voor",
       "feedback_by": "Reactie voor",
-      "payment_confirmed": "Betaling bevestigd", "cancelled_by_customer": "Geannuleerd door de klant",
+      "payment_confirmed": "Betaling bevestigd",
+      "cancelled_by_customer": "Geannuleerd door de klant",
       "superseded_by_new_draft": "Vervangen door een nieuwe boeking",
-      "respond_by": "Reageren voor", "pay_by": "Betalen voor", "unknown": "Status gewijzigd"
+      "respond_by": "Reageren voor",
+      "pay_by": "Betalen voor",
+      "unknown": "Status gewijzigd"
     },
-    "technical": "Technische details", "bookingId": "Boeking", "serviceOptionId": "Optie", "memberId": "Professional", "paymentRef": "Betalingsreferentie", "none": "—"
+    "technical": "Technische details",
+    "bookingId": "Boeking",
+    "serviceOptionId": "Optie",
+    "memberId": "Professional",
+    "paymentRef": "Betalingsreferentie",
+    "none": "—"
   },
   "revenue": "Omzet",
   "comingSoon": "Binnenkort beschikbaar.",
@@ -489,7 +551,8 @@
     "SERVICE_NEEDS_MEMBER": "Deze dienst heeft minstens één persoon nodig die hem uitvoert.",
     "MEMBER_NOT_IN_PROVIDER": "Deze persoon maakt niet meer deel uit van het team.",
     "NOT_PROVIDER_MEMBER": "Je hebt geen toegang tot dit bedrijf.",
-    "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan een dienst publiceren, de publicatie ongedaan maken of archiveren."
+    "NOT_PROVIDER_OWNER_OR_ADMIN": "Alleen de eigenaar van het bedrijf of een beheerder kan een dienst publiceren, de publicatie ongedaan maken of archiveren.",
+    "PROVIDER_NOT_ACTIVE": "Dit bedrijf wordt nog beoordeeld, dus de diensten kunnen nog niet live. Zodra het is goedgekeurd, kun je publiceren."
   },
   "translationsTitle": "Vertalingen",
   "translationsHint": "Alleen de taal waarin je dit hebt geschreven is verplicht. Alle andere zijn optioneel — laat leeg wat je nog niet hebt geschreven, nu of later.",
@@ -653,5 +716,19 @@
   "activityTitle": "Recente activiteit",
   "activityHint": "Wat er in deze werkruimte is gebeurd.",
   "activityEmptyTitle": "Nog geen activiteit",
-  "activityEmpty": "Boekingen, betalingen en wijzigingen in deze werkruimte verschijnen hier zodra ze plaatsvinden."
+  "activityEmpty": "Boekingen, betalingen en wijzigingen in deze werkruimte verschijnen hier zodra ze plaatsvinden.",
+  "workspaceStatus": {
+    "pendingTitle": "Dit bedrijf wacht op goedkeuring",
+    "pendingBody": "Je kunt nu alles klaarzetten, maar wat je publiceert verschijnt pas in de marktplaats als het platform het bedrijf heeft goedgekeurd.",
+    "suspendedTitle": "Dit bedrijf is geschorst",
+    "suspendedBody": "De diensten zijn uit de marktplaats gehaald en kunnen pas opnieuw worden gepubliceerd als de schorsing is opgeheven.",
+    "badgePending": "Wacht op goedkeuring",
+    "badgeSuspended": "Geschorst"
+  },
+  "navShort": {
+    "messages": "Berichten",
+    "availability": "Agenda",
+    "services": "Diensten",
+    "bookings": "Boekingen"
+  }
 }

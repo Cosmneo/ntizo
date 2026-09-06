@@ -8,6 +8,7 @@ const COMPLETE: CompletenessInput = {
   optionCount: 1,
   memberIds: ["m1"],
   individualProvider: false,
+  workspaceActive: true,
 };
 
 const by = (input: CompletenessInput, id: string) => sectionStates(input).find((s) => s.id === id)!;
@@ -115,5 +116,35 @@ describe("requiredProgress", () => {
   test("optional sections never enter the count", () => {
     const states = sectionStates({ ...COMPLETE, categoryId: null });
     expect(requiredProgress(states)).toEqual({ done: 2, total: 3 });
+  });
+});
+
+describe("publishBlocker — the workspace itself", () => {
+  test("a workspace still awaiting approval blocks publishing", () => {
+    // `SetServiceStatusCommand` refuses this with PROVIDER_NOT_ACTIVE before
+    // it ever calls `canPublish`. Predicting it here is what stops the
+    // provider pressing Publish, seeing it succeed, and never appearing in
+    // the browse — the storefront filters their workspace out
+    // (`conditionsFor`, service-read.repository.ts).
+    expect(publishBlocker({ ...COMPLETE, workspaceActive: false })).toBe("PROVIDER_NOT_ACTIVE");
+  });
+
+  test("it is reported before anything about the service, as the server does", () => {
+    // The server asks `isProviderActive` before `service.publish()`, so a
+    // service that is also missing its category still hears about the
+    // workspace first. Reporting the category instead would send somebody to
+    // fix a form that was never what stood in the way.
+    expect(publishBlocker({ ...COMPLETE, workspaceActive: false, categoryId: null }))
+      .toBe("PROVIDER_NOT_ACTIVE");
+  });
+
+  test("it is not one of the form's sections", () => {
+    // Nothing in the wizard can fix it, so it must not appear in the rail as
+    // a task with a tick box — the progress count would then be permanently
+    // short of its total with no way to close the gap.
+    const codes = sectionStates({ ...COMPLETE, workspaceActive: false }).map((s) => s.blockingCode);
+    expect(codes).not.toContain("PROVIDER_NOT_ACTIVE");
+    expect(requiredProgress(sectionStates({ ...COMPLETE, workspaceActive: false })))
+      .toEqual({ done: 3, total: 3 });
   });
 });
