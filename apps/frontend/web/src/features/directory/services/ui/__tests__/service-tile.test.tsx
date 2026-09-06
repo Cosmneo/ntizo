@@ -1,0 +1,148 @@
+import { describe, expect, it } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import type { ServiceDTO } from "@ntizo/shared/read-models";
+import { ServiceTile } from "../service-tile";
+
+/**
+ * The tile rendered inside a router stub, because every claim it makes is
+ * about a `<Link>` — where the title goes — and a `<Link>` outside a router
+ * throws rather than rendering an `<a>`.
+ *
+ * No `QueryClient` and no viewmodel mock: this tile is handed a `ServiceDTO`
+ * and asks nothing of anybody. The harness is the one
+ * `service-listing-card.test.tsx` used, minus the seam it does not need,
+ * rendering inside an `<li>` the way a browse grid actually hosts a tile.
+ */
+function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
+  return {
+    id: "svc-1",
+    providerId: "prov-1",
+    providerName: "Estúdio Mavalane",
+    providerSlug: "estudio-mavalane",
+    providerType: "organization",
+    providerRatingAverage: 4.7,
+    providerReviewCount: 6,
+    categoryCode: "hair",
+    categoryName: "Hair & beauty",
+    name: "Corte de cabelo",
+    description: null,
+    locationType: "at_provider",
+    bookingMode: "priced",
+    imageUrls: [],
+    defaultOption: {
+      amountMinor: 80_000,
+      currency: "MZN",
+      durationMinutes: 45,
+      minMinutes: null,
+      stepMinutes: null,
+      pricingMode: "fixed",
+    },
+    fromAmountMinor: 80_000,
+    optionCount: 1,
+    isFallback: false,
+    providerVerified: false,
+    ...over,
+  };
+}
+
+const option = service().defaultOption!;
+
+function renderTile(dto: ServiceDTO, locale = "en-US") {
+  const rootRoute = createRootRoute();
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => (
+      <ul>
+        <li>
+          <ServiceTile service={dto} locale={locale} />
+        </li>
+      </ul>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  return render(<RouterProvider router={router} />);
+}
+
+describe("ServiceTile", () => {
+  // Every test awaits `findByRole("listitem")` first, the same settle point
+  // `service-listing-card.test.tsx` uses: `RouterProvider` resolves its route
+  // asynchronously even with no loader, so a bare synchronous `render` leaves
+  // the container empty and every query beneath it fails.
+  it("prints the price in full and the duration beside it", async () => {
+    renderTile(service());
+    await screen.findByRole("listitem");
+    // `formatHeadlinePrice(80_000, "MZN", "en-US")` prints "MZN 800", not
+    // "800 MZN": `en-US` has no short symbol for MZN, so `Intl` falls back to
+    // the ISO code and, in that locale, places it before the number — the
+    // same order `service-listing-card.test.tsx` asserted for this same
+    // formatter. Verified against the real `Intl.NumberFormat` output rather
+    // than trusted blind.
+    expect(screen.getByText("MZN 800")).toBeInTheDocument();
+    expect(screen.getByText("45 min")).toBeInTheDocument();
+  });
+
+  it("puts the rating on the provider's line, labelled as the provider's", async () => {
+    renderTile(service());
+    await screen.findByRole("listitem");
+    // The score is the provider's average across everything they sell. Beside
+    // the service's name it would claim a per-service rating that does not
+    // exist in this product.
+    const byline = screen.getByTestId("tile-byline");
+    expect(byline).toHaveTextContent("Estúdio Mavalane");
+    expect(within(byline).getByLabelText(/out of 5/i)).toBeInTheDocument();
+  });
+
+  it("answers a quote with words", async () => {
+    renderTile(service({ bookingMode: "quote", defaultOption: null }));
+    await screen.findByRole("listitem");
+    expect(screen.getByText("Price to agree")).toBeInTheDocument();
+    expect(screen.queryByText(/0 MZN/)).toBeNull();
+  });
+
+  it("draws the unit inside an hourly amount", async () => {
+    renderTile(
+      service({
+        defaultOption: {
+          ...option,
+          amountMinor: 50_000,
+          pricingMode: "hourly",
+          durationMinutes: null,
+          minMinutes: 60,
+        },
+      }),
+    );
+    await screen.findByRole("listitem");
+    // Same "MZN" ordering as the fixed-price test above: "MZN 500", not
+    // "500 MZN".
+    expect(screen.getByText(/MZN.?500/)).toHaveTextContent("/h");
+  });
+
+  it("says New where the rating would be, for a provider nobody has reviewed", async () => {
+    renderTile(service({ providerRatingAverage: null, providerReviewCount: 0 }));
+    await screen.findByRole("listitem");
+    expect(screen.getByText("New")).toBeInTheDocument();
+  });
+
+  it("is exactly one link", async () => {
+    renderTile(service());
+    await screen.findByRole("listitem");
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("falls back to the brand tile when the service has no photograph", async () => {
+    renderTile(service({ imageUrls: [] }));
+    await screen.findByRole("listitem");
+    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+  });
+});
