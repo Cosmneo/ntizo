@@ -29,6 +29,7 @@ const fakeDb = {} as DrizzleDb;
 function recordingRepository() {
   return {
     async insertEvents() {},
+    async markDispatched() {},
   } as unknown as DrizzleOutboxEventRepository;
 }
 
@@ -168,5 +169,83 @@ describe("OutboxAdapter — in-process dispatch", () => {
         "provider",
       ),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("OutboxAdapter — what `status` means", () => {
+  /**
+   * The column was inserted as `pending` and never advanced by anything, so
+   * it said "awaiting dispatch" about 267 rows that had already been
+   * dispatched. That is worse than an unused column: the obvious reading of
+   * it — drain everything pending — would have re-sent hundreds of
+   * notifications to real people.
+   *
+   * Marking after the dispatch is what makes `pending` finally mean
+   * undelivered, which is the precondition for ever building a relay on it.
+   */
+  it("marks an event dispatched once its handlers have run", async () => {
+    const marked: string[] = [];
+    const repository = {
+      async insertEvents() {},
+      async markDispatched(ids: string[]) {
+        marked.push(...ids);
+      },
+    } as unknown as DrizzleOutboxEventRepository;
+
+    const adapter = new OutboxAdapter(repository);
+    const event = new TestEvent("provider-123");
+
+    await __runWithTransactionContextForTests(fakeDb, async () => {
+      await adapter.publish([event], "provider");
+    });
+
+    expect(marked).toEqual([event.eventId]);
+  });
+
+  it("leaves the row pending when the commit never happens", async () => {
+    // A rolled-back transaction never drains its after-commit callbacks, so
+    // nothing was announced and nothing may be marked. The insert rolled back
+    // with it, but the ordering is the point: marking must be downstream of
+    // the dispatch, not beside the insert.
+    const marked: string[] = [];
+    const repository = {
+      async insertEvents() {},
+      async markDispatched(ids: string[]) {
+        marked.push(...ids);
+      },
+    } as unknown as DrizzleOutboxEventRepository;
+
+    const adapter = new OutboxAdapter(repository);
+
+    await __runWithTransactionContextForTests(
+      fakeDb,
+      async () => {
+        await adapter.publish([new TestEvent("provider-123")], "provider");
+      },
+      { commit: false },
+    );
+
+    expect(marked).toEqual([]);
+  });
+
+  it("still reports the publish as successful when marking fails", async () => {
+    // The mark is bookkeeping about something that already happened. A
+    // failure to record it must not fail the provider approval that produced
+    // the event — the same rule the dispatch itself follows, and the reason
+    // this adapter's docblock exists.
+    const repository = {
+      async insertEvents() {},
+      async markDispatched() {
+        throw new Error("the update lost its connection");
+      },
+    } as unknown as DrizzleOutboxEventRepository;
+
+    const adapter = new OutboxAdapter(repository);
+
+    await __runWithTransactionContextForTests(fakeDb, async () => {
+      await adapter.publish([new TestEvent("provider-123")], "provider");
+    });
+    // Reaching here without throwing is the assertion.
+    expect(true).toBe(true);
   });
 });
