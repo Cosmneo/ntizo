@@ -124,6 +124,9 @@ describe("the menu sheet", () => {
     await screen.findByText("Services page");
     const menu = within(bar()).getByRole("button", { name: /menu/i });
 
+    // A real tap focuses the button before it fires; jsdom's fireEvent does
+    // not, and the primitive returns focus to wherever it was on open.
+    menu.focus();
     fireEvent.click(menu);
     const sheet = await screen.findByRole("dialog", { name: /menu/i });
     expect(menu).toHaveAttribute("aria-expanded", "true");

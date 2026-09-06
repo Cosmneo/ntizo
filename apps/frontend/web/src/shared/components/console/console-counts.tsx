@@ -13,9 +13,10 @@ import type { ConsoleCountSource, ConsoleZone } from "@/shared/lib/console-nav";
  * scope, so the sidebar, the tab bar and the sheet all show the same number
  * from the same cache entry the page itself uses.
  *
- * Sources with no read behind them yet are simply absent: `bookingRequests`
- * until the bookings plan lands its stats read, `flaggedReviews` until the
- * reviews read exposes a pending count. An absent source draws no badge.
+ * A source with no read behind it yet is simply absent — `flaggedReviews`,
+ * until the reviews read exposes a pending count. An absent source draws no
+ * badge. `bookingRequests` comes from the bookings stats read, the same query
+ * the Overview's cards use, so the badge and the dashboard cannot disagree.
  *
  * Branched at the component level, not with conditional hooks: each zone
  * mounts only its own reads, and the workspace mounts nothing until it knows

@@ -22,9 +22,9 @@ export type ConsoleZone = "workspace" | "platform";
  * Where a badge's number comes from. A name, not a number: an item declares
  * that it carries a count and the shell resolves it against the reads it
  * already has in scope (`console-counts.tsx`). A source with no read behind
- * it yet resolves to `undefined` and draws nothing — `bookingRequests` until
- * the bookings plan lands its stats read, `flaggedReviews` until the reviews
- * read exposes a pending count.
+ * it yet resolves to `undefined` and draws nothing — `flaggedReviews`, until
+ * the reviews read exposes a pending count. `bookingRequests` resolves from the
+ * bookings stats read the Overview already draws its cards from.
  */
 export type ConsoleCountSource =
   | "unreadThreads"

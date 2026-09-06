@@ -84,11 +84,19 @@ describe("consoleNav: shape", () => {
     expect(consoleNav("platform").manage[0]?.key).toBe("users");
   });
 
-  it("gives every item a unique key within its zone", () => {
+  it("gives every item a unique key and a unique URL within its zone", () => {
     for (const zone of ["workspace", "platform"] as const) {
-      const keys = allItems(consoleNav(zone)).map((i) => i.key);
+      const items = allItems(consoleNav(zone));
+      const keys = items.map((i) => i.key);
+      const urls = items.map((i) => i.url);
       expect(new Set(keys).size).toBe(keys.length);
+      expect(new Set(urls).size).toBe(urls.length);
     }
+  });
+
+  it("puts the queue first in Work — Bookings for a workspace, Providers for the platform", () => {
+    expect(consoleNav("workspace").work[0]?.key).toBe("bookings");
+    expect(consoleNav("platform").work[0]?.key).toBe("providers");
   });
 });
 

@@ -41,7 +41,7 @@ export function ConsoleNavItems({ nav, slug }: { nav: ConsoleNav; slug: string |
         <SidebarMenuButton asChild isActive={isActive} tooltip={t(item.titleKey)} className="relative">
           <Link to={item.url} params={{ slug: slug ?? "" }}>
             <Icon />
-            <span>{t(item.titleKey)}</span>
+            <span className="min-w-0 truncate">{t(item.titleKey)}</span>
             {item.count && counts[item.count] ? (
               // A number beside the label; a dot when the rail collapses to icons, where
               // two digits in 48px are unreadable and a wrong number is worse than none.

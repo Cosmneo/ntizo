@@ -4536,16 +4536,13 @@ Eight files each.
 
 **Trigger:** the Phase 5 locale sweep, or the next task that has to touch all eight files anyway.
 
-## #197 — `Sheet` does not make the page behind it inert
+## #197 — `Sheet` does not make the page behind it inert — folded into 78
 
-The UI package's `Sheet` primitive — now the console's menu sheet, and before that the old
-left-hand drawer — draws a backdrop and traps Tab inside the panel, but does not mark the page
-behind it `inert` or `aria-hidden`, so a screen reader's rotor can still reach content under the
-backdrop while the sheet is open. Inherited, not introduced, by the console work.
+Written against the old drawer primitive. `dev` has since rewritten `Sheet` into a modal dialog
+that traps Tab, closes on Escape and restores focus; what remains is the `inert` / `aria-hidden`
+on the page behind the backdrop, which follow-up 78 already tracks. Nothing further here.
 
-**Trigger:** the first accessibility audit, or before the console is put in front of a
-screen-reader user. The fix is in `packages/frontend/src/components/sheet.tsx`, not in any
-consumer.
+**Trigger:** see 78.
 
 ## #198 — A badge's count has no unit in its accessible name
 
