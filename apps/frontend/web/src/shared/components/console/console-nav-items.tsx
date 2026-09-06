@@ -8,8 +8,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  cn,
 } from "@ntizo/frontend-ui";
 import { resolveUrl, type ConsoleNav, type ConsoleNavItem } from "@/shared/lib/console-nav";
+import { useConsoleCounts } from "./console-counts";
 
 /**
  * The menu: home ungrouped at the top, then Work, then Manage.
@@ -25,6 +27,7 @@ import { resolveUrl, type ConsoleNav, type ConsoleNavItem } from "@/shared/lib/c
 export function ConsoleNavItems({ nav, slug }: { nav: ConsoleNav; slug: string | undefined }) {
   const { t } = useTranslation(nav.ns);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const counts = useConsoleCounts();
 
   function row(item: ConsoleNavItem) {
     const Icon = item.icon;
@@ -38,6 +41,21 @@ export function ConsoleNavItems({ nav, slug }: { nav: ConsoleNav; slug: string |
           <Link to={item.url} params={{ slug: slug ?? "" }}>
             <Icon />
             <span>{t(item.titleKey)}</span>
+            {item.count && counts[item.count] ? (
+              // A number beside the label; a dot when the rail collapses to icons, where
+              // two digits in 48px are unreadable and a wrong number is worse than none.
+              // The tooltip carries the label; the dot says only that something waits.
+              <span
+                className={cn(
+                  "ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-primary)] px-1.5 text-[10px] font-semibold text-[var(--color-primary-foreground)]",
+                  "group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:right-1 group-data-[collapsible=icon]:top-1",
+                  "group-data-[collapsible=icon]:h-2 group-data-[collapsible=icon]:w-2 group-data-[collapsible=icon]:min-w-0",
+                  "group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:text-[0px]",
+                )}
+              >
+                {counts[item.count]}
+              </span>
+            ) : null}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>

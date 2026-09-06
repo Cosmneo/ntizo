@@ -5,13 +5,19 @@ import { NotificationBellLink } from "@/shared/components/notification-bell-link
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
 import { useProviderDetail } from "@/features/provider/viewmodel/use-providers";
 import { formatCommission } from "@/shared/domain/commission-format";
+import { BottomEdgeProvider } from "@/shared/lib/console-bottom-edge";
 import { consoleNav, type ConsoleNav, type ConsoleZone } from "@/shared/lib/console-nav";
+import { useIsTablet } from "@/shared/hooks/use-is-tablet";
 import { PageHeaderContext, type PageHeaderState } from "@/shared/lib/page-header";
 import { applyThemePreference, readThemePreference } from "@/shared/lib/theme";
+import { ConsoleCountsProvider } from "./console-counts";
 import { ConsoleHeader } from "./console-header";
+import { ConsoleMenuProvider } from "./console-menu-context";
+import { ConsoleMenuSheet } from "./console-menu-sheet";
 import { ConsoleSidebar } from "./console-sidebar";
 import { ConsoleStrip } from "./console-strip";
-import { WorkspaceSwitcher } from "./workspace-switcher";
+import { ConsoleTabBar } from "./console-tab-bar";
+import { MobileWorkspaceSwitcher, WorkspaceSwitcher } from "./workspace-switcher";
 
 /**
  * The bordered square the bell sits in. 44px on a phone — where it is the
@@ -48,11 +54,15 @@ export function ConsoleShell({ zone, children }: { zone: ConsoleZone; children: 
 
   return (
     <PageHeaderContext.Provider value={headerCtx}>
-      {zone === "workspace" ? (
-        <WorkspaceShell nav={nav}>{children}</WorkspaceShell>
-      ) : (
-        <PlatformShell nav={nav}>{children}</PlatformShell>
-      )}
+      <BottomEdgeProvider>
+        <ConsoleMenuProvider>
+          {zone === "workspace" ? (
+            <WorkspaceShell nav={nav}>{children}</WorkspaceShell>
+          ) : (
+            <PlatformShell nav={nav}>{children}</PlatformShell>
+          )}
+        </ConsoleMenuProvider>
+      </BottomEdgeProvider>
     </PageHeaderContext.Provider>
   );
 }
@@ -75,25 +85,28 @@ function WorkspaceShell({ nav, children }: { nav: ConsoleNav; children: ReactNod
       : formatCommission(detail.commissionBps, i18n.resolvedLanguage ?? i18n.language);
 
   return (
-    <ShellFrame
-      nav={nav}
-      slug={activeProvider?.slug}
-      zoneLabel={t("providerConsole")}
-      bell={
-        // The workspace's own inbox, not the person's. `useUnreadCount`'s
-        // `enabled` guard keeps it from firing while `providerId` is "".
-        <NotificationBellLink
-          scope={{ kind: "provider", providerId }}
-          to="/provider/$slug/notifications"
-          params={{ slug: activeProvider?.slug ?? "" }}
-          className={BELL_CLASS}
-        />
-      }
-      strip={activeProvider ? <ConsoleStrip status={activeProvider.status} commission={commission} /> : null}
-      workspaceMenu={<WorkspaceSwitcher />}
-    >
-      {children}
-    </ShellFrame>
+    <ConsoleCountsProvider zone="workspace" providerId={providerId}>
+      <ShellFrame
+        nav={nav}
+        slug={activeProvider?.slug}
+        zoneLabel={t("providerConsole")}
+        bell={
+          // The workspace's own inbox, not the person's. `useUnreadCount`'s
+          // `enabled` guard keeps it from firing while `providerId` is "".
+          <NotificationBellLink
+            scope={{ kind: "provider", providerId }}
+            to="/provider/$slug/notifications"
+            params={{ slug: activeProvider?.slug ?? "" }}
+            className={BELL_CLASS}
+          />
+        }
+        strip={activeProvider ? <ConsoleStrip status={activeProvider.status} commission={commission} /> : null}
+        workspaceMenu={<WorkspaceSwitcher />}
+        sheetHeader={<MobileWorkspaceSwitcher />}
+      >
+        {children}
+      </ShellFrame>
+    </ConsoleCountsProvider>
   );
 }
 
@@ -101,15 +114,17 @@ function WorkspaceShell({ nav, children }: { nav: ConsoleNav; children: ReactNod
 function PlatformShell({ nav, children }: { nav: ConsoleNav; children: ReactNode }) {
   const { t } = useTranslation("admin");
   return (
-    <ShellFrame
-      nav={nav}
-      slug={undefined}
-      zoneLabel={t("adminConsole")}
-      bell={<NotificationBellLink scope={{ kind: "mine" }} to="/account/notifications" className={BELL_CLASS} />}
-      strip={null}
-    >
-      {children}
-    </ShellFrame>
+    <ConsoleCountsProvider zone="platform">
+      <ShellFrame
+        nav={nav}
+        slug={undefined}
+        zoneLabel={t("adminConsole")}
+        bell={<NotificationBellLink scope={{ kind: "mine" }} to="/account/notifications" className={BELL_CLASS} />}
+        strip={null}
+      >
+        {children}
+      </ShellFrame>
+    </ConsoleCountsProvider>
   );
 }
 
@@ -125,6 +140,7 @@ function ShellFrame({
   bell,
   strip,
   workspaceMenu,
+  sheetHeader,
   children,
 }: {
   nav: ConsoleNav;
@@ -133,15 +149,21 @@ function ShellFrame({
   bell: ReactNode;
   strip: ReactNode;
   workspaceMenu?: ReactNode;
+  sheetHeader?: ReactNode;
   children: ReactNode;
 }) {
+  // Between md and lg the sidebar starts as its icon rail; the person can
+  // still expand it, and that choice survives — `defaultOpen` is read once.
+  const isTablet = useIsTablet();
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={!isTablet}>
       <ConsoleSidebar nav={nav} slug={slug} zoneLabel={zoneLabel} workspaceMenu={workspaceMenu} />
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <ConsoleHeader bell={bell} />
         {strip}
         <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <ConsoleTabBar nav={nav} slug={slug} />
+        <ConsoleMenuSheet nav={nav} slug={slug} zoneLabel={zoneLabel} header={sheetHeader} />
       </SidebarInset>
     </SidebarProvider>
   );
