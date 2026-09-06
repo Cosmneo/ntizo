@@ -46,6 +46,8 @@ let categoryId: string;
 
 let studioProviderId: string;
 let quoteOnlyProviderId: string;
+let multiOptionProviderId: string;
+let duplicateNameProviderId: string;
 
 async function seedProvider(overrides: { name: string }): Promise<string> {
   const userId = crypto.randomUUID();
@@ -111,6 +113,18 @@ async function seedPublishedService(
   return serviceId;
 }
 
+/** A second active option on an already-seeded priced service. */
+async function addActiveOption(serviceId: string, amountMinor: number): Promise<void> {
+  await db.insert(serviceOption).values({
+    serviceId,
+    pricingMode: "fixed",
+    amountMinor,
+    currency: "MZN",
+    durationMinutes: 30,
+    isActive: true,
+  });
+}
+
 beforeAll(async () => {
   const [cat] = await db
     .insert(category)
@@ -126,6 +140,21 @@ beforeAll(async () => {
 
   quoteOnlyProviderId = await seedProvider({ name: "Mestre Zunguze" });
   await seedPublishedService(quoteOnlyProviderId, { name: "Reparacao", bookingMode: "quote" });
+
+  // One service, two active options at different prices — the case the
+  // dedupe has to collapse to a single chip, at the cheaper of the two.
+  multiOptionProviderId = await seedProvider({ name: "Salao Compacto" });
+  const twoOptionServiceId = await seedPublishedService(multiOptionProviderId, {
+    name: "Manicure",
+    amountMinor: 60_000,
+  });
+  await addActiveOption(twoOptionServiceId, 40_000);
+
+  // Two distinct services that happen to translate to the same name — the
+  // case the dedupe must NOT collapse: two services, two chips.
+  duplicateNameProviderId = await seedProvider({ name: "Duas Portas" });
+  await seedPublishedService(duplicateNameProviderId, { name: "Consulta", amountMinor: 20_000 });
+  await seedPublishedService(duplicateNameProviderId, { name: "Consulta", amountMinor: 30_000 });
 });
 
 afterAll(async () => {
@@ -157,5 +186,27 @@ describe("DrizzleProviderPublicRepository — services on a directory row", () =
   test("returns an empty list, not a zero, for a business that only quotes", async () => {
     const { items } = await page();
     expect(items.find((p) => p.id === quoteOnlyProviderId)!.services).toEqual([]);
+  });
+
+  test("collapses two active options of the same service into one chip, at the cheaper price", async () => {
+    // The dedupe keys on the service id, not the row's price or name — this
+    // is the case a name-only dedupe would still have passed, since both
+    // rows here already share a name. Two option rows for the one service
+    // must still produce exactly one chip.
+    const { items } = await page();
+    const row = items.find((p) => p.id === multiOptionProviderId)!;
+    expect(row.services).toHaveLength(1);
+    expect(row.services[0]).toMatchObject({ name: "Manicure", amountMinor: 40_000 });
+  });
+
+  test("keeps two distinct services that translate to the same name as two separate chips", async () => {
+    // The case a name-keyed dedupe collapsed: two different services, same
+    // translated name, must still produce two chips — this is what pins the
+    // fix to `service.id` rather than `row.name`.
+    const { items } = await page();
+    const row = items.find((p) => p.id === duplicateNameProviderId)!;
+    expect(row.services).toHaveLength(2);
+    expect(row.services.every((s) => s.name === "Consulta")).toBe(true);
+    expect(row.services.map((s) => s.amountMinor).sort((a, b) => a - b)).toEqual([20_000, 30_000]);
   });
 });

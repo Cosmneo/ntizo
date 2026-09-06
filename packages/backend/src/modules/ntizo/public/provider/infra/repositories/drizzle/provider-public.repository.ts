@@ -326,15 +326,28 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
    * which puts a `json_agg` over a window into the page query for no gain.
    * One extra round trip for the whole page.
    *
-   * **Deviates from the plan this method was drafted against in one respect,
-   * and it is worth recording why.** A service has no `name` column of its
-   * own — like a category, it is written in `service_translation`, one row
-   * per language — so a plain `service.name` reference does not exist to
-   * select. This joins a subquery that resolves one name per service with
-   * the same fallback `categoriesFor` uses, minus its last rung: the reader's
-   * language, then any language. (No bare code to fall back to the way a
-   * category has — a service's id is not something a chip can print.) The
-   * `sql` this needs is confined to that grouped subquery, over
+   * A service has no `name` column of its own — like a category, it is
+   * written in `service_translation`, one row per language — so this joins a
+   * subquery that resolves one name per service with the same fallback
+   * `categoriesFor` uses, minus its last rung: the reader's language, then
+   * any language. (No bare code to fall back to the way a category has — a
+   * service's id is not something a chip can print.)
+   *
+   * That subquery is narrowed to the page's own services **before** it
+   * groups, with `where(inArray(serviceTranslation.serviceId, <the page's
+   * service ids>))` — a builder subquery, the same idiom `wheres()`'s
+   * `categoryCode` filter already uses, not a raw `sql` predicate. This is
+   * not optional: Postgres cannot push the outer join's provider filter into
+   * an already-grouped subquery, so an unfiltered `GROUP BY service_id` here
+   * would aggregate every translation for every service ever listed on the
+   * platform, on every single page load, before the join ever narrows
+   * anything down. Narrowing first is what makes "exactly as `categoriesFor`
+   * above" true of the *plan*, not just of the fallback chain —
+   * `categoriesFor`'s own coalesce lives inside a query already restricted
+   * by `inArray(service.providerId, providerIds)`, so nothing unfiltered is
+   * ever aggregated there either.
+   *
+   * The `sql` this needs is confined to that grouped subquery, over
    * `service_translation` alone, for the same reason `aggregates()` above
    * allows it there: a single-table grouped subquery has nothing for a bare
    * column reference to be ambiguous with. The join to it is inner, not
@@ -358,9 +371,19 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
 
     const db = getDb();
 
+    // The page's own services, so the name aggregate below never has to look
+    // past them — see the doc comment above for why this has to happen
+    // *before* the `GROUP BY`, not as a join condition on the grouped result.
+    const pageServiceIds = db
+      .select({ id: service.id })
+      .from(service)
+      .where(inArray(service.providerId, providerIds));
+
     // One resolved name per service — the reader's language if it has one,
-    // any language otherwise — grouped over `service_translation` alone, so
-    // this join can never multiply the price rows below.
+    // any language otherwise — grouped over `service_translation` narrowed
+    // to `pageServiceIds` above, so this join can never multiply the price
+    // rows below and never aggregates a single translation this page has no
+    // use for.
     const names = db
       .select({
         serviceId: serviceTranslation.serviceId,
@@ -369,12 +392,14 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
           max(${serviceTranslation.name}))`.as("name"),
       })
       .from(serviceTranslation)
+      .where(inArray(serviceTranslation.serviceId, pageServiceIds))
       .groupBy(serviceTranslation.serviceId)
       .as("service_name_agg");
 
     const rows = await db
       .select({
         providerId: service.providerId,
+        serviceId: service.id,
         name: names.name,
         amountMinor: serviceOption.amountMinor,
         currency: serviceOption.currency,
@@ -393,6 +418,11 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       )
       .orderBy(asc(serviceOption.amountMinor), asc(names.name));
 
+    // Which service ids have already produced a chip for a given provider —
+    // kept apart from the DTO list itself, which has nowhere to carry a
+    // service id (the public shape is name/amount/currency/pricingMode only).
+    const seenServiceIds = new Map<string, Set<string>>();
+
     for (const row of rows) {
       const list = byProvider.get(row.providerId) ?? [];
       // The cap is applied here rather than in SQL: a per-provider LIMIT needs
@@ -400,9 +430,15 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       // a handful of options each. Ordered above, so the first three are the
       // cheapest three.
       if (list.length >= 3) continue;
-      // One chip per service, not per option: a service with three options
-      // arrives three times and its cheapest row is the one already in hand.
-      if (list.some((s) => s.name === row.name)) continue;
+      // One chip per *service*, keyed on its id — not on the translated name
+      // a row happens to carry, which two distinct services can share. A
+      // service with three active options arrives three times here; its
+      // cheapest row (ordered above) is the one already recorded, and the
+      // other two are skipped by id.
+      const seen = seenServiceIds.get(row.providerId) ?? new Set<string>();
+      if (seen.has(row.serviceId)) continue;
+      seen.add(row.serviceId);
+      seenServiceIds.set(row.providerId, seen);
       list.push({
         name: row.name,
         amountMinor: Number(row.amountMinor),
