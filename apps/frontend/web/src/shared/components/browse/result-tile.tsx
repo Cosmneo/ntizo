@@ -96,7 +96,7 @@ export function ResultTile({
   media: ReactNode;
   /** An `h3` holding the route-typed title link. */
   title: ReactNode;
-  /** Who provides it, their seal, their rating, where they are. */
+  /** Who provides it, their seal, their rating. Where it happens is the price line's job. */
   byline: ReactNode;
   price: ReactNode;
 }) {

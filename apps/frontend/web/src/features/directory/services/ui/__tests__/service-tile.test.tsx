@@ -110,6 +110,39 @@ describe("ServiceTile", () => {
     expect(screen.queryByText(/0 MZN/)).toBeNull();
   });
 
+  it("offers a quote hint beside the words", async () => {
+    // `priceQuoteHint` is the meta line beside `priceToAgree`'s amount — a
+    // reader who sees "Price to agree" alone has no next step; the hint
+    // ("Ask for a quote") is the one this branch of `servicePriceLine`
+    // carries and nothing exercised it until now.
+    renderTile(service({ bookingMode: "quote", defaultOption: null }));
+    await screen.findByRole("listitem");
+    expect(screen.getByText("Price to agree")).toBeInTheDocument();
+    expect(screen.getByText("Ask for a quote")).toBeInTheDocument();
+  });
+
+  it("says how many options there are, and prices from the cheapest", async () => {
+    // `servicePriceCell`'s "from" branch — more than one active option — was
+    // wired through (`line.amount.from`, `priceOptionCount`) but nothing
+    // rendered it until now.
+    renderTile(service({ optionCount: 3, fromAmountMinor: 250_000 }));
+    await screen.findByRole("listitem");
+    expect(screen.getByText("from")).toBeInTheDocument();
+    expect(screen.getByText("3 options")).toBeInTheDocument();
+  });
+
+  it("says the price is unavailable for a priced service with no active option", async () => {
+    // `canPublish` refuses to publish a `priced` service with zero options at
+    // publish time, but a provider can deactivate the last option afterwards
+    // — see `servicePriceCell`'s own doc comment. That state reaches this
+    // tile as `defaultOption: null` on a `priced` service, and it must not
+    // read as a free or a zero-priced job.
+    renderTile(service({ defaultOption: null }));
+    await screen.findByRole("listitem");
+    expect(screen.getByText("Price unavailable")).toBeInTheDocument();
+    expect(screen.queryByText(/0 MZN/)).toBeNull();
+  });
+
   it("draws the unit inside an hourly amount", async () => {
     renderTile(
       service({
