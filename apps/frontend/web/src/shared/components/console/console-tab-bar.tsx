@@ -67,7 +67,13 @@ export function ConsoleTabBar({ nav, slug }: { nav: ConsoleNav; slug: string | u
       <button
         id={CONSOLE_MENU_TRIGGER_ID}
         type="button"
-        onClick={() => setOpen(true)}
+        // Safari does not focus a button on tap, and the sheet returns focus
+        // to whatever had it when it opened. Take focus first, so it comes back
+        // here on close on an iPhone as it does everywhere else.
+        onClick={(e) => {
+          e.currentTarget.focus();
+          setOpen(true);
+        }}
         aria-expanded={open}
         aria-controls={CONSOLE_MENU_SHEET_ID}
         className={TAB}
