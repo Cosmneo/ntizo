@@ -3245,3 +3245,51 @@ attribute changing.
 
 **Trigger:** before any locale other than Portuguese has real users, and before anyone
 investigates the hydration warning on its own — it is a symptom of this, not a separate bug.
+
+## #126 — The Reviews tab declares a count nothing resolves yet
+
+`consoleNav("platform")` marks Reviews with `count: "flaggedReviews"`, and `console-counts.tsx`
+resolves nothing for that source, so the tab draws no badge. Nothing is wrong on screen — the
+declaration is the seam, so that the badge is one hook away rather than a redesign.
+
+**Trigger:** the moment the reviews read exposes a pending or flagged count, resolve it in
+`PlatformCounts`; the tab and the sidebar item light up with no other change.
+
+## #127 — The Messages badge counts the loaded page, not the inbox
+
+`WorkspaceCounts` counts the threads with `unreadCount > 0` among the pages `useProviderThreads`
+has loaded. `communicationProviderThreads` is paginated and exposes no total, so this is an honest
+floor — the same number the Messages page's first screen shows, from the same cache entry — and it
+never overstates. But a provider whose unread threads run past the first page sees a smaller
+number than the truth.
+
+**Trigger:** an aggregate unread-thread count on `communicationProviderThreads`, or the first
+provider whose inbox runs past one page and notices.
+
+## #128 — The not-live strip has nowhere to link for "what happens next"
+
+The spec's strip for a pending or suspended workspace carries a link to what happens next. No
+such page exists, so the strip shows the title and, from `md` up, the body sentence, with no
+link.
+
+**Trigger:** when the company and support pages land (`2026-09-02-company-pages-design.md`),
+point the strip at the one that explains the review, and the suspended variant at support.
+
+## #129 — Locale keys the console no longer reads
+
+`nav.management` and `nav.organization` in `provider.json`, and `nav.platform` in both
+`provider.json` and `admin.json`, are read by nothing since the menu became Work and Manage.
+Eight files each.
+
+**Trigger:** the Phase 5 locale sweep, or the next task that has to touch all eight files anyway.
+
+## #130 — `Sheet` does not make the page behind it inert
+
+The UI package's `Sheet` primitive — now the console's menu sheet, and before that the old
+left-hand drawer — draws a backdrop and traps Tab inside the panel, but does not mark the page
+behind it `inert` or `aria-hidden`, so a screen reader's rotor can still reach content under the
+backdrop while the sheet is open. Inherited, not introduced, by the console work.
+
+**Trigger:** the first accessibility audit, or before the console is put in front of a
+screen-reader user. The fix is in `packages/frontend/src/components/sheet.tsx`, not in any
+consumer.
