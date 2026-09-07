@@ -50,17 +50,26 @@ function navLinkClassName(active: boolean, overlay: boolean): string {
  * the one place that is on every screen, and the pages below it are free to
  * begin with their own content.
  *
- * The three destinations moved to the right in the same change, because the
- * centre is the search's now. They sit beside the account controls rather
- * than in a column of their own: two clusters and a field reads as a bar,
- * where three separated groups read as three. They are bare text — see
- * `navLinkClassName` for why the capsule and the icons went.
+ * The three destinations moved to the right in the same change. They sit
+ * beside the account controls rather than in a column of their own: two
+ * clusters and a field reads as a bar, where three separated groups read as
+ * three. They are bare text — see `navLinkClassName` for why the capsule and
+ * the icons went.
  *
- * The search is centred in the space left between the logo and that cluster
- * — not in the window. Window-centring is what the old three-column grid
- * bought, and it is no longer purchasable: the right-hand cluster is ~420px
- * wide with the destinations in it, and the equal outer columns it would
- * take leave under 400px in the middle at any width this site is read at.
+ * **The bar hugs the logo. It is not centred, and does not pretend to be.**
+ * It was centred in the space left between the logo and the right-hand
+ * cluster, which is not the centre of the window — the logo is ~110px and
+ * the cluster ~420px, so the midpoint of what is left sits well to the left
+ * of the midpoint of the screen, and it read as a centring that had failed
+ * (7 September 2026).
+ *
+ * True window-centring is not available at the widths this site is read at.
+ * It takes equal outer columns, so both become the ~420px the cluster needs:
+ * 420px of field at 1440, and at 1024 the arithmetic leaves under 100px,
+ * which means either a field nobody can type in or dropping the destinations
+ * below 1280. Anchored to the logo it is the same distance from the same
+ * thing at every width, keeps its full 520px, and the free space collects
+ * where free space is harmless — between the bar and the cluster.
  */
 export function SiteHeader({
   overlay = false,
@@ -117,11 +126,15 @@ export function SiteHeader({
             width by default, so without this the bar refused to shrink and
             pushed the account controls off the right of the shell — which
             scrolls the whole page sideways, not just the header. */}
-        <div className="order-last w-full md:order-none md:w-auto md:min-w-0 md:flex-1">
-          <ServiceSearch {...search} className="w-full md:mx-auto md:max-w-[520px]" />
+        <div className="order-last w-full md:order-none md:w-auto md:min-w-0 md:max-w-[520px] md:flex-1">
+          <ServiceSearch {...search} className="w-full" />
         </div>
 
-        <div className="ml-auto flex items-center gap-2 md:ml-0 lg:gap-3.5">
+        {/* `ml-auto` at every width, which is what anchors the bar to the logo:
+            the cluster takes all the slack, so the bar starts at the same
+            place whatever is on the right of it — a signed-in avatar, a
+            "Sign in" pill, or a name of any length. */}
+        <div className="ml-auto flex items-center gap-2 lg:gap-3.5">
           <nav className="hidden items-center gap-6 lg:flex">
             {PUBLIC_NAV.map((item) => (
               <Link
