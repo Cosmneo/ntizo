@@ -405,8 +405,15 @@ function quoteSelect() {
       addressDistrict: quote.addressDistrict,
       addressDirections: quote.addressDirections,
       customerId: quote.customerId,
+      /**
+       * The profile's first name, and **`user.email` is deliberately not
+       * beside it.** The local part of an address is a real name, and this
+       * column is the one thing on this row a workspace is shown about the
+       * person — see `QuoteListRow.customerFirstName` and
+       * `to-provider-quote-dto.ts`. A blank becomes null in `toRow`; what a
+       * nameless customer is *called* is the provider mapper's decision.
+       */
       customerFirstName: profile.firstName,
-      customerEmail: user.email,
       /** `count(*)` is a string out of Postgres; `toRow` is what makes it a number. */
       attachmentCount: attachmentAgg.n,
     })
@@ -422,7 +429,9 @@ function quoteSelect() {
       and(eq(sourceName.serviceId, quote.serviceId), eq(sourceName.locale, service.sourceLocale)),
     )
     .leftJoin(profile, eq(profile.userId, quote.customerId))
-    .leftJoin(user, eq(user.id, quote.customerId))
+    // No join to `user`: the only column this query would want from it is the
+    // email, and reading it at all is what the fix above removed. One fewer
+    // join, and the leak is structurally unreachable rather than guarded.
     .leftJoin(verifiedAgg, eq(verifiedAgg.providerId, quote.providerId))
     .leftJoin(attachmentAgg, eq(attachmentAgg.quoteId, quote.id));
 }
@@ -472,21 +481,41 @@ function toRow(row: SelectedQuoteRow): QuoteListRow {
     addressDistrict: row.addressDistrict,
     addressDirections: row.addressDirections,
     customerId: row.customerId,
-    customerFirstName: displayFirstName(row.customerFirstName, row.customerEmail),
+    // Blank to null, never to an email-derived name. `toProviderRow` in
+    // `booking-read.repository.ts` normalises the identical column the
+    // identical way, and for the same reason: `""` is what
+    // `profile.first_name`'s `NOT NULL DEFAULT ''` means by "has not filled
+    // it in", and null is what the mapper already knows how to name.
+    customerFirstName: blankToNull(row.customerFirstName),
     attachmentCount: Number(row.attachmentCount ?? 0),
   };
 }
 
+/** `""` and `"   "` both mean "has not filled it in"; null is what the mappers already name. */
+function blankToNull(firstName: string | null): string | null {
+  const named = firstName?.trim();
+  return named ? named : null;
+}
+
 /**
- * A name to print for somebody whose profile has none.
+ * A name to print for one of **the workspace's own people** whose profile has
+ * none — a member who made a proposal, or a performer in the picker.
  *
  * `profile.first_name` is `NOT NULL DEFAULT ''`, so "has not filled it in" and
- * "is not there" arrive as the same blank — and both read models promise a
- * plain `string` that a card renders as a heading. The local part of the
- * address they registered with is the one other thing the platform reliably
- * knows about them, and it is what the workspace would otherwise see a gap
- * for. `""` only where the left join found no account at all, which a
- * `NOT NULL` FK makes unreachable.
+ * "is not there" arrive as the same blank, while `quoteProposalReadModel`
+ * and `quotePerformerReadModel` both promise a plain `string` a card renders
+ * as a heading. The local part of the address they registered with is the one
+ * other thing the platform reliably knows about them, and a workspace already
+ * has its own staff's addresses — reading one back to them leaks nothing.
+ *
+ * **Never for the customer.** The same fallback applied to `customer_id`
+ * would hand a workspace "joao.silva" off a customer who never set a name:
+ * a real name, and a strong lead toward taking the deal off the platform
+ * before the commission is earned — the exact incentive the address, the
+ * number and the address itself were kept off `providerQuoteReadModel` to
+ * remove. `toRow` uses `blankToNull` above instead, and `quoteSelect` does
+ * not read the customer's email at all, so this function cannot be reached
+ * with one.
  */
 function displayFirstName(firstName: string | null, address: string | null): string {
   const named = firstName?.trim();

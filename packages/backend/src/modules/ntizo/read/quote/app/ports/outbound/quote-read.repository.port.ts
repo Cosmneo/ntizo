@@ -47,7 +47,22 @@ export interface QuoteListRow {
   addressDistrict: string | null;
   addressDirections: string | null;
   customerId: string;
-  customerFirstName: string;
+  /**
+   * The customer's first name off their profile, or **null where they have
+   * not set one** — `profile.first_name` is `NOT NULL DEFAULT ''`, and a
+   * blank is normalised to null in the repository the way
+   * `ProviderBookingRow.customerFirstName` is.
+   *
+   * Null rather than a fallback, and the fallback that is deliberately *not*
+   * taken is the local part of their email address. That string is a real
+   * name — "joao.silva" — and handing it to a workspace before any money has
+   * moved is the same lead the address, the number and the address itself
+   * were kept off `providerQuoteReadModel` to deny. What a nameless customer
+   * is called is `to-provider-quote-dto.ts`'s decision, not this row's, and
+   * `quoteSelect` does not read `user.email` at all — there is no email here
+   * to fall back to.
+   */
+  customerFirstName: string | null;
   attachmentCount: number;
 }
 

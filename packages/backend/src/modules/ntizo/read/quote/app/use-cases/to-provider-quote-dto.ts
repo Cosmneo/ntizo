@@ -41,6 +41,31 @@ import {
  * had quietly.
  */
 
+/**
+ * What a customer with no first name on their profile is called. Not
+ * translated: the read model promises a non-empty string, and the launch
+ * market reads Portuguese. The same constant, the same value and the same
+ * reasoning as `to-provider-booking-dto.ts`'s — one word for a nameless
+ * customer across both of a workspace's queues.
+ *
+ * **A constant rather than a fallback, and that is the whole point.** The
+ * obvious thing to reach for when a profile has no name is the local part of
+ * the address the person registered with, and this codebase does exactly that
+ * for the workspace's own staff (`displayFirstName` in the read repository).
+ * Applied to the customer it would hand a workspace "joao.silva" off somebody
+ * who simply never filled their name in — a real name, and a strong lead
+ * toward contacting them directly. That is the incentive the reveal rule
+ * exists to remove: the commission comes out of the provider's payout, so
+ * anything that lets them reach the customer before money has moved is worth
+ * more to them off the platform than on it. Withholding the street line while
+ * printing the address's own local part would give the rule away for nothing.
+ *
+ * `QuoteListRow.customerFirstName` is therefore `string | null`, and
+ * `quoteSelect` does not read the customer's registered address at all — so
+ * there is nothing in scope here to fall back to even by mistake.
+ */
+const NAMELESS_CUSTOMER = "Cliente";
+
 /** What the list card shows of a request the provider has not opened yet. */
 const SNIPPET_LENGTH = 160;
 
@@ -75,7 +100,7 @@ export function toProviderQuoteDTO(
     bookingId: row.bookingId,
     requestedAt: row.requestedAt.toISOString(),
     proposal: liveProposalOf(proposals, attachments),
-    customerFirstName: row.customerFirstName,
+    customerFirstName: row.customerFirstName ?? NAMELESS_CUSTOMER,
     // The two the reveal rule allows: enough to price travel, not enough to
     // turn up at a door. Everything else of the address stops at the
     // repository — see this file's own doc comment.

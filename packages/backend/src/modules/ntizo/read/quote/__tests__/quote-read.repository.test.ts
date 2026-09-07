@@ -46,7 +46,10 @@ import {
 } from "../../../shared/infrastructure/database/quote/schemas";
 import { DrizzleQuoteReadRepository } from "../infra/repositories/drizzle/quote-read.repository";
 import { toCustomerQuoteDetailDTO } from "../app/use-cases/to-customer-quote-dto";
-import { toProviderQuoteDetailDTO } from "../app/use-cases/to-provider-quote-dto";
+import {
+  toProviderQuoteDTO,
+  toProviderQuoteDetailDTO,
+} from "../app/use-cases/to-provider-quote-dto";
 import {
   bestEffortCleanup,
   DEV_DB_COLD_START_TIMEOUT_MS,
@@ -85,11 +88,17 @@ let secondServiceId: string;
 let otherServiceId: string;
 let threadId: string;
 let otherThreadId: string;
+let namelessThreadId: string;
 /** The `REQUESTED` quote every isolation test tries to reach from the wrong side. */
 let quoteId: string;
 let proposedQuoteId: string;
 let acceptedQuoteId: string;
 let otherQuoteId: string;
+/** A customer who never filled their name in, and the quote a workspace reads them through. */
+let namelessCustomerId: string;
+let namelessQuoteId: string;
+/** The local part of that customer's address — the string that must never reach a workspace. */
+let namelessLocalPart: string;
 let proposalId: string;
 let attachmentId: string;
 let bookingId: string;
@@ -139,19 +148,30 @@ beforeAll(async () => {
   otherCustomerId = crypto.randomUUID();
   ownerUserId = crypto.randomUUID();
   otherOwnerUserId = crypto.randomUUID();
+  namelessCustomerId = crypto.randomUUID();
+  // A plausible real name in the local part, on purpose: this is the exact
+  // string a workspace must not be shown. `joao.silva` is a name, not an
+  // opaque token, which is why an address-derived fallback would be a leak
+  // rather than a cosmetic wart.
+  namelessLocalPart = `joao.silva-${suffix}`;
 
   await db.insert(user).values([
     { id: customerId, email: `quote-read-ana-${suffix}@ntizo.test`, role: "customer", status: "active" },
     { id: otherCustomerId, email: `quote-read-bea-${suffix}@ntizo.test`, role: "customer", status: "active" },
     { id: ownerUserId, email: `quote-read-owner-${suffix}@ntizo.test`, role: "customer", status: "active" },
     { id: otherOwnerUserId, email: `quote-read-owner2-${suffix}@ntizo.test`, role: "customer", status: "active" },
+    { id: namelessCustomerId, email: `${namelessLocalPart}@ntizo.test`, role: "customer", status: "active" },
   ]);
   await db.insert(profile).values([
     { userId: customerId, firstName: "Ana" },
     { userId: otherCustomerId, firstName: "Bea" },
     { userId: ownerUserId, firstName: "Carlos" },
-    // `otherOwnerUserId` deliberately has no profile row — the left joins have
-    // to survive one, and `displayFirstName` has to reach for the address.
+    // The reachable case the fix is about: registration writes a profile row
+    // with `first_name` at its `NOT NULL DEFAULT ''`, so "never set a name"
+    // arrives as a blank string rather than a missing row.
+    { userId: namelessCustomerId, firstName: "" },
+    // `otherOwnerUserId` deliberately has no profile row at all — the left
+    // joins have to survive that too.
   ]);
 
   const providers = await db
@@ -219,10 +239,12 @@ beforeAll(async () => {
     .values([
       { type: "inquiry", customerUserId: customerId, providerId, lastMessageAt: NOW },
       { type: "inquiry", customerUserId: otherCustomerId, providerId: otherProviderId, lastMessageAt: NOW },
+      { type: "inquiry", customerUserId: namelessCustomerId, providerId: otherProviderId, lastMessageAt: NOW },
     ])
     .returning({ id: thread.id });
   threadId = threads[0]!.id;
   otherThreadId = threads[1]!.id;
+  namelessThreadId = threads[2]!.id;
 
   // The live pair. Two different services, because
   // `quote_open_per_customer_service_uq` allows one open quote per customer
@@ -275,6 +297,18 @@ beforeAll(async () => {
     threadId: otherThreadId,
     status: "REQUESTED",
     expiresAt: hoursOut(12),
+  });
+
+  // At the *second* workspace, deliberately: workspace A's tab counts are
+  // asserted to exact numbers elsewhere in this file, and an extra quote there
+  // would make this fix's test rewrite three unrelated assertions.
+  namelessQuoteId = await seedQuote({
+    customerId: namelessCustomerId,
+    providerId: otherProviderId,
+    serviceId: otherServiceId,
+    threadId: namelessThreadId,
+    status: "REQUESTED",
+    expiresAt: hoursOut(6),
   });
 
   const [proposalRow] = await db
@@ -341,8 +375,11 @@ afterAll(async () => {
     () => db.delete(booking).where(eq(booking.id, bookingId)),
     // `quote_attachment` and `quote_proposal` both cascade on the quote they
     // belong to — see their schemas — so deleting the quotes takes them.
-    () => db.delete(quote).where(inArray(quote.customerId, [customerId, otherCustomerId])),
-    () => db.delete(thread).where(inArray(thread.id, [threadId, otherThreadId])),
+    () =>
+      db
+        .delete(quote)
+        .where(inArray(quote.customerId, [customerId, otherCustomerId, namelessCustomerId])),
+    () => db.delete(thread).where(inArray(thread.id, [threadId, otherThreadId, namelessThreadId])),
     () => db.delete(serviceMember).where(eq(serviceMember.serviceId, serviceId)),
     () =>
       db
@@ -357,11 +394,27 @@ afterAll(async () => {
     () =>
       db
         .delete(profile)
-        .where(inArray(profile.userId, [customerId, otherCustomerId, ownerUserId, otherOwnerUserId])),
+        .where(
+          inArray(profile.userId, [
+            customerId,
+            otherCustomerId,
+            ownerUserId,
+            otherOwnerUserId,
+            namelessCustomerId,
+          ]),
+        ),
     () =>
       db
         .delete(user)
-        .where(inArray(user.id, [customerId, otherCustomerId, ownerUserId, otherOwnerUserId])),
+        .where(
+          inArray(user.id, [
+            customerId,
+            otherCustomerId,
+            ownerUserId,
+            otherOwnerUserId,
+            namelessCustomerId,
+          ]),
+        ),
     () => sql.end({ timeout: 5 }),
   ]);
 }, DEV_DB_COLD_START_TIMEOUT_MS);
@@ -503,13 +556,15 @@ describe("what a row carries", () => {
     expect(await run(() => repo.completedBookingsFor(otherCustomerId))).toBe(0);
   });
 
-  test("a person with no profile row still has a name to print", async () => {
+  test("a customer's own name comes off their profile, and a workspace with nobody on a service has no performers", async () => {
     const row = await run(() => repo.findForCustomer(otherQuoteId, otherCustomerId));
-    // Bea has a profile; her provider's owner does not — the performer read is
-    // where that gap shows, and it falls back to the local part of the
-    // address they registered with.
-    const facts = await run(() => repo.providerFormFacts(otherProviderId, otherServiceId));
     expect(row?.customerFirstName).toBe("Bea");
+
+    // Workspace B's owner has no profile row at all, and no `service_member`
+    // row links them to their own service — so the picker is empty rather
+    // than showing a nameless entry. The nameless-customer tests below cover
+    // the case this file cares about most.
+    const facts = await run(() => repo.providerFormFacts(otherProviderId, otherServiceId));
     expect(facts.performers).toEqual([]);
     expect(otherMemberId).toBeTruthy();
   });
@@ -536,6 +591,54 @@ describe("the reveal rule is the provider DTO's shape", () => {
     expect(keys.filter((k) => /line|label|direction|phone|mail/i.test(k))).toEqual([]);
     expect(JSON.stringify(dto)).not.toContain("Julius Nyerere");
     expect(JSON.stringify(dto)).not.toContain("Portão azul");
+  });
+
+  /**
+   * Round 1's finding, and it sat inside the rule this whole slice exists to
+   * enforce.
+   *
+   * The repository used to fall back to the local part of the customer's
+   * registered address when their profile had no first name — the same
+   * fallback it still, correctly, uses for the workspace's own staff. A
+   * customer who never filled their name in would therefore have handed the
+   * workspace "joao.silva": a real name, and a strong lead toward contacting
+   * them directly, which is precisely what withholding the street line, the
+   * number and the address itself is meant to prevent. Withholding the
+   * address while printing its own local part gives the rule away for
+   * nothing.
+   *
+   * Two assertions, and the second is the one that would have caught it: the
+   * placeholder is right *and* the local part appears nowhere in the payload.
+   */
+  test("a customer who never set a name is 'Cliente' to the workspace, never their address's local part", async () => {
+    const row = await run(() => repo.findForProvider(namelessQuoteId, otherProviderId));
+    if (!row) throw new Error("fixture: the workspace cannot read the nameless customer's quote");
+
+    // Null out of the repository — the placeholder is the mapper's decision,
+    // and the address was never read to be fallen back to.
+    expect(row.customerFirstName).toBeNull();
+
+    const dto = toProviderQuoteDetailDTO(row, [], [], { commissionBps: 1000, performers: [] }, 0);
+    expect(dto.customerFirstName).toBe("Cliente");
+    expect(dto.customerFirstName).not.toContain("joao");
+    expect(JSON.stringify(dto)).not.toContain(namelessLocalPart);
+  });
+
+  test("the same customer is 'Cliente' through the workspace's list, not only its detail", async () => {
+    const rows = await run(() => repo.listForProvider(otherProviderId, "toAnswer", 20, 0));
+    const mine = rows.find((q) => q.id === namelessQuoteId);
+    if (!mine) throw new Error("fixture: the nameless customer's quote is not in the workspace's list");
+
+    const dto = toProviderQuoteDTO(mine, [], []);
+    expect(dto.customerFirstName).toBe("Cliente");
+    expect(JSON.stringify(dto)).not.toContain(namelessLocalPart);
+  });
+
+  test("a customer who did set a name still gets their own name, not the placeholder", async () => {
+    const row = await run(() => repo.findForProvider(quoteId, providerId));
+    if (!row) throw new Error("fixture: the workspace cannot read its own quote");
+    const dto = toProviderQuoteDTO(row, [], []);
+    expect(dto.customerFirstName).toBe("Ana");
   });
 
   test("the customer's own detail does carry their address in full", async () => {
